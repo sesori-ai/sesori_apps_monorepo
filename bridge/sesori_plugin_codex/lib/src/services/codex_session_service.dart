@@ -126,14 +126,18 @@ class CodexSessionService {
       requestedModel: model,
       collaborationMode: collaborationMode,
     );
-    final turnEffort = effort ?? collaborationMode?.defaultReasoningEffort;
+    var turnMode = _resolveCollaborationMode(
+      model: turnModel,
+      collaborationMode: collaborationMode,
+    );
+    var turnEffort = effort ?? turnMode?.defaultReasoningEffort;
     try {
       final started = await _connectedThreadRepository.startTurn(
         threadId: threadId,
         parts: parts,
         model: turnModel,
         effort: turnEffort,
-        collaborationMode: collaborationMode,
+        collaborationMode: turnMode,
       );
       if (started) {
         _rememberThreadModel(threadId: threadId, model: turnModel);
@@ -150,12 +154,17 @@ class CodexSessionService {
         requestedModel: model,
         collaborationMode: collaborationMode,
       );
+      turnMode = _resolveCollaborationMode(
+        model: turnModel,
+        collaborationMode: collaborationMode,
+      );
+      turnEffort = effort ?? turnMode?.defaultReasoningEffort;
       final started = await _connectedThreadRepository.startTurn(
         threadId: threadId,
         parts: parts,
         model: turnModel,
         effort: turnEffort,
-        collaborationMode: collaborationMode,
+        collaborationMode: turnMode,
       );
       if (started) {
         _rememberThreadModel(threadId: threadId, model: turnModel);
@@ -182,7 +191,11 @@ class CodexSessionService {
       requestedModel: model,
       collaborationMode: collaborationMode,
     );
-    final turnEffort = effort ?? collaborationMode?.defaultReasoningEffort;
+    var turnMode = _resolveCollaborationMode(
+      model: turnModel,
+      collaborationMode: collaborationMode,
+    );
+    var turnEffort = effort ?? turnMode?.defaultReasoningEffort;
     try {
       await _dispatchCommand(
         threadId: threadId,
@@ -190,7 +203,7 @@ class CodexSessionService {
         arguments: arguments,
         model: turnModel,
         effort: turnEffort,
-        collaborationMode: collaborationMode,
+        collaborationMode: turnMode,
       );
     } on CodexThreadNotFoundException {
       resumed = await resumeThreadIfNeeded(threadId: threadId, force: true);
@@ -199,13 +212,18 @@ class CodexSessionService {
         requestedModel: model,
         collaborationMode: collaborationMode,
       );
+      turnMode = _resolveCollaborationMode(
+        model: turnModel,
+        collaborationMode: collaborationMode,
+      );
+      turnEffort = effort ?? turnMode?.defaultReasoningEffort;
       await _dispatchCommand(
         threadId: threadId,
         command: command,
         arguments: arguments,
         model: turnModel,
         effort: turnEffort,
-        collaborationMode: collaborationMode,
+        collaborationMode: turnMode,
       );
     }
     if (command != compactionCommandName) {
@@ -251,6 +269,18 @@ class CodexSessionService {
     return _threadModels[threadId] ??
         _catalogRepository.findSessionById(sessionId: threadId)?.model ??
         _metadataRepository.readConfigDefaults().model;
+  }
+
+  CodexCollaborationMode? _resolveCollaborationMode({
+    required String? model,
+    required CodexCollaborationMode? collaborationMode,
+  }) {
+    // An unmodeled turn already has Default semantics; Plan must not silently
+    // degrade into execution mode when its required model is unavailable.
+    if (model == null && collaborationMode == CodexCollaborationMode.defaultMode) {
+      return null;
+    }
+    return collaborationMode;
   }
 
   void _rememberThreadModel({

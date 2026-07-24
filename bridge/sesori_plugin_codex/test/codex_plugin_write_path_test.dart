@@ -45,7 +45,7 @@ void main() {
       } catch (_) {}
     });
 
-    test("createSession round-trips thread/start and turn/start", () async {
+    test("createSession preserves a Default turn when no model resolves", () async {
       // Respond to: initialize, thread/start, turn/start.
       fake.respondInOrder([
         const _Response(result: _initOk),
@@ -68,7 +68,7 @@ void main() {
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "hello codex")],
         variant: null,
-        agent: null,
+        agent: "Default",
         model: null,
       );
 
@@ -82,6 +82,7 @@ void main() {
       final turnStartParams = fake.sentParamsFor("turn/start");
       expect(turnStartParams["threadId"], equals("t-new"));
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
+      expect(turnStartParams.containsKey("collaborationMode"), isFalse);
     });
 
     test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
