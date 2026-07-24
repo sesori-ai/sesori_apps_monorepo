@@ -37,7 +37,6 @@ PluginProvidersResult mapProviderResponse({
       id: providerInfo.id,
       name: providerInfo.name,
       models: models,
-      defaultModels: response.defaultValue,
     );
   }).toList();
 
@@ -95,80 +94,81 @@ PluginProvider _mapProvider({
   required String id,
   required String name,
   required List<PluginModel> models,
-  required Map<String, String> defaultModels,
 }) {
-  final defaultModelID = defaultModels[id];
-
+  // OpenCode's per-provider `default` map is frequently stale (e.g. Kimi).
+  // Omit it so clients fall back to newest-by-releaseDate selection instead
+  // of trusting the API default. Plugins that publish a trustworthy default
+  // (e.g. Cursor's ACP current model) set defaultModelID themselves.
   return switch (id.toLowerCase()) {
     "anthropic" => PluginProvider.anthropic(
       id: id,
       name: name,
       authType: PluginProviderAuthType.apiKey,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     "openai" => PluginProvider.openAI(
       id: id,
       name: name,
       authType: PluginProviderAuthType.apiKey,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     "google" => PluginProvider.google(
       id: id,
       name: name,
       authType: PluginProviderAuthType.apiKey,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     "mistral" => PluginProvider.mistral(
       id: id,
       name: name,
       authType: PluginProviderAuthType.apiKey,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     "groq" => PluginProvider.groq(
       id: id,
       name: name,
       authType: PluginProviderAuthType.apiKey,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     "xai" => PluginProvider.xAI(
       id: id,
       name: name,
       authType: PluginProviderAuthType.apiKey,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     "deepseek" => PluginProvider.deepseek(
       id: id,
       name: name,
       authType: PluginProviderAuthType.apiKey,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     "amazon-bedrock" || "bedrock" => PluginProvider.amazonBedrock(
       id: id,
       name: name,
       authType: PluginProviderAuthType.unknown,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     "azure" => PluginProvider.azure(
       id: id,
       name: name,
       authType: PluginProviderAuthType.apiKey,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
     _ => PluginProvider.custom(
       id: id,
       name: name,
       authType: PluginProviderAuthType.unknown,
       models: models,
-      defaultModelID: defaultModelID,
+      defaultModelID: null,
     ),
   };
 }

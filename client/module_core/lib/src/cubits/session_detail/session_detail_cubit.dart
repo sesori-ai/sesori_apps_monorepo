@@ -1397,6 +1397,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       for (final provider in providers) {
         final picked = _defaultModelSelector.pickFromProvider(
           models: provider.models,
+          defaultModelID: provider.defaultModelID,
         );
         if (picked != null) {
           pickedModel = AgentModel(

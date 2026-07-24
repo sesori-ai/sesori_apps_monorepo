@@ -3,22 +3,24 @@ import "package:sesori_shared/sesori_shared.dart";
 /// Pure helper that selects a single representative [ProviderModel] from a
 /// family or from a whole provider's [ProviderInfo.models] map.
 ///
-/// The selector uses only signals already present in the upstream data, so
-/// the same logic works for every provider without per-provider knowledge:
+/// When a plugin publishes a trustworthy [ProviderInfo.defaultModelID]
+/// (and that model is available), [pickFromProvider] uses it. Plugins that
+/// do not trust their backend default — OpenCode, whose API default is
+/// frequently stale — omit the field so the selector falls through to the
+/// date-based ranking below.
+///
+/// Absent a published default, ranking uses only signals already present in
+/// the upstream data, so the same logic works for every provider without
+/// per-provider knowledge:
 ///
 /// 1. The model with the most recent [ProviderModel.releaseDate]. Models
 ///    without a release date sort last.
-/// 2. The first available model in iteration order.
+/// 2. Deterministic `id` tie-break.
 ///
 /// The "(latest)" marker in a model name is intentionally ignored as a
 /// ranking signal. Providers may label an older model as "latest" (e.g.
 /// `Claude Sonnet 4.5 (latest)` vs. a newer `Claude Sonnet 4.8`), so the
 /// release date is a more reliable signal for picking the current default.
-///
-/// The provider's backend-supplied [ProviderInfo.defaultModelID] is
-/// intentionally ignored. It is a provider-wide default that is frequently
-/// stale (e.g. Kimi), and the family-level newest-by-date signal is a more
-/// reliable default for the picker.
 ///
 /// There is intentionally no "newer than X months" cutoff. Deprecated
 /// models are already filtered out by [ProviderModel.isAvailable] in
@@ -38,12 +40,21 @@ class DefaultModelSelector {
 
   /// Selects a single default model across an entire provider.
   ///
-  /// Groups [models] by family, picks the best model per family using
+  /// Prefer [defaultModelID] when it resolves to an available model. Otherwise
+  /// groups [models] by family, picks the best model per family using
   /// [pickFromFamily], then returns the best of those representatives
   /// using the same ranking (newest release date, then `id`).
   ///
   /// Returns `null` if [models] contains no available models.
-  ProviderModel? pickFromProvider({required Map<String, ProviderModel> models}) {
+  ProviderModel? pickFromProvider({
+    required Map<String, ProviderModel> models,
+    required String? defaultModelID,
+  }) {
+    if (defaultModelID != null) {
+      final preferred = models[defaultModelID];
+      if (preferred != null && preferred.isAvailable) return preferred;
+    }
+
     // 1. Group by family, pick the best per family.
     final byFamily = <String, List<ProviderModel>>{};
     for (final m in models.values) {
