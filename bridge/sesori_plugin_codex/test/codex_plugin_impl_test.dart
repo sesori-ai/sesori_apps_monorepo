@@ -268,18 +268,12 @@ void main() {
       addTearDown(plugin.dispose);
       final firstSummary = Completer<void>();
       final approvalSummary = Completer<void>();
-      final clearedSummary = Completer<void>();
-      final sessionIdle = Completer<String>();
       var invalidations = 0;
       final subscription = plugin.events.listen((event) {
-        if (event is BridgeSseSessionIdle) {
-          sessionIdle.complete(event.sessionID);
-        }
         if (event is! BridgeSseProjectUpdated) return;
         invalidations++;
         if (invalidations == 1) firstSummary.complete();
         if (invalidations == 2) approvalSummary.complete();
-        if (invalidations == 3) clearedSummary.complete();
       });
       addTearDown(subscription.cancel);
 
@@ -325,18 +319,52 @@ void main() {
         }),
       );
       await approvalSummary.future.timeout(const Duration(seconds: 2));
-      expect(
-        await plugin.getPendingPermissions(sessionId: "t-running"),
-        hasLength(1),
-      );
+      final pending = await plugin.getPendingPermissions(sessionId: "t-running");
+      expect(pending, hasLength(1));
 
+      final completed = plugin.events.where((event) => event is BridgeSseSessionIdle).cast<BridgeSseSessionIdle>().first;
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "turn/completed",
+          "params": {
+            "threadId": "t-running",
+            "turn": {"id": "turn-1", "status": "completed"},
+          },
+        }),
+      );
+      expect((await completed.timeout(const Duration(seconds: 2))).sessionID, "t-running");
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      await plugin.replyToPermission(
+        requestId: pending.single.id,
+        sessionId: "t-running",
+        reply: PluginPermissionReply.once,
+      );
+      await idle.timeout(const Duration(seconds: 2));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+
+      final busyAgain = plugin.workState.firstWhere((state) => state == PluginWorkState.busy);
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "turn/started",
+          "params": {
+            "threadId": "t-running",
+            "turn": {"id": "turn-2", "startedAt": 1700000002},
+          },
+        }),
+      );
+      await busyAgain.timeout(const Duration(seconds: 2));
+
+      final disconnected = plugin.events.where((event) => event is BridgeSseSessionIdle).cast<BridgeSseSessionIdle>().first;
       await socket.close(WebSocketStatus.goingAway);
 
       expect(
-        await sessionIdle.future.timeout(const Duration(seconds: 2)),
+        (await disconnected.timeout(const Duration(seconds: 2))).sessionID,
         "t-running",
       );
-      await clearedSummary.future.timeout(const Duration(seconds: 2));
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(
         await plugin.getPendingPermissions(sessionId: "t-running"),

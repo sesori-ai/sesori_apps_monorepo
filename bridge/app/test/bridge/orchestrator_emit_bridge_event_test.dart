@@ -32,7 +32,7 @@ void main() {
     expect(plugins.map((plugin) => plugin.state), everyElement(PluginLifecycleState.ready));
   });
 
-  test("a sourced reconnect stays dormant and local events are already mapped", () async {
+  test("a sourced reconnect reconciles its active plugin and local events are already mapped", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
       pluginIds: const ["one", "two"],
@@ -49,13 +49,18 @@ void main() {
     await harness.activatePlugins();
     final before = [for (final plugin in harness.plugins) plugin.getProjectsCallCount];
 
+    harness.plugins.first.emitEvent(const BridgeSseServerConnected());
+    await _waitFor(
+      () => harness.plugins.first.getProjectsCallCount > before.first,
+      reason: "source reconnect reconciliation",
+    );
+    expect(harness.plugins.last.getProjectsCallCount, before.last);
+
     final localEvent = harness.composition.session.localWireEvents.firstWhere(
       (event) => event is SesoriVcsBranchUpdated,
     );
-    harness.plugins.first.emitEvent(const BridgeSseServerConnected());
     harness.plugins.first.emitEvent(const BridgeSseVcsBranchUpdated());
     expect(await localEvent.timeout(const Duration(seconds: 2)), isA<SesoriVcsBranchUpdated>());
-    expect([for (final plugin in harness.plugins) plugin.getProjectsCallCount], before);
 
     await harness.composition.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));

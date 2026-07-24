@@ -232,9 +232,9 @@ run their focused verification again.
 - Switched startup to all-ready-dormant residency, retained request-time demand
   activation, added numeric idle suspension policy, and replaced eager startup
   enumeration with the marker-gated `PluginCatalogHydrationListener`.
-- Removed startup and reconnect project-activity enumeration that would wake
-  dormant plugins. Explicit headless imports validate setup availability and
-  then activate on demand.
+- Removed startup project-activity enumeration that would wake dormant plugins.
+  Reconnect reconciliation remains source-scoped and active-only; explicit
+  headless imports validate setup availability and then activate on demand.
 - `dart analyze --fatal-infos` passed sequentially in
   `sesori_plugin_interface`, `sesori_plugin_opencode`,
   `sesori_plugin_codex`, `sesori_plugin_acp`, `sesori_plugin_cursor`, and
@@ -260,14 +260,18 @@ run their focused verification again.
   `origin/main` at `2bb376b2` without rebasing. The sole conflict was the
   `OrchestratorComposition` record; its resolution retains both P02 catalog
   hydration and #558 deleted-session storage cleanup.
-- The first CI run's 18 debug-server/orchestrator timeouts exposed tests that
-  still waited for eager startup and reconnect activity enumeration. Updated
-  those harnesses to activate plugins through explicit test demand and assert
-  that reconnect remains dormant; all 18 previously failing cases pass.
+- The first CI run's 18 debug-server/orchestrator timeouts exposed harnesses
+  that still waited for eager startup before plugin event subscription. Updated
+  them to activate plugins through explicit test demand; all 18 previously
+  failing cases pass.
 - Post-sync fatal analysis passed in the plugin interface, Cursor, and bridge
   app. Full plugin-interface (149 tests) and Cursor (95 tests) suites passed,
   along with focused runtime, lifecycle, hydration, cleanup, debug-server, and
   orchestrator integration tests.
+- PR feedback restored active-only project-activity reconciliation after a
+  sourced backend reconnect and made pending Codex approvals keep generic work
+  state busy until their response is delivered. Focused regressions, all 189
+  Codex tests, and fatal Codex/bridge-app analysis passed.
 
 ## Delivery Rules
 

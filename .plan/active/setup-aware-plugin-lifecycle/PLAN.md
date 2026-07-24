@@ -649,7 +649,8 @@ the listed source files and committed with their stage.
 - plugin-owned work state and authentication-loss signal;
 - all-ready-dormant startup, demand activation, marker-before-hydration;
 - numeric default/override config and safe idle suspension;
-- remove startup/reconnect enumeration that wakes dormant plugins.
+- remove startup enumeration that wakes dormant plugins; reconnect
+  reconciliation remains source-scoped and active-only.
 
 ### Stage 12 / former PR #510 — headless management
 

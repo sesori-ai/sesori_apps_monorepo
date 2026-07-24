@@ -400,6 +400,7 @@ class CodexPlugin implements CodexManagedApi {
   }
 
   void _emitApprovalEvent(BridgeSseEvent event) {
+    _syncWorkState();
     _eventBuffer.add(event);
     _eventBuffer.add(const BridgeSseProjectUpdated());
   }
@@ -1222,6 +1223,7 @@ class CodexPlugin implements CodexManagedApi {
     final busy =
         _provisionalAcceptedTurnThreadIds.isNotEmpty ||
         _activeTurnByThread.isNotEmpty ||
+        (_approvalRegistry?.hasAnyPendingInput ?? false) ||
         _sessionStatuses.values.any(
           (status) => status is PluginSessionStatusBusy || status is PluginSessionStatusRetry,
         );

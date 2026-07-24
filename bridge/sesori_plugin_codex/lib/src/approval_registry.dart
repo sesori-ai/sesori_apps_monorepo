@@ -201,6 +201,8 @@ class ApprovalRegistry {
   bool hasPendingInput(String sessionId) =>
       _pending.values.any((entry) => entry.sessionId == sessionId);
 
+  bool get hasAnyPendingInput => _pending.isNotEmpty;
+
   /// Acknowledges a permission ask with a once/always/reject decision.
   ///
   /// Returns true when the response was sent, false if the id had

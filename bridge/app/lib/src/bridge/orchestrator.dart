@@ -1075,6 +1075,9 @@ class OrchestratorSession {
       }
 
       if (event is BridgeSseServerConnected) {
+        await _projectActivityService.reconcile(pluginId: pluginId).catchError((Object e, StackTrace st) {
+          Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
+        });
         if (config.yolo) await _permissionAutoApprovalService.approvePending();
       }
 
