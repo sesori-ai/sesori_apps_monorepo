@@ -5,6 +5,25 @@ import "package:test/test.dart";
 
 void main() {
   group("mapProviderResponse", () {
+    test("omits OpenCode's API default map so clients use newest-by-date", () {
+      final response = ConfigProvidersResponse.fromJson(
+        _providersJson(<String, dynamic>{
+          "gpt-4.1-mini": _modelJson(
+            id: "openai/gpt-4.1-mini",
+            name: "GPT-4.1 Mini",
+            variants: const <String, dynamic>{},
+            family: "gpt-4.1",
+            status: "active",
+            releaseDate: "2025-04-01",
+          ),
+        }),
+      );
+
+      final mapped = mapProviderResponse(response: response);
+
+      expect(mapped.providers.single.defaultModelID, isNull);
+    });
+
     test("preserves synthetic model IDs and treats alpha/beta statuses as available", () {
       final response = ConfigProvidersResponse.fromJson(
         _providersJson(<String, dynamic>{
@@ -31,7 +50,7 @@ void main() {
       expect(mapped.providers, hasLength(1));
       final provider = mapped.providers.first;
       expect(provider.id, equals("openai"));
-      expect(provider.defaultModelID, equals("openai/gpt-4.1-mini"));
+      expect(provider.defaultModelID, isNull);
       expect(provider.models, hasLength(2));
       final alphaModel = provider.models.firstWhere((model) => model.id == "openai/gpt-4.1-alpha");
       expect(alphaModel.isAvailable, isTrue);

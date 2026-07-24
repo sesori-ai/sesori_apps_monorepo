@@ -324,7 +324,7 @@ void main() {
       expect(anthropic.name, equals("Anthropic"));
       expect(anthropic.authType, equals(PluginProviderAuthType.apiKey));
       expect(anthropic.models, hasLength(2));
-      expect(anthropic.defaultModelID, equals("claude-3-sonnet"));
+      expect(anthropic.defaultModelID, isNull);
 
       final opus = anthropic.models.firstWhere((m) => m.id == "claude-3-opus");
       expect(opus.name, equals("Claude 3 Opus"));
