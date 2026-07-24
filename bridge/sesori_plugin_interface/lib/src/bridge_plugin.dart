@@ -43,10 +43,17 @@ sealed class BridgePluginApi {
   ///
   /// If [parentSessionId] is provided, the new session is created as a
   /// child (sub-session) of the specified parent.
+  ///
+  /// [parts] is the exact backend execution payload and may include
+  /// bridge-owned context. [userVisibleText] is only the user-authored text,
+  /// or `null` when no user text should be rendered. Implementations that
+  /// synthesize a client-facing user message MUST use [userVisibleText], never
+  /// infer it from [parts].
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required String? userVisibleText,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,

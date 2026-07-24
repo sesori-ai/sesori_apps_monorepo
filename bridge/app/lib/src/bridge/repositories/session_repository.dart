@@ -123,6 +123,7 @@ class SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required String? userVisibleText,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -141,6 +142,7 @@ class SessionRepository {
         directory: directory,
         parentSessionId: parentSessionId,
         parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+        userVisibleText: userVisibleText,
         variant: _toPluginVariant(variant),
         agent: agent,
         model: switch (model) {

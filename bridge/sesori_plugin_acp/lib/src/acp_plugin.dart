@@ -625,6 +625,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required String? userVisibleText,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -662,6 +663,23 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
+    final created = PluginSession(
+      id: session.sessionId,
+      projectID: canonicalDirectory,
+      directory: canonicalDirectory,
+      parentID: parentSessionId,
+      title: null,
+      time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
+    );
+    emitEvent(eventMapper.mapCreatedSession(session: created));
+    if (userVisibleText != null && userVisibleText.trim().isNotEmpty) {
+      eventMapper
+          .mapSentPrompt(
+            sessionId: session.sessionId,
+            parts: [PluginPromptPart.text(text: userVisibleText)],
+          )
+          .forEach(emitEvent);
+    }
     if (parts.isEmpty) {
       // No first turn to carry the selection: apply it now so the session's
       // model/mode are in place for whichever turn comes first later.
@@ -683,14 +701,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         agent: agent,
       );
     }
-    return PluginSession(
-      id: session.sessionId,
-      projectID: canonicalDirectory,
-      directory: canonicalDirectory,
-      parentID: parentSessionId,
-      title: null,
-      time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
-    );
+    return created;
   }
 
   @override

@@ -238,6 +238,33 @@ class AcpEventMapper {
     ];
   }
 
+  /// Maps a newly created ACP session before any prompt-derived events. The
+  /// bridge uses this root event to hold those events until its durable
+  /// backend-to-client session binding has committed.
+  BridgeSseSessionCreated mapCreatedSession({required PluginSession session}) {
+    final time = session.time;
+    return BridgeSseSessionCreated(
+      info: shared.Session(
+        branchName: null,
+        id: session.id,
+        pluginId: pluginId,
+        projectID: session.projectID,
+        directory: session.directory,
+        parentID: session.parentID,
+        title: session.title,
+        time: time == null
+            ? null
+            : shared.SessionTime(
+                created: time.created,
+                updated: time.updated,
+                archived: time.archived,
+              ),
+        pullRequest: null,
+        promptDefaults: null,
+      ).toJson(),
+    );
+  }
+
   /// Maps a single notification to zero or more bridge events.
   List<BridgeSseEvent> map(AcpNotification notification) {
     if (notification.method != AcpMethods.sessionUpdate) {

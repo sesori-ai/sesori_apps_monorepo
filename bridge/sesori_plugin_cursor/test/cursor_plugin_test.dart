@@ -176,6 +176,7 @@ void main() {
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
+        userVisibleText: null,
         variant: null,
         agent: null,
         model: null,

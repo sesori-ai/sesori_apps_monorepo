@@ -421,6 +421,77 @@ void main() {
       expect(eventTracker.length, 0);
     });
 
+    test("releases a new root's initial message and status after its binding commits", () async {
+      final created = BridgeSseSessionCreated(
+        info: _sessionInfo(
+          sessionId: "backend-root",
+          parentId: null,
+          projectId: "backend-project",
+          directory: "/repo",
+        ),
+      );
+      final message = BridgeSseMessageUpdated(
+        info: const Message.user(
+          id: "backend-message",
+          sessionID: "backend-root",
+          agent: null,
+          time: null,
+        ).toJson(),
+      );
+      const part = BridgeSseMessagePartUpdated(
+        part: PluginMessagePart(
+          id: "backend-part",
+          sessionID: "backend-root",
+          messageID: "backend-message",
+          type: PluginMessagePartType.text,
+          text: "visible prompt",
+          tool: null,
+          state: null,
+          prompt: null,
+          description: null,
+          agent: null,
+          agentName: null,
+          attempt: null,
+          retryError: null,
+        ),
+      );
+      final status = BridgeSseSessionStatus(
+        sessionID: "backend-root",
+        status: const SessionStatus.busy().toJson(),
+      );
+
+      for (final (index, event) in [created, message, part, status].indexed) {
+        expect(
+          await service.normalize(
+            source: (
+              pluginId: plugin.id,
+              projectionUpdatedAt: 20 + index,
+              event: event,
+            ),
+          ),
+          isEmpty,
+        );
+      }
+      expect(eventTracker.length, 4);
+
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final output = await service.handleBindingsCommitted(
+        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+      );
+
+      expect(output, hasLength(4));
+      expect(Session.fromJson((output[0] as BridgeSseSessionCreated).info).id, "stable-root");
+      expect(Message.fromJson((output[1] as BridgeSseMessageUpdated).info).sessionID, "stable-root");
+      expect((output[2] as BridgeSseMessagePartUpdated).part.sessionID, "stable-root");
+      expect((output[3] as BridgeSseSessionStatus).sessionID, "stable-root");
+      expect(eventTracker.length, 0);
+    });
+
     test("replays an update that follows a pending root creation", () async {
       final created = BridgeSseSessionCreated(
         info: _sessionInfo(

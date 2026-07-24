@@ -53,6 +53,7 @@ class SessionCreationService {
         worktreeResult: worktreeResult,
         command: normalizedCommand,
       ),
+      userVisibleText: normalizedCommand == null ? firstText : null,
       variant: request.variant,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,

@@ -529,6 +529,7 @@ class _FakeSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required String? userVisibleText,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
