@@ -43,11 +43,24 @@ BridgeSettingsRepository createTestBridgeSettingsRepository({
   BridgeSettings settings = const BridgeSettings(),
 }) => _TestBridgeSettingsRepository(settings: settings);
 
+Future<void> activateTestPlugin({
+  required PluginLifecycleService service,
+  required String pluginId,
+}) async {
+  await runtimeForLifecycleService(service: service).use<void>(
+    pluginId: pluginId,
+    operation: _TestPluginOperation.activate,
+    body: (_) async {},
+  );
+}
+
 PluginRuntime runtimeForLifecycleService({required PluginLifecycleService service}) {
   final runtime = _runtimes[service];
   if (runtime == null) throw StateError("No test plugin runtime is registered for this lifecycle service.");
   return runtime;
 }
+
+enum _TestPluginOperation { activate }
 
 class _TestBridgeSettingsRepository implements BridgeSettingsRepository {
   const _TestBridgeSettingsRepository({required this.settings});

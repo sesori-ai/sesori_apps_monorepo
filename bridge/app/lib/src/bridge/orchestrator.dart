@@ -104,6 +104,7 @@ import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
+import "services/deleted_session_storage_cleanup_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
@@ -126,6 +127,7 @@ typedef OrchestratorComposition = ({
   OrchestratorSession session,
   CatalogImportService catalogImportService,
   PluginCatalogHydrationListener catalogHydrationListener,
+  DeletedSessionStorageCleanupService deletedSessionStorageCleanupService,
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
@@ -202,6 +204,9 @@ class Orchestrator {
       unseenCalculator: unseenCalculator,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final deletedSessionStorageCleanupService = DeletedSessionStorageCleanupService(
+      sessionRepository: sessionRepository,
     );
     final projectRepository = ProjectRepository(
       projectsDao: _database.projectsDao,
@@ -513,6 +518,7 @@ class Orchestrator {
       session: session,
       catalogImportService: catalogImportService,
       catalogHydrationListener: catalogHydrationListener,
+      deletedSessionStorageCleanupService: deletedSessionStorageCleanupService,
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,

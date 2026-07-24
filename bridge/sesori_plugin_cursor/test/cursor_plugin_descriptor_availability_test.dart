@@ -2,6 +2,8 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:acp_plugin/acp_plugin.dart";
+import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -268,6 +270,117 @@ void main() {
       expect(processes.forceSignals, equals(<int>[99]));
     });
   });
+
+  group("CursorPluginDescriptor.start", () {
+    test("does not probe persisted sessions before startup reconciliation", () async {
+      final spawnedAcpProcesses = <FakeAcpProcess>[];
+      final handledFrameIds = <FakeAcpProcess, Set<Object?>>{};
+      var responding = true;
+      final descriptor = CursorPluginDescriptor(
+        buildPlugin:
+            ({
+              required String binaryPath,
+              required String launchDirectory,
+              required String? apiEndpoint,
+              required AcpProcessFactory processFactory,
+              required CursorSessionCleanupService sessionCleanupService,
+            }) {
+              return CursorPlugin(
+                binaryPath: binaryPath,
+                launchDirectory: launchDirectory,
+                apiEndpoint: apiEndpoint,
+                processFactory: (_) async {
+                  final process = FakeAcpProcess();
+                  spawnedAcpProcesses.add(process);
+                  return process;
+                },
+                sessionCleanupService: sessionCleanupService,
+              );
+            },
+      );
+      final responsePump = () async {
+        while (responding) {
+          for (final process in spawnedAcpProcesses) {
+            for (final frame in process.written) {
+              final id = frame["id"];
+              final processFrameIds = handledFrameIds.putIfAbsent(
+                process,
+                () => <Object?>{},
+              );
+              if (id == null || !processFrameIds.add(id)) continue;
+              switch (frame["method"]) {
+                case "initialize":
+                  process.emit({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "result": const {
+                      "protocolVersion": 1,
+                      "agentCapabilities": <String, dynamic>{},
+                      "authMethods": <Object?>[],
+                    },
+                  });
+                case "cursor/list_available_models":
+                  process.emit({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "result": const {"models": <Object?>[]},
+                  });
+              }
+            }
+          }
+          await Future<void>.delayed(Duration.zero);
+        }
+      }();
+
+      final plugin = await descriptor.start(
+        _StartPluginHost(
+          processes: _ProbeProcessService(
+            spawnError: StateError("injected plugin must own the test process"),
+          ),
+        ),
+      );
+      responding = false;
+      await responsePump;
+
+      expect(
+        spawnedAcpProcesses,
+        hasLength(1),
+        reason: "descriptor startup must only initialize the live ACP process",
+      );
+
+      await plugin.shutdown(budget: null);
+      for (final process in spawnedAcpProcesses) {
+        await process.close();
+      }
+    });
+  });
+}
+
+class _StartPluginHost implements PluginHost {
+  _StartPluginHost({required this.processes});
+
+  @override
+  final HostProcessService processes;
+
+  @override
+  PluginConfig get config => const PluginConfig(
+    values: {
+      CursorPluginDescriptor.binOption: "cursor-agent",
+      CursorPluginDescriptor.apiEndpointOption: null,
+    },
+  );
+
+  @override
+  Map<String, String> get environment => const {"HOME": "/tmp"};
+
+  @override
+  ServerClock get clock => const ServerClock();
+
+  @override
+  StartAbortSignal get startAborted => StartAbortSignal.never;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// A [HostProcessService] that either throws on [spawn] (to simulate ENOENT) or

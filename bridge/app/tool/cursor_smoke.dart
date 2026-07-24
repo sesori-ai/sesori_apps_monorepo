@@ -14,7 +14,15 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 Future<void> main(List<String> args) async {
   final prompt = args.isEmpty ? "Reply with exactly: hello world" : args.first;
   final cwd = Directory.current.path;
-  final plugin = CursorPlugin(launchDirectory: cwd);
+  final plugin = CursorPlugin(
+    launchDirectory: cwd,
+    sessionCleanupService: CursorSessionCleanupService(
+      repository: CursorSessionStorageRepository(
+        api: const CursorSessionStorageApi(),
+      ),
+      environment: Platform.environment,
+    ),
+  );
   final assistant = StringBuffer();
 
   plugin.events.listen((e) {

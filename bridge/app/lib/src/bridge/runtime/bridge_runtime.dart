@@ -35,6 +35,10 @@ class BridgeRuntime {
   CatalogImportService get catalogImportService => _composition.catalogImportService;
   PluginCatalogHydrationListener get catalogHydrationListener => _composition.catalogHydrationListener;
 
+  Future<void> reconcileDeletedSessionStorage() {
+    return _composition.deletedSessionStorageCleanupService.reconcile();
+  }
+
   BandwidthTracker createBandwidthTracker() {
     return BandwidthTracker(bytesSent: session.bytesSent);
   }

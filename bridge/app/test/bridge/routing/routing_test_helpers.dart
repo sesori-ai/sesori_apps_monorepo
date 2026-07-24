@@ -748,6 +748,15 @@ class _NoopSessionRepository implements SessionRepository {
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
+  Future<List<String>> get persistedSessionCleanupPluginIds async => const [];
+
+  @override
+  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async => const {};
+
+  @override
+  Future<void> deletePersistedSession({required String pluginId, required String backendSessionId}) async {}
+
+  @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const <MessageWithParts>[];
 
   @override
@@ -1001,6 +1010,15 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
+
+  @override
+  Future<List<String>> get persistedSessionCleanupPluginIds async => const [];
+
+  @override
+  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async => const {};
+
+  @override
+  Future<void> deletePersistedSession({required String pluginId, required String backendSessionId}) async {}
 
   @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => [

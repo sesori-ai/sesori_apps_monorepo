@@ -4,11 +4,11 @@
 
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
-- **Base:** `origin/main` at `0a910926`
+- **Base:** `origin/main` at `2bb376b2`
 - **Current branch:** `setup-aware-plugin-lifecycle-dormant-runtime`
 - **Current stage:** Stage 11-P02 — dormant runtime and numeric idle timeout rebuild
-- **Next action:** commit/push and open the replacement dormancy draft PR; keep
-  it unmerged through the synchronized release and temporary gate revert
+- **Next action:** push the verified latest-main integration to draft PR #556,
+  monitor CI, then mark it ready
 
 ## Frozen Oversized Stack
 
@@ -37,7 +37,7 @@ run their focused verification again.
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 merged as `96f63c69` |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
-| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | rebuilt, synchronized, and verified; draft PR pending |
+| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 draft; synchronized and locally verified |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
 
@@ -254,6 +254,20 @@ run their focused verification again.
   runtime/lifecycle/hydration/composition/recovery suite passed 64 tests.
 - Final integration architecture review approved the complete 22 production-file
   diff against `origin/main` with no findings; `git diff HEAD --check` passed.
+- Opened replacement draft PR #556 from verified commit `7b91567c` and retained
+  the pre-sync stash as a safety checkpoint.
+- After release gate #555 shipped and exact revert #557 landed, merged latest
+  `origin/main` at `2bb376b2` without rebasing. The sole conflict was the
+  `OrchestratorComposition` record; its resolution retains both P02 catalog
+  hydration and #558 deleted-session storage cleanup.
+- The first CI run's 18 debug-server/orchestrator timeouts exposed tests that
+  still waited for eager startup and reconnect activity enumeration. Updated
+  those harnesses to activate plugins through explicit test demand and assert
+  that reconnect remains dormant; all 18 previously failing cases pass.
+- Post-sync fatal analysis passed in the plugin interface, Cursor, and bridge
+  app. Full plugin-interface (149 tests) and Cursor (95 tests) suites passed,
+  along with focused runtime, lifecycle, hydration, cleanup, debug-server, and
+  orchestrator integration tests.
 
 ## Delivery Rules
 
@@ -263,6 +277,6 @@ run their focused verification again.
 - Rebuild or retarget #509-#511 only after P01D is complete.
 - Open each replacement PR only after its focused checks pass, then monitor that
   PR immediately.
-- Keep the rebuilt P02 draft unmerged until temporary OpenCode-only release gate
-  PR #555 has shipped and been exactly reverted. Then merge latest `main` into
-  P02 without rebasing, rerun relevant checks, and mark the draft ready.
+- Temporary OpenCode-only release gate PR #555 shipped and exact revert #557
+  landed before #556 was synchronized. Continue to merge later `main` drift
+  without rebasing before marking the draft ready.

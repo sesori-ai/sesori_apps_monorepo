@@ -5,26 +5,37 @@ import "package:test/test.dart";
 
 void main() {
   group("resolveUserHomeDirectory", () {
-    test("prefers HOME", () {
+    test("prefers the platform-specific environment variable", () {
       expect(
         resolveUserHomeDirectory(
           environment: const {"HOME": "/home/alex", "USERPROFILE": r"C:\Users\Alex"},
         ),
-        equals("/home/alex"),
+        equals(Platform.isWindows ? r"C:\Users\Alex" : "/home/alex"),
       );
     });
 
-    test("falls back to USERPROFILE when HOME is empty", () {
+    test("falls back when the platform-specific value is blank", () {
       expect(
         resolveUserHomeDirectory(
-          environment: const {"HOME": "", "USERPROFILE": r"C:\Users\Alex"},
+          environment: Platform.isWindows
+              ? const {"USERPROFILE": "  ", "HOME": "/home/alex"}
+              : const {"HOME": "\t", "USERPROFILE": r"C:\Users\Alex"},
         ),
-        equals(r"C:\Users\Alex"),
+        equals(Platform.isWindows ? "/home/alex" : r"C:\Users\Alex"),
       );
     });
 
     test("returns null when neither value is available", () {
       expect(resolveUserHomeDirectory(environment: const {}), isNull);
+    });
+
+    test("returns null when both values are blank", () {
+      expect(
+        resolveUserHomeDirectory(
+          environment: const {"HOME": " ", "USERPROFILE": "\t"},
+        ),
+        isNull,
+      );
     });
   });
 

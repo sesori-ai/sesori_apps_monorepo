@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         BridgePluginApi,
         Log,
         NativeProjectsPluginApi,
+        PersistedSessionCleanupApi,
         PluginActiveSession,
         PluginOperationException,
         PluginProjectActivitySummary,
@@ -350,6 +351,61 @@ class SessionRepository {
     if (binding == null) return false;
     await _ensureTombstonesLoaded(pluginId: binding.pluginId);
     return _tombstonesFor(binding.pluginId).contains(binding.backendSessionId);
+  }
+
+  Future<List<String>> get persistedSessionCleanupPluginIds async {
+    final pluginIds = <String>[];
+    for (final pluginId in _runtime.activePluginIds) {
+      try {
+        final supportsCleanup = await _runtime.useIfActive(
+          pluginId: pluginId,
+          operation: SessionOperation.cleanupSession,
+          body: (plugin, _) async => plugin is PersistedSessionCleanupApi,
+        );
+        if (supportsCleanup ?? false) pluginIds.add(pluginId);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "Failed to inspect persisted session cleanup capability "
+          "(plugin=$pluginId); retrying next startup",
+          error,
+          stackTrace,
+        );
+      }
+    }
+    pluginIds.sort();
+    return List<String>.unmodifiable(pluginIds);
+  }
+
+  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async {
+    final tombstones = await _runtime.useIfActive(
+      pluginId: pluginId,
+      operation: SessionOperation.cleanupSession,
+      body: (plugin, _) {
+        _requirePersistedSessionCleanupApi(
+          pluginId: pluginId,
+          plugin: plugin,
+        );
+        return _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
+      },
+    );
+    if (tombstones == null) {
+      throw StateError('Plugin "$pluginId" is not active');
+    }
+    return tombstones;
+  }
+
+  Future<void> deletePersistedSession({
+    required String pluginId,
+    required String backendSessionId,
+  }) {
+    return _runtime.use(
+      pluginId: pluginId,
+      operation: SessionOperation.cleanupSession,
+      body: (plugin) => _requirePersistedSessionCleanupApi(
+        pluginId: pluginId,
+        plugin: plugin,
+      ).deletePersistedSession(backendSessionId: backendSessionId),
+    );
   }
 
   Future<void> _ensureTombstonesLoaded({required String pluginId}) async {
@@ -1292,6 +1348,14 @@ class SessionRepository {
 
   Set<String> _tombstonesFor(String pluginId) {
     return _tombstonedBackendSessionIds.putIfAbsent(pluginId, () => <String>{});
+  }
+
+  PersistedSessionCleanupApi _requirePersistedSessionCleanupApi({
+    required String pluginId,
+    required BridgePluginApi? plugin,
+  }) {
+    if (plugin case final PersistedSessionCleanupApi cleanupApi) return cleanupApi;
+    throw StateError('Plugin "$pluginId" does not support persisted session cleanup');
   }
 
   Future<List<String>> _allocateSessionIds({required int count}) async {

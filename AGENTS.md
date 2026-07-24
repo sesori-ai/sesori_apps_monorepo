@@ -55,6 +55,9 @@ eagerly "just in case."
   never use magic strings for domain state or decisions.
 - Never use an empty string to represent missing data. Use `null` when absence
   is meaningful; do not avoid nullability when it accurately models the domain.
+- Bridge code must resolve the user home directory with
+  `resolveUserHomeDirectory` from `sesori_bridge_foundation`; never read `HOME`
+  or `USERPROFILE` directly.
 - For legacy transport omission, prefer an honest `@Default` over nullable
   modern state when one valid meaning exists. Add a dated compatibility comment
   with the legacy rationale and exact cleanup:

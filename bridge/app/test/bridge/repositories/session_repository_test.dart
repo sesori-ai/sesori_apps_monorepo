@@ -72,6 +72,85 @@ void main() {
       );
     });
 
+    test("exposes tombstones only through persisted cleanup capabilities", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final cleanupPlugin = _FakePersistedCleanupPlugin();
+      final repository = singlePluginSessionRepository(
+        plugin: cleanupPlugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        backendSessionId: "deleted-backend-session",
+        pluginId: cleanupPlugin.id,
+        deletedAt: 1,
+      );
+
+      expect(await repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
+      expect(
+        await repository.getTombstonedBackendSessionIdsForCleanup(
+          pluginId: cleanupPlugin.id,
+        ),
+        {"deleted-backend-session"},
+      );
+
+      await repository.deletePersistedSession(
+        pluginId: cleanupPlugin.id,
+        backendSessionId: "deleted-backend-session",
+      );
+
+      expect(cleanupPlugin.persistedDeleteCalls, ["deleted-backend-session"]);
+      expect(
+        await db.sessionDao.isSessionTombstoned(
+          backendSessionId: "deleted-backend-session",
+          pluginId: cleanupPlugin.id,
+        ),
+        isTrue,
+      );
+    });
+
+    test("does not expose plugins without persisted cleanup support", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      expect(await repository.persistedSessionCleanupPluginIds, isEmpty);
+    });
+
+    test("isolates persisted cleanup capability probe failures", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final failingPlugin = _FakeDerivedPlugin(
+        launchDirectory: "/failing",
+        allSessions: const [],
+      );
+      final cleanupPlugin = _FakePersistedCleanupPlugin();
+      final repository = SessionRepository(
+        runtime: _CapabilityProbeFailingRuntime(
+          plugins: [failingPlugin, cleanupPlugin],
+          failingPluginId: failingPlugin.id,
+        ),
+        bridgeDerivedProjectPluginIds: {failingPlugin.id},
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
+
+      expect(await repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
+    });
+
     test("coalesces tombstone loading and serves later lookups from memory", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2185,6 +2264,35 @@ class _GenerationReplacingRuntime extends TestPluginRuntime {
   }
 }
 
+class _CapabilityProbeFailingRuntime extends TestPluginRuntime {
+  _CapabilityProbeFailingRuntime({
+    required Iterable<BridgePluginApi> plugins,
+    required String failingPluginId,
+  }) : _failingPluginId = failingPluginId,
+       super(
+         plugins: {for (final plugin in plugins) plugin.id: plugin},
+         eligiblePluginIds: null,
+       );
+
+  final String _failingPluginId;
+
+  @override
+  Future<T?> useIfActive<T>({
+    required String pluginId,
+    required Enum operation,
+    required Future<T> Function(BridgePluginApi api, int generation) body,
+  }) {
+    if (pluginId == _failingPluginId) {
+      throw StateError("plugin generation changed");
+    }
+    return super.useIfActive(
+      pluginId: pluginId,
+      operation: operation,
+      body: body,
+    );
+  }
+}
+
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
@@ -2334,6 +2442,15 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakePersistedCleanupPlugin extends _FakeBridgePlugin implements PersistedSessionCleanupApi {
+  final List<String> persistedDeleteCalls = [];
+
+  @override
+  Future<void> deletePersistedSession({required String backendSessionId}) async {
+    persistedDeleteCalls.add(backendSessionId);
+  }
 }
 
 class _CountingSessionDao implements SessionDao {
