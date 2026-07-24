@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -549,6 +551,21 @@ void main() {
         tracker.markTurnAccepted(sessionId: "session");
 
         tracker.reset();
+
+        expect(tracker.workState, PluginWorkState.busy);
+      });
+
+      test("coldStart retains a turn accepted after its status snapshot begins", () async {
+        final api = _GatedStatusApi();
+        final tracker = ActiveSessionTracker(OpenCodeRepository(api));
+        final coldStart = tracker.coldStart();
+        await api.statusRequested.future;
+
+        tracker.markTurnAccepted(sessionId: "session");
+        api.statusRelease.complete();
+        await coldStart;
+        tracker.populatePendingQuestions(questions: const [], baselineTrusted: true);
+        tracker.populatePendingPermissions(permissions: const [], baselineTrusted: true);
 
         expect(tracker.workState, PluginWorkState.busy);
       });
@@ -2918,4 +2935,18 @@ class _FakeApi implements OpenCodeApi {
     required String sessionId,
     required String directory,
   }) async => throw UnimplementedError();
+}
+
+class _GatedStatusApi extends _FakeApi {
+  _GatedStatusApi() : super(statuses: {"session": const SessionStatusIdle()});
+
+  final Completer<void> statusRequested = Completer<void>();
+  final Completer<void> statusRelease = Completer<void>();
+
+  @override
+  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
+    statusRequested.complete();
+    await statusRelease.future;
+    return super.getSessionStatuses(directory: directory);
+  }
 }

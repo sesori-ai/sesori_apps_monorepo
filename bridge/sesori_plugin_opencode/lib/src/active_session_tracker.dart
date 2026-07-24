@@ -113,6 +113,7 @@ class ActiveSessionTracker {
     // from their own instance. Errors for individual directories are logged
     // and skipped so that one unavailable project doesn't block the rest.
     final allStatuses = <String, SessionStatus>{};
+    final acceptedTurnBaselineRevision = _nextAcceptedTurnRevision;
     final statusFutures = <String?>{null, ...sessionDiscoveryDirectories}.map((directory) async {
       try {
         final statuses = await _repository.api.getSessionStatuses(directory: directory);
@@ -130,9 +131,13 @@ class ActiveSessionTracker {
     });
     await Future.wait(statusFutures);
 
-    // A reconnect retains accepted-turn evidence until this authoritative
-    // status baseline observes the session again.
-    _provisionalAcceptedTurnRevisionBySession.removeWhere((sessionId, _) => allStatuses.containsKey(sessionId));
+    // A reconnect discards only accepted-turn evidence that predates this
+    // status baseline. A later acceptance must not be cleared by an older idle
+    // response that happens to complete after the command was accepted.
+    _provisionalAcceptedTurnRevisionBySession.removeWhere(
+      (sessionId, revision) =>
+          revision <= acceptedTurnBaselineRevision && allStatuses.containsKey(sessionId),
+    );
 
     _sessionStatuses
       ..clear()
