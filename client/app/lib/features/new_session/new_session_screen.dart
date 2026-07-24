@@ -12,6 +12,7 @@ import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
+import "new_session_plugin_chooser.dart";
 
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
@@ -204,6 +205,16 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          NewSessionPluginChooser(
+                            plugins: composerData?.plugins ?? const [],
+                            selectedPluginId: composerData?.plugin?.id,
+                            isComposerDataLoading: composerData?.isLoading ?? false,
+                            isSelectionEnabled: !(composerData?.isPluginDiscoveryInFlight ?? false),
+                            onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(
+                              pluginId: pluginId,
+                            ),
+                          ),
+                          if (composerData?.plugins.isNotEmpty ?? false) SizedBox(height: prego.spacing.sm),
                           if (composerData?.supportsDedicatedWorktrees ?? false)
                             SwitchListTile(
                               title: Text(loc.newSessionDedicatedWorktree),

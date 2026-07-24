@@ -16,20 +16,20 @@ void main() {
     repository = PluginRepository(api: api);
   });
 
-  test("temporary release gate exposes only OpenCode and makes it the default", () async {
+  test("returns the backend-neutral plugin response unchanged", () async {
     const response = PluginListResponse(
       plugins: [
         PluginMetadata(
-          id: "codex",
-          displayName: "Codex",
-          isDefault: true,
-          state: PluginLifecycleState.ready,
-          actionHint: null,
+          id: "plugin-b",
+          displayName: "Plugin B",
+          isDefault: false,
+          state: PluginLifecycleState.failed,
+          actionHint: "Restart the bridge.",
         ),
         PluginMetadata(
-          id: legacyMissingPluginId,
-          displayName: "OpenCode",
-          isDefault: false,
+          id: "plugin-a",
+          displayName: "Plugin A",
+          isDefault: true,
           state: PluginLifecycleState.ready,
           actionHint: null,
         ),
@@ -37,47 +37,7 @@ void main() {
     );
     when(api.listPlugins).thenAnswer((_) async => ApiResponse.success(response));
 
-    expect(
-      await repository.listPlugins(),
-      ApiResponse<PluginListResponse>.success(
-        const PluginListResponse(
-          plugins: [
-            PluginMetadata(
-              id: legacyMissingPluginId,
-              displayName: "OpenCode",
-              isDefault: true,
-              state: PluginLifecycleState.ready,
-              actionHint: null,
-            ),
-          ],
-        ),
-      ),
-    );
-  });
-
-  test("temporary release gate returns no choice when OpenCode is absent", () async {
-    when(api.listPlugins).thenAnswer(
-      (_) async => ApiResponse.success(
-        const PluginListResponse(
-          plugins: [
-            PluginMetadata(
-              id: "codex",
-              displayName: "Codex",
-              isDefault: true,
-              state: PluginLifecycleState.ready,
-              actionHint: null,
-            ),
-          ],
-        ),
-      ),
-    );
-
-    expect(
-      await repository.listPlugins(),
-      ApiResponse<PluginListResponse>.success(
-        const PluginListResponse(plugins: []),
-      ),
-    );
+    expect(await repository.listPlugins(), ApiResponse<PluginListResponse>.success(response));
   });
 
   test("maps an unsupported discovery route to the legacy OpenCode plugin", () async {
