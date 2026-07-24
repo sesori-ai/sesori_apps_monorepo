@@ -4,8 +4,8 @@
 
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
-- **Base:** `origin/main` at `583748ab`
-- **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
+- **Base:** `origin/main` at `51008356`
+- **Current branch:** `setup-aware-plugin-lifecycle-project-ownership`
 - **Current stage:** Stage 11-P02 — dormant runtime and numeric idle timeout rebuild
 - **Next action:** selectively rebuild the frozen #509 behavior on the verified P01D head while monitoring #549/#550
 
@@ -32,7 +32,7 @@ run their focused verification again.
 | Done | Stage | Branch | PR state |
 |---|---|---|---|
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
-| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
+| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 merged as `51008356` |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 open and monitored |
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 open and monitored |
@@ -128,6 +128,8 @@ run their focused verification again.
   serialization, and access revocation. The second architecture pass identified
   a paused-consumer teardown dependency; source cancellation and lease release
   now complete without waiting for downstream `done` delivery.
+- PR #547 merged into `main` as `51008356`; the new base was merged through
+  #548, #549, and this P01D branch.
 
 ### 2026-07-23 — Stage 11-P01B operation routing
 
