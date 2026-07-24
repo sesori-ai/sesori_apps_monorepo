@@ -4,10 +4,10 @@
 
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
-- **Base:** `origin/main` at `583748ab`
+- **Base:** `origin/main` at `51008356`
 - **Current branch:** `setup-aware-plugin-lifecycle-operation-routing`
 - **Current stage:** Stage 11-P01B — plugin operation routing open as PR #548
-- **Next action:** monitor #547/#548 and start P01C from the verified P01B head
+- **Next action:** monitor #548 and propagate its merged-main synchronization through the successor stack
 
 ## Frozen Oversized Stack
 
@@ -32,7 +32,7 @@ run their focused verification again.
 | Done | Stage | Branch | PR state |
 |---|---|---|---|
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
-| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
+| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 merged as `51008356` |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
 | [ ] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | stack after P01B |
 | [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
@@ -128,6 +128,8 @@ run their focused verification again.
   serialization, and access revocation. The second architecture pass identified
   a paused-consumer teardown dependency; source cancellation and lease release
   now complete without waiting for downstream `done` delivery.
+- PR #547 merged into `main` as `51008356`; #548 was retargeted automatically
+  and synchronized by merging that new `origin/main` head.
 
 ### 2026-07-23 — Stage 11-P01B operation routing
 
