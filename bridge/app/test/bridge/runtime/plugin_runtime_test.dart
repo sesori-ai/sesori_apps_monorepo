@@ -405,6 +405,39 @@ void main() {
     expect(factory.plugins.single.shutdownInvocationCount, 1);
   });
 
+  test("a force stop waits for an explicit current-generation commit", () async {
+    final commitStarted = Completer<void>();
+    final commitGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    final operation = runtime.commitCurrentGeneration(
+      pluginId: "one",
+      generation: 1,
+      operation: _TestOperation.durableCommit,
+      commit: () async {
+        commitStarted.complete();
+        await commitGate.future;
+        return "committed";
+      },
+    );
+    await commitStarted.future;
+    var stopCompleted = false;
+    final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.force).whenComplete(() {
+      stopCompleted = true;
+    });
+    await _waitUntil(() => runtime.snapshot.single.transition == PluginRuntimeTransition.stopping);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(stopCompleted, isFalse);
+
+    commitGate.complete();
+    expect(await operation, "committed");
+    expect(await stopping, isA<PluginRuntimeCommandApplied>());
+  });
+
   test("a terminal failure waits for a generation's durable commit", () async {
     final commitStarted = Completer<void>();
     final commitGate = Completer<void>();
@@ -453,6 +486,29 @@ void main() {
     expect(runtime.snapshot.single.generation, 2);
     expect(runtime.snapshot.single.state, PluginRuntimeState.active);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+  });
+
+  test("the temporary operational API view follows generation replacement", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final firstApi = factory.api;
+
+    expect(runtime.operationalApis["one"], same(firstApi));
+
+    expect(
+      await runtime.restart(pluginId: "one", intent: PluginStopIntent.safe),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+    expect(runtime.operationalApis["one"], same(factory.api));
+    expect(runtime.operationalApis["one"], isNot(same(firstApi)));
+
+    expect(
+      await runtime.stop(pluginId: "one", intent: PluginStopIntent.safe),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+    expect(runtime.operationalApis, isEmpty);
   });
 
   test("a force restart aborts an in-flight start before starting its successor", () async {
@@ -619,6 +675,20 @@ void main() {
     final eventFuture = runtime.backendEvents.first;
     factory.api.eventsController.add(const BridgeSseProjectUpdated());
     final sourced = await eventFuture;
+
+    expect(sourced.pluginId, "one");
+    expect(sourced.generation, 1);
+    expect(sourced.event, isA<BridgeSseProjectUpdated>());
+  });
+
+  test("backend events emitted before the bridge listener attaches are replayed", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    factory.api.eventsController.add(const BridgeSseProjectUpdated());
+    final sourced = await runtime.backendEvents.first;
 
     expect(sourced.pluginId, "one");
     expect(sourced.generation, 1);

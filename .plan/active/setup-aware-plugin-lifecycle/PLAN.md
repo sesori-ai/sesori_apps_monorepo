@@ -560,7 +560,7 @@ the listed source files and committed with their stage.
 |---|---|
 | Runtime composition/policy | Add `plugin_lifecycle_repository.dart`; modify `bridge_runtime_runner.dart`, `plugin_lifecycle_service.dart`, and `orchestrator.dart`. |
 | Plugin-backed operations | `session_operation.dart`, `session_repository.dart`, `agent_repository.dart`, `provider_repository.dart`, `question_repository.dart`, `permission_repository.dart`, `worktree_repository.dart`, `session_creation_service.dart`, and `session_lifecycle_service.dart`. Session creation applies `useAndCommit` in the same slice as its routing cutover. |
-| Temporary stack seam | Expose only the live eager-generation APIs needed by not-yet-migrated event/catalog/project consumers. Do not persist or publish this seam; delete it by P01D. |
+| Temporary stack seam | Expose only the live generation APIs needed by not-yet-migrated catalog/project consumers. Existing event listeners consume the runtime event stream through a generation-dropping adapter until P01C carries generation through normalization. Do not persist or publish either seam; delete them by P01D. |
 
 ### Stage 11-P01C — dynamic events and durable fencing files
 
@@ -627,7 +627,8 @@ the listed source files and committed with their stage.
 - activate the runtime/lifecycle repository in the composition root;
 - migrate ordinary plugin-backed repository calls to runtime acquisition;
 - apply durable session-binding protection with the creation cutover;
-- retain a narrow temporary view for event/catalog/project consumers.
+- retain a narrow temporary API view for catalog/project consumers and a
+  generation-dropping runtime-event adapter for existing listeners.
 
 ### Stage 11-P01C — dynamic events and durable generation fencing
 

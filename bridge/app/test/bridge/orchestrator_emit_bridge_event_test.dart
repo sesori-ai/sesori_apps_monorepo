@@ -320,6 +320,7 @@ class _OrchestratorHarness {
       ),
       legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
+      pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),

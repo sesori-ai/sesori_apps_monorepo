@@ -3,12 +3,13 @@ import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
+import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
+import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_instance_service.dart";
-import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_bridge/src/updater/models/managed_runtime_paths.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -78,51 +79,61 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
   final descriptors = [
     for (var index = 0; index < selectedCount; index++) _FakeDescriptor(id: "plugin-$index", probe: probe),
   ];
-  final lifecycle = PluginLifecycleService()
-    ..registerPlugins(
-      plugins: [for (final descriptor in descriptors) (id: descriptor.id, displayName: descriptor.displayName)],
-    )
-    ..initialize(
-      disabledPluginIds: const {},
-      setupById: {for (final descriptor in descriptors) descriptor.id: const PluginSetupReady()},
-    );
   final startupMutexRepository = _FakeStartupMutexRepository();
   final bridgeInstanceService = _FakeBridgeInstanceService();
-  final startedPlugins = <String, BridgePlugin>{};
+  final managedRuntimePaths = ManagedRuntimePaths(
+    installRoot: runtimeDirectory.path,
+    binaryPath: p.join(runtimeDirectory.path, "bin", "sesori-bridge"),
+    cacheDirectory: runtimeDirectory.path,
+  );
+  final generationFactory = PluginGenerationFactory(
+    managedRuntimePaths: managedRuntimePaths,
+    currentBridgeIdentity: ProcessIdentity(
+      pid: 1,
+      startMarker: "benchmark",
+      executablePath: "/fixture/sesori-bridge",
+      commandLine: "/fixture/sesori-bridge",
+      ownerUser: null,
+      platform: Platform.operatingSystem,
+      capturedAt: DateTime.utc(2026, 7, 17),
+    ),
+    ownerSessionId: "benchmark-owner",
+    startupMutexRepository: startupMutexRepository,
+    bridgeInstanceService: bridgeInstanceService,
+    processRepository: _FakeProcessRepository(),
+    runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
+    clock: const ServerClock(),
+    environment: const <String, String>{},
+    currentUser: null,
+  );
+  final runtime =
+      PluginRuntime(
+        registrations: [
+          for (final descriptor in descriptors)
+            PluginRuntimeRegistration(
+              descriptor: descriptor,
+              config: const PluginConfig(values: <String, Object?>{}),
+              stateDirectory: pluginStateDirectoryPath(
+                paths: managedRuntimePaths,
+                pluginId: descriptor.id,
+                stateStorage: descriptor.stateStorage,
+              ),
+            ),
+        ],
+        generationFactory: generationFactory,
+        setupProcesses: const _UnusedHostProcessService(),
+        environment: const {},
+        clock: const ServerClock(),
+        shutdownBudget: const Duration(seconds: 1),
+      )..applyAccess(
+        entries: [
+          for (final descriptor in descriptors)
+            PluginRuntimeAccess(pluginId: descriptor.id, eligible: true, startAllowed: true),
+        ],
+      );
 
   try {
-    await BridgeRuntimeRunner.startPluginsUnderStartupMutex(
-      descriptors: descriptors,
-      pluginConfigs: {
-        for (final descriptor in descriptors) descriptor.id: const PluginConfig(values: <String, Object?>{}),
-      },
-      lifecycleService: lifecycle,
-      startedPlugins: startedPlugins,
-      managedRuntimePaths: ManagedRuntimePaths(
-        installRoot: runtimeDirectory.path,
-        binaryPath: p.join(runtimeDirectory.path, "bin", "sesori-bridge"),
-        cacheDirectory: runtimeDirectory.path,
-      ),
-      currentBridgeIdentity: ProcessIdentity(
-        pid: 1,
-        startMarker: "benchmark",
-        executablePath: "/fixture/sesori-bridge",
-        commandLine: "/fixture/sesori-bridge",
-        ownerUser: null,
-        platform: Platform.operatingSystem,
-        capturedAt: DateTime.utc(2026, 7, 17),
-      ),
-      ownerSessionId: "benchmark-owner",
-      startupMutexRepository: startupMutexRepository,
-      bridgeInstanceService: bridgeInstanceService,
-      processRepository: _FakeProcessRepository(),
-      runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
-      serverClock: const ServerClock(),
-      environment: const <String, String>{},
-      currentUser: null,
-      startAborted: StartAbortSignal.never,
-      provisionNotifier: null,
-    );
+    await runtime.startEager(pluginIds: descriptors.map((descriptor) => descriptor.id).toList());
     final totalMicros = stopwatch.elapsedMicroseconds;
 
     if (startupMutexRepository.acquisitionCount != 1 || bridgeInstanceService.enforcementCount != 1) {
@@ -153,8 +164,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     if (selectedCount > 1 && probe.maximumConcurrentStarts < 2) {
       throw StateError("plugin starts did not overlap");
     }
-    if (lifecycle.compositionView.operationalPlugins.length != selectedCount ||
-        startedPlugins.length != selectedCount) {
+    if (runtime.activePluginIds.length != selectedCount) {
       throw StateError("composition occurred before every lifecycle settlement");
     }
     return _StartupSample(
@@ -168,7 +178,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
       provisioningOrder: probe.provisioningOrder,
     );
   } finally {
-    await lifecycle.dispose();
+    await runtime.dispose();
     if (runtimeDirectory.existsSync()) {
       await runtimeDirectory.delete(recursive: true);
     }
@@ -203,6 +213,13 @@ bool _equalLists<T>(List<T> left, List<T> right) {
 }
 
 int _max(int left, int right) => left > right ? left : right;
+
+class _UnusedHostProcessService implements HostProcessService {
+  const _UnusedHostProcessService();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError("setup inspection is not benchmarked");
+}
 
 class _StartupProbe {
   _StartupProbe({required this.stopwatch});
@@ -279,9 +296,13 @@ class _FakeDescriptor extends BridgePluginDescriptor {
 }
 
 class _FakePlugin implements BridgePlugin {
-  _FakePlugin({required String id}) : _api = _FakePluginApi(id);
+  _FakePlugin({required String id})
+    : _api = _FakePluginApi(id),
+      _statusController = StreamController<PluginStatus>()..add(const PluginReady());
 
   final _FakePluginApi _api;
+  final StreamController<PluginStatus> _statusController;
+  Future<void>? _shutdownFuture;
 
   @override
   BridgePluginApi get api => _api;
@@ -290,23 +311,31 @@ class _FakePlugin implements BridgePlugin {
   PluginStatus get currentStatus => const PluginReady();
 
   @override
-  Stream<PluginStatus> get status => Stream<PluginStatus>.value(const PluginReady());
+  Stream<PluginStatus> get status => _statusController.stream;
 
   @override
   PluginDiagnostics describe() => PluginDiagnostics(pluginId: _api.id, endpoint: null, details: const {});
 
   @override
-  Future<void> shutdown({required Duration? budget}) => _api.dispose();
+  Future<void> shutdown({required Duration? budget}) => _shutdownFuture ??= Future.wait([
+    _statusController.close(),
+    _api.dispose(),
+  ]);
 }
 
 class _FakePluginApi extends NativeProjectsPluginApi {
   _FakePluginApi(this.id);
 
+  final StreamController<BridgeSseEvent> _eventsController = StreamController<BridgeSseEvent>();
+
   @override
   final String id;
 
   @override
-  Future<void> dispose() async {}
+  Stream<BridgeSseEvent> get events => _eventsController.stream;
+
+  @override
+  Future<void> dispose() => _eventsController.close();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -41,8 +41,8 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       calculator: calculator,
     ),
     projectRepository: singlePluginProjectRepository(
-      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
+      gitCliApi: FakeGitCliApi(),
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       unseenCalculator: calculator,
@@ -839,7 +839,7 @@ class _NoopSessionRepository implements SessionRepository {
   }) async => null;
 
   @override
-  Future<StoredSession> requireActiveStoredSession({
+  Future<StoredSession> requireRoutableStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -856,7 +856,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
 
   @override
-  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {}
+  Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {}
 
   @override
   Future<void> archiveStoredSession({
@@ -1213,7 +1213,7 @@ class FakeSessionRepository implements SessionRepository {
   }) async => null;
 
   @override
-  Future<StoredSession> requireActiveStoredSession({
+  Future<StoredSession> requireRoutableStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -1224,7 +1224,7 @@ class FakeSessionRepository implements SessionRepository {
         message: "session $sessionId was not found",
       );
     }
-    ensurePluginAvailable(pluginId: stored.pluginId, operation: operation);
+    await ensurePluginRoutable(pluginId: stored.pluginId, operation: operation);
     return stored;
   }
 
@@ -1244,7 +1244,7 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
+  Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {
     if (pluginId == _plugin.id) return;
     throw PluginOperationException(
       operation.name,

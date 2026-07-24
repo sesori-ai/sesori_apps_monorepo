@@ -4,10 +4,10 @@
 
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
-- **Base:** `origin/main` at `583748ab`
-- **Current branch:** `setup-aware-plugin-lifecycle-runtime-mechanics`
-- **Current stage:** Stage 11-P01A — runtime mechanics open as PR #547
-- **Next action:** monitor #547 and build P01B from its verified head
+- **Base:** `origin/main` at `51008356`
+- **Current branch:** `setup-aware-plugin-lifecycle-operation-routing`
+- **Current stage:** Stage 11-P01B — plugin operation routing open as PR #548
+- **Next action:** monitor #548 and propagate its merged-main synchronization through the successor stack
 
 ## Frozen Oversized Stack
 
@@ -32,8 +32,8 @@ run their focused verification again.
 | Done | Stage | Branch | PR state |
 |---|---|---|---|
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
-| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
-| [ ] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | stack after P01A |
+| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 merged as `51008356` |
+| [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
 | [ ] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | stack after P01B |
 | [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
@@ -59,7 +59,8 @@ run their focused verification again.
 - Aggregate projects are bridge-owned and may include sessions from multiple
   plugins. Create/open/rename never select, start, acquire, or call a plugin.
 - P01B may use one narrow stack-local live API view for consumers migrated in
-  P01C/P01D. It is removed by P01D and is not a released contract.
+  P01C/P01D plus a generation-dropping runtime-event adapter for existing
+  listeners. Both are removed by P01D and are not released contracts.
 
 ## Review
 
@@ -127,6 +128,26 @@ run their focused verification again.
   serialization, and access revocation. The second architecture pass identified
   a paused-consumer teardown dependency; source cancellation and lease release
   now complete without waiting for downstream `done` delivery.
+- PR #547 merged into `main` as `51008356`; #548 was retargeted automatically
+  and synchronized by merging that new `origin/main` head.
+
+### 2026-07-23 — Stage 11-P01B operation routing
+
+- Activated the generation runtime in bridge composition while preserving eager
+  Stage 10 residency and alphabetical default behavior.
+- Moved ordinary session, agent, provider, question, permission, and worktree
+  backend calls behind typed runtime acquisitions. Session creation uses
+  `useAndCommit` for its backend-result/binding transaction boundary.
+- Added a stack-local live API view for remaining catalog/project consumers and
+  adapted existing event listeners to the runtime event source without yet
+  carrying generation into normalization.
+- Focused lifecycle, repository, routing, runtime, orchestrator, debug-server,
+  and shutdown suites passed (210 tests).
+- `dart analyze --fatal-infos` passed in `bridge/app`.
+- Architecture implementation review approved composition ownership, runtime
+  routing, dependency direction, and both contained stack-local seams with no
+  findings.
+- Committed as `2e20026d`, pushed, and opened as stacked PR #548.
 
 ## Delivery Rules
 
