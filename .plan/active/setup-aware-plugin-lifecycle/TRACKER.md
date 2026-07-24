@@ -4,10 +4,10 @@
 
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
-- **Base:** `origin/main` at `51008356`
+- **Base:** `origin/main` at `96f63c69`
 - **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
-- **Current stage:** Stage 11-P01D — bridge-owned projects and defaults
-- **Next action:** monitor #548/#549 and propagate merged-main synchronization through the successor stack
+- **Current stage:** Stage 11-P01C — dynamic events and durable fencing open as PR #549
+- **Next action:** monitor #549 and propagate its merged-main synchronization through the successor stack
 
 ## Frozen Oversized Stack
 
@@ -33,7 +33,7 @@ run their focused verification again.
 |---|---|---|---|
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 merged as `51008356` |
-| [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
+| [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 merged as `96f63c69` |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 open and monitored |
 | [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
@@ -148,6 +148,8 @@ run their focused verification again.
   routing, dependency direction, and both contained stack-local seams with no
   findings.
 - Committed as `2e20026d`, pushed, and opened as stacked PR #548.
+- PR #548 merged into `main` as `96f63c69`; #549 was retargeted automatically
+  and synchronized by merging that new `origin/main` head.
 - PR feedback moved aggregate deadlines inside runtime acquisition bodies,
   kept best-effort worktree cleanup active-only, gated startup imports on
   operational plugins, and protected active-root hydration commits through
