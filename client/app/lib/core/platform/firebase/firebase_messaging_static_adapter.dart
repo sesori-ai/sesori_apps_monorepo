@@ -1,4 +1,5 @@
 import "package:firebase_messaging/firebase_messaging.dart";
+import "package:flutter/foundation.dart";
 
 /// Injectable access to the static Firebase Messaging APIs.
 class FirebaseMessagingStaticAdapter {
@@ -11,6 +12,12 @@ class FirebaseMessagingStaticAdapter {
     : foregroundMessageStream = const Stream.empty(),
       notificationOpenedStream = const Stream.empty(),
       _registerBackgroundHandler = _ignoreBackgroundHandler;
+
+  @visibleForTesting
+  const FirebaseMessagingStaticAdapter.test({
+    required this.foregroundMessageStream,
+    required this.notificationOpenedStream,
+  }) : _registerBackgroundHandler = _ignoreBackgroundHandler;
 
   final Stream<RemoteMessage> foregroundMessageStream;
   final Stream<RemoteMessage> notificationOpenedStream;
