@@ -68,6 +68,11 @@ eagerly "just in case."
 - Never hand-edit generated files. Change their source and run the generator.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
+- When splitting any task across multiple PRs, title every PR
+  `[<slug>] <description> [step <x>/<y>]`. For planned work, `<slug>` is the
+  plan directory name under `.plan`; otherwise choose one stable, lowercase
+  kebab-case slug. Keep one total for the whole series. Single-PR tasks keep the
+  normal title style.
 - Backward and forward compatibility is required only for transport
   contracts exchanged between the client and bridge, because an older app can
   use a newer bridge and a newer app can use an older bridge. Preserve those
