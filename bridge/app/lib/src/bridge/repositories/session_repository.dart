@@ -138,18 +138,20 @@ class SessionRepository {
     final result = await _runtime.useAndCommit(
       pluginId: pluginId,
       operation: SessionOperation.createSession,
-      prepare: (plugin) => plugin.createSession(
-        directory: directory,
-        parentSessionId: parentSessionId,
-        parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-        userVisibleText: userVisibleText,
-        variant: _toPluginVariant(variant),
-        agent: agent,
-        model: switch (model) {
-          PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
-          null => null,
-        },
-      ),
+      prepare: (plugin) {
+        return plugin.createSession(
+          directory: directory,
+          parentSessionId: parentSessionId,
+          parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+          userVisibleText: userVisibleText,
+          variant: _toPluginVariant(variant),
+          agent: agent,
+          model: switch (model) {
+            PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+            null => null,
+          },
+        );
+      },
       commit: (created) async {
         final projectionUpdatedAt = captureProjectionTimestamp();
         final createdAt = created.time?.created ?? projectionUpdatedAt;
@@ -964,85 +966,145 @@ class SessionRepository {
 
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
+    required int generation,
     required Session observed,
     required bool updateCatalogTitle,
     required int projectionUpdatedAt,
   }) async {
-    return _sessionDao.attachedDatabase.transaction(() async {
-      if (await _sessionDao.isSessionTombstoned(
-        backendSessionId: observed.id,
-        pluginId: pluginId,
-      )) {
-        return null;
-      }
-      final binding = await _sessionDao.getSessionByBinding(
-        pluginId: pluginId,
-        backendSessionId: observed.id,
-      );
-      if (binding == null) return null;
-      final updated = await _sessionDao.updateObservedSessionProjection(
-        sessionId: binding.sessionId,
-        directory: observed.directory,
-        catalogTitle: observed.title,
-        updateCatalogTitle: updateCatalogTitle,
-        updatedAt: observed.time?.updated ?? binding.updatedAt,
-        projectionUpdatedAt: projectionUpdatedAt,
-      );
-      if (!updated) return null;
-      return (await _sessionDao.getSession(sessionId: binding.sessionId))?.toStoredSession();
-    });
+    return _runtime.commitCurrentGeneration(
+      pluginId: pluginId,
+      generation: generation,
+      operation: SessionOperation.updateObservedSessionProjection,
+      commit: () => _sessionDao.attachedDatabase.transaction(() async {
+        if (await _sessionDao.isSessionTombstoned(
+          backendSessionId: observed.id,
+          pluginId: pluginId,
+        )) {
+          return null;
+        }
+        final binding = await _sessionDao.getSessionByBinding(
+          pluginId: pluginId,
+          backendSessionId: observed.id,
+        );
+        if (binding == null) return null;
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: SessionOperation.updateObservedSessionProjection,
+        );
+        final updated = await _sessionDao.updateObservedSessionProjection(
+          sessionId: binding.sessionId,
+          directory: observed.directory,
+          catalogTitle: observed.title,
+          updateCatalogTitle: updateCatalogTitle,
+          updatedAt: observed.time?.updated ?? binding.updatedAt,
+          projectionUpdatedAt: projectionUpdatedAt,
+        );
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: SessionOperation.updateObservedSessionProjection,
+        );
+        if (!updated) return null;
+        final stored = (await _sessionDao.getSession(sessionId: binding.sessionId))?.toStoredSession();
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: SessionOperation.updateObservedSessionProjection,
+        );
+        return stored;
+      }),
+    );
   }
 
   Future<StoredSession?> insertObservedChild({
     required String pluginId,
+    required int generation,
     required Session observed,
     required StoredSession parent,
     required int projectionUpdatedAt,
   }) async {
-    return _sessionDao.attachedDatabase.transaction(() async {
-      if (parent.pluginId != pluginId ||
-          await _sessionDao.isSessionTombstoned(
-            backendSessionId: observed.id,
+    return _runtime.commitCurrentGeneration(
+      pluginId: pluginId,
+      generation: generation,
+      operation: SessionOperation.insertObservedChild,
+      commit: () => _sessionDao.attachedDatabase.transaction(() async {
+        if (parent.pluginId != pluginId ||
+            await _sessionDao.isSessionTombstoned(
+              backendSessionId: observed.id,
+              pluginId: pluginId,
+            )) {
+          return null;
+        }
+        final durableParent = await _sessionDao.getSession(sessionId: parent.id);
+        if (durableParent == null || durableParent.pluginId != pluginId) return null;
+        final existing = await _sessionDao.getSessionByBinding(
+          pluginId: pluginId,
+          backendSessionId: observed.id,
+        );
+        if (existing != null) {
+          if (existing.parentSessionId != durableParent.sessionId) return null;
+          _runtime.requireCurrentGeneration(
             pluginId: pluginId,
-          )) {
-        return null;
-      }
-      final durableParent = await _sessionDao.getSession(sessionId: parent.id);
-      if (durableParent == null || durableParent.pluginId != pluginId) return null;
-      final existing = await _sessionDao.getSessionByBinding(
-        pluginId: pluginId,
-        backendSessionId: observed.id,
-      );
-      if (existing != null) {
-        if (existing.parentSessionId != durableParent.sessionId) return null;
-        final updated = await _sessionDao.updateObservedSessionProjection(
-          sessionId: existing.sessionId,
+            generation: generation,
+            operation: SessionOperation.insertObservedChild,
+          );
+          final updated = await _sessionDao.updateObservedSessionProjection(
+            sessionId: existing.sessionId,
+            directory: observed.directory,
+            catalogTitle: observed.title,
+            updateCatalogTitle: observed.title != null,
+            updatedAt: observed.time?.updated ?? existing.updatedAt,
+            projectionUpdatedAt: projectionUpdatedAt,
+          );
+          _runtime.requireCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: SessionOperation.insertObservedChild,
+          );
+          if (!updated) return null;
+          final stored = (await _sessionDao.getSession(sessionId: existing.sessionId))?.toStoredSession();
+          _runtime.requireCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: SessionOperation.insertObservedChild,
+          );
+          return stored;
+        }
+        final sessionId = await _allocateSessionId();
+        final createdAt = observed.time?.created ?? projectionUpdatedAt;
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: SessionOperation.insertObservedChild,
+        );
+        await _sessionDao.insertObservedChild(
+          sessionId: sessionId,
+          backendSessionId: observed.id,
+          projectId: durableParent.projectId,
+          parentSessionId: durableParent.sessionId,
           directory: observed.directory,
           catalogTitle: observed.title,
-          updateCatalogTitle: observed.title != null,
-          updatedAt: observed.time?.updated ?? existing.updatedAt,
+          archivedAt: observed.time?.archived,
+          createdAt: createdAt,
+          updatedAt: observed.time?.updated ?? createdAt,
           projectionUpdatedAt: projectionUpdatedAt,
+          pluginId: pluginId,
         );
-        if (!updated) return null;
-        return (await _sessionDao.getSession(sessionId: existing.sessionId))?.toStoredSession();
-      }
-      final sessionId = await _allocateSessionId();
-      final createdAt = observed.time?.created ?? projectionUpdatedAt;
-      await _sessionDao.insertObservedChild(
-        sessionId: sessionId,
-        backendSessionId: observed.id,
-        projectId: durableParent.projectId,
-        parentSessionId: durableParent.sessionId,
-        directory: observed.directory,
-        catalogTitle: observed.title,
-        archivedAt: observed.time?.archived,
-        createdAt: createdAt,
-        updatedAt: observed.time?.updated ?? createdAt,
-        projectionUpdatedAt: projectionUpdatedAt,
-        pluginId: pluginId,
-      );
-      return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
-    });
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: SessionOperation.insertObservedChild,
+        );
+        final stored = (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: SessionOperation.insertObservedChild,
+        );
+        return stored;
+      }),
+    );
   }
 
   Future<StoredSession> requireRoutableStoredSession({

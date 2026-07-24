@@ -137,7 +137,7 @@ class _CatalogImportEventSoak {
       final plugins = <String, BridgePluginApi>{plugin.id: plugin};
       final runtime = createBenchmarkPluginRuntime(plugins: plugins.values);
       final importRepository = CatalogImportRepository(
-        operationalPlugins: plugins,
+        runtime: runtime,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
@@ -173,6 +173,7 @@ class _CatalogImportEventSoak {
       final failureReporter = _BenchmarkFailureReporter();
       final eventService = SessionEventService(
         sessionRepository: sessionRepository,
+        pluginRuntime: runtime,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
         failureReporter: failureReporter,
@@ -537,6 +538,7 @@ class _CatalogImportEventSoak {
   }) async {
     final source = eventService.captureSource(
       pluginId: _pluginId,
+      generation: 1,
       event: BridgeSseSessionUpdated(
         info: Session(
           branchName: null,

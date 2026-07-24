@@ -19,5 +19,7 @@ enum SessionOperation {
   updateSessionArchiveStatus,
   getProjectActivitySummaries,
   getSessionStatuses,
+  updateObservedSessionProjection,
+  insertObservedChild,
   getProjectQuestions,
 }

@@ -114,7 +114,7 @@ class _HandlerCatalogImportRepository implements CatalogImportRepository {
   CatalogImportControl? control;
 
   @override
-  Set<String> get operationalPluginIds => const {"selected"};
+  Set<String> get importEligiblePluginIds => const {"selected"};
 
   @override
   Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async => null;

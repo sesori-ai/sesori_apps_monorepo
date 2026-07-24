@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:collection";
 import "dart:math";
 
@@ -11,17 +12,18 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
+import "../bridge/runtime/plugin_runtime.dart";
 import "models/catalog_import_control.dart";
 import "project_catalog_identity_calculator.dart";
 
 class CatalogImportRepository {
   CatalogImportRepository({
-    required Map<String, BridgePluginApi> operationalPlugins,
+    required PluginRuntime runtime,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required CatalogHydrationsDao catalogHydrationsDao,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
-  }) : _operationalPlugins = operationalPlugins,
+  }) : _runtime = runtime,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _catalogHydrationsDao = catalogHydrationsDao,
@@ -31,13 +33,13 @@ class CatalogImportRepository {
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
-  final Map<String, BridgePluginApi> _operationalPlugins;
+  final PluginRuntime _runtime;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final CatalogHydrationsDao _catalogHydrationsDao;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
 
-  Set<String> get operationalPluginIds => Set<String>.unmodifiable(_operationalPlugins.keys);
+  Set<String> get importEligiblePluginIds => _runtime.startAllowedPluginIds;
 
   Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) {
     return _catalogHydrationsDao.getCompletion(
@@ -50,8 +52,65 @@ class CatalogImportRepository {
     required String pluginId,
     required CatalogImportControl control,
   }) async* {
-    final plugin = _operationalPlugins[pluginId];
-    if (plugin == null) throw StateError("plugin $pluginId is unavailable");
+    final publicationFinished = Completer<void>();
+    ({int projectsImported, int sessionsImported, int completedAt})? result;
+    try {
+      await for (final event in _runtime.useStream<Object>(
+        pluginId: pluginId,
+        operation: _CatalogOperation.importCatalog,
+        body: (plugin, generation) => _enumerateCatalog(
+          pluginId: pluginId,
+          generation: generation,
+          control: control,
+          plugin: plugin,
+          publicationFinished: publicationFinished.future,
+        ),
+      )) {
+        switch (event) {
+          case final CatalogImportProgress progress:
+            yield progress;
+          case final _CatalogImportObservation ready:
+            try {
+              yield CatalogImportProgress.committing(
+                pluginId: pluginId,
+                projectsSeen: ready.observedProjects.length,
+                sessionsSeen: ready.sessionsSeen,
+              );
+              if (control.cancellationRequested) {
+                yield CatalogImportProgress.cancelled(pluginId: pluginId);
+              } else {
+                _runtime.requireCurrentGeneration(
+                  pluginId: pluginId,
+                  generation: ready.generation,
+                  operation: _CatalogOperation.importCatalog,
+                );
+                result = await _publishCatalog(observation: ready, control: control);
+              }
+            } finally {
+              if (!publicationFinished.isCompleted) publicationFinished.complete();
+            }
+        }
+      }
+    } finally {
+      if (!publicationFinished.isCompleted) publicationFinished.complete();
+    }
+    final completed = result;
+    if (completed == null) return;
+    yield CatalogImportProgress.completed(
+      pluginId: pluginId,
+      projectsImported: completed.projectsImported,
+      sessionsImported: completed.sessionsImported,
+      completedAt: completed.completedAt,
+    );
+  }
+
+  Stream<Object> _enumerateCatalog({
+    required String pluginId,
+    required int generation,
+    required CatalogImportControl control,
+    required BridgePluginApi plugin,
+    required Future<void> publicationFinished,
+  }) async* {
     final importStartedAt = DateTime.now().millisecondsSinceEpoch;
     final observedProjects = <String, _ObservedProject>{};
     final observedSessions = <String, _ObservedSession>{};
@@ -239,148 +298,174 @@ class CatalogImportRepository {
       sessionsSeen: ancestryValidated.length,
     );
 
-    yield CatalogImportProgress.committing(
+    yield _CatalogImportObservation(
       pluginId: pluginId,
-      projectsSeen: observedProjects.length,
+      generation: generation,
+      projectOwnership: switch (plugin) {
+        NativeProjectsPluginApi() => PluginProjectOwnership.native,
+        BridgeDerivedProjectsPluginApi() => PluginProjectOwnership.bridgeDerived,
+      },
+      importStartedAt: importStartedAt,
+      observedProjects: observedProjects,
+      observedSessions: observedSessions,
+      derivedLaunchDirectory: derivedLaunchDirectory,
       sessionsSeen: ancestryValidated.length,
     );
-    if (control.cancellationRequested) {
-      yield CatalogImportProgress.cancelled(pluginId: pluginId);
-      return;
+    await publicationFinished;
+  }
+
+  Future<({int projectsImported, int sessionsImported, int completedAt})> _publishCatalog({
+    required _CatalogImportObservation observation,
+    required CatalogImportControl control,
+  }) {
+    final pluginId = observation.pluginId;
+    final observedProjects = observation.observedProjects;
+    final observedSessions = observation.observedSessions;
+    final derivedLaunchDirectory = observation.derivedLaunchDirectory;
+    final importStartedAt = observation.importStartedAt;
+    void requireCurrentGeneration() {
+      _runtime.requireCurrentGeneration(
+        pluginId: pluginId,
+        generation: observation.generation,
+        operation: _CatalogOperation.importCatalog,
+      );
     }
 
-    final result = await _sessionDao.attachedDatabase.transaction(() async {
-      final currentProjects = await _projectsDao.getAllProjects();
-      final tombstones = await _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
-      final orderedSessions = _validOrderedSessions(
-        observedSessions: observedSessions,
-        omittedBackendIds: tombstones,
-      );
-      final currentBindings = await _sessionDao.getSessionsForPlugin(pluginId: pluginId);
+    return _runtime.commitCurrentGeneration(
+      pluginId: pluginId,
+      generation: observation.generation,
+      operation: _CatalogOperation.importCatalog,
+      commit: () => _sessionDao.attachedDatabase.transaction(() async {
+        final currentProjects = await _projectsDao.getAllProjects();
+        final tombstones = await _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
+        final orderedSessions = _validOrderedSessions(
+          observedSessions: observedSessions,
+          omittedBackendIds: tombstones,
+        );
+        final currentBindings = await _sessionDao.getSessionsForPlugin(pluginId: pluginId);
 
-      final projectsById = <String, ProjectDto>{
-        for (final project in currentProjects) project.projectId: project,
-      };
-      final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
-        projects: currentProjects,
-      );
-      final publicationProjects = <String, _ObservedProject>{};
-      if (plugin is BridgeDerivedProjectsPluginApi) {
-        final launchDirectory = derivedLaunchDirectory!;
-        _mergeObservedProject(publicationProjects, observedProjects[launchDirectory]!);
+        final projectsById = <String, ProjectDto>{
+          for (final project in currentProjects) project.projectId: project,
+        };
+        final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+          projects: currentProjects,
+        );
+        final publicationProjects = <String, _ObservedProject>{};
+        if (observation.projectOwnership == PluginProjectOwnership.bridgeDerived) {
+          final launchDirectory = derivedLaunchDirectory!;
+          _mergeObservedProject(publicationProjects, observedProjects[launchDirectory]!);
+          for (final observation in orderedSessions) {
+            if (observation.session.parentID != null) continue;
+            final existing = currentBindings[observation.session.id];
+            final existingProject = existing == null ? null : projectsById[existing.projectId];
+            final projectPath = existingProject == null
+                ? _normalizeRequiredPath(observation.session.directory)
+                : _normalizeRequiredPath(existingProject.path);
+            final time = observation.session.time;
+            _mergeObservedProject(
+              publicationProjects,
+              _ObservedProject(
+                preferredId: existingProject?.projectId ?? projectPath,
+                path: projectPath,
+                displayName: null,
+                createdAt: time?.created,
+                updatedAt: time?.updated,
+              ),
+            );
+            observation.rootProjectPath = projectPath;
+          }
+        } else {
+          publicationProjects.addAll(observedProjects);
+        }
+
+        final projectRows = <ProjectDto>[];
+        final importedProjectIdByPath = <String, String>{};
+        for (final observation in publicationProjects.values) {
+          final existing = _projectCatalogIdentityCalculator.calculate(
+            projectsById: projectsById,
+            projectsByNormalizedPath: projectsByNormalizedPath,
+            preferredProjectId: observation.preferredId,
+            observedPath: observation.path,
+          );
+          final row = _mergeProjectRow(
+            observation: observation,
+            existing: existing,
+            importStartedAt: importStartedAt,
+          );
+          projectRows.add(row);
+          final previousPath = existing == null ? null : _normalizeRequiredPath(existing.path);
+          final nextPath = _normalizeRequiredPath(row.path);
+          if (previousPath != null &&
+              previousPath != nextPath &&
+              projectsByNormalizedPath[previousPath]?.projectId == existing?.projectId) {
+            projectsByNormalizedPath.remove(previousPath);
+          }
+          projectsById[row.projectId] = row;
+          projectsByNormalizedPath[nextPath] = row;
+          importedProjectIdByPath[observation.path] = row.projectId;
+        }
+
+        requireCurrentGeneration();
+        await _projectsDao.upsertProjectRows(rows: projectRows);
+        final reservedIds = await _sessionDao.getAllSessionIds();
+
+        var sessionRows = <SessionDto>[];
+        final finalBindingsByBackendId = <String, ({String sessionId, String projectId})>{};
+        var sessionsImported = 0;
         for (final observation in orderedSessions) {
-          if (observation.session.parentID != null) continue;
-          final existing = currentBindings[observation.session.id];
-          final existingProject = existing == null ? null : projectsById[existing.projectId];
-          final projectPath = existingProject == null
-              ? _normalizeRequiredPath(observation.session.directory)
-              : _normalizeRequiredPath(existingProject.path);
-          final time = observation.session.time;
-          _mergeObservedProject(
-            publicationProjects,
-            _ObservedProject(
-              preferredId: existingProject?.projectId ?? projectPath,
-              path: projectPath,
-              displayName: null,
-              createdAt: time?.created,
-              updatedAt: time?.updated,
+          final session = observation.session;
+          final existing = currentBindings[session.id];
+          final parent = session.parentID == null ? null : finalBindingsByBackendId[session.parentID];
+          final rootProjectPath = observation.rootProjectPath;
+          final projectId =
+              parent?.projectId ??
+              (rootProjectPath == null ? null : importedProjectIdByPath[_normalizeRequiredPath(rootProjectPath)]);
+          if (projectId == null) {
+            throw StateError("plugin $pluginId returned session ${session.id} without a publishable project");
+          }
+          final row = _mergeSessionRow(
+            pluginId: pluginId,
+            observation: observation,
+            existing: existing,
+            sessionId: existing?.sessionId ?? _allocateSessionId(reservedIds: reservedIds),
+            parentSessionId: parent?.sessionId,
+            projectId: projectId,
+            importStartedAt: importStartedAt,
+          );
+          sessionRows.add(row);
+          finalBindingsByBackendId[session.id] = (
+            sessionId: row.sessionId,
+            projectId: row.projectId,
+          );
+          sessionsImported++;
+          if (sessionRows.length == _responsivenessBatchSize) {
+            requireCurrentGeneration();
+            await _sessionDao.upsertSessionRows(rows: sessionRows);
+            sessionRows = <SessionDto>[];
+            await Future<void>.delayed(Duration.zero);
+          }
+        }
+
+        requireCurrentGeneration();
+        await _sessionDao.upsertSessionRows(rows: sessionRows);
+        final completedAt = DateTime.now().millisecondsSinceEpoch;
+        if (control.hydrationMarkerRequested) {
+          requireCurrentGeneration();
+          await _catalogHydrationsDao.recordCompletion(
+            completion: CatalogHydrationDto(
+              pluginId: pluginId,
+              projectionVersion: projectionVersion,
+              completedAt: completedAt,
             ),
           );
-          observation.rootProjectPath = projectPath;
         }
-      } else {
-        publicationProjects.addAll(observedProjects);
-      }
-
-      final projectRows = <ProjectDto>[];
-      final importedProjectIdByPath = <String, String>{};
-      for (final observation in publicationProjects.values) {
-        final existing = _projectCatalogIdentityCalculator.calculate(
-          projectsById: projectsById,
-          projectsByNormalizedPath: projectsByNormalizedPath,
-          preferredProjectId: observation.preferredId,
-          observedPath: observation.path,
+        requireCurrentGeneration();
+        return (
+          projectsImported: projectRows.length,
+          sessionsImported: sessionsImported,
+          completedAt: completedAt,
         );
-        final row = _mergeProjectRow(
-          observation: observation,
-          existing: existing,
-          importStartedAt: importStartedAt,
-        );
-        projectRows.add(row);
-        final previousPath = existing == null ? null : _normalizeRequiredPath(existing.path);
-        final nextPath = _normalizeRequiredPath(row.path);
-        if (previousPath != null &&
-            previousPath != nextPath &&
-            projectsByNormalizedPath[previousPath]?.projectId == existing?.projectId) {
-          projectsByNormalizedPath.remove(previousPath);
-        }
-        projectsById[row.projectId] = row;
-        projectsByNormalizedPath[nextPath] = row;
-        importedProjectIdByPath[observation.path] = row.projectId;
-      }
-
-      await _projectsDao.upsertProjectRows(rows: projectRows);
-      final reservedIds = await _sessionDao.getAllSessionIds();
-
-      var sessionRows = <SessionDto>[];
-      final finalBindingsByBackendId = <String, ({String sessionId, String projectId})>{};
-      var sessionsImported = 0;
-      for (final observation in orderedSessions) {
-        final session = observation.session;
-        final existing = currentBindings[session.id];
-        final parent = session.parentID == null ? null : finalBindingsByBackendId[session.parentID];
-        final rootProjectPath = observation.rootProjectPath;
-        final projectId =
-            parent?.projectId ??
-            (rootProjectPath == null ? null : importedProjectIdByPath[_normalizeRequiredPath(rootProjectPath)]);
-        if (projectId == null) {
-          throw StateError("plugin $pluginId returned session ${session.id} without a publishable project");
-        }
-        final row = _mergeSessionRow(
-          pluginId: pluginId,
-          observation: observation,
-          existing: existing,
-          sessionId: existing?.sessionId ?? _allocateSessionId(reservedIds: reservedIds),
-          parentSessionId: parent?.sessionId,
-          projectId: projectId,
-          importStartedAt: importStartedAt,
-        );
-        sessionRows.add(row);
-        finalBindingsByBackendId[session.id] = (
-          sessionId: row.sessionId,
-          projectId: row.projectId,
-        );
-        sessionsImported++;
-        if (sessionRows.length == _responsivenessBatchSize) {
-          await _sessionDao.upsertSessionRows(rows: sessionRows);
-          sessionRows = <SessionDto>[];
-          await Future<void>.delayed(Duration.zero);
-        }
-      }
-
-      await _sessionDao.upsertSessionRows(rows: sessionRows);
-      final completedAt = DateTime.now().millisecondsSinceEpoch;
-      if (control.hydrationMarkerRequested) {
-        await _catalogHydrationsDao.recordCompletion(
-          completion: CatalogHydrationDto(
-            pluginId: pluginId,
-            projectionVersion: projectionVersion,
-            completedAt: completedAt,
-          ),
-        );
-      }
-      return (
-        projectsImported: projectRows.length,
-        sessionsImported: sessionsImported,
-        completedAt: completedAt,
-      );
-    });
-
-    yield CatalogImportProgress.completed(
-      pluginId: pluginId,
-      projectsImported: result.projectsImported,
-      sessionsImported: result.sessionsImported,
-      completedAt: result.completedAt,
+      }),
     );
   }
 
@@ -558,6 +643,8 @@ class CatalogImportRepository {
   }
 }
 
+enum _CatalogOperation { importCatalog }
+
 class _ObservedProject {
   _ObservedProject({
     required this.preferredId,
@@ -579,4 +666,26 @@ class _ObservedSession {
 
   final PluginSession session;
   String? rootProjectPath;
+}
+
+class _CatalogImportObservation {
+  const _CatalogImportObservation({
+    required this.pluginId,
+    required this.generation,
+    required this.projectOwnership,
+    required this.importStartedAt,
+    required this.observedProjects,
+    required this.observedSessions,
+    required this.derivedLaunchDirectory,
+    required this.sessionsSeen,
+  });
+
+  final String pluginId;
+  final int generation;
+  final PluginProjectOwnership projectOwnership;
+  final int importStartedAt;
+  final Map<String, _ObservedProject> observedProjects;
+  final Map<String, _ObservedSession> observedSessions;
+  final String? derivedLaunchDirectory;
+  final int sessionsSeen;
 }

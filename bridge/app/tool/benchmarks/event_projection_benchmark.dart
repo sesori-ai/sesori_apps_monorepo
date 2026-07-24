@@ -73,6 +73,7 @@ class _EventProjectionBenchmark {
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
     AppDatabase? database;
     SessionRepository? repository;
+    BenchmarkPluginRuntime? runtime;
     SSEManager? sseManager;
 
     try {
@@ -80,8 +81,9 @@ class _EventProjectionBenchmark {
       final sqliteVersion = await _sqliteVersion(database: database);
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
+      runtime = createBenchmarkPluginRuntime(plugins: [plugin]);
       repository = SessionRepository(
-        runtime: createBenchmarkPluginRuntime(plugins: [plugin]),
+        runtime: runtime,
         bridgeDerivedProjectPluginIds: const {},
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
@@ -93,6 +95,7 @@ class _EventProjectionBenchmark {
       final failureReporter = _BenchmarkFailureReporter();
       final service = SessionEventService(
         sessionRepository: repository,
+        pluginRuntime: runtime,
         eventMapper: const SessionEventMapper(),
         eventTracker: SessionEventTracker(
           maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
@@ -117,6 +120,8 @@ class _EventProjectionBenchmark {
       sseManager = null;
       await repository.dispose();
       repository = null;
+      await runtime.dispose();
+      runtime = null;
       await database.close();
       database = null;
       final databaseBytes = databaseFile.lengthSync();
@@ -153,6 +158,7 @@ class _EventProjectionBenchmark {
     } finally {
       sseManager?.stop();
       if (repository != null) await repository.dispose();
+      if (runtime != null) await runtime.dispose();
       if (database != null) await database.close();
       try {
         await temporaryDirectory.delete(recursive: true);
@@ -250,6 +256,7 @@ class _EventProjectionBenchmark {
     final output = await service.normalize(
       source: service.captureSource(
         pluginId: _pluginId,
+        generation: 1,
         event: BridgeSseSessionUpdated(
           info: Session(
             id: _backendSessionId,
