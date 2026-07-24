@@ -25,9 +25,13 @@ class RenameProjectHandler extends BodyRequestHandler<RenameProjectRequest, Proj
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
+    final name = body.name.trim();
+    if (name.isEmpty) {
+      throw buildErrorResponse(request, 400, "Bad Request: project name must not be empty");
+    }
     return _projectRepository.renameProject(
       projectId: body.projectId,
-      name: body.name,
+      name: name,
     );
   }
 }
