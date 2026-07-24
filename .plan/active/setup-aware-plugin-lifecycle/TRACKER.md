@@ -276,9 +276,10 @@ run their focused verification again.
   lease drain, limited ACP auth mapping to agent rejection responses, made
   hydration-listener disposal terminal, restored the benchmark's broadcast
   stream contract, and retained ACP/Codex pending approvals as work until reply
-  or session removal. OpenCode cold-start reconciliation also preserves turn
+  or session removal. ACP connection reset preserves unknown work state while
+  disposing approvals, and OpenCode cold-start reconciliation preserves turn
   acceptances newer than its status snapshot. Full bridge-app (2,094 tests),
-  OpenCode (401), ACP (150), and Codex (191) suites plus fatal analysis in all
+  OpenCode (401), ACP (151), and Codex (191) suites plus fatal analysis in all
   four packages passed.
 
 ## Delivery Rules

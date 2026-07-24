@@ -243,7 +243,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// Approval state participates in the activity summary, so invalidate that
   /// summary after forwarding each approval transition.
   void emitActivityEvent(BridgeSseEvent event) {
-    _syncWorkState();
+    if (_client != null) _syncWorkState();
     _eventBuffer.add(event);
     _eventBuffer.add(const BridgeSseProjectUpdated());
   }
