@@ -11,6 +11,7 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "codex_event_mapper.dart";
 import "codex_metadata_repository.dart";
+import "models/codex_collaboration_mode.dart";
 import "repositories/codex_catalog_repository.dart";
 import "repositories/codex_message_repository.dart";
 import "repositories/codex_skill_repository.dart";
@@ -513,6 +514,7 @@ class CodexPlugin implements CodexManagedApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required String? userVisibleText,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -547,6 +549,7 @@ class CodexPlugin implements CodexManagedApi {
         threadId: threadId,
         parts: parts,
         variant: variant,
+        collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
       );
     }
     return _sessionService.toPluginSession(
@@ -570,6 +573,7 @@ class CodexPlugin implements CodexManagedApi {
       parts: parts,
       model: model,
       variant: variant,
+      collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
     );
   }
 
@@ -589,14 +593,22 @@ class CodexPlugin implements CodexManagedApi {
     }
     _rolloutTailer.start(sessionId: sessionId);
     try {
-      final resumed = await _sessionService.sendCommand(
+      final dispatch = await _sessionService.sendCommand(
         threadId: sessionId,
         command: command,
         arguments: arguments,
         model: model?.modelID,
         effort: variant?.id,
+        collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
       );
-      _applyResumedThread(threadId: sessionId, response: resumed);
+      _applyResumedThread(
+        threadId: sessionId,
+        response: dispatch.resumedThread,
+      );
+      final resolvedModel = dispatch.resolvedModel;
+      if (resolvedModel != null) {
+        _eventMapper.setThreadModel(sessionId, resolvedModel);
+      }
     } on Object {
       _rolloutTailer.stop(sessionId: sessionId);
       rethrow;
@@ -628,6 +640,7 @@ class CodexPlugin implements CodexManagedApi {
     required List<PluginPromptPart> parts,
     ({String providerID, String modelID})? model,
     PluginSessionVariant? variant,
+    required CodexCollaborationMode? collaborationMode,
   }) async {
     if (model != null) {
       // A turn/start model override applies to this turn and subsequent ones,
@@ -637,8 +650,9 @@ class CodexPlugin implements CodexManagedApi {
     // The bridge carries codex's reasoning effort as the session "variant": the
     // id is a codex ReasoningEffort token (low/medium/high/xhigh) that maps
     // straight onto turn/start's `effort` override (applies to this turn and
-    // subsequent ones). A null/empty variant is the "default" selection — we
-    // send no `effort` so codex falls back to the model's defaultReasoningEffort.
+    // subsequent ones). A null/empty variant lets the selected collaboration
+    // mode supply its own default (Plan uses medium), or Codex use the model's
+    // defaultReasoningEffort when no collaboration mode was selected.
     final effort = variant?.id;
     // Capture the current EOF before Codex can append this turn's response
     // items. `start` is idempotent when turn/started arrives afterwards.
@@ -649,6 +663,7 @@ class CodexPlugin implements CodexManagedApi {
         parts: parts,
         model: model?.modelID,
         effort: effort == null || effort.isEmpty ? null : effort,
+        collaborationMode: collaborationMode,
       );
       if (!dispatch.started) {
         _rolloutTailer.stop(sessionId: threadId);
@@ -658,6 +673,10 @@ class CodexPlugin implements CodexManagedApi {
         threadId: threadId,
         response: dispatch.resumedThread,
       );
+      final resolvedModel = dispatch.resolvedModel;
+      if (resolvedModel != null) {
+        _eventMapper.setThreadModel(threadId, resolvedModel);
+      }
     } on Object {
       _rolloutTailer.stop(sessionId: threadId);
       rethrow;
@@ -830,20 +849,38 @@ class CodexPlugin implements CodexManagedApi {
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
     final (:modelID, :providerID) = _sessionService.resolveModelDefaults(projectId: projectId);
+    var resolvedModelID = modelID;
+    if (resolvedModelID == null) {
+      String? firstVisibleModelID;
+      for (final model in await _listModels()) {
+        if (model["hidden"] == true) continue;
+        final id = model["id"] as String?;
+        if (id == null || id.isEmpty) continue;
+        firstVisibleModelID ??= id;
+        if (model["isDefault"] == true) {
+          resolvedModelID = id;
+          break;
+        }
+      }
+      resolvedModelID ??= firstVisibleModelID;
+    }
+    final agentModel = resolvedModelID == null
+        ? null
+        : PluginAgentModel(
+            modelID: resolvedModelID,
+            providerID: providerID,
+            variant: null,
+          );
     return [
-      PluginAgent(
-        name: "codex",
-        description: "Codex CLI session",
-        model: modelID == null
-            ? null
-            : PluginAgentModel(
-                modelID: modelID,
-                providerID: providerID,
-                variant: null,
-              ),
-        mode: PluginAgentMode.primary,
-        hidden: false,
-      ),
+      for (final collaborationMode in CodexCollaborationMode.values)
+        if (agentModel != null || collaborationMode == CodexCollaborationMode.defaultMode)
+          PluginAgent(
+            name: collaborationMode.agentName,
+            description: collaborationMode.description,
+            model: agentModel,
+            mode: PluginAgentMode.primary,
+            hidden: false,
+          ),
     ];
   }
 

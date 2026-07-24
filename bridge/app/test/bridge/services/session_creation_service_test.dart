@@ -104,7 +104,7 @@ void main() {
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: true,
-          parts: [],
+          parts: [PromptPart.text(text: "Build it")],
           variant: null,
           agent: null,
           model: null,
@@ -122,6 +122,41 @@ void main() {
       expect(stored.directory, "/repo/.worktrees/session-one");
       expect(stored.worktreePath, "/repo/.worktrees/session-one");
       expect(plugin.lastCreateDirectory, "/repo/.worktrees/session-one");
+      expect(plugin.lastCreateUserVisibleText, "Build it");
+      expect(plugin.lastCreateParts, hasLength(2));
+      expect(plugin.lastCreateParts?.last, const PluginPromptPart.text(text: "Build it"));
+    });
+
+    test("projects every nonblank user text part without bridge-owned context", () async {
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-one",
+        branchName: "session-one",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: true,
+          parts: [
+            PromptPart.text(text: "Build it"),
+            PromptPart.text(text: "  "),
+            PromptPart.text(text: "Then test it"),
+          ],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+
+      expect(plugin.lastCreateUserVisibleText, "Build it\n\nThen test it");
+      expect(plugin.lastCreateUserVisibleText, isNot(contains("SYSTEM CONTEXT")));
+      expect(plugin.lastCreateParts, hasLength(4));
+      expect(plugin.lastCreateParts?.first, isA<PluginPromptPartText>());
+      expect((plugin.lastCreateParts!.first as PluginPromptPartText).text, contains("SYSTEM CONTEXT"));
     });
 
     test("allocates around a cross-plugin backend-id collision without changing the retained binding", () async {
@@ -225,6 +260,8 @@ class _FakeWorktreeService extends WorktreeService {
 class _FakePlugin implements NativeProjectsPluginApi {
   int createCalls = 0;
   String? lastCreateDirectory;
+  String? lastCreateUserVisibleText;
+  List<PluginPromptPart>? lastCreateParts;
 
   @override
   String get id => "fake";
@@ -237,12 +274,15 @@ class _FakePlugin implements NativeProjectsPluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required String? userVisibleText,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
     createCalls++;
     lastCreateDirectory = directory;
+    lastCreateUserVisibleText = userVisibleText;
+    lastCreateParts = parts;
     return PluginSession(
       id: "backend-session",
       projectID: "/repo",

@@ -167,6 +167,7 @@ void main() {
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParts, isNotNull);
       expect(plugin.lastCreateSessionParts, hasLength(2));
+      expect(plugin.lastCreateSessionUserVisibleText, "Start");
       expect(plugin.lastCreateSessionVariant, equals("xhigh"));
       expect(
         plugin.lastCreateSessionParts![0],
@@ -887,6 +888,7 @@ void main() {
       expect(plugin.lastCreateSessionAgent, isNull);
       expect(plugin.lastCreateSessionModel, isNull);
       expect(plugin.lastCreateSessionParts, isEmpty);
+      expect(plugin.lastCreateSessionUserVisibleText, isNull);
       expect(plugin.lastCreateSessionVariant, equals("low"));
       expect(plugin.lastSendCommandSessionId, equals("cmd-session-1"));
       expect(plugin.lastSendCommand, equals("review"));
@@ -928,6 +930,7 @@ void main() {
       );
 
       expect(plugin.lastCreateSessionParts, isEmpty);
+      expect(plugin.lastCreateSessionUserVisibleText, isNull);
       expect(plugin.lastSendCommandSessionId, equals("cmd-dedicated-1"));
       expect(plugin.lastSendCommandArguments, contains("session-001"));
       expect(plugin.lastSendCommandArguments, contains("/repo/.worktrees/session-001"));
@@ -1267,6 +1270,7 @@ class _ThrowingCreateSessionPlugin extends _OpenCodeFakeBridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required String? userVisibleText,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,

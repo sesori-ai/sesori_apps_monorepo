@@ -64,6 +64,17 @@ class ProjectRepository {
     return _filesystemApi.getSuggestions(prefix: prefix);
   }
 
+  /// Creates a plain folder named [name] under [parentPath] on the bridge host.
+  ///
+  /// Unlike [createProject] this only makes the directory — the caller decides
+  /// whether to register it as a project afterwards.
+  Future<ApiResponse<FilesystemSuggestion>> createDirectory({
+    required String parentPath,
+    required String name,
+  }) {
+    return _filesystemApi.createDirectory(parentPath: parentPath, name: name);
+  }
+
   /// The project's git context: its configured base branch plus the
   /// repository identity of its git remote, with the hosting provider
   /// classified from the remote's host.

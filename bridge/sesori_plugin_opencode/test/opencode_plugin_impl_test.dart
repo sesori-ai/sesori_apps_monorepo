@@ -154,6 +154,7 @@ void main() {
         directory: "/repo",
         parentSessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Start from here")],
+        userVisibleText: "Start from here",
         agent: "build",
         variant: const PluginSessionVariant(id: "low"),
         model: (providerID: "openai", modelID: "gpt-5.4"),

@@ -103,6 +103,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastCreateSessionParentId;
   String? lastCreateSessionProjectId;
   List<PluginPromptPart>? lastCreateSessionParts;
+  String? lastCreateSessionUserVisibleText;
   String? lastCreateSessionVariant;
   String? lastCreateSessionAgent;
   ({String providerID, String modelID})? lastCreateSessionModel;
@@ -207,6 +208,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required String? userVisibleText,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -215,6 +217,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     lastCreateSessionParentId = parentSessionId;
     lastCreateSessionProjectId = directory;
     lastCreateSessionParts = parts;
+    lastCreateSessionUserVisibleText = userVisibleText;
     lastCreateSessionVariant = variant?.id;
     lastCreateSessionAgent = agent;
     lastCreateSessionModel = model;
@@ -757,6 +760,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required String? userVisibleText,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -1023,6 +1027,7 @@ class FakeSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required String? userVisibleText,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,

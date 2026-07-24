@@ -19,4 +19,15 @@ class FilesystemApi {
       fromJson: FilesystemSuggestions.fromJson,
     );
   }
+
+  Future<ApiResponse<FilesystemSuggestion>> createDirectory({
+    required String parentPath,
+    required String name,
+  }) {
+    return _client.post(
+      "/filesystem/directory",
+      body: FilesystemCreateDirectoryRequest(parentPath: parentPath, name: name),
+      fromJson: FilesystemSuggestion.fromJson,
+    );
+  }
 }

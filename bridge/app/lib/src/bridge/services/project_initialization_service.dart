@@ -83,7 +83,7 @@ class ProjectInitializationService {
         break;
     }
 
-    _filesystemRepository.createProjectDirectory(path: path);
+    _filesystemRepository.createDirectory(path: path);
 
     try {
       await _initializeGitProject(path: path);

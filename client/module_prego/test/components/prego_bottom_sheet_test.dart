@@ -55,15 +55,17 @@ void main() {
       expect(closed, 1);
     });
 
-    testWidgets("onBack swaps the close button for a back button", (tester) async {
+    testWidgets("onBack adds a back button beside the close button", (tester) async {
       var backs = 0;
       await tester.pumpWidget(_harness(_sheet(onClose: () {}, onBack: () => backs++)));
       await tester.pump();
 
-      expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
-      expect(find.byIcon(TablerRegular.x), findsNothing);
+      // Stepping back within the sheet and leaving it are different intents, so
+      // navigating never costs the user the way out.
+      expect(find.byIcon(TablerRegular.arrow_left), findsOneWidget);
+      expect(find.byIcon(TablerRegular.x), findsOneWidget);
 
-      await tester.tap(find.byIcon(TablerRegular.chevron_left));
+      await tester.tap(find.byIcon(TablerRegular.arrow_left));
       await tester.pump();
       expect(backs, 1);
     });
@@ -90,6 +92,23 @@ void main() {
       await tester.pumpWidget(_harness(_sheet(title: "Leading", alignment: PregoSheetTitleAlignment.start)));
       await tester.pump();
       expect(tester.getCenter(find.text("Leading")).dx, lessThan(300));
+    });
+
+    testWidgets("start alignment steps the title block down a size", (tester) async {
+      // The leading variant is a nav bar over browsed content, not a headline,
+      // so it uses the quieter scale and leaves room for a long second line.
+      await tester.pumpWidget(
+        _harness(_sheet(title: "Docs", subtitle: "mac/Docs", alignment: PregoSheetTitleAlignment.start)),
+      );
+      await tester.pump();
+
+      final prego = PregoDesignSystem.light;
+      expect(tester.widget<Text>(find.text("Docs")).style?.fontSize, prego.textTheme.textMd.medium.fontSize);
+      expect(tester.widget<Text>(find.text("mac/Docs")).style?.fontSize, prego.textTheme.textXs.regular.fontSize);
+
+      await tester.pumpWidget(_harness(_sheet(title: "Docs", subtitle: "mac/Docs")));
+      await tester.pump();
+      expect(tester.widget<Text>(find.text("Docs")).style?.fontSize, prego.textTheme.textLg.bold.fontSize);
     });
 
     testWidgets("wraps to its content when short", (tester) async {

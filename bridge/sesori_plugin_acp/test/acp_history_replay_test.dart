@@ -174,6 +174,120 @@ void main() {
       await expectLater(loading, throwsA(isA<PluginOperationException>()));
     });
 
+    test("same-process replay reuses the synthesized initial prompt identity", () async {
+      final liveFake = FakeAcpProcess();
+      final replayFake = FakeAcpProcess();
+      final availableFakes = [liveFake, replayFake];
+      final createdPlugin = AcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          agentId: "acp",
+          pluginId: "acp",
+        ),
+        commandTracker: AcpCommandTracker(),
+        processFactory: (_) async => availableFakes.removeAt(0),
+      );
+      final emitted = <BridgeSseEvent>[];
+      final eventSubscription = createdPlugin.events.listen(emitted.add);
+      addTearDown(() async {
+        await eventSubscription.cancel();
+        await createdPlugin.dispose();
+        await liveFake.close();
+        await replayFake.close();
+      });
+
+      Future<Map<String, dynamic>> waitOn(
+        FakeAcpProcess target,
+        String method,
+      ) async {
+        for (var i = 0; i < 400; i++) {
+          final matches = target.written.where((frame) => frame["method"] == method);
+          if (matches.isNotEmpty) return matches.last;
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        throw StateError("agent never wrote a '$method' frame");
+      }
+
+      final connecting = createdPlugin.ensureConnected();
+      final liveInit = await waitOn(liveFake, "initialize");
+      liveFake.emit({
+        "jsonrpc": "2.0",
+        "id": liveInit["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": {"loadSession": true},
+          "authMethods": <Object?>[],
+        },
+      });
+      expect(await connecting, isTrue);
+
+      final creating = createdPlugin.createSession(
+        directory: cwd,
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "Hello")],
+        userVisibleText: "Hello",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final newFrame = await waitOn(liveFake, "session/new");
+      liveFake.emit({
+        "jsonrpc": "2.0",
+        "id": newFrame["id"],
+        "result": {"sessionId": "s1"},
+      });
+      await creating;
+      await pump();
+
+      final liveMessage = emitted.whereType<BridgeSseMessageUpdated>().single;
+      final livePart = emitted.whereType<BridgeSseMessagePartUpdated>().single.part;
+      final promptFrame = await waitOn(liveFake, "session/prompt");
+      liveFake.emit({
+        "jsonrpc": "2.0",
+        "id": promptFrame["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+
+      final loading = createdPlugin.getSessionMessages("s1");
+      final replayInit = await waitOn(replayFake, "initialize");
+      replayFake.emit({
+        "jsonrpc": "2.0",
+        "id": replayInit["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": {"loadSession": true},
+          "authMethods": <Object?>[],
+        },
+      });
+      final loadFrame = await waitOn(replayFake, "session/load");
+      replayFake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "messageId": "backend-message",
+            "content": {"type": "text", "text": "Hello"},
+          },
+        },
+      });
+      replayFake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "result": {"sessionId": "s1"},
+      });
+
+      final replayed = (await loading).single;
+      expect(replayed.info.id, liveMessage.info["id"]);
+      expect(replayed.parts.single.id, livePart.id);
+      expect(replayed.parts.single.messageID, replayed.info.id);
+    });
+
     // The degrade is scoped to the `session/load` request alone: a rejected
     // handshake means the replay client is broken (not "this stored session is
     // unloadable"), and the getSessionMessages contract requires auth/transport

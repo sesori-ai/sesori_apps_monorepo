@@ -1,6 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../codex_app_server_client.dart";
+import "../models/codex_collaboration_mode.dart";
+import "models/codex_collaboration_mode_dto.dart";
 import "models/codex_skill_dto.dart";
 import "models/codex_thread_dto.dart";
 import "models/codex_turn_input_dto.dart";
@@ -57,13 +59,31 @@ class CodexAppServerApi {
     required List<CodexTurnInputDto> input,
     required String? model,
     required String? effort,
+    required CodexCollaborationMode? collaborationMode,
   }) async {
     final params = <String, dynamic>{
       "threadId": threadId,
       "input": input.map((item) => item.toJson()).toList(growable: false),
     };
-    if (model != null) params["model"] = model;
-    if (effort != null) params["effort"] = effort;
+    if (collaborationMode == null) {
+      if (model != null) params["model"] = model;
+      if (effort != null) params["effort"] = effort;
+    } else {
+      if (model == null || model.isEmpty) {
+        throw StateError(
+          "turn/start collaborationMode requires a resolved model",
+        );
+      }
+      params["collaborationMode"] = CodexCollaborationModeDto(
+        mode: collaborationMode.wireValue,
+        settings: CodexCollaborationModeSettingsDto(
+          model: model,
+          reasoningEffort: effort,
+          // Null asks Codex to supply its version-matched built-in mode prompt.
+          developerInstructions: null,
+        ),
+      ).toJson();
+    }
     await _client.request(method: "turn/start", params: params);
   }
 

@@ -655,13 +655,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addProject => 'Add Project';
 
   @override
-  String get projectNameHint => 'Project name';
+  String get addAsNewProject => 'Add as new project';
 
   @override
-  String get createProjectButton => 'Create';
+  String get createNewFolder => 'Create new folder';
 
   @override
-  String get openAsProject => 'Open as Project';
+  String get newFolderTitle => 'New folder';
+
+  @override
+  String get newFolderHint => 'Folder name';
+
+  @override
+  String get newFolderCreate => 'Create';
+
+  @override
+  String get newFolderExists => 'A file or folder with that name already exists here';
+
+  @override
+  String get newFolderFailed => 'Could not create the folder';
+
+  @override
+  String get newFolderUnsupported => 'Update Sesori Bridge on your computer to create folders from here.';
 
   @override
   String get emptyDirectory => 'This directory is empty';
@@ -676,7 +691,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fetchDirectoryGoBack => 'Go Back';
 
   @override
-  String get gitRepoBadge => 'git';
+  String get gitRepoBadge => 'Git';
 
   @override
   String get projectHidden => 'Project hidden';
@@ -704,15 +719,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addProjectPrompt => 'Add a project to get started';
 
   @override
-  String get creatingProject => 'Creating project...';
-
-  @override
-  String get discoveringProject => 'Discovering project...';
-
-  @override
-  String get projectCreated => 'Project created';
-
-  @override
   String get projectDiscovered => 'Project discovered';
 
   @override
@@ -737,9 +743,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addProjectGitSetupIncompleteAcknowledge => 'I understand';
-
-  @override
-  String get projectCreateFailed => 'Failed to create project';
 
   @override
   String get projectDiscoverFailed => 'Failed to discover project';

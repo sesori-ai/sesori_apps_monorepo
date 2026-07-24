@@ -532,6 +532,34 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
+  /// Creates a plain folder named [name] below [parentPath] on the bridge host.
+  ///
+  /// The project list is untouched — this only makes the directory, so the
+  /// browser can move into it and let the user decide whether to add it.
+  Future<CreateDirectoryOutcome> createDirectory({
+    required String parentPath,
+    required String name,
+  }) async {
+    final response = await _projectRepository.createDirectory(
+      parentPath: parentPath,
+      name: name,
+    );
+    switch (response) {
+      case SuccessResponse(:final data):
+        return CreateDirectorySuccess(directory: data);
+      case ErrorResponse(:final error):
+        if (_isPermissionDenied(error)) return const CreateDirectoryPermissionDenied();
+        if (error is NonSuccessCodeError && error.errorCode == 409) {
+          return const CreateDirectoryAlreadyExists();
+        }
+        // A bridge that predates this endpoint has no route to answer with.
+        if (error is NonSuccessCodeError && error.errorCode == 404) {
+          return const CreateDirectoryUnsupported();
+        }
+        return const CreateDirectoryError();
+    }
+  }
+
   String? parentHostPath({required String path}) {
     return _projectRepository.parentHostPath(path: path);
   }
