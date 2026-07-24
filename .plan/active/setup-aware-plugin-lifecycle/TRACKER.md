@@ -4,10 +4,11 @@
 
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
-- **Base:** `origin/main` at `cd0e0a31`
+- **Base:** `origin/main` at `0a910926`
 - **Current branch:** `setup-aware-plugin-lifecycle-dormant-runtime`
 - **Current stage:** Stage 11-P02 — dormant runtime and numeric idle timeout rebuild
-- **Next action:** selectively rebuild the frozen #509 behavior on the verified P01D head while monitoring #549/#550
+- **Next action:** commit/push and open the replacement dormancy draft PR; keep
+  it unmerged through the synchronized release and temporary gate revert
 
 ## Frozen Oversized Stack
 
@@ -35,8 +36,8 @@ run their focused verification again.
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 merged as `51008356` |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 merged as `96f63c69` |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
-| [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 open and monitored |
-| [ ] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | rebuilding frozen #509 descendant |
+| [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
+| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | rebuilt, synchronized, and verified; draft PR pending |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
 
@@ -187,6 +188,8 @@ run their focused verification again.
   normalization telemetry, and disposed the benchmark runtime. Focused tests
   and fatal analysis passed; fixes were pushed as `220b2954` and every review
   thread was answered.
+- PR #549 merged into `main` as `cd0e0a31` with CI passing 11/11 and no
+  unresolved review threads.
 
 ### 2026-07-24 — Stage 11-P01D bridge-owned projects and defaults
 
@@ -208,6 +211,49 @@ run their focused verification again.
 - Committed P01D as `059689e7`, merged the updated #549 head, pushed the
   verified branch, and opened stacked PR #550. Its initial monitor reported it
   mergeable with CI running and no inline review threads.
+- After #549 merged, merged `origin/main` into #550 as `21fe3f90`, resolved the
+  tracker conflict, and passed fatal analysis plus 169 focused project,
+  activity, lifecycle, runtime, routing, and event tests. The updated PR was
+  pushed mergeable with CI running.
+- PR #550 merged into `main` as `5020c003` with CI passing 11/11 and no
+  unresolved review threads.
+
+### 2026-07-24 — Stage 11-P02 dormant runtime rebuild
+
+- Reconstructed only the dormancy stage from frozen #509 commits rather than
+  merging its polluted descendant history, preserving the newer P01C/P01D
+  generation-fencing and bridge-owned-project architecture.
+- Added plugin-owned replay-latest work state and an authentication-required
+  signal across the interface, OpenCode, Codex, and ACP/Cursor adapter boundary.
+- Extended `PluginRuntime` with conservative safe-stop work gates,
+  authentication-loss generation retirement, work-state subscriptions, and
+  lease-drained cleanup while retaining durable commit and operation-stream
+  fencing from the replacement stack.
+- Switched startup to all-ready-dormant residency, retained request-time demand
+  activation, added numeric idle suspension policy, and replaced eager startup
+  enumeration with the marker-gated `PluginCatalogHydrationListener`.
+- Removed startup and reconnect project-activity enumeration that would wake
+  dormant plugins. Explicit headless imports validate setup availability and
+  then activate on demand.
+- `dart analyze --fatal-infos` passed sequentially in
+  `sesori_plugin_interface`, `sesori_plugin_opencode`,
+  `sesori_plugin_codex`, `sesori_plugin_acp`, `sesori_plugin_cursor`, and
+  `bridge/app`.
+- Focused interface, OpenCode (230 tests), Codex (36 tests), ACP (25 tests), and
+  bridge runtime/lifecycle/hydration/composition suites (61 tests) passed.
+  No generated source changed, so code generation was not required.
+- Architecture implementation review approved the 22 production-file working
+  tree diff with no findings.
+- Merged `origin/main` at `0a910926` without rebasing. The only source conflict
+  was in Codex; its resolution preserves both #552 collaboration modes and the
+  P02 accepted-turn work-state signal.
+- Post-merge `dart analyze --fatal-infos` passed sequentially in the plugin
+  interface, OpenCode, Codex, ACP, Cursor, and bridge-app packages.
+- Post-merge full package suites passed in the plugin interface (149 tests),
+  OpenCode (400), Codex (189), ACP (105), and Cursor (85). The focused bridge
+  runtime/lifecycle/hydration/composition/recovery suite passed 64 tests.
+- Final integration architecture review approved the complete 22 production-file
+  diff against `origin/main` with no findings; `git diff HEAD --check` passed.
 
 ## Delivery Rules
 
@@ -217,3 +263,6 @@ run their focused verification again.
 - Rebuild or retarget #509-#511 only after P01D is complete.
 - Open each replacement PR only after its focused checks pass, then monitor that
   PR immediately.
+- Keep the rebuilt P02 draft unmerged until temporary OpenCode-only release gate
+  PR #555 has shipped and been exactly reverted. Then merge latest `main` into
+  P02 without rebasing, rerun relevant checks, and mark the draft ready.

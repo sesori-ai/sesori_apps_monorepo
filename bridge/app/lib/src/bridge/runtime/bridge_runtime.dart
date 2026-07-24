@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
 
 import "../../api/database/database.dart";
+import "../../listeners/plugin_catalog_hydration_listener.dart";
 import "../../server/services/bridge_restart_service.dart";
 import "../../services/catalog_import_service.dart";
 import "../bandwidth_tracker.dart";
@@ -32,6 +33,7 @@ class BridgeRuntime {
 
   OrchestratorSession get session => _composition.session;
   CatalogImportService get catalogImportService => _composition.catalogImportService;
+  PluginCatalogHydrationListener get catalogHydrationListener => _composition.catalogHydrationListener;
 
   BandwidthTracker createBandwidthTracker() {
     return BandwidthTracker(bytesSent: session.bytesSent);
@@ -67,6 +69,7 @@ class BridgeRuntime {
     await step(_composition.sessionUnseenService.dispose);
     await step(_composition.sessionViewTracker.dispose);
     await step(_composition.sessionRepository.dispose);
+    await step(_composition.catalogHydrationListener.dispose);
     await step(_composition.catalogImportService.dispose);
     await step(_database.close);
 

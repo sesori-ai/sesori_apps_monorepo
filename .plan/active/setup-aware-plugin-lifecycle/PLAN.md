@@ -3,9 +3,10 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Status:** Stage 10 merged; oversized Stage 11-P01 is frozen and being
-  replaced by four reviewable stacked PRs
-- **Implementation base:** latest `origin/main` at `583748ab`
+- **Status:** Stage 10 and the complete replacement P01A-P01D stack are merged;
+  Stage 11-P02 is rebuilt, synchronized, and verified; replacement draft PR pending
+- **Implementation base:** latest `origin/main` at `0a910926`; local P02 has
+  merged that base without rebasing
 - **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
 - **Delivery:** Stage 11-P01 is split into runtime mechanics, operation routing,
   dynamic events/durable fencing, and bridge-owned projects/default behavior;

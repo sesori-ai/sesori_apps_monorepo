@@ -1,40 +1,32 @@
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
+import "dart:async";
+
+import "package:sesori_bridge/src/listeners/plugin_catalog_hydration_listener.dart";
 import "package:sesori_bridge/src/services/catalog_import_service.dart";
 import "package:test/test.dart";
 
 void main() {
-  test("runner starts automatic import before ordered headless triggers", () {
-    final service = _RecordingCatalogImportService(operationalPluginIds: const {"selected"});
-
-    BridgeRuntimeRunner.startCatalogImports(
-      service: service,
-      pluginIds: const ["selected"],
-      headlessPluginIds: const ["selected", "selected"],
-      operationalPluginIds: const {"selected"},
+  test("first ready snapshot hydrates every id and later snapshots hydrate only additions", () async {
+    final readyPluginIds = StreamController<List<String>>.broadcast(sync: true);
+    final service = _RecordingCatalogImportService(operationalPluginIds: const {"one", "two", "three"});
+    final listener = PluginCatalogHydrationListener(
+      readyPluginIds: readyPluginIds.stream,
+      catalogImportService: service,
     );
+    addTearDown(() async {
+      await listener.dispose();
+      await readyPluginIds.close();
+    });
+
+    listener.start();
+    readyPluginIds.add(const ["one", "two"]);
+    readyPluginIds.add(const ["one", "two"]);
+    readyPluginIds.add(const ["two"]);
+    readyPluginIds.add(const ["two", "three"]);
 
     expect(service.starts, const [
-      (pluginId: "selected", trigger: CatalogImportTrigger.automatic),
-      (pluginId: "selected", trigger: CatalogImportTrigger.headless),
-      (pluginId: "selected", trigger: CatalogImportTrigger.headless),
-    ]);
-  });
-
-  test("runner rejects an unavailable explicit headless import", () {
-    final service = _RecordingCatalogImportService(operationalPluginIds: const {"healthy"});
-
-    expect(
-      () => BridgeRuntimeRunner.startCatalogImports(
-        service: service,
-        pluginIds: const ["unavailable", "healthy"],
-        headlessPluginIds: const ["unavailable", "healthy"],
-        operationalPluginIds: const {"healthy"},
-      ),
-      throwsA(isA<CatalogImportPluginUnavailableException>()),
-    );
-
-    expect(service.starts, const [
-      (pluginId: "healthy", trigger: CatalogImportTrigger.automatic),
+      (pluginId: "one", trigger: CatalogImportTrigger.automatic),
+      (pluginId: "two", trigger: CatalogImportTrigger.automatic),
+      (pluginId: "three", trigger: CatalogImportTrigger.automatic),
     ]);
   });
 }

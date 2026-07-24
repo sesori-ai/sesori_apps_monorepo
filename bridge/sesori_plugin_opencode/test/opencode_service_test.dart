@@ -606,6 +606,7 @@ void main() {
       expect(repository.lastPromptModel?.modelID, equals("gpt-5.4"));
       expect(session.id, equals("ses-new"));
       expect(session.projectID, equals("/repo"));
+      expect(tracker.hasAcceptedTurnEvidence, isTrue);
     });
 
     test("skips first prompt when create session parts are empty", () async {
@@ -633,6 +634,7 @@ void main() {
 
       expect(repository.lastPromptSessionId, isNull);
       expect(session.id, equals("ses-new"));
+      expect(tracker.hasAcceptedTurnEvidence, isFalse);
     });
 
     test("returns created session when first prompt send fails", () async {
@@ -664,6 +666,7 @@ void main() {
       expect(tracker.lastRegisteredSessionId, isNull);
       expect(repository.lastDeletedSessionId, equals("ses-new"));
       expect(repository.lastDeletedDirectory, equals("/repo/subdir"));
+      expect(tracker.hasAcceptedTurnEvidence, isFalse);
     });
   });
 
@@ -686,6 +689,7 @@ void main() {
       expect(repository.lastPromptDirectory, equals("/repo"));
       expect(repository.lastPromptParts, equals(parts));
       expect(repository.lastPromptVariant, isNull);
+      expect(tracker.hasAcceptedTurnEvidence, isTrue);
     });
   });
 
@@ -711,6 +715,7 @@ void main() {
       expect(repository.lastCommandAgent, equals("reviewer"));
       expect(repository.lastCommandVariant, equals("xhigh"));
       expect(repository.lastCommandModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+      expect(tracker.hasAcceptedTurnEvidence, isFalse);
     });
 
     test("routes the artificial compact command to the summarize endpoint", () async {
@@ -810,6 +815,8 @@ void main() {
         completer.completeError(StateError("unknown command"));
 
         await expectLater(sendCommand(), throwsA(isA<StateError>()));
+
+        expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
       });
 
       test("propagates a TimeoutException raised by the send chain within the window", () async {
@@ -839,6 +846,7 @@ void main() {
           lessThan(const Duration(seconds: 5)),
           reason: "dispatch must detach instead of awaiting the full run",
         );
+        expect(service.tracker.hasAcceptedTurnEvidence, isTrue);
 
         completer.complete();
       });
@@ -848,10 +856,50 @@ void main() {
         repository.sendCommandCompleter = completer;
 
         await sendCommand();
+        expect(service.tracker.hasAcceptedTurnEvidence, isTrue);
 
         completer.completeError(StateError("run failed mid-flight"));
         // Flush microtasks — an unhandled async error would fail the test zone.
         await Future<void>.delayed(Duration.zero);
+        expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
+      });
+
+      test("late detached failure does not clear authoritative busy evidence", () async {
+        final completer = Completer<void>();
+        repository.sendCommandCompleter = completer;
+
+        await sendCommand();
+        service.tracker.handleEvent(
+          const SseEventData.sessionStatus(
+            sessionID: "ses-1",
+            status: SessionStatusBusy(),
+          ),
+          "/repo",
+        );
+        expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
+
+        completer.completeError(StateError("late transport failure"));
+        await Future<void>.delayed(Duration.zero);
+
+        expect(service.tracker.workState, PluginWorkState.busy);
+      });
+
+      test("late detached failure does not clear a newer accepted turn", () async {
+        final firstCompleter = Completer<void>();
+        repository.sendCommandCompleter = firstCompleter;
+        await sendCommand();
+
+        final secondCompleter = Completer<void>();
+        repository.sendCommandCompleter = secondCompleter;
+        await sendCommand();
+
+        firstCompleter.completeError(StateError("first command failed late"));
+        await Future<void>.delayed(Duration.zero);
+        expect(service.tracker.hasAcceptedTurnEvidence, isTrue);
+
+        secondCompleter.completeError(StateError("second command failed late"));
+        await Future<void>.delayed(Duration.zero);
+        expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
       });
     });
   });
@@ -1409,6 +1457,8 @@ void main() {
       // Aggregated pending input from all worktrees was handed to the tracker.
       expect(tracker.populatedPermissions.map((p) => p.id), containsAll(<String>["p-a", "p-b"]));
       expect(tracker.populatedQuestions.map((q) => q.id), containsAll(<String>["q-a", "q-b"]));
+      expect(tracker.pendingPermissionsBaselineTrusted, isTrue);
+      expect(tracker.pendingQuestionsBaselineTrusted, isTrue);
     });
 
     test("reset delegates to tracker", () {
@@ -2264,6 +2314,8 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   bool registerSessionReturns = false;
   List<QuestionRequest> populatedQuestions = const [];
   List<PermissionRequest> populatedPermissions = const [];
+  bool? pendingQuestionsBaselineTrusted;
+  bool? pendingPermissionsBaselineTrusted;
   final bool clearPendingQuestionFound;
   final String? clearPendingQuestionResolvedSessionId;
   final bool clearPendingQuestionChanged;
@@ -2363,13 +2415,21 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   Set<String> get sessionDiscoveryDirectories => worktreesForHydration;
 
   @override
-  void populatePendingQuestions({required List<QuestionRequest> questions}) {
+  void populatePendingQuestions({
+    required List<QuestionRequest> questions,
+    required bool baselineTrusted,
+  }) {
     populatedQuestions = questions;
+    pendingQuestionsBaselineTrusted = baselineTrusted;
   }
 
   @override
-  void populatePendingPermissions({required List<PermissionRequest> permissions}) {
+  void populatePendingPermissions({
+    required List<PermissionRequest> permissions,
+    required bool baselineTrusted,
+  }) {
     populatedPermissions = permissions;
+    pendingPermissionsBaselineTrusted = baselineTrusted;
   }
 
   @override

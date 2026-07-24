@@ -8,14 +8,22 @@ class PluginLifecycleSnapshot {
     required this.projectOwnership,
     required this.setup,
     required this.eligible,
+    required this.startAllowed,
     required this.state,
+    required this.workState,
+    required this.leaseCount,
+    required this.transitionSettled,
   });
 
   final String pluginId;
   final PluginProjectOwnership projectOwnership;
   final PluginSetupStatus setup;
   final bool eligible;
+  final bool startAllowed;
   final PluginRuntimeState state;
+  final PluginWorkState workState;
+  final int leaseCount;
+  final bool transitionSettled;
 }
 
 class PluginLifecycleRepository {
@@ -56,6 +64,10 @@ class PluginLifecycleRepository {
     required PluginStopIntent intent,
   }) => _runtime.stop(pluginId: pluginId, intent: intent);
 
+  Future<PluginRuntimeCommandResult> stopSafely({required String pluginId}) {
+    return _runtime.stop(pluginId: pluginId, intent: PluginStopIntent.safe);
+  }
+
   Future<PluginRuntimeCommandResult> restart({
     required String pluginId,
     required PluginStopIntent intent,
@@ -72,7 +84,11 @@ class PluginLifecycleRepository {
           projectOwnership: snapshot.projectOwnership,
           setup: snapshot.setup,
           eligible: snapshot.eligible,
+          startAllowed: snapshot.startAllowed,
           state: snapshot.state,
+          workState: snapshot.workState,
+          leaseCount: snapshot.leaseCount,
+          transitionSettled: snapshot.transition == PluginRuntimeTransition.none,
         ),
     ]);
   }

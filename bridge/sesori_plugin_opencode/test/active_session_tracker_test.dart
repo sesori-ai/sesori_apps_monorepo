@@ -440,6 +440,120 @@ void main() {
       });
     });
 
+    group("workState", () {
+      test("stays unknown until session and pending-input baselines are trustworthy", () async {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        expect(tracker.workState, PluginWorkState.unknown);
+
+        await tracker.coldStart();
+        expect(tracker.workState, PluginWorkState.unknown);
+
+        tracker.populatePendingQuestions(questions: const [], baselineTrusted: true);
+        expect(tracker.workState, PluginWorkState.unknown);
+
+        tracker.populatePendingPermissions(permissions: const [], baselineTrusted: true);
+
+        expect(tracker.workState, PluginWorkState.idle);
+      });
+
+      test("failed pending-input baseline remains unknown while retaining partial results", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+
+        tracker.populatePendingQuestions(
+          questions: const [
+            QuestionRequest(id: "question", sessionID: "session", questions: [], tool: null),
+          ],
+          baselineTrusted: false,
+        );
+
+        expect(tracker.workState, PluginWorkState.busy);
+
+        tracker.handleEvent(_questionReplied("question", "session"), null);
+
+        expect(tracker.workState, PluginWorkState.unknown);
+      });
+
+      test("coldStart includes busy status from the server cwd", () async {
+        final tracker = await _coldStartedTracker(
+          projects: const [],
+          statuses: {"cwd-session": const SessionStatusBusy()},
+        );
+
+        expect(tracker.workState, PluginWorkState.busy);
+      });
+
+      test("busy takes precedence while unknown session status remains conservative", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+        tracker.handleEvent(_sessionUnknown("unknown"), null);
+        expect(tracker.workState, PluginWorkState.unknown);
+
+        tracker.handleEvent(_sessionBusy("busy"), null);
+        expect(tracker.workState, PluginWorkState.busy);
+
+        tracker.handleEvent(_sessionIdle("busy"), null);
+        expect(tracker.workState, PluginWorkState.unknown);
+      });
+
+      test("an unknown live status blocks idle until affirmative idle evidence", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+        expect(tracker.workState, PluginWorkState.idle);
+
+        tracker.handleEvent(_sessionUnknown("session"), null);
+        expect(tracker.workState, PluginWorkState.unknown);
+
+        tracker.handleEvent(_sessionIdle("session"), null);
+        expect(tracker.workState, PluginWorkState.idle);
+
+        tracker.reset();
+        expect(tracker.workState, PluginWorkState.unknown);
+      });
+
+      test("pending user input remains busy even after the session reports idle", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+
+        tracker.handleEvent(_questionAsked("question", "session"), null);
+        tracker.handleEvent(_sessionIdle("session"), null);
+        expect(tracker.workState, PluginWorkState.busy);
+
+        tracker.handleEvent(_questionReplied("question", "session"), null);
+        expect(tracker.workState, PluginWorkState.idle);
+      });
+
+      test("accepted turn stays busy through delayed busy status until idle", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+
+        tracker.markTurnAccepted(sessionId: "session");
+        expect(tracker.workState, PluginWorkState.busy);
+
+        tracker.handleEvent(_sessionBusy("session"), null);
+        expect(tracker.workState, PluginWorkState.busy);
+
+        tracker.handleEvent(_sessionIdle("session"), null);
+        expect(tracker.workState, PluginWorkState.idle);
+      });
+
+      test("terminal session evidence clears an accepted turn", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+        tracker.markTurnAccepted(sessionId: "session");
+
+        tracker.handleEvent(
+          const SseEventData.sessionError(sessionID: "session"),
+          null,
+        );
+
+        expect(tracker.workState, PluginWorkState.idle);
+      });
+
+      test("accepted turn evidence survives tracker reset during SSE disconnect", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+        tracker.markTurnAccepted(sessionId: "session");
+
+        tracker.reset();
+
+        expect(tracker.workState, PluginWorkState.busy);
+      });
+    });
+
     test("session directory exactly matches worktree", () async {
       final tracker = await _coldStartedTracker(
         projects: [
@@ -1809,7 +1923,7 @@ void main() {
         expect(tracker.buildSummary(), isEmpty);
       });
 
-      test("session idle cleans up pending input state", () async {
+      test("session idle removes activity without clearing pending input", () async {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
@@ -1833,8 +1947,12 @@ void main() {
 
         tracker.handleEvent(_sessionIdle("s1"), null);
 
-        // Session no longer active — summary empty.
+        // Session no longer active, but its unanswered input remains work.
         expect(tracker.buildSummary(), isEmpty);
+        expect(tracker.workState, PluginWorkState.busy);
+
+        tracker.handleEvent(_questionReplied("q1", "s1"), null);
+        expect(tracker.workState, PluginWorkState.idle);
       });
 
       test("question asked on active session triggers change detection", () async {
@@ -1884,6 +2002,7 @@ void main() {
           questions: [
             const QuestionRequest(id: "q1", sessionID: "s1", questions: [], tool: null),
           ],
+          baselineTrusted: true,
         );
 
         final summary = tracker.buildSummary();
@@ -2202,6 +2321,7 @@ void main() {
               tool: null,
             ),
           ],
+          baselineTrusted: true,
         );
 
         final summary = tracker.buildSummary();
@@ -2561,6 +2681,13 @@ SseEventData _sessionIdle(String id) {
   );
 }
 
+SseEventData _sessionUnknown(String id) {
+  return SseEventData.sessionStatus(
+    sessionID: id,
+    status: const SessionStatusUnknown(raw: {"type": "future"}),
+  );
+}
+
 SseEventData _questionAsked(String id, String sessionId) {
   return SseEventData.questionAsked(
     id: id,
@@ -2627,6 +2754,8 @@ Future<ActiveSessionTracker> _coldStartedTracker({
     ),
   );
   await tracker.coldStart();
+  tracker.populatePendingQuestions(questions: const [], baselineTrusted: true);
+  tracker.populatePendingPermissions(permissions: const [], baselineTrusted: true);
   return tracker;
 }
 
@@ -2759,6 +2888,7 @@ class _FakeApi implements OpenCodeApi {
 
   @override
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
+    if (directory == null) return _statuses;
     final sessionIdsInDirectory = _sessions
         .where((s) => s.directory == directory || s.directory.startsWith("$directory/"))
         .map((s) => s.id)

@@ -1,14 +1,18 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 
 void main() {
-  test("derives alphabetical eligibility, eager startup, and default from setup", () {
+  test("derives alphabetical eligibility and default from setup", () {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["zeta", "alpha", "beta"]);
     addTearDown(runtime.dispose);
     final service = _service(
@@ -31,7 +35,6 @@ void main() {
     );
 
     expect(policy.eligiblePluginIds, ["alpha", "zeta"]);
-    expect(policy.eagerPluginIds, ["alpha"]);
     expect(policy.defaultPluginId, "alpha");
     expect(service.compositionView.eligiblePluginIds, ["alpha", "zeta"]);
     expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "beta").state, PluginRuntimeState.disabled);
@@ -218,7 +221,6 @@ void main() {
     final policy = service.initialize(disabledPluginIds: const {}, setupById: const {});
 
     expect(policy.eligiblePluginIds, isEmpty);
-    expect(policy.eagerPluginIds, isEmpty);
     expect(policy.defaultPluginId, isNull);
     expect(service.metadataSnapshot, isEmpty);
     expect(service.setupSnapshot.plugins, isEmpty);
@@ -238,6 +240,85 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test("ready plugin ids replay setup-ready dormant plugins", () async {
+    final repository = _IdleLifecycleRepository(initialState: PluginRuntimeState.dormant);
+    addTearDown(repository.dispose);
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+    )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+
+    expect(await service.readyPluginIds.first, ["one"]);
+    expect(service.selectableMetadataSnapshot.map((entry) => entry.id), ["one"]);
+  });
+
+  test("idle suspension requires every safe-stop gate and a full timeout", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: timerScheduler,
+    )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+
+    repository.publish(workState: PluginWorkState.busy, leaseCount: 0);
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 1);
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 0, transitionSettled: false);
+    await Future<void>.delayed(Duration.zero);
+    expect(timerScheduler.timers, isEmpty);
+
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
+    await _waitFor(() => timerScheduler.timers.length == 1);
+    expect(timerScheduler.timers.single.duration, const Duration(minutes: defaultPluginIdleTimeoutMins));
+    timerScheduler.timers.single.elapse();
+    await _waitFor(() => repository.stopCalls == 1);
+  });
+
+  test("non-positive idle timeout keeps a demanded plugin resident", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(
+        settings: const BridgeSettings(
+          plugins: BridgePluginSettings(
+            settingsByPluginId: {
+              "one": PluginLifecycleSettings(idleTimeoutMins: 0),
+            },
+          ),
+        ),
+      ),
+      idleTimerScheduler: timerScheduler,
+    )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(timerScheduler.timers, isEmpty);
+    expect(repository.stopCalls, isZero);
+  });
 }
 
 PluginLifecycleService _service({
@@ -247,6 +328,8 @@ PluginLifecycleService _service({
   return PluginLifecycleService(
     lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
     preferredDefaultPluginId: legacyMissingPluginId,
+    bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+    idleTimerScheduler: const PluginIdleTimerScheduler(),
   )..registerPlugins(plugins: plugins);
 }
 
@@ -264,4 +347,129 @@ class _FakePluginApi extends BridgeDerivedProjectsPluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _IdleLifecycleRepository implements PluginLifecycleRepository {
+  _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeState.active})
+    : _current = [_snapshot(state: initialState, workState: PluginWorkState.unknown, leaseCount: 0)];
+
+  final StreamController<List<PluginLifecycleSnapshot>> _snapshots = StreamController.broadcast(sync: true);
+  List<PluginLifecycleSnapshot> _current;
+  int stopCalls = 0;
+
+  @override
+  Stream<List<PluginLifecycleSnapshot>> get snapshots => _snapshots.stream;
+
+  @override
+  List<PluginLifecycleSnapshot> get snapshot => List.unmodifiable(_current);
+
+  @override
+  void applyAccess({required Set<String> eligiblePluginIds, required Set<String> startAllowedPluginIds}) {}
+
+  void publish({
+    PluginRuntimeState state = PluginRuntimeState.active,
+    required PluginWorkState workState,
+    required int leaseCount,
+    bool transitionSettled = true,
+  }) {
+    _current = [
+      _snapshot(
+        state: state,
+        workState: workState,
+        leaseCount: leaseCount,
+        transitionSettled: transitionSettled,
+      ),
+    ];
+    _snapshots.add(snapshot);
+  }
+
+  @override
+  Future<PluginRuntimeCommandResult> stopSafely({required String pluginId}) async {
+    stopCalls++;
+    _current = [
+      _snapshot(state: PluginRuntimeState.dormant, workState: PluginWorkState.unknown, leaseCount: 0),
+    ];
+    _snapshots.add(snapshot);
+    return PluginRuntimeCommandApplied(
+      snapshot: PluginRuntimeSnapshot(
+        pluginId: pluginId,
+        projectOwnership: PluginProjectOwnership.native,
+        setup: const PluginSetupReady(),
+        eligible: true,
+        startAllowed: true,
+        generation: 1,
+        state: PluginRuntimeState.dormant,
+        workState: PluginWorkState.unknown,
+        leaseCount: 0,
+        transition: PluginRuntimeTransition.none,
+      ),
+    );
+  }
+
+  Future<void> dispose() => _snapshots.close();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  static PluginLifecycleSnapshot _snapshot({
+    PluginRuntimeState state = PluginRuntimeState.active,
+    required PluginWorkState workState,
+    required int leaseCount,
+    bool transitionSettled = true,
+  }) {
+    return PluginLifecycleSnapshot(
+      pluginId: "one",
+      projectOwnership: PluginProjectOwnership.native,
+      setup: const PluginSetupReady(),
+      eligible: true,
+      startAllowed: true,
+      state: state,
+      workState: workState,
+      leaseCount: leaseCount,
+      transitionSettled: transitionSettled,
+    );
+  }
+}
+
+class _ControllablePluginIdleTimerScheduler implements PluginIdleTimerScheduler {
+  final List<_ControllablePluginIdleTimer> timers = [];
+
+  @override
+  Timer schedule({required Duration duration, required void Function() onElapsed}) {
+    final timer = _ControllablePluginIdleTimer(duration: duration, onElapsed: onElapsed);
+    timers.add(timer);
+    return timer;
+  }
+}
+
+class _ControllablePluginIdleTimer implements Timer {
+  _ControllablePluginIdleTimer({required this.duration, required void Function() onElapsed})
+    : _onElapsed = onElapsed;
+
+  final Duration duration;
+  final void Function() _onElapsed;
+  bool _isActive = true;
+
+  void elapse() {
+    if (!_isActive) return;
+    _isActive = false;
+    _onElapsed();
+  }
+
+  @override
+  void cancel() => _isActive = false;
+
+  @override
+  bool get isActive => _isActive;
+
+  @override
+  int get tick => _isActive ? 0 : 1;
+}
+
+Future<void> _waitFor(bool Function() predicate) async {
+  for (var attempt = 0; attempt < 100; attempt++) {
+    if (predicate()) return;
+    await Future<void>.delayed(Duration.zero);
+  }
+  throw StateError("condition was not reached");
 }

@@ -28,6 +28,8 @@ void main() {
         PluginLifecycleService(
             lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
             preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
           )
           ..registerPlugins(
             plugins: const [(id: "opencode", displayName: "OpenCode")],
