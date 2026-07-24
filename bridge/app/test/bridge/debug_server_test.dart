@@ -55,6 +55,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     ),
     legacyMissingPluginId: plugin.id,
     pluginLifecycleService: lifecycleService,
+    pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
     database: db,
     httpClient: httpClient,
     processRunner: ProcessRunner(),
@@ -497,7 +498,7 @@ void main() {
             )
             ..addPhase(
               phase: BridgeShutdownPhase.pluginDispose,
-              action: harness.lifecycleService.disposeStartedApis,
+              action: runtimeForLifecycleService(service: harness.lifecycleService).disposeStartedApis,
             );
       await debugServer.start();
 
@@ -922,6 +923,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePl
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -1128,6 +1130,7 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwa
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,

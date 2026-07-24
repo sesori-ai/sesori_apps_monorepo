@@ -1,31 +1,30 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server_exception.dart";
-import "package:sesori_bridge/src/control/control_provision_notifier.dart";
+import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
+import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
 import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_instance_service.dart";
-import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_bridge/src/updater/models/managed_runtime_paths.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 // The plugin-specific start flows (managed start, attach mode, ownership
 // records) live with OpenCodePluginDescriptor in sesori_plugin_opencode;
-// these tests cover the runner's mutex → singleton → host → start
+// these tests cover the generation factory's mutex → singleton → host → start
 // orchestration with a fake descriptor.
 void main() {
-  group("BridgeRuntimeRunner.startPluginUnderStartupMutex", () {
+  group("PluginGenerationFactory", () {
     late _FakeStartupMutexRepository startupMutexRepository;
     late _FakeBridgeInstanceService bridgeInstanceService;
     late _RecordingDescriptor descriptor;
     late ProcessIdentity currentBridgeIdentity;
     late Directory runtimeDirectory;
-    late List<PluginLifecycleService> lifecycleServices;
+    late List<BridgePlugin> startedPlugins;
 
     setUp(() async {
       startupMutexRepository = _FakeStartupMutexRepository();
@@ -33,13 +32,12 @@ void main() {
       descriptor = _RecordingDescriptor();
       currentBridgeIdentity = _identity(pid: 100, startMarker: "bridge-start");
       runtimeDirectory = await Directory.systemTemp.createTemp("bridge-runtime-server-test");
-      lifecycleServices = [];
+      startedPlugins = [];
     });
 
     tearDown(() async {
-      for (final service in lifecycleServices) {
-        await service.disposeStartedApis();
-        await service.dispose();
+      for (final plugin in startedPlugins) {
+        await plugin.shutdown(budget: const Duration(seconds: 1));
       }
       if (runtimeDirectory.existsSync()) {
         await runtimeDirectory.delete(recursive: true);
@@ -48,43 +46,50 @@ void main() {
 
     Future<BridgePlugin> startPlugin({
       String? stateDirectory,
-      ControlProvisionNotifier? provisionNotifier,
-    }) {
+      List<RuntimeProvisionProgress>? observedProgress,
+    }) async {
       final directory = stateDirectory ?? runtimeDirectory.path;
-      final lifecycleService = PluginLifecycleService()
-        ..registerPlugins(
-          plugins: [(id: descriptor.id, displayName: descriptor.displayName)],
-        )
-        ..initialize(
-          disabledPluginIds: const {},
-          setupById: {descriptor.id: const PluginSetupReady()},
-        );
-      lifecycleServices.add(lifecycleService);
-      final startedPlugins = <String, BridgePlugin>{};
-      return BridgeRuntimeRunner.startPluginsUnderStartupMutex(
-        descriptors: [descriptor],
-        pluginConfigs: {
-          descriptor.id: const PluginConfig(values: <String, Object?>{"port": "4096"}),
-        },
-        lifecycleService: lifecycleService,
-        startedPlugins: startedPlugins,
-        managedRuntimePaths: ManagedRuntimePaths(
-          installRoot: directory,
-          binaryPath: "$directory/bin/sesori-bridge",
-          cacheDirectory: directory,
-        ),
+      final managedRuntimePaths = ManagedRuntimePaths(
+        installRoot: directory,
+        binaryPath: "$directory/bin/sesori-bridge",
+        cacheDirectory: directory,
+      );
+      final factory = PluginGenerationFactory(
+        managedRuntimePaths: managedRuntimePaths,
         currentBridgeIdentity: currentBridgeIdentity,
         ownerSessionId: "owner-session",
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: _FakeProcessRepository(),
         runtimeFileApi: RuntimeFileApi(runtimeDirectory: directory),
-        serverClock: const ServerClock(),
+        clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
+      );
+      BridgePlugin? startedPlugin;
+      await for (final event in factory.start(
+        registration: PluginRuntimeRegistration(
+          descriptor: descriptor,
+          config: const PluginConfig(values: <String, Object?>{"port": "4096"}),
+          stateDirectory: pluginStateDirectoryPath(
+            paths: managedRuntimePaths,
+            pluginId: descriptor.id,
+            stateStorage: descriptor.stateStorage,
+          ),
+        ),
         startAborted: StartAbortSignal.never,
-        provisionNotifier: provisionNotifier,
-      ).then((_) => startedPlugins[descriptor.id]!);
+      )) {
+        switch (event) {
+          case PluginGenerationProvisionProgress(:final event):
+            observedProgress?.add(event);
+          case PluginGenerationStarted(:final plugin):
+            startedPlugin = plugin;
+        }
+      }
+      final plugin = startedPlugin;
+      if (plugin == null) throw StateError("Factory did not return a started plugin.");
+      startedPlugins.add(plugin);
+      return plugin;
     }
 
     test("allowed resolution starts the descriptor on a fully wired host", () async {
@@ -124,23 +129,7 @@ void main() {
     });
 
     test("zero-plugin startup still performs single-live-bridge enforcement", () async {
-      final lifecycleService = PluginLifecycleService()
-        ..registerPlugins(
-          plugins: [(id: descriptor.id, displayName: descriptor.displayName)],
-        )
-        ..initialize(
-          disabledPluginIds: {descriptor.id},
-          setupById: {
-            descriptor.id: const PluginSetupNotInspected(),
-          },
-        );
-      lifecycleServices.add(lifecycleService);
-
-      await BridgeRuntimeRunner.startPluginsUnderStartupMutex(
-        descriptors: const <BridgePluginDescriptor>[],
-        pluginConfigs: const <String, PluginConfig>{},
-        lifecycleService: lifecycleService,
-        startedPlugins: <String, BridgePlugin>{},
+      final factory = PluginGenerationFactory(
         managedRuntimePaths: ManagedRuntimePaths(
           installRoot: runtimeDirectory.path,
           binaryPath: "${runtimeDirectory.path}/bin/sesori-bridge",
@@ -152,18 +141,15 @@ void main() {
         bridgeInstanceService: bridgeInstanceService,
         processRepository: _FakeProcessRepository(),
         runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
-        serverClock: const ServerClock(),
+        clock: const ServerClock(),
         environment: const <String, String>{},
         currentUser: null,
-        startAborted: StartAbortSignal.never,
-        provisionNotifier: null,
       );
+      await factory.enforceBridgeOwnership();
 
       expect(startupMutexRepository.lockRequests, hasLength(1));
       expect(bridgeInstanceService.currentPids, [currentBridgeIdentity.pid]);
       expect(descriptor.startedHosts, isEmpty);
-      expect(lifecycleService.compositionView.defaultEnabledPluginId, isNull);
-      expect(lifecycleService.compositionView.operationalPlugins, isEmpty);
     });
 
     test("the state directory exists before the descriptor starts", () async {
@@ -331,17 +317,17 @@ void main() {
     });
 
     group("runtime-resolution tee", () {
-      test("supervised mode tees each provision event to the notifier, in order", () async {
+      test("emits each runtime-resolution event in order", () async {
         descriptor.provisionEvents.addAll(const <RuntimeProvisionProgress>[
           ProvisionResolving(),
           ProvisionDownloading(receivedBytes: 256, totalBytes: 1024),
           ProvisionReady(binaryPath: "/bin/opencode"),
         ]);
-        final provisionNotifier = _RecordingProvisionNotifier();
+        final observed = <RuntimeProvisionProgress>[];
 
-        await startPlugin(provisionNotifier: provisionNotifier);
+        await startPlugin(observedProgress: observed);
 
-        expect(provisionNotifier.events, equals(descriptor.provisionEvents));
+        expect(observed, equals(descriptor.provisionEvents));
       });
 
       test("teeing does not disturb the runner recording ProvisionReady.binaryPath on the host", () async {
@@ -350,7 +336,7 @@ void main() {
           ProvisionReady(binaryPath: "/opt/opencode/bin/opencode"),
         ]);
 
-        await startPlugin(provisionNotifier: _RecordingProvisionNotifier());
+        await startPlugin(observedProgress: <RuntimeProvisionProgress>[]);
 
         expect(descriptor.startedHosts.single.provisionedRuntimePath, equals("/opt/opencode/bin/opencode"));
       });
@@ -564,16 +550,5 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
   }) async {
     startupLockContentionCalls.add((lock: lock, holder: holder, currentPid: currentPid));
     return startupLockStatus;
-  }
-}
-
-/// Records every provision event the runner tees to it, so a supervised-mode
-/// test can assert the tee fires for each event in order.
-class _RecordingProvisionNotifier implements ControlProvisionNotifier {
-  final List<RuntimeProvisionProgress> events = <RuntimeProvisionProgress>[];
-
-  @override
-  void handleProvisionProgress({required RuntimeProvisionProgress event}) {
-    events.add(event);
   }
 }

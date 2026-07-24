@@ -25,7 +25,7 @@ class SessionCreationService {
        _sessionMutationDispatcher = sessionMutationDispatcher;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
-    _sessionRepository.ensurePluginAvailable(
+    await _sessionRepository.ensurePluginRoutable(
       pluginId: request.pluginId,
       operation: SessionOperation.createSession,
     );
@@ -77,6 +77,7 @@ class SessionCreationService {
         userArguments: firstText ?? '',
         worktreeResult: worktreeResult,
       ),
+      userVisibleArguments: firstText,
       variant: request.variant,
       agent: request.agent,
       model: request.model,
@@ -189,6 +190,7 @@ class SessionCreationService {
     required Session session,
     required String? command,
     required String arguments,
+    required String? userVisibleArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -200,6 +202,7 @@ class SessionCreationService {
       sessionId: session.id,
       command: command,
       arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
       variant: variant,
       agent: agent,
       model: model,

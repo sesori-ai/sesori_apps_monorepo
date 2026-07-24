@@ -35,6 +35,7 @@ import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../../api/database/tables/pull_requests_table.dart";
 import "../../api/database/tables/session_table.dart" show SessionDto;
 import "../../repositories/project_catalog_identity_calculator.dart";
+import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
@@ -54,9 +55,8 @@ typedef SessionBindingsCommitted = ({String pluginId, List<String> backendSessio
 class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
-  final Map<String, BridgePluginApi> _operationalPlugins;
+  final PluginRuntime _runtime;
   final Set<String> _bridgeDerivedProjectPluginIds;
-  final List<String> _enabledPluginIds;
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
   final PullRequestDao _pullRequestDao;
@@ -72,18 +72,16 @@ class SessionRepository {
   int _lastProjectionTimestamp = 0;
 
   SessionRepository({
-    required Map<String, BridgePluginApi> operationalPlugins,
+    required PluginRuntime runtime,
     required Set<String> bridgeDerivedProjectPluginIds,
-    required List<String> enabledPluginIds,
     required SessionDao sessionDao,
     required ProjectsDao projectsDao,
     required PullRequestDao pullRequestDao,
     required SessionUnseenCalculator unseenCalculator,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
     required Duration aggregateSourceDeadline,
-  }) : _operationalPlugins = operationalPlugins,
+  }) : _runtime = runtime,
        _bridgeDerivedProjectPluginIds = Set<String>.unmodifiable(bridgeDerivedProjectPluginIds),
-       _enabledPluginIds = enabledPluginIds,
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
        _pullRequestDao = pullRequestDao,
@@ -137,85 +135,97 @@ class SessionRepository {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async {
-    final plugin = _requirePlugin(pluginId: pluginId, operation: SessionOperation.createSession);
-    final created = await plugin.createSession(
-      directory: directory,
-      parentSessionId: parentSessionId,
-      parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-      variant: _toPluginVariant(variant),
-      agent: agent,
-      model: switch (model) {
-        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
-        null => null,
+    final result = await _runtime.useAndCommit(
+      pluginId: pluginId,
+      operation: SessionOperation.createSession,
+      prepare: (plugin) => plugin.createSession(
+        directory: directory,
+        parentSessionId: parentSessionId,
+        parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+        variant: _toPluginVariant(variant),
+        agent: agent,
+        model: switch (model) {
+          PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+          null => null,
+        },
+      ),
+      commit: (created) async {
+        final projectionUpdatedAt = captureProjectionTimestamp();
+        final createdAt = created.time?.created ?? projectionUpdatedAt;
+        final updatedAt = created.time?.updated ?? createdAt;
+        late String sessionId;
+        await _sessionDao.attachedDatabase.transaction(() async {
+          final existingBinding = await _sessionDao.getSessionByBinding(
+            pluginId: pluginId,
+            backendSessionId: created.id,
+          );
+          if (existingBinding?.parentSessionId != null) {
+            throw PluginOperationException(
+              SessionOperation.createSession.name,
+              statusCode: 409,
+              message: "backend session ${created.id} is already bound as a child session",
+            );
+          }
+          sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
+          await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+          await _sessionDao.insertSession(
+            sessionId: sessionId,
+            backendSessionId: created.id,
+            projectId: projectId,
+            isDedicated: isDedicated,
+            createdAt: createdAt,
+            worktreePath: worktreePath,
+            branchName: branchName,
+            baseBranch: baseBranch,
+            baseCommit: baseCommit,
+            lastAgent: lastAgent,
+            lastAgentModel: lastAgentModel,
+            pluginId: pluginId,
+          );
+          await _sessionDao.updateObservedSessionProjection(
+            sessionId: sessionId,
+            directory: directory,
+            catalogTitle: created.title,
+            updateCatalogTitle: true,
+            updatedAt: updatedAt,
+            projectionUpdatedAt: projectionUpdatedAt,
+          );
+        });
+        return (created: created, sessionId: sessionId);
       },
     );
-    final projectionUpdatedAt = captureProjectionTimestamp();
-    final createdAt = created.time?.created ?? projectionUpdatedAt;
-    final updatedAt = created.time?.updated ?? createdAt;
-    late String sessionId;
-    await _sessionDao.attachedDatabase.transaction(() async {
-      final existingBinding = await _sessionDao.getSessionByBinding(
-        pluginId: pluginId,
-        backendSessionId: created.id,
-      );
-      if (existingBinding?.parentSessionId != null) {
-        throw PluginOperationException(
-          SessionOperation.createSession.name,
-          statusCode: 409,
-          message: "backend session ${created.id} is already bound as a child session",
-        );
-      }
-      sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
-      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-      await _sessionDao.insertSession(
-        sessionId: sessionId,
-        backendSessionId: created.id,
-        projectId: projectId,
-        isDedicated: isDedicated,
-        createdAt: createdAt,
-        worktreePath: worktreePath,
-        branchName: branchName,
-        baseBranch: baseBranch,
-        baseCommit: baseCommit,
-        lastAgent: lastAgent,
-        lastAgentModel: lastAgentModel,
-        pluginId: pluginId,
-      );
-      await _sessionDao.updateObservedSessionProjection(
-        sessionId: sessionId,
-        directory: directory,
-        catalogTitle: created.title,
-        updateCatalogTitle: true,
-        updatedAt: updatedAt,
-        projectionUpdatedAt: projectionUpdatedAt,
-      );
-    });
-    _publishBindingsCommitted(pluginId: pluginId, backendSessionIds: [created.id]);
-    return created.toSharedSessionWithId(sessionId: sessionId, pluginId: pluginId);
+    _publishBindingsCommitted(pluginId: pluginId, backendSessionIds: [result.created.id]);
+    return result.created.toSharedSessionWithId(sessionId: result.sessionId, pluginId: pluginId);
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
-    final target = await _requireActiveBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.renameSession,
     );
-    _primeDerivedSessionDirectory(binding: target.binding, plugin: target.plugin);
-    final updated = await target.plugin.renameSession(sessionId: target.binding.backendSessionId, title: title);
+    final updated = await _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.renameSession,
+      body: (plugin) {
+        _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+        return plugin.renameSession(sessionId: binding.backendSessionId, title: title);
+      },
+    );
     return updated.toSharedSessionWithId(
-      sessionId: target.binding.sessionId,
-      pluginId: target.binding.pluginId,
+      sessionId: binding.sessionId,
+      pluginId: binding.pluginId,
     );
   }
 
   Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async {
-    final plugin = _requirePlugin(pluginId: pluginId, operation: SessionOperation.getCommands);
     final normalizedProjectId = projectId?.trim();
-    final commands = await plugin.getCommands(
-      // The plugin reads commands from the project's directory, so resolve
-      // the id to the live path. Null/blank keeps the plugin's own fallback.
-      projectId: normalizedProjectId == null || normalizedProjectId.isEmpty
-          ? null
-          : await resolveProjectDirectory(projectId: normalizedProjectId),
+    final directory = normalizedProjectId == null || normalizedProjectId.isEmpty
+        ? null
+        : await resolveProjectDirectory(projectId: normalizedProjectId);
+    final commands = await _runtime.use(
+      pluginId: pluginId,
+      operation: SessionOperation.getCommands,
+      body: (plugin) => plugin.getCommands(projectId: directory),
     );
     return CommandListResponse(
       items: commands.map((command) => command.toSharedCommandInfo()).toList(growable: false),
@@ -226,24 +236,32 @@ class SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
-    final target = await _requireActiveBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.sendCommand,
     );
-    _primeDerivedSessionDirectory(binding: target.binding, plugin: target.plugin);
-    return target.plugin.sendCommand(
-      sessionId: target.binding.backendSessionId,
-      command: command,
-      arguments: arguments,
-      variant: _toPluginVariant(variant),
-      agent: agent,
-      model: switch (model) {
-        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
-        null => null,
+    return _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.sendCommand,
+      body: (plugin) {
+        _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+        return plugin.sendCommand(
+          sessionId: binding.backendSessionId,
+          command: command,
+          arguments: arguments,
+          userVisibleArguments: userVisibleArguments,
+          variant: _toPluginVariant(variant),
+          agent: agent,
+          model: switch (model) {
+            PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+            null => null,
+          },
+        );
       },
     );
   }
@@ -255,19 +273,25 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
-    final target = await _requireActiveBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.sendPrompt,
     );
-    _primeDerivedSessionDirectory(binding: target.binding, plugin: target.plugin);
-    return target.plugin.sendPrompt(
-      sessionId: target.binding.backendSessionId,
-      parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-      variant: _toPluginVariant(variant),
-      agent: agent,
-      model: switch (model) {
-        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
-        null => null,
+    return _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.sendPrompt,
+      body: (plugin) {
+        _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+        return plugin.sendPrompt(
+          sessionId: binding.backendSessionId,
+          parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+          variant: _toPluginVariant(variant),
+          agent: agent,
+          model: switch (model) {
+            PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+            null => null,
+          },
+        );
       },
     );
   }
@@ -277,13 +301,19 @@ class SessionRepository {
   /// be the FIRST plugin call for a stored worktree session, and a
   /// directory-scoped backend would otherwise replay in its launch directory.
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
-    final target = await _requireActiveBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.getSessionMessages,
     );
-    _primeDerivedSessionDirectory(binding: target.binding, plugin: target.plugin);
-    final pluginMessages = await target.plugin.getSessionMessages(target.binding.backendSessionId);
-    return pluginMessages.toSharedMessageWithParts(sessionId: target.binding.sessionId);
+    final pluginMessages = await _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.getSessionMessages,
+      body: (plugin) {
+        _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+        return plugin.getSessionMessages(binding.backendSessionId);
+      },
+    );
+    return pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId);
   }
 
   /// Persists the bridge-owned title override. Null removes the override so
@@ -309,14 +339,17 @@ class SessionRepository {
 
   List<String> get persistedSessionCleanupPluginIds {
     final pluginIds = [
-      for (final entry in _operationalPlugins.entries)
+      for (final entry in _runtime.operationalApis.entries)
         if (entry.value is PersistedSessionCleanupApi) entry.key,
     ]..sort();
     return List<String>.unmodifiable(pluginIds);
   }
 
   Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) {
-    _requirePersistedSessionCleanupApi(pluginId: pluginId);
+    _requirePersistedSessionCleanupApi(
+      pluginId: pluginId,
+      plugin: _runtime.operationalApis[pluginId],
+    );
     return _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
   }
 
@@ -324,9 +357,14 @@ class SessionRepository {
     required String pluginId,
     required String backendSessionId,
   }) {
-    return _requirePersistedSessionCleanupApi(
+    return _runtime.use(
       pluginId: pluginId,
-    ).deletePersistedSession(backendSessionId: backendSessionId);
+      operation: SessionOperation.cleanupSession,
+      body: (plugin) => _requirePersistedSessionCleanupApi(
+        pluginId: pluginId,
+        plugin: plugin,
+      ).deletePersistedSession(backendSessionId: backendSessionId),
+    );
   }
 
   Future<void> _ensureTombstonesLoaded({required String pluginId}) async {
@@ -356,17 +394,24 @@ class SessionRepository {
   /// Deletes the backend root, then tombstones every persisted binding in its
   /// subtree and removes the stable root atomically.
   Future<Session> deleteSession({required String sessionId}) async {
-    final target = await _requireActiveBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
     );
-    final subtree = await _getSessionSubtree(root: target.binding);
-    final deletionSnapshot = (await _mapCatalogSessions(rows: [target.binding])).single;
-    try {
-      await target.plugin.deleteSession(target.binding.backendSessionId);
-    } on PluginOperationException catch (error) {
-      if (!error.isNotFound) rethrow;
-    }
+    final subtree = await _getSessionSubtree(root: binding);
+    final deletionSnapshot = (await _mapCatalogSessions(rows: [binding])).single;
+    await _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.deleteSession,
+      body: (plugin) async {
+        _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+        try {
+          await plugin.deleteSession(binding.backendSessionId);
+        } on PluginOperationException catch (error) {
+          if (!error.isNotFound) rethrow;
+        }
+      },
+    );
     await _sessionDao.transaction(() async {
       final deletedAt = DateTime.now().millisecondsSinceEpoch;
       for (final binding in subtree) {
@@ -376,7 +421,7 @@ class SessionRepository {
           deletedAt: deletedAt,
         );
       }
-      await _sessionDao.deleteSession(sessionId: target.binding.sessionId);
+      await _sessionDao.deleteSession(sessionId: binding.sessionId);
     });
     _deletedSessionIds.addAll(subtree.map((binding) => binding.sessionId));
     for (final binding in subtree) {
@@ -423,14 +468,33 @@ class SessionRepository {
   /// through 1:1.
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
     final results = await Future.wait(
-      _enabledPluginIds.map((pluginId) async {
-        final plugin = _operationalPlugins[pluginId];
-        if (plugin == null) return const <ProjectActivitySummary>[];
+      _runtime.activePluginIds.map((pluginId) async {
         try {
-          return await _getPluginProjectActivitySummaries(
+          final sourcedObservation = await _runtime.useIfActive(
             pluginId: pluginId,
-            plugin: plugin,
-          ).timeout(_aggregateSourceDeadline);
+            operation: SessionOperation.getProjectActivitySummaries,
+            body: (plugin, generation) async => (
+              generation: generation,
+              observation: await _collectPluginProjectActivity(
+                pluginId: pluginId,
+                plugin: plugin,
+              ).timeout(_aggregateSourceDeadline),
+            ),
+          );
+          if (sourcedObservation == null) return const <ProjectActivitySummary>[];
+          final (:generation, :observation) = sourcedObservation;
+          _runtime.requireCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: SessionOperation.getProjectActivitySummaries,
+          );
+          await _runtime.commitCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: SessionOperation.getProjectActivitySummaries,
+            commit: () => _persistActiveRootHydrations(observation: observation),
+          );
+          return _mapPluginProjectActivitySummaries(observation: observation);
         } on Object catch (error, stackTrace) {
           Log.w("Could not read activity summaries from plugin $pluginId", error, stackTrace);
           return const <ProjectActivitySummary>[];
@@ -448,7 +512,7 @@ class SessionRepository {
     ];
   }
 
-  Future<List<ProjectActivitySummary>> _getPluginProjectActivitySummaries({
+  Future<_PluginActivityObservation> _collectPluginProjectActivity({
     required String pluginId,
     required BridgePluginApi plugin,
   }) async {
@@ -464,14 +528,14 @@ class SessionRepository {
             ],
           ),
     ];
-    final backendSessionIds = {
+    final backendSessionIds = <String>{
       for (final summary in summaries)
         for (final active in summary.activeSessions) ...{
           active.id,
           ...active.childSessionIds,
         },
     };
-    var bindings = await _sessionDao.getSessionsByBackendIds(
+    final bindings = await _sessionDao.getSessionsByBackendIds(
       pluginId: pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
@@ -480,18 +544,29 @@ class SessionRepository {
         for (final active in summary.activeSessions)
           if (!bindings.containsKey(active.id)) active.id,
     };
-    if (missingRootIds.isNotEmpty && plugin is NativeProjectsPluginApi) {
-      await _hydrateActiveRootBindings(
-        pluginId: pluginId,
-        plugin: plugin,
-        summaries: summaries,
-        missingRootIds: missingRootIds,
-      );
-      bindings = await _sessionDao.getSessionsByBackendIds(
-        pluginId: pluginId,
-        backendSessionIds: backendSessionIds.toList(growable: false),
-      );
-    }
+    final hydrations = missingRootIds.isNotEmpty && plugin is NativeProjectsPluginApi
+        ? await _collectActiveRootHydrations(
+            pluginId: pluginId,
+            plugin: plugin,
+            summaries: summaries,
+            missingRootIds: missingRootIds,
+          )
+        : const <_ActiveRootHydration>[];
+    return _PluginActivityObservation(
+      pluginId: pluginId,
+      summaries: summaries,
+      backendSessionIds: backendSessionIds,
+      hydrations: hydrations,
+    );
+  }
+
+  Future<List<ProjectActivitySummary>> _mapPluginProjectActivitySummaries({
+    required _PluginActivityObservation observation,
+  }) async {
+    final bindings = await _sessionDao.getSessionsByBackendIds(
+      pluginId: observation.pluginId,
+      backendSessionIds: observation.backendSessionIds.toList(growable: false),
+    );
 
     ActiveSession? mapActiveSession(PluginActiveSession active) {
       final binding = bindings[active.id];
@@ -506,7 +581,7 @@ class SessionRepository {
     }
 
     final byProject = <String, List<ActiveSession>>{};
-    for (final summary in summaries) {
+    for (final summary in observation.summaries) {
       for (final active in summary.activeSessions) {
         final binding = bindings[active.id];
         final mapped = mapActiveSession(active);
@@ -519,7 +594,7 @@ class SessionRepository {
     ];
   }
 
-  Future<void> _hydrateActiveRootBindings({
+  Future<List<_ActiveRootHydration>> _collectActiveRootHydrations({
     required String pluginId,
     required NativeProjectsPluginApi plugin,
     required List<PluginProjectActivitySummary> summaries,
@@ -528,6 +603,7 @@ class SessionRepository {
     // A native project API can resolve an activity-summary directory to both
     // stable project identity and live path. Derived plugins cannot safely do
     // that for an unknown worktree, so their rowless activity stays omitted.
+    final hydrations = <_ActiveRootHydration>[];
     final hydratedProjectIds = <String>{};
     final storedProjects = await _projectsDao.getAllProjects();
     final projectsById = <String, ProjectDto>{
@@ -547,15 +623,26 @@ class SessionRepository {
           preferredProjectId: project.id,
           observedPath: project.directory,
         );
-        final candidateProjectId = existing?.projectId ?? project.id;
-        if (hydratedProjectIds.contains(candidateProjectId)) continue;
-        final hydratedProject = await _observeNativeRootSessions(
-          pluginId: pluginId,
-          plugin: plugin,
-          preferredProjectId: project.id,
-          projectDirectory: project.directory,
-        );
+        final hydratedProject =
+            existing ??
+            ProjectDto(
+              projectId: project.id,
+              path: project.directory,
+              createdAt: 0,
+              updatedAt: 0,
+              projectionUpdatedAt: 0,
+            );
+        if (hydratedProjectIds.contains(hydratedProject.projectId)) continue;
+        final sessions = await plugin.getSessions(project.directory, start: null, limit: null);
         hydratedProjectIds.add(hydratedProject.projectId);
+        hydrations.add(
+          _ActiveRootHydration(
+            summaryId: summary.id,
+            preferredProjectId: project.id,
+            projectDirectory: project.directory,
+            sessions: sessions,
+          ),
+        );
         projectsById[hydratedProject.projectId] = hydratedProject;
         projectsByNormalizedPath
           ..clear()
@@ -572,16 +659,35 @@ class SessionRepository {
         );
       }
     }
+    return hydrations;
   }
 
-  Future<ProjectDto> _observeNativeRootSessions({
+  Future<void> _persistActiveRootHydrations({required _PluginActivityObservation observation}) async {
+    for (final hydration in observation.hydrations) {
+      try {
+        await _persistNativeRootSessions(
+          pluginId: observation.pluginId,
+          preferredProjectId: hydration.preferredProjectId,
+          projectDirectory: hydration.projectDirectory,
+          pluginSessions: hydration.sessions,
+        );
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "Could not hydrate active project ${hydration.summaryId}; omitting unresolved sessions",
+          error,
+          stackTrace,
+        );
+      }
+    }
+  }
+
+  Future<ProjectDto> _persistNativeRootSessions({
     required String pluginId,
-    required NativeProjectsPluginApi plugin,
     required String preferredProjectId,
     required String projectDirectory,
+    required List<PluginSession> pluginSessions,
   }) async {
     final projectionUpdatedAt = captureProjectionTimestamp();
-    final pluginSessions = await plugin.getSessions(projectDirectory, start: null, limit: null);
     final backendSessionIds = [for (final session in pluginSessions) session.id];
     final result = await _sessionDao.attachedDatabase.transaction(() async {
       final storedProjects = await _projectsDao.getAllProjects();
@@ -666,30 +772,45 @@ class SessionRepository {
   }
 
   Future<void> notifySessionArchived({required String sessionId}) async {
-    final target = await _requireActiveBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.archiveSession,
     );
-    return target.plugin.archiveSession(sessionId: target.binding.backendSessionId);
+    return _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.archiveSession,
+      body: (plugin) {
+        _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+        return plugin.archiveSession(sessionId: binding.backendSessionId);
+      },
+    );
   }
 
   Future<void> abortSession({required String sessionId}) async {
-    final target = await _requireActiveBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.abortSession,
     );
-    return target.plugin.abortSession(sessionId: target.binding.backendSessionId);
+    return _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.abortSession,
+      body: (plugin) {
+        _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+        return plugin.abortSession(sessionId: binding.backendSessionId);
+      },
+    );
   }
 
   Future<SessionStatusResponse> getSessionStatuses() async {
     final results = await Future.wait(
-      _enabledPluginIds.map((pluginId) async {
-        final plugin = _operationalPlugins[pluginId];
-        if (plugin == null) {
-          return (pluginId: pluginId, statuses: null);
-        }
+      _runtime.eligiblePluginIds.map((pluginId) async {
         try {
-          final pluginStatuses = await plugin.getSessionStatuses().timeout(_aggregateSourceDeadline);
+          final pluginStatuses = await _runtime.useIfActive(
+            pluginId: pluginId,
+            operation: SessionOperation.getSessionStatuses,
+            body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+          );
+          if (pluginStatuses == null) return (pluginId: pluginId, statuses: null);
           final bindings = await _sessionDao.getSessionsByBackendIds(
             pluginId: pluginId,
             backendSessionIds: pluginStatuses.keys.toList(growable: false),
@@ -953,11 +1074,16 @@ class SessionRepository {
     });
   }
 
-  Future<StoredSession> requireActiveStoredSession({
+  Future<StoredSession> requireRoutableStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
-    return (await _requireActiveBinding(sessionId: sessionId, operation: operation)).binding.toStoredSession();
+    final binding = await _requireBinding(sessionId: sessionId, operation: operation);
+    return _runtime.use(
+      pluginId: binding.pluginId,
+      operation: operation,
+      body: (_) async => binding.toStoredSession(),
+    );
   }
 
   Future<Session?> getCatalogSession({required String sessionId}) async {
@@ -1061,21 +1187,15 @@ class SessionRepository {
     );
   }
 
-  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
-    _requirePlugin(pluginId: pluginId, operation: operation);
-  }
-
-  BridgePluginApi _requirePlugin({required String pluginId, required SessionOperation operation}) {
-    final plugin = _operationalPlugins[pluginId];
-    if (plugin != null) return plugin;
-    throw PluginOperationException(
-      operation.name,
-      statusCode: 503,
-      message: "plugin $pluginId is not running",
+  Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) {
+    return _runtime.use(
+      pluginId: pluginId,
+      operation: operation,
+      body: (_) async {},
     );
   }
 
-  Future<({SessionDto binding, BridgePluginApi plugin})> _requireActiveBinding({
+  Future<SessionDto> _requireBinding({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -1086,8 +1206,7 @@ class SessionRepository {
         message: "session $sessionId was not found",
       );
     }
-    final plugin = _requirePlugin(pluginId: binding.pluginId, operation: operation);
-    return (binding: binding, plugin: plugin);
+    return binding;
   }
 
   static final Random _secureRandom = Random.secure();
@@ -1113,8 +1232,10 @@ class SessionRepository {
     return _tombstonedBackendSessionIds.putIfAbsent(pluginId, () => <String>{});
   }
 
-  PersistedSessionCleanupApi _requirePersistedSessionCleanupApi({required String pluginId}) {
-    final plugin = _operationalPlugins[pluginId];
+  PersistedSessionCleanupApi _requirePersistedSessionCleanupApi({
+    required String pluginId,
+    required BridgePluginApi? plugin,
+  }) {
     if (plugin case final PersistedSessionCleanupApi cleanupApi) return cleanupApi;
     throw StateError('Plugin "$pluginId" does not support persisted session cleanup');
   }
@@ -1152,4 +1273,32 @@ class SessionRepository {
     }
     return buffer.toString();
   }
+}
+
+class _PluginActivityObservation {
+  const _PluginActivityObservation({
+    required this.pluginId,
+    required this.summaries,
+    required this.backendSessionIds,
+    required this.hydrations,
+  });
+
+  final String pluginId;
+  final List<PluginProjectActivitySummary> summaries;
+  final Set<String> backendSessionIds;
+  final List<_ActiveRootHydration> hydrations;
+}
+
+class _ActiveRootHydration {
+  const _ActiveRootHydration({
+    required this.summaryId,
+    required this.preferredProjectId,
+    required this.projectDirectory,
+    required this.sessions,
+  });
+
+  final String summaryId;
+  final String preferredProjectId;
+  final String projectDirectory;
+  final List<PluginSession> sessions;
 }

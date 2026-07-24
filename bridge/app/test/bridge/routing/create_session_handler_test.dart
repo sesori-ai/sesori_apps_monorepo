@@ -932,6 +932,10 @@ void main() {
       expect(plugin.lastSendCommandArguments, contains("session-001"));
       expect(plugin.lastSendCommandArguments, contains("/repo/.worktrees/session-001"));
       expect(plugin.lastSendCommandArguments, contains("Review this code"));
+      expect(
+        plugin.lastSendCommandUserVisibleArguments,
+        equals("Review this code"),
+      );
     });
 
     test("persists stored session before sending command", () async {
@@ -1293,6 +1297,7 @@ class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -1306,6 +1311,7 @@ class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
       variant: variant,
       agent: agent,
       model: model,

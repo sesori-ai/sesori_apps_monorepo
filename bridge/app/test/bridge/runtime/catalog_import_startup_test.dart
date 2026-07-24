@@ -25,7 +25,7 @@ void main() {
 
     BridgeRuntimeRunner.startCatalogImports(
       service: service,
-      pluginIds: const ["healthy"],
+      pluginIds: const ["unavailable", "healthy"],
       headlessPluginIds: const ["unavailable", "healthy"],
       operationalPluginIds: const {"healthy"},
     );

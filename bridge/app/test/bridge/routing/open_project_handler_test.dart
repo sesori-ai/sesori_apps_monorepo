@@ -16,6 +16,7 @@ import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -59,7 +60,7 @@ void main() {
             projectsDao: db.projectsDao,
             sessionDao: db.sessionDao,
             gitApi: gitCliApi,
-            operationalPlugins: {plugin.id: plugin},
+            runtime: createTestPluginRuntime(plugins: [plugin]),
           ),
           filesystemRepository: filesystemRepository,
         ),

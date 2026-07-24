@@ -32,6 +32,7 @@ const _$CodexRolloutLineTypeEnumMap = {
   CodexRolloutLineType.sessionMeta: 'session_meta',
   CodexRolloutLineType.turnContext: 'turn_context',
   CodexRolloutLineType.responseItem: 'response_item',
+  CodexRolloutLineType.compacted: 'compacted',
   CodexRolloutLineType.unknown: 'unknown',
 };
 

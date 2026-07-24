@@ -1,3 +1,5 @@
+import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/routing/get_plugin_setup_handler.dart";
 import "package:sesori_bridge/src/routing/get_plugins_handler.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
@@ -5,41 +7,46 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_runtime_test_support.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("GetPluginSetupHandler", () {
     late PluginLifecycleService lifecycleService;
+    late PluginRuntime pluginRuntime;
     late GetPluginSetupHandler handler;
     late GetPluginsHandler selectableHandler;
 
     setUp(() async {
-      lifecycleService = PluginLifecycleService()
-        ..registerPlugins(
-          plugins: const [
-            (id: "ready", displayName: "Ready"),
-            (id: "blocked", displayName: "Blocked"),
-          ],
-        )
-        ..initialize(
-          disabledPluginIds: const {},
-          setupById: const {
-            "ready": PluginSetupReady(),
-            "blocked": PluginSetupAuthenticationRequired(
-              actionHint: "Authenticate the backend locally, then retry.",
-            ),
-          },
-        );
-      await lifecycleService.registerStart(
-        id: "ready",
-        startFuture: Future<BridgePlugin>.value(_ReadyPlugin()),
-        shutdownBudget: const Duration(seconds: 1),
-      );
+      pluginRuntime = createTestPluginRuntime(plugins: [_ReadyPluginApi()]);
+      lifecycleService =
+          PluginLifecycleService(
+              lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+            )
+            ..registerPlugins(
+              plugins: const [
+                (id: "ready", displayName: "Ready"),
+                (id: "blocked", displayName: "Blocked"),
+              ],
+            )
+            ..initialize(
+              disabledPluginIds: const {},
+              setupById: const {
+                "ready": PluginSetupReady(),
+                "blocked": PluginSetupAuthenticationRequired(
+                  actionHint: "Authenticate the backend locally, then retry.",
+                ),
+              },
+            );
+      await Future<void>.delayed(Duration.zero);
       handler = GetPluginSetupHandler(lifecycleService: lifecycleService);
       selectableHandler = GetPluginsHandler(lifecycleService: lifecycleService);
     });
 
-    tearDown(() => lifecycleService.dispose());
+    tearDown(() async {
+      await lifecycleService.dispose();
+      await pluginRuntime.dispose();
+    });
 
     test("handles only GET /plugin/setup", () {
       expect(handler.canHandle(makeRequest("GET", "/plugin/setup")), isTrue);
@@ -48,7 +55,7 @@ void main() {
     });
 
     test("returns every registered plugin in stable order without changing activation", () async {
-      final operationalBefore = lifecycleService.compositionView.operationalPlugins.keys.toList();
+      final operationalBefore = pluginRuntime.activePluginIds;
       final response = await handler.handle(
         makeRequest("GET", "/plugin/setup"),
         pathParams: const {},
@@ -60,7 +67,7 @@ void main() {
       expect(response.plugins.first.state, PluginSetupState.authenticationRequired);
       expect(response.plugins.last.state, PluginSetupState.ready);
       expect(response.plugins.first.actionHint, "Authenticate the backend locally, then retry.");
-      expect(lifecycleService.compositionView.operationalPlugins.keys, operationalBefore);
+      expect(pluginRuntime.activePluginIds, operationalBefore);
     });
 
     test("keeps setup-blocked registrations out of the compatible plugin list", () async {
@@ -75,25 +82,6 @@ void main() {
       expect(response.plugins.single.isDefault, isTrue);
     });
   });
-}
-
-class _ReadyPlugin implements BridgePlugin {
-  final BridgePluginApi _api = _ReadyPluginApi();
-
-  @override
-  BridgePluginApi get api => _api;
-
-  @override
-  PluginStatus get currentStatus => const PluginReady();
-
-  @override
-  Stream<PluginStatus> get status => const Stream<PluginStatus>.empty();
-
-  @override
-  PluginDiagnostics describe() => const PluginDiagnostics(pluginId: "ready", endpoint: null, details: {});
-
-  @override
-  Future<void> shutdown({required Duration? budget}) async {}
 }
 
 class _ReadyPluginApi extends NativeProjectsPluginApi {

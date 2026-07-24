@@ -41,8 +41,8 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       calculator: calculator,
     ),
     projectRepository: singlePluginProjectRepository(
-      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
+      gitCliApi: FakeGitCliApi(),
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       unseenCalculator: calculator,
@@ -124,6 +124,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastSendCommandSessionId;
   String? lastSendCommand;
   String? lastSendCommandArguments;
+  String? lastSendCommandUserVisibleArguments;
   String? lastSendCommandVariant;
   String? lastSendCommandAgent;
   ({String providerID, String modelID})? lastSendCommandModel;
@@ -325,6 +326,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -332,6 +334,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     lastSendCommandSessionId = sessionId;
     lastSendCommand = command;
     lastSendCommandArguments = arguments;
+    lastSendCommandUserVisibleArguments = userVisibleArguments;
     lastSendCommandVariant = variant?.id;
     lastSendCommandAgent = agent;
     lastSendCommandModel = model;
@@ -845,7 +848,7 @@ class _NoopSessionRepository implements SessionRepository {
   }) async => null;
 
   @override
-  Future<StoredSession> requireActiveStoredSession({
+  Future<StoredSession> requireRoutableStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -862,7 +865,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
 
   @override
-  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {}
+  Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {}
 
   @override
   Future<void> archiveStoredSession({
@@ -913,6 +916,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -1227,7 +1231,7 @@ class FakeSessionRepository implements SessionRepository {
   }) async => null;
 
   @override
-  Future<StoredSession> requireActiveStoredSession({
+  Future<StoredSession> requireRoutableStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -1238,7 +1242,7 @@ class FakeSessionRepository implements SessionRepository {
         message: "session $sessionId was not found",
       );
     }
-    ensurePluginAvailable(pluginId: stored.pluginId, operation: operation);
+    await ensurePluginRoutable(pluginId: stored.pluginId, operation: operation);
     return stored;
   }
 
@@ -1258,7 +1262,7 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
+  Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {
     if (pluginId == _plugin.id) return;
     throw PluginOperationException(
       operation.name,
@@ -1341,6 +1345,7 @@ class FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -1349,6 +1354,7 @@ class FakeSessionRepository implements SessionRepository {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
       variant: _toPluginVariant(variant),
       agent: agent,
       model: switch (model) {

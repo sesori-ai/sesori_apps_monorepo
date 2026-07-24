@@ -10,6 +10,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -263,7 +264,7 @@ void main() {
       expect(plugin.lastSendCommandModel, isNull);
     });
 
-    test("passes empty arguments when no text part present", () async {
+    test("passes no user-visible arguments when no text part is present", () async {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
@@ -284,6 +285,26 @@ void main() {
       expect(plugin.lastSendCommandSessionId, equals("backend-s8"));
       expect(plugin.lastSendCommand, equals("attach"));
       expect(plugin.lastSendCommandArguments, equals(""));
+      expect(plugin.lastSendCommandUserVisibleArguments, isNull);
+    });
+
+    test("treats whitespace-only user-visible arguments as absent", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s8",
+          parts: [PromptPart.text(text: "   ")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: "attach",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendCommandUserVisibleArguments, isNull);
     });
 
     test("passes agent and model when command is present", () async {
@@ -636,6 +657,7 @@ class _ThrowingSendCommandPlugin extends FakeBridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -652,11 +674,10 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
     required AppDatabase database,
     required super.unseenCalculator,
   }) : super(
-         operationalPlugins: {plugin.id: plugin},
+         runtime: createTestPluginRuntime(plugins: [plugin]),
          bridgeDerivedProjectPluginIds: {
            if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
          },
-         enabledPluginIds: [plugin.id],
          sessionDao: database.sessionDao,
          projectsDao: database.projectsDao,
          pullRequestDao: database.pullRequestDao,

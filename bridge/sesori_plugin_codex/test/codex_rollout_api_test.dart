@@ -646,6 +646,46 @@ void main() {
       expect(messages[1].parts.single.id, "assistant-1-text");
     });
 
+    test("readMessages preserves compacted rollout records as completed tools", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/07/23/rollout-compacted.jsonl",
+        sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "timestamp": "2026-07-23T14:48:17.959Z",
+            "type": "compacted",
+            "payload": {
+              "message": "",
+              "replacement_history": [
+                {
+                  "type": "compaction",
+                  "id": "cmp-secret",
+                  "encrypted_content": "not-rendered",
+                },
+              ],
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+      );
+
+      expect(messages, hasLength(1));
+      expect(messages.single.info, isA<PluginMessageAssistant>());
+      expect(messages.single.info.id, "codex-compaction-1");
+      expect(messages.single.info.time?.created, 1784818097959);
+      final part = messages.single.parts.single;
+      expect(part.tool, "compact");
+      expect(part.state?.title, "Context compacted");
+      expect(part.state?.status, PluginToolStatus.completed);
+      expect(part.state?.output, isNull);
+    });
+
     test("readMessages surfaces transcript read failures", () {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       final path = p.join(codexHome.path, "broken-rollout.jsonl");

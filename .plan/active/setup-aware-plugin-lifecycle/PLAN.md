@@ -3,11 +3,13 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Status:** redesign approved; implementation stack is being rebuilt
-- **Implementation base:** latest `origin/main` at `5a91f582`
+- **Status:** Stage 10 merged; oversized Stage 11-P01 is frozen and being
+  replaced by four reviewable stacked PRs
+- **Implementation base:** latest `origin/main` at `583748ab`
 - **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
-- **Delivery:** five stacked PRs; the old unmerged PRs #507-#511 are closed and
-  are reopened only after their replacement stage is implemented and verified
+- **Delivery:** Stage 11-P01 is split into runtime mechanics, operation routing,
+  dynamic events/durable fencing, and bridge-owned projects/default behavior;
+  the later dormancy, management, and client stages are rebuilt on that stack
 
 This plan replaces the first unmerged implementation. Nothing introduced only
 by that implementation needs compatibility handling. Released contracts still
@@ -69,7 +71,8 @@ available:
 
 - All plugin lists use case-insensitive display-name order with plugin ID as the
   deterministic tie-breaker.
-- The bridge default is the first currently selectable plugin in that order.
+- The bridge default prefers OpenCode when it is selectable, then falls back to
+  the first currently selectable plugin in that order.
 - No default or last-used plugin is persisted by the bridge.
 - The mobile new-session chooser persists last-used plugin per client and
   bridge. It uses that plugin when still routable and otherwise uses the
@@ -233,8 +236,10 @@ full CLI parser registers every plugin option
 ```
 
 The onboarding checkpoint remains standalone/interactive and no longer depends
-on at least one usable plugin. Project operations that still require a default
-return the existing typed unavailable response when none exists.
+on at least one usable plugin. Aggregate projects are bridge-owned and may
+contain sessions from multiple plugins. Project create/open/rename use only the
+durable bridge catalog and local filesystem; they never select, start, acquire,
+or call a plugin.
 
 ### Runtime boundary
 
@@ -251,8 +256,10 @@ revision, and lifecycle snapshots. `BridgeRuntimeRunner` remains the Layer-5
 composer. `Orchestrator` owns management SSE emission and dynamic backend-event
 routing.
 
-Every plugin-backed operation uses `PluginRuntime.use`, `useStream`, or
-`useIfActive`. Catalog-only reads never acquire. Aggregate status reads inspect
+Every plugin-backed operation uses `PluginRuntime.use`, `useAndCommit`,
+`useStream`, or `useIfActive`. `useAndCommit` keeps backend preparation
+interruptible, then protects its short durable commit from generation
+replacement. Catalog-only reads never acquire. Aggregate status reads inspect
 active generations only. A generation result or event is accepted only while
 its captured generation remains current.
 
@@ -282,28 +289,33 @@ Stage 11-P02 adds the shared `BridgeSettingsRepository` and `ServerClock` when
 idle policy first needs them. `BridgeRuntimeRunner` constructs every owner and
 injects the same instances into `Orchestrator` and `DebugServer`.
 
-The Stage 11-P01 method migration is complete before the branch is done:
+The Stage 11-P01 replacement stack completes this method migration:
 
 | Consumer | Acquisition |
 |---|---|
-| `SessionRepository` concrete backend operations | `use` the request or persisted binding's plugin; durable writes occur only after a current-generation result. |
+| `SessionRepository` concrete backend operations | `use` the request or persisted binding's plugin; session creation uses `useAndCommit` so generation replacement cannot split backend creation from its durable binding commit. |
 | `SessionRepository` aggregate activity/status reads | `useIfActive`; never wake every plugin. |
-| `ProjectRepository` open/rename | `use` the live nullable derived default; missing default remains typed unavailable. |
+| `ProjectRepository` create/open/rename | No plugin acquisition; use the durable bridge catalog and local filesystem only. |
+| `ProjectActivityRepository` reconciliation | `useIfActive` for the explicitly reconciled plugin source; plugin observations are evidence for bridge-owned aggregates. |
 | `AgentRepository`, `ProviderRepository` | `use` the explicit plugin ID. |
 | `QuestionRepository`, `PermissionRepository` | `use` the persisted session binding; aggregate project questions use active generations only. |
 | `WorktreeRepository` backend cleanup | observable best-effort `use` after git success; its future retains the lease and logs recovered failure. |
 | `CatalogImportRepository` | `useStream` for enumeration through atomic publication/cancellation. |
 | `PluginEventListener`, `SessionEventDispatcher` | one generation-attributed runtime event stream; no startup API-map subscriptions. |
 
-Stage 11-P01 is independently coherent: every eligible setup-ready plugin still
-starts eagerly and remains resident, matching Stage 10 while all backend access
-and events move behind the dynamic boundary. Stage 11-P02 alone switches initial
-residency to dormant and enables idle stop.
+Across the Stage 11-P01 replacement stack every eligible setup-ready plugin
+still starts eagerly and remains resident, matching Stage 10 while backend
+access and events move behind the dynamic boundary. The first slice adds the
+tested runtime kernel without activating it. The operation-routing slice then
+uses a narrow stack-local live API view only for consumers not migrated yet;
+the dynamic-event and bridge-owned-project slices remove that view completely.
+It is not a released compatibility contract. Stage 11-P02 alone switches
+initial residency to dormant and enables idle stop.
 
 The exact operation path is:
 
 ```text
-handler -> service -> owning repository -> PluginRuntime.use/useStream
+handler -> service -> owning repository -> PluginRuntime.use/useAndCommit/useStream
   -> per-plugin transition lock checks eligibility and setup
   -> join or start one generation
   -> increment lease before API escapes the lock
@@ -311,6 +323,12 @@ handler -> service -> owning repository -> PluginRuntime.use/useStream
   -> verify captured generation before accepting result/publication
   -> release lease in finally/cancel/error
 ```
+
+For a backend result that must be durably bound, `useAndCommit` splits the body
+into interruptible preparation and a short protected commit. Force stop and
+terminal retirement fence new acquisitions, wait for an entered commit, then
+replace the generation; if replacement wins before commit entry, no durable
+write starts.
 
 The exact stop/replace path is:
 
@@ -530,16 +548,36 @@ the listed source files and committed with their stage.
 | Bridge config/CLI | `bridge/app/bin/bridge.dart`; `bridge_settings.dart`, `bridge_settings_repository.dart`; `bridge_config_service.dart`; `plugin_registry.dart`, `plugin_cli_options_mapper.dart`, `bridge_cli_options.dart`. Delete `plugin_bootstrap_selection.dart`. |
 | Bridge startup/policy/routes | `bridge_runtime_runner.dart`, `plugin_lifecycle_service.dart`, `orchestrator.dart`, `project_repository.dart`, `catalog_import_service.dart`, `get_plugin_setup_handler.dart`, `get_plugins_handler.dart`. |
 
-### Stage 11-P01 / PR #508 files
+### Stage 11-P01A — runtime mechanics files
 
 | Workspace | Production files/classes |
 |---|---|
-| Mechanical runtime | Add concrete `plugin_generation_factory.dart`, `plugin_runtime.dart`, and `plugin_lifecycle_repository.dart`; modify `bridge_runtime_runner.dart` and `plugin_lifecycle_service.dart`. |
-| Event composition | `orchestrator.dart`, `plugin_event_listener.dart`, `session_event_dispatcher.dart`, `bridge_runtime.dart`. |
-| Plugin-backed repositories | `session_repository.dart`, `project_repository.dart`, `agent_repository.dart`, `provider_repository.dart`, `question_repository.dart`, `permission_repository.dart`, `worktree_repository.dart`, `catalog_import_repository.dart`. |
-| Owning services | `session_creation_service.dart`, `session_lifecycle_service.dart`, `permission_auto_approval_service.dart`, `project_activity_service.dart`, `catalog_import_service.dart`. |
+| Mechanical runtime | Add concrete `plugin_generation_factory.dart` and `plugin_runtime.dart`, including typed operations, acquisitions, streams, generation fencing, durable commit protection, transitions, and bounded teardown. This slice does not activate the new runtime in the bridge composer. |
 
-### Stage 11-P02 / PR #509 files
+### Stage 11-P01B — plugin operation routing files
+
+| Workspace | Production files/classes |
+|---|---|
+| Runtime composition/policy | Add `plugin_lifecycle_repository.dart`; modify `bridge_runtime_runner.dart`, `plugin_lifecycle_service.dart`, and `orchestrator.dart`. |
+| Plugin-backed operations | `session_operation.dart`, `session_repository.dart`, `agent_repository.dart`, `provider_repository.dart`, `question_repository.dart`, `permission_repository.dart`, `worktree_repository.dart`, `session_creation_service.dart`, and `session_lifecycle_service.dart`. Session creation applies `useAndCommit` in the same slice as its routing cutover. |
+| Temporary stack seam | Expose only the live generation APIs needed by not-yet-migrated catalog/project consumers. Existing event listeners consume the runtime event stream through a generation-dropping adapter until P01C carries generation through normalization. Do not persist or publish either seam; delete them by P01D. |
+
+### Stage 11-P01C — dynamic events and durable fencing files
+
+| Workspace | Production files/classes |
+|---|---|
+| Event composition | Consume the runtime event seam in `orchestrator.dart`, `plugin_event_listener.dart`, `session_event_dispatcher.dart`, `session_event_service.dart`, and `session_event_tracker.dart`. |
+| Durable plugin evidence | `session_repository.dart`, new `project_activity_repository.dart`, `project_activity_service.dart`, `catalog_import_repository.dart`, and `catalog_import_service.dart`; preserve generation attribution through normalization and through each transaction publication point. |
+
+### Stage 11-P01D — bridge-owned projects and defaults files
+
+| Workspace | Production files/classes |
+|---|---|
+| Aggregate projects | `project_repository.dart`, `project_activity_repository.dart`, `project_activity_service.dart`, `rename_project_handler.dart`, and `orchestrator.dart`; project create/open/rename become plugin-neutral. |
+| Default policy | `plugin_lifecycle_service.dart`, `plugin_registry.dart`, and `bridge_runtime_runner.dart`; prefer OpenCode when selectable, otherwise deterministic first selectable, otherwise null. Missing released `pluginId` still means OpenCode. |
+| Ownership documentation | Project DAO/table/catalog identity and foundation directory comments, generated database output, and scoped bridge instructions. Remove the temporary live API seam. |
+
+### Stage 11-P02 / former PR #509 files
 
 | Workspace | Production files/classes |
 |---|---|
@@ -548,7 +586,7 @@ the listed source files and committed with their stage.
 | Bridge policy/settings | `plugin_runtime.dart`, `plugin_lifecycle_repository.dart`, `plugin_lifecycle_service.dart`, `bridge_settings.dart`, `bridge_settings_repository.dart`, `bridge_runtime_runner.dart`. |
 | Dormancy cleanup | Add `plugin_catalog_hydration_listener.dart`; modify `catalog_import_repository.dart`, `catalog_import_service.dart`, session/project repositories, `project_activity_service.dart`, `orchestrator.dart`. |
 
-### Stage 12 / PR #510 files
+### Stage 12 / former PR #510 files
 
 | Workspace | Production files/classes |
 |---|---|
@@ -558,7 +596,7 @@ the listed source files and committed with their stage.
 | Routes | Add `get_plugin_management_handler.dart`, `post_plugin_lifecycle_command_handler.dart`, `patch_plugin_idle_timeout_handler.dart`; wire the same instances into relay/debug routing. |
 | Client exhaustive switches | Only minimum `SseEvent`/tracker changes needed for the additive invalidation event; no management feature yet. |
 
-### Stage 13 / PR #511 files
+### Stage 13 / former PR #511 files
 
 | Workspace | Production files/classes |
 |---|---|
@@ -577,26 +615,47 @@ the listed source files and committed with their stage.
 - alphabetical eligibility/default and zero-plugin startup;
 - snapshot setup API and compatible plugin list.
 
-### Stage 11-P01 / PR #508 — dynamic runtime boundary
+### Stage 11-P01A — runtime mechanics
 
-- generation starter, runtime API, lifecycle repository;
-- migrate every backend operation and dynamic event source to acquisition;
-- retain generation fencing, independent failure, and zero-plugin composition.
+- add the concrete generation factory and generation-scoped runtime kernel;
+- cover acquisitions, leases, typed operations, transitions, event attribution,
+  durable commit protection, failure isolation, and bounded teardown;
+- leave current bridge composition unchanged until the next stacked slice.
 
-### Stage 11-P02 / PR #509 — dormant runtime and numeric idle timeout
+### Stage 11-P01B — plugin operation routing
+
+- activate the runtime/lifecycle repository in the composition root;
+- migrate ordinary plugin-backed repository calls to runtime acquisition;
+- apply durable session-binding protection with the creation cutover;
+- retain a narrow temporary API view for catalog/project consumers and a
+  generation-dropping runtime-event adapter for existing listeners.
+
+### Stage 11-P01C — dynamic events and durable generation fencing
+
+- replace startup-fixed event subscriptions with generation-attributed events;
+- fence session projection, catalog publication, and plugin activity evidence;
+- drain routed work before runtime disposal.
+
+### Stage 11-P01D — bridge-owned projects and default behavior
+
+- make project create/open/rename bridge-owned and plugin-neutral;
+- prefer OpenCode as the selectable default with deterministic fallback;
+- remove the temporary API view and finalize ownership guidance.
+
+### Stage 11-P02 / former PR #509 — dormant runtime and numeric idle timeout
 
 - plugin-owned work state and authentication-loss signal;
 - all-ready-dormant startup, demand activation, marker-before-hydration;
 - numeric default/override config and safe idle suspension;
 - remove startup/reconnect enumeration that wakes dormant plugins.
 
-### Stage 12 / PR #510 — headless management
+### Stage 12 / former PR #510 — headless management
 
 - simplified management DTOs/routes, safe/force commands, revision/SSE;
 - live denylist mutations and setup refresh;
 - numeric idle-timeout updates and one hydration listener.
 
-### Stage 13 / PR #511 — redesigned mobile plugin settings
+### Stage 13 / former PR #511 — redesigned mobile plugin settings
 
 - module-core API -> repository -> service -> cubit and preference storage;
 - per-bridge last-used new-session choice;
@@ -604,10 +663,10 @@ the listed source files and committed with their stage.
   settings primitives;
 - focused interaction, conflict/force, reconnect, and route tests.
 
-Each branch is rebuilt from its predecessor after #507 starts at latest
-`origin/main`. Histories may be force-with-lease rewritten as explicitly
-approved. A closed PR is reopened only after its replacement stage passes
-focused verification.
+P01A starts at latest `origin/main`; each later replacement branch stacks on its
+verified predecessor. Frozen #508 remains reference material and is not
+rewritten. Existing descendants #509-#511 are rebuilt or retargeted only after
+P01D is complete.
 
 ## Verification
 

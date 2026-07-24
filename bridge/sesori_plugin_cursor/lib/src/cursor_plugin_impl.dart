@@ -295,21 +295,8 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
       _commandService.listCommands(projectId: projectId);
 
   @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) => super.sendCommand(
-    sessionId: sessionId,
-    command: _commandService.backendCommandFor(command: command),
-    arguments: arguments,
-    variant: variant,
-    agent: agent,
-    model: model,
-  );
+  String commandForDispatch({required String command}) =>
+      _commandService.backendCommandFor(command: command);
 
   List<PluginAgent> _modeAgents() {
     final modes = _catalogTracker.modes;

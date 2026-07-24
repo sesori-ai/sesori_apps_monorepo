@@ -442,6 +442,17 @@ class CodexEventMapper {
           // webSearch items carry no status field.
           status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
         );
+      case "contextCompaction":
+        return [
+          ..._toolItemEvents(
+            threadId: threadId,
+            itemId: itemId,
+            tool: "compact",
+            title: completed ? "Context compacted" : "Compacting context",
+            status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
+          ),
+          if (completed) BridgeSseSessionCompacted(sessionID: threadId),
+        ];
       default:
         // todoList, hookPrompt, … — codex item kinds with no mobile
         // representation yet. Dropped rather than surfaced as broken or empty

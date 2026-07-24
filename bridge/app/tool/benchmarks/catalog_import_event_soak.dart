@@ -26,6 +26,8 @@ import "package:sesori_bridge/src/repositories/project_catalog_identity_calculat
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "benchmark_plugin_runtime.dart";
+
 const _defaultProjectCount = 2000;
 const _defaultSessionCount = 50000;
 const _defaultEventCount = 2000;
@@ -133,6 +135,7 @@ class _CatalogImportEventSoak {
         releaseEnumeration: releaseEnumeration,
       );
       final plugins = <String, BridgePluginApi>{plugin.id: plugin};
+      final runtime = createBenchmarkPluginRuntime(plugins: plugins.values);
       final importRepository = CatalogImportRepository(
         operationalPlugins: plugins,
         projectsDao: database.projectsDao,
@@ -141,9 +144,8 @@ class _CatalogImportEventSoak {
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
       );
       sessionRepository = SessionRepository(
-        operationalPlugins: plugins,
+        runtime: runtime,
         bridgeDerivedProjectPluginIds: {plugin.id},
-        enabledPluginIds: [plugin.id],
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
