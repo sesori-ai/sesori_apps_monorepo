@@ -1,4 +1,5 @@
 import "package:opencode_plugin/src/runtime/open_code_bridge_plugin.dart";
+import "package:opencode_plugin/src/runtime/open_code_managed_api.dart";
 import "package:opencode_plugin/src/runtime/open_code_ownership_record.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart"
@@ -85,9 +86,18 @@ class _ImmediateClock implements ServerClock {
   Future<void> delay({required Duration duration}) async {}
 }
 
-class _FakeApi implements NativeProjectsPluginApi {
+class _FakeApi implements OpenCodeManagedApi {
   int disposeCount = 0;
   Object? disposeError;
+
+  @override
+  PluginWorkState get currentWorkState => PluginWorkState.idle;
+
+  @override
+  Stream<PluginWorkState> get workState => Stream<PluginWorkState>.multi(
+    (listener) => listener.add(PluginWorkState.idle),
+    isBroadcast: true,
+  );
 
   @override
   Future<void> dispose() async {

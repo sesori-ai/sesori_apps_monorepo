@@ -7,6 +7,7 @@ import "../process/server_clock.dart";
 import "bridge_plugin.dart";
 import "plugin_status.dart";
 import "plugin_status_controller.dart";
+import "plugin_work_state.dart";
 
 /// Lifecycle implementation for plugins with no managed runtime — direct-CLI
 /// and remote-server archetypes whose "lifecycle" is just connectivity.
@@ -43,6 +44,7 @@ import "plugin_status_controller.dart";
 mixin SteadyPluginLifecycle implements BridgePlugin {
   PluginStatusController? _statusController;
   Future<void>? _shutdownFuture;
+  final PluginWorkStateController _workStateController = PluginWorkStateController(initial: PluginWorkState.unknown);
   int _degradedGeneration = 0;
   DateTime? _pendingDegradedSince;
   ({bool recoverable, bool requiresUserAction, String? userActionHint})? _pendingDegradedDetails;
@@ -64,6 +66,12 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
 
   @override
   PluginStatus get currentStatus => _statusMachine.current;
+
+  @override
+  Stream<PluginWorkState> get workState => _workStateController.stream;
+
+  @override
+  PluginWorkState get currentWorkState => _workStateController.current;
 
   /// Reports the plugin operational. Cancels any pending degradation and
   /// applies immediately.
@@ -171,6 +179,7 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
       await onShutdown(budget: budget);
     } finally {
       _statusMachine.trySet(const PluginStopped());
+      unawaited(_workStateController.close());
     }
   }
 

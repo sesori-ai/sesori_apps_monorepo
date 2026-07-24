@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedProcessService, ManagedRuntimeMonitor;
 
+import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 
 /// Drives the plugin's [PluginStatusController] from the SSE transport's
@@ -115,7 +116,7 @@ class OpenCodeBridgePlugin implements BridgePlugin {
        _ownedRecord = ownedRecord;
 
   @override
-  final BridgePluginApi api;
+  final OpenCodeManagedApi api;
 
   final int port;
   final String serverUrl;
@@ -134,6 +135,12 @@ class OpenCodeBridgePlugin implements BridgePlugin {
 
   @override
   PluginStatus get currentStatus => _status.current;
+
+  @override
+  Stream<PluginWorkState> get workState => api.workState;
+
+  @override
+  PluginWorkState get currentWorkState => api.currentWorkState;
 
   @override
   PluginDiagnostics describe() {

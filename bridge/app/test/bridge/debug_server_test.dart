@@ -76,9 +76,9 @@ Future<_DebugServerHarness> _createDebugServerHarness({
   final runFuture = composition.session.run();
   unawaited(runFuture.catchError((_) {}));
   await relayServer.nextClient();
+  await activateTestPlugin(service: lifecycleService, pluginId: plugin.id);
   if (plugin case final _SubscriptionAwarePlugin subscriptionAware) {
     await subscriptionAware.eventsSubscribed.timeout(const Duration(seconds: 2));
-    await subscriptionAware.activityRead.timeout(const Duration(seconds: 2));
   }
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(
@@ -756,14 +756,11 @@ class _FakeTokenRefresher implements TokenRefresher {
 
 abstract interface class _SubscriptionAwarePlugin {
   Future<void> get eventsSubscribed;
-
-  Future<void> get activityRead;
 }
 
 class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
   final Completer<void> _eventsSubscribed = Completer<void>();
-  final Completer<void> _activityRead = Completer<void>();
 
   List<PluginProject> projectsResult = [];
   List<PluginSession> sessionsResult = [];
@@ -785,11 +782,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePl
   Future<void> get eventsSubscribed => _eventsSubscribed.future;
 
   @override
-  Future<void> get activityRead => _activityRead.future;
-
-  @override
   Future<List<PluginProject>> getProjects() async {
-    if (!_activityRead.isCompleted) _activityRead.complete();
     if (throwOnGetProjects) throw Exception("fake error");
     return projectsResult;
   }
@@ -976,7 +969,6 @@ class _BlockingMutationPlugin extends _FakeBridgePlugin {
 class _TrackingBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
   final Completer<void> _eventsSubscribed = Completer<void>();
-  final Completer<void> _activityRead = Completer<void>();
   int subscribeCount = 0;
   int unsubscribeCount = 0;
 
@@ -1004,13 +996,7 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwa
   Future<void> get eventsSubscribed => _eventsSubscribed.future;
 
   @override
-  Future<void> get activityRead => _activityRead.future;
-
-  @override
-  Future<List<PluginProject>> getProjects() async {
-    if (!_activityRead.isCompleted) _activityRead.complete();
-    return [];
-  }
+  Future<List<PluginProject>> getProjects() async => [];
 
   @override
   Future<List<PluginSession>> getSessions(

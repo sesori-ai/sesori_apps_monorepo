@@ -1,4 +1,6 @@
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -20,8 +22,10 @@ Future<PluginLifecycleService> createPluginLifecycleService({
   final runtime = createTestPluginRuntime(plugins: plugins);
   final service =
       PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-          preferredDefaultPluginId: legacyMissingPluginId,
+            lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+            preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
         )
         ..registerPlugins(
           plugins: [for (final plugin in plugins) (id: plugin.id, displayName: plugin.id)],
@@ -35,8 +39,37 @@ Future<PluginLifecycleService> createPluginLifecycleService({
   return service;
 }
 
+BridgeSettingsRepository createTestBridgeSettingsRepository({
+  BridgeSettings settings = const BridgeSettings(),
+}) => _TestBridgeSettingsRepository(settings: settings);
+
+Future<void> activateTestPlugin({
+  required PluginLifecycleService service,
+  required String pluginId,
+}) async {
+  await runtimeForLifecycleService(service: service).use<void>(
+    pluginId: pluginId,
+    operation: _TestPluginOperation.activate,
+    body: (_) async {},
+  );
+}
+
 PluginRuntime runtimeForLifecycleService({required PluginLifecycleService service}) {
   final runtime = _runtimes[service];
   if (runtime == null) throw StateError("No test plugin runtime is registered for this lifecycle service.");
   return runtime;
+}
+
+enum _TestPluginOperation { activate }
+
+class _TestBridgeSettingsRepository implements BridgeSettingsRepository {
+  const _TestBridgeSettingsRepository({required this.settings});
+
+  final BridgeSettings settings;
+
+  @override
+  BridgeSettings get currentSettings => settings;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

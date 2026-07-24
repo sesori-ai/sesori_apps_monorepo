@@ -8,6 +8,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -44,6 +45,37 @@ void main() {
         codexHome.deleteSync(recursive: true);
       } catch (_) {}
     });
+
+    Future<void> connectWithPendingPermission({required String threadId}) async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.healthCheck();
+      fake.pushNotification("thread/started", {
+        "thread": {
+          "id": threadId,
+          "cwd": "/work/sample",
+          "createdAt": 1700000000,
+          "updatedAt": 1700000000,
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final asked = plugin.events
+          .where((event) => event is BridgeSsePermissionAsked)
+          .cast<BridgeSsePermissionAsked>()
+          .first;
+      fake.pushServerRequest(
+        id: 99,
+        method: "item/commandExecution/requestApproval",
+        params: {
+          "threadId": threadId,
+          "turnId": "turn-1",
+          "itemId": "item-1",
+          "command": "ls",
+        },
+      );
+      await asked.timeout(const Duration(seconds: 1));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    }
 
     test("createSession preserves a Default turn when no model resolves", () async {
       // Respond to: initialize, thread/start, turn/start.
@@ -84,6 +116,7 @@ void main() {
       expect(turnStartParams["threadId"], equals("t-new"));
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
       expect(turnStartParams.containsKey("collaborationMode"), isFalse);
+      expect(plugin.currentWorkState, PluginWorkState.busy);
     });
 
     test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
@@ -367,6 +400,7 @@ void main() {
       expect(methods, equals(["initialize", "thread/resume", "turn/start"]));
       expect(fake.sentParamsFor("thread/resume")["threadId"], equals("t-existing"));
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing"));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
     });
 
     test("sendPrompt treats an omitted agent as Default so it replaces Plan mode", () async {
@@ -477,6 +511,231 @@ void main() {
       final message = shared.Message.fromJson(messageEvent.info) as shared.MessageAssistant;
       expect(message.modelID, "gpt-session");
     });
+
+    test("sendCommand marks an accepted turn busy before notifications arrive", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-command"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-command"}),
+      ]);
+
+      await plugin.sendCommand(
+        sessionId: "t-command",
+        command: "review",
+        arguments: "recent changes",
+        userVisibleArguments: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("turn/start rejection does not mark the plugin busy", () async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.initialize();
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "thread": {"id": "t-rejected"},
+          },
+        ),
+        const _Response(error: {"code": -32000, "message": "turn rejected"}),
+      ]);
+
+      await expectLater(
+        plugin.sendPrompt(
+          sessionId: "t-rejected",
+          parts: const [PluginPromptPart.text(text: "go on")],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(isA<CodexThreadRequestException>()),
+      );
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("accepted turn remains busy through delayed start and clears on completion", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-delayed"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-delayed"}),
+      ]);
+
+      await plugin.sendPrompt(
+        sessionId: "t-delayed",
+        parts: const [PluginPromptPart.text(text: "go on")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      fake.pushNotification("turn/started", {
+        "threadId": "t-delayed",
+        "turn": {"id": "u-delayed"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.pushNotification("turn/completed", {"threadId": "t-delayed"});
+      await idle.timeout(const Duration(seconds: 1));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("completion received before turn/start response prevents stale provisional busy", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-early-complete"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-early-complete"}),
+      ]);
+      fake.onRequest = (method) {
+        if (method == "turn/start") {
+          fake.pushNotification("turn/completed", {"threadId": "t-early-complete"});
+        }
+      };
+
+      await plugin.sendPrompt(
+        sessionId: "t-early-complete",
+        parts: const [PluginPromptPart.text(text: "quick task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("delete invalidates an in-flight turn response until the backend recreates the thread", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-deleted"},
+          },
+        ),
+      ]);
+      fake.holdNextResponse("turn/start");
+      final turnStarted = Completer<void>();
+      fake.onRequest = (method) {
+        if (method == "turn/start" && !turnStarted.isCompleted) {
+          turnStarted.complete();
+        }
+      };
+
+      final send = plugin.sendPrompt(
+        sessionId: "t-deleted",
+        parts: const [PluginPromptPart.text(text: "quick task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await turnStarted.future;
+      await plugin.deleteSession("t-deleted");
+
+      fake.respondToHeld("turn/start", const _Response(result: {"turnId": "u-deleted"}));
+      await send;
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "thread": {"id": "t-deleted"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-recreated"}),
+      ]);
+      await plugin.createSession(
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "new lifecycle")],
+        userVisibleText: "new lifecycle",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("deleting a thread rejects its pending approval and clears work state", () async {
+      await connectWithPendingPermission(threadId: "t-delete-pending");
+
+      await plugin.deleteSession("t-delete-pending");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(await plugin.getPendingPermissions(sessionId: "t-delete-pending"), isEmpty);
+      expect(fake.serverResponseFor(99)["result"], {"decision": "decline"});
+    });
+
+    test("a closed thread rejects its pending approval and clears work state", () async {
+      await connectWithPendingPermission(threadId: "t-close-pending");
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+
+      fake.pushNotification("thread/closed", {"threadId": "t-close-pending"});
+
+      await idle.timeout(const Duration(seconds: 1));
+      expect(await plugin.getPendingPermissions(sessionId: "t-close-pending"), isEmpty);
+      expect(fake.serverResponseFor(99)["result"], {"decision": "decline"});
+    });
+
+    for (final terminalNotification in ["error", "thread/status/changed"]) {
+      test("$terminalNotification clears provisional busy", () async {
+        fake.respondInOrder([
+          const _Response(result: _initOk),
+          const _Response(
+            result: {
+              "thread": {"id": "t-terminal"},
+            },
+          ),
+          const _Response(result: {"turnId": "u-terminal"}),
+        ]);
+
+        await plugin.sendPrompt(
+          sessionId: "t-terminal",
+          parts: const [PluginPromptPart.text(text: "go on")],
+          variant: null,
+          agent: null,
+          model: null,
+        );
+        expect(plugin.currentWorkState, PluginWorkState.busy);
+
+        final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+        fake.pushNotification(
+          terminalNotification,
+          terminalNotification == "error"
+              ? {
+                  "threadId": "t-terminal",
+                  "error": {"message": "turn failed"},
+                }
+              : {
+                  "threadId": "t-terminal",
+                  "status": {"type": "idle"},
+                },
+        );
+
+        await idle.timeout(const Duration(seconds: 1));
+        expect(plugin.currentWorkState, PluginWorkState.idle);
+      });
+    }
 
     test("sendPrompt does not re-resume a thread created in this run", () async {
       // createSession (no parts) loads the thread; a follow-up turn must reuse
@@ -1240,6 +1499,9 @@ class _FakeAppServer {
 
   final List<_SentFrame> _sent = [];
   final List<_Response> _pending = [];
+  final Set<String> _responsesToHold = {};
+  final Map<String, Object> _heldRequestIds = {};
+  final Map<Object, Map<String, dynamic>> _serverResponses = {};
 
   /// Invoked with each request method BEFORE the canned response is sent —
   /// lets a test emit server notifications mid-request (e.g. codex pushing
@@ -1253,10 +1515,23 @@ class _FakeAppServer {
     return frame.params ?? const {};
   }
 
+  Map<String, dynamic> serverResponseFor(Object id) =>
+      _serverResponses[id] ?? (throw StateError("no response for $id"));
+
   void respondInOrder(List<_Response> responses) {
     _pending
       ..clear()
       ..addAll(responses);
+  }
+
+  void holdNextResponse(String method) {
+    _responsesToHold.add(method);
+  }
+
+  void respondToHeld(String method, _Response response) {
+    final id = _heldRequestIds.remove(method);
+    if (id == null) throw StateError("no held request for $method");
+    _sendResponse(id, response);
   }
 
   void pushNotification(String method, Map<String, dynamic> params) {
@@ -1265,18 +1540,34 @@ class _FakeAppServer {
     );
   }
 
+  void pushServerRequest({required Object id, required String method, required Map<String, dynamic> params}) {
+    _serverToClient.add(
+      jsonEncode({"jsonrpc": "2.0", "id": id, "method": method, "params": params}),
+    );
+  }
+
   void _onClientFrame(Object? frame) {
     final raw = frame as String;
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    final method = decoded["method"] as String?;
+    if (method == null) {
+      final id = decoded["id"] as Object?;
+      if (id != null) _serverResponses[id] = decoded;
+      return;
+    }
     _sent.add(
       _SentFrame(
-        method: decoded["method"] as String,
+        method: method,
         params: (decoded["params"] as Map?)?.cast<String, dynamic>(),
       ),
     );
-    onRequest?.call(decoded["method"] as String);
-    final id = decoded["id"];
+    onRequest?.call(method);
+    final id = decoded["id"] as Object?;
     if (id == null) return; // notification from client (none today)
+    if (_responsesToHold.remove(method)) {
+      _heldRequestIds[method] = id;
+      return;
+    }
     if (_pending.isEmpty) {
       _serverToClient.add(
         jsonEncode({
@@ -1292,6 +1583,10 @@ class _FakeAppServer {
     }
     final response = _pending.removeAt(0);
     if (!response.respond) return;
+    _sendResponse(id, response);
+  }
+
+  void _sendResponse(Object id, _Response response) {
     final envelope = <String, dynamic>{"jsonrpc": "2.0", "id": id};
     if (response.error != null) {
       envelope["error"] = response.error;

@@ -47,6 +47,12 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   forcing a new schema. Keep its tracker or execution state in sync when needed.
 - Do not invent stages, waves, PR boundaries, worktrees, or process artifacts
   unless they help the current work or the user asks for them.
+- When intentionally splitting any task across multiple PRs, require every PR
+  title to use `[<slug>] <description> [step <x>/<y>]`. For durable planned
+  work, `<slug>` is exactly the plan directory name under `.plan`; do not invent
+  a separate series slug. Without a durable plan, choose one stable, lowercase
+  kebab-case slug. Fix the step order/total for the whole series, and do not
+  apply the wrapper to a single-PR task.
 
 For a new durable plan, `PLAN.md` should normally capture the goal, scope,
 relevant current behavior, concrete implementation steps, verification, and

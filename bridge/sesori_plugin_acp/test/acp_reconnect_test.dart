@@ -1,5 +1,6 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 /// After the agent subprocess exits, the cached ACP connection must be torn
@@ -87,6 +88,33 @@ void main() {
       expect(identical(plugin.client, first), isFalse);
       await pump();
       expect(connects, 2, reason: "onConnected fires again on reconnect");
+    });
+
+    test("reset preserves unknown work state while pending approvals are disposed", () async {
+      final connecting = plugin.ensureConnected();
+      await respondInitialize(fakes.single);
+      expect(await connecting, isTrue);
+      final first = fakes.single;
+      first.emit({
+        "jsonrpc": "2.0",
+        "id": 99,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": "session-1",
+          "toolCall": {"toolCallId": "tc-1", "title": "Run", "kind": "execute"},
+          "options": [
+            {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      first.exit(1);
+      await pump();
+      await plugin.resetConnectionAfterExit();
+
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
     });
   });
 }

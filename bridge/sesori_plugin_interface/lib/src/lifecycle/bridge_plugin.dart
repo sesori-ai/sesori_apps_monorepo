@@ -1,6 +1,7 @@
 import "../bridge_plugin.dart";
 import "plugin_diagnostics.dart";
 import "plugin_status.dart";
+import "plugin_work_state.dart";
 
 /// A live plugin instance, as returned by `BridgePluginDescriptor.start`.
 ///
@@ -30,6 +31,17 @@ abstract class BridgePlugin {
 
   /// The latest [status] value, synchronously.
   PluginStatus get currentStatus;
+
+  /// Replay-latest backend-owned evidence of whether stopping this generation
+  /// is currently safe. Unknown is conservative and blocks ordinary or idle
+  /// suspension.
+  Stream<PluginWorkState> get workState => Stream<PluginWorkState>.multi(
+    (listener) => listener.add(currentWorkState),
+    isBroadcast: true,
+  );
+
+  /// The latest [workState] value, synchronously.
+  PluginWorkState get currentWorkState => PluginWorkState.unknown;
 
   /// Cheap, synchronous, side-effect-free diagnostics (endpoint, version).
   PluginDiagnostics describe();

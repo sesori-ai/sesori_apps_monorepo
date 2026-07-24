@@ -456,10 +456,11 @@ class BridgeRuntimeRunner {
 
       // Plugin denylist failure cannot safely degrade to an empty denylist: that
       // could start a backend the user explicitly disabled.
+      final BridgeSettingsRepository bridgeSettingsRepository;
       final BridgeSettings bridgeSettings;
       try {
-        final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
-        bridgeSettings = await settingsRepository.loadSettings();
+        bridgeSettingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+        bridgeSettings = await bridgeSettingsRepository.loadSettings();
       } on Object catch (error, stackTrace) {
         Log.e("Failed to resolve bridge settings", error, stackTrace);
         Console.error("Bridge configuration is invalid or unreadable. Repair it with `sesori-bridge config edit`.");
@@ -615,6 +616,8 @@ class BridgeRuntimeRunner {
           PluginLifecycleService(
             lifecycleRepository: lifecycleRepository,
             preferredDefaultPluginId: preferredDefaultPluginId,
+            bridgeSettingsRepository: bridgeSettingsRepository,
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
           )..registerPlugins(
             plugins: [
               for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
@@ -640,7 +643,7 @@ class BridgeRuntimeRunner {
         }
       }
       final descriptors = [
-        for (final pluginId in startupPolicy.eagerPluginIds)
+        for (final pluginId in activePluginRuntime.startAllowedPluginIds)
           knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId),
       ];
       final availabilityResults = await Future.wait(
@@ -744,22 +747,14 @@ class BridgeRuntimeRunner {
             controlProvisionNotifier?.handleProvisionProgress(event: progress.event);
           })
           .addTo(subscriptions);
-      final eagerAvailablePluginIds = [
-        for (final descriptor in availableDescriptors)
-          if (startupPolicy.eagerPluginIds.contains(descriptor.id)) descriptor.id,
-      ];
-      if (eagerAvailablePluginIds.isEmpty) {
-        await generationFactory.enforceBridgeOwnership();
-      } else {
-        await activePluginRuntime.startEager(pluginIds: eagerAvailablePluginIds);
-      }
+      await generationFactory.enforceBridgeOwnership();
       if (startAbortController.isAborted) {
         Log.i("Plugin start aborted as requested.");
         return 0;
       }
       for (final importPluginId in options.importPluginIds) {
-        if (!activePluginRuntime.activePluginIds.contains(importPluginId)) {
-          Console.error('Cannot import plugin "$importPluginId" because it is not operational.');
+        if (!activePluginRuntime.startAllowedPluginIds.contains(importPluginId)) {
+          Console.error('Cannot import plugin "$importPluginId" because it is unavailable.');
           return 1;
         }
       }
@@ -879,13 +874,14 @@ class BridgeRuntimeRunner {
         );
         catalogImportConsoleListener.start();
       }
-      final operationalPluginIds = activePluginRuntime.activePluginIds;
-      startCatalogImports(
-        service: activeRuntime.catalogImportService,
-        pluginIds: startupPolicy.eligiblePluginIds,
-        headlessPluginIds: options.importPluginIds,
-        operationalPluginIds: operationalPluginIds,
-      );
+      activeRuntime.catalogHydrationListener.start();
+      for (final headlessPluginId in options.importPluginIds) {
+        if (!activePluginRuntime.startAllowedPluginIds.contains(headlessPluginId)) continue;
+        activeRuntime.catalogImportService.start(
+          pluginId: headlessPluginId,
+          trigger: CatalogImportTrigger.headless,
+        );
+      }
 
       debugServer = await startDebugServerIfRequested(
         debugPort: options.debugPort,
@@ -983,22 +979,6 @@ class BridgeRuntimeRunner {
     required bool isSupervised,
     required bool isInteractive,
   }) => !isSupervised && isInteractive;
-
-  @visibleForTesting
-  static void startCatalogImports({
-    required CatalogImportService service,
-    required List<String> pluginIds,
-    required List<String> headlessPluginIds,
-    required Set<String> operationalPluginIds,
-  }) {
-    for (final pluginId in pluginIds) {
-      if (!operationalPluginIds.contains(pluginId)) continue;
-      service.start(pluginId: pluginId, trigger: CatalogImportTrigger.automatic);
-    }
-    for (final headlessPluginId in headlessPluginIds) {
-      service.start(pluginId: headlessPluginId, trigger: CatalogImportTrigger.headless);
-    }
-  }
 
   /// Whether [url] is an acceptable supervised control-channel endpoint: a
   /// loopback host over ws/wss. The GUI hosts the control channel on loopback,

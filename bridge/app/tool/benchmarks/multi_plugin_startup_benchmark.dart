@@ -314,6 +314,15 @@ class _FakePlugin implements BridgePlugin {
   Stream<PluginStatus> get status => _statusController.stream;
 
   @override
+  PluginWorkState get currentWorkState => PluginWorkState.idle;
+
+  @override
+  Stream<PluginWorkState> get workState => Stream<PluginWorkState>.multi(
+    (listener) => listener.add(PluginWorkState.idle),
+    isBroadcast: true,
+  );
+
+  @override
   PluginDiagnostics describe() => PluginDiagnostics(pluginId: _api.id, endpoint: null, details: const {});
 
   @override

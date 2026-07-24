@@ -47,6 +47,13 @@ rules and do not commit, push, open a PR, merge, or otherwise publish changes
 unless the user explicitly requests it. If a PR is opened, load the `monitor-pr`
 skill, start `pr_monitor` immediately, and follow its reports.
 
+When a task is split across multiple PRs, title every PR
+`[<slug>] <description> [step <x>/<y>]`. For durable planned work, `<slug>` is
+exactly the plan directory name under `.plan`; do not derive it from the branch,
+title, or stage. Without a durable plan, choose one stable, lowercase kebab-case
+slug. Keep one fixed step order/total for the whole task, and do not add the
+wrapper to a single-PR task.
+
 ## Plan Review
 
 Use `aristotle-plan-review` only for a new architecture-bearing production plan

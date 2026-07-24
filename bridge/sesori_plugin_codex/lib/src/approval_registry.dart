@@ -146,13 +146,7 @@ class ApprovalRegistry {
     _pending.clear();
     for (final entry in remaining) {
       try {
-        if (entry.kind == _PendingKind.permission) {
-          _respond(entry.codexId, _permissionResponse(entry, PluginPermissionReply.reject));
-        } else if (entry.method == _elicitationMethod) {
-          _respond(entry.codexId, const {"action": "cancel"});
-        } else {
-          _respondError(entry.codexId, -32000, "bridge dispose");
-        }
+        _denyPending(entry, questionErrorMessage: "bridge dispose");
       } catch (_) {
         // Best-effort.
       }
@@ -200,6 +194,44 @@ class ApprovalRegistry {
 
   bool hasPendingInput(String sessionId) =>
       _pending.values.any((entry) => entry.sessionId == sessionId);
+
+  bool get hasAnyPendingInput => _pending.isNotEmpty;
+
+  void cancelForSession(String sessionId) {
+    final entries = _pending.values.where((entry) => entry.sessionId == sessionId).toList(growable: false);
+    for (final entry in entries) {
+      _pending.remove(entry.bridgeRequestId);
+      try {
+        _denyPending(entry, questionErrorMessage: "thread closed");
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] failed to deny pending approval for closed thread", error, stackTrace);
+      }
+      _emit(
+        entry.kind == _PendingKind.permission
+            ? BridgeSsePermissionReplied(
+                requestID: entry.bridgeRequestId,
+                sessionID: entry.sessionId,
+                displaySessionId: entry.sessionId,
+                reply: PluginPermissionReply.reject.name,
+              )
+            : BridgeSseQuestionRejected(
+                requestID: entry.bridgeRequestId,
+                sessionID: entry.sessionId,
+                displaySessionId: entry.sessionId,
+              ),
+      );
+    }
+  }
+
+  void _denyPending(_PendingApproval entry, {required String questionErrorMessage}) {
+    if (entry.kind == _PendingKind.permission) {
+      _respond(entry.codexId, _permissionResponse(entry, PluginPermissionReply.reject));
+    } else if (entry.method == _elicitationMethod) {
+      _respond(entry.codexId, const {"action": "cancel"});
+    } else {
+      _respondError(entry.codexId, -32000, questionErrorMessage);
+    }
+  }
 
   /// Acknowledges a permission ask with a once/always/reject decision.
   ///

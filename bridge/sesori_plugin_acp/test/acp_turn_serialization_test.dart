@@ -50,6 +50,7 @@ void main() {
     late FakeAcpProcess fake;
     late AcpPlugin plugin;
     final emitted = <BridgeSseEvent>[];
+    final streamErrors = <Object>[];
     const cwd = "/repo";
 
     setUp(() {
@@ -64,7 +65,8 @@ void main() {
         processFactory: (_) async => fake,
       );
       emitted.clear();
-      plugin.events.listen(emitted.add);
+      streamErrors.clear();
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
     });
 
     tearDown(() async {
@@ -89,8 +91,7 @@ void main() {
       throw StateError("agent never wrote $count '$method' frame(s)");
     }
 
-    Future<Map<String, dynamic>> waitForFrame(String method) =>
-        waitForFrameCount(method, 1);
+    Future<Map<String, dynamic>> waitForFrame(String method) => waitForFrameCount(method, 1);
 
     void respondTo(Map<String, dynamic> frame, Map<String, dynamic> result) {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
@@ -268,6 +269,43 @@ void main() {
       await pump();
       expect(idleCount(), 1, reason: "idle only after the last queued turn settles");
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("queued reconnect authentication failure surfaces on the event stream", () async {
+      var processStarts = 0;
+      await plugin.dispose();
+      plugin = AcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        commandTracker: AcpCommandTracker(),
+        processFactory: (_) async {
+          processStarts++;
+          if (processStarts == 1) return fake;
+          throw const PluginAuthenticationRequiredException(
+            "authenticate",
+            actionHint: "Authenticate locally.",
+          );
+        },
+      );
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "first");
+      await waitForFrame("session/prompt");
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      await sendPrompt(sessionId, "queued");
+      await plugin.resetConnectionAfterExit();
+      for (var i = 0; i < 20 && streamErrors.isEmpty; i++) {
+        await pump();
+      }
+
+      expect(streamErrors, contains(isA<PluginAuthenticationRequiredException>()));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
     test("abort drops queued-but-undispatched turns", () async {
@@ -639,8 +677,7 @@ void main() {
 
       Future<Map<String, dynamic>> promptFrameFor(String sessionId) async {
         for (var i = 0; i < 80; i++) {
-          final match = frames("session/prompt")
-              .where((f) => (f["params"] as Map)["sessionId"] == sessionId);
+          final match = frames("session/prompt").where((f) => (f["params"] as Map)["sessionId"] == sessionId);
           if (match.isNotEmpty) return match.last;
           await pump();
         }

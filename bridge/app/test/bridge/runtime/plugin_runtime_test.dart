@@ -285,6 +285,104 @@ void main() {
     expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
   });
 
+  test("a safe stop refuses busy backend work", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+    factory.plugins.single.workStates.add(PluginWorkState.busy);
+    await _waitUntil(() => runtime.snapshot.single.workState == PluginWorkState.busy);
+
+    final result = await runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
+
+    expect(result, isA<PluginRuntimeCommandConflict>());
+    expect((result as PluginRuntimeCommandConflict).reasons, contains(PluginRuntimeConflictReason.busy));
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+  });
+
+  test("authentication failure fences and blocks its generation", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.use,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "test",
+          actionHint: "Authenticate locally.",
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+    await _waitUntil(
+      () => runtime.snapshot.single.state == PluginRuntimeState.blocked && factory.plugins.single.shutdownCount == 1,
+    );
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupAuthenticationRequired>());
+    expect(runtime.activePluginIds, isEmpty);
+    expect(factory.plugins.single.shutdownCount, 1);
+  });
+
+  test("authentication loss cancels operation streams before waiting for leases", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final failingSource = StreamController<int>();
+    final silentSource = StreamController<int>();
+    final failingSourceCancelled = Completer<void>();
+    final silentSourceCancelled = Completer<void>();
+    final failingDone = Completer<void>();
+    final silentDone = Completer<void>();
+    final errors = <Object>[];
+    failingSource.onCancel = failingSourceCancelled.complete;
+    silentSource.onCancel = silentSourceCancelled.complete;
+    runtime
+        .useStream(
+          pluginId: "one",
+          operation: _TestOperation.stream,
+          body: (_, _) => failingSource.stream,
+        )
+        .listen(
+          (_) {},
+          onError: errors.add,
+          onDone: failingDone.complete,
+        );
+    runtime
+        .useStream(
+          pluginId: "one",
+          operation: _TestOperation.stream,
+          body: (_, _) => silentSource.stream,
+        )
+        .listen((_) {}, onDone: silentDone.complete);
+    await _waitUntil(
+      () => runtime.snapshot.single.leaseCount == 2 && failingSource.hasListener && silentSource.hasListener,
+    );
+
+    failingSource.addError(
+      const PluginAuthenticationRequiredException(
+        "stream",
+        actionHint: "Authenticate locally.",
+      ),
+    );
+
+    await Future.wait([
+      failingSourceCancelled.future,
+      silentSourceCancelled.future,
+      failingDone.future,
+      silentDone.future,
+    ]).timeout(const Duration(seconds: 1));
+    await _waitUntil(
+      () => runtime.snapshot.single.state == PluginRuntimeState.blocked && factory.plugins.single.shutdownCount == 1,
+    );
+    expect(errors, [isA<PluginAuthenticationRequiredException>()]);
+    expect(runtime.snapshot.single.leaseCount, 0);
+    await failingSource.close();
+    await silentSource.close();
+  });
+
   test("a command-owned stop rejects force takeover until teardown finishes", () async {
     final shutdownGate = Completer<void>();
     final factory = _FakeGenerationFactory(
@@ -676,6 +774,7 @@ void main() {
 }
 
 enum _TestOperation {
+  use,
   read,
   watch,
   activeRead,
@@ -782,6 +881,7 @@ class _FakePlugin implements BridgePlugin {
   _FakePlugin({required this.api, this.shutdownGate, this.shutdownError});
 
   final BehaviorSubject<PluginStatus> statuses = BehaviorSubject.seeded(const PluginReady());
+  final BehaviorSubject<PluginWorkState> workStates = BehaviorSubject.seeded(PluginWorkState.idle);
   final Future<void>? shutdownGate;
   final Object? shutdownError;
   Future<void>? _shutdownFuture;
@@ -796,6 +896,12 @@ class _FakePlugin implements BridgePlugin {
 
   @override
   Stream<PluginStatus> get status => statuses.stream;
+
+  @override
+  PluginWorkState get currentWorkState => workStates.value;
+
+  @override
+  Stream<PluginWorkState> get workState => workStates.stream;
 
   @override
   PluginDiagnostics describe() => const PluginDiagnostics(pluginId: "one", endpoint: null, details: {});
@@ -813,6 +919,7 @@ class _FakePlugin implements BridgePlugin {
     if (shutdownError case final error?) throw error;
     if (!api.eventsController.isClosed) await api.eventsController.close();
     if (!statuses.isClosed) await statuses.close();
+    if (!workStates.isClosed) await workStates.close();
   }
 }
 
