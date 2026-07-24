@@ -61,6 +61,22 @@ void main() {
       expect((await db.projectsDao.getProject(projectId: "p1"))?.displayName, "New Name");
     });
 
+    test("rejects an empty or whitespace-only project name", () async {
+      for (final name in ["", "   "]) {
+        await expectLater(
+          () => handler.handle(
+            makeRequest("PATCH", "/project/name"),
+            body: RenameProjectRequest(projectId: "p1", name: name),
+            pathParams: const {},
+            queryParams: const {},
+            fragment: null,
+          ),
+          throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
+        );
+      }
+      expect((await db.projectsDao.getProject(projectId: "p1"))?.displayName, isNull);
+    });
+
     test("returns mapped Project", () async {
       final result = await handler.handle(
         makeRequest("PATCH", "/project/name"),
