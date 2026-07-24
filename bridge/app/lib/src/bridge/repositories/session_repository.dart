@@ -49,7 +49,14 @@ import "models/session_operation.dart";
 import "models/stored_session.dart";
 import "session_unseen_calculator.dart";
 
-typedef SessionBindingsCommitted = ({String pluginId, List<String> backendSessionIds});
+enum SessionBindingCommitKind { sessionCreation, catalogSync }
+
+typedef SessionBindingsCommitted = ({
+  String pluginId,
+  int generation,
+  SessionBindingCommitKind kind,
+  List<String> backendSessionIds,
+});
 
 class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
@@ -152,7 +159,7 @@ class SessionRepository {
           },
         );
       },
-      commit: (created) async {
+      commit: (created, generation) async {
         final projectionUpdatedAt = captureProjectionTimestamp();
         final createdAt = created.time?.created ?? projectionUpdatedAt;
         final updatedAt = created.time?.updated ?? createdAt;
@@ -194,10 +201,15 @@ class SessionRepository {
             projectionUpdatedAt: projectionUpdatedAt,
           );
         });
-        return (created: created, sessionId: sessionId);
+        return (created: created, sessionId: sessionId, generation: generation);
       },
     );
-    _publishBindingsCommitted(pluginId: pluginId, backendSessionIds: [result.created.id]);
+    _publishBindingsCommitted(
+      pluginId: pluginId,
+      generation: result.generation,
+      kind: SessionBindingCommitKind.sessionCreation,
+      backendSessionIds: [result.created.id],
+    );
     return result.created.toSharedSessionWithId(sessionId: result.sessionId, pluginId: pluginId);
   }
 
@@ -465,7 +477,10 @@ class SessionRepository {
             pluginId: pluginId,
             generation: generation,
             operation: SessionOperation.getProjectActivitySummaries,
-            commit: () => _persistActiveRootHydrations(observation: observation),
+            commit: () => _persistActiveRootHydrations(
+              observation: observation,
+              generation: generation,
+            ),
           );
           return _mapPluginProjectActivitySummaries(observation: observation);
         } on Object catch (error, stackTrace) {
@@ -635,11 +650,15 @@ class SessionRepository {
     return hydrations;
   }
 
-  Future<void> _persistActiveRootHydrations({required _PluginActivityObservation observation}) async {
+  Future<void> _persistActiveRootHydrations({
+    required _PluginActivityObservation observation,
+    required int generation,
+  }) async {
     for (final hydration in observation.hydrations) {
       try {
         await _persistNativeRootSessions(
           pluginId: observation.pluginId,
+          generation: generation,
           preferredProjectId: hydration.preferredProjectId,
           projectDirectory: hydration.projectDirectory,
           pluginSessions: hydration.sessions,
@@ -656,6 +675,7 @@ class SessionRepository {
 
   Future<ProjectDto> _persistNativeRootSessions({
     required String pluginId,
+    required int generation,
     required String preferredProjectId,
     required String projectDirectory,
     required List<PluginSession> pluginSessions,
@@ -722,6 +742,8 @@ class SessionRepository {
     });
     _publishBindingsCommitted(
       pluginId: pluginId,
+      generation: generation,
+      kind: SessionBindingCommitKind.catalogSync,
       backendSessionIds: result.committedByBackendId.keys.toList(growable: false),
     );
     return result.project;
@@ -1253,10 +1275,17 @@ class SessionRepository {
 
   Future<void> dispose() => _bindingCommitsController.close();
 
-  void _publishBindingsCommitted({required String pluginId, required List<String> backendSessionIds}) {
+  void _publishBindingsCommitted({
+    required String pluginId,
+    required int generation,
+    required SessionBindingCommitKind kind,
+    required List<String> backendSessionIds,
+  }) {
     if (backendSessionIds.isEmpty || _bindingCommitsController.isClosed) return;
     _bindingCommitsController.add((
       pluginId: pluginId,
+      generation: generation,
+      kind: kind,
       backendSessionIds: List<String>.unmodifiable(backendSessionIds),
     ));
   }

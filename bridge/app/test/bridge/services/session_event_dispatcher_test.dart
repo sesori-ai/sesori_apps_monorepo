@@ -113,7 +113,12 @@ void main() {
     final outputFuture = dispatcher.events.take(1).toList();
 
     await dispatcher.dispatchBindingsCommitted(
-      commit: (pluginId: "plugin", backendSessionIds: const ["session"]),
+      commit: (
+        pluginId: "plugin",
+        generation: 2,
+        kind: SessionBindingCommitKind.catalogSync,
+        backendSessionIds: const ["session"],
+      ),
     );
 
     final output = await outputFuture;

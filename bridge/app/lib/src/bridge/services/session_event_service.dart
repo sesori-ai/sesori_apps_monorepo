@@ -155,6 +155,13 @@ class SessionEventService {
         ),
       );
     }
+    if (commit.kind == SessionBindingCommitKind.sessionCreation &&
+        isCurrentGeneration(
+          pluginId: commit.pluginId,
+          generation: commit.generation,
+        )) {
+      output.add((generation: commit.generation, event: const BridgeSseProjectUpdated()));
+    }
     return output;
   }
 

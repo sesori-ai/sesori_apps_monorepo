@@ -831,6 +831,7 @@ void main() {
       );
 
       final cases = <SessionVariant?>[const SessionVariant(id: "low"), const SessionVariant(id: "xhigh"), null];
+      final commitsFuture = repository.bindingCommits.take(cases.length).toList();
 
       for (final variant in cases) {
         await repository.createSession(
@@ -854,6 +855,9 @@ void main() {
 
         expect(plugin.lastCreateSessionVariant, equals(variant?.id));
       }
+      final commits = await commitsFuture;
+      expect(commits.map((commit) => commit.kind), everyElement(SessionBindingCommitKind.sessionCreation));
+      expect(commits.map((commit) => commit.generation), everyElement(1));
     });
 
     test("createSession rejects a plugin mismatch before plugin I/O", () async {
@@ -1270,6 +1274,8 @@ void main() {
       expect(plugin.lastGetSessionsWorktree, directory);
       expect(commit.pluginId, plugin.id);
       expect(commit.backendSessionIds, ["backend-root"]);
+      expect(commit.kind, SessionBindingCommitKind.catalogSync);
+      expect(commit.generation, 1);
       expect(
         (await db.sessionDao.getSessionByBinding(
           pluginId: plugin.id,
