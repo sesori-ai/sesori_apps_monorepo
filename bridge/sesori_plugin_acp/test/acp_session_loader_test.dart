@@ -8,12 +8,39 @@ void main() {
   group("AcpReplayCollector", () {
     Map<String, dynamic> upd(Map<String, dynamic> body) => {"update": body};
 
+    test("reuses the synthetic identity for the first replayed user message", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        modelId: null,
+        providerId: null,
+        initialUserMessageId: "s1-initial-user",
+        haltClassifier: null,
+      )
+        ..consume(upd({
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "Hello"},
+        }))
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Hi"},
+        }));
+
+      final messages = collector.build();
+      final initial = messages.first;
+      expect(initial.info.id, "s1-initial-user");
+      expect(initial.parts.single.id, "s1-initial-user-text");
+      expect(initial.parts.single.messageID, initial.info.id);
+      expect(messages.last.info.id, "s1-h1-assistant");
+    });
+
     test("reconstructs a user/tool/assistant exchange in order", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",
         agentId: "Cursor",
         modelId: "gpt-5.5",
         providerId: "cursor",
+        initialUserMessageId: null,
         haltClassifier: null,
       )
         ..consume(upd({
@@ -54,7 +81,12 @@ void main() {
     });
 
     test("id-less text after a tool stays chronologically after the tool", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
           "content": {"type": "text", "text": "Before"},
@@ -78,7 +110,12 @@ void main() {
     });
 
     test("a partial (output-only) update does not reset a completed tool to pending", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "tool_call",
           "toolCallId": "t1",
@@ -104,7 +141,12 @@ void main() {
     });
 
     test("a title-only tool_call_update merges onto an existing draft (matches live)", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "tool_call",
           "toolCallId": "t1",
@@ -125,7 +167,12 @@ void main() {
     });
 
     test("a non-string tool title does not throw mid-replay", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "tool_call",
           "toolCallId": "t1",
@@ -145,6 +192,7 @@ void main() {
         agentId: "Cursor",
         modelId: "claude-opus-4-8",
         providerId: "cursor",
+        initialUserMessageId: null,
         haltClassifier: null,
       )..consume(upd({
           "sessionUpdate": "agent_message_chunk",
@@ -158,7 +206,12 @@ void main() {
     test("a messageId change splits consecutive same-role chunks into two messages", () {
       // ACP v1: chunks of one message share a messageId; a change starts a new
       // message. Without honouring it, distinct same-role messages collapse.
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
           "messageId": "m1",
@@ -183,7 +236,12 @@ void main() {
     });
 
     test("chunks without a messageId keep the role-grouping behaviour", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
           "content": {"type": "text", "text": "one"},
@@ -196,7 +254,12 @@ void main() {
     });
 
     test("an explicit messageId after id-less text starts a new message", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
           "content": {"type": "text", "text": "id-less draft"},
@@ -214,7 +277,12 @@ void main() {
     });
 
     test("id-less text after an explicit messageId starts a new message", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
           "messageId": "m1",
@@ -232,7 +300,12 @@ void main() {
     });
 
     test("a same-message thought and text share the message; tools attach without an id", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "agent_thought_chunk",
           "messageId": "m1",
@@ -264,6 +337,7 @@ void main() {
         agentId: "Cursor",
         modelId: "claude-fable-5",
         providerId: "cursor",
+        initialUserMessageId: null,
         haltClassifier: ({required text}) => text.trim() == "Check your settings to continue"
             ? const AcpHaltNotice(errorName: "cursor_gate", message: "Check your settings to continue")
             : null,
@@ -279,7 +353,12 @@ void main() {
     });
 
     test("without a halt classifier the same chunk stays assistant text", () {
-      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor", haltClassifier: null)
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+      )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
           "content": {"type": "text", "text": "Check your settings to continue"},

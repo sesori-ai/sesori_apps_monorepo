@@ -35,7 +35,9 @@ class SessionCreationService {
     final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
     final normalizedCommand = request.command?.normalize();
     final agentModel = request.model;
-    final firstText = _extractFirstText(parts: request.parts);
+    final userTexts = _extractTexts(parts: request.parts);
+    final firstText = userTexts.firstOrNull;
+    final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
     final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
     final worktreeState = await _resolveWorktreeState(
@@ -53,7 +55,7 @@ class SessionCreationService {
         worktreeResult: worktreeResult,
         command: normalizedCommand,
       ),
-      userVisibleText: normalizedCommand == null ? firstText : null,
+      userVisibleText: normalizedCommand == null ? userVisibleText : null,
       variant: request.variant,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
@@ -93,12 +95,12 @@ class SessionCreationService {
     );
   }
 
-  String? _extractFirstText({required List<PromptPart> parts}) {
+  List<String> _extractTexts({required List<PromptPart> parts}) {
     return parts
         .whereType<PromptPartText>()
         .map((part) => part.text)
         .where((text) => text.trim().isNotEmpty)
-        .firstOrNull;
+        .toList(growable: false);
   }
 
   Future<bridge_metadata.SessionMetadata?> _generateMetadata({required String? firstText}) async {

@@ -100,6 +100,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   final Map<String, PluginSessionStatus> _sessionStatuses = {};
 
+  /// Sessions whose initial user message was synthesized by this bridge
+  /// process. History replay reuses that message identity to avoid a load/SSE
+  /// race rendering the same prompt twice.
+  final Set<String> _syntheticInitialPromptSessions = {};
+
   /// Per-session turn-queue state. ACP agents run one turn per session at a
   /// time, so turns are serialized behind each session's chain here; all
   /// decisions live on this class — the state object only holds fields.
@@ -673,10 +678,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     );
     emitEvent(eventMapper.mapCreatedSession(session: created));
     if (userVisibleText != null && userVisibleText.trim().isNotEmpty) {
+      _syntheticInitialPromptSessions.add(session.sessionId);
       eventMapper
-          .mapSentPrompt(
+          .mapInitialPrompt(
             sessionId: session.sessionId,
-            parts: [PluginPromptPart.text(text: userVisibleText)],
+            text: userVisibleText,
           )
           .forEach(emitEvent);
     }
@@ -1154,6 +1160,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     _inFlightTurnSessions.remove(sessionId);
     if (_lastTurnSessionId == sessionId) _lastTurnSessionId = null;
     _sessionStatuses.remove(sessionId);
+    _syntheticInitialPromptSessions.remove(sessionId);
     _residentSessions.remove(sessionId);
     _sessionDirectories.remove(sessionId);
     // Drops the session's project attribution plus all other per-session mapper
@@ -1207,6 +1214,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       agentId: agentDisplayName,
       modelId: eventMapper.modelForSession(sessionId),
       providerId: eventMapper.providerForSession(sessionId),
+      initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
+          ? AcpEventMapper.initialUserMessageId(sessionId)
+          : null,
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,
