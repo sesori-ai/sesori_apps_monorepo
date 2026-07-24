@@ -4,8 +4,8 @@
 
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
-- **Base:** `origin/main` at `96f63c69`
-- **Current branch:** `setup-aware-plugin-lifecycle-project-ownership`
+- **Base:** `origin/main` at `cd0e0a31`
+- **Current branch:** `setup-aware-plugin-lifecycle-dormant-runtime`
 - **Current stage:** Stage 11-P02 — dormant runtime and numeric idle timeout rebuild
 - **Next action:** selectively rebuild the frozen #509 behavior on the verified P01D head while monitoring #549/#550
 
@@ -34,7 +34,7 @@ run their focused verification again.
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 merged as `51008356` |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 merged as `96f63c69` |
-| [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 open and monitored |
+| [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 open and monitored |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | rebuilding frozen #509 descendant |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
