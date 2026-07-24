@@ -63,7 +63,7 @@ class _FakeSessionRepository implements SessionRepository {
   final List<({String pluginId, String backendSessionId})> cleanupCalls = [];
 
   @override
-  List<String> get persistedSessionCleanupPluginIds => cleanupPluginIds;
+  Future<List<String>> get persistedSessionCleanupPluginIds async => cleanupPluginIds;
 
   @override
   Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async {

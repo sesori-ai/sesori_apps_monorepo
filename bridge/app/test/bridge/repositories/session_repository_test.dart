@@ -89,7 +89,7 @@ void main() {
         deletedAt: 1,
       );
 
-      expect(repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
+      expect(await repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
       expect(
         await repository.getTombstonedBackendSessionIdsForCleanup(
           pluginId: cleanupPlugin.id,
@@ -123,7 +123,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
-      expect(repository.persistedSessionCleanupPluginIds, isEmpty);
+      expect(await repository.persistedSessionCleanupPluginIds, isEmpty);
     });
 
     test("coalesces tombstone loading and serves later lookups from memory", () async {
