@@ -356,12 +356,21 @@ class SessionRepository {
   Future<List<String>> get persistedSessionCleanupPluginIds async {
     final pluginIds = <String>[];
     for (final pluginId in _runtime.activePluginIds) {
-      final supportsCleanup = await _runtime.useIfActive(
-        pluginId: pluginId,
-        operation: SessionOperation.cleanupSession,
-        body: (plugin, _) async => plugin is PersistedSessionCleanupApi,
-      );
-      if (supportsCleanup ?? false) pluginIds.add(pluginId);
+      try {
+        final supportsCleanup = await _runtime.useIfActive(
+          pluginId: pluginId,
+          operation: SessionOperation.cleanupSession,
+          body: (plugin, _) async => plugin is PersistedSessionCleanupApi,
+        );
+        if (supportsCleanup ?? false) pluginIds.add(pluginId);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "Failed to inspect persisted session cleanup capability "
+          "(plugin=$pluginId); retrying next startup",
+          error,
+          stackTrace,
+        );
+      }
     }
     pluginIds.sort();
     return List<String>.unmodifiable(pluginIds);
