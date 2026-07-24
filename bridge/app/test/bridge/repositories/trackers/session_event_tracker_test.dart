@@ -110,7 +110,14 @@ void main() {
         ),
       );
 
-      expect(tracker.isBindingPending(pluginId: "a", backendSessionId: "child"), isTrue);
+      expect(
+        tracker.isBindingPending(
+          pluginId: "a",
+          generation: 1,
+          backendSessionId: "child",
+        ),
+        isTrue,
+      );
       tracker.takeRoot(pluginId: "a", backendSessionId: "root");
       final rootReady = tracker.takeReady(pluginId: "a", backendSessionId: "root");
       expect(rootReady, [isA<PendingSessionEvent>()]);
@@ -153,6 +160,43 @@ void main() {
       expect(tracker.length, 0);
     });
 
+    test("successor child replaces stale pending ancestry and translations", () {
+      final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 4);
+      tracker.addChild(
+        event: _pending(pluginId: "a", sessionId: "child", parentId: "root"),
+      );
+      tracker.addTranslation(
+        event: _pendingTranslation(pluginId: "a", backendSessionId: "child"),
+      );
+      const successor = Session(
+        id: "child",
+        pluginId: "a",
+        projectID: "project",
+        directory: "/repo/child",
+        parentID: "root",
+        title: null,
+        time: null,
+        pullRequest: null,
+        promptDefaults: null,
+        branchName: null,
+      );
+
+      tracker.addChild(
+        event: PendingSessionEvent(
+          pluginId: "a",
+          generation: 2,
+          event: BridgeSseSessionCreated(info: successor.toJson()),
+          session: successor,
+          projectionUpdatedAt: 3,
+        ),
+      );
+
+      final children = tracker.takeChildren(pluginId: "a", backendParentId: "root");
+      expect(children.map((event) => event.generation), [2]);
+      expect(tracker.takeTranslations(pluginId: "a", backendSessionId: "child"), isEmpty);
+      expect(tracker.length, 0);
+    });
+
     test("rejects translation retention without a pending binding", () {
       final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1);
 
@@ -189,6 +233,7 @@ PendingSessionEvent _pending({
   );
   return PendingSessionEvent(
     pluginId: pluginId,
+    generation: 1,
     event: updated
         ? BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false)
         : BridgeSseSessionCreated(info: session.toJson()),
@@ -203,6 +248,7 @@ PendingTranslationEvent _pendingTranslation({
 }) {
   return PendingTranslationEvent(
     pluginId: pluginId,
+    generation: 1,
     event: BridgeSsePermissionAsked(
       requestID: "permission-$backendSessionId",
       sessionID: backendSessionId,

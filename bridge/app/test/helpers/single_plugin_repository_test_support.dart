@@ -130,7 +130,7 @@ CatalogImportRepository singlePluginCatalogImportRepository({
   required CatalogHydrationsDao catalogHydrationsDao,
 }) {
   return CatalogImportRepository(
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     catalogHydrationsDao: catalogHydrationsDao,

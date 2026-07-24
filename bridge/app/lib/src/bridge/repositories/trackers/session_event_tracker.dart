@@ -3,11 +3,13 @@ import "package:sesori_shared/sesori_shared.dart";
 
 sealed class PendingTrackedEvent {
   final String pluginId;
+  final int generation;
   final BridgeSseEvent event;
   final int projectionUpdatedAt;
 
   const PendingTrackedEvent({
     required this.pluginId,
+    required this.generation,
     required this.event,
     required this.projectionUpdatedAt,
   });
@@ -20,6 +22,7 @@ final class PendingSessionEvent extends PendingTrackedEvent {
 
   const PendingSessionEvent({
     required super.pluginId,
+    required super.generation,
     required super.event,
     required this.session,
     required super.projectionUpdatedAt,
@@ -35,6 +38,7 @@ final class PendingTranslationEvent extends PendingTrackedEvent {
 
   const PendingTranslationEvent({
     required super.pluginId,
+    required super.generation,
     required super.event,
     required this.backendSessionId,
     required super.projectionUpdatedAt,
@@ -74,10 +78,15 @@ class SessionEventTracker {
       throw ArgumentError("pending child event must carry a parent session id");
     }
     final bindingKey = (pluginId: event.pluginId, backendSessionId: event.session.id);
+    final previous = _sessions[bindingKey];
+    if (previous != null && previous.generation != event.generation) {
+      _removeSession(event: previous, dropTranslations: true);
+    }
     if (_translations[bindingKey]?.isNotEmpty ?? false) {
       return addTranslation(
         event: PendingTranslationEvent(
           pluginId: event.pluginId,
+          generation: event.generation,
           event: event.event,
           backendSessionId: event.session.id,
           projectionUpdatedAt: event.projectionUpdatedAt,
@@ -114,8 +123,16 @@ class SessionEventTracker {
     return children;
   }
 
-  bool isBindingPending({required String pluginId, required String backendSessionId}) {
-    return _sessions.containsKey((pluginId: pluginId, backendSessionId: backendSessionId));
+  bool isBindingPending({
+    required String pluginId,
+    required int generation,
+    required String backendSessionId,
+  }) {
+    return _sessions[(pluginId: pluginId, backendSessionId: backendSessionId)]?.generation == generation;
+  }
+
+  int? pendingBindingGeneration({required String pluginId, required String backendSessionId}) {
+    return _sessions[(pluginId: pluginId, backendSessionId: backendSessionId)]?.generation;
   }
 
   PendingTrackedEvent? addTranslation({required PendingTranslationEvent event}) {
