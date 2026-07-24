@@ -404,7 +404,7 @@
   },
   "createNewFolder": "Create new folder",
   "@createNewFolder": {
-    "description": "Secondary action of the add-project sheet: makes a new folder inside the one being browsed. Disabled while the browser sits at the machine's starting folder."
+    "description": "Secondary action of the add-project sheet: makes a new folder inside the one being browsed."
   },
   "newFolderTitle": "New folder",
   "newFolderHint": "Folder name",

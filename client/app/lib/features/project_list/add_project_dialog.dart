@@ -41,8 +41,7 @@ Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) 
 /// The sheet is a single view with two actions over the listing:
 /// - **Add as new project** — registers the folder currently being browsed;
 /// - **Create new folder** — makes an empty folder here and steps into it, so
-///   the user can then add *it*. Unavailable at the machine's starting folder,
-///   which is a place to browse from rather than to write into.
+///   the user can then add *it*.
 @visibleForTesting
 class AddProjectDialog extends StatefulWidget {
   final ProjectListCubit cubit;
@@ -63,16 +62,12 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   /// `ScaffoldMessenger.of` from here would find the screen's instead.
   final GlobalKey<ScaffoldMessengerState> _messengerKey = GlobalKey();
 
-  /// The folder the bridge started us in. Everything above it is out of scope
-  /// for the browser, so it is also where the back button stops.
-  String? _rootPath;
+  /// The folder the bridge started us in, used to present that full host path
+  /// as the header title. It is a starting location, not a navigation boundary.
+  String? _startingPath;
 
-  /// The folder being listed. Empty until the first fetch resolves the root.
+  /// The folder being listed. Empty until the first fetch resolves the start.
   String _currentPath = "";
-
-  /// The machine the bridge runs on, used to head the listing and to prefix the
-  /// path. Null while it is being fetched, or when the lookup came up empty.
-  String? _machineName;
 
   List<FilesystemSuggestion> _entries = [];
   bool _loading = false;
@@ -84,23 +79,15 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   /// that shows it.
   _AddProjectAction? _inFlight;
 
-  /// Whether the browser is still where the bridge put it. Also true before the
-  /// first fetch resolves, when there is no folder to act on yet. A bridge that
-  /// names no starting folder leaves [_rootPath] null: stepping into a folder
-  /// then still counts as having moved, so back and create stay reachable.
-  bool get _isAtRoot => _currentPath.isEmpty || _currentPath == _rootPath;
+  bool get _isAtStartingPath => _currentPath.isNotEmpty && _currentPath == _startingPath;
+
+  bool get _canNavigateUp =>
+      _currentPath.isNotEmpty && widget.cubit.parentHostPath(path: _currentPath) != null;
 
   @override
   void initState() {
     super.initState();
     _fetchEntries();
-    _fetchMachineName();
-  }
-
-  Future<void> _fetchMachineName() async {
-    final name = await widget.cubit.hostMachineName();
-    if (!mounted) return;
-    setState(() => _machineName = name);
   }
 
   // ---------------------------------------------------------------------------
@@ -130,10 +117,10 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
         case FilesystemSuggestionsSuccess(:final suggestions):
           final resolvedPath = suggestions.path;
           // The first fetch has no prefix, so the bridge names the folder it
-          // chose: that becomes both the current folder and the browser's root.
+          // chose. Keep it for presentation while allowing navigation above it.
           if (_currentPath.isEmpty && resolvedPath != null && resolvedPath.isNotEmpty) {
             _currentPath = resolvedPath;
-            _rootPath = resolvedPath;
+            _startingPath = resolvedPath;
           }
           _entries = suggestions.data;
           _hasError = false;
@@ -166,27 +153,19 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   // Header labelling
   // ---------------------------------------------------------------------------
 
-  /// The bar's title: the folder being browsed, or the machine itself while the
-  /// browser sits at its starting folder — which is the machine, as far as the
-  /// user is concerned.
+  /// The bar's title: the bridge-returned host path at the starting folder, or
+  /// the current folder name after navigating away from it.
   String _title({required AppLocalizations loc}) {
-    if (_currentPath.isEmpty) return _machineName ?? loc.addProject;
-    if (_isAtRoot) return _machineName ?? _currentPath;
+    if (_currentPath.isEmpty) return loc.addProject;
+    if (_isAtStartingPath) return _currentPath;
     return _hostBasename(_currentPath);
   }
 
-  /// The bar's second line: where the folder sits, written from the machine
-  /// down (`MacBook-Pro.local/Documents`) rather than from the filesystem root,
-  /// so it reads as a place on that computer. Null at the starting folder,
-  /// where the title already says it.
+  /// The bar's second line is the full host path after navigating away from the
+  /// starting folder. Null there, where the title already shows that path.
   String? _subtitle() {
-    if (_isAtRoot || _currentPath.isEmpty) return null;
-    final root = _rootPath;
-    final machine = _machineName;
-    if (machine == null || root == null || !_currentPath.startsWith(root)) {
-      return _currentPath;
-    }
-    return "$machine${_currentPath.substring(root.length)}";
+    if (_isAtStartingPath || _currentPath.isEmpty) return null;
+    return _currentPath;
   }
 
   /// The last segment of a host path. The path comes from the bridge's host,
@@ -340,7 +319,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
       // for the sheet — so the leading-aligned title/path variant.
       alignment: PregoSheetTitleAlignment.start,
       topInset: widget.topInset,
-      onBack: _isAtRoot ? null : _navigateUp,
+      onBack: _canNavigateUp ? _navigateUp : null,
       onClose: _dismissDialog,
       // Full-bleed body; the banner, rows, and action menu pad themselves.
       contentPadding: EdgeInsetsDirectional.zero,
@@ -384,10 +363,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
                           bottom: 0,
                           child: _ActionMenu(
                             onAdd: _inFlight != null || _currentPath.isEmpty ? null : _onAdd,
-                            // Creating a folder needs somewhere to put it, and
-                            // the starting folder is not it: see
-                            // [AddProjectDialog].
-                            onCreateFolder: _inFlight != null || _isAtRoot ? null : _onCreateFolder,
+                            onCreateFolder: _inFlight != null || _currentPath.isEmpty ? null : _onCreateFolder,
                             inFlight: _inFlight,
                           ),
                         ),
@@ -642,7 +618,7 @@ class _ActionMenu extends StatelessWidget {
   /// Null while an action is in flight or before the browser knows its folder.
   final VoidCallback? onAdd;
 
-  /// Null while an action is in flight or at the machine's starting folder.
+  /// Null while an action is in flight or before the browser knows its folder.
   final VoidCallback? onCreateFolder;
 
   /// Which action is waiting on the bridge, so that button — and only that one

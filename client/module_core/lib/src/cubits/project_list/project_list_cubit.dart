@@ -564,17 +564,6 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     return _projectRepository.parentHostPath(path: path);
   }
 
-  /// The name of the machine the directory browser is listing — the account's
-  /// most recently seen registered bridge, matching what the connected-empty
-  /// and bridge-offline bodies name.
-  ///
-  /// Null when the lookup has nothing to offer (no registered bridges, or a
-  /// failed fetch), so callers fall back to the host path itself.
-  Future<String?> hostMachineName() async {
-    final bridges = await _registeredBridgesService.getRegisteredBridges();
-    return bridges.isEmpty ? null : bridges.first.name;
-  }
-
   /// Renames the project with [projectId] to [name].
   /// Returns `true` on success (and refreshes the project list), `false` on error.
   Future<bool> renameProject({required String projectId, required String name}) async {

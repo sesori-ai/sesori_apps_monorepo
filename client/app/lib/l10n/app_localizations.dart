@@ -1297,7 +1297,7 @@ abstract class AppLocalizations {
   /// **'Add as new project'**
   String get addAsNewProject;
 
-  /// Secondary action of the add-project sheet: makes a new folder inside the one being browsed. Disabled while the browser sits at the machine's starting folder.
+  /// Secondary action of the add-project sheet: makes a new folder inside the one being browsed.
   ///
   /// In en, this message translates to:
   /// **'Create new folder'**

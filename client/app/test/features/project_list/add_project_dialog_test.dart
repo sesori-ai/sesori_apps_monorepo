@@ -183,8 +183,6 @@ void main() {
 
   setUp(() {
     mockCubit = MockProjectListCubit();
-    // The browser heads its listing with the machine the bridge runs on.
-    when(() => mockCubit.hostMachineName()).thenAnswer((_) async => "MacBook-Pro.local");
     mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -235,7 +233,7 @@ void main() {
       when(() => mockCubit.state).thenReturn(
         const ProjectListState.loaded(projects: [], activityById: {}),
       );
-      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries, path: _homePath);
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
@@ -244,8 +242,8 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
 
-      // Single view — the machine heads the listing, with both actions below.
-      expect(find.text("MacBook-Pro.local"), findsOneWidget);
+      // Single view — the bridge-returned host path heads the listing.
+      expect(find.text(_homePath), findsOneWidget);
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("Add as new project"), findsOneWidget);
     });
@@ -380,12 +378,15 @@ void main() {
       expect(_createFolderButton, findsOneWidget);
     });
 
-    testWidgets("starting folder is addable but cannot be written into", (tester) async {
-      _stubSuggestionsWithEntries(
+    testWidgets("starting folder uses its host path and remains navigable and writable", (tester) async {
+      _stubSuggestionsPerPrefix(
         mockCubit,
-        entries: const [],
-        path: _homePath,
+        byPrefix: {
+          "": const [],
+          "/home": const [],
+        },
       );
+      when(() => mockCubit.parentHostPath(path: _homePath)).thenReturn("/home");
 
       await tester.pumpWidget(
         _buildApp(
@@ -403,13 +404,18 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      // The machine names the starting folder, and there is nowhere to go back
-      // to from it.
-      expect(find.text("MacBook-Pro.local"), findsOneWidget);
-      expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
+      // The path comes from the bridge response, so it is bound to the host
+      // serving the filesystem request.
+      expect(find.text(_homePath), findsOneWidget);
+      expect(find.byIcon(TablerRegular.arrow_left), findsOneWidget);
 
       expect(_button(tester, _addButton).onPressed, isNotNull);
-      expect(_button(tester, _createFolderButton).onPressed, isNull);
+      expect(_button(tester, _createFolderButton).onPressed, isNotNull);
+
+      await tester.tap(find.byIcon(TablerRegular.arrow_left));
+      await tester.pumpAndSettle();
+
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/home")).called(1);
     });
 
     testWidgets("tapping a directory entry navigates into it", (tester) async {
@@ -420,6 +426,7 @@ void main() {
           "/home/user/projects": _projectsDirEntries,
         },
       );
+      when(() => mockCubit.parentHostPath(path: "/home/user/projects")).thenReturn(_homePath);
 
       await tester.pumpWidget(
         _buildApp(
@@ -444,10 +451,10 @@ void main() {
       expect(find.text("app-one"), findsOneWidget);
       expect(find.text("lib-two"), findsOneWidget);
       expect(find.text("work"), findsNothing);
-      // The bar follows the browser: the folder heads it, and the path below
-      // reads from the machine down rather than from the filesystem root.
+      // The bar follows the browser: the folder heads it, with the full host
+      // path below.
       expect(find.text("projects"), findsOneWidget);
-      expect(find.text("MacBook-Pro.local/projects"), findsOneWidget);
+      expect(find.text("/home/user/projects"), findsOneWidget);
       expect(find.byIcon(TablerRegular.arrow_left), findsOneWidget);
     });
 
@@ -463,6 +470,7 @@ void main() {
       when(
         () => mockCubit.parentHostPath(path: "/home/user/projects"),
       ).thenReturn(_homePath);
+      when(() => mockCubit.parentHostPath(path: _homePath)).thenReturn("/home");
 
       await tester.pumpWidget(
         _buildApp(
@@ -490,8 +498,9 @@ void main() {
 
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("work"), findsOneWidget);
-      // Back at the starting folder, so the way further up is gone again.
-      expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
+      // The starting folder is only the initial location; its parent remains
+      // reachable.
+      expect(find.byIcon(TablerRegular.arrow_left), findsOneWidget);
     });
 
     testWidgets("a listing that lands after stepping back out is ignored", (tester) async {
@@ -540,7 +549,7 @@ void main() {
 
       expect(find.text("app-one"), findsNothing);
       expect(find.text("work"), findsOneWidget);
-      expect(find.text("MacBook-Pro.local"), findsOneWidget);
+      expect(find.text(_homePath), findsOneWidget);
     });
 
     testWidgets("Add as new project calls discoverProject with browsed path", (tester) async {
@@ -818,7 +827,7 @@ void main() {
         () => mockCubit.discoverProject(path: any(named: "path"), gitAction: any(named: "gitAction")),
       );
       expect(find.text("new-app"), findsOneWidget);
-      expect(find.text("MacBook-Pro.local/projects/new-app"), findsOneWidget);
+      expect(find.text(newFolderPath), findsOneWidget);
       expect(find.text("This directory is empty"), findsOneWidget);
     });
 
