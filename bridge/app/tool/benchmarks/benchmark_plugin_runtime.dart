@@ -30,6 +30,9 @@ class BenchmarkPluginRuntime extends PluginRuntime {
   Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
 
   @override
+  Set<String> get eligiblePluginIds => Set<String>.unmodifiable(_plugins.keys);
+
+  @override
   Map<String, BridgePluginApi> get operationalApis => _plugins;
 
   @override
