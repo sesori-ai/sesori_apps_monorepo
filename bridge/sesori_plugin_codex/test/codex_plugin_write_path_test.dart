@@ -10,6 +10,7 @@ import "dart:io";
 import "package:codex_plugin/codex_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
@@ -395,6 +396,81 @@ void main() {
           "developer_instructions": null,
         },
       });
+    });
+
+    test("collaboration mode stamps live messages with its resolved rollout model", () async {
+      const sessionId = "019a0000-1111-2222-3333-eeeeeeeeeeee";
+      File(p.join(codexHome.path, "config.toml")).writeAsStringSync(
+        'model = "gpt-global"\nmodel_provider = "openai"\n',
+      );
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/07/24/rollout-2026-07-24T08-00-00-$sessionId.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "session_meta",
+          "payload": {
+            "id": sessionId,
+            "timestamp": "2026-07-24T08:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+          },
+        })}\n"
+        "${jsonEncode({
+          "type": "turn_context",
+          "payload": {"model": "gpt-session"},
+        })}\n",
+      );
+      final resolvedFake = _FakeAppServer();
+      const serverUrl = "ws://127.0.0.1:0";
+      final resolvedPlugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
+        projectCwd: "/work/sample",
+        clientFactory: () => CodexAppServerClient(
+          serverUrl: serverUrl,
+          channelFactory: (_) => resolvedFake.channel,
+        ),
+        keepaliveInterval: const Duration(seconds: 30),
+      );
+      addTearDown(resolvedPlugin.dispose);
+      resolvedFake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": sessionId, "modelProvider": "openai"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-resolved"}),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = resolvedPlugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await resolvedPlugin.sendPrompt(
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "plan this")],
+        variant: null,
+        agent: "Plan",
+        model: null,
+      );
+      resolvedFake.pushNotification("item/completed", {
+        "threadId": sessionId,
+        "turnId": "u-resolved",
+        "item": {
+          "type": "agentMessage",
+          "id": "i-resolved",
+          "text": "The plan",
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final messageEvent = events.whereType<BridgeSseMessageUpdated>().single;
+      final message = shared.Message.fromJson(messageEvent.info) as shared.MessageAssistant;
+      expect(message.modelID, "gpt-session");
     });
 
     test("sendPrompt does not re-resume a thread created in this run", () async {

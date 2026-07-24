@@ -592,7 +592,7 @@ class CodexPlugin implements CodexManagedApi {
     }
     _rolloutTailer.start(sessionId: sessionId);
     try {
-      final resumed = await _sessionService.sendCommand(
+      final dispatch = await _sessionService.sendCommand(
         threadId: sessionId,
         command: command,
         arguments: arguments,
@@ -600,7 +600,14 @@ class CodexPlugin implements CodexManagedApi {
         effort: variant?.id,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
       );
-      _applyResumedThread(threadId: sessionId, response: resumed);
+      _applyResumedThread(
+        threadId: sessionId,
+        response: dispatch.resumedThread,
+      );
+      final resolvedModel = dispatch.resolvedModel;
+      if (resolvedModel != null) {
+        _eventMapper.setThreadModel(sessionId, resolvedModel);
+      }
     } on Object {
       _rolloutTailer.stop(sessionId: sessionId);
       rethrow;
@@ -665,6 +672,10 @@ class CodexPlugin implements CodexManagedApi {
         threadId: threadId,
         response: dispatch.resumedThread,
       );
+      final resolvedModel = dispatch.resolvedModel;
+      if (resolvedModel != null) {
+        _eventMapper.setThreadModel(threadId, resolvedModel);
+      }
     } on Object {
       _rolloutTailer.stop(sessionId: threadId);
       rethrow;

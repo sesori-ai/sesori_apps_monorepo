@@ -113,7 +113,7 @@ class CodexSessionService {
     return thread;
   }
 
-  Future<({CodexThreadRecord? resumedThread, bool started})> startTurn({
+  Future<({CodexThreadRecord? resumedThread, String? resolvedModel, bool started})> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
     required String? model,
@@ -138,7 +138,11 @@ class CodexSessionService {
       if (started) {
         _rememberThreadModel(threadId: threadId, model: turnModel);
       }
-      return (resumedThread: resumed, started: started);
+      return (
+        resumedThread: resumed,
+        resolvedModel: turnModel,
+        started: started,
+      );
     } on CodexThreadNotFoundException {
       resumed = await resumeThreadIfNeeded(threadId: threadId, force: true);
       turnModel = _resolveTurnModel(
@@ -156,11 +160,15 @@ class CodexSessionService {
       if (started) {
         _rememberThreadModel(threadId: threadId, model: turnModel);
       }
-      return (resumedThread: resumed, started: started);
+      return (
+        resumedThread: resumed,
+        resolvedModel: turnModel,
+        started: started,
+      );
     }
   }
 
-  Future<CodexThreadRecord?> sendCommand({
+  Future<({CodexThreadRecord? resumedThread, String? resolvedModel})> sendCommand({
     required String threadId,
     required String command,
     required String arguments,
@@ -203,7 +211,10 @@ class CodexSessionService {
     if (command != compactionCommandName) {
       _rememberThreadModel(threadId: threadId, model: turnModel);
     }
-    return resumed;
+    return (
+      resumedThread: resumed,
+      resolvedModel: command == compactionCommandName ? null : turnModel,
+    );
   }
 
   Future<void> _dispatchCommand({

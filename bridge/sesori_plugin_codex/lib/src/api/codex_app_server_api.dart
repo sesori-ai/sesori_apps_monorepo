@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "models/codex_collaboration_mode_dto.dart";
 import "models/codex_skill_dto.dart";
 import "models/codex_thread_dto.dart";
 import "models/codex_turn_input_dto.dart";
@@ -73,15 +74,15 @@ class CodexAppServerApi {
           "turn/start collaborationMode requires a resolved model",
         );
       }
-      params["collaborationMode"] = {
-        "mode": collaborationMode.wireValue,
-        "settings": {
-          "model": model,
-          "reasoning_effort": effort,
+      params["collaborationMode"] = CodexCollaborationModeDto(
+        mode: collaborationMode.wireValue,
+        settings: CodexCollaborationModeSettingsDto(
+          model: model,
+          reasoningEffort: effort,
           // Null asks Codex to supply its version-matched built-in mode prompt.
-          "developer_instructions": null,
-        },
-      };
+          developerInstructions: null,
+        ),
+      ).toJson();
     }
     await _client.request(method: "turn/start", params: params);
   }
