@@ -27,6 +27,10 @@ enum CodexCollaborationMode {
   static CodexCollaborationMode? fromAgent({required String? agent}) {
     final normalized = agent?.trim().toLowerCase();
     return switch (normalized) {
+      // COMPATIBILITY 2026-07-24 (v1.6.0): Older apps omit the agent and
+      // expect normal execution. Remove this mapping when those app versions
+      // are no longer supported.
+      null => defaultMode,
       "default" => defaultMode,
       "plan" => plan,
       // COMPATIBILITY 2026-07-24 (v1.6.0): Earlier Codex plugins persisted

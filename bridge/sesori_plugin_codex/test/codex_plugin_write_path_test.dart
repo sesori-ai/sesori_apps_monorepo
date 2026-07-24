@@ -365,7 +365,7 @@ void main() {
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing"));
     });
 
-    test("sendPrompt sends Default mode explicitly so it replaces Plan mode", () async {
+    test("sendPrompt treats an omitted agent as Default so it replaces Plan mode", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -382,7 +382,7 @@ void main() {
         sessionId: "t-default-mode",
         parts: const [PluginPromptPart.text(text: "implement it")],
         variant: null,
-        agent: "Default",
+        agent: null,
         model: null,
       );
 
