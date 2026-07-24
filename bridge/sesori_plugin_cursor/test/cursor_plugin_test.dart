@@ -10,6 +10,7 @@ void main() {
   group("CursorPlugin", () {
     late FakeAcpProcess fake;
     late CursorPlugin plugin;
+    late _FakeCursorSessionCleanupService sessionCleanupService;
     late Set<Object?> handledFrameIds;
 
     Map<String, dynamic> catalogResult() => {
@@ -97,10 +98,12 @@ void main() {
 
     setUp(() {
       fake = FakeAcpProcess();
+      sessionCleanupService = _FakeCursorSessionCleanupService();
       handledFrameIds = {};
       plugin = CursorPlugin(
         launchDirectory: "/repo",
         processFactory: (_) async => fake,
+        sessionCleanupService: sessionCleanupService,
       );
     });
 
@@ -130,6 +133,16 @@ void main() {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
       await pump();
     }
+
+    test("delegates persisted session cleanup", () async {
+      expect(plugin, isA<PersistedSessionCleanupApi>());
+
+      await plugin.deletePersistedSession(
+        backendSessionId: "session-1",
+      );
+
+      expect(sessionCleanupService.deletedSessionIds, ["session-1"]);
+    });
 
     // getProviders now warms the catalog before returning (so a fresh session's
     // effort pill is populated up front). That needs the ACP handshake. For a
@@ -1028,6 +1041,7 @@ void main() {
       fakes.clear();
       plugin = CursorPlugin(
         launchDirectory: cwd,
+        sessionCleanupService: _FakeCursorSessionCleanupService(),
         processFactory: (_) async {
           final fake = FakeAcpProcess();
           fakes.add(fake);
@@ -1355,4 +1369,13 @@ void main() {
       );
     });
   });
+}
+
+class _FakeCursorSessionCleanupService implements CursorSessionCleanupService {
+  final List<String> deletedSessionIds = [];
+
+  @override
+  Future<void> deletePersistedSession({required String backendSessionId}) async {
+    deletedSessionIds.add(backendSessionId);
+  }
 }

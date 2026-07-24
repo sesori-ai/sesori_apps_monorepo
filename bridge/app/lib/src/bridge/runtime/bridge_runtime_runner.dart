@@ -872,6 +872,10 @@ class BridgeRuntimeRunner {
       );
       final activeRuntime = runtime;
 
+      // Run before imports, debug routes, or relay traffic can load a session
+      // into a backend process and retain handles to its persisted storage.
+      await activeRuntime.reconcileDeletedSessionStorage();
+
       if (!options.isSupervised) {
         catalogImportConsoleListener = CatalogImportConsoleListener(
           progress: activeRuntime.catalogImportService.progress,

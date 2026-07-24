@@ -1,11 +1,16 @@
 import "dart:io" show Platform;
 
 /// Resolves the current user's home directory from platform environment values.
+///
+/// Prefers `USERPROFILE` on Windows and `HOME` elsewhere, then falls back to
+/// the other value. Missing and whitespace-only values are ignored.
 String? resolveUserHomeDirectory({required Map<String, String> environment}) {
-  final home = environment["HOME"];
-  if (home != null && home.isNotEmpty) return home;
-  final userProfile = environment["USERPROFILE"];
-  return userProfile == null || userProfile.isEmpty ? null : userProfile;
+  final keys = Platform.isWindows ? const ["USERPROFILE", "HOME"] : const ["HOME", "USERPROFILE"];
+  for (final key in keys) {
+    final value = environment[key];
+    if (value != null && value.trim().isNotEmpty) return value;
+  }
+  return null;
 }
 
 /// The single canonical Sesori application data directory for the host bridge.

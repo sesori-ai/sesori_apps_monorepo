@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         BridgePluginApi,
         Log,
         NativeProjectsPluginApi,
+        PersistedSessionCleanupApi,
         PluginActiveSession,
         PluginOperationException,
         PluginProjectActivitySummary,
@@ -350,6 +351,36 @@ class SessionRepository {
     if (binding == null) return false;
     await _ensureTombstonesLoaded(pluginId: binding.pluginId);
     return _tombstonesFor(binding.pluginId).contains(binding.backendSessionId);
+  }
+
+  List<String> get persistedSessionCleanupPluginIds {
+    final pluginIds = [
+      for (final entry in _runtime.operationalApis.entries)
+        if (entry.value is PersistedSessionCleanupApi) entry.key,
+    ]..sort();
+    return List<String>.unmodifiable(pluginIds);
+  }
+
+  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) {
+    _requirePersistedSessionCleanupApi(
+      pluginId: pluginId,
+      plugin: _runtime.operationalApis[pluginId],
+    );
+    return _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
+  }
+
+  Future<void> deletePersistedSession({
+    required String pluginId,
+    required String backendSessionId,
+  }) {
+    return _runtime.use(
+      pluginId: pluginId,
+      operation: SessionOperation.cleanupSession,
+      body: (plugin) => _requirePersistedSessionCleanupApi(
+        pluginId: pluginId,
+        plugin: plugin,
+      ).deletePersistedSession(backendSessionId: backendSessionId),
+    );
   }
 
   Future<void> _ensureTombstonesLoaded({required String pluginId}) async {
@@ -1292,6 +1323,14 @@ class SessionRepository {
 
   Set<String> _tombstonesFor(String pluginId) {
     return _tombstonedBackendSessionIds.putIfAbsent(pluginId, () => <String>{});
+  }
+
+  PersistedSessionCleanupApi _requirePersistedSessionCleanupApi({
+    required String pluginId,
+    required BridgePluginApi? plugin,
+  }) {
+    if (plugin case final PersistedSessionCleanupApi cleanupApi) return cleanupApi;
+    throw StateError('Plugin "$pluginId" does not support persisted session cleanup');
   }
 
   Future<List<String>> _allocateSessionIds({required int count}) async {

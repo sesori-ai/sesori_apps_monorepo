@@ -5,8 +5,11 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandResult, HostProcessCommandExecutor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../api/cursor_session_storage_api.dart";
 import "../cursor_binary.dart";
 import "../cursor_plugin_impl.dart";
+import "../repositories/cursor_session_storage_repository.dart";
+import "../services/cursor_session_cleanup_service.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
@@ -20,6 +23,7 @@ typedef CursorPluginFactory =
       required String launchDirectory,
       required String? apiEndpoint,
       required AcpProcessFactory processFactory,
+      required CursorSessionCleanupService sessionCleanupService,
     });
 
 CursorPlugin _defaultBuildPlugin({
@@ -27,12 +31,14 @@ CursorPlugin _defaultBuildPlugin({
   required String launchDirectory,
   required String? apiEndpoint,
   required AcpProcessFactory processFactory,
+  required CursorSessionCleanupService sessionCleanupService,
 }) {
   return CursorPlugin(
     binaryPath: binaryPath,
     launchDirectory: launchDirectory,
     apiEndpoint: apiEndpoint,
     processFactory: processFactory,
+    sessionCleanupService: sessionCleanupService,
   );
 }
 
@@ -330,6 +336,12 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       processes: host.processes,
       environment: host.environment,
     );
+    final sessionCleanupService = CursorSessionCleanupService(
+      repository: CursorSessionStorageRepository(
+        api: const CursorSessionStorageApi(),
+      ),
+      environment: host.environment,
+    );
 
     final cursor = (_buildPlugin ?? _defaultBuildPlugin)(
       binaryPath: binaryPath,
@@ -339,6 +351,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       launchDirectory: io.Directory.current.path,
       apiEndpoint: apiEndpoint,
       processFactory: processFactory,
+      sessionCleanupService: sessionCleanupService,
     );
 
     final plugin = AcpBridgePlugin(
@@ -347,9 +360,8 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       endpoint: "$binaryPath acp",
     );
 
-    // Rolls back the spawned agent and surfaces the abort. Each eager phase
-    // below (connect, catalog warm-up) is a boundary where an abort that arrived
-    // meanwhile must undo the partial start rather than return a live plugin.
+    // Rolls back the spawned agent and surfaces an abort that arrived while
+    // connecting rather than returning a live plugin.
     Future<Never> rollbackAborted() async {
       try {
         await plugin.shutdown(budget: null);
@@ -364,17 +376,6 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     // leaves the plugin degraded rather than failing the bridge.
     await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
 
-    if (host.startAborted.isAborted) {
-      await rollbackAborted();
-    }
-
-    // Eagerly warm the model/mode catalog so the mobile's first providers fetch
-    // (which it caches) already has the full list. The catalog service owns the
-    // total deadline; the lazy path in getProviders/getAgents is the fallback.
-    await cursor.warmCatalog();
-
-    // Warm-up can run for seconds: re-check so an abort observed during it still
-    // rolls back instead of returning a started plugin.
     if (host.startAborted.isAborted) {
       await rollbackAborted();
     }

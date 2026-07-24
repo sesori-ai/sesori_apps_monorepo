@@ -513,6 +513,15 @@ class _FakeSessionRepository implements SessionRepository {
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
+  List<String> get persistedSessionCleanupPluginIds => const [];
+
+  @override
+  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async => const {};
+
+  @override
+  Future<void> deletePersistedSession({required String pluginId, required String backendSessionId}) async {}
+
+  @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
 
   @override
