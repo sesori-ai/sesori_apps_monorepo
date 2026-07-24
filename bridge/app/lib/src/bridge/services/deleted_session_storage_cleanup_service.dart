@@ -23,7 +23,7 @@ class DeletedSessionStorageCleanupService {
   }
 
   Future<void> _reconcile() async {
-    for (final pluginId in _sessionRepository.persistedSessionCleanupPluginIds) {
+    for (final pluginId in await _sessionRepository.persistedSessionCleanupPluginIds) {
       final Set<String> sessionIds;
       try {
         sessionIds = await _sessionRepository.getTombstonedBackendSessionIdsForCleanup(

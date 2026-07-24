@@ -353,20 +353,45 @@ class SessionRepository {
     return _tombstonesFor(binding.pluginId).contains(binding.backendSessionId);
   }
 
-  List<String> get persistedSessionCleanupPluginIds {
-    final pluginIds = [
-      for (final entry in _runtime.operationalApis.entries)
-        if (entry.value is PersistedSessionCleanupApi) entry.key,
-    ]..sort();
+  Future<List<String>> get persistedSessionCleanupPluginIds async {
+    final pluginIds = <String>[];
+    for (final pluginId in _runtime.activePluginIds) {
+      try {
+        final supportsCleanup = await _runtime.useIfActive(
+          pluginId: pluginId,
+          operation: SessionOperation.cleanupSession,
+          body: (plugin, _) async => plugin is PersistedSessionCleanupApi,
+        );
+        if (supportsCleanup ?? false) pluginIds.add(pluginId);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "Failed to inspect persisted session cleanup capability "
+          "(plugin=$pluginId); retrying next startup",
+          error,
+          stackTrace,
+        );
+      }
+    }
+    pluginIds.sort();
     return List<String>.unmodifiable(pluginIds);
   }
 
-  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) {
-    _requirePersistedSessionCleanupApi(
+  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async {
+    final tombstones = await _runtime.useIfActive(
       pluginId: pluginId,
-      plugin: _runtime.operationalApis[pluginId],
+      operation: SessionOperation.cleanupSession,
+      body: (plugin, _) {
+        _requirePersistedSessionCleanupApi(
+          pluginId: pluginId,
+          plugin: plugin,
+        );
+        return _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
+      },
     );
-    return _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
+    if (tombstones == null) {
+      throw StateError('Plugin "$pluginId" is not active');
+    }
+    return tombstones;
   }
 
   Future<void> deletePersistedSession({

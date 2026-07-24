@@ -89,7 +89,7 @@ void main() {
         deletedAt: 1,
       );
 
-      expect(repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
+      expect(await repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
       expect(
         await repository.getTombstonedBackendSessionIdsForCleanup(
           pluginId: cleanupPlugin.id,
@@ -123,7 +123,32 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
-      expect(repository.persistedSessionCleanupPluginIds, isEmpty);
+      expect(await repository.persistedSessionCleanupPluginIds, isEmpty);
+    });
+
+    test("isolates persisted cleanup capability probe failures", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final failingPlugin = _FakeDerivedPlugin(
+        launchDirectory: "/failing",
+        allSessions: const [],
+      );
+      final cleanupPlugin = _FakePersistedCleanupPlugin();
+      final repository = SessionRepository(
+        runtime: _CapabilityProbeFailingRuntime(
+          plugins: [failingPlugin, cleanupPlugin],
+          failingPluginId: failingPlugin.id,
+        ),
+        bridgeDerivedProjectPluginIds: {failingPlugin.id},
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
+
+      expect(await repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
     });
 
     test("coalesces tombstone loading and serves later lookups from memory", () async {
@@ -2236,6 +2261,35 @@ class _GenerationReplacingRuntime extends TestPluginRuntime {
     observationCollected.complete();
     await _replacement.future;
     return result;
+  }
+}
+
+class _CapabilityProbeFailingRuntime extends TestPluginRuntime {
+  _CapabilityProbeFailingRuntime({
+    required Iterable<BridgePluginApi> plugins,
+    required String failingPluginId,
+  }) : _failingPluginId = failingPluginId,
+       super(
+         plugins: {for (final plugin in plugins) plugin.id: plugin},
+         eligiblePluginIds: null,
+       );
+
+  final String _failingPluginId;
+
+  @override
+  Future<T?> useIfActive<T>({
+    required String pluginId,
+    required Enum operation,
+    required Future<T> Function(BridgePluginApi api, int generation) body,
+  }) {
+    if (pluginId == _failingPluginId) {
+      throw StateError("plugin generation changed");
+    }
+    return super.useIfActive(
+      pluginId: pluginId,
+      operation: operation,
+      body: body,
+    );
   }
 }
 
