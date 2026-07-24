@@ -848,22 +848,38 @@ class CodexPlugin implements CodexManagedApi {
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
     final (:modelID, :providerID) = _sessionService.resolveModelDefaults(projectId: projectId);
-    final agentModel = modelID == null
+    var resolvedModelID = modelID;
+    if (resolvedModelID == null) {
+      String? firstVisibleModelID;
+      for (final model in await _listModels()) {
+        if (model["hidden"] == true) continue;
+        final id = model["id"] as String?;
+        if (id == null || id.isEmpty) continue;
+        firstVisibleModelID ??= id;
+        if (model["isDefault"] == true) {
+          resolvedModelID = id;
+          break;
+        }
+      }
+      resolvedModelID ??= firstVisibleModelID;
+    }
+    final agentModel = resolvedModelID == null
         ? null
         : PluginAgentModel(
-            modelID: modelID,
+            modelID: resolvedModelID,
             providerID: providerID,
             variant: null,
           );
     return [
       for (final collaborationMode in CodexCollaborationMode.values)
-        PluginAgent(
-          name: collaborationMode.agentName,
-          description: collaborationMode.description,
-          model: agentModel,
-          mode: PluginAgentMode.primary,
-          hidden: false,
-        ),
+        if (agentModel != null || collaborationMode == CodexCollaborationMode.defaultMode)
+          PluginAgent(
+            name: collaborationMode.agentName,
+            description: collaborationMode.description,
+            model: agentModel,
+            mode: PluginAgentMode.primary,
+            hidden: false,
+          ),
     ];
   }
 

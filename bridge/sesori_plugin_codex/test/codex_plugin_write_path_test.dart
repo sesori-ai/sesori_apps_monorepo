@@ -956,6 +956,30 @@ void main() {
       expect(fake.sentMethods, contains("model/list"));
     });
 
+    test("getAgents uses the live catalog to expose Plan without local model metadata", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "data": [
+              {
+                "id": "gpt-5.5",
+                "displayName": "GPT-5.5",
+                "hidden": false,
+                "isDefault": true,
+              },
+            ],
+          },
+        ),
+      ]);
+
+      await plugin.healthCheck();
+      final agents = await plugin.getAgents(projectId: "/work/sample");
+
+      expect(agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(agents.every((agent) => agent.model?.modelID == "gpt-5.5"), isTrue);
+    });
+
     test("getProviders preselects the project's own latest rollout model over codex's live default", () async {
       // The selected project's newest rollout used gpt-5.4-mini, while codex's
       // live catalog marks gpt-5.5 as the global default — the project-scoped

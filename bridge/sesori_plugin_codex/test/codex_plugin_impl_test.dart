@@ -65,10 +65,10 @@ void main() {
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
         expect(await plugin.getSessionStatuses(), isEmpty);
         expect(plugin.getActiveSessionsSummary(), isEmpty);
-        // With no config or rollout history, Codex still surfaces its two
-        // collaboration modes without a resolvable model, and no providers.
+        // With no config, rollout history, or live connection, Codex exposes
+        // only Default because Plan requires a resolved model.
         final agents = await plugin.getAgents(projectId: "/repo/example");
-        expect(agents.map((agent) => agent.name), equals(["Default", "Plan"]));
+        expect(agents.map((agent) => agent.name), equals(["Default"]));
         expect(agents.every((agent) => agent.model == null), isTrue);
         expect(
           (await plugin.getProviders(projectId: "/repo/example")).providers,
