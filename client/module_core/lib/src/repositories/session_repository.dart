@@ -148,10 +148,7 @@ class SessionRepository {
   }) {
     return _api.createSessionWithMessage(
       projectId: projectId,
-      // TEMPORARY RELEASE GATE (2026-07-24): force the create wire payload to
-      // OpenCode even if a caller retained stale multi-plugin discovery state.
-      // Revert this override immediately after the next synchronized release.
-      pluginId: legacyMissingPluginId,
+      pluginId: pluginId,
       text: text,
       agent: agent,
       model: model,

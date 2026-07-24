@@ -451,11 +451,7 @@ class ConfigPluginsCommand extends cli.Command<void> {
       final entriesById = {for (final entry in snapshot.plugins) entry.pluginId: entry};
       for (final descriptor in descriptors) {
         final entry = entriesById[descriptor.id]!;
-        final configuredStatus = entry.enabled ? 'configured enabled' : 'configured disabled';
-        final status = temporaryOpenCodeOnlyReleasePluginIds.contains(descriptor.id)
-            ? (entry.enabled ? 'enabled' : 'disabled')
-            : 'unavailable in this release ($configuredStatus)';
-        stdout.writeln('${descriptor.displayName} (${descriptor.id}): $status');
+        stdout.writeln('${descriptor.displayName} (${descriptor.id}): ${entry.enabled ? 'enabled' : 'disabled'}');
       }
       if (snapshot.unknownDisabledPluginIds.isNotEmpty) {
         stdout.writeln('Unknown disabled plugin IDs: ${snapshot.unknownDisabledPluginIds.join(', ')}');
@@ -477,12 +473,7 @@ class ConfigPluginsCommand extends cli.Command<void> {
     } on UnknownPluginConfigException catch (error) {
       usageException('$error Known plugins: ${knownIds.join(', ')}.');
     }
-    if (temporaryOpenCodeOnlyReleasePluginIds.contains(pluginId)) {
-      stdout.writeln('Plugin "$pluginId" ${enabled ? 'enabled' : 'disabled'}.');
-    } else {
-      stdout.writeln('Plugin "$pluginId" ${enabled ? 'enabled' : 'disabled'} in configuration.');
-      stdout.writeln('Plugin "$pluginId" is unavailable in this release.');
-    }
+    stdout.writeln('Plugin "$pluginId" ${enabled ? 'enabled' : 'disabled'}.');
     stdout.writeln('Restart sesori-bridge to apply.');
   }
 }

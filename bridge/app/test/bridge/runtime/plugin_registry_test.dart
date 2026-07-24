@@ -16,21 +16,4 @@ void main() {
       expect(plugin.options.map((option) => option.name).toSet(), hasLength(plugin.options.length));
     }
   });
-
-  test("temporary release gate cannot be bypassed by plugin configuration", () {
-    expect(temporaryOpenCodeOnlyReleasePluginIds, {"opencode"});
-
-    expect(
-      disabledPluginIdsForTemporaryOpenCodeOnlyRelease(
-        configuredDisabledPluginIds: const {},
-      ),
-      {"codex", "cursor"},
-    );
-    expect(
-      disabledPluginIdsForTemporaryOpenCodeOnlyRelease(
-        configuredDisabledPluginIds: const {"opencode", "future-plugin"},
-      ),
-      {"opencode", "codex", "cursor", "future-plugin"},
-    );
-  });
 }

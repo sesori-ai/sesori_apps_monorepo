@@ -9,15 +9,6 @@
 - **Current stage:** Stage 11-P01D — bridge-owned projects and defaults open as PR #550
 - **Next action:** resolve #550 against merged #549/main and continue monitoring it
 
-## Temporary Release Gate
-
-- 2026-07-24: isolate the next synchronized release with a temporary
-  OpenCode-only PR A. It keeps all plugin registrations/settings intact while
-  blocking Codex/Cursor runtime eligibility and hiding client plugin selection.
-- Immediately after the release, merge PR B as an exact revert of PR A before
-  synchronizing or delivering Stage 11-P02. This release overlay is not part of
-  the setup-aware lifecycle implementation.
-
 ## Frozen Oversized Stack
 
 PR #508 passed its verification but is too large to review effectively. It is
