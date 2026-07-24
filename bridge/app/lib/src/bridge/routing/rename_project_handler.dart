@@ -5,10 +5,8 @@ import "request_handler.dart";
 
 /// Handles `PATCH /project/name` — renames a project.
 ///
-/// Routes through [ProjectRepository] (not the plugin) so the bridge-derived
-/// path can persist a display-name override while the native path still
-/// delegates the rename to the backend; the repository also stamps the
-/// project's unseen state on the returned model.
+/// Routes through [ProjectRepository], which owns the aggregate display name
+/// and stamps unseen state on the returned project without calling a plugin.
 class RenameProjectHandler extends BodyRequestHandler<RenameProjectRequest, Project> {
   final ProjectRepository _projectRepository;
 
@@ -27,9 +25,13 @@ class RenameProjectHandler extends BodyRequestHandler<RenameProjectRequest, Proj
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
+    final name = body.name.trim();
+    if (name.isEmpty) {
+      throw buildErrorResponse(request, 400, "Bad Request: project name must not be empty");
+    }
     return _projectRepository.renameProject(
       projectId: body.projectId,
-      name: body.name,
+      name: name,
     );
   }
 }

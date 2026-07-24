@@ -55,6 +55,7 @@ import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
 import "repositories/permission_repository.dart";
 import "repositories/pr_source_repository.dart";
+import "repositories/project_activity_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/pull_request_repository.dart";
@@ -200,15 +201,12 @@ class Orchestrator {
       aggregateSourceDeadline: aggregateSourceDeadline,
     );
     final projectRepository = ProjectRepository(
-      operationalPlugins: pluginComposition.operationalPlugins,
-      readDefaultEnabledPluginId: () => _pluginLifecycleService.compositionView.defaultEnabledPluginId,
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
       unseenCalculator: unseenCalculator,
       filesystemApi: const FilesystemApi(),
       gitCliApi: gitCliApi,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
-      aggregateSourceDeadline: aggregateSourceDeadline,
     );
     final sessionViewTracker = SessionViewTracker();
     final sessionUnseenService = SessionUnseenService(
@@ -279,6 +277,13 @@ class Orchestrator {
     );
     final projectActivityService = ProjectActivityService(
       projectRepository: projectRepository,
+      projectActivityRepository: ProjectActivityRepository(
+        runtime: _pluginRuntime,
+        projectsDao: _database.projectsDao,
+        sessionDao: _database.sessionDao,
+        projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
+        aggregateSourceDeadline: aggregateSourceDeadline,
+      ),
       now: () => DateTime.now().millisecondsSinceEpoch,
     );
     final permissionRepository = PermissionRepository(

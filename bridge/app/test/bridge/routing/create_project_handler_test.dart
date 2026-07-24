@@ -22,14 +22,14 @@ import "routing_test_helpers.dart";
 
 void main() {
   group("CreateProjectHandler", () {
-    late _FakeBridgePluginForCreateProject plugin;
+    late FakeBridgePlugin plugin;
     late AppDatabase db;
     late CreateProjectHandler handler;
     late ProjectActivityService projectActivityService;
     late Directory tempDir;
 
     setUp(() async {
-      plugin = _FakeBridgePluginForCreateProject();
+      plugin = FakeBridgePlugin();
       db = createTestDatabase();
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
@@ -38,11 +38,15 @@ void main() {
       projectActivityService = ProjectActivityService(
         projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
-          plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
           filesystemApi: FakeFilesystemApi(),
+        ),
+        projectActivityRepository: singlePluginProjectActivityRepository(
+          plugin: plugin,
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
         ),
         now: () => 1234,
       );
@@ -78,14 +82,9 @@ void main() {
       expect(handler.canHandle(makeRequest("POST", "/project/create")), isTrue);
     });
 
-    test("valid new path creates directory, runs git init, calls plugin, returns 200", () async {
+    test("valid new path creates and opens a bridge-owned project without calling the plugin", () async {
       final path = "${tempDir.path}/new-project";
-      plugin.currentProjectResult = PluginProject(
-        id: "p-1",
-        directory: path,
-        name: "New Project",
-        activity: const PluginProjectActivity(createdAt: 10, updatedAt: 20),
-      );
+      plugin.throwOnGetProjectError = StateError("must not be called");
 
       final result = await handler.handle(
         makeRequest("POST", "/project/create"),
@@ -105,20 +104,14 @@ void main() {
       );
       expect(head.exitCode, 0);
       expect(author.stdout.toString().trim(), "Sesori|sesori@localhost");
-      expect(plugin.lastGetCurrentProjectProjectId, equals(path));
-      expect(result.id, equals("p-1"));
-      expect(result.name, equals("New Project"));
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
+      expect(result.id, equals(path));
+      expect(result.name, equals("new-project"));
       expect(result.time, const ProjectTime(created: 1234, updated: 1234));
     });
 
     test(".gitignore is created with .worktrees/ entry after git init", () async {
       final path = "${tempDir.path}/new-project-with-gitignore";
-      plugin.currentProjectResult = PluginProject(
-        id: "p-2",
-        directory: path,
-        name: "Project With Gitignore",
-        activity: const PluginProjectActivity(createdAt: 30, updatedAt: 40),
-      );
 
       final result = await handler.handle(
         makeRequest("POST", "/project/create"),
@@ -128,7 +121,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("p-2"));
+      expect(result.id, equals(path));
 
       final gitignoreFile = File("$path/.gitignore");
       expect(gitignoreFile.existsSync(), isTrue);
@@ -206,20 +199,20 @@ void main() {
       );
     });
 
-    test("plugin getProject PluginApiException returns 500", () async {
+    test("plugin getProject failure cannot block bridge-owned project creation", () async {
       final path = "${tempDir.path}/plugin-error";
-      plugin.injectGetProjectError = PluginApiException("/project", 503);
+      plugin.throwOnGetProjectError = PluginApiException("/project", 503);
 
-      await expectLater(
-        () => handler.handle(
-          makeRequest("POST", "/project/create"),
-          body: ProjectPathRequest(path: path),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
-        ),
-        throwsA(isA<PluginApiException>()),
+      final result = await handler.handle(
+        makeRequest("POST", "/project/create"),
+        body: ProjectPathRequest(path: path),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
       );
+
+      expect(result.id, path);
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
   });
 
@@ -285,18 +278,6 @@ void main() {
       );
     });
   });
-}
-
-class _FakeBridgePluginForCreateProject extends FakeBridgePlugin {
-  Object? injectGetProjectError;
-
-  @override
-  Future<PluginProject> getProject(String projectId) async {
-    if (injectGetProjectError case final error?) {
-      throw error;
-    }
-    return super.getProject(projectId);
-  }
 }
 
 class _FailingInitializationWorktreeRepository implements WorktreeRepository {

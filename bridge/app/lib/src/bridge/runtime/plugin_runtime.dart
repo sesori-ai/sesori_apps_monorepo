@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:collection";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -108,7 +107,6 @@ class PluginRuntime {
   final ServerClock _clock;
   final Duration _shutdownBudget;
   final Map<String, _PluginRuntimeSlot> _slots;
-  final Map<String, BridgePluginApi> _operationalApis = <String, BridgePluginApi>{};
   late final BehaviorSubject<List<PluginRuntimeSnapshot>> _snapshotsSubject;
   final ReplaySubject<SourcedPluginRuntimeEvent> _backendEventsSubject = ReplaySubject<SourcedPluginRuntimeEvent>(
     maxSize: 1024,
@@ -125,10 +123,6 @@ class PluginRuntime {
   List<PluginRuntimeSnapshot> get snapshot => List<PluginRuntimeSnapshot>.unmodifiable(_buildSnapshots());
   Stream<SourcedPluginRuntimeEvent> get backendEvents => _backendEventsSubject.stream;
   Stream<SourcedPluginProvisionProgress> get provisionProgress => _provisionProgressSubject.stream;
-
-  /// Temporary stack-local view for consumers migrated in later replacement
-  /// slices. This is removed once all plugin access uses runtime acquisitions.
-  Map<String, BridgePluginApi> get operationalApis => UnmodifiableMapView(_operationalApis);
 
   Set<String> get activePluginIds => {
     for (final slot in _slots.values)
@@ -1188,15 +1182,6 @@ class PluginRuntime {
   }
 
   void _publishSnapshots() {
-    for (final slot in _slots.values) {
-      final pluginId = slot.registration.descriptor.id;
-      final plugin = slot.plugin;
-      if (plugin != null && _isRoutable(slot)) {
-        _operationalApis[pluginId] = plugin.api;
-      } else {
-        _operationalApis.remove(pluginId);
-      }
-    }
     if (!_snapshotsSubject.isClosed) _snapshotsSubject.add(_buildSnapshots());
   }
 }

@@ -1,7 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/rename_project_handler.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -12,19 +11,16 @@ import "routing_test_helpers.dart";
 
 void main() {
   group("RenameProjectHandler", () {
-    late FakeBridgePlugin plugin;
     late AppDatabase db;
     late RenameProjectHandler handler;
 
     setUp(() async {
-      plugin = FakeBridgePlugin();
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.projectsDao.setActivity(projectId: "p1", createdAt: 101, updatedAt: 202);
       handler = RenameProjectHandler(
         singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
-          plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
@@ -34,7 +30,6 @@ void main() {
     });
 
     tearDown(() async {
-      await plugin.close();
       await db.close();
     });
 
@@ -54,14 +49,7 @@ void main() {
       expect(handler.canHandle(makeRequest("PATCH", "/project/p1")), isFalse);
     });
 
-    test("extracts projectId and name from typed body", () async {
-      plugin.renameProjectResult = const PluginProject(
-        id: "p1",
-        directory: "p1",
-        name: "New Name",
-        activity: null,
-      );
-
+    test("persists the typed bridge-owned project rename without a plugin", () async {
       await handler.handle(
         makeRequest("PATCH", "/project/name"),
         body: const RenameProjectRequest(projectId: "p1", name: "New Name"),
@@ -70,18 +58,26 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastRenameProjectId, equals("p1"));
-      expect(plugin.lastRenameProjectName, equals("New Name"));
+      expect((await db.projectsDao.getProject(projectId: "p1"))?.displayName, "New Name");
+    });
+
+    test("rejects an empty or whitespace-only project name", () async {
+      for (final name in ["", "   "]) {
+        await expectLater(
+          () => handler.handle(
+            makeRequest("PATCH", "/project/name"),
+            body: RenameProjectRequest(projectId: "p1", name: name),
+            pathParams: const {},
+            queryParams: const {},
+            fragment: null,
+          ),
+          throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
+        );
+      }
+      expect((await db.projectsDao.getProject(projectId: "p1"))?.displayName, isNull);
     });
 
     test("returns mapped Project", () async {
-      plugin.renameProjectResult = const PluginProject(
-        id: "p1",
-        directory: "p1",
-        name: "Renamed Project",
-        activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
-      );
-
       final result = await handler.handle(
         makeRequest("PATCH", "/project/name"),
         body: const RenameProjectRequest(projectId: "p1", name: "Renamed Project"),

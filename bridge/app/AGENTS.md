@@ -53,13 +53,15 @@ bridge/ workspace modules (siblings of app/):
 ## CONVENTIONS
 
 - **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/`. Core repositories, services, handlers, and shared contracts remain backend-neutral. `plugin_registry.dart` is the supported composition point that imports the OpenCode, Codex, and Cursor descriptors; do not import concrete plugins elsewhere in bridge core.
-- **Plugin eligibility** — `plugins.disabled` is the only persisted eligibility policy. Every registered ID absent from that set is eligible; setup readiness independently gates routing. All plugin CLI options are registered, while `--plugin` and allowlists do not exist. Lists/defaults use case-insensitive display-name order with ID tie-breaking. Missing legacy `pluginId` still means OpenCode, not the first enabled plugin.
+- **Plugin eligibility** — `plugins.disabled` is the only persisted eligibility policy. Every registered ID absent from that set is eligible; setup readiness independently gates routing. All plugin CLI options are registered, while `--plugin` and allowlists do not exist. Lists use case-insensitive display-name order with ID tie-breaking. The derived default prefers OpenCode when selectable and otherwise uses the first plugin in that order. Missing legacy `pluginId` still means OpenCode, not the first enabled plugin.
 - **Plugin CLI options are namespaced** — plugins declare **bare** option names in their descriptor (`port`, `host`, `bin`, …). `PluginCliOptionsMapper` namespaces each to `--<pluginId>-<name>` (e.g. `--opencode-host`) at registration so options can't collide once multiple plugins run in parallel. Never bake the plugin prefix into the declared name. When renaming/migrating a previously un-prefixed flag, keep the old spelling working via `PluginOption.deprecatedAliases` (registered hidden, emits a `Log.w` deprecation when used) rather than breaking existing invocations. Plugin code reads values by the **bare** name through `PluginConfig`, unaware of namespacing.
 - **Catalog and import semantics** — project/root/detail/child reads use only the durable database catalog. `POST`, `DELETE`, and `GET /plugin/import` start, cancel, and report independent per-plugin imports; progress SSE is plugin-attributed. Imports are atomic/non-destructive, and concurrent catalog reads observe the last committed snapshot.
-- **Independent lifecycle** — `PluginLifecycleService` owns eligibility, setup,
-  derived default metadata, and current operational routing. A terminal plugin
-  failure removes only that plugin's routes and new-session choice; it does not
-  stop catalog browsing, the relay, or another plugin.
+- **Independent lifecycle** — concrete `PluginRuntime` owns generations,
+  acquisitions, leases, fencing, backend events, and bounded shutdown.
+  `PluginLifecycleService` owns eligibility, setup, and derived default
+  metadata through `PluginLifecycleRepository`. A terminal plugin failure
+  removes only that plugin's routes and new-session choice; it does not stop
+  catalog browsing, the relay, or another plugin.
 - **Explicit routing** — every supported route has a dedicated handler; `RequestRouter` returns 404 for unmatched routes (no catch-all proxy).
 - **Layer 4 trigger listeners** — new reactive/scheduled consumers live in
   `lib/src/listeners/`. Each owns one trigger's subscription/timer lifecycle,
