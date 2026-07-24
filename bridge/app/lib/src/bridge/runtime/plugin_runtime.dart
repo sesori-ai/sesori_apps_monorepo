@@ -230,12 +230,14 @@ class PluginRuntime {
 
   /// Runs interruptible plugin work, then linearizes a short durable commit
   /// before this generation can be replaced. Force-stop remains able to
-  /// interrupt [prepare], but waits for an entered [commit] to finish.
+  /// interrupt [prepare], but waits for an entered [commit] to finish. The
+  /// commit receives the protected generation so durable follow-up events can
+  /// retain generation fencing after the lease is released.
   Future<R> useAndCommit<P, R>({
     required String pluginId,
     required Enum operation,
     required Future<P> Function(BridgePluginApi api) prepare,
-    required Future<R> Function(P prepared) commit,
+    required Future<R> Function(P prepared, int generation) commit,
   }) async {
     final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
     var commitProtected = false;
@@ -243,7 +245,7 @@ class PluginRuntime {
       final prepared = await prepare(lease.api);
       _beginDurableCommit(lease: lease, operation: operation);
       commitProtected = true;
-      final result = await commit(prepared);
+      final result = await commit(prepared, lease.generation);
       _requireSameGeneration(lease: lease, operation: operation);
       return result;
     } finally {

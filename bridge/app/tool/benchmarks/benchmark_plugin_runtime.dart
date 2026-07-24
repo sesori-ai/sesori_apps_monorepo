@@ -80,13 +80,13 @@ class BenchmarkPluginRuntime extends PluginRuntime {
     required String pluginId,
     required Enum operation,
     required Future<P> Function(BridgePluginApi api) prepare,
-    required Future<R> Function(P prepared) commit,
+    required Future<R> Function(P prepared, int generation) commit,
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
-    return commit(await prepare(plugin));
+    return commit(await prepare(plugin), 1);
   }
 
   @override

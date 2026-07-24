@@ -132,7 +132,7 @@ class TestPluginRuntime extends PluginRuntime {
     required String pluginId,
     required Enum operation,
     required Future<P> Function(BridgePluginApi api) prepare,
-    required Future<R> Function(P prepared) commit,
+    required Future<R> Function(P prepared, int generation) commit,
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
@@ -140,7 +140,7 @@ class TestPluginRuntime extends PluginRuntime {
     }
     final prepared = await prepare(plugin);
     requireCurrentGeneration(pluginId: pluginId, generation: currentGeneration, operation: operation);
-    final result = await commit(prepared);
+    final result = await commit(prepared, currentGeneration);
     requireCurrentGeneration(pluginId: pluginId, generation: currentGeneration, operation: operation);
     return result;
   }

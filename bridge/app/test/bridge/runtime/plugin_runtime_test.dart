@@ -381,7 +381,8 @@ void main() {
       pluginId: "one",
       operation: _TestOperation.durableCommit,
       prepare: (_) async => "prepared",
-      commit: (prepared) async {
+      commit: (prepared, generation) async {
+        expect(generation, 1);
         commitStarted.complete();
         await commitGate.future;
         return prepared;
@@ -451,7 +452,8 @@ void main() {
       pluginId: "one",
       operation: _TestOperation.durableCommit,
       prepare: (_) async => "prepared",
-      commit: (prepared) async {
+      commit: (prepared, generation) async {
+        expect(generation, 1);
         commitStarted.complete();
         await commitGate.future;
         return prepared;

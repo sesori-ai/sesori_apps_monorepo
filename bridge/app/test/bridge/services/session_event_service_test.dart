@@ -436,10 +436,16 @@ void main() {
         backendSessionId: "backend-root",
       );
       final output = await service.handleBindingsCommitted(
-        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+        commit: (
+          pluginId: plugin.id,
+          generation: 1,
+          kind: SessionBindingCommitKind.catalogSync,
+          backendSessionIds: const ["backend-root"],
+        ),
       );
 
       expect(output, hasLength(2));
+      expect(output.map((item) => item.event), isNot(contains(isA<BridgeSseProjectUpdated>())));
       final root = Session.fromJson((output[0].event as BridgeSseSessionCreated).info);
       final child = Session.fromJson((output[1].event as BridgeSseSessionCreated).info);
       expect(output.map((item) => item.generation), everyElement(1));
@@ -509,16 +515,37 @@ void main() {
         backendSessionId: "backend-root",
       );
       final output = await service.handleBindingsCommitted(
-        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+        commit: (
+          pluginId: plugin.id,
+          generation: 1,
+          kind: SessionBindingCommitKind.sessionCreation,
+          backendSessionIds: const ["backend-root"],
+        ),
       );
 
-      expect(output, hasLength(4));
+      expect(output, hasLength(5));
       expect(output.map((item) => item.generation), everyElement(1));
       expect(Session.fromJson((output[0].event as BridgeSseSessionCreated).info).id, "stable-root");
       expect(Message.fromJson((output[1].event as BridgeSseMessageUpdated).info).sessionID, "stable-root");
       expect((output[2].event as BridgeSseMessagePartUpdated).part.sessionID, "stable-root");
       expect((output[3].event as BridgeSseSessionStatus).sessionID, "stable-root");
+      expect(output[4].event, isA<BridgeSseProjectUpdated>());
       expect(eventTracker.length, 0);
+    });
+
+    test("does not refresh project activity for a stale creation commit", () async {
+      pluginRuntime.currentGeneration = 2;
+
+      final output = await service.handleBindingsCommitted(
+        commit: (
+          pluginId: plugin.id,
+          generation: 1,
+          kind: SessionBindingCommitKind.sessionCreation,
+          backendSessionIds: const ["backend-root"],
+        ),
+      );
+
+      expect(output, isEmpty);
     });
 
     test("replays an update that follows a pending root creation", () async {
@@ -562,7 +589,12 @@ void main() {
         backendSessionId: "backend-root",
       );
       final output = await service.handleBindingsCommitted(
-        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+        commit: (
+          pluginId: plugin.id,
+          generation: 1,
+          kind: SessionBindingCommitKind.catalogSync,
+          backendSessionIds: const ["backend-root"],
+        ),
       );
 
       expect(output, hasLength(2));
@@ -610,7 +642,12 @@ void main() {
         backendSessionId: "backend-root",
       );
       final output = await service.handleBindingsCommitted(
-        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+        commit: (
+          pluginId: plugin.id,
+          generation: 2,
+          kind: SessionBindingCommitKind.catalogSync,
+          backendSessionIds: const ["backend-root"],
+        ),
       );
 
       expect(output, hasLength(2));
@@ -686,7 +723,12 @@ void main() {
         backendSessionId: "backend-root",
       );
       final output = await service.handleBindingsCommitted(
-        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+        commit: (
+          pluginId: plugin.id,
+          generation: 1,
+          kind: SessionBindingCommitKind.catalogSync,
+          backendSessionIds: const ["backend-root"],
+        ),
       );
 
       expect(output, hasLength(4));
@@ -753,7 +795,12 @@ void main() {
         backendSessionId: "backend-root",
       );
       final output = await service.handleBindingsCommitted(
-        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+        commit: (
+          pluginId: plugin.id,
+          generation: 1,
+          kind: SessionBindingCommitKind.catalogSync,
+          backendSessionIds: const ["backend-root"],
+        ),
       );
 
       expect(output, hasLength(4));

@@ -17,13 +17,33 @@ void main() {
     );
     listener.start();
 
-    source.add((pluginId: "other", backendSessionIds: const ["ignored"]));
-    source.add((pluginId: "selected", backendSessionIds: const ["root"]));
+    source.add((
+      pluginId: "other",
+      generation: 1,
+      kind: SessionBindingCommitKind.catalogSync,
+      backendSessionIds: const ["ignored"],
+    ));
+    source.add((
+      pluginId: "selected",
+      generation: 2,
+      kind: SessionBindingCommitKind.sessionCreation,
+      backendSessionIds: const ["root"],
+    ));
     await Future<void>.delayed(Duration.zero);
 
     expect(dispatcher.commits, [
-      (pluginId: "other", backendSessionIds: const ["ignored"]),
-      (pluginId: "selected", backendSessionIds: const ["root"]),
+      (
+        pluginId: "other",
+        generation: 1,
+        kind: SessionBindingCommitKind.catalogSync,
+        backendSessionIds: const ["ignored"],
+      ),
+      (
+        pluginId: "selected",
+        generation: 2,
+        kind: SessionBindingCommitKind.sessionCreation,
+        backendSessionIds: const ["root"],
+      ),
     ]);
     await listener.dispose();
     await source.close();
