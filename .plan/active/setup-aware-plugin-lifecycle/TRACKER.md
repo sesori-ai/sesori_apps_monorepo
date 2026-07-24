@@ -4,10 +4,10 @@
 
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
-- **Base:** `origin/main` at `96f63c69`
-- **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
-- **Current stage:** Stage 11-P01C — dynamic events and durable fencing open as PR #549
-- **Next action:** monitor #549 and propagate its merged-main synchronization through the successor stack
+- **Base:** `origin/main` at `cd0e0a31`
+- **Current branch:** `setup-aware-plugin-lifecycle-project-ownership`
+- **Current stage:** Stage 11-P01D — bridge-owned projects and defaults open as PR #550
+- **Next action:** resolve #550 against merged #549/main and continue monitoring it
 
 ## Frozen Oversized Stack
 
@@ -34,8 +34,8 @@ run their focused verification again.
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 merged as `51008356` |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 merged as `96f63c69` |
-| [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 open and monitored |
-| [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
+| [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
+| [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 open and monitored |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
@@ -128,8 +128,8 @@ run their focused verification again.
   serialization, and access revocation. The second architecture pass identified
   a paused-consumer teardown dependency; source cancellation and lease release
   now complete without waiting for downstream `done` delivery.
-- PR #547 merged into `main` as `51008356`; #548 and this successor branch were
-  synchronized by merging the new base through the stack.
+- PR #547 merged into `main` as `51008356`; the new base was merged through
+  #548, #549, and this P01D branch.
 
 ### 2026-07-23 — Stage 11-P01B operation routing
 
@@ -148,8 +148,8 @@ run their focused verification again.
   routing, dependency direction, and both contained stack-local seams with no
   findings.
 - Committed as `2e20026d`, pushed, and opened as stacked PR #548.
-- PR #548 merged into `main` as `96f63c69`; #549 was retargeted automatically
-  and synchronized by merging that new `origin/main` head.
+- PR #548 merged into `main` as `96f63c69`; the new base was merged through
+  #549 and this P01D branch.
 - PR feedback moved aggregate deadlines inside runtime acquisition bodies,
   kept best-effort worktree cleanup active-only, gated startup imports on
   operational plugins, and protected active-root hydration commits through
@@ -182,6 +182,32 @@ run their focused verification again.
 - Committed the implementation as `2a461f8b`, merged the updated #548 head,
   pushed the verified branch, and opened stacked PR #549. Its initial monitor
   reported it mergeable with CI running and no review threads.
+- PR feedback hardened successor-generation pending-root replay, skipped stale
+  outputs without aborting a mixed replay batch, suppressed expected stale
+  normalization telemetry, and disposed the benchmark runtime. Focused tests
+  and fatal analysis passed; fixes were pushed as `220b2954` and every review
+  thread was answered.
+
+### 2026-07-24 — Stage 11-P01D bridge-owned projects and defaults
+
+- Made project create/open/rename bridge-owned and plugin-neutral, extracted
+  runtime-backed project activity evidence, preferred OpenCode as the
+  selectable default with deterministic fallback, and removed the temporary
+  live API map.
+- Preserved generation attribution through final activity publication; both
+  native and derived evidence now commit activity through
+  `commitCurrentGeneration`, while native catalog insertion retains its own
+  protected commit.
+- Regenerated app database output from source after clearing a stale local
+  build-runner cache. Fatal analysis, `git diff --check`, and 213 focused
+  project, activity, lifecycle, runtime, routing, and orchestrator tests passed;
+  focused review-fix tests also passed.
+- The second implementation-review pass approved P01D with no findings.
+- Merged the reviewed #549 feedback commit and reran fatal analysis plus 88
+  focused event-tracking and project-activity tests successfully.
+- Committed P01D as `059689e7`, merged the updated #549 head, pushed the
+  verified branch, and opened stacked PR #550. Its initial monitor reported it
+  mergeable with CI running and no inline review threads.
 
 ## Delivery Rules
 

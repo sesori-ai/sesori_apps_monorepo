@@ -41,7 +41,6 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       calculator: calculator,
     ),
     projectRepository: singlePluginProjectRepository(
-      plugin: plugin,
       gitCliApi: FakeGitCliApi(),
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,

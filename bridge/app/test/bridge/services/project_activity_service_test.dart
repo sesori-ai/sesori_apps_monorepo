@@ -25,11 +25,15 @@ void main() {
     service = ProjectActivityService(
       projectRepository: singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
+      ),
+      projectActivityRepository: singlePluginProjectActivityRepository(
+        plugin: plugin,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
       ),
       now: () => now,
     );
@@ -188,11 +192,15 @@ void main() {
     final localService = ProjectActivityService(
       projectRepository: singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: hangingPlugin,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
+      ),
+      projectActivityRepository: singlePluginProjectActivityRepository(
+        plugin: hangingPlugin,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
       ),
       now: () => now,
     );
@@ -385,7 +393,7 @@ void main() {
     );
     await database.projectsDao.recordOpenedProject(
       projectId: "canonical",
-      path: "/old/path",
+      path: "/new/path",
       displayName: null,
       createdAt: 100,
       updatedAt: 500,
@@ -401,6 +409,7 @@ void main() {
     expect(project.path, "/new/path");
     expect(project.time, const ProjectTime(created: 100, updated: 500));
     expect((await database.projectsDao.getProject(projectId: "canonical"))?.path, "/new/path");
+    expect(plugin.lastGetCurrentProjectProjectId, isNull);
     expect(changes, isEmpty);
     await subscription.cancel();
   });

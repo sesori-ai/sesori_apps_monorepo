@@ -60,9 +60,6 @@ class TestPluginRuntime extends PluginRuntime {
   Set<String> get eligiblePluginIds => _eligiblePluginIds;
 
   @override
-  Map<String, BridgePluginApi> get operationalApis => _plugins;
-
-  @override
   Set<String> get startAllowedPluginIds => Set<String>.unmodifiable(_plugins.keys);
 
   @override

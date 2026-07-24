@@ -9,28 +9,28 @@ import "../repositories/plugin_lifecycle_repository.dart";
 
 typedef PluginCompositionView = ({
   Set<String> knownPluginIds,
-  List<String> enabledPluginIds,
   List<String> eligiblePluginIds,
-  String? defaultEnabledPluginId,
   String? defaultPluginId,
-  Map<String, BridgePluginApi> operationalPlugins,
   Map<String, PluginProjectOwnership> projectOwnershipById,
 });
 
 typedef RegisteredPluginMetadata = ({String id, String displayName});
 
 typedef PluginStartupPolicy = ({
-  List<String> enabledPluginIds,
   List<String> eligiblePluginIds,
   List<String> eagerPluginIds,
   String? defaultPluginId,
 });
 
 class PluginLifecycleService {
-  PluginLifecycleService({required PluginLifecycleRepository lifecycleRepository})
-    : _lifecycleRepository = lifecycleRepository;
+  PluginLifecycleService({
+    required PluginLifecycleRepository lifecycleRepository,
+    required String preferredDefaultPluginId,
+  }) : _lifecycleRepository = lifecycleRepository,
+       _preferredDefaultPluginId = preferredDefaultPluginId;
 
   final PluginLifecycleRepository _lifecycleRepository;
+  final String _preferredDefaultPluginId;
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   List<String>? _eligiblePluginIds;
@@ -101,7 +101,6 @@ class PluginLifecycleService {
     _metadataSubject = BehaviorSubject<List<PluginMetadata>>.seeded(_orderedMetadata());
     _runtimeSubscription = _lifecycleRepository.snapshots.listen(_applyRuntimeSnapshots);
     return (
-      enabledPluginIds: eligiblePluginIds,
       eligiblePluginIds: eligiblePluginIds,
       eagerPluginIds: setupReadyPluginIds,
       defaultPluginId: defaultPluginId,
@@ -124,11 +123,8 @@ class PluginLifecycleService {
     if (knownPluginIds == null) throw StateError("Plugin lifecycle has not been initialized.");
     return (
       knownPluginIds: knownPluginIds,
-      enabledPluginIds: eligiblePluginIds,
       eligiblePluginIds: eligiblePluginIds,
-      defaultEnabledPluginId: _selectableDefaultPluginId(),
       defaultPluginId: _selectableDefaultPluginId(),
-      operationalPlugins: _lifecycleRepository.operationalPlugins,
       projectOwnershipById: Map<String, PluginProjectOwnership>.unmodifiable({
         for (final snapshot in _lifecycleRepository.snapshot) snapshot.pluginId: snapshot.projectOwnership,
       }),
@@ -202,6 +198,7 @@ class PluginLifecycleService {
   }
 
   String? _defaultPluginIdFrom({required Set<String> candidateIds}) {
+    if (candidateIds.contains(_preferredDefaultPluginId)) return _preferredDefaultPluginId;
     final eligiblePluginIds = _requireEligiblePluginIds();
     for (final pluginId in eligiblePluginIds) {
       if (candidateIds.contains(pluginId)) return pluginId;

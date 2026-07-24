@@ -23,8 +23,6 @@ class PluginLifecycleRepository {
 
   final PluginRuntime _runtime;
 
-  Map<String, BridgePluginApi> get operationalPlugins => _runtime.operationalApis;
-
   Future<Map<String, PluginSetupStatus>> inspect({
     required Set<String> pluginIds,
     required bool markUnselectedNotInspected,

@@ -197,14 +197,11 @@ class _LiveListBenchmark {
 
     final projectRepository = ProjectRepository(
       gitCliApi: gitCliApi,
-      operationalPlugins: operationalPlugins,
-      readDefaultEnabledPluginId: () => plugins.first.id,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
       projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-      aggregateSourceDeadline: const Duration(seconds: 5),
     );
     final results = <Map<String, Object?>>[];
     results.add(

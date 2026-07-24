@@ -6,14 +6,20 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/project_activity.dart";
 import "../repositories/models/project_activity_evidence.dart";
+import "../repositories/project_activity_repository.dart";
 import "../repositories/project_repository.dart";
 
 class ProjectActivityService {
-  ProjectActivityService({required ProjectRepository projectRepository, required int Function() now})
-    : _projectRepository = projectRepository,
-      _now = now;
+  ProjectActivityService({
+    required ProjectRepository projectRepository,
+    required ProjectActivityRepository projectActivityRepository,
+    required int Function() now,
+  }) : _projectRepository = projectRepository,
+       _projectActivityRepository = projectActivityRepository,
+       _now = now;
 
   final ProjectRepository _projectRepository;
+  final ProjectActivityRepository _projectActivityRepository;
   final int Function() _now;
   final StreamController<ProjectActivityChange> _changes = StreamController<ProjectActivityChange>.broadcast();
 
@@ -35,12 +41,12 @@ class ProjectActivityService {
       );
       if (result.updatedAtAdvanced) {
         _emit(
-          projectId: result.committedTarget.projectId,
+          projectId: result.committedProject.id,
           updatedAt: result.committedActivity.updatedAt,
         );
       }
       return _projectRepository.mapOpenedProject(
-        target: result.committedTarget,
+        project: result.committedProject,
         committedActivity: result.committedActivity,
       );
     });
@@ -89,22 +95,22 @@ class ProjectActivityService {
   }
 
   Future<void> reconcile({required String? pluginId}) async {
-    final pluginIds = pluginId == null ? _projectRepository.operationalPluginIds : <String>{pluginId};
+    final pluginIds = pluginId == null ? _projectActivityRepository.operationalPluginIds : <String>{pluginId};
     await Future.wait(pluginIds.map(_reconcileSource));
   }
 
   Future<void> _reconcileSource(String pluginId) async {
-    final List<ProjectActivityEvidence> evidence;
     try {
-      evidence = await _projectRepository.listProjectActivityEvidence(pluginId: pluginId);
+      final observation = await _projectActivityRepository.listProjectActivityEvidence(pluginId: pluginId);
+      if (observation == null) return;
+      await _serialize(() => _mergeEvidence(observation));
     } on Object catch (error, stackTrace) {
       Log.w("Project activity reconciliation failed for plugin $pluginId", error, stackTrace);
-      return;
     }
-    await _serialize(() => _mergeEvidence(evidence));
   }
 
-  Future<void> _mergeEvidence(List<ProjectActivityEvidence> evidence) async {
+  Future<void> _mergeEvidence(ProjectActivityObservation observation) async {
+    final evidence = observation.evidence;
     final storedActivities = await _projectRepository.getActivities(
       projectIds: {for (final item in evidence) item.projectId},
     );
@@ -126,7 +132,16 @@ class ProjectActivityService {
     }
 
     if (updates.isEmpty) return;
-    await _projectRepository.batchWriteActivities(activities: updates);
+    await _projectActivityRepository.commitActivities(
+      observation: observation,
+      activities: {
+        for (final entry in updates.entries)
+          entry.key: (
+            createdAt: entry.value.createdAt,
+            updatedAt: entry.value.updatedAt,
+          ),
+      },
+    );
     for (final change in advances) {
       _emit(projectId: change.projectId, updatedAt: change.updatedAt);
     }

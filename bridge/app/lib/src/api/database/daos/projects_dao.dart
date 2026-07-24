@@ -9,8 +9,8 @@ part "projects_dao.g.dart";
 class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
   ProjectsDao(super.attachedDatabase);
 
-  // `path` is the project's live directory; `projectId` is its stable,
-  // plugin-defined identifier and may be opaque. They can also diverge when a
+  // `path` is the project's live directory; `projectId` is its stable bridge
+  // catalog identifier and may be opaque. They can also diverge when a
   // folder is moved on disk and re-opened — [recordOpenedProject] is the writer
   // that updates an existing row's path.
   // Inserts without an explicit path stamp the project id as the row's `path`
@@ -94,10 +94,10 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     );
   }
 
-  /// Sets the bridge-persisted display-name override for [projectId], creating
+  /// Sets the bridge-owned display-name override for [projectId], creating
   /// the row if missing. Updates only displayName on conflict, preserving all
-  /// other fields. Used to persist a rename for a bridge-derived plugin that
-  /// has no backend to store the name.
+  /// other fields. Project renames are aggregate bridge metadata and never
+  /// mutate a plugin backend.
   Future<void> setDisplayName({
     required String projectId,
     required String displayName,

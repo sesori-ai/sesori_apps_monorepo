@@ -4,7 +4,6 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
@@ -25,7 +24,6 @@ void main() {
 
     ProjectRepository projectRepository() => singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(),
-      plugin: const _FakePlugin(),
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
@@ -736,19 +734,6 @@ void main() {
       await sub.cancel();
     });
   });
-}
-
-class _FakePlugin implements NativeProjectsPluginApi {
-  const _FakePlugin();
-
-  @override
-  String get id => "opencode";
-
-  @override
-  Future<List<PluginProject>> getProjects() async => const [];
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ThrowingProjectRepository implements ProjectRepository {

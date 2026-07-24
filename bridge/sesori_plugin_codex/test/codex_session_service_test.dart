@@ -3,6 +3,7 @@ import "package:codex_plugin/src/api/codex_rollout_api.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/codex_config_reader.dart";
 import "package:codex_plugin/src/codex_metadata_repository.dart";
+import "package:codex_plugin/src/models/codex_collaboration_mode.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/codex_skill_repository.dart";
@@ -91,6 +92,7 @@ void main() {
       arguments: "staged changes",
       model: "gpt-5.6",
       effort: "high",
+      collaborationMode: CodexCollaborationMode.plan,
     );
 
     final input = threadRepository.lastParts.single as PluginPromptPartText;
@@ -104,6 +106,7 @@ void main() {
       arguments: "",
       model: null,
       effort: null,
+      collaborationMode: null,
     );
     expect(threadRepository.compactCount, 1);
   });
@@ -174,6 +177,7 @@ class _StubThreadRepository extends CodexThreadRepository {
     required List<PluginPromptPart> parts,
     required String? model,
     required String? effort,
+    required CodexCollaborationMode? collaborationMode,
   }) async {
     lastParts = parts;
     lastModel = model;
