@@ -621,16 +621,19 @@ class BridgeRuntimeRunner {
             ],
           );
       pluginLifecycleService = activePluginLifecycleService;
+      final releaseDisabledPluginIds = disabledPluginIdsForTemporaryOpenCodeOnlyRelease(
+        configuredDisabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
+      );
       final eligiblePluginIds = {
         for (final descriptor in knownPlugins)
-          if (!bridgeSettings.plugins.isDisabled(pluginId: descriptor.id)) descriptor.id,
+          if (!releaseDisabledPluginIds.contains(descriptor.id)) descriptor.id,
       };
       final setupById = await lifecycleRepository.inspect(
         pluginIds: eligiblePluginIds,
         markUnselectedNotInspected: true,
       );
       final startupPolicy = activePluginLifecycleService.initialize(
-        disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
+        disabledPluginIds: releaseDisabledPluginIds,
         setupById: setupById,
       );
       for (final importPluginId in options.importPluginIds) {

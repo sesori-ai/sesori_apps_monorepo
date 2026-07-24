@@ -10,7 +10,6 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
-import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -234,7 +233,7 @@ void main() {
     expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
   });
 
-  testWidgets("renders bridge order with generic degraded and blocked presentation", (tester) async {
+  testWidgets("does not render plugin selection even when discovery returns multiple plugins", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         const PluginListResponse(
@@ -268,60 +267,16 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(find.byType(NewSessionPluginChooser), findsOneWidget);
-    expect(tester.getTopLeft(find.text("First Tool")).dy, lessThan(tester.getTopLeft(find.text("Second Tool")).dy));
-    expect(tester.getTopLeft(find.text("Second Tool")).dy, lessThan(tester.getTopLeft(find.text("Third Tool")).dy));
-    expect(find.text("Needs attention"), findsOneWidget);
-    expect(find.text("Failed"), findsOneWidget);
-    expect(find.text("Unavailable"), findsOneWidget);
-    expect(find.text("Restart the bridge to retry."), findsOneWidget);
-    expect(find.text("Check the bridge console."), findsOneWidget);
-
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_failed-id"))).onTap,
-      isNull,
-    );
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_unavailable-id"))).onTap,
-      isNull,
-    );
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_degraded-id"))).onTap,
-      isNotNull,
-    );
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text(loc.newSessionPluginChooserLabel), findsNothing);
+    expect(find.text("First Tool"), findsNothing);
+    expect(find.text("Second Tool"), findsNothing);
+    expect(find.text("Third Tool"), findsNothing);
+    expect(find.byKey(const Key("new_session_plugin_failed-id")), findsNothing);
+    expect(find.byKey(const Key("new_session_plugin_degraded-id")), findsNothing);
+    expect(find.byKey(const Key("new_session_plugin_unavailable-id")), findsNothing);
     expect(find.text("failed-id"), findsNothing);
     expect(find.text("degraded-id"), findsNothing);
-  });
-
-  testWidgets("uses on-brand foreground tokens for a selected plugin in dark mode", (tester) async {
-    when(pluginRepository.listPlugins).thenAnswer(
-      (_) async => ApiResponse.success(
-        const PluginListResponse(
-          plugins: [
-            PluginMetadata(
-              id: "degraded-id",
-              displayName: "Selected Tool",
-              isDefault: true,
-              state: PluginLifecycleState.degraded,
-              actionHint: "Check the bridge console.",
-            ),
-          ],
-        ),
-      ),
-    );
-
-    await tester.pumpWidget(_buildApp(themeMode: ThemeMode.dark));
-    await tester.pumpAndSettle();
-
-    expect(tester.widget<Text>(find.text("Selected Tool")).style?.color, PregoColorsDark.textPrimaryOnBrand);
-    expect(tester.widget<Text>(find.text("Needs attention")).style?.color, PregoColorsDark.textSecondaryOnBrand);
-    expect(
-      tester.widget<Text>(find.text("Check the bridge console.")).style?.color,
-      PregoColorsDark.textSecondaryOnBrand,
-    );
-    final selectedRow = find.byKey(const Key("new_session_plugin_degraded-id"));
-    final radio = find.descendant(of: selectedRow, matching: find.byIcon(Icons.radio_button_checked));
-    expect(tester.widget<Icon>(radio).color, PregoColorsDark.iconFgBrandOnBrand);
   });
 
   testWidgets("keeps model and variant controls available when no agents load", (tester) async {
@@ -340,7 +295,7 @@ void main() {
     expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
   });
 
-  testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
+  testWidgets("keeps the composer pinned while worktree options scroll", (tester) async {
     await tester.binding.setSurfaceSize(const Size(700, 400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     when(pluginRepository.listPlugins).thenAnswer(
@@ -365,10 +320,7 @@ void main() {
 
     final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
     expect(optionsScroll, findsOneWidget);
-    expect(
-      find.descendant(of: optionsScroll, matching: find.byType(NewSessionPluginChooser)),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key("new_session_plugin_plugin-0")), findsNothing);
     expect(find.descendant(of: optionsScroll, matching: find.byType(SwitchListTile)), findsOneWidget);
     expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
     expect(tester.takeException(), isNull);
@@ -426,161 +378,7 @@ void main() {
     expect(find.text(loc.newSessionDedicatedWorktree), findsNothing);
   });
 
-  testWidgets("keeps chooser usable while clearing and reloading composer data", (tester) async {
-    const toolA = PluginMetadata(
-      id: "tool-a",
-      displayName: "Tool A",
-      isDefault: true,
-      state: PluginLifecycleState.ready,
-      actionHint: null,
-    );
-    const toolB = PluginMetadata(
-      id: "tool-b",
-      displayName: "Tool B",
-      isDefault: false,
-      state: PluginLifecycleState.degraded,
-      actionHint: "Check the bridge console.",
-    );
-    when(pluginRepository.listPlugins).thenAnswer(
-      (_) async => ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])),
-    );
-    final toolBAgents = Completer<ApiResponse<Agents>>();
-    when(
-      () => sessionService.listAgents(
-        projectId: any(named: "projectId"),
-        pluginId: any(named: "pluginId"),
-      ),
-    ).thenAnswer((invocation) {
-      final pluginId = invocation.namedArguments[#pluginId] as String;
-      if (pluginId == "tool-b") return toolBAgents.future;
-      return Future.value(
-        ApiResponse.success(
-          Agents(
-            agents: [_testAgent(name: "coder", description: "Coder", variant: "xhigh")],
-          ),
-        ),
-      );
-    });
-
-    await tester.pumpWidget(_buildApp());
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
-    await tester.pump();
-
-    expect(find.widgetWithText(GlassButton, "coder"), findsNothing);
-    final disabledComposer = find.ancestor(
-      of: find.byType(PromptInput),
-      matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
-    );
-    expect(disabledComposer, findsOneWidget);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-a"))).onTap,
-      isNotNull,
-    );
-
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-a")));
-    await tester.pumpAndSettle();
-
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
-    verifyNever(
-      () => sessionService.createSessionWithMessage(
-        projectId: any(named: "projectId"),
-        pluginId: any(named: "pluginId"),
-        text: any(named: "text"),
-        agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
-        variant: any(named: "variant"),
-        command: any(named: "command"),
-        dedicatedWorktree: any(named: "dedicatedWorktree"),
-      ),
-    );
-    toolBAgents.complete(ApiResponse.success(const Agents(agents: [])));
-  });
-
-  testWidgets("disables plugin selection only while reconnect discovery is in flight", (tester) async {
-    const toolA = PluginMetadata(
-      id: "tool-a",
-      displayName: "Tool A",
-      isDefault: true,
-      state: PluginLifecycleState.ready,
-      actionHint: null,
-    );
-    const toolB = PluginMetadata(
-      id: "tool-b",
-      displayName: "Tool B",
-      isDefault: false,
-      state: PluginLifecycleState.ready,
-      actionHint: null,
-    );
-    final reconnectDiscovery = Completer<ApiResponse<PluginListResponse>>();
-    var discoveryCalls = 0;
-    when(pluginRepository.listPlugins).thenAnswer((_) {
-      discoveryCalls++;
-      if (discoveryCalls == 1) {
-        return Future.value(ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])));
-      }
-      return reconnectDiscovery.future;
-    });
-
-    await tester.pumpWidget(_buildApp());
-    await tester.pumpAndSettle();
-
-    connectionStatus
-      ..add(const ConnectionStatus.disconnected())
-      ..add(
-        const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
-          health: HealthResponse(
-            healthy: true,
-            version: "test",
-            filesystemAccessDegraded: null,
-          ),
-        ),
-      );
-    await tester.pump();
-    await tester.pump();
-
-    expect(discoveryCalls, 2);
-    expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-b"))).onTap,
-      isNull,
-    );
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
-    await tester.pump();
-    expect(
-      find.descendant(
-        of: find.byKey(const Key("new_session_plugin_tool-a")),
-        matching: find.byIcon(Icons.radio_button_checked),
-      ),
-      findsOneWidget,
-    );
-    verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
-
-    reconnectDiscovery.complete(ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])));
-    await tester.pumpAndSettle();
-
-    expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isTrue);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-b"))).onTap,
-      isNotNull,
-    );
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
-    await tester.pumpAndSettle();
-    expect(
-      find.descendant(
-        of: find.byKey(const Key("new_session_plugin_tool-b")),
-        matching: find.byIcon(Icons.radio_button_checked),
-      ),
-      findsOneWidget,
-    );
-    verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
-  });
-
-  testWidgets("refresh discovery failure keeps the chooser and composer usable", (tester) async {
+  testWidgets("refresh discovery failure keeps the composer usable without plugin selection", (tester) async {
     var discoveryCalls = 0;
     when(pluginRepository.listPlugins).thenAnswer((_) async {
       discoveryCalls++;
@@ -622,7 +420,7 @@ void main() {
     final context = tester.element(find.byType(NewSessionScreen));
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
-    expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsOneWidget);
+    expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsNothing);
     expect(
       find.ancestor(
         of: find.byType(PromptInput),
