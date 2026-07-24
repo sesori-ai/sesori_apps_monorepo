@@ -772,7 +772,7 @@ class SessionRepository {
 
   Future<SessionStatusResponse> getSessionStatuses() async {
     final results = await Future.wait(
-      _runtime.activePluginIds.map((pluginId) async {
+      _runtime.eligiblePluginIds.map((pluginId) async {
         try {
           final pluginStatuses = await _runtime.useIfActive(
             pluginId: pluginId,

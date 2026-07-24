@@ -110,7 +110,9 @@ class PluginRuntime {
   final Map<String, _PluginRuntimeSlot> _slots;
   final Map<String, BridgePluginApi> _operationalApis = <String, BridgePluginApi>{};
   late final BehaviorSubject<List<PluginRuntimeSnapshot>> _snapshotsSubject;
-  final PublishSubject<SourcedPluginRuntimeEvent> _backendEventsSubject = PublishSubject<SourcedPluginRuntimeEvent>();
+  final ReplaySubject<SourcedPluginRuntimeEvent> _backendEventsSubject = ReplaySubject<SourcedPluginRuntimeEvent>(
+    maxSize: 1024,
+  );
   final PublishSubject<SourcedPluginProvisionProgress> _provisionProgressSubject =
       PublishSubject<SourcedPluginProvisionProgress>();
   bool _shuttingDown = false;
@@ -131,6 +133,11 @@ class PluginRuntime {
   Set<String> get activePluginIds => {
     for (final slot in _slots.values)
       if (_isRoutable(slot)) slot.registration.descriptor.id,
+  };
+
+  Set<String> get eligiblePluginIds => {
+    for (final slot in _slots.values)
+      if (slot.eligible) slot.registration.descriptor.id,
   };
 
   Set<String> get startAllowedPluginIds => {

@@ -90,9 +90,13 @@ SessionRepository singlePluginSessionRepository({
   required ProjectsDao projectsDao,
   required PullRequestDao pullRequestDao,
   required SessionUnseenCalculator unseenCalculator,
+  Set<String>? eligiblePluginIds,
 }) {
   return SessionRepository(
-    runtime: createTestPluginRuntime(plugins: [plugin]),
+    runtime: createTestPluginRuntime(
+      plugins: [plugin],
+      eligiblePluginIds: eligiblePluginIds,
+    ),
     bridgeDerivedProjectPluginIds: {
       if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
     },
