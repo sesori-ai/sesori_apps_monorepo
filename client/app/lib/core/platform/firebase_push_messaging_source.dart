@@ -7,9 +7,12 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "firebase/firebase_messaging_static_adapter.dart";
+
 @LazySingleton(as: PushMessagingSource)
 class FirebasePushMessagingSource implements PushMessagingSource {
   final FirebaseMessaging _messaging;
+  final FirebaseMessagingStaticAdapter _staticAdapter;
   final bool Function() _isApplePlatform;
   final Future<void> Function(Duration) _delay;
   final StreamController<PushNotificationMessage> _foregroundMessageController =
@@ -24,17 +27,22 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   bool _initialNotificationOpenConsumed = false;
   bool _disposed = false;
 
-  FirebasePushMessagingSource()
-    : _messaging = FirebaseMessaging.instance,
-      _isApplePlatform = _defaultIsApplePlatform,
-      _delay = Future<void>.delayed;
+  FirebasePushMessagingSource({
+    required FirebaseMessaging messaging,
+    required FirebaseMessagingStaticAdapter staticAdapter,
+  }) : _messaging = messaging,
+       _staticAdapter = staticAdapter,
+       _isApplePlatform = _defaultIsApplePlatform,
+       _delay = Future<void>.delayed;
 
   @visibleForTesting
   FirebasePushMessagingSource.test({
     required FirebaseMessaging messaging,
+    FirebaseMessagingStaticAdapter staticAdapter = const FirebaseMessagingStaticAdapter.disabled(),
     bool Function()? isApplePlatform,
     Future<void> Function(Duration)? delay,
   }) : _messaging = messaging,
+       _staticAdapter = staticAdapter,
        _isApplePlatform = isApplePlatform ?? _defaultIsApplePlatform,
        _delay = delay ?? Future<void>.delayed;
 
@@ -78,10 +86,10 @@ class FirebasePushMessagingSource implements PushMessagingSource {
       sound: false,
     );
 
-    _foregroundMessageSubscription = FirebaseMessaging.onMessage.listen(
+    _foregroundMessageSubscription = _staticAdapter.foregroundMessageStream.listen(
       _onForegroundMessage,
     );
-    _notificationOpenedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
+    _notificationOpenedSubscription = _staticAdapter.notificationOpenedStream.listen(
       _onNotificationOpened,
     );
 

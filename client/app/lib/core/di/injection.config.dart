@@ -11,7 +11,9 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:device_info_plus/device_info_plus.dart' as _i833;
 import 'package:firebase_analytics/firebase_analytics.dart' as _i398;
+import 'package:firebase_core/firebase_core.dart' as _i982;
 import 'package:firebase_crashlytics/firebase_crashlytics.dart' as _i141;
+import 'package:firebase_messaging/firebase_messaging.dart' as _i892;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as _i163;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
@@ -31,11 +33,14 @@ import 'package:sesori_mobile/capabilities/voice/wake_lock_service.dart'
 import 'package:sesori_mobile/core/analytics/analytics_reporter.dart' as _i199;
 import 'package:sesori_mobile/core/analytics/firebase_analytics_reporter.dart'
     as _i330;
+import 'package:sesori_mobile/core/di/firebase_register_module.dart' as _i677;
 import 'package:sesori_mobile/core/di/register_module.dart' as _i124;
 import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
     as _i875;
 import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
+import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
+    as _i178;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_local_notification_client.dart'
@@ -53,6 +58,9 @@ import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i901;
 import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
+const String _firebaseEnabled = 'firebaseEnabled';
+const String _firebaseDisabled = 'firebaseDisabled';
+
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
   _i174.GetIt init({
@@ -61,6 +69,7 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
+    final firebaseRegisterModule = _$FirebaseRegisterModule();
     gh.lazySingleton<_i430.AudioFormatConfig>(() => _i430.AudioFormatConfig());
     gh.lazySingleton<_i511.WakeLockService>(() => _i511.WakeLockService());
     gh.lazySingleton<_i519.Client>(() => registerModule.httpClient);
@@ -77,19 +86,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
-    gh.lazySingleton<_i141.FirebaseCrashlytics>(
-      () => registerModule.firebaseCrashlytics,
-    );
-    gh.lazySingleton<_i398.FirebaseAnalytics>(
-      () => registerModule.firebaseAnalytics,
-    );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
-    gh.lazySingleton<_i199.AnalyticsReporter>(
-      () => _i330.FirebaseAnalyticsReporter(
-        analytics: gh<_i398.FirebaseAnalytics>(),
-      ),
-    );
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i636.FlutterLocalNotificationClient(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
@@ -109,20 +107,42 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i62.RecordingFileProvider>(
       () => _i62.RecordingFileProvider(gh<_i430.AudioFormatConfig>()),
     );
-    gh.lazySingleton<_i948.PushMessagingSource>(
-      () => _i1042.FirebasePushMessagingSource(),
-    );
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i10.FlutterUrlLauncher());
+    gh.lazySingleton<_i982.FirebaseApp>(
+      () => firebaseRegisterModule.enabledFirebaseApp,
+      registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i892.FirebaseMessaging>(
+      () => firebaseRegisterModule.enabledFirebaseMessaging,
+      registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i398.FirebaseAnalytics>(
+      () => firebaseRegisterModule.enabledFirebaseAnalytics,
+      registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i141.FirebaseCrashlytics>(
+      () => firebaseRegisterModule.enabledFirebaseCrashlytics,
+      registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
+      () => firebaseRegisterModule.enabledFirebaseMessagingStaticAdapter,
+      registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i982.FirebaseApp>(
+      () => firebaseRegisterModule.disabledFirebaseApp,
+      registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
+      () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
+      registerFor: {_firebaseDisabled},
+    );
     gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
       () => _i363.FlutterOAuthDeviceDescriptorProvider(
         gh<_i833.DeviceInfoPlugin>(),
       ),
-    );
-    gh.lazySingleton<_i553.FailureReporter>(
-      () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
     );
     gh.lazySingleton<_i1038.VoiceTranscriptionService>(
       () => _i1038.VoiceTranscriptionService(
@@ -134,12 +154,46 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i892.FirebaseMessaging>(
+      () => firebaseRegisterModule.disabledFirebaseMessaging(
+        gh<_i982.FirebaseApp>(),
+      ),
+      registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i398.FirebaseAnalytics>(
+      () => firebaseRegisterModule.disabledFirebaseAnalytics(
+        gh<_i982.FirebaseApp>(),
+      ),
+      registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i141.FirebaseCrashlytics>(
+      () => firebaseRegisterModule.disabledFirebaseCrashlytics(
+        gh<_i982.FirebaseApp>(),
+      ),
+      registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i199.AnalyticsReporter>(
+      () => _i330.FirebaseAnalyticsReporter(
+        analytics: gh<_i398.FirebaseAnalytics>(),
+      ),
+    );
     gh.lazySingleton<_i901.DeepLinkService>(
       () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i948.PushMessagingSource>(
+      () => _i1042.FirebasePushMessagingSource(
+        messaging: gh<_i892.FirebaseMessaging>(),
+        staticAdapter: gh<_i178.FirebaseMessagingStaticAdapter>(),
+      ),
+    );
+    gh.lazySingleton<_i553.FailureReporter>(
+      () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
     );
     return this;
   }
 }
 
 class _$RegisterModule extends _i124.RegisterModule {}
+
+class _$FirebaseRegisterModule extends _i677.FirebaseRegisterModule {}

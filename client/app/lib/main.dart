@@ -17,6 +17,7 @@ import "core/analytics/analytics_user_id_tracker.dart";
 import "core/di/injection.dart";
 import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
+import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
@@ -25,6 +26,41 @@ import "l10n/app_localizations.dart";
 @pragma("vm:entry-point")
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
+
+void _configureFirebaseSdk({
+  required bool supportsAnalytics,
+  required bool supportsCrashlytics,
+}) {
+  getIt<FirebaseMessagingStaticAdapter>().registerBackgroundHandler(
+    handler: _firebaseMessagingBackgroundHandler,
+  );
+
+  if (supportsAnalytics) {
+    // Explicitly disable any data collection except for the very basic analytics.
+    // These are also disabled by default in Info.plist and AndroidManifest.xml.
+    getIt<FirebaseAnalytics>()
+        .setConsent(
+          adPersonalizationSignalsConsentGranted: false,
+          adStorageConsentGranted: false,
+          adUserDataConsentGranted: false,
+          personalizationStorageConsentGranted: false,
+          securityStorageConsentGranted: false,
+          analyticsStorageConsentGranted: true,
+          functionalityStorageConsentGranted: true,
+        )
+        .ignore();
+  }
+
+  if (supportsCrashlytics) {
+    final crashlytics = getIt<FirebaseCrashlytics>();
+    FlutterError.onError = crashlytics.recordFlutterFatalError;
+    // Pass uncaught asynchronous errors outside the Flutter framework to Crashlytics.
+    PlatformDispatcher.instance.onError = (error, stack) {
+      crashlytics.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 }
 
 void main() async {
@@ -39,62 +75,31 @@ void main() async {
     SystemUiMode.edgeToEdge,
     overlays: SystemUiOverlay.values,
   );
-  if (_shouldInitializeFirebase) {
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  final shouldInitializeFirebase = _shouldInitializeFirebase;
+  final supportsFirebaseAnalytics = _supportsFirebaseAnalytics;
+  final supportsFirebaseCrashlytics = _supportsFirebaseCrashlytics;
+  if (shouldInitializeFirebase) {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-    if (_supportsFirebaseAnalytics) {
-      // Explicitly disable any data collection except for the very basic analytics
-      // Note: Those are also disabled by default in Info.plist and AndroidManifest.xml
-      FirebaseAnalytics.instance
-          .setConsent(
-            adPersonalizationSignalsConsentGranted: false,
-            adStorageConsentGranted: false,
-            adUserDataConsentGranted: false,
-            personalizationStorageConsentGranted: false,
-            securityStorageConsentGranted: false,
-            analyticsStorageConsentGranted: true,
-            functionalityStorageConsentGranted: true,
-          )
-          .ignore();
-    }
-
-    if (_supportsFirebaseCrashlytics) {
-      FlutterError.onError = (errorDetails) {
-        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-      };
-      // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
-      PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-        return true;
-      };
-    }
-  }
-  if (_shouldInitializeFirebase) {
-    await bootstrapSesoriApp(
-      shouldInitializeFirebase: true,
-      supportsFirebaseAnalytics: _supportsFirebaseAnalytics,
-      configureDependenciesFn: configureDependencies,
-      initializeDeepLinks: () => getIt<DeepLinkService>().init(),
-      startNotificationStartupFn: () => startNotificationStartup(
-        localNotificationClient: getIt<LocalNotificationClient>(),
-        pushMessagingSource: getIt<PushMessagingSource>(),
-        notificationRegistrationService: getIt<NotificationRegistrationService>(),
-        foregroundNotificationDispatcher: getIt<ForegroundNotificationDispatcher>(),
-        notificationOpenDispatcher: getIt<NotificationOpenDispatcher>(),
-      ),
-      readAppearanceFn: () => getIt<AppearanceStore>().read(),
-      runAppFn: runApp,
-    );
-    return;
   }
 
   await bootstrapSesoriApp(
-    shouldInitializeFirebase: false,
-    supportsFirebaseAnalytics: false,
-    configureDependenciesFn: configureDependencies,
+    shouldInitializeFirebase: shouldInitializeFirebase,
+    supportsFirebaseAnalytics: supportsFirebaseAnalytics,
+    configureDependenciesFn: () {
+      configureDependencies(firebaseEnabled: shouldInitializeFirebase);
+      _configureFirebaseSdk(
+        supportsAnalytics: supportsFirebaseAnalytics,
+        supportsCrashlytics: supportsFirebaseCrashlytics,
+      );
+    },
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
-    startNotificationStartupFn: () async {},
+    startNotificationStartupFn: () => startNotificationStartup(
+      localNotificationClient: getIt<LocalNotificationClient>(),
+      pushMessagingSource: getIt<PushMessagingSource>(),
+      notificationRegistrationService: getIt<NotificationRegistrationService>(),
+      foregroundNotificationDispatcher: getIt<ForegroundNotificationDispatcher>(),
+      notificationOpenDispatcher: getIt<NotificationOpenDispatcher>(),
+    ),
     readAppearanceFn: () => getIt<AppearanceStore>().read(),
     runAppFn: runApp,
   );
