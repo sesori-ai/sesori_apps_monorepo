@@ -5,6 +5,7 @@ import "../api/codex_app_server_api.dart";
 import "../api/models/codex_thread_dto.dart";
 import "../api/models/codex_turn_input_dto.dart";
 import "../codex_app_server_client.dart";
+import "../models/codex_collaboration_mode.dart";
 import "models/codex_thread_record.dart";
 
 sealed class CodexThreadOperationException implements Exception {
@@ -69,6 +70,7 @@ class CodexThreadRepository {
     required List<PluginPromptPart> parts,
     required String? model,
     required String? effort,
+    required CodexCollaborationMode? collaborationMode,
   }) async {
     final input = parts.map(_mapTurnInput).whereType<CodexTurnInputDto>().toList();
     if (input.isEmpty) return false;
@@ -79,6 +81,7 @@ class CodexThreadRepository {
         input: input,
         model: model,
         effort: effort,
+        collaborationMode: collaborationMode,
       ),
     );
     return true;

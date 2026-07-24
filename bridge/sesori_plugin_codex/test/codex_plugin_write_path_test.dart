@@ -10,6 +10,7 @@ import "dart:io";
 import "package:codex_plugin/codex_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
@@ -44,7 +45,7 @@ void main() {
       } catch (_) {}
     });
 
-    test("createSession round-trips thread/start and turn/start", () async {
+    test("createSession preserves a Default turn when no model resolves", () async {
       // Respond to: initialize, thread/start, turn/start.
       fake.respondInOrder([
         const _Response(result: _initOk),
@@ -68,7 +69,7 @@ void main() {
         parts: const [PluginPromptPart.text(text: "hello codex")],
         userVisibleText: "hello codex",
         variant: null,
-        agent: null,
+        agent: "Default",
         model: null,
       );
 
@@ -82,6 +83,7 @@ void main() {
       final turnStartParams = fake.sentParamsFor("turn/start");
       expect(turnStartParams["threadId"], equals("t-new"));
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
+      expect(turnStartParams.containsKey("collaborationMode"), isFalse);
     });
 
     test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
@@ -108,6 +110,7 @@ void main() {
         const _Response(
           result: {
             "thread": {"id": "t-existing", "cwd": "/work/sample"},
+            "model": "gpt-5.4",
           },
         ),
         const _Response(result: {"turnId": "u-skill"}),
@@ -121,7 +124,7 @@ void main() {
         arguments: "staged changes",
         userVisibleArguments: "staged changes",
         variant: null,
-        agent: null,
+        agent: "Plan",
         model: null,
       );
       await plugin.sendCommand(
@@ -147,6 +150,14 @@ void main() {
       });
       final input = fake.sentParamsFor("turn/start")["input"] as List;
       expect(input.single["text"], r"$review staged changes");
+      expect(fake.sentParamsFor("turn/start")["collaborationMode"], {
+        "mode": "plan",
+        "settings": {
+          "model": "gpt-5.4",
+          "reasoning_effort": "medium",
+          "developer_instructions": null,
+        },
+      });
     });
 
     test("a live event emitted during the first turn is scoped to the new session's directory", () async {
@@ -321,9 +332,7 @@ void main() {
       final stopwatch = Stopwatch()..start();
 
       await expectLater(
-        plugin
-            .renameSession(sessionId: "t-stalled", title: "Renamed")
-            .timeout(const Duration(seconds: 4)),
+        plugin.renameSession(sessionId: "t-stalled", title: "Renamed").timeout(const Duration(seconds: 4)),
         throwsA(isA<TimeoutException>()),
       );
 
@@ -358,6 +367,115 @@ void main() {
       expect(methods, equals(["initialize", "thread/resume", "turn/start"]));
       expect(fake.sentParamsFor("thread/resume")["threadId"], equals("t-existing"));
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing"));
+    });
+
+    test("sendPrompt treats an omitted agent as Default so it replaces Plan mode", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "model": "gpt-5.4-mini",
+            "modelProvider": "openai",
+            "thread": {"id": "t-default-mode"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-default"}),
+      ]);
+
+      await plugin.sendPrompt(
+        sessionId: "t-default-mode",
+        parts: const [PluginPromptPart.text(text: "implement it")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      final params = fake.sentParamsFor("turn/start");
+      expect(params.containsKey("model"), isFalse);
+      expect(params.containsKey("effort"), isFalse);
+      expect(params["collaborationMode"], {
+        "mode": "default",
+        "settings": {
+          "model": "gpt-5.4-mini",
+          "reasoning_effort": null,
+          "developer_instructions": null,
+        },
+      });
+    });
+
+    test("collaboration mode stamps live messages with its resolved rollout model", () async {
+      const sessionId = "019a0000-1111-2222-3333-eeeeeeeeeeee";
+      File(p.join(codexHome.path, "config.toml")).writeAsStringSync(
+        'model = "gpt-global"\nmodel_provider = "openai"\n',
+      );
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/07/24/rollout-2026-07-24T08-00-00-$sessionId.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "session_meta",
+          "payload": {
+            "id": sessionId,
+            "timestamp": "2026-07-24T08:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+          },
+        })}\n"
+        "${jsonEncode({
+          "type": "turn_context",
+          "payload": {"model": "gpt-session"},
+        })}\n",
+      );
+      final resolvedFake = _FakeAppServer();
+      const serverUrl = "ws://127.0.0.1:0";
+      final resolvedPlugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
+        projectCwd: "/work/sample",
+        clientFactory: () => CodexAppServerClient(
+          serverUrl: serverUrl,
+          channelFactory: (_) => resolvedFake.channel,
+        ),
+        keepaliveInterval: const Duration(seconds: 30),
+      );
+      addTearDown(resolvedPlugin.dispose);
+      resolvedFake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": sessionId, "modelProvider": "openai"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-resolved"}),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = resolvedPlugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await resolvedPlugin.sendPrompt(
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "plan this")],
+        variant: null,
+        agent: "Plan",
+        model: null,
+      );
+      resolvedFake.pushNotification("item/completed", {
+        "threadId": sessionId,
+        "turnId": "u-resolved",
+        "item": {
+          "type": "agentMessage",
+          "id": "i-resolved",
+          "text": "The plan",
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final messageEvent = events.whereType<BridgeSseMessageUpdated>().single;
+      final message = shared.Message.fromJson(messageEvent.info) as shared.MessageAssistant;
+      expect(message.modelID, "gpt-session");
     });
 
     test("sendPrompt does not re-resume a thread created in this run", () async {
@@ -844,6 +962,30 @@ void main() {
       expect(fake.sentMethods, contains("model/list"));
     });
 
+    test("getAgents uses the live catalog to expose Plan without local model metadata", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "data": [
+              {
+                "id": "gpt-5.5",
+                "displayName": "GPT-5.5",
+                "hidden": false,
+                "isDefault": true,
+              },
+            ],
+          },
+        ),
+      ]);
+
+      await plugin.healthCheck();
+      final agents = await plugin.getAgents(projectId: "/work/sample");
+
+      expect(agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(agents.every((agent) => agent.model?.modelID == "gpt-5.5"), isTrue);
+    });
+
     test("getProviders preselects the project's own latest rollout model over codex's live default", () async {
       // The selected project's newest rollout used gpt-5.4-mini, while codex's
       // live catalog marks gpt-5.5 as the global default — the project-scoped
@@ -900,7 +1042,7 @@ void main() {
       expect(result.providers.single.defaultModelID, equals("gpt-5.4-mini"));
     });
 
-    test("sendPrompt forwards the selected variant as the turn/start effort", () async {
+    test("sendPrompt forwards the selected variant in Plan mode settings", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -917,11 +1059,20 @@ void main() {
         sessionId: "t-effort",
         parts: const [PluginPromptPart.text(text: "think hard")],
         variant: const PluginSessionVariant(id: "high"),
-        agent: null,
+        agent: "Plan",
         model: null,
       );
 
-      expect(fake.sentParamsFor("turn/start")["effort"], equals("high"));
+      final params = fake.sentParamsFor("turn/start");
+      expect(params.containsKey("effort"), isFalse);
+      expect(params["collaborationMode"], {
+        "mode": "plan",
+        "settings": {
+          "model": "gpt-5.5",
+          "reasoning_effort": "high",
+          "developer_instructions": null,
+        },
+      });
     });
 
     test("sendPrompt without a variant sends no effort (codex uses its default)", () async {
@@ -946,11 +1097,12 @@ void main() {
       expect(fake.sentParamsFor("turn/start").containsKey("effort"), isFalse);
     });
 
-    test("createSession applies the variant on the first turn", () async {
+    test("legacy codex agent selects Default mode on the first turn", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
           result: {
+            "model": "gpt-5.5",
             "thread": {"id": "t-new"},
           },
         ),
@@ -963,12 +1115,19 @@ void main() {
         parts: const [PluginPromptPart.text(text: "start low")],
         userVisibleText: "start low",
         variant: const PluginSessionVariant(id: "low"),
-        agent: null,
+        agent: "codex",
         model: null,
       );
 
       expect(fake.sentMethods, equals(["initialize", "thread/start", "turn/start"]));
-      expect(fake.sentParamsFor("turn/start")["effort"], equals("low"));
+      expect(fake.sentParamsFor("turn/start")["collaborationMode"], {
+        "mode": "default",
+        "settings": {
+          "model": "gpt-5.5",
+          "reasoning_effort": "low",
+          "developer_instructions": null,
+        },
+      });
     });
   });
 }
