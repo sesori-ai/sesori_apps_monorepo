@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/database/tables/catalog_hydrations_table.dart";
+import "package:sesori_bridge/src/listeners/plugin_catalog_hydration_listener.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/services/catalog_import_service.dart";
@@ -14,9 +15,8 @@ void main() {
   }) {
     return CatalogImportService(
       repository: repository,
-      knownPluginIds: const {"selected", "other"},
-      enabledPluginIds: const ["selected"],
-      emptyHydrationPolicies: {"selected": policy},
+      orderedPluginIds: const ["selected", "other"],
+      emptyHydrationPolicies: {"selected": policy, "other": policy},
     );
   }
 
@@ -117,18 +117,22 @@ void main() {
     test("cancels an active import after its plugin becomes unavailable", () async {
       final releaseImport = Completer<void>();
       final eligiblePluginIds = <String>{"selected"};
+      final importEligiblePluginIds = <String>{"selected"};
       final repository = _FakeCatalogImportRepository(
         releaseImport: releaseImport,
         eligiblePluginIds: eligiblePluginIds,
+        importEligiblePluginIds: importEligiblePluginIds,
       );
       final service = createService(
         repository: repository,
         policy: CatalogEmptyHydrationPolicy.complete,
       );
+      final cancelled = service.progress.firstWhere((status) => status is CatalogImportCancelled);
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
       await repository.importStarted.future;
 
       eligiblePluginIds.remove("selected");
+      importEligiblePluginIds.remove("selected");
       Object? cancellationError;
       try {
         service.cancel(pluginId: "selected");
@@ -139,7 +143,7 @@ void main() {
       await service.dispose();
 
       expect(cancellationError, isNull);
-      expect(service.latestStatuses.single, isA<CatalogImportCancelled>());
+      expect(await cancelled, isA<CatalogImportCancelled>());
     });
 
     test("repository errors become one failed terminal status", () async {
@@ -158,6 +162,37 @@ void main() {
 
       expect(statuses.whereType<CatalogImportFailed>(), hasLength(1));
       expect((service.latestStatuses.single as CatalogImportFailed).message, contains("enumeration failed"));
+    });
+
+    test("ready-id additions hydrate a plugin enabled after startup", () async {
+      final eligiblePluginIds = <String>{};
+      final importEligiblePluginIds = <String>{};
+      final repository = _FakeCatalogImportRepository(
+        eligiblePluginIds: eligiblePluginIds,
+        importEligiblePluginIds: importEligiblePluginIds,
+      );
+      final service = createService(repository: repository, policy: CatalogEmptyHydrationPolicy.complete);
+      final readyPluginIds = StreamController<List<String>>.broadcast(sync: true);
+      final listener = PluginCatalogHydrationListener(
+        readyPluginIds: readyPluginIds.stream,
+        catalogImportService: service,
+      )..start();
+      addTearDown(() async {
+        await listener.dispose();
+        await readyPluginIds.close();
+        await service.dispose();
+      });
+      readyPluginIds.add(const []);
+
+      eligiblePluginIds.add("selected");
+      importEligiblePluginIds.add("selected");
+      final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
+      readyPluginIds.add(const ["selected"]);
+
+      await completed;
+      expect(repository.importCalls, 1);
+      eligiblePluginIds.remove("selected");
+      expect(service.latestStatuses, isEmpty);
     });
 
     test("an empty derived import remains eligible for automatic retry", () async {
@@ -201,12 +236,16 @@ class _FakeCatalogImportRepository implements CatalogImportRepository {
     this.releaseImport,
     this.importError,
     Set<String>? eligiblePluginIds,
-  }) : importEligiblePluginIds = eligiblePluginIds ?? <String>{"selected"};
+    Set<String>? importEligiblePluginIds,
+  }) : eligiblePluginIds = eligiblePluginIds ?? <String>{"selected"},
+       importEligiblePluginIds = importEligiblePluginIds ?? eligiblePluginIds ?? <String>{"selected"};
 
   final CatalogHydrationDto? completion;
   final Completer<CatalogHydrationDto?>? hydrationGate;
   final Completer<void>? releaseImport;
   final Object? importError;
+  @override
+  final Set<String> eligiblePluginIds;
   @override
   final Set<String> importEligiblePluginIds;
   final Completer<void> importStarted = Completer<void>();

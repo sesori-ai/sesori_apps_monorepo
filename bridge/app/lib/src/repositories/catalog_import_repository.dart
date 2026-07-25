@@ -39,6 +39,7 @@ class CatalogImportRepository {
   final CatalogHydrationsDao _catalogHydrationsDao;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
 
+  Set<String> get eligiblePluginIds => _runtime.eligiblePluginIds;
   Set<String> get importEligiblePluginIds => _runtime.startAllowedPluginIds;
 
   Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) {

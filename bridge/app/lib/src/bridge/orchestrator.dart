@@ -345,24 +345,23 @@ class Orchestrator {
     );
     sseManager.setRoomKey(roomKey);
 
+    final catalogImportRepository = CatalogImportRepository(
+      runtime: _pluginRuntime,
+      projectsDao: _database.projectsDao,
+      sessionDao: _database.sessionDao,
+      catalogHydrationsDao: _database.catalogHydrationsDao,
+      projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
+    );
     final catalogImportService = CatalogImportService(
-      knownPluginIds: pluginComposition.knownPluginIds,
-      enabledPluginIds: pluginComposition.eligiblePluginIds,
+      orderedPluginIds: pluginComposition.orderedPluginIds,
       emptyHydrationPolicies: {
         for (final entry in pluginComposition.projectOwnershipById.entries)
-          if (pluginComposition.eligiblePluginIds.contains(entry.key))
-            entry.key: switch (entry.value) {
-              PluginProjectOwnership.native => CatalogEmptyHydrationPolicy.complete,
-              PluginProjectOwnership.bridgeDerived => CatalogEmptyHydrationPolicy.retry,
-            },
+          entry.key: switch (entry.value) {
+            PluginProjectOwnership.native => CatalogEmptyHydrationPolicy.complete,
+            PluginProjectOwnership.bridgeDerived => CatalogEmptyHydrationPolicy.retry,
+          },
       },
-      repository: CatalogImportRepository(
-        runtime: _pluginRuntime,
-        projectsDao: _database.projectsDao,
-        sessionDao: _database.sessionDao,
-        catalogHydrationsDao: _database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
-      ),
+      repository: catalogImportRepository,
     );
     final catalogHydrationListener = PluginCatalogHydrationListener(
       readyPluginIds: _pluginLifecycleService.readyPluginIds,

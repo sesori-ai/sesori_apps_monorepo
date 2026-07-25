@@ -14,6 +14,7 @@ import "../repositories/plugin_lifecycle_repository.dart";
 
 typedef PluginCompositionView = ({
   Set<String> knownPluginIds,
+  List<String> orderedPluginIds,
   List<String> eligiblePluginIds,
   String? defaultPluginId,
   Map<String, PluginProjectOwnership> projectOwnershipById,
@@ -53,7 +54,7 @@ class PluginLifecycleService {
   Set<String>? _knownPluginIds;
   Map<String, PluginResidencyPolicy>? _residencyPolicyById;
   List<String>? _eligiblePluginIds;
-  List<String>? _setupReadyPluginIds;
+  Set<String> _startAllowedPluginIds = {};
   Map<String, PluginMetadata> _metadataById = <String, PluginMetadata>{};
   Map<String, PluginSetupStatus>? _setupById;
   BehaviorSubject<List<PluginMetadata>>? _metadataSubject;
@@ -63,6 +64,7 @@ class PluginLifecycleService {
   Future<void>? _disposeFuture;
   Future<void> _settingsMutationTail = Future<void>.value();
   final Map<String, _ActivePluginCommand> _activePluginCommands = {};
+  final Set<String> _deferredReadyPluginIds = {};
   final Map<String, ({Duration duration, Timer timer})> _idleTimers = {};
   PluginManagementResponse? _lastPublishedManagementSnapshot;
   final Random _random = Random.secure();
@@ -106,32 +108,15 @@ class PluginLifecycleService {
       for (final plugin in registeredPlugins)
         if (!disabledPluginIds.contains(plugin.id)) plugin.id,
     ]);
-    final setupReadyPluginIds = List<String>.unmodifiable([
+    final setupReadyPluginIds = <String>{
       for (final pluginId in eligiblePluginIds)
         if (setupById[pluginId] is PluginSetupReady) pluginId,
-    ]);
-    _eligiblePluginIds = eligiblePluginIds;
-    _setupReadyPluginIds = setupReadyPluginIds;
-    final defaultPluginId = _defaultPluginIdFrom(candidateIds: setupReadyPluginIds.toSet());
-    _metadataById = <String, PluginMetadata>{
-      for (final plugin in registeredPlugins)
-        if (eligiblePluginIds.contains(plugin.id))
-          plugin.id: PluginMetadata(
-            id: plugin.id,
-            displayName: plugin.displayName,
-            isDefault: plugin.id == defaultPluginId,
-            state: setupById[plugin.id] is PluginSetupReady
-                ? PluginLifecycleState.ready
-                : PluginLifecycleState.unavailable,
-            actionHint: setupById[plugin.id] is PluginSetupReady
-                ? _actionHint(PluginLifecycleState.ready)
-                : _actionHint(PluginLifecycleState.unavailable),
-          ),
     };
-    _lifecycleRepository.applyAccess(
-      eligiblePluginIds: eligiblePluginIds.toSet(),
-      startAllowedPluginIds: setupReadyPluginIds.toSet(),
-    );
+    _eligiblePluginIds = eligiblePluginIds;
+    _startAllowedPluginIds = setupReadyPluginIds;
+    _applyAccess();
+    _rebuildMetadata();
+    final defaultPluginId = _selectableDefaultPluginId();
     _metadataSubject = BehaviorSubject<List<PluginMetadata>>.seeded(_orderedMetadata());
     _readyPluginIdsSubject = BehaviorSubject<List<String>>.seeded(
       _buildReadyPluginIds(_lifecycleRepository.snapshot),
@@ -148,12 +133,12 @@ class PluginLifecycleService {
 
   void applyAvailability({required Set<String> availablePluginIds}) {
     final eligiblePluginIds = _requireEligiblePluginIds();
-    final setupReadyPluginIds = _setupReadyPluginIds;
-    if (setupReadyPluginIds == null) throw StateError("Plugin lifecycle has not been initialized.");
-    _lifecycleRepository.applyAccess(
-      eligiblePluginIds: eligiblePluginIds.toSet(),
-      startAllowedPluginIds: setupReadyPluginIds.where(availablePluginIds.contains).toSet(),
-    );
+    final setupById = _requireSetupById();
+    _startAllowedPluginIds = {
+      for (final pluginId in eligiblePluginIds)
+        if (availablePluginIds.contains(pluginId) && setupById[pluginId] is PluginSetupReady) pluginId,
+    };
+    _applyAccess();
     _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
   }
 
@@ -163,6 +148,7 @@ class PluginLifecycleService {
     if (knownPluginIds == null) throw StateError("Plugin lifecycle has not been initialized.");
     return (
       knownPluginIds: knownPluginIds,
+      orderedPluginIds: List<String>.unmodifiable(_registeredPlugins!.map((plugin) => plugin.id)),
       eligiblePluginIds: eligiblePluginIds,
       defaultPluginId: _selectableDefaultPluginId(),
       projectOwnershipById: Map<String, PluginProjectOwnership>.unmodifiable({
@@ -311,8 +297,14 @@ class PluginLifecycleService {
     StackTrace? failureStackTrace;
     try {
       switch (command.request) {
+        case PluginLifecycleEnableRequest():
+          await _enable(pluginId: pluginId, command: command);
         case PluginLifecycleDisableRequest(:final mode):
           await _disable(pluginId: pluginId, mode: mode);
+        case PluginLifecycleRestartRequest(:final mode):
+          await _restart(pluginId: pluginId, mode: mode, command: command);
+        case PluginLifecycleRefreshRequest():
+          await _refresh(pluginId: pluginId, command: command);
       }
     } on Object catch (error, stackTrace) {
       failure = error;
@@ -328,6 +320,24 @@ class PluginLifecycleService {
     } else {
       command.completer.completeError(failure, failureStackTrace);
     }
+  }
+
+  Future<void> _enable({required String pluginId, required _ActivePluginCommand command}) async {
+    if (!_requireEligiblePluginIds().contains(pluginId)) {
+      await _persistPluginDisabled(pluginId: pluginId, disabled: false);
+      _setEligibility(pluginId: pluginId, eligible: true);
+    }
+    if (!_isPublishedReady(pluginId)) _deferredReadyPluginIds.add(pluginId);
+    final setup = await _inspectForCommand(pluginId: pluginId, command: command);
+    if (setup is! PluginSetupReady) {
+      _deferredReadyPluginIds.remove(pluginId);
+      return;
+    }
+    _handleRuntimeCommandResult(
+      pluginId: pluginId,
+      result: await _lifecycleRepository.start(pluginId: pluginId),
+    );
+    _publishDeferredReadyPlugin(pluginId);
   }
 
   Future<void> _disable({required String pluginId, required PluginStopMode mode}) async {
@@ -355,15 +365,7 @@ class PluginLifecycleService {
     }
 
     try {
-      await _withSettingsMutationTail(() async {
-        final current = await _bridgeSettingsRepository.loadSettings();
-        if (current.plugins.isDisabled(pluginId: pluginId)) return;
-        await _bridgeSettingsRepository.saveSettings(
-          settings: current.copyWith(
-            plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: true),
-          ),
-        );
-      });
+      await _persistPluginDisabled(pluginId: pluginId, disabled: true);
     } on Object catch (error) {
       try {
         _lifecycleRepository.rollbackDisable(pluginId: pluginId);
@@ -379,21 +381,129 @@ class PluginLifecycleService {
     try {
       _lifecycleRepository.commitDisable(pluginId: pluginId);
     } on Object catch (error) {
-      try {
-        _lifecycleRepository.rollbackDisable(pluginId: pluginId);
-      } on Object catch (rollbackError) {
-        throw PluginManagementCommandFailedException(
-          "Plugin disable commit failed ($error) and runtime rollback failed ($rollbackError).",
-        );
-      }
+      _setEligibility(pluginId: pluginId, eligible: false);
       throw PluginManagementCommandFailedException("Plugin disable commit failed: $error");
     }
-    _eligiblePluginIds = List<String>.unmodifiable([
-      for (final pluginId in _requireEligiblePluginIds())
-        if (pluginId != result.snapshot.pluginId) pluginId,
-    ]);
-    _metadataById.remove(pluginId);
+    _setEligibility(pluginId: pluginId, eligible: false);
+  }
+
+  Future<void> _restart({
+    required String pluginId,
+    required PluginStopMode mode,
+    required _ActivePluginCommand command,
+  }) async {
+    if (!_requireEligiblePluginIds().contains(pluginId)) {
+      throw PluginManagementConflictException(
+        PluginLifecycleConflict(
+          pluginId: pluginId,
+          reasons: const [PluginLifecycleConflictReason.notEnabled],
+          current: _managementRowForPluginId(pluginId),
+        ),
+      );
+    }
+    if (!_isPublishedReady(pluginId)) _deferredReadyPluginIds.add(pluginId);
+    final setup = await _inspectForCommand(pluginId: pluginId, command: command);
+    if (setup is! PluginSetupReady) {
+      _deferredReadyPluginIds.remove(pluginId);
+      return;
+    }
+    _handleRuntimeCommandResult(
+      pluginId: pluginId,
+      result: await _lifecycleRepository.restart(pluginId: pluginId, intent: _mapStopIntent(mode)),
+    );
+    _publishDeferredReadyPlugin(pluginId);
+  }
+
+  Future<void> _refresh({required String pluginId, required _ActivePluginCommand command}) async {
+    await _inspectForCommand(pluginId: pluginId, command: command);
+    _publishDeferredReadyPlugin(pluginId);
+  }
+
+  Future<PluginSetupStatus> _inspectForCommand({
+    required String pluginId,
+    required _ActivePluginCommand command,
+  }) async {
+    final inspected = await _lifecycleRepository.inspect(
+      pluginIds: {pluginId},
+      markUnselectedNotInspected: false,
+    );
+    if (!identical(_activePluginCommands[pluginId], command)) {
+      throw const PluginManagementCommandFailedException("plugin command was superseded");
+    }
+    final setup = inspected[pluginId];
+    if (setup == null) {
+      throw PluginManagementCommandFailedException('Plugin "$pluginId" inspection returned no result.');
+    }
+    _setupById = Map<String, PluginSetupStatus>.unmodifiable({..._requireSetupById(), pluginId: setup});
+    if (_requireEligiblePluginIds().contains(pluginId) && setup is PluginSetupReady) {
+      _startAllowedPluginIds.add(pluginId);
+    } else {
+      _startAllowedPluginIds.remove(pluginId);
+    }
+    _applyAccess();
     _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
+    return setup;
+  }
+
+  Future<void> _persistPluginDisabled({required String pluginId, required bool disabled}) {
+    return _withSettingsMutationTail(() async {
+      final current = await _bridgeSettingsRepository.loadSettings();
+      if (current.plugins.isDisabled(pluginId: pluginId) == disabled) return;
+      await _bridgeSettingsRepository.saveSettings(
+        settings: current.copyWith(
+          plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
+        ),
+      );
+    });
+  }
+
+  void _handleRuntimeCommandResult({
+    required String pluginId,
+    required PluginRuntimeCommandResult result,
+  }) {
+    switch (result) {
+      case PluginRuntimeCommandApplied() || PluginRuntimeCommandCurrent():
+        return;
+      case PluginRuntimeCommandConflict(:final reasons):
+        throw PluginManagementConflictException(
+          PluginLifecycleConflict(
+            pluginId: pluginId,
+            reasons: reasons.map(_mapConflictReason).toList(growable: false),
+            current: _managementRowForPluginId(pluginId),
+          ),
+        );
+      case PluginRuntimeCommandFailed(:final message):
+        throw PluginManagementCommandFailedException(message);
+    }
+  }
+
+  PluginStopIntent _mapStopIntent(PluginStopMode mode) => switch (mode) {
+    PluginStopMode.safe => PluginStopIntent.safe,
+    PluginStopMode.force => PluginStopIntent.force,
+  };
+
+  void _setEligibility({required String pluginId, required bool eligible}) {
+    final eligibleIds = _requireEligiblePluginIds().toSet();
+    if (eligible) {
+      eligibleIds.add(pluginId);
+    } else {
+      eligibleIds.remove(pluginId);
+      _startAllowedPluginIds.remove(pluginId);
+    }
+    _eligiblePluginIds = List<String>.unmodifiable([
+      for (final plugin in _registeredPlugins!)
+        if (eligibleIds.contains(plugin.id)) plugin.id,
+    ]);
+    _rebuildMetadata();
+    _applyAccess();
+    _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
+  }
+
+  void _applyAccess() {
+    _lifecycleRepository.applyAccess(
+      eligiblePluginIds: _requireEligiblePluginIds().toSet(),
+      startAllowedPluginIds: _startAllowedPluginIds,
+    );
   }
 
   PluginLifecycleConflictReason _mapConflictReason(PluginRuntimeConflictReason reason) => switch (reason) {
@@ -412,6 +522,10 @@ class PluginLifecycleService {
         for (final snapshot in snapshots) snapshot.pluginId: snapshot.setup,
       });
     }
+    _startAllowedPluginIds = {
+      for (final snapshot in snapshots)
+        if (snapshot.accessGate != PluginRuntimeAccessGate.disabled && snapshot.startAllowed) snapshot.pluginId,
+    };
     for (final snapshot in snapshots) {
       final current = _metadataById[snapshot.pluginId];
       if (current == null) continue;
@@ -432,10 +546,42 @@ class PluginLifecycleService {
     _publishManagementIfChanged();
   }
 
+  void _rebuildMetadata() {
+    final snapshots = {for (final snapshot in _lifecycleRepository.snapshot) snapshot.pluginId: snapshot};
+    final setupById = _requireSetupById();
+    _metadataById = <String, PluginMetadata>{
+      for (final plugin in _registeredPlugins!)
+        if (_requireEligiblePluginIds().contains(plugin.id))
+          plugin.id: () {
+            final runtimeState = snapshots[plugin.id]?.state;
+            final state = switch (runtimeState) {
+              PluginRuntimeState.dormant ||
+              PluginRuntimeState.starting ||
+              PluginRuntimeState.active => PluginLifecycleState.ready,
+              PluginRuntimeState.degraded || PluginRuntimeState.stopping => PluginLifecycleState.degraded,
+              PluginRuntimeState.failed => PluginLifecycleState.failed,
+              PluginRuntimeState.disabled || PluginRuntimeState.blocked || null =>
+                setupById[plugin.id] is PluginSetupReady
+                    ? PluginLifecycleState.ready
+                    : PluginLifecycleState.unavailable,
+            };
+            return PluginMetadata(
+              id: plugin.id,
+              displayName: plugin.displayName,
+              isDefault: false,
+              state: state,
+              actionHint: _actionHint(state),
+            );
+          }(),
+    };
+  }
+
   List<PluginMetadata> _orderedMetadata() {
     final eligiblePluginIds = _requireEligiblePluginIds();
+    final defaultPluginId = _selectableDefaultPluginId();
     return List<PluginMetadata>.unmodifiable([
-      for (final pluginId in eligiblePluginIds) _metadataById[pluginId]!,
+      for (final pluginId in eligiblePluginIds)
+        _metadataById[pluginId]!.copyWith(isDefault: pluginId == defaultPluginId),
     ]);
   }
 
@@ -474,6 +620,12 @@ class PluginLifecycleService {
     final eligiblePluginIds = _eligiblePluginIds;
     if (eligiblePluginIds == null) throw StateError("Plugin lifecycle has not been initialized.");
     return eligiblePluginIds;
+  }
+
+  Map<String, PluginSetupStatus> _requireSetupById() {
+    final setupById = _setupById;
+    if (setupById == null) throw StateError("Plugin lifecycle has not been initialized.");
+    return setupById;
   }
 
   PluginSetupMetadata _mapSetupMetadata({
@@ -625,11 +777,12 @@ class PluginLifecycleService {
     };
     return List<String>.unmodifiable([
       for (final pluginId in _requireEligiblePluginIds())
-        if (byId[pluginId] case final snapshot?)
-          if (snapshot.accessGate == PluginRuntimeAccessGate.enabled &&
-              snapshot.startAllowed &&
-              snapshot.setup is PluginSetupReady)
-            pluginId,
+        if (!_deferredReadyPluginIds.contains(pluginId))
+          if (byId[pluginId] case final snapshot?)
+            if (snapshot.accessGate == PluginRuntimeAccessGate.enabled &&
+                snapshot.startAllowed &&
+                snapshot.setup is PluginSetupReady)
+              pluginId,
     ]);
   }
 
@@ -649,6 +802,13 @@ class PluginLifecycleService {
       if (equal) return;
     }
     subject.add(next);
+  }
+
+  bool _isPublishedReady(String pluginId) => _readyPluginIdsSubject?.value.contains(pluginId) ?? false;
+
+  void _publishDeferredReadyPlugin(String pluginId) {
+    if (!_deferredReadyPluginIds.remove(pluginId)) return;
+    _publishReadyPluginIds(_lifecycleRepository.snapshot);
   }
 
   void _syncIdleTimers(List<PluginLifecycleSnapshot> snapshots) {

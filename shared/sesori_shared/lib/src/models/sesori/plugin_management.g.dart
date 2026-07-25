@@ -78,23 +78,53 @@ Map<String, dynamic> _$PluginManagementResponseToJson(
   'plugins': instance.plugins.map((e) => e.toJson()).toList(),
 };
 
+PluginLifecycleEnableRequest _$PluginLifecycleEnableRequestFromJson(Map json) =>
+    PluginLifecycleEnableRequest($type: json['type'] as String?);
+
+Map<String, dynamic> _$PluginLifecycleEnableRequestToJson(
+  PluginLifecycleEnableRequest instance,
+) => <String, dynamic>{'type': instance.$type};
+
 PluginLifecycleDisableRequest _$PluginLifecycleDisableRequestFromJson(
   Map json,
 ) => PluginLifecycleDisableRequest(
   mode: $enumDecode(_$PluginStopModeEnumMap, json['mode']),
+  $type: json['type'] as String?,
 );
 
 Map<String, dynamic> _$PluginLifecycleDisableRequestToJson(
   PluginLifecycleDisableRequest instance,
 ) => <String, dynamic>{
   'mode': _$PluginStopModeEnumMap[instance.mode]!,
-  'type': _disableCommandTypeToJson(instance.wireType),
+  'type': instance.$type,
 };
 
 const _$PluginStopModeEnumMap = {
   PluginStopMode.safe: 'safe',
   PluginStopMode.force: 'force',
 };
+
+PluginLifecycleRestartRequest _$PluginLifecycleRestartRequestFromJson(
+  Map json,
+) => PluginLifecycleRestartRequest(
+  mode: $enumDecode(_$PluginStopModeEnumMap, json['mode']),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PluginLifecycleRestartRequestToJson(
+  PluginLifecycleRestartRequest instance,
+) => <String, dynamic>{
+  'mode': _$PluginStopModeEnumMap[instance.mode]!,
+  'type': instance.$type,
+};
+
+PluginLifecycleRefreshRequest _$PluginLifecycleRefreshRequestFromJson(
+  Map json,
+) => PluginLifecycleRefreshRequest($type: json['type'] as String?);
+
+Map<String, dynamic> _$PluginLifecycleRefreshRequestToJson(
+  PluginLifecycleRefreshRequest instance,
+) => <String, dynamic>{'type': instance.$type};
 
 PluginIdleTimeoutApplyAllRequest _$PluginIdleTimeoutApplyAllRequestFromJson(
   Map json,

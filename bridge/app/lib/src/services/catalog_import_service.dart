@@ -30,17 +30,16 @@ class CatalogImportPluginUnavailableException implements Exception {
 class CatalogImportService {
   CatalogImportService({
     required CatalogImportRepository repository,
-    required Set<String> knownPluginIds,
-    required List<String> enabledPluginIds,
+    required List<String> orderedPluginIds,
     required Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies,
   }) : _repository = repository,
-       _knownPluginIds = knownPluginIds,
-       _enabledPluginIds = enabledPluginIds,
-       _emptyHydrationPolicies = emptyHydrationPolicies;
+       _orderedPluginIds = List<String>.unmodifiable(orderedPluginIds),
+       _knownPluginIds = Set<String>.unmodifiable(orderedPluginIds),
+       _emptyHydrationPolicies = Map<String, CatalogEmptyHydrationPolicy>.unmodifiable(emptyHydrationPolicies);
 
   final CatalogImportRepository _repository;
+  final List<String> _orderedPluginIds;
   final Set<String> _knownPluginIds;
-  final List<String> _enabledPluginIds;
   final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies;
   final StreamController<CatalogImportProgress> _progressController = StreamController<CatalogImportProgress>.broadcast(
     sync: true,
@@ -53,9 +52,13 @@ class CatalogImportService {
 
   Stream<CatalogImportProgress> get progress => _progressController.stream;
 
-  List<CatalogImportProgress> get latestStatuses => List<CatalogImportProgress>.unmodifiable([
-    for (final pluginId in _enabledPluginIds) ?_latestStatuses[pluginId],
-  ]);
+  List<CatalogImportProgress> get latestStatuses {
+    final eligiblePluginIds = _repository.eligiblePluginIds;
+    return List<CatalogImportProgress>.unmodifiable([
+      for (final pluginId in _orderedPluginIds)
+        if (eligiblePluginIds.contains(pluginId)) ?_latestStatuses[pluginId],
+    ]);
+  }
 
   void start({required String pluginId, required CatalogImportTrigger trigger}) {
     _validatePlugin(pluginId);
@@ -78,12 +81,12 @@ class CatalogImportService {
   }
 
   void cancel({required String pluginId}) {
-    _validateEnabledPlugin(pluginId);
     final control = _controls[pluginId];
     if (control != null) {
       control.cancellationRequested = true;
       return;
     }
+    _validateEnabledPlugin(pluginId);
     if (!_repository.importEligiblePluginIds.contains(pluginId)) {
       throw CatalogImportPluginUnavailableException(pluginId: pluginId);
     }
@@ -174,7 +177,7 @@ class CatalogImportService {
     if (!_knownPluginIds.contains(pluginId)) {
       throw CatalogImportPluginUnknownException(pluginId: pluginId);
     }
-    if (!_enabledPluginIds.contains(pluginId)) {
+    if (!_repository.eligiblePluginIds.contains(pluginId)) {
       throw CatalogImportPluginNotEnabledException(pluginId: pluginId);
     }
   }

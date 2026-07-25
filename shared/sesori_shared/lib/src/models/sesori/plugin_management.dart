@@ -77,23 +77,25 @@ sealed class PluginManagementResponse with _$PluginManagementResponse {
 
 @Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
 sealed class PluginLifecycleCommandRequest with _$PluginLifecycleCommandRequest {
+  @FreezedUnionValue("enable")
+  const factory PluginLifecycleCommandRequest.enable() = PluginLifecycleEnableRequest;
+
   @FreezedUnionValue("disable")
   const factory PluginLifecycleCommandRequest.disable({
     required PluginStopMode mode,
-    @JsonKey(name: "type", includeFromJson: false, includeToJson: true, toJson: _disableCommandTypeToJson)
-    @Default("disable")
-    String wireType,
   }) = PluginLifecycleDisableRequest;
 
-  factory PluginLifecycleCommandRequest.fromJson(Map<String, dynamic> json) {
-    if (json["type"] != "disable") {
-      throw FormatException('Invalid plugin lifecycle command type: ${json["type"]}');
-    }
-    return _$PluginLifecycleCommandRequestFromJson(json);
-  }
-}
+  @FreezedUnionValue("restart")
+  const factory PluginLifecycleCommandRequest.restart({
+    required PluginStopMode mode,
+  }) = PluginLifecycleRestartRequest;
 
-String _disableCommandTypeToJson(String _) => "disable";
+  @FreezedUnionValue("refresh")
+  const factory PluginLifecycleCommandRequest.refresh() = PluginLifecycleRefreshRequest;
+
+  factory PluginLifecycleCommandRequest.fromJson(Map<String, dynamic> json) =>
+      _$PluginLifecycleCommandRequestFromJson(json);
+}
 
 @Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
 sealed class PluginIdleTimeoutUpdateRequest with _$PluginIdleTimeoutUpdateRequest {

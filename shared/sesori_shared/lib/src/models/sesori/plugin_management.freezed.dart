@@ -336,15 +336,39 @@ as List<PluginManagementMetadata>,
 PluginLifecycleCommandRequest _$PluginLifecycleCommandRequestFromJson(
   Map<String, dynamic> json
 ) {
-    return PluginLifecycleDisableRequest.fromJson(
-      json
-    );
+        switch (json['type']) {
+                  case 'enable':
+          return PluginLifecycleEnableRequest.fromJson(
+            json
+          );
+                case 'disable':
+          return PluginLifecycleDisableRequest.fromJson(
+            json
+          );
+                case 'restart':
+          return PluginLifecycleRestartRequest.fromJson(
+            json
+          );
+                case 'refresh':
+          return PluginLifecycleRefreshRequest.fromJson(
+            json
+          );
+        
+          default:
+            throw CheckedFromJsonException(
+  json,
+  'type',
+  'PluginLifecycleCommandRequest',
+  'Invalid union type "${json['type']}"!'
+);
+        }
+      
 }
 
 /// @nodoc
 mixin _$PluginLifecycleCommandRequest {
 
- PluginStopMode get mode;@JsonKey(name: "type", includeFromJson: false, includeToJson: true, toJson: _disableCommandTypeToJson) String get wireType;
+
 
   /// Serializes this PluginLifecycleCommandRequest to a JSON map.
   Map<String, dynamic> toJson();
@@ -352,16 +376,16 @@ mixin _$PluginLifecycleCommandRequest {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleCommandRequest&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.wireType, wireType) || other.wireType == wireType));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleCommandRequest);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode,wireType);
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginLifecycleCommandRequest(mode: $mode, wireType: $wireType)';
+  return 'PluginLifecycleCommandRequest()';
 }
 
 
@@ -374,12 +398,54 @@ String toString() {
 /// @nodoc
 @JsonSerializable()
 
+class PluginLifecycleEnableRequest implements PluginLifecycleCommandRequest {
+  const PluginLifecycleEnableRequest({final  String? $type}): $type = $type ?? 'enable';
+  factory PluginLifecycleEnableRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleEnableRequestFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginLifecycleEnableRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleEnableRequest);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginLifecycleCommandRequest.enable()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
 class PluginLifecycleDisableRequest implements PluginLifecycleCommandRequest {
-  const PluginLifecycleDisableRequest({required this.mode, @JsonKey(name: "type", includeFromJson: false, includeToJson: true, toJson: _disableCommandTypeToJson) this.wireType = "disable"});
+  const PluginLifecycleDisableRequest({required this.mode, final  String? $type}): $type = $type ?? 'disable';
   factory PluginLifecycleDisableRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleDisableRequestFromJson(json);
 
-@override final  PluginStopMode mode;
-@override@JsonKey(name: "type", includeFromJson: false, includeToJson: true, toJson: _disableCommandTypeToJson) final  String wireType;
+ final  PluginStopMode mode;
+
+@JsonKey(name: 'type')
+final String $type;
+
 
 
 @override
@@ -389,16 +455,94 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleDisableRequest&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.wireType, wireType) || other.wireType == wireType));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleDisableRequest&&(identical(other.mode, mode) || other.mode == mode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode,wireType);
+int get hashCode => Object.hash(runtimeType,mode);
 
 @override
 String toString() {
-  return 'PluginLifecycleCommandRequest.disable(mode: $mode, wireType: $wireType)';
+  return 'PluginLifecycleCommandRequest.disable(mode: $mode)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginLifecycleRestartRequest implements PluginLifecycleCommandRequest {
+  const PluginLifecycleRestartRequest({required this.mode, final  String? $type}): $type = $type ?? 'restart';
+  factory PluginLifecycleRestartRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleRestartRequestFromJson(json);
+
+ final  PluginStopMode mode;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginLifecycleRestartRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleRestartRequest&&(identical(other.mode, mode) || other.mode == mode));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mode);
+
+@override
+String toString() {
+  return 'PluginLifecycleCommandRequest.restart(mode: $mode)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginLifecycleRefreshRequest implements PluginLifecycleCommandRequest {
+  const PluginLifecycleRefreshRequest({final  String? $type}): $type = $type ?? 'refresh';
+  factory PluginLifecycleRefreshRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleRefreshRequestFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginLifecycleRefreshRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleRefreshRequest);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginLifecycleCommandRequest.refresh()';
 }
 
 

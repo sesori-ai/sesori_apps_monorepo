@@ -17,9 +17,11 @@ void main() {
   CatalogImportService createService(CatalogImportRepository repository) {
     return CatalogImportService(
       repository: repository,
-      knownPluginIds: const {"selected", "other"},
-      enabledPluginIds: const ["selected"],
-      emptyHydrationPolicies: const {"selected": CatalogEmptyHydrationPolicy.complete},
+      orderedPluginIds: const ["selected", "other"],
+      emptyHydrationPolicies: const {
+        "selected": CatalogEmptyHydrationPolicy.complete,
+        "other": CatalogEmptyHydrationPolicy.complete,
+      },
     );
   }
 
@@ -112,6 +114,9 @@ class _HandlerCatalogImportRepository implements CatalogImportRepository {
   final Completer<void> started = Completer<void>();
   int importCalls = 0;
   CatalogImportControl? control;
+
+  @override
+  Set<String> get eligiblePluginIds => const {"selected"};
 
   @override
   Set<String> get importEligiblePluginIds => const {"selected"};

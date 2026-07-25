@@ -8,6 +8,115 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("only the latest setup inspection can update a slot", () async {
+    final firstGate = Completer<PluginSetupStatus>();
+    final secondGate = Completer<PluginSetupStatus>();
+    final gates = [firstGate, secondGate];
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(inspect: () => gates.removeAt(0).future),
+    );
+    addTearDown(runtime.dispose);
+
+    final first = runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+    final second = runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+    secondGate.complete(const PluginSetupReady());
+    expect((await second)["one"], isA<PluginSetupReady>());
+    firstGate.complete(const PluginSetupRuntimeMissing(actionHint: "stale"));
+
+    expect((await first)["one"], isA<PluginSetupReady>());
+    expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
+  });
+
+  test("disable invalidates an in-flight setup inspection", () async {
+    final inspectionGate = Completer<PluginSetupStatus>();
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(inspect: () => inspectionGate.future),
+    );
+    addTearDown(runtime.dispose);
+    final inspection = runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+
+    await runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.safe);
+    inspectionGate.complete(const PluginSetupReady());
+    await inspection;
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupUnknown>());
+    runtime.rollbackDisable(pluginId: "one");
+  });
+
+  test("authentication loss invalidates an in-flight setup inspection", () async {
+    final inspectionGate = Completer<PluginSetupStatus>();
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(inspect: () => inspectionGate.future),
+    );
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final inspection = runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.use,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "test",
+          actionHint: "Authenticate locally.",
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+    inspectionGate.complete(const PluginSetupReady());
+    await inspection;
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupAuthenticationRequired>());
+  });
+
+  test("a generation change invalidates an in-flight setup inspection", () async {
+    final inspectionGate = Completer<PluginSetupStatus>();
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(inspect: () => inspectionGate.future),
+    );
+    addTearDown(runtime.dispose);
+    final inspection = runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+
+    await runtime.start(pluginId: "one");
+    inspectionGate.complete(const PluginSetupRuntimeMissing(actionHint: "stale"));
+    await inspection;
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupUnknown>());
+  });
+
+  test("access refresh cannot restore start permission after authentication loss", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.use,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "test",
+          actionHint: "Authenticate locally.",
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+    runtime.applyAccess(
+      entries: const [
+        PluginRuntimeAccess(
+          pluginId: "one",
+          gate: PluginRuntimeAccessGate.enabled,
+          startAllowed: true,
+        ),
+      ],
+    );
+
+    expect(runtime.snapshot.single.startAllowed, isFalse);
+  });
+
   test("unknown plugin acquisitions preserve the typed unavailable contract", () async {
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
@@ -358,6 +467,26 @@ void main() {
     expect(runtime.snapshot.single.startAllowed, isFalse);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(await runtime.start(pluginId: "one"), isA<PluginRuntimeCommandConflict>());
+  });
+
+  test("invalid disable commit settles the slot fail-closed", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+
+    expect(() => runtime.commitDisable(pluginId: "one"), throwsStateError);
+
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.disabled);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    await runtime.dispose().timeout(const Duration(seconds: 1));
+  });
+
+  test("invalid disable rollback settles the slot enabled", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+
+    expect(() => runtime.rollbackDisable(pluginId: "one"), throwsStateError);
+
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.enabled);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    await runtime.dispose().timeout(const Duration(seconds: 1));
   });
 
   test("access refresh cannot overwrite a prepared disable gate", () async {
@@ -946,12 +1075,15 @@ enum _TestOperation {
   retry,
 }
 
-PluginRuntime _runtime({required _FakeGenerationFactory factory}) {
+PluginRuntime _runtime({
+  required _FakeGenerationFactory factory,
+  BridgePluginDescriptor descriptor = const _FakeDescriptor(),
+}) {
   final runtime = PluginRuntime(
-    registrations: const [
+    registrations: [
       PluginRuntimeRegistration(
-        descriptor: _FakeDescriptor(),
-        config: PluginConfig(values: {}),
+        descriptor: descriptor,
+        config: const PluginConfig(values: {}),
         stateDirectory: ".",
       ),
     ],
@@ -1017,7 +1149,9 @@ class _FakeGenerationFactory implements PluginGenerationFactory {
 }
 
 class _FakeDescriptor extends BridgePluginDescriptor {
-  const _FakeDescriptor();
+  const _FakeDescriptor({this.inspect});
+
+  final Future<PluginSetupStatus> Function()? inspect;
 
   @override
   String get id => "one";
@@ -1030,6 +1164,16 @@ class _FakeDescriptor extends BridgePluginDescriptor {
 
   @override
   List<PluginOption> get options => const [];
+
+  @override
+  Future<PluginSetupStatus> inspectSetup({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) {
+    return inspect?.call() ?? Future.value(const PluginSetupReady());
+  }
 
   @override
   Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("fake factory owns construction");

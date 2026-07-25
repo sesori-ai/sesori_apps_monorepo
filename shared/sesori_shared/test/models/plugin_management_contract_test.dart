@@ -102,13 +102,26 @@ void main() {
     }
   });
 
-  test("disable command variants and conflicts round-trip", () {
-    for (final request in const [
+  test("lifecycle command variants and conflicts round-trip", () {
+    const requests = <PluginLifecycleCommandRequest>[
+      PluginLifecycleCommandRequest.enable(),
       PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
       PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
-    ]) {
+      PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
+      PluginLifecycleCommandRequest.restart(mode: PluginStopMode.force),
+      PluginLifecycleCommandRequest.refresh(),
+    ];
+    const expectedJson = <Map<String, dynamic>>[
+      {"type": "enable"},
+      {"type": "disable", "mode": "safe"},
+      {"type": "disable", "mode": "force"},
+      {"type": "restart", "mode": "safe"},
+      {"type": "restart", "mode": "force"},
+      {"type": "refresh"},
+    ];
+    for (final (index, request) in requests.indexed) {
       final json = request.toJson();
-      expect(json, {"type": "disable", "mode": request.mode.name});
+      expect(json, expectedJson[index]);
       expect(PluginLifecycleCommandRequest.fromJson(json), request);
     }
 
@@ -120,21 +133,18 @@ void main() {
     expect(PluginLifecycleConflict.fromJson(conflict.toJson()), conflict);
   });
 
-  test("disable commands require an exact type and explicit mode while future conflicts fail closed", () {
+  test("commands require an exact type and stop mode while future conflicts fail closed", () {
     for (final json in const [
       <String, dynamic>{"mode": "safe"},
-      <String, dynamic>{"type": "restart", "mode": "force"},
       <String, dynamic>{"type": "future", "mode": "safe"},
+      <String, dynamic>{"type": "disable"},
+      <String, dynamic>{"type": "restart"},
     ]) {
       expect(
         () => PluginLifecycleCommandRequest.fromJson(json),
-        throwsA(isA<FormatException>()),
+        throwsA(anything),
       );
     }
-    expect(
-      () => PluginLifecycleCommandRequest.fromJson(const {"type": "disable"}),
-      throwsA(anything),
-    );
     final json = const PluginLifecycleConflict(
       pluginId: "opencode",
       reasons: [PluginLifecycleConflictReason.busy],
