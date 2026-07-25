@@ -247,7 +247,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   void _onSessionCreated(Session session) {
     // Only add root sessions that belong to this project.
     if (session.parentID != null) {
-      logd("[SessionList] session.created ignored id=${session.id} reason=child");
+      logt("[SessionList] session.created ignored id=${session.id} reason=child");
       return;
     }
     if (session.projectID != _projectId) {
@@ -285,7 +285,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     if (index < 0) {
       // Session was unarchived (or created elsewhere) — add it if it belongs here.
-      logd("[SessionList] session.updated not_found id=${session.id} action=add_via_created");
+      logt("[SessionList] session.updated not_found id=${session.id} action=add_via_created");
       _onSessionCreated(session);
       return;
     }

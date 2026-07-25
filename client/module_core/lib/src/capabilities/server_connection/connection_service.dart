@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:math";
 
 import "package:injectable/injectable.dart";
+import "package:json_annotation/json_annotation.dart" show CheckedFromJsonException;
 import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -565,6 +566,13 @@ class ConnectionService {
       try {
         eventData = SesoriSseEvent.fromJson(merged);
       } catch (e, st) {
+        // Freezed uses this exception shape only for an unknown top-level union.
+        // Malformed fields in known variants carry an inner error and remain reportable.
+        if (e is CheckedFromJsonException && _isUnknownSseEventType(error: e, type: typeValue)) {
+          logt("Ignoring unknown SSE event type: $typeValue", e, st);
+          return;
+        }
+
         loge("Failed to parse SSE event payload", e, st);
         _failureReporter.recordFailure(
           error: e,
@@ -587,6 +595,15 @@ class ConnectionService {
       loge("Failed to parse SSE frame", e, st);
     }
   }
+
+  bool _isUnknownSseEventType({
+    required CheckedFromJsonException error,
+    required String type,
+  }) =>
+      error.className == "SesoriSseEvent" &&
+      error.key == "type" &&
+      error.innerError == null &&
+      error.map["type"] == type;
 
   /// Tears down the active relay client, coalescing concurrent callers so an
   /// eager teardown (e.g. on resume) and the reconnect path's own teardown share
