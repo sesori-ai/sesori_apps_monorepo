@@ -699,9 +699,13 @@ void main() {
 
   test("equal commands join while a different same-plugin command conflicts", () async {
     final inspectionGate = Completer<void>();
-    final repository = _CommandLifecycleRepository(inspectionGate: inspectionGate);
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: inspectionGate,
+      startFailureMessage: null,
+    );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository)
+    final service = _commandService(repository: repository, settingsRepository: null)
       ..initialize(
         disabledPluginIds: const {},
         setupById: const {"one": PluginSetupReady()},
@@ -731,6 +735,8 @@ void main() {
   test("enable persists eligibility, inspects setup, and starts only when ready", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
+      inspectionGate: null,
+      startFailureMessage: null,
     );
     addTearDown(repository.dispose);
     final settingsRepository = _MutableBridgeSettingsRepository(
@@ -773,10 +779,11 @@ void main() {
   test("failed enable start defers the ready id until a successful retry", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
       startFailureMessage: "start failed",
     );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository)
+    final service = _commandService(repository: repository, settingsRepository: null)
       ..initialize(
         disabledPluginIds: const {"one"},
         setupById: const {"one": PluginSetupNotInspected()},
@@ -792,6 +799,9 @@ void main() {
     );
     expect(readyEvents, everyElement(isNot(contains("one"))));
 
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
+    expect(readyEvents, everyElement(isNot(contains("one"))));
+
     repository.startFailureMessage = null;
     await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
 
@@ -801,9 +811,11 @@ void main() {
   test("restart requires eligibility and does not replace a newly blocked plugin", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
+      inspectionGate: null,
+      startFailureMessage: null,
     );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository)
+    final service = _commandService(repository: repository, settingsRepository: null)
       ..initialize(
         disabledPluginIds: const {},
         setupById: const {"one": PluginSetupReady()},
@@ -848,9 +860,13 @@ void main() {
   });
 
   test("refresh updates setup and ready ids without starting the plugin", () async {
-    final repository = _CommandLifecycleRepository(inspectionResult: const PluginSetupReady());
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository)
+    final service = _commandService(repository: repository, settingsRepository: null)
       ..initialize(
         disabledPluginIds: const {},
         setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "Install")},
@@ -1095,7 +1111,7 @@ PluginLifecycleService _singleIdleService({
 
 PluginLifecycleService _commandService({
   required PluginLifecycleRepository repository,
-  BridgeSettingsRepository? settingsRepository,
+  required BridgeSettingsRepository? settingsRepository,
 }) {
   return PluginLifecycleService(
     lifecycleRepository: repository,
@@ -1280,9 +1296,9 @@ class _CommitFailingDisableLifecycleRepository extends _IdleLifecycleRepository 
 
 class _CommandLifecycleRepository implements PluginLifecycleRepository {
   _CommandLifecycleRepository({
-    this.inspectionResult = const PluginSetupReady(),
-    this.inspectionGate,
-    this.startFailureMessage,
+    required this.inspectionResult,
+    required this.inspectionGate,
+    required this.startFailureMessage,
   });
 
   PluginSetupStatus inspectionResult;
@@ -1325,6 +1341,7 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
           : _current.state == PluginRuntimeState.active
           ? PluginRuntimeState.active
           : PluginRuntimeState.dormant,
+      transitionSettled: true,
     );
     _publish();
   }
@@ -1341,6 +1358,7 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
       accessGate: _current.accessGate,
       startAllowed: _current.startAllowed,
       state: _current.state,
+      transitionSettled: true,
     );
     _publish();
     return {"one": inspectionResult};
@@ -1358,6 +1376,7 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
       accessGate: _current.accessGate,
       startAllowed: _current.startAllowed,
       state: PluginRuntimeState.active,
+      transitionSettled: true,
     );
     _publish();
     return PluginRuntimeCommandApplied(snapshot: _runtimeSnapshot());
@@ -1395,6 +1414,7 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
       accessGate: PluginRuntimeAccessGate.disabled,
       startAllowed: false,
       state: PluginRuntimeState.disabled,
+      transitionSettled: true,
     );
     _publish();
   }
@@ -1407,7 +1427,7 @@ class _CommandLifecycleRepository implements PluginLifecycleRepository {
     required PluginRuntimeAccessGate accessGate,
     required bool startAllowed,
     required PluginRuntimeState state,
-    bool transitionSettled = true,
+    required bool transitionSettled,
   }) {
     return PluginLifecycleSnapshot(
       pluginId: "one",

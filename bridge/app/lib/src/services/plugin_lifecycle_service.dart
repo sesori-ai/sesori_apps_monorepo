@@ -327,7 +327,7 @@ class PluginLifecycleService {
       await _persistPluginDisabled(pluginId: pluginId, disabled: false);
       _setEligibility(pluginId: pluginId, eligible: true);
     }
-    if (!_isPublishedReady(pluginId)) _deferredReadyPluginIds.add(pluginId);
+    if (!_isPublishedReady(pluginId: pluginId)) _deferredReadyPluginIds.add(pluginId);
     final setup = await _inspectForCommand(pluginId: pluginId, command: command);
     if (setup is! PluginSetupReady) {
       _deferredReadyPluginIds.remove(pluginId);
@@ -337,7 +337,7 @@ class PluginLifecycleService {
       pluginId: pluginId,
       result: await _lifecycleRepository.start(pluginId: pluginId),
     );
-    _publishDeferredReadyPlugin(pluginId);
+    _publishDeferredReadyPlugin(pluginId: pluginId);
   }
 
   Future<void> _disable({required String pluginId, required PluginStopMode mode}) async {
@@ -401,7 +401,7 @@ class PluginLifecycleService {
         ),
       );
     }
-    if (!_isPublishedReady(pluginId)) _deferredReadyPluginIds.add(pluginId);
+    if (!_isPublishedReady(pluginId: pluginId)) _deferredReadyPluginIds.add(pluginId);
     final setup = await _inspectForCommand(pluginId: pluginId, command: command);
     if (setup is! PluginSetupReady) {
       _deferredReadyPluginIds.remove(pluginId);
@@ -409,14 +409,16 @@ class PluginLifecycleService {
     }
     _handleRuntimeCommandResult(
       pluginId: pluginId,
-      result: await _lifecycleRepository.restart(pluginId: pluginId, intent: _mapStopIntent(mode)),
+      result: await _lifecycleRepository.restart(
+        pluginId: pluginId,
+        intent: _mapStopIntent(mode: mode),
+      ),
     );
-    _publishDeferredReadyPlugin(pluginId);
+    _publishDeferredReadyPlugin(pluginId: pluginId);
   }
 
   Future<void> _refresh({required String pluginId, required _ActivePluginCommand command}) async {
     await _inspectForCommand(pluginId: pluginId, command: command);
-    _publishDeferredReadyPlugin(pluginId);
   }
 
   Future<PluginSetupStatus> _inspectForCommand({
@@ -477,7 +479,7 @@ class PluginLifecycleService {
     }
   }
 
-  PluginStopIntent _mapStopIntent(PluginStopMode mode) => switch (mode) {
+  PluginStopIntent _mapStopIntent({required PluginStopMode mode}) => switch (mode) {
     PluginStopMode.safe => PluginStopIntent.safe,
     PluginStopMode.force => PluginStopIntent.force,
   };
@@ -804,9 +806,9 @@ class PluginLifecycleService {
     subject.add(next);
   }
 
-  bool _isPublishedReady(String pluginId) => _readyPluginIdsSubject?.value.contains(pluginId) ?? false;
+  bool _isPublishedReady({required String pluginId}) => _readyPluginIdsSubject?.value.contains(pluginId) ?? false;
 
-  void _publishDeferredReadyPlugin(String pluginId) {
+  void _publishDeferredReadyPlugin({required String pluginId}) {
     if (!_deferredReadyPluginIds.remove(pluginId)) return;
     _publishReadyPluginIds(_lifecycleRepository.snapshot);
   }

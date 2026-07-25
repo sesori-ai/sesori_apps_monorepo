@@ -22,7 +22,14 @@ void main() {
 
   group("CatalogImportService", () {
     test("rejects unknown and unselected plugins synchronously before repository access", () {
-      final repository = _FakeCatalogImportRepository();
+      final repository = _FakeCatalogImportRepository(
+        completion: null,
+        hydrationGate: null,
+        releaseImport: null,
+        importError: null,
+        eligiblePluginIds: null,
+        importEligiblePluginIds: null,
+      );
       final service = createService(
         repository: repository,
         policy: CatalogEmptyHydrationPolicy.complete,
@@ -45,6 +52,11 @@ void main() {
           projectionVersion: CatalogImportRepository.projectionVersion,
           completedAt: 1234,
         ),
+        hydrationGate: null,
+        releaseImport: null,
+        importError: null,
+        eligiblePluginIds: null,
+        importEligiblePluginIds: null,
       );
       final service = createService(
         repository: repository,
@@ -67,8 +79,12 @@ void main() {
       final hydrationGate = Completer<CatalogHydrationDto?>();
       final releaseImport = Completer<void>();
       final repository = _FakeCatalogImportRepository(
+        completion: null,
         hydrationGate: hydrationGate,
         releaseImport: releaseImport,
+        importError: null,
+        eligiblePluginIds: null,
+        importEligiblePluginIds: null,
       );
       final service = createService(
         repository: repository,
@@ -97,7 +113,14 @@ void main() {
 
     test("cancellation produces a truthful terminal status", () async {
       final releaseImport = Completer<void>();
-      final repository = _FakeCatalogImportRepository(releaseImport: releaseImport);
+      final repository = _FakeCatalogImportRepository(
+        completion: null,
+        hydrationGate: null,
+        releaseImport: releaseImport,
+        importError: null,
+        eligiblePluginIds: null,
+        importEligiblePluginIds: null,
+      );
       final service = createService(
         repository: repository,
         policy: CatalogEmptyHydrationPolicy.complete,
@@ -119,7 +142,10 @@ void main() {
       final eligiblePluginIds = <String>{"selected"};
       final importEligiblePluginIds = <String>{"selected"};
       final repository = _FakeCatalogImportRepository(
+        completion: null,
+        hydrationGate: null,
         releaseImport: releaseImport,
+        importError: null,
         eligiblePluginIds: eligiblePluginIds,
         importEligiblePluginIds: importEligiblePluginIds,
       );
@@ -147,7 +173,14 @@ void main() {
     });
 
     test("repository errors become one failed terminal status", () async {
-      final repository = _FakeCatalogImportRepository(importError: StateError("enumeration failed"));
+      final repository = _FakeCatalogImportRepository(
+        completion: null,
+        hydrationGate: null,
+        releaseImport: null,
+        importError: StateError("enumeration failed"),
+        eligiblePluginIds: null,
+        importEligiblePluginIds: null,
+      );
       final service = createService(
         repository: repository,
         policy: CatalogEmptyHydrationPolicy.complete,
@@ -168,6 +201,10 @@ void main() {
       final eligiblePluginIds = <String>{};
       final importEligiblePluginIds = <String>{};
       final repository = _FakeCatalogImportRepository(
+        completion: null,
+        hydrationGate: null,
+        releaseImport: null,
+        importError: null,
         eligiblePluginIds: eligiblePluginIds,
         importEligiblePluginIds: importEligiblePluginIds,
       );
@@ -196,7 +233,14 @@ void main() {
     });
 
     test("an empty derived import remains eligible for automatic retry", () async {
-      final repository = _FakeCatalogImportRepository();
+      final repository = _FakeCatalogImportRepository(
+        completion: null,
+        hydrationGate: null,
+        releaseImport: null,
+        importError: null,
+        eligiblePluginIds: null,
+        importEligiblePluginIds: null,
+      );
       final service = createService(
         repository: repository,
         policy: CatalogEmptyHydrationPolicy.retry,
@@ -211,7 +255,14 @@ void main() {
 
     test("concurrent dispose callers share one teardown", () async {
       final releaseImport = Completer<void>();
-      final repository = _FakeCatalogImportRepository(releaseImport: releaseImport);
+      final repository = _FakeCatalogImportRepository(
+        completion: null,
+        hydrationGate: null,
+        releaseImport: releaseImport,
+        importError: null,
+        eligiblePluginIds: null,
+        importEligiblePluginIds: null,
+      );
       final service = createService(
         repository: repository,
         policy: CatalogEmptyHydrationPolicy.complete,
@@ -231,12 +282,12 @@ void main() {
 
 class _FakeCatalogImportRepository implements CatalogImportRepository {
   _FakeCatalogImportRepository({
-    this.completion,
-    this.hydrationGate,
-    this.releaseImport,
-    this.importError,
-    Set<String>? eligiblePluginIds,
-    Set<String>? importEligiblePluginIds,
+    required this.completion,
+    required this.hydrationGate,
+    required this.releaseImport,
+    required this.importError,
+    required Set<String>? eligiblePluginIds,
+    required Set<String>? importEligiblePluginIds,
   }) : eligiblePluginIds = eligiblePluginIds ?? <String>{"selected"},
        importEligiblePluginIds = importEligiblePluginIds ?? eligiblePluginIds ?? <String>{"selected"};
 
