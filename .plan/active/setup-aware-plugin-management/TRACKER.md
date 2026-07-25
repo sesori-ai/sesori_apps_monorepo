@@ -2,17 +2,17 @@
 
 ## Current State
 
-- **Base:** `origin/main` at `41e03f12`
+- **Base:** `origin/main` at `f8f05c33`
 - **Current branch:** `setup-aware-plugin-management-read-snapshots`
 - **Current slice:** Stage 12-P02 / step 2 of 6, prepared locally
-- **Next action:** monitor PR #563; after it merges, merge updated `origin/main`, reverify P02, and open step 2 of 6
+- **Next action:** reverify P02 against merged P01, then open and monitor step 2 of 6
 
 ## Delivery
 
 | Done | Slice | Branch | PR state |
 |---|---|---|---|
-| [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 open; monitoring |
-| [ ] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | prepared locally at `b1b14d43`; waits for P01 merge |
+| [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 merged as `f8f05c33` |
+| [ ] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | prepared locally at `b1b14d43`; verifying against merged P01 |
 | [ ] | P03 — revision and SSE invalidation | `setup-aware-plugin-management-invalidation` | waits for P02 merge |
 | [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | waits for P03 merge |
 | [ ] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | waits for P04 merge |
@@ -85,7 +85,8 @@
   `git diff --check` passed.
 - Aristotle implementation review approved the complete working-tree diff with
   no architecture findings.
-- Committed locally as `b1b14d43`; do not push or open until PR #563 merges.
+- Committed locally as `b1b14d43`; merged P01 and `origin/main` into the
+  successor after PR #563 merged.
 
 ## Delivery Rules
 

@@ -359,6 +359,31 @@ platform :ios do
       output_name: "Runner.ipa"
     )
 
+    dsym_path = lane_context[SharedValues::DSYM_OUTPUT_PATH]
+    UI.user_error!("build_app did not produce a dSYM archive") \
+      if dsym_path.to_s.empty? || !File.file?(dsym_path)
+
+    # Fastlane 2.237 only auto-discovers upload-symbols from CocoaPods, but this
+    # project resolves Firebase through SwiftPM. Prefer the checkout used most
+    # recently by Xcode so local lanes also work when multiple DerivedData trees
+    # exist.
+    upload_symbols_path = Dir[
+      File.expand_path(
+        "~/Library/Developer/Xcode/DerivedData/**/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols"
+      )
+    ].max_by { |path| File.mtime(path) }
+    UI.user_error!("Firebase upload-symbols was not found in Xcode's SwiftPM checkouts") \
+      if upload_symbols_path.nil?
+
+    # Upload synchronously before distribution so TestFlight never receives a
+    # build whose exact symbols were discarded with the ephemeral CI runner.
+    sh(
+      upload_symbols_path,
+      "-gsp", File.expand_path("../Runner/GoogleService-Info.plist", __dir__),
+      "-p", "ios",
+      dsym_path
+    )
+
     # Upload to TestFlight. The "What to Test" notes are the build commit's
     # message (with a `commit: <sha>` trailer for recoverability if the matching
     # `build-<N>` git tag is ever lost). This is the TEST changelog only —
