@@ -39,8 +39,11 @@ public contract that a later slice must break.
   creating a second trigger.
 - Current-main durable commit, stream cancellation, generation fencing,
   OpenCode-preferred default, and bridge-owned project behavior are preserved.
-- Each PR starts from the latest merged predecessor on `origin/main`. There is
-  no open stacked PR chain.
+- Keep exactly one open PR and one local successor branch. While step N is in
+  review, build step N+1 from its latest reviewed head but do not open N+1.
+- After step N merges, merge updated `origin/main` into the local N+1 branch,
+  resolve conservatively, reverify, and only then open N+1. Start N+2 locally
+  after N+1 opens; never build farther than one successor ahead.
 
 ## Delivery Sequence
 

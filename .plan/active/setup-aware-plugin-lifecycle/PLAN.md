@@ -726,9 +726,12 @@ source material only and is never rebased, merged, or cherry-picked.
   settings primitives;
 - focused interaction, conflict/force, reconnect, and route tests.
 
-Each remaining replacement branch starts from the latest merged predecessor.
-Frozen #508-#511 remain reference material and are not rewritten. Stage 13 is
-rebuilt only after Stage 12-P06 merges.
+Keep one open replacement PR and one local successor built from that PR's latest
+reviewed head. After the predecessor merges, merge updated `origin/main` into
+the successor, reverify, and open it before beginning the next local slice.
+Never work farther than one slice ahead. Frozen #508-#511 remain reference
+material and are not rewritten. Stage 13 is rebuilt only after Stage 12-P06
+merges.
 
 ## Verification
 

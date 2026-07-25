@@ -303,8 +303,9 @@ run their focused verification again.
 
 ## Delivery Rules
 
-- Start every remaining child slice from latest merged `origin/main`; do not
-  stack an open replacement PR on another open replacement PR.
+- Keep exactly one open child PR and one local successor built from the open
+  PR's latest reviewed head. After merge, merge updated `origin/main` into the
+  successor and reverify before opening it; never work more than one PR ahead.
 - Keep #508 frozen until replacement PRs exist; do not force-rewrite it.
 - Keep #510 and #511 frozen; rebuild their behavior rather than retargeting
   their obsolete descendant branches.

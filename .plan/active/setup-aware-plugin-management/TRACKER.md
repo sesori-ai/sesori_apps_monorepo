@@ -72,8 +72,10 @@
 ## Delivery Rules
 
 - Use the exact title and fixed `1/6` through `6/6` order from `PLAN.md`.
-- Start each branch from the latest merged predecessor on `origin/main`.
-- Open only one replacement PR at a time after focused verification and
-  architecture implementation review pass.
+- Keep one open PR and one local successor. Cut the successor from the open
+  PR's latest reviewed head, but do not open it until its predecessor merges.
+- After the predecessor merges, merge updated `origin/main` into the successor,
+  reverify, and open it. Only then begin the following local successor; never
+  work more than one PR ahead.
 - Monitor each opened PR immediately and address review/CI before starting the
-  next branch.
+  next branch's implementation.
