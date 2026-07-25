@@ -4,8 +4,8 @@
 
 - **Base:** `origin/main` at P04 merge `583c91f2`
 - **Current branch:** `setup-aware-plugin-management-disable`
-- **Current slice:** Stage 12-P05 / step 5 of 6, merged and reverified against P04
-- **Next action:** push P05, open the successor PR, and start monitoring it
+- **Current slice:** Stage 12-P05 / step 5 of 6, open as PR #570
+- **Next action:** monitor PR #570 and prepare P06 locally
 
 ## Delivery
 
@@ -15,7 +15,7 @@
 | [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 merged as `19ca475a` |
 | [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
 | [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 merged as `583c91f2` |
-| [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | ready to open after post-merge verification |
+| [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | PR #570 open; monitoring |
 | [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | waits for P05 merge |
 
 ## Source Material
@@ -194,6 +194,8 @@
 - Post-merge reverification passed the shared contract tests (8), focused
   runtime/lifecycle/route/Orchestrator tests (71), both fatal analyzers, and
   `git diff --check`.
+- Pushed and opened PR #570 with the fixed step-5/6 series title; monitoring
+  started immediately.
 
 ## Delivery Rules
 
