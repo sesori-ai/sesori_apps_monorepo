@@ -503,11 +503,15 @@ class PluginRuntime {
   }
 
   void rollbackDisable({required String pluginId}) {
-    final slot = _requirePreparedDisableSlot(pluginId);
+    final slot = _requireSlot(pluginId);
+    final wasPrepared = _isPreparedDisableSlot(slot);
     slot
       ..accessGate = PluginRuntimeAccessGate.enabled
       ..state = PluginRuntimeState.dormant;
     _settlePreparedDisable(slot);
+    if (!wasPrepared) {
+      throw StateError('Plugin "$pluginId" did not have a valid prepared disable; settled enabled.');
+    }
   }
 
   Future<PluginRuntimeCommandResult> restart({
@@ -811,14 +815,6 @@ class PluginRuntime {
       ..transition = PluginRuntimeTransition.none;
     if (!transitionCompleter.isCompleted) transitionCompleter.complete();
     _publishSnapshots();
-  }
-
-  _PluginRuntimeSlot _requirePreparedDisableSlot(String pluginId) {
-    final slot = _requireSlot(pluginId);
-    if (!_isPreparedDisableSlot(slot)) {
-      throw StateError('Plugin "$pluginId" does not have a prepared disable.');
-    }
-    return slot;
   }
 
   bool _isPreparedDisableSlot(_PluginRuntimeSlot slot) {
@@ -1537,15 +1533,14 @@ class PluginRuntime {
   List<PluginRuntimeSnapshot> _buildSnapshots() => [for (final slot in _slots.values) _snapshotFor(slot)];
 
   PluginRuntimeSnapshot _snapshotFor(_PluginRuntimeSlot slot) {
-    final state = slot.accessGate == PluginRuntimeAccessGate.disabled
-        ? PluginRuntimeState.disabled
-        : slot.accessGate == PluginRuntimeAccessGate.draining
-        ? PluginRuntimeState.stopping
-        : !slot.startAllowed
-        ? PluginRuntimeState.blocked
-        : slot.plugin == null && slot.startFuture == null && slot.state != PluginRuntimeState.failed
-        ? PluginRuntimeState.dormant
-        : slot.state;
+    final state = switch (slot) {
+      _ when slot.accessGate == PluginRuntimeAccessGate.disabled => PluginRuntimeState.disabled,
+      _ when slot.accessGate == PluginRuntimeAccessGate.draining => PluginRuntimeState.stopping,
+      _ when !slot.startAllowed => PluginRuntimeState.blocked,
+      _ when slot.plugin == null && slot.startFuture == null && slot.state != PluginRuntimeState.failed =>
+        PluginRuntimeState.dormant,
+      _ => slot.state,
+    };
     return PluginRuntimeSnapshot(
       pluginId: slot.registration.descriptor.id,
       projectOwnership: slot.registration.descriptor.projectOwnership,

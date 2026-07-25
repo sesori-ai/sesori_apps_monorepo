@@ -379,11 +379,16 @@ class PluginLifecycleService {
     try {
       _lifecycleRepository.commitDisable(pluginId: pluginId);
     } on Object catch (error) {
+      _removeEligibility(pluginId);
       throw PluginManagementCommandFailedException("Plugin disable commit failed: $error");
     }
+    _removeEligibility(pluginId);
+  }
+
+  void _removeEligibility(String pluginId) {
     _eligiblePluginIds = List<String>.unmodifiable([
-      for (final pluginId in _requireEligiblePluginIds())
-        if (pluginId != result.snapshot.pluginId) pluginId,
+      for (final eligiblePluginId in _requireEligiblePluginIds())
+        if (eligiblePluginId != pluginId) eligiblePluginId,
     ]);
     _metadataById.remove(pluginId);
     _applyRuntimeSnapshots(_lifecycleRepository.snapshot);

@@ -370,6 +370,16 @@ void main() {
     await runtime.dispose().timeout(const Duration(seconds: 1));
   });
 
+  test("invalid disable rollback settles the slot enabled", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+
+    expect(() => runtime.rollbackDisable(pluginId: "one"), throwsStateError);
+
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.enabled);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    await runtime.dispose().timeout(const Duration(seconds: 1));
+  });
+
   test("access refresh cannot overwrite a prepared disable gate", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);

@@ -658,6 +658,13 @@ void main() {
     expect(repository.rollbackCalls, isZero);
     expect(repository.snapshot.single.accessGate, PluginRuntimeAccessGate.disabled);
     expect(repository.snapshot.single.transitionSettled, isTrue);
+    expect(service.compositionView.eligiblePluginIds, isEmpty);
+
+    final retry = await service.command(
+      pluginId: "one",
+      request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+    );
+    expect(retry.plugins.single.runtimeState, shared.PluginRuntimeState.disabled);
   });
 
   test("safe disable conflicts map to the typed management response without writing settings", () async {

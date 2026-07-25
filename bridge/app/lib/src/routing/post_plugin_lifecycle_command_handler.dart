@@ -26,7 +26,9 @@ class PostPluginLifecycleCommandHandler
     required String? fragment,
   }) async {
     try {
-      return await _lifecycleService.command(pluginId: pathParams["id"]!, request: body);
+      final pluginId = pathParams["id"];
+      if (pluginId == null) throw buildErrorResponse(request, 400, "plugin id is required");
+      return await _lifecycleService.command(pluginId: pluginId, request: body);
     } on PluginManagementPluginNotFoundException {
       throw buildErrorResponse(request, 404, "plugin not found");
     } on PluginManagementConflictException catch (error) {
