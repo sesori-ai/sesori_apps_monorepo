@@ -1533,13 +1533,14 @@ class PluginRuntime {
   List<PluginRuntimeSnapshot> _buildSnapshots() => [for (final slot in _slots.values) _snapshotFor(slot)];
 
   PluginRuntimeSnapshot _snapshotFor(_PluginRuntimeSlot slot) {
-    final state = switch (slot) {
-      _ when slot.accessGate == PluginRuntimeAccessGate.disabled => PluginRuntimeState.disabled,
-      _ when slot.accessGate == PluginRuntimeAccessGate.draining => PluginRuntimeState.stopping,
-      _ when !slot.startAllowed => PluginRuntimeState.blocked,
-      _ when slot.plugin == null && slot.startFuture == null && slot.state != PluginRuntimeState.failed =>
+    final state = switch (slot.accessGate) {
+      PluginRuntimeAccessGate.disabled => PluginRuntimeState.disabled,
+      PluginRuntimeAccessGate.draining => PluginRuntimeState.stopping,
+      PluginRuntimeAccessGate.enabled when !slot.startAllowed => PluginRuntimeState.blocked,
+      PluginRuntimeAccessGate.enabled
+          when slot.plugin == null && slot.startFuture == null && slot.state != PluginRuntimeState.failed =>
         PluginRuntimeState.dormant,
-      _ => slot.state,
+      PluginRuntimeAccessGate.enabled => slot.state,
     };
     return PluginRuntimeSnapshot(
       pluginId: slot.registration.descriptor.id,
