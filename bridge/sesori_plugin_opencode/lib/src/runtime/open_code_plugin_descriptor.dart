@@ -18,6 +18,15 @@ import "open_code_runtime_policy.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
+abstract final class _OpenCodeConfigKey {
+  static const String port = "port";
+  static const String host = "host";
+  static const String noAutoStart = "no-auto-start";
+  static const String password = "password";
+  static const String noPassword = "no-password";
+  static const String binary = "bin";
+}
+
 /// Builds the [OpenCodeManagedApi] for a resolved server. The production default
 /// constructs an [OpenCodePlugin] with auto-initialization disabled (the
 /// descriptor awaits [OpenCodeManagedApi.initialize] explicitly); tests inject a
@@ -107,7 +116,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   /// so none of those need an alias.
   static const List<PluginOption> cliOptions = [
     PluginValueOption.integer(
-      name: "port",
+      name: _OpenCodeConfigKey.port,
       help: "Port for opencode server to listen on",
       defaultsTo: null,
       valueHelp: null,
@@ -115,7 +124,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       deprecatedAliases: ["port"],
     ),
     PluginValueOption(
-      name: "host",
+      name: _OpenCodeConfigKey.host,
       help:
           "Host the opencode server binds to (auto-start) or is reached at "
           "(--opencode-no-auto-start). Defaults to 127.0.0.1. Use 0.0.0.0 to "
@@ -128,7 +137,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       validate: null,
     ),
     PluginFlagOption(
-      name: "no-auto-start",
+      name: _OpenCodeConfigKey.noAutoStart,
       help: "Skip auto-starting opencode server (use existing server)",
       defaultsTo: false,
       negatable: true,
@@ -136,7 +145,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       deprecatedAliases: ["no-auto-start"],
     ),
     PluginValueOption(
-      name: "password",
+      name: _OpenCodeConfigKey.password,
       help: "Override server password (auto-generated if not set)",
       defaultsTo: "",
       allowedValues: null,
@@ -146,13 +155,13 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       deprecatedAliases: ["password"],
     ),
     PluginFlagOption(
-      name: "no-password",
+      name: _OpenCodeConfigKey.noPassword,
       help: "Disable OpenCode server authentication",
       defaultsTo: false,
       negatable: false,
     ),
     PluginValueOption(
-      name: "bin",
+      name: _OpenCodeConfigKey.binary,
       help: "Path to opencode binary",
       defaultsTo: null,
       allowedValues: null,
@@ -163,17 +172,18 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
   /// Static counterpart of [validateConfig] for argument-parse-time callers.
   static void validateConfigValues(PluginConfig config) {
-    if (config.flag("no-auto-start") && config.intValue("port") == null) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart) && config.intValue(_OpenCodeConfigKey.port) == null) {
       throw const PluginConfigException("The --opencode-no-auto-start flag requires --opencode-port to be set.");
     }
-    if (config.flag("no-password") && (config.value("password")?.isNotEmpty ?? false)) {
+    if (config.flag(_OpenCodeConfigKey.noPassword) &&
+        (config.value(_OpenCodeConfigKey.password)?.isNotEmpty ?? false)) {
       throw const PluginConfigException("The --opencode-no-password flag cannot be used with --opencode-password.");
     }
     // The host is used in both modes (bind target when managed, connect target
     // when attaching), so validate it up front — a malformed value would
     // otherwise only fail deep in start(), after the startup mutex has run and
     // the single-live-bridge replacement may have stopped a healthy resident.
-    final host = (config.value("host") ?? "").trim();
+    final host = (config.value(_OpenCodeConfigKey.host) ?? "").trim();
     if (host.isEmpty) {
       throw const PluginConfigException("The --opencode-host option cannot be empty.");
     }
@@ -189,7 +199,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     // unauthenticated OpenCode server on the network. Block that combination;
     // a wildcard/LAN bind with the default Basic-auth password stays allowed,
     // and --opencode-no-password on a loopback host stays allowed.
-    if (!config.flag("no-auto-start") && config.flag("no-password") && !_isLoopbackHost(host)) {
+    if (!config.flag(_OpenCodeConfigKey.noAutoStart) &&
+        config.flag(_OpenCodeConfigKey.noPassword) &&
+        !_isLoopbackHost(host)) {
       throw PluginConfigException(
         "The --opencode-no-password flag cannot be combined with a non-loopback --opencode-host "
         "('$host') when auto-starting: it would expose an unauthenticated OpenCode server on the "
@@ -248,7 +260,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
   @override
   PluginResidencyPolicy residencyPolicy({required PluginConfig config}) {
-    return config.flag("no-auto-start") ? PluginResidencyPolicy.resident : PluginResidencyPolicy.transient;
+    return config.flag(_OpenCodeConfigKey.noAutoStart)
+        ? PluginResidencyPolicy.resident
+        : PluginResidencyPolicy.transient;
   }
 
   @override
@@ -258,11 +272,11 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     required Map<String, String> environment,
     required String stateDirectory,
   }) async {
-    if (config.flag("no-auto-start")) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       return const PluginSetupReady();
     }
 
-    final explicitBin = config.value("bin")?.trim();
+    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
     final hasExplicitBin = explicitBin != null && explicitBin.isNotEmpty;
     const manifest = OpenCodeRuntimeManifest();
     final executable = hasExplicitBin ? explicitBin : manifest.pathExecutableName;
@@ -373,10 +387,10 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     required HostProcessService processes,
     required Map<String, String> environment,
   }) async {
-    if (config.flag("no-auto-start")) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       return const PluginAvailable();
     }
-    final explicitBin = config.value("bin")?.trim();
+    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
     if (explicitBin != null && explicitBin.isNotEmpty) {
       const manifest = OpenCodeRuntimeManifest();
       return RuntimeAvailabilityProber(
@@ -405,10 +419,10 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     final config = host.config;
-    if (config.flag("no-auto-start")) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       return;
     }
-    final explicitBin = config.value("bin")?.trim();
+    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
     if (explicitBin != null && explicitBin.isNotEmpty) {
       return;
     }
@@ -453,19 +467,19 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     }
 
     final config = host.config;
-    final requestedPort = config.intValue("port");
-    final noPassword = config.flag("no-password");
+    final requestedPort = config.intValue(_OpenCodeConfigKey.port);
+    final noPassword = config.flag(_OpenCodeConfigKey.noPassword);
     // Mirror the legacy flow's `password.normalize()`: trim, and map a blank
     // value to "no password supplied" — otherwise the same CLI input would
     // select a different password (or demand auth the user never set) after
     // the flip.
-    final providedPassword = config.value("password")?.normalize();
+    final providedPassword = config.value(_OpenCodeConfigKey.password)?.normalize();
 
     // The host OpenCode binds to (managed mode) or is reached at (attach mode);
     // defaults to 127.0.0.1. The connect host is what the bridge dials for
     // HTTP/SSE/health — loopback when the bind host is a non-connectable
     // wildcard (0.0.0.0 / ::), otherwise the bind host itself.
-    final bindHost = config.value("host")!.trim();
+    final bindHost = config.value(_OpenCodeConfigKey.host)!.trim();
     final connectHost = resolveOpenCodeConnectHost(bindHost: bindHost);
 
     final probeClientFactory = _probeClientFactory ?? http.Client.new;
@@ -497,7 +511,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     final String serverUrl;
     final String? apiPassword;
 
-    if (config.flag("no-auto-start")) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       // Attach mode: probe an existing server, never own or kill it.
       final attachPort = requestedPort!;
       port = attachPort;
@@ -532,7 +546,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       // Precedence: an explicit --opencode-bin wins (trusted, no version gate),
       // else the path ensureRuntime resolved (a recent PATH install or the
       // managed download), exposed via the host.
-      final explicitBin = config.value("bin")?.trim();
+      final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
       final resolvedExecutable = (explicitBin != null && explicitBin.isNotEmpty)
           ? explicitBin
           : host.provisionedRuntimePath;

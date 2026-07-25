@@ -11,7 +11,7 @@
 
 | Done | Slice | Branch | PR state |
 |---|---|---|---|
-| [ ] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 open; monitoring |
+| [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 open; monitoring |
 | [ ] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | waits for P01 merge |
 | [ ] | P03 — revision and SSE invalidation | `setup-aware-plugin-management-invalidation` | waits for P02 merge |
 | [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | waits for P03 merge |
