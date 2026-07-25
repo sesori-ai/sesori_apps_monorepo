@@ -7,10 +7,9 @@
 - **Pinned W02 base:** `120a6f41329e64a4908907b6a318bb1f31bd805d`
 - **Auth dependency:** Satisfied — `sesori-ai/sesori_auth_server` PR #44 merged
   and its endpoint is deployed (user-confirmed 2026-07-18).
-- **Current state:** W01 merged and deployed; the reduced W02 implementation is
-  complete and verified locally, and architecture implementation review approved
-  it. Implementation PR #504 is open and monitored; advisory checkpoint M01 is
-  still pending.
+- **Current state:** Complete. W01 merged and deployed; reduced W02 merged as
+  monorepo PR #504 (`2acd7b87`). Advisory checkpoint M01 remains available as a
+  non-blocking post-delivery check.
 
 ## Goal
 
@@ -233,6 +232,6 @@ or client contract.
 ## Release Order
 
 1. Completed: auth PR #44 merged and its endpoint was deployed.
-2. Merge W02 after focused verification and implementation review.
+2. Completed: W02 merged after focused verification and implementation review.
 3. Release through the existing bridge process.
 4. Run S01-W02-M01 against a disposable same-account app registration.

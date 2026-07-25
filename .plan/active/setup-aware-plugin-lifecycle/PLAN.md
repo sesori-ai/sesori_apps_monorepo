@@ -3,15 +3,12 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Status:** Stage 10, the complete replacement P01A-P01D stack, and Stage
-  11-P02 are merged; Stage 12 is redesigned as a six-PR child series
-- **Implementation base:** `origin/main` at `41e03f12`, which includes merged
-  transient-residency PR #556
+- **Status:** Stages 10-12 are merged; Stage 13 remains
+- **Implementation base:** `origin/main` at Stage 12 merge `6cedf5bd`
 - **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
-- **Delivery:** Stage 12 is tracked in
-  `.plan/active/setup-aware-plugin-management` and isolates attach-only
-  residency, read contracts, invalidation, timeout writes, runtime transaction
-  mechanics, and commands before the later client stage
+- **Delivery:** Completed Stage 12 is recorded in
+  `.plan/completed/setup-aware-plugin-management`; Stage 13 is the remaining
+  client-settings stage
 
 This plan replaces the first unmerged implementation. Nothing introduced only
 by that implementation needs compatibility handling. Released contracts still
@@ -620,12 +617,12 @@ the listed source files and committed with their stage.
 | Shared | Add only management read enums/rows/response in `plugin_management.dart`, generated output, tests, and barrel export. |
 | Bridge policy/routes | Add stable management mapping in `plugin_lifecycle_service.dart`, `get_plugin_management_handler.dart`, and relay/debug route composition. No mutation API or SSE yet. |
 
-### Stage 12-P03 — revision and SSE invalidation
+### Stage 12-P03 — snapshot tokens and SSE invalidation
 
 | Workspace | Production files/classes |
 |---|---|
-| Shared | Add the compatible management `revision` field and `plugin.management.changed` SSE variant; regenerate sources. |
-| Bridge/client seam | Publish revisions only for materially changed settled snapshots, map them to SSE in `orchestrator.dart`, and update minimum client exhaustive switches without management UI. |
+| Shared | Add the compatible management `snapshotToken` field and `plugin.management.changed` SSE variant; regenerate sources. |
+| Bridge/client seam | Publish opaque tokens for materially changed snapshots, map them to SSE in `orchestrator.dart`, and update minimum client exhaustive switches without management UI. |
 
 ### Stage 12-P04 — live idle-timeout mutations
 
@@ -714,9 +711,9 @@ the listed source files and committed with their stage.
 - P06: enable/restart/refresh, stale setup fencing, and dynamic default/catalog
   eligibility.
 
-The exact branches, PR titles, dependency gates, and per-slice verification are
-tracked in `.plan/active/setup-aware-plugin-management`. Frozen PR #510 remains
-source material only and is never rebased, merged, or cherry-picked.
+The exact branches, PR titles, merge commits, and per-slice verification are
+recorded in `.plan/completed/setup-aware-plugin-management`. Frozen PR #510 was
+closed as superseded and remains source material only.
 
 ### Stage 13 / former PR #511 — redesigned mobile plugin settings
 

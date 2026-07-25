@@ -4,9 +4,8 @@
 
 - **Plan slug:** `setup-aware-plugin-management`
 - **Parent plan:** `.plan/active/setup-aware-plugin-lifecycle`
-- **Status:** redesigned from frozen PR #510; P01-P02 merged and P03 is open as
-  PR #568
-- **Current implementation base:** `origin/main` at `19ca475a`
+- **Status:** complete; P01-P06 merged and frozen PR #510 closed as superseded
+- **Completion base:** `origin/main` at final Stage 12 merge `6cedf5bd`
 - **Reference only:** PR #510, substantive commit `c4104e73`, fixture follow-up
   `bf0433b8`
 
@@ -409,6 +408,6 @@ logic drives a newly enabled plugin through the dynamic service validation.
 
 ## Completion
 
-Stage 12 is complete only when all six PRs are merged, frozen PR #510 is closed
-as superseded, the parent tracker records merge commits and verification, and
-Stage 13 starts from the merged P06 result.
+Stage 12 completed after all six PRs merged, frozen PR #510 closed as
+superseded, and the parent tracker recorded the merge commits and verification.
+Stage 13 can now be rebuilt from the merged P06 result.

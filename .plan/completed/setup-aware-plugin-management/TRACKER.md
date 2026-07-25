@@ -2,10 +2,9 @@
 
 ## Current State
 
-- **Base:** `origin/main` at P05 merge `92cbdf06`
-- **Current branch:** `setup-aware-plugin-management-commands`
-- **Current slice:** Stage 12-P06 / step 6 of 6, open as PR #572
-- **Next action:** monitor PR #572 through review and CI
+- **Implementation base:** `origin/main` at P05 merge `92cbdf06`
+- **Series state:** complete; final PR #572 merged as `6cedf5bd`
+- **Follow-up:** address #573 in a focused change
 
 ## Delivery
 
@@ -16,11 +15,12 @@
 | [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
 | [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 merged as `583c91f2` |
 | [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | PR #570 merged as `92cbdf06` |
-| [x] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | PR #572 open; monitoring |
+| [x] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | PR #572 merged as `6cedf5bd` |
 
 ## Source Material
 
-- Frozen PR #510: https://github.com/sesori-ai/sesori_apps_monorepo/pull/510
+- Superseded PR #510 (closed):
+  https://github.com/sesori-ai/sesori_apps_monorepo/pull/510
 - Substantive old commit: `c4104e73`
 - Blocked-setup fixture follow-up: `bf0433b8`
 - Old size: 36 files, 3,286 additions, 228 deletions
@@ -241,8 +241,29 @@
   durable denylist/timeout state across bridge restart, mobile disconnect/re-key,
   an explicitly setup-blocked Codex runtime, explicit and automatic catalog
   hydration, durable catalog browsing while plugins were disabled, and mobile
-  new-session eligibility after reopening. All settings were restored, no new
-  simulator crash appeared, and no additional product defect was found.
+  new-session eligibility after reopening.
+- Created real OpenCode, Codex, and Cursor sessions in the permitted project
+  `random stuff` and received exact backend replies without modifying files.
+  Safe disable of busy Codex returned typed `409 busy`; OpenCode and Cursor
+  completed overlapping turns, Codex restarted independently while OpenCode was
+  active, and Cursor completed a turn while the app was backgrounded.
+- Force disabling busy Codex stopped its runtime but left the client session and
+  interrupted tool part marked `Running`. Re-enabling and sending another turn
+  recovered the list-level session state, while the interrupted historical tool
+  part remained stale. The demonstrated cross-layer reconciliation defect is
+  tracked separately as [#573](https://github.com/sesori-ai/sesori_apps_monorepo/issues/573)
+  rather than expanding P06.
+- A stale New Session selection was rejected after Cursor became disabled and
+  created no session. After a full source-bridge process restart, all three
+  persisted sessions retained their backend bindings. Exact replies were
+  `CODEX POST RESTART OK.`, `OPENCODE POST RESTART OK.`, and
+  `CURSOR POST RESTART OK.`.
+- Final management state has all plugins setup-ready, active, and idle, with
+  OpenCode as default, the restored 10-minute default timeout, and no overrides.
+  The restart log contains no failure, exception, or crash, and no new simulator
+  crash appeared.
+- PR #572 merged as `6cedf5bd` with 14/14 checks passing and zero unresolved
+  review threads, completing the six-PR series.
 
 ## Delivery Rules
 

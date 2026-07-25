@@ -13,8 +13,8 @@ until logout clears all markers.
 
 - **W01 (complete):** Auth server exposes authenticated immediate and `wait=true`
   app-client status with durable post-registration wake.
-- **W02:** Bridge consumes that endpoint with a bounded QR/URL checkpoint and a
-  one-time-per-backend/account local marker.
+- **W02 (complete):** Bridge consumes that endpoint with a bounded QR/URL
+  checkpoint and a one-time-per-backend/account local marker.
 
 ## Required Behavior
 

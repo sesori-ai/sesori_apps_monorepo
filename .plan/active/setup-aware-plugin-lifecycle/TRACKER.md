@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** Stage 10 and Stage 11 replacement work are merged; Stage 12 has
-  been redesigned as a six-PR child series
-- **Base:** `origin/main` at `41e03f12`
-- **Current branch:** `setup-aware-plugin-management-resident-attach`
-- **Current stage:** Stage 12-P01 — attach-only residency and diagnostics
-- **Next action:** monitor Stage 12-P01 PR #563 through CI and review
+- **Status:** Stages 10-12 are merged; Stage 13 remains
+- **Base:** `origin/main` at Stage 12 merge `6cedf5bd`
+- **Current branch:** Stage 13 rebuild branch TBD
+- **Current stage:** Stage 13 — redesigned mobile plugin settings
+- **Next action:** reassess drift from frozen PR #511 and define the Stage 13
+  replacement delivery
 
 ## Frozen Oversized Stack
 
@@ -21,7 +21,7 @@ complete.
 | #507 | Merged | Redesigned Stage 10, merged as `4ef55675` |
 | #508 | Open, frozen | Oversized Stage 11-P01 reference at `f6cd675d`; replaced by P01A-P01D |
 | #509 | Open, frozen | Dormancy descendant; rebuild/retarget after P01D |
-| #510 | Open, frozen | Management descendant; rebuild/retarget after rebuilt dormancy stage |
+| #510 | Closed, superseded | Replaced by the six-PR Stage 12 child series |
 | #511 | Open, frozen | Client descendant; rebuild/retarget after rebuilt management stage |
 
 Old verification results are historical evidence only; replacement stages must
@@ -37,7 +37,7 @@ run their focused verification again.
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 merged as `41e03f12` |
-| [ ] | Stage 12 — headless management | six-PR child series | P01 PR #563 open; tracked in `setup-aware-plugin-management` |
+| [x] | Stage 12 — headless management | six-PR child series | #563, #567-#570, and #572 merged; recorded in `.plan/completed/setup-aware-plugin-management` |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
 
 ## Locked Redesign Deltas
@@ -300,6 +300,19 @@ run their focused verification again.
   stream. Its requested broad runner/orchestrator composition migration was
   kept out of this series; P06 uses the existing catalog repository seam and
   introduces no new composition crossing.
+
+### 2026-07-26 — Stage 12 complete
+
+- The six replacement PRs merged as #563 (`f8f05c33`), #567 (`19ca475a`),
+  #568 (`00a0da77`), #569 (`583c91f2`), #570 (`92cbdf06`), and #572
+  (`6cedf5bd`).
+- Final production-relay E2E covered all three bundled backends, lifecycle
+  mutations and conflicts, persistence, catalog hydration, bridge restart, and
+  persisted-session resume. The force-disable reconciliation defect is tracked
+  separately as #573.
+- Frozen PR #510 was closed as superseded. The completed child plan and its
+  detailed verification record moved to
+  `.plan/completed/setup-aware-plugin-management`.
 
 ## Delivery Rules
 

@@ -2,7 +2,7 @@
 
 ## Plan State
 
-- **Status:** Reduced W02 implementation PR #504 open and monitored
+- **Status:** Complete; W01 and W02 merged
 - **Implementation base:** `main`
 - **Plan slug:** `bridge-app-onboarding`
 - **Plan PRs:** original https://github.com/sesori-ai/sesori_apps_monorepo/pull/490; reduced-plan correction https://github.com/sesori-ai/sesori_apps_monorepo/pull/494
@@ -10,9 +10,9 @@
 
 ## Current Pointer
 
-- **Stage:** S01 — App Registration Checkpoint
-- **Wave:** W02
-- **Next action:** Monitor PR #504 and address CI/review findings; then run the advisory M01 checkpoint.
+- **Stage:** S01 — App Registration Checkpoint complete
+- **Wave:** None active
+- **Next action:** Optionally run advisory M01 during a suitable release check.
 
 ## Plan Review
 
@@ -36,13 +36,13 @@ pair after drift assessment and before branch creation.
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
 | [x] | S01-W01-P01 | S01 | W01 | https://github.com/sesori-ai/sesori_auth_server/pull/44 | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Merged and deployed. Delivers the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. Format, lint, build, 422 tests (1 skipped), circular-dependency check, and implementation review passed. |
-| [ ] | S01-W02-P01 | S01 | W02 | https://github.com/sesori-ai/sesori_apps_monorepo/pull/504 | `bridge-onboarding-plan-c317b6` | Implementation, focused/full verification, host build, and architecture review complete. PR is open and monitored; row remains unchecked until merge. |
+| [x] | S01-W02-P01 | S01 | W02 | https://github.com/sesori-ai/sesori_apps_monorepo/pull/504 | `bridge-onboarding-plan-c317b6` | Merged as `2acd7b87` after focused/full verification, host build, architecture review, and passing CI. |
 
 ## Manual Checkpoints
 
 | User | Worker | ID | Check | Evidence |
 |---|---|---|---|---|
-| [ ] | [ ] | S01-W02-M01 | Scan QR/URL output and exercise immediate/30-second same-account registration | — |
+| [ ] | [ ] | S01-W02-M01 | Scan QR/URL output and exercise immediate/30-second same-account registration | Not run; explicitly advisory and non-blocking, retained for a suitable release check. |
 
 ## Blockers and Staleness
 
@@ -60,6 +60,9 @@ pair after drift assessment and before branch creation.
 
 ## Findings and Plan Deltas
 
+- **2026-07-26 — Plan completion recorded:** Monorepo PR #504 merged as
+  `2acd7b87` on 2026-07-18. Both implementation waves are complete; advisory M01
+  remains optional and does not keep the plan active.
 - **2026-07-18 — W02 baseline reassessed:** Current `main` at `120a6f413` includes
   the parallel-plugin runtime merged after the original pinned baseline. The
   touched runner and CLI composition changed, but the approved API, persistence,
