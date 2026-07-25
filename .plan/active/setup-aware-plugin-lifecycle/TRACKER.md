@@ -313,14 +313,3 @@ run their focused verification again.
 - Frozen PR #510 was closed as superseded. The completed child plan and its
   detailed verification record moved to
   `.plan/completed/setup-aware-plugin-management`.
-
-## Delivery Rules
-
-- Keep exactly one open child PR and one local successor built from the open
-  PR's latest reviewed head. After merge, merge updated `origin/main` into the
-  successor and reverify before opening it; never work more than one PR ahead.
-- Keep #508 frozen until replacement PRs exist; do not force-rewrite it.
-- Keep #510 and #511 frozen; rebuild their behavior rather than retargeting
-  their obsolete descendant branches.
-- Use the exact six titles and fixed total in the child plan. Open and monitor
-  one replacement PR at a time after its focused checks pass.

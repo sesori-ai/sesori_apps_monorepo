@@ -704,7 +704,7 @@ the listed source files and committed with their stage.
 
 - P01: attach-only resident policy and lifecycle diagnostics;
 - P02: read-only management DTO and GET snapshot;
-- P03: process-local revision and additive SSE invalidation;
+- P03: opaque snapshot token and additive SSE invalidation;
 - P04: live numeric idle-timeout mutations;
 - P05: end-to-end safe/force disable with transactional runtime access and
   persistence rollback;
