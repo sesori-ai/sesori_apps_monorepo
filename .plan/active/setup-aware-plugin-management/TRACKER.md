@@ -4,8 +4,8 @@
 
 - **Base:** `origin/main` at P05 merge `92cbdf06`
 - **Current branch:** `setup-aware-plugin-management-commands`
-- **Current slice:** Stage 12-P06 / step 6 of 6, ready to open
-- **Next action:** push P06, open step 6, and monitor it
+- **Current slice:** Stage 12-P06 / step 6 of 6, open as PR #572
+- **Next action:** monitor PR #572 through review and CI
 
 ## Delivery
 
@@ -16,7 +16,7 @@
 | [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
 | [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 merged as `583c91f2` |
 | [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | PR #570 merged as `92cbdf06` |
-| [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | ready to open |
+| [x] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | PR #572 open; monitoring |
 
 ## Source Material
 
@@ -227,6 +227,8 @@
   independently merged client SSE compatibility fix from PR #571. Post-merge
   verification passed the same 8 shared contract tests, 88 focused bridge
   tests, both fatal analyzers, and staged/unstaged diff checks.
+- Pushed and opened PR #572 with the fixed step-6/6 series title; monitoring
+  started immediately.
 
 ## Delivery Rules
 
