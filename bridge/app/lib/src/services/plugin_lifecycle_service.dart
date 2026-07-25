@@ -2,9 +2,11 @@ import "dart:async";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" hide PluginRuntimeState;
+import "package:sesori_shared/sesori_shared.dart" as shared show PluginRuntimeState;
 
 import "../bridge/runtime/plugin_runtime.dart";
+import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
 
@@ -186,6 +188,19 @@ class PluginLifecycleService {
     );
   }
 
+  PluginManagementResponse get managementSnapshot {
+    final registeredPlugins = _registeredPlugins;
+    if (registeredPlugins == null || _setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    final settings = _bridgeSettingsRepository.currentSettings;
+    return PluginManagementResponse(
+      defaultPluginId: _selectableDefaultPluginId(),
+      defaultIdleTimeoutMins: settings.plugins.defaults.idleTimeoutMins ?? defaultPluginIdleTimeoutMins,
+      plugins: [for (final plugin in registeredPlugins) _managementRow(plugin: plugin)],
+    );
+  }
+
   Stream<List<PluginMetadata>> get metadataSnapshots {
     final subject = _metadataSubject;
     if (subject == null) throw StateError("Plugin lifecycle has not been initialized.");
@@ -287,6 +302,48 @@ class PluginLifecycleService {
       actionHint: setup.actionHint,
     );
   }
+
+  PluginManagementMetadata _managementRow({required RegisteredPluginMetadata plugin}) {
+    final snapshot = _lifecycleRepository.snapshot.singleWhere((entry) => entry.pluginId == plugin.id);
+    final setup = _mapSetupMetadata(plugin: plugin, setup: _setupById![plugin.id]!);
+    final settings = _bridgeSettingsRepository.currentSettings;
+    return PluginManagementMetadata(
+      setup: setup,
+      runtimeState: _mapRuntimeState(snapshot.state),
+      workState: _mapWorkState(snapshot.workState),
+      idleTimeoutMins: _effectiveIdleTimeoutMins(plugin.id),
+      hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
+      actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
+    );
+  }
+
+  shared.PluginRuntimeState _mapRuntimeState(PluginRuntimeState state) => switch (state) {
+    PluginRuntimeState.disabled => shared.PluginRuntimeState.disabled,
+    PluginRuntimeState.blocked => shared.PluginRuntimeState.blocked,
+    PluginRuntimeState.dormant => shared.PluginRuntimeState.dormant,
+    PluginRuntimeState.starting => shared.PluginRuntimeState.starting,
+    PluginRuntimeState.active => shared.PluginRuntimeState.active,
+    PluginRuntimeState.degraded => shared.PluginRuntimeState.degraded,
+    PluginRuntimeState.stopping => shared.PluginRuntimeState.stopping,
+    PluginRuntimeState.failed => shared.PluginRuntimeState.failed,
+  };
+
+  PluginManagementWorkState _mapWorkState(PluginWorkState state) => switch (state) {
+    PluginWorkState.idle => PluginManagementWorkState.idle,
+    PluginWorkState.busy => PluginManagementWorkState.busy,
+    PluginWorkState.unknown => PluginManagementWorkState.unknown,
+  };
+
+  String? _managementActionHint(PluginRuntimeState state) => switch (state) {
+    PluginRuntimeState.failed => "Check the bridge console and restart the bridge to retry this plugin.",
+    PluginRuntimeState.degraded => "Check the bridge console if this plugin needs attention.",
+    PluginRuntimeState.blocked => "Check the bridge console to make this plugin available.",
+    PluginRuntimeState.disabled ||
+    PluginRuntimeState.dormant ||
+    PluginRuntimeState.starting ||
+    PluginRuntimeState.active ||
+    PluginRuntimeState.stopping => null,
+  };
 
   Future<void> dispose() => _disposeFuture ??= _dispose();
 

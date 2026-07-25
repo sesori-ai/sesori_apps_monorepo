@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_env.dart";
@@ -324,6 +325,27 @@ void main() {
       final project = data[0] as Map<String, dynamic>;
       expect(project["id"], equals("/tmp/test"));
       expect(project["name"], equals("My Project"));
+    });
+
+    test("GET /plugin/management uses the shared session router", () async {
+      final client = HttpClient();
+      addTearDown(client.close);
+
+      final request = await client.getUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/plugin/management"),
+      );
+      final response = await request.close();
+      final body = await utf8.decoder.bind(response).join();
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+
+      expect(response.statusCode, HttpStatus.ok);
+      expect(decoded["defaultPluginId"], "fake");
+      expect(decoded["defaultIdleTimeoutMins"], defaultPluginIdleTimeoutMins);
+      final plugins = decoded["plugins"] as List<dynamic>;
+      final plugin = plugins.single as Map<String, dynamic>;
+      expect((plugin["setup"] as Map<String, dynamic>)["id"], "fake");
+      expect(plugin["runtimeState"], "active");
+      expect(plugin["idleTimeoutMins"], defaultPluginIdleTimeoutMins);
     });
 
     test("POST /sessions without body returns 400", () async {

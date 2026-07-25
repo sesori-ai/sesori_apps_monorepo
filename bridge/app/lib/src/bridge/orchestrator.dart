@@ -33,6 +33,7 @@ import "../repositories/catalog_import_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
 import "../routing/cancel_catalog_import_handler.dart";
 import "../routing/get_catalog_import_statuses_handler.dart";
+import "../routing/get_plugin_management_handler.dart";
 import "../routing/get_plugin_setup_handler.dart";
 import "../routing/get_plugins_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
@@ -419,6 +420,7 @@ class Orchestrator {
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
+        GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService),
         RestartBridgeHandler(restartService: _restartService),

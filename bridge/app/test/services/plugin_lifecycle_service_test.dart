@@ -5,7 +5,8 @@ import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" hide PluginRuntimeState;
+import "package:sesori_shared/sesori_shared.dart" as shared show PluginRuntimeState;
 import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
@@ -183,6 +184,62 @@ void main() {
         ),
       ],
     );
+  });
+
+  test("management snapshot reports stable read-only lifecycle and timeout state", () {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode", "alpha", "beta"]);
+    addTearDown(runtime.dispose);
+    final settingsRepository = createTestBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(
+          defaults: PluginLifecycleSettings(idleTimeoutMins: 30),
+          settingsByPluginId: {
+            "opencode": PluginLifecycleSettings(idleTimeoutMins: 45),
+          },
+        ),
+      ),
+    );
+    final service =
+        PluginLifecycleService(
+            lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+            preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: settingsRepository,
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
+          )
+          ..registerPlugins(
+            plugins: const [
+              (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.resident),
+              (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
+              (id: "beta", displayName: "Beta", residencyPolicy: PluginResidencyPolicy.transient),
+            ],
+          )
+          ..initialize(
+            disabledPluginIds: const {"beta"},
+            setupById: const {
+              "opencode": PluginSetupReady(),
+              "alpha": PluginSetupRuntimeMissing(actionHint: "Install Alpha."),
+              "beta": PluginSetupNotInspected(),
+            },
+          );
+    addTearDown(service.dispose);
+
+    final response = service.managementSnapshot;
+
+    expect(response.defaultPluginId, "opencode");
+    expect(response.defaultIdleTimeoutMins, 30);
+    expect(response.plugins.map((plugin) => plugin.setup.id), ["alpha", "beta", "opencode"]);
+    final alpha = response.plugins[0];
+    final beta = response.plugins[1];
+    final opencode = response.plugins[2];
+    expect(alpha.runtimeState, shared.PluginRuntimeState.blocked);
+    expect(alpha.idleTimeoutMins, 30);
+    expect(alpha.actionHint, "Install Alpha.");
+    expect(beta.runtimeState, shared.PluginRuntimeState.disabled);
+    expect(opencode.runtimeState, shared.PluginRuntimeState.dormant);
+    expect(opencode.idleTimeoutMins, 0);
+    expect(opencode.hasIdleTimeoutOverride, isTrue);
+    expect(settingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: "opencode"), 45);
+    expect(runtime.activePluginIds, isEmpty);
   });
 
   test("runtime snapshots drive selectable metadata and derived default", () async {
