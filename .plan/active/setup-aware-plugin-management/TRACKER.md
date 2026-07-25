@@ -4,15 +4,15 @@
 
 - **Base:** `origin/main` at `f8f05c33`
 - **Current branch:** `setup-aware-plugin-management-read-snapshots`
-- **Current slice:** Stage 12-P02 / step 2 of 6, prepared locally
-- **Next action:** reverify P02 against merged P01, then open and monitor step 2 of 6
+- **Current slice:** Stage 12-P02 / step 2 of 6, ready to open
+- **Next action:** open and monitor step 2 of 6
 
 ## Delivery
 
 | Done | Slice | Branch | PR state |
 |---|---|---|---|
 | [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 merged as `f8f05c33` |
-| [ ] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | prepared locally at `b1b14d43`; verifying against merged P01 |
+| [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | verified against merged P01; ready to open |
 | [ ] | P03 — revision and SSE invalidation | `setup-aware-plugin-management-invalidation` | waits for P02 merge |
 | [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | waits for P03 merge |
 | [ ] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | waits for P04 merge |
@@ -87,6 +87,12 @@
   no architecture findings.
 - Committed locally as `b1b14d43`; merged P01 and `origin/main` into the
   successor after PR #563 merged.
+- Reverification against merged P01 passed the shared contract tests (3),
+  focused bridge lifecycle/handler/debug-router tests (31), fatal analysis in
+  shared and bridge app, and `git diff --check`.
+- Updated the `address-pr-comments` skill so the agent never resolves a thread
+  containing human-authored review comments; only fully addressed AI-only
+  threads may be resolved automatically.
 
 ## Delivery Rules
 
