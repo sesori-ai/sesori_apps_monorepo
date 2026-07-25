@@ -2,10 +2,10 @@
 
 ## Current State
 
-- **Base:** `origin/main` at P04 merge `583c91f2`
-- **Current branch:** `setup-aware-plugin-management-disable`
-- **Current slice:** Stage 12-P05 / step 5 of 6, open as PR #570
-- **Next action:** monitor PR #570 and prepare P06 locally
+- **Base:** P05 pre-review head `fcba6b48`; review fixes through `828c7a38` copied locally
+- **Current branch:** `setup-aware-plugin-management-commands`
+- **Current slice:** Stage 12-P06 / step 6 of 6, preparing locally
+- **Next action:** monitor PR #570; merge its final reviewed head after merge, reverify P06, and open step 6
 
 ## Delivery
 
@@ -16,7 +16,7 @@
 | [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
 | [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 merged as `583c91f2` |
 | [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | PR #570 open; monitoring |
-| [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | waits for P05 merge |
+| [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | preparing locally; waits for P05 merge |
 
 ## Source Material
 
@@ -196,6 +196,33 @@
   `git diff --check`.
 - Pushed and opened PR #570 with the fixed step-5/6 series title; monitoring
   started immediately.
+- Review hardening through `828c7a38` keeps invalid commit and rollback paths
+  settled, reconciles service eligibility after fail-closed commit errors,
+  removes the lifecycle route's bang operator, and switches runtime state
+  derivation directly on the access gate. Focused tests and fatal analysis pass;
+  CI passes 13/13 and Cubic approves the latest reviewed changes.
+
+### 2026-07-26 — P06 remaining commands and dynamic eligibility
+
+- Expanded the shared lifecycle command union with enable, restart, and refresh
+  while preserving strict command discrimination and safe/force stop modes.
+- Added per-slot setup-inspection revision and generation fencing. Disable,
+  authentication loss, newer probes, and generation changes prevent stale setup
+  results from restoring access or overwriting current state.
+- Lifecycle commands now serialize per plugin: enable persists eligibility then
+  inspects and starts only when ready; restart requires eligibility and inspects
+  before restart; refresh inspects without starting. Ready-ID publication is
+  deferred across failed starts so catalog hydration additions remain retryable.
+- Catalog import validation now reads live runtime-backed eligibility while
+  active imports remain cancellable after eligibility removal. The existing
+  additions-only hydration listener imports a newly enabled ready plugin.
+- Correctness review findings for fail-closed eligibility reconciliation,
+  auth-loss access restoration, disabled-plugin cancellation, and generation
+  fencing were fixed. The follow-up review reported no remaining findings.
+- Shared contract tests passed (8), focused bridge tests passed (88), fatal
+  analysis passed in shared and bridge app, and `git diff --check` passed.
+  Aristotle approved the complete architecture-bearing P06 scope with no
+  findings.
 
 ## Delivery Rules
 
