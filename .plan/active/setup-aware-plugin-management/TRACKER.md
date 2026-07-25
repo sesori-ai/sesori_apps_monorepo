@@ -2,18 +2,18 @@
 
 ## Current State
 
-- **Base:** `origin/main` at `f8f05c33`
-- **Current branch:** `setup-aware-plugin-management-read-snapshots`
-- **Current slice:** Stage 12-P02 / step 2 of 6, open for review
-- **Next action:** monitor PR #567 and prepare P03 locally
+- **Base:** `origin/main` at `19ca475a`
+- **Current branch:** `setup-aware-plugin-management-invalidation`
+- **Current slice:** Stage 12-P03 / step 3 of 6, ready to open
+- **Next action:** open and monitor step 3 of 6
 
 ## Delivery
 
 | Done | Slice | Branch | PR state |
 |---|---|---|---|
 | [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 merged as `f8f05c33` |
-| [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 open; monitoring |
-| [ ] | P03 — revision and SSE invalidation | `setup-aware-plugin-management-invalidation` | waits for P02 merge |
+| [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 merged as `19ca475a` |
+| [x] | P03 — revision and SSE invalidation | `setup-aware-plugin-management-invalidation` | verified locally at `1940c969`; ready to open |
 | [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | waits for P03 merge |
 | [ ] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | waits for P04 merge |
 | [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | waits for P05 merge |
@@ -49,6 +49,9 @@
 - P02 architecture implementation review approved all 11 changed files with no
   findings. Shared wire ownership, lifecycle mapping, route registration, and
   the existing runner/orchestrator boundary were accepted.
+- P03 architecture implementation review approved all 17 changed files with no
+  findings. Revision ownership, settled comparison, Orchestrator SSE mapping,
+  compatibility, and client boundary handling were accepted.
 
 ## Verification Log
 
@@ -95,6 +98,24 @@
   threads may be resolved automatically.
 - Pushed and opened PR #567 with the fixed step-2/6 series title; monitoring
   started immediately.
+
+### 2026-07-25 — P03 revision and SSE invalidation
+
+- Added a backward-compatible process-local revision to management snapshots
+  and a typed `plugin.management.changed` SSE event.
+- Lifecycle publication compares only externally visible settled snapshots,
+  advances once per material change, and makes the revised GET queryable before
+  synchronous notification. OrchestratorSession remains the sole SSE owner.
+- Existing session-focused client consumers explicitly classify the event as
+  global and ignore it until management state enters the client in a later
+  slice.
+- Shared management/SSE tests passed (43), bridge lifecycle tests passed (15),
+  Orchestrator tests passed (6), and focused module_core tests passed (77).
+- Fatal analysis passed in shared, bridge app, module_core `lib`, and mobile app
+  `lib`; `git diff --check` passed.
+- Aristotle implementation review approved the complete working-tree diff with
+  no architecture findings.
+- Committed locally as `1940c969` after PR #567 merged.
 
 ## Delivery Rules
 
