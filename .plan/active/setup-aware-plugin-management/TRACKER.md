@@ -4,8 +4,8 @@
 
 - **Base:** `origin/main` at `19ca475a`
 - **Current branch:** `setup-aware-plugin-management-invalidation`
-- **Current slice:** Stage 12-P03 / step 3 of 6, ready to open
-- **Next action:** open and monitor step 3 of 6
+- **Current slice:** Stage 12-P03 / step 3 of 6, open for review
+- **Next action:** monitor PR #568 and prepare P04 locally
 
 ## Delivery
 
@@ -13,7 +13,7 @@
 |---|---|---|---|
 | [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 merged as `f8f05c33` |
 | [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 merged as `19ca475a` |
-| [x] | P03 — revision and SSE invalidation | `setup-aware-plugin-management-invalidation` | verified locally at `1940c969`; ready to open |
+| [x] | P03 — revision and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 open; monitoring |
 | [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | waits for P03 merge |
 | [ ] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | waits for P04 merge |
 | [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | waits for P05 merge |
@@ -116,6 +116,8 @@
 - Aristotle implementation review approved the complete working-tree diff with
   no architecture findings.
 - Committed locally as `1940c969` after PR #567 merged.
+- Pushed and opened PR #568 with the fixed step-3/6 series title; monitoring
+  started immediately.
 
 ## Delivery Rules
 
