@@ -229,6 +229,20 @@
   tests, both fatal analyzers, and staged/unstaged diff checks.
 - Pushed and opened PR #572 with the fixed step-6/6 series title; monitoring
   started immediately.
+- Review follow-up `7473fcbd` keeps failed-start hydration readiness deferred
+  across refresh and makes the new/modified lifecycle test helpers follow the
+  required named-parameter convention. Focused service tests and fatal analysis
+  passed; Cubic approved the updated head and CI passed 13/13.
+- End-to-end verification used the PR iOS simulator build, production relay,
+  and the source bridge with `--data-dir ~/.local/share/sesori-dev`. It covered
+  all three real backend CLIs, live enable/disable/refresh/restart, equal-command
+  joining and differing-command conflicts, malformed/unknown requests, dynamic
+  defaults including zero eligible plugins, timeout override/apply-all writes,
+  durable denylist/timeout state across bridge restart, mobile disconnect/re-key,
+  an explicitly setup-blocked Codex runtime, explicit and automatic catalog
+  hydration, durable catalog browsing while plugins were disabled, and mobile
+  new-session eligibility after reopening. All settings were restored, no new
+  simulator crash appeared, and no additional product defect was found.
 
 ## Delivery Rules
 
