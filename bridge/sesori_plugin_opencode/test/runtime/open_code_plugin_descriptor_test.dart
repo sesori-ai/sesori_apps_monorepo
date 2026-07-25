@@ -37,6 +37,21 @@ void main() {
       expect(aliasesByName["bin"], isEmpty);
     });
 
+    test("keeps attach mode resident and managed mode transient", () {
+      expect(
+        descriptor.residencyPolicy(
+          config: const PluginConfig(values: {"no-auto-start": true}),
+        ),
+        PluginResidencyPolicy.resident,
+      );
+      expect(
+        descriptor.residencyPolicy(
+          config: const PluginConfig(values: {"no-auto-start": false}),
+        ),
+        PluginResidencyPolicy.transient,
+      );
+    });
+
     test("validateConfig requires --port when --no-auto-start is set", () {
       expect(
         () => descriptor.validateConfig(

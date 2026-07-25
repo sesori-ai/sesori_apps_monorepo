@@ -3,14 +3,15 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Status:** Stage 10 and the complete replacement P01A-P01D stack are merged;
-  Stage 11-P02 is rebuilt and locally verified in draft PR #556
-- **Implementation base:** latest `origin/main` at `2bb376b2`; local P02 has
-  merged that base after the synchronized release and gate revert, without rebasing
+- **Status:** Stage 10, the complete replacement P01A-P01D stack, and Stage
+  11-P02 are merged; Stage 12 is redesigned as a six-PR child series
+- **Implementation base:** `origin/main` at `41e03f12`, which includes merged
+  transient-residency PR #556
 - **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
-- **Delivery:** Stage 11-P01 is split into runtime mechanics, operation routing,
-  dynamic events/durable fencing, and bridge-owned projects/default behavior;
-  the later dormancy, management, and client stages are rebuilt on that stack
+- **Delivery:** Stage 12 is tracked in
+  `.plan/active/setup-aware-plugin-management` and isolates attach-only
+  residency, read contracts, invalidation, timeout writes, runtime transaction
+  mechanics, and commands before the later client stage
 
 This plan replaces the first unmerged implementation. Nothing introduced only
 by that implementation needs compatibility handling. Released contracts still
@@ -93,6 +94,14 @@ available:
   resident after hydration.
 - Applying one timeout to all plugins sets the default and removes every known
   per-plugin timeout override while preserving unrelated unknown fields.
+- A descriptor can declare from validated plugin config that its backend must
+  remain resident after first demand. Such a plugin has an effective timeout of
+  `0` regardless of persisted default or per-plugin timeout, without rewriting
+  either setting.
+- OpenCode configured with `--opencode-no-auto-start` declares resident policy:
+  Sesori may attach on demand but must not later detach its own plugin adapter
+  because the externally owned server is expected to remain continuously
+  available.
 - Safe automatic or manual stop requires no operation lease, affirmative plugin
   idle state, and no unsettled lifecycle transition or event handoff.
 
@@ -186,6 +195,14 @@ plugin config, bounded host-process access, environment, and read-only state
 directory. Concrete OpenCode, Codex, and Cursor descriptors classify their own
 runtime and authentication evidence and return only generic setup status and a
 sanitized nullable action hint.
+
+`BridgePluginDescriptor.residencyPolicy({required PluginConfig config})` is a
+pure, generic declaration with a transient default. Backend-specific CLI
+interpretation stays inside the descriptor; the runner passes only
+`PluginResidencyPolicy` into registered lifecycle metadata.
+`PluginLifecycleService` remains the sole owner of effective timeout calculation
+and maps resident policy to effective timeout `0` for both idle scheduling and
+management presentation.
 
 Probe output is bounded and discarded inside the plugin package. Tokens,
 accounts, credential paths, and raw command output never cross the descriptor
@@ -421,13 +438,14 @@ They depend only on `PluginLifecycleService`, parse generated shared models, and
 map typed service exceptions to HTTP status. `GetPluginSetupHandler` remains the
 separate snapshot handler.
 
-`PluginLifecycleService` exposes `managementSnapshot`, replay-latest
-`managementSnapshots`, `managementRevisions`, `command(pluginId, request)`, and
-`updateIdleTimeout(request)`. It owns one short global settings-mutation tail and
-one active-command record per plugin. Equal commands join. A different command
-for the same transitioning plugin returns a typed `transitioning` 409. Different
-plugins can start/stop concurrently; only shared config writes enter the global
-tail.
+`PluginLifecycleService` exposes synchronous `managementSnapshot`, the sole
+change stream `managementRevisions`, `command(pluginId, request)`, and
+`updateIdleTimeout(request)`. It retains one plain response only for material
+change comparison; there is no unused snapshot stream. It owns one short global
+settings-mutation tail and one active-command record per plugin. Equal commands
+join. A different command for the same transitioning plugin returns a typed
+`transitioning` 409. Different plugins can start/stop concurrently; only shared
+config writes enter the global tail.
 
 Disable uses explicit downward state transitions; no lower layer invokes a
 settings callback:
@@ -587,15 +605,48 @@ the listed source files and committed with their stage.
 | Bridge policy/settings | `plugin_runtime.dart`, `plugin_lifecycle_repository.dart`, `plugin_lifecycle_service.dart`, `bridge_settings.dart`, `bridge_settings_repository.dart`, `bridge_runtime_runner.dart`. |
 | Dormancy cleanup | Add `plugin_catalog_hydration_listener.dart`; modify `catalog_import_repository.dart`, `catalog_import_service.dart`, session/project repositories, `project_activity_service.dart`, `orchestrator.dart`. |
 
-### Stage 12 / former PR #510 files
+### Stage 12-P01 — attach-only residency and diagnostics
 
 | Workspace | Production files/classes |
 |---|---|
-| Shared | Add `plugin_management.dart`; modify `sesori_sse_event.dart` and barrel exports. |
-| Bridge settings/policy | `bridge_settings.dart`, `bridge_settings_repository.dart`, `plugin_runtime.dart`, `plugin_lifecycle_repository.dart`, `plugin_lifecycle_service.dart`. |
-| Triggers/composition | Keep `plugin_catalog_hydration_listener.dart`; widen its ready-ID source through `plugin_lifecycle_service.dart`; modify `catalog_import_service.dart`, `bridge_runtime_runner.dart`, `orchestrator.dart`. |
-| Routes | Add `get_plugin_management_handler.dart`, `post_plugin_lifecycle_command_handler.dart`, `patch_plugin_idle_timeout_handler.dart`; wire the same instances into relay/debug routing. |
-| Client exhaustive switches | Only minimum `SseEvent`/tracker changes needed for the additive invalidation event; no management feature yet. |
+| Plugin contract/OpenCode | Add generic `PluginResidencyPolicy` and descriptor declaration; OpenCode maps `--opencode-no-auto-start` to resident policy. |
+| Bridge policy/composition | Carry policy in registered lifecycle metadata, return effective timeout `0` for resident plugins, and leave persisted settings untouched. |
+| Diagnostics | Add generic debug-level generation start/stop and idle-suspension outcome logs without duplicating warning/error paths. |
+
+### Stage 12-P02 — read-only management snapshots
+
+| Workspace | Production files/classes |
+|---|---|
+| Shared | Add only management read enums/rows/response in `plugin_management.dart`, generated output, tests, and barrel export. |
+| Bridge policy/routes | Add stable management mapping in `plugin_lifecycle_service.dart`, `get_plugin_management_handler.dart`, and relay/debug route composition. No mutation API or SSE yet. |
+
+### Stage 12-P03 — revision and SSE invalidation
+
+| Workspace | Production files/classes |
+|---|---|
+| Shared | Add the compatible management `revision` field and `plugin.management.changed` SSE variant; regenerate sources. |
+| Bridge/client seam | Publish revisions only for materially changed settled snapshots, map them to SSE in `orchestrator.dart`, and update minimum client exhaustive switches without management UI. |
+
+### Stage 12-P04 — live idle-timeout mutations
+
+| Workspace | Production files/classes |
+|---|---|
+| Shared/settings | Add typed apply-all, set-override, and clear-override requests; retain integer validation and unknown settings fields. |
+| Bridge policy/routes | Add the global settings mutation tail, live timer resynchronization, and `patch_plugin_idle_timeout_handler.dart`. |
+
+### Stage 12-P05 — transactional plugin disable
+
+| Workspace | Production files/classes |
+|---|---|
+| Runtime/repository | Add enabled/draining/disabled access gates plus `prepareDisable`, `commitDisable`, and `rollbackDisable`, preserving current generation/stream/commit fencing. |
+| Shared/policy/routes | Add the disable command variant, typed conflicts, per-plugin command serialization, persistence rollback, and `post_plugin_lifecycle_command_handler.dart` in the shared relay/debug router. |
+
+### Stage 12-P06 — remaining commands and dynamic eligibility
+
+| Workspace | Production files/classes |
+|---|---|
+| Shared/policy | Add enable/restart/refresh request variants, setup-inspection fencing, and live eligibility/default updates. |
+| Catalog/composition | Expose runtime-backed enabled/import-eligible sets through the existing `CatalogImportRepository`, make `CatalogImportService` validate those sets, and retain the single marker-gated hydration listener without changing runner/orchestrator ownership. |
 
 ### Stage 13 / former PR #511 files
 
@@ -652,11 +703,20 @@ the listed source files and committed with their stage.
 - remove startup enumeration that wakes dormant plugins; reconnect
   reconciliation remains source-scoped and active-only.
 
-### Stage 12 / former PR #510 — headless management
+### Stage 12 / former PR #510 — reviewable headless-management series
 
-- simplified management DTOs/routes, safe/force commands, revision/SSE;
-- live denylist mutations and setup refresh;
-- numeric idle-timeout updates and one hydration listener.
+- P01: attach-only resident policy and lifecycle diagnostics;
+- P02: read-only management DTO and GET snapshot;
+- P03: process-local revision and additive SSE invalidation;
+- P04: live numeric idle-timeout mutations;
+- P05: end-to-end safe/force disable with transactional runtime access and
+  persistence rollback;
+- P06: enable/restart/refresh, stale setup fencing, and dynamic default/catalog
+  eligibility.
+
+The exact branches, PR titles, dependency gates, and per-slice verification are
+tracked in `.plan/active/setup-aware-plugin-management`. Frozen PR #510 remains
+source material only and is never rebased, merged, or cherry-picked.
 
 ### Stage 13 / former PR #511 — redesigned mobile plugin settings
 
@@ -666,10 +726,9 @@ the listed source files and committed with their stage.
   settings primitives;
 - focused interaction, conflict/force, reconnect, and route tests.
 
-P01A starts at latest `origin/main`; each later replacement branch stacks on its
-verified predecessor. Frozen #508 remains reference material and is not
-rewritten. Existing descendants #509-#511 are rebuilt or retargeted only after
-P01D is complete.
+Each remaining replacement branch starts from the latest merged predecessor.
+Frozen #508-#511 remain reference material and are not rewritten. Stage 13 is
+rebuilt only after Stage 12-P06 merges.
 
 ## Verification
 

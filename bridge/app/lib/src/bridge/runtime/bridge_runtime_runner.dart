@@ -620,7 +620,12 @@ class BridgeRuntimeRunner {
             idleTimerScheduler: const PluginIdleTimerScheduler(),
           )..registerPlugins(
             plugins: [
-              for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
+              for (final descriptor in knownPlugins)
+                (
+                  id: descriptor.id,
+                  displayName: descriptor.displayName,
+                  residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
+                ),
             ],
           );
       pluginLifecycleService = activePluginLifecycleService;

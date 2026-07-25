@@ -18,9 +18,9 @@ void main() {
     final service = _service(
       runtime: runtime,
       plugins: const [
-        (id: "zeta", displayName: "Zeta"),
-        (id: "beta", displayName: "Beta"),
-        (id: "alpha", displayName: "Alpha"),
+        (id: "zeta", displayName: "Zeta", residencyPolicy: PluginResidencyPolicy.transient),
+        (id: "beta", displayName: "Beta", residencyPolicy: PluginResidencyPolicy.transient),
+        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
       ],
     );
     addTearDown(service.dispose);
@@ -49,8 +49,8 @@ void main() {
     final service = _service(
       runtime: runtime,
       plugins: const [
-        (id: "alpha", displayName: "Alpha"),
-        (id: "opencode", displayName: "OpenCode"),
+        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
+        (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.transient),
       ],
     );
     addTearDown(service.dispose);
@@ -78,8 +78,8 @@ void main() {
     final service = _service(
       runtime: runtime,
       plugins: const [
-        (id: "opencode", displayName: "OpenCode"),
-        (id: "alpha", displayName: "Alpha"),
+        (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.transient),
+        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
       ],
     );
     addTearDown(service.dispose);
@@ -102,8 +102,8 @@ void main() {
     final service = _service(
       runtime: runtime,
       plugins: const [
-        (id: "opencode", displayName: "OpenCode"),
-        (id: "alpha", displayName: "Alpha"),
+        (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.transient),
+        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
       ],
     );
     addTearDown(service.dispose);
@@ -127,8 +127,8 @@ void main() {
     final service = _service(
       runtime: runtime,
       plugins: const [
-        (id: "alpha", displayName: "Alpha"),
-        (id: "beta", displayName: "Beta"),
+        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
+        (id: "beta", displayName: "Beta", residencyPolicy: PluginResidencyPolicy.transient),
       ],
     );
     addTearDown(service.dispose);
@@ -153,8 +153,8 @@ void main() {
     final service = _service(
       runtime: runtime,
       plugins: const [
-        (id: "opencode", displayName: "OpenCode"),
-        (id: "cursor", displayName: "Cursor"),
+        (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.transient),
+        (id: "cursor", displayName: "Cursor", residencyPolicy: PluginResidencyPolicy.transient),
       ],
     );
     addTearDown(service.dispose);
@@ -193,8 +193,8 @@ void main() {
     final service = _service(
       runtime: runtime,
       plugins: const [
-        (id: "beta", displayName: "Beta"),
-        (id: "alpha", displayName: "Alpha"),
+        (id: "beta", displayName: "Beta", residencyPolicy: PluginResidencyPolicy.transient),
+        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
       ],
     );
     addTearDown(service.dispose);
@@ -231,7 +231,9 @@ void main() {
     addTearDown(runtime.dispose);
     final service = _service(
       runtime: runtime,
-      plugins: const [(id: "alpha", displayName: "Alpha")],
+      plugins: const [
+        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
+      ],
     );
     addTearDown(service.dispose);
 
@@ -244,12 +246,17 @@ void main() {
   test("ready plugin ids replay setup-ready dormant plugins", () async {
     final repository = _IdleLifecycleRepository(initialState: PluginRuntimeState.dormant);
     addTearDown(repository.dispose);
-    final service = PluginLifecycleService(
-      lifecycleRepository: repository,
-      preferredDefaultPluginId: legacyMissingPluginId,
-      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-      idleTimerScheduler: const PluginIdleTimerScheduler(),
-    )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
+    final service =
+        PluginLifecycleService(
+          lifecycleRepository: repository,
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+          idleTimerScheduler: const PluginIdleTimerScheduler(),
+        )..registerPlugins(
+          plugins: const [
+            (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
+          ],
+        );
     addTearDown(service.dispose);
     service.initialize(
       disabledPluginIds: const {},
@@ -264,12 +271,17 @@ void main() {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
     final timerScheduler = _ControllablePluginIdleTimerScheduler();
-    final service = PluginLifecycleService(
-      lifecycleRepository: repository,
-      preferredDefaultPluginId: legacyMissingPluginId,
-      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-      idleTimerScheduler: timerScheduler,
-    )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
+    final service =
+        PluginLifecycleService(
+          lifecycleRepository: repository,
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+          idleTimerScheduler: timerScheduler,
+        )..registerPlugins(
+          plugins: const [
+            (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
+          ],
+        );
     addTearDown(service.dispose);
     service.initialize(
       disabledPluginIds: const {},
@@ -293,20 +305,25 @@ void main() {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
     final timerScheduler = _ControllablePluginIdleTimerScheduler();
-    final service = PluginLifecycleService(
-      lifecycleRepository: repository,
-      preferredDefaultPluginId: legacyMissingPluginId,
-      bridgeSettingsRepository: createTestBridgeSettingsRepository(
-        settings: const BridgeSettings(
-          plugins: BridgePluginSettings(
-            settingsByPluginId: {
-              "one": PluginLifecycleSettings(idleTimeoutMins: 0),
-            },
+    final service =
+        PluginLifecycleService(
+          lifecycleRepository: repository,
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: createTestBridgeSettingsRepository(
+            settings: const BridgeSettings(
+              plugins: BridgePluginSettings(
+                settingsByPluginId: {
+                  "one": PluginLifecycleSettings(idleTimeoutMins: 0),
+                },
+              ),
+            ),
           ),
-        ),
-      ),
-      idleTimerScheduler: timerScheduler,
-    )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
+          idleTimerScheduler: timerScheduler,
+        )..registerPlugins(
+          plugins: const [
+            (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
+          ],
+        );
     addTearDown(service.dispose);
     service.initialize(
       disabledPluginIds: const {},
@@ -318,6 +335,44 @@ void main() {
 
     expect(timerScheduler.timers, isEmpty);
     expect(repository.stopCalls, isZero);
+  });
+
+  test("resident policy overrides a positive timeout without rewriting settings", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final settingsRepository = createTestBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(
+          settingsByPluginId: {
+            "one": PluginLifecycleSettings(idleTimeoutMins: 45),
+          },
+        ),
+      ),
+    );
+    final service =
+        PluginLifecycleService(
+          lifecycleRepository: repository,
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: settingsRepository,
+          idleTimerScheduler: timerScheduler,
+        )..registerPlugins(
+          plugins: const [
+            (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.resident),
+          ],
+        );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(timerScheduler.timers, isEmpty);
+    expect(repository.stopCalls, isZero);
+    expect(settingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: "one"), 45);
   });
 }
 
@@ -443,8 +498,7 @@ class _ControllablePluginIdleTimerScheduler implements PluginIdleTimerScheduler 
 }
 
 class _ControllablePluginIdleTimer implements Timer {
-  _ControllablePluginIdleTimer({required this.duration, required void Function() onElapsed})
-    : _onElapsed = onElapsed;
+  _ControllablePluginIdleTimer({required this.duration, required void Function() onElapsed}) : _onElapsed = onElapsed;
 
   final Duration duration;
   final void Function() _onElapsed;

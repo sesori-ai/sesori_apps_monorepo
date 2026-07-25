@@ -15,6 +15,15 @@ void main() {
       expect(() => descriptor.validateConfig(const PluginConfig.empty()), returnsNormally);
     });
 
+    test('uses configured transient residency by default', () {
+      const descriptor = _MinimalDescriptor();
+
+      expect(
+        descriptor.residencyPolicy(config: const PluginConfig.empty()),
+        PluginResidencyPolicy.transient,
+      );
+    });
+
     test('a descriptor can reject configuration with PluginConfigException', () {
       const descriptor = _ValidatingDescriptor();
       const config = PluginConfig(values: {'no-auto-start': true, 'port': null});

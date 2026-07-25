@@ -608,6 +608,8 @@ class PluginRuntime {
       );
     }
     if (!hadPlugin) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
+    final generationLabel = slot.generation?.toString() ?? "pending";
+    Log.d('Stopping plugin "$pluginId" generation $generationLabel (${intent.name})');
     final transitionOwner = Object();
     final transitionCompleter = Completer<void>();
     slot
@@ -647,6 +649,7 @@ class PluginRuntime {
     if (failureMessage != null) {
       return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: failureMessage);
     }
+    Log.d('Plugin "$pluginId" generation $generationLabel stopped');
     return hadPlugin
         ? PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot))
         : PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
@@ -910,8 +913,8 @@ class PluginRuntime {
     required bool clearTransitionOnSettle,
   }) {
     final pluginId = slot.registration.descriptor.id;
-    Log.v('Starting plugin "$pluginId" generation at ${_clock.now().toIso8601String()}');
     final generation = (slot.generation ?? 0) + 1;
+    Log.d('Starting plugin "$pluginId" generation $generation at ${_clock.now().toIso8601String()}');
     final abortController = StartAbortController();
     slot
       ..generation = generation
@@ -1041,6 +1044,7 @@ class PluginRuntime {
         },
       );
       _applyStatus(slot: slot, generation: generation, status: started.currentStatus);
+      Log.d('Plugin "$pluginId" generation $generation started (${slot.state.name})');
       if (_apiDisposalStarted) await _disposeApi(started.api);
       return started;
     } on PluginStartAbortedException {

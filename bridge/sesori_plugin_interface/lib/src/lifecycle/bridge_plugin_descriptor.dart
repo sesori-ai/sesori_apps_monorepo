@@ -7,6 +7,7 @@ import "plugin_availability.dart";
 import "plugin_config.dart";
 import "plugin_option.dart";
 import "plugin_project_ownership.dart";
+import "plugin_residency_policy.dart";
 import "plugin_setup_status.dart";
 import "plugin_state_storage.dart";
 import "runtime_provision_progress.dart";
@@ -50,6 +51,14 @@ abstract class BridgePluginDescriptor {
   ///
   /// Must be pure: no I/O, no side effects. The default accepts everything.
   void validateConfig(PluginConfig config) {}
+
+  /// Declares whether an activated plugin may be suspended after idle time.
+  ///
+  /// This is derived from validated plugin configuration without I/O. The
+  /// default applies the bridge's configured timeout.
+  PluginResidencyPolicy residencyPolicy({required PluginConfig config}) {
+    return PluginResidencyPolicy.transient;
+  }
 
   /// Inspects whether this plugin's runtime and authentication are already set
   /// up without installing, starting, or initiating a login flow.

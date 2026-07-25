@@ -29,8 +29,8 @@ void main() {
             )
             ..registerPlugins(
               plugins: const [
-                (id: "ready", displayName: "Ready"),
-                (id: "blocked", displayName: "Blocked"),
+                (id: "ready", displayName: "Ready", residencyPolicy: PluginResidencyPolicy.transient),
+                (id: "blocked", displayName: "Blocked", residencyPolicy: PluginResidencyPolicy.transient),
               ],
             )
             ..initialize(

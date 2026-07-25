@@ -2,13 +2,12 @@
 
 ## Plan State
 
-- **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
-  stack in progress
-- **Base:** `origin/main` at `2bb376b2`
-- **Current branch:** `setup-aware-plugin-lifecycle-dormant-runtime`
-- **Current stage:** Stage 11-P02 — dormant runtime and numeric idle timeout rebuild
-- **Next action:** monitor ready PR #556 through review and CI, then merge when
-  approved
+- **Status:** Stage 10 and Stage 11 replacement work are merged; Stage 12 has
+  been redesigned as a six-PR child series
+- **Base:** `origin/main` at `41e03f12`
+- **Current branch:** `setup-aware-plugin-management-resident-attach`
+- **Current stage:** Stage 12-P01 — attach-only residency and diagnostics
+- **Next action:** commit and open verified Stage 12-P01 when explicitly requested
 
 ## Frozen Oversized Stack
 
@@ -37,8 +36,8 @@ run their focused verification again.
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 merged as `96f63c69` |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
-| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 ready; synchronized and locally verified |
-| [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
+| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 merged as `41e03f12` |
+| [ ] | Stage 12 — headless management | six-PR child series | tracked in `setup-aware-plugin-management` |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
 
 ## Locked Redesign Deltas
@@ -53,6 +52,8 @@ run their focused verification again.
 - Client stores last-used per bridge after the settings stage.
 - Every ready plugin starts dormant.
 - Idle configuration is integer minutes; `<= 0` never idle-stops after demand.
+- Descriptor-declared resident mode has effective timeout `0` without mutating
+  persisted timeout settings; OpenCode `--opencode-no-auto-start` uses it.
 - Headless management removes authority/order/serialized enabled.
 - Settings work targets the merged Prego Settings landing/sub-page architecture.
 - No compatibility machinery is retained for any contract from the superseded
@@ -281,15 +282,31 @@ run their focused verification again.
   acceptances newer than its status snapshot. Full bridge-app (2,094 tests),
   OpenCode (401), ACP (151), and Codex (191) suites plus fatal analysis in all
   four packages passed.
+- PR #556 merged into `main` as `41e03f12` with CI passing 11/11 and no
+  unresolved review threads.
+
+### 2026-07-25 — Stage 12 redesign
+
+- Re-inspected frozen PR #510 at substantive commit `c4104e73`; its 36-file,
+  3,286-addition diff remains source material only.
+- Split delivery into an independently tracked six-PR series: attach-only
+  residency/diagnostics, read snapshots, revision/SSE, timeout mutations,
+  transactional runtime mechanics, and lifecycle commands/dynamic eligibility.
+- Preserved current-main architecture that the frozen descendant predates,
+  including durable commit fencing, OpenCode-preferred default selection,
+  operation-stream cancellation, and the single hydration listener.
+- The architecture review's specificity gate was corrected in one permitted
+  recheck. Its valid local finding removed a duplicate management snapshot
+  stream. Its requested broad runner/orchestrator composition migration was
+  kept out of this series; P06 uses the existing catalog repository seam and
+  introduces no new composition crossing.
 
 ## Delivery Rules
 
-- Start P01A from latest `origin/main`; stack P01B-P01D from each verified
-  predecessor.
+- Start every remaining child slice from latest merged `origin/main`; do not
+  stack an open replacement PR on another open replacement PR.
 - Keep #508 frozen until replacement PRs exist; do not force-rewrite it.
-- Rebuild or retarget #509-#511 only after P01D is complete.
-- Open each replacement PR only after its focused checks pass, then monitor that
-  PR immediately.
-- Temporary OpenCode-only release gate PR #555 shipped and exact revert #557
-  landed before #556 was synchronized. Continue to merge later `main` drift
-  without rebasing before marking the draft ready.
+- Keep #510 and #511 frozen; rebuild their behavior rather than retargeting
+  their obsolete descendant branches.
+- Use the exact six titles and fixed total in the child plan. Open and monitor
+  one replacement PR at a time after its focused checks pass.

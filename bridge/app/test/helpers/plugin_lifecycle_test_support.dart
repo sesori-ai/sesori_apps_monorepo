@@ -22,13 +22,16 @@ Future<PluginLifecycleService> createPluginLifecycleService({
   final runtime = createTestPluginRuntime(plugins: plugins);
   final service =
       PluginLifecycleService(
-            lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-            preferredDefaultPluginId: legacyMissingPluginId,
-            bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-            idleTimerScheduler: const PluginIdleTimerScheduler(),
+          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+          idleTimerScheduler: const PluginIdleTimerScheduler(),
         )
         ..registerPlugins(
-          plugins: [for (final plugin in plugins) (id: plugin.id, displayName: plugin.id)],
+          plugins: [
+            for (final plugin in plugins)
+              (id: plugin.id, displayName: plugin.id, residencyPolicy: PluginResidencyPolicy.transient),
+          ],
         )
         ..initialize(
           disabledPluginIds: const {},

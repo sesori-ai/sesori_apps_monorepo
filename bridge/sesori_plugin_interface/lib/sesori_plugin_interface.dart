@@ -15,6 +15,7 @@ export "src/lifecycle/plugin_config.dart";
 export "src/lifecycle/plugin_diagnostics.dart";
 export "src/lifecycle/plugin_option.dart";
 export "src/lifecycle/plugin_project_ownership.dart";
+export "src/lifecycle/plugin_residency_policy.dart";
 export "src/lifecycle/plugin_setup_status.dart";
 export "src/lifecycle/plugin_start_exception.dart";
 export "src/lifecycle/plugin_state_storage.dart";

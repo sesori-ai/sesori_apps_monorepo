@@ -247,6 +247,11 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   void validateConfig(PluginConfig config) => validateConfigValues(config);
 
   @override
+  PluginResidencyPolicy residencyPolicy({required PluginConfig config}) {
+    return config.flag("no-auto-start") ? PluginResidencyPolicy.resident : PluginResidencyPolicy.transient;
+  }
+
+  @override
   Future<PluginSetupStatus> inspectSetup({
     required PluginConfig config,
     required HostProcessService processes,

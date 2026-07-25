@@ -32,7 +32,9 @@ void main() {
             idleTimerScheduler: const PluginIdleTimerScheduler(),
           )
           ..registerPlugins(
-            plugins: const [(id: "opencode", displayName: "OpenCode")],
+            plugins: const [
+              (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.transient),
+            ],
           )
           ..initialize(
             disabledPluginIds: const {"opencode"},

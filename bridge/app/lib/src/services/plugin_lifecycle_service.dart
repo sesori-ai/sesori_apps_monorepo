@@ -15,7 +15,7 @@ typedef PluginCompositionView = ({
   Map<String, PluginProjectOwnership> projectOwnershipById,
 });
 
-typedef RegisteredPluginMetadata = ({String id, String displayName});
+typedef RegisteredPluginMetadata = ({String id, String displayName, PluginResidencyPolicy residencyPolicy});
 
 typedef PluginStartupPolicy = ({
   List<String> eligiblePluginIds,
@@ -47,6 +47,7 @@ class PluginLifecycleService {
   final PluginIdleTimerScheduler _idleTimerScheduler;
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
+  Map<String, PluginResidencyPolicy>? _residencyPolicyById;
   List<String>? _eligiblePluginIds;
   List<String>? _setupReadyPluginIds;
   Map<String, PluginMetadata> _metadataById = <String, PluginMetadata>{};
@@ -71,6 +72,9 @@ class PluginLifecycleService {
       });
     _registeredPlugins = List<RegisteredPluginMetadata>.unmodifiable(sorted);
     _knownPluginIds = Set<String>.unmodifiable(ids);
+    _residencyPolicyById = Map<String, PluginResidencyPolicy>.unmodifiable({
+      for (final plugin in plugins) plugin.id: plugin.residencyPolicy,
+    });
   }
 
   PluginStartupPolicy initialize({
@@ -385,6 +389,9 @@ class PluginLifecycleService {
   }
 
   int _effectiveIdleTimeoutMins(String pluginId) {
+    final residencyPolicy = _residencyPolicyById?[pluginId];
+    if (residencyPolicy == null) throw StateError("Plugin lifecycle has not been registered.");
+    if (residencyPolicy == PluginResidencyPolicy.resident) return 0;
     return _bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId);
   }
 
@@ -395,9 +402,23 @@ class PluginLifecycleService {
     if (_disposing || !identical(_idleTimers[pluginId]?.timer, timer)) return;
     _idleTimers.remove(pluginId);
     final snapshot = _lifecycleRepository.snapshot.where((entry) => entry.pluginId == pluginId).firstOrNull;
-    if (snapshot == null || _effectiveIdleTimeoutMins(pluginId) <= 0 || !_isIdleCandidate(snapshot)) return;
+    final timeoutMins = _effectiveIdleTimeoutMins(pluginId);
+    if (snapshot == null || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) return;
+    Log.d('Plugin "$pluginId" idle timeout elapsed (${timeoutMins}m); requesting safe suspension');
     try {
-      await _lifecycleRepository.stopSafely(pluginId: pluginId);
+      final result = await _lifecycleRepository.stopSafely(pluginId: pluginId);
+      switch (result) {
+        case PluginRuntimeCommandApplied():
+          break;
+        case PluginRuntimeCommandCurrent():
+          Log.d('Idle suspension for plugin "$pluginId" was already current');
+        case PluginRuntimeCommandConflict(:final reasons):
+          Log.d(
+            'Idle suspension deferred for plugin "$pluginId" (${reasons.map((reason) => reason.name).join(", ")})',
+          );
+        case PluginRuntimeCommandFailed(:final message):
+          Log.w('Idle suspension failed for plugin "$pluginId": $message');
+      }
     } on Object catch (error, stackTrace) {
       Log.w('Idle suspension failed for plugin "$pluginId"', error, stackTrace);
     }
