@@ -2,10 +2,10 @@
 
 ## Current State
 
-- **Base:** reviewed P03 head `e764baa2` (PR #568 remains open)
+- **Base:** `origin/main` at P03 merge `00a0da77`
 - **Current branch:** `setup-aware-plugin-management-idle-timeouts`
-- **Current slice:** Stage 12-P04 / step 4 of 6, verified local successor
-- **Next action:** monitor PR #568; after merge, integrate `origin/main` into P04 and reverify
+- **Current slice:** Stage 12-P04 / step 4 of 6, verified against merged P03
+- **Next action:** push and open the step-4/6 PR
 
 ## Delivery
 
@@ -13,8 +13,8 @@
 |---|---|---|---|
 | [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 merged as `f8f05c33` |
 | [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 merged as `19ca475a` |
-| [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 green 13/13; zero unresolved threads |
-| [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | local verified implementation; no PR |
+| [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
+| [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | verified against `00a0da77`; no PR |
 | [ ] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | waits for P04 merge |
 | [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | waits for P05 merge |
 
@@ -138,6 +138,7 @@
   suppression in `e764baa2`, addressing both Codex review findings. Both
   confirmed-Bot threads were replied to and resolved; refreshed CI passed 13/13
   and Cubic approved the reviewed head.
+- PR #568 merged as `00a0da77` with 14/14 checks and zero unresolved threads.
 
 ### 2026-07-25 — P04 live idle-timeout mutations
 
@@ -153,7 +154,10 @@
   lifecycle, handler, and Orchestrator tests passed (42).
 - Fatal analysis passed in shared and bridge app; `git diff --check` passed.
 - Aristotle implementation review approved the complete production diff with
-  no architecture findings. P04 remains a local successor until P03 merges.
+  no architecture findings.
+- Merged P03's `00a0da77` `origin/main` result into the local successor.
+  Post-merge reverification passed the same shared tests (6), focused bridge
+  tests (42), and fatal analyzers before the P04 PR opens.
 
 ## Delivery Rules
 
