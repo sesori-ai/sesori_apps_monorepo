@@ -242,7 +242,7 @@ void main() {
     expect(runtime.activePluginIds, isEmpty);
   });
 
-  test("management revisions publish only settled externally visible changes", () async {
+  test("management snapshot tokens publish only externally visible changes", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["alpha"]);
     final service =
         _service(
@@ -258,23 +258,75 @@ void main() {
       await service.dispose();
       await runtime.dispose();
     });
-    final revisions = <int>[];
-    final subscription = service.managementRevisions.listen(revisions.add);
+    final snapshotTokens = <String>[];
+    final subscription = service.managementSnapshotTokens.listen(snapshotTokens.add);
     addTearDown(subscription.cancel);
 
-    expect(service.managementSnapshot.revision, 0);
+    final initialToken = service.managementSnapshot.snapshotToken;
+    expect(initialToken, isNotNull);
+    expect(initialToken, hasLength(22));
 
     service.applyAvailability(availablePluginIds: const {});
     await Future<void>.delayed(Duration.zero);
 
-    expect(revisions, [1]);
-    expect(service.managementSnapshot.revision, 1);
+    expect(snapshotTokens, hasLength(1));
+    expect(service.managementSnapshot.snapshotToken, snapshotTokens.single);
+    expect(snapshotTokens.single, isNot(initialToken));
     expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.blocked);
 
     service.applyAvailability(availablePluginIds: const {});
     await Future<void>.delayed(Duration.zero);
 
-    expect(revisions, [1]);
+    expect(snapshotTokens, hasLength(1));
+  });
+
+  test("management tokens do not strand transient or unrelated plugin changes", () async {
+    final alpha = _FakePluginApi(id: "alpha");
+    final beta = _FakePluginApi(id: "beta");
+    final runtime = createTestPluginRuntime(plugins: [alpha, beta]);
+    final service =
+        _service(
+          runtime: runtime,
+          plugins: const [
+            (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
+            (id: "beta", displayName: "Beta", residencyPolicy: PluginResidencyPolicy.transient),
+          ],
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"alpha": PluginSetupReady(), "beta": PluginSetupReady()},
+        );
+    addTearDown(() async {
+      await service.dispose();
+      await runtime.dispose();
+    });
+    final snapshotTokens = <String>[];
+    final subscription = service.managementSnapshotTokens.listen(snapshotTokens.add);
+    addTearDown(subscription.cancel);
+    final initialToken = service.managementSnapshot.snapshotToken;
+    await Future<void>.delayed(Duration.zero);
+
+    runtime.emitRuntimeState(
+      pluginId: "alpha",
+      state: PluginRuntimeState.starting,
+      transition: PluginRuntimeTransition.starting,
+    );
+
+    expect(service.managementSnapshot.plugins.first.runtimeState, shared.PluginRuntimeState.starting);
+    expect(snapshotTokens, hasLength(1));
+    expect(service.managementSnapshot.snapshotToken, snapshotTokens.last);
+
+    runtime.emitRuntimeState(pluginId: "beta", state: PluginRuntimeState.degraded);
+
+    expect(service.managementSnapshot.plugins.last.runtimeState, shared.PluginRuntimeState.degraded);
+    expect(snapshotTokens, hasLength(2));
+    expect(service.managementSnapshot.snapshotToken, snapshotTokens.last);
+
+    runtime.emitRuntimeState(pluginId: "alpha", state: PluginRuntimeState.active);
+
+    expect(service.managementSnapshot.plugins.first.runtimeState, shared.PluginRuntimeState.active);
+    expect(snapshotTokens, hasLength(3));
+    expect(service.managementSnapshot.snapshotToken, snapshotTokens.last);
+    expect({initialToken, ...snapshotTokens}, hasLength(4));
   });
 
   test("runtime snapshots drive selectable metadata and derived default", () async {

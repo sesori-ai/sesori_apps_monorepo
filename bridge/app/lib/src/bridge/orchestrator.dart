@@ -502,7 +502,7 @@ class Orchestrator {
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
       sessionPromptService: sessionPromptService,
       catalogImportProgress: catalogImportService.progress,
-      pluginManagementRevisions: _pluginLifecycleService.managementRevisions,
+      pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -630,7 +630,7 @@ class OrchestratorSession {
     required BridgeEventMapper mapper,
     required SessionPromptService sessionPromptService,
     required Stream<CatalogImportProgress> catalogImportProgress,
-    required Stream<int> pluginManagementRevisions,
+    required Stream<String> pluginManagementSnapshotTokens,
     required StreamController<int> bytesSentController,
     required StreamController<SesoriSseEvent> localWireEventsController,
     required FailureReporter failureReporter,
@@ -680,9 +680,9 @@ class OrchestratorSession {
           _enqueueWireEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
         })
         .addTo(_catalogImportSubscriptions);
-    pluginManagementRevisions
-        .listen((revision) {
-          _enqueueWireEvent(SesoriSseEvent.pluginManagementChanged(revision: revision));
+    pluginManagementSnapshotTokens
+        .listen((snapshotToken) {
+          _enqueueWireEvent(SesoriSseEvent.pluginManagementChanged(snapshotToken: snapshotToken));
         })
         .addTo(_subscriptions);
     _sessionPromptService.promptDefaultsChanges

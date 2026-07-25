@@ -523,10 +523,10 @@ as CatalogImportProgress,
 @JsonSerializable()
 
 class SesoriPluginManagementChanged implements SesoriSseEvent {
-  const SesoriPluginManagementChanged({required this.revision, final  String? $type}): $type = $type ?? 'plugin.management.changed';
+  const SesoriPluginManagementChanged({required this.snapshotToken, final  String? $type}): $type = $type ?? 'plugin.management.changed';
   factory SesoriPluginManagementChanged.fromJson(Map<String, dynamic> json) => _$SesoriPluginManagementChangedFromJson(json);
 
- final  int revision;
+ final  String snapshotToken;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -545,16 +545,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginManagementChanged&&(identical(other.revision, revision) || other.revision == revision));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginManagementChanged&&(identical(other.snapshotToken, snapshotToken) || other.snapshotToken == snapshotToken));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,revision);
+int get hashCode => Object.hash(runtimeType,snapshotToken);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.pluginManagementChanged(revision: $revision)';
+  return 'SesoriSseEvent.pluginManagementChanged(snapshotToken: $snapshotToken)';
 }
 
 
@@ -565,7 +565,7 @@ abstract mixin class $SesoriPluginManagementChangedCopyWith<$Res> implements $Se
   factory $SesoriPluginManagementChangedCopyWith(SesoriPluginManagementChanged value, $Res Function(SesoriPluginManagementChanged) _then) = _$SesoriPluginManagementChangedCopyWithImpl;
 @useResult
 $Res call({
- int revision
+ String snapshotToken
 });
 
 
@@ -582,10 +582,10 @@ class _$SesoriPluginManagementChangedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? revision = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? snapshotToken = null,}) {
   return _then(SesoriPluginManagementChanged(
-revision: null == revision ? _self.revision : revision // ignore: cast_nullable_to_non_nullable
-as int,
+snapshotToken: null == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

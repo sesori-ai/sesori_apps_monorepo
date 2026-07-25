@@ -53,6 +53,7 @@ class TestPluginRuntime extends PluginRuntime {
   final Map<String, BridgePluginApi> _plugins;
   final Set<String> _eligiblePluginIds;
   final Map<String, PluginRuntimeState> _states = {};
+  final Map<String, PluginRuntimeTransition> _transitions = {};
   final StreamController<List<PluginRuntimeSnapshot>> _snapshotChanges = StreamController.broadcast(sync: true);
   bool generationCurrent = true;
   int currentGeneration = 1;
@@ -97,9 +98,14 @@ class TestPluginRuntime extends PluginRuntime {
   @override
   Stream<List<PluginRuntimeSnapshot>> get snapshots => Rx.concat([Stream.value(snapshot), _snapshotChanges.stream]);
 
-  void emitRuntimeState({required String pluginId, required PluginRuntimeState state}) {
+  void emitRuntimeState({
+    required String pluginId,
+    required PluginRuntimeState state,
+    PluginRuntimeTransition transition = PluginRuntimeTransition.none,
+  }) {
     if (!_plugins.containsKey(pluginId)) throw ArgumentError.value(pluginId, "pluginId", "is not registered");
     _states[pluginId] = state;
+    _transitions[pluginId] = transition;
     _snapshotChanges.add(snapshot);
   }
 
@@ -208,7 +214,7 @@ class TestPluginRuntime extends PluginRuntime {
       state: _states[plugin.id] ?? PluginRuntimeState.active,
       workState: PluginWorkState.idle,
       leaseCount: 0,
-      transition: PluginRuntimeTransition.none,
+      transition: _transitions[plugin.id] ?? PluginRuntimeTransition.none,
     );
   }
 }

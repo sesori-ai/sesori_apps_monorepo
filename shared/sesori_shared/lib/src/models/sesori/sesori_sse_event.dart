@@ -52,7 +52,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("plugin.management.changed")
   const factory SesoriSseEvent.pluginManagementChanged({
-    required int revision,
+    required String snapshotToken,
   }) = SesoriPluginManagementChanged;
 
   // ---------------------------------------------------------------------------

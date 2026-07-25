@@ -4,8 +4,9 @@
 
 - **Plan slug:** `setup-aware-plugin-management`
 - **Parent plan:** `.plan/active/setup-aware-plugin-lifecycle`
-- **Status:** redesigned from frozen PR #510; Stage 12-P01 is active
-- **Implementation base:** `origin/main` at `41e03f12`
+- **Status:** redesigned from frozen PR #510; P01-P02 merged and P03 is open as
+  PR #568
+- **Current implementation base:** `origin/main` at `19ca475a`
 - **Reference only:** PR #510, substantive commit `c4104e73`, fixture follow-up
   `bf0433b8`
 
@@ -32,7 +33,7 @@ public contract that a later slice must break.
   in lockstep and receive no compatibility shims.
 - `PluginRuntime` owns mechanics; `PluginLifecycleRepository` maps them;
   `PluginLifecycleService` owns policy, persistence sequencing, management
-  snapshots, and revisions; handlers only parse/map HTTP; `Orchestrator` alone
+  snapshots, and change tokens; handlers only parse/map HTTP; `Orchestrator` alone
   emits SSE.
 - The existing `PluginCatalogHydrationListener` remains the only automatic
   hydration trigger. Management code widens its ready-ID input rather than
@@ -51,7 +52,7 @@ public contract that a later slice must break.
 |---|---|---|---|
 | 1/6 | `setup-aware-plugin-management-resident-attach` | `[setup-aware-plugin-management] fix(bridge): keep attach-only plugins resident [step 1/6]` | Generic residency declaration, OpenCode mapping, effective timeout `0`, and start/stop diagnostics. |
 | 2/6 | `setup-aware-plugin-management-read-snapshots` | `[setup-aware-plugin-management] feat(bridge): expose plugin management snapshots [step 2/6]` | Shared read DTOs and read-only GET route. |
-| 3/6 | `setup-aware-plugin-management-invalidation` | `[setup-aware-plugin-management] feat(bridge): invalidate plugin management snapshots [step 3/6]` | Process-local revision and additive SSE invalidation. |
+| 3/6 | `setup-aware-plugin-management-invalidation` | `[setup-aware-plugin-management] feat(bridge): invalidate plugin management snapshots [step 3/6]` | Opaque snapshot tokens and additive SSE invalidation. |
 | 4/6 | `setup-aware-plugin-management-idle-timeouts` | `[setup-aware-plugin-management] feat(bridge): update plugin idle timeouts live [step 4/6]` | Typed timeout writes, settings serialization, and live timer resync. |
 | 5/6 | `setup-aware-plugin-management-disable` | `[setup-aware-plugin-management] feat(bridge): add transactional plugin disable [step 5/6]` | End-to-end safe/force disable with runtime access gates and durable commit/rollback. |
 | 6/6 | `setup-aware-plugin-management-commands` | `[setup-aware-plugin-management] feat(bridge): add remaining plugin lifecycle commands [step 6/6]` | Enable/restart/refresh, setup fencing, and dynamic default/catalog eligibility. |
@@ -122,23 +123,31 @@ Production files:
 - `bridge/app/lib/src/bridge/orchestrator.dart`
 - `bridge/app/lib/src/bridge/runtime/bridge_runtime_runner.dart`
 
-## Stage 12-P03: Revision And Invalidation
+## Stage 12-P03: Snapshot Tokens And Invalidation
 
-Add `@Default(0) int revision` to `PluginManagementResponse`, with
+Add `required String? snapshotToken` to `PluginManagementResponse`, with
 `// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
-omit revision; default to the initial process revision. Remove when those bridge
-versions are unsupported.`, and add the `plugin.management.changed` variant to
-`SesoriSseEvent`. The lifecycle service retains one plain
-`PluginManagementResponse` as its last published comparison snapshot and owns a
-broadcast `StreamController<int>` as the only management change stream. It
-compares a freshly built externally visible response with revision normalized
-away and advances/emits the process-local revision only after a materially
-changed, settled snapshot is queryable. `managementSnapshot` remains a
-synchronous GET value; there is no unused `managementSnapshots` stream.
+omit snapshotToken; null means that peer cannot identify snapshot changes. Make
+non-null when those bridge versions are unsupported.`, and add the
+`plugin.management.changed` variant to `SesoriSseEvent`. The lifecycle service
+retains one plain `PluginManagementResponse` as its last published snapshot and
+owns a broadcast `StreamController<String>` as the only management change
+stream. It generates a random 128-bit base64url token for the initial complete
+snapshot and each materially changed public snapshot. Comparison reuses the
+previous token to ignore snapshot identity, then caches the changed response
+with its new token before synchronously emitting that token.
 
-`Orchestrator.create` passes `PluginLifecycleService.managementRevisions` into
-`OrchestratorSession`. The session subscribes in its constructor, maps each
-value to `SesoriSseEvent.pluginManagementChanged(revision: revision)`, and adds
+Every externally visible runtime/setup/work transition is independently
+queryable and invalidated. One plugin's in-progress transition does not suppress
+another plugin's public change, and a transient state can never remain paired
+with an older token. `managementSnapshot` remains the cached synchronous GET
+value, so each returned token identifies exactly that returned content; there is
+no unused `managementSnapshots` stream.
+
+`Orchestrator.create` passes
+`PluginLifecycleService.managementSnapshotTokens` into `OrchestratorSession`.
+The session subscribes in its constructor, maps each value to
+`SesoriSseEvent.pluginManagementChanged(snapshotToken: snapshotToken)`, and adds
 the subscription to its existing `_subscriptions` composite. The existing
 `_subscriptions.cancel()` in `OrchestratorSession.run` disposes it before the
 lifecycle service is closed. No lower layer emits SSE.
@@ -189,10 +198,10 @@ the one-entry set/clear primitive. `BridgeSettingsRepository` remains the sole
 I/O owner; no second settings repository or writer is added.
 
 After a successful durable write, resynchronize existing timers and publish one
-new management revision if the public snapshot changed. Resident plugins still
-report and execute effective timeout `0`; their persisted overrides remain
-editable and recover when residency returns to transient. Failed writes return
-an explicit failure and do not publish success.
+new management snapshot token if the public snapshot changed. Resident plugins
+still report and execute effective timeout `0`; their persisted overrides
+remain editable and recover when residency returns to transient. Failed writes
+return an explicit failure and do not publish success.
 
 `Orchestrator.create` registers
 `PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService)` in the
@@ -383,7 +392,7 @@ logic drives a newly enabled plugin through the dynamic service validation.
   and fatal analysis; bridge lifecycle/runtime tests and fatal analysis.
 - P02: shared contract tests/codegen/fatal analysis; bridge lifecycle/handler,
   orchestrator/debug-router tests and fatal analysis.
-- P03: shared management/SSE tests/codegen/fatal analysis; bridge revision/SSE
+- P03: shared management/SSE tests/codegen/fatal analysis; bridge token/SSE
   tests; affected module-core tests and fatal analysis.
 - P04: shared request tests/codegen/fatal analysis; bridge settings,
   lifecycle, handler, and concurrency tests plus fatal analysis.

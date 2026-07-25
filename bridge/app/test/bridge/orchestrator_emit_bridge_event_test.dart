@@ -34,7 +34,7 @@ void main() {
     expect(plugins.map((plugin) => plugin.state), everyElement(PluginLifecycleState.ready));
   });
 
-  test("orchestrator emits management invalidation after a settled runtime change", () async {
+  test("orchestrator emits management invalidation after a runtime change", () async {
     final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
     addTearDown(harness.close);
     final eventFuture = harness.composition.session.localWireEvents
@@ -46,8 +46,8 @@ void main() {
     pluginRuntime.emitRuntimeState(pluginId: "one", state: runtime.PluginRuntimeState.degraded);
 
     final event = await eventFuture.timeout(const Duration(seconds: 2));
-    expect(event.revision, 1);
-    expect(harness.lifecycleService.managementSnapshot.revision, event.revision);
+    expect(event.snapshotToken, hasLength(22));
+    expect(harness.lifecycleService.managementSnapshot.snapshotToken, event.snapshotToken);
   });
 
   test("a sourced reconnect reconciles its active plugin and local events are already mapped", () async {

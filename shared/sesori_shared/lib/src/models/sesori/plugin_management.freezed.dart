@@ -182,8 +182,10 @@ $PluginSetupMetadataCopyWith<$Res> get setup {
 /// @nodoc
 mixin _$PluginManagementResponse {
 
-// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads omit revision; default to the initial process revision. Remove when those bridge versions are unsupported.
- int get revision; String? get defaultPluginId; int get defaultIdleTimeoutMins; List<PluginManagementMetadata> get plugins;
+// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
+// omit snapshotToken; null means that peer cannot identify snapshot changes.
+// Make non-null when those bridge versions are unsupported.
+ String? get snapshotToken; String? get defaultPluginId; int get defaultIdleTimeoutMins; List<PluginManagementMetadata> get plugins;
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -196,16 +198,16 @@ $PluginManagementResponseCopyWith<PluginManagementResponse> get copyWith => _$Pl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementResponse&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.defaultPluginId, defaultPluginId) || other.defaultPluginId == defaultPluginId)&&(identical(other.defaultIdleTimeoutMins, defaultIdleTimeoutMins) || other.defaultIdleTimeoutMins == defaultIdleTimeoutMins)&&const DeepCollectionEquality().equals(other.plugins, plugins));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementResponse&&(identical(other.snapshotToken, snapshotToken) || other.snapshotToken == snapshotToken)&&(identical(other.defaultPluginId, defaultPluginId) || other.defaultPluginId == defaultPluginId)&&(identical(other.defaultIdleTimeoutMins, defaultIdleTimeoutMins) || other.defaultIdleTimeoutMins == defaultIdleTimeoutMins)&&const DeepCollectionEquality().equals(other.plugins, plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,revision,defaultPluginId,defaultIdleTimeoutMins,const DeepCollectionEquality().hash(plugins));
+int get hashCode => Object.hash(runtimeType,snapshotToken,defaultPluginId,defaultIdleTimeoutMins,const DeepCollectionEquality().hash(plugins));
 
 @override
 String toString() {
-  return 'PluginManagementResponse(revision: $revision, defaultPluginId: $defaultPluginId, defaultIdleTimeoutMins: $defaultIdleTimeoutMins, plugins: $plugins)';
+  return 'PluginManagementResponse(snapshotToken: $snapshotToken, defaultPluginId: $defaultPluginId, defaultIdleTimeoutMins: $defaultIdleTimeoutMins, plugins: $plugins)';
 }
 
 
@@ -216,7 +218,7 @@ abstract mixin class $PluginManagementResponseCopyWith<$Res>  {
   factory $PluginManagementResponseCopyWith(PluginManagementResponse value, $Res Function(PluginManagementResponse) _then) = _$PluginManagementResponseCopyWithImpl;
 @useResult
 $Res call({
- int revision, String? defaultPluginId, int defaultIdleTimeoutMins, List<PluginManagementMetadata> plugins
+ String? snapshotToken, String? defaultPluginId, int defaultIdleTimeoutMins, List<PluginManagementMetadata> plugins
 });
 
 
@@ -233,10 +235,10 @@ class _$PluginManagementResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? revision = null,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? snapshotToken = freezed,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
   return _then(_self.copyWith(
-revision: null == revision ? _self.revision : revision // ignore: cast_nullable_to_non_nullable
-as int,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
+snapshotToken: freezed == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
+as String?,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
 as String?,defaultIdleTimeoutMins: null == defaultIdleTimeoutMins ? _self.defaultIdleTimeoutMins : defaultIdleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginManagementMetadata>,
@@ -251,11 +253,13 @@ as List<PluginManagementMetadata>,
 @JsonSerializable()
 
 class _PluginManagementResponse implements PluginManagementResponse {
-  const _PluginManagementResponse({this.revision = 0, required this.defaultPluginId, required this.defaultIdleTimeoutMins, required final  List<PluginManagementMetadata> plugins}): _plugins = plugins;
+  const _PluginManagementResponse({required this.snapshotToken, required this.defaultPluginId, required this.defaultIdleTimeoutMins, required final  List<PluginManagementMetadata> plugins}): _plugins = plugins;
   factory _PluginManagementResponse.fromJson(Map<String, dynamic> json) => _$PluginManagementResponseFromJson(json);
 
-// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads omit revision; default to the initial process revision. Remove when those bridge versions are unsupported.
-@override@JsonKey() final  int revision;
+// COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
+// omit snapshotToken; null means that peer cannot identify snapshot changes.
+// Make non-null when those bridge versions are unsupported.
+@override final  String? snapshotToken;
 @override final  String? defaultPluginId;
 @override final  int defaultIdleTimeoutMins;
  final  List<PluginManagementMetadata> _plugins;
@@ -279,16 +283,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementResponse&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.defaultPluginId, defaultPluginId) || other.defaultPluginId == defaultPluginId)&&(identical(other.defaultIdleTimeoutMins, defaultIdleTimeoutMins) || other.defaultIdleTimeoutMins == defaultIdleTimeoutMins)&&const DeepCollectionEquality().equals(other._plugins, _plugins));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementResponse&&(identical(other.snapshotToken, snapshotToken) || other.snapshotToken == snapshotToken)&&(identical(other.defaultPluginId, defaultPluginId) || other.defaultPluginId == defaultPluginId)&&(identical(other.defaultIdleTimeoutMins, defaultIdleTimeoutMins) || other.defaultIdleTimeoutMins == defaultIdleTimeoutMins)&&const DeepCollectionEquality().equals(other._plugins, _plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,revision,defaultPluginId,defaultIdleTimeoutMins,const DeepCollectionEquality().hash(_plugins));
+int get hashCode => Object.hash(runtimeType,snapshotToken,defaultPluginId,defaultIdleTimeoutMins,const DeepCollectionEquality().hash(_plugins));
 
 @override
 String toString() {
-  return 'PluginManagementResponse(revision: $revision, defaultPluginId: $defaultPluginId, defaultIdleTimeoutMins: $defaultIdleTimeoutMins, plugins: $plugins)';
+  return 'PluginManagementResponse(snapshotToken: $snapshotToken, defaultPluginId: $defaultPluginId, defaultIdleTimeoutMins: $defaultIdleTimeoutMins, plugins: $plugins)';
 }
 
 
@@ -299,7 +303,7 @@ abstract mixin class _$PluginManagementResponseCopyWith<$Res> implements $Plugin
   factory _$PluginManagementResponseCopyWith(_PluginManagementResponse value, $Res Function(_PluginManagementResponse) _then) = __$PluginManagementResponseCopyWithImpl;
 @override @useResult
 $Res call({
- int revision, String? defaultPluginId, int defaultIdleTimeoutMins, List<PluginManagementMetadata> plugins
+ String? snapshotToken, String? defaultPluginId, int defaultIdleTimeoutMins, List<PluginManagementMetadata> plugins
 });
 
 
@@ -316,10 +320,10 @@ class __$PluginManagementResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? revision = null,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? snapshotToken = freezed,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
   return _then(_PluginManagementResponse(
-revision: null == revision ? _self.revision : revision // ignore: cast_nullable_to_non_nullable
-as int,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
+snapshotToken: freezed == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
+as String?,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
 as String?,defaultIdleTimeoutMins: null == defaultIdleTimeoutMins ? _self.defaultIdleTimeoutMins : defaultIdleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginManagementMetadata>,

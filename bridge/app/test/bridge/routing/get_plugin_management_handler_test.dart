@@ -31,6 +31,7 @@ void main() {
 }
 
 const _response = PluginManagementResponse(
+  snapshotToken: "snapshot-token",
   defaultPluginId: "one",
   defaultIdleTimeoutMins: 10,
   plugins: [

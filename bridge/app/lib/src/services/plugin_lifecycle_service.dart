@@ -1,4 +1,6 @@
 import "dart:async";
+import "dart:convert";
+import "dart:math";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -56,12 +58,12 @@ class PluginLifecycleService {
   Map<String, PluginSetupStatus>? _setupById;
   BehaviorSubject<List<PluginMetadata>>? _metadataSubject;
   BehaviorSubject<List<String>>? _readyPluginIdsSubject;
-  final StreamController<int> _managementRevisionController = StreamController<int>.broadcast(sync: true);
+  final StreamController<String> _managementSnapshotTokenController = StreamController<String>.broadcast(sync: true);
   StreamSubscription<List<PluginLifecycleSnapshot>>? _runtimeSubscription;
   Future<void>? _disposeFuture;
   final Map<String, ({Duration duration, Timer timer})> _idleTimers = {};
   PluginManagementResponse? _lastPublishedManagementSnapshot;
-  int _managementRevision = 0;
+  final Random _random = Random.secure();
   bool _disposing = false;
 
   void registerPlugins({required List<RegisteredPluginMetadata> plugins}) {
@@ -133,7 +135,7 @@ class PluginLifecycleService {
       _buildReadyPluginIds(_lifecycleRepository.snapshot),
     );
     if (_hasCompleteManagementRuntimeSnapshot) {
-      _lastPublishedManagementSnapshot = _buildManagementResponse(revision: 0);
+      _lastPublishedManagementSnapshot = _buildManagementResponse(snapshotToken: _newManagementSnapshotToken());
     }
     _runtimeSubscription = _lifecycleRepository.snapshots.listen(_applyRuntimeSnapshots);
     return (
@@ -198,7 +200,9 @@ class PluginLifecycleService {
     if (_registeredPlugins == null || _setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
-    return _buildManagementResponse(revision: _managementRevision);
+    final snapshot = _lastPublishedManagementSnapshot;
+    if (snapshot == null) throw StateError("Plugin management snapshot is not ready.");
+    return snapshot;
   }
 
   Stream<List<PluginMetadata>> get metadataSnapshots {
@@ -213,7 +217,7 @@ class PluginLifecycleService {
     return subject.stream;
   }
 
-  Stream<int> get managementRevisions => _managementRevisionController.stream;
+  Stream<String> get managementSnapshotTokens => _managementSnapshotTokenController.stream;
 
   void _applyRuntimeSnapshots(List<PluginLifecycleSnapshot> snapshots) {
     final setupById = _setupById;
@@ -320,14 +324,14 @@ class PluginLifecycleService {
     );
   }
 
-  PluginManagementResponse _buildManagementResponse({required int revision}) {
+  PluginManagementResponse _buildManagementResponse({required String? snapshotToken}) {
     final registeredPlugins = _registeredPlugins;
     if (registeredPlugins == null || _setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
     final settings = _bridgeSettingsRepository.currentSettings;
     return PluginManagementResponse(
-      revision: revision,
+      snapshotToken: snapshotToken,
       defaultPluginId: _selectableDefaultPluginId(),
       defaultIdleTimeoutMins: settings.plugins.defaults.idleTimeoutMins ?? defaultPluginIdleTimeoutMins,
       plugins: [for (final plugin in registeredPlugins) _managementRow(plugin: plugin)],
@@ -335,18 +339,22 @@ class PluginLifecycleService {
   }
 
   void _publishManagementIfChanged() {
-    if (_managementRevisionController.isClosed || !_hasCompleteManagementRuntimeSnapshot) return;
-    if (_lifecycleRepository.snapshot.any((snapshot) => !snapshot.transitionSettled)) return;
-    final next = _buildManagementResponse(revision: 0);
+    if (_managementSnapshotTokenController.isClosed || !_hasCompleteManagementRuntimeSnapshot) return;
     final previous = _lastPublishedManagementSnapshot;
     if (previous == null) {
-      _lastPublishedManagementSnapshot = next;
+      _lastPublishedManagementSnapshot = _buildManagementResponse(snapshotToken: _newManagementSnapshotToken());
       return;
     }
+    final next = _buildManagementResponse(snapshotToken: previous.snapshotToken);
     if (previous == next) return;
-    _lastPublishedManagementSnapshot = next;
-    _managementRevision++;
-    _managementRevisionController.add(_managementRevision);
+    final snapshotToken = _newManagementSnapshotToken();
+    _lastPublishedManagementSnapshot = next.copyWith(snapshotToken: snapshotToken);
+    _managementSnapshotTokenController.add(snapshotToken);
+  }
+
+  String _newManagementSnapshotToken() {
+    final bytes = List<int>.generate(16, (_) => _random.nextInt(256), growable: false);
+    return base64Url.encode(bytes).replaceAll("=", "");
   }
 
   bool get _hasCompleteManagementRuntimeSnapshot {
@@ -413,7 +421,7 @@ class PluginLifecycleService {
       firstStackTrace ??= stackTrace;
     }
     try {
-      await _managementRevisionController.close();
+      await _managementSnapshotTokenController.close();
     } on Object catch (error, stackTrace) {
       firstError ??= error;
       firstStackTrace ??= stackTrace;
