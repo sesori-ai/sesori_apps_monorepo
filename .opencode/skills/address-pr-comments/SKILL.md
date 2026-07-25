@@ -13,7 +13,7 @@ Addresses unresolved inline PR review comments by assessing their validity, impl
 2. **Every thread gets a reply**: After assessing and acting on a comment, you MUST post a reply to that comment thread. No thread should be left without a response.
 3. **Do not reply twice**: Before posting a reply, inspect the comments after the most recent `[Sesori reply]`. If the last comment is already a `[Sesori reply]` and there are no later reviewer comments, skip the thread. If the only later comments are acknowledgment-only bot comments (for example "Acknowledged", "Thanks", "Looks good", or "Accepted") with no new request, objection, question, or requested change, skip the thread. Do not skip if a later comment raises a follow-up, pushback, asks for clarification, or requests additional changes; handle that as a new actionable comment.
 4. **Reply prefix**: Every reply must start with `[Sesori reply]` so it is clear the response comes from the agent, not the human user.
-5. **Never resolve human comments**: After replying, RESOLVE an `Addressed` thread only when every non-`[Sesori reply]` review comment in it was authored by another AI agent or bot. NEVER resolve a thread containing a human-authored review comment; the human decides when to close it. Also leave every `Not addressed`, `Partially addressed`, or `Question` thread unresolved regardless of author.
+5. **Never resolve human comments**: After replying, RESOLVE an `Addressed` thread only when authoritative GitHub actor metadata identifies every non-`[Sesori reply]` review author as `Bot`. Username and writing-style heuristics never authorize resolution. If actor metadata is unavailable, ambiguous, or identifies any reviewer as `User`, NEVER resolve the thread. Also leave every `Not addressed`, `Partially addressed`, or `Question` thread unresolved regardless of author.
 6. **All comments are assessed**: Every comment must be evaluated for validity. Do not automatically assume any comment is correct.
 7. **Extra scrutiny for AI/bot comments**: Comments from AI reviewers or bots require more careful assessment. They are more likely to be incorrect, irrelevant, or based on stale context.
 8. **Human comments are trusted by default**: Comments from actual humans should be assumed valid unless you have a strong reason to believe they are wrong, detrimental, or cause likely unintended side effects.
@@ -72,6 +72,9 @@ Apply extra scrutiny when the comment author (`user` field) matches any of these
 - Username indicates author is a bot — commonly name contains: `bot`, `[bot]`, `github-actions`, `codex`, `gemini`, `copilot`, `claude`, `gpt`, `ai-`
 - The comment uses very formal, mechanical, or templated language
 - The suggestion is generic and lacks specific context about this codebase
+
+These are assessment heuristics only. They do not establish actor identity for
+thread resolution; a human can have a bot-like username or writing style.
 
 For AI/bot comments:
 - Verify the claim by reading the actual code
@@ -254,9 +257,12 @@ The script automatically prefixes the body with `[Sesori reply]` if not already 
 ### Step 6: Resolve Addressed AI Threads Only
 
 After the reply is posted, resolve a thread only when its status is `Addressed`
-and every non-`[Sesori reply]` review comment in it came from another AI agent
-or bot. Use the included `resolve.sh` helper (thread resolution requires the
-GraphQL API; the script maps the comment id to its thread and is idempotent):
+and authoritative GitHub actor metadata identifies every non-`[Sesori reply]`
+review author as `Bot`. Check the GraphQL actor `__typename` or REST actor
+`type`; never infer resolution authority from a username or writing style. If
+metadata is unavailable or ambiguous, leave the thread unresolved. Use the
+included `resolve.sh` helper (thread resolution requires the GraphQL API; the
+script maps the comment id to its thread and is idempotent):
 
 ```bash
 ./scripts/resolve.sh <pr-number> <thread_id>
@@ -309,7 +315,7 @@ User: "Address the comments on PR 42"
 1. Fetch unresolved comments using the `pr-inline-comments` skill
 2. Receive 3 threads:
    - Thread 1 (human): "This loop has an off-by-one error"
-   - Thread 2 (bot): "This branch can dereference null"
+   - Thread 2 (GitHub actor type `Bot`): "This branch can dereference null"
    - Thread 3 (human): "Missing null check here"
 3. Assess:
    - Thread 1: Valid. Fix the loop boundary.
