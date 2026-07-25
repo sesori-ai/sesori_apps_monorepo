@@ -5,13 +5,13 @@
 - **Base:** `origin/main` at `41e03f12`
 - **Current branch:** `setup-aware-plugin-management-resident-attach`
 - **Current slice:** Stage 12-P01 / step 1 of 6
-- **Next action:** commit and open the verified P01 when explicitly requested
+- **Next action:** monitor PR #563 through CI and review
 
 ## Delivery
 
 | Done | Slice | Branch | PR state |
 |---|---|---|---|
-| [ ] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | implemented, verified, and architecture-approved; local only |
+| [ ] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 open; monitoring |
 | [ ] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | waits for P01 merge |
 | [ ] | P03 — revision and SSE invalidation | `setup-aware-plugin-management-invalidation` | waits for P02 merge |
 | [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | waits for P03 merge |
@@ -66,6 +66,8 @@
   OpenCode, Codex, ACP, Cursor, and bridge app. `git diff --check` passed.
 - Aristotle implementation review approved the complete working-tree diff with
   no architecture findings.
+- Committed as `f0831886`, pushed, and opened PR #563 with the fixed step-1/6
+  series title.
 
 ## Delivery Rules
 

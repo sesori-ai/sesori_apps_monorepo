@@ -7,7 +7,7 @@
 - **Base:** `origin/main` at `41e03f12`
 - **Current branch:** `setup-aware-plugin-management-resident-attach`
 - **Current stage:** Stage 12-P01 — attach-only residency and diagnostics
-- **Next action:** commit and open verified Stage 12-P01 when explicitly requested
+- **Next action:** monitor Stage 12-P01 PR #563 through CI and review
 
 ## Frozen Oversized Stack
 
@@ -37,7 +37,7 @@ run their focused verification again.
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 merged as `41e03f12` |
-| [ ] | Stage 12 — headless management | six-PR child series | tracked in `setup-aware-plugin-management` |
+| [ ] | Stage 12 — headless management | six-PR child series | P01 PR #563 open; tracked in `setup-aware-plugin-management` |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
 
 ## Locked Redesign Deltas
