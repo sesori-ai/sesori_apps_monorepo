@@ -379,13 +379,6 @@ class PluginLifecycleService {
     try {
       _lifecycleRepository.commitDisable(pluginId: pluginId);
     } on Object catch (error) {
-      try {
-        _lifecycleRepository.rollbackDisable(pluginId: pluginId);
-      } on Object catch (rollbackError) {
-        throw PluginManagementCommandFailedException(
-          "Plugin disable commit failed ($error) and runtime rollback failed ($rollbackError).",
-        );
-      }
       throw PluginManagementCommandFailedException("Plugin disable commit failed: $error");
     }
     _eligiblePluginIds = List<String>.unmodifiable([

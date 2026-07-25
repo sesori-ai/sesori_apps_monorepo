@@ -634,6 +634,30 @@ void main() {
     expect(recovered.plugins.single.runtimeState, shared.PluginRuntimeState.disabled);
   });
 
+  test("failed runtime commit retains durable disabled eligibility", () async {
+    final repository = _CommitFailingDisableLifecycleRepository();
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings());
+    final service = _singleIdleService(
+      lifecycleRepository: repository,
+      settingsRepository: settingsRepository,
+      timerScheduler: _ControllablePluginIdleTimerScheduler(),
+      residencyPolicy: PluginResidencyPolicy.transient,
+    );
+    addTearDown(service.dispose);
+
+    await expectLater(
+      service.command(
+        pluginId: "one",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+      ),
+      throwsA(isA<PluginManagementCommandFailedException>()),
+    );
+
+    expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
+    expect(repository.rollbackCalls, isZero);
+  });
+
   test("safe disable conflicts map to the typed management response without writing settings", () async {
     final repository = _ConflictingDisableLifecycleRepository();
     addTearDown(repository.dispose);
@@ -1006,6 +1030,39 @@ class _ConflictingDisableLifecycleRepository extends _IdleLifecycleRepository {
       ),
       reasons: const [PluginRuntimeConflictReason.busy],
     );
+  }
+}
+
+class _CommitFailingDisableLifecycleRepository extends _IdleLifecycleRepository {
+  int rollbackCalls = 0;
+
+  @override
+  Future<PluginRuntimeCommandResult> prepareDisable({
+    required String pluginId,
+    required PluginStopIntent intent,
+  }) async {
+    return PluginRuntimeCommandCurrent(
+      snapshot: PluginRuntimeSnapshot(
+        pluginId: pluginId,
+        projectOwnership: PluginProjectOwnership.native,
+        setup: const PluginSetupReady(),
+        accessGate: PluginRuntimeAccessGate.draining,
+        startAllowed: true,
+        generation: 1,
+        state: PluginRuntimeState.stopping,
+        workState: PluginWorkState.unknown,
+        leaseCount: 0,
+        transition: PluginRuntimeTransition.stopping,
+      ),
+    );
+  }
+
+  @override
+  void commitDisable({required String pluginId}) => throw StateError("commit invariant failed");
+
+  @override
+  void rollbackDisable({required String pluginId}) {
+    rollbackCalls++;
   }
 }
 
