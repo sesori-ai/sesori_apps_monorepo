@@ -7,12 +7,14 @@ import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart" as runtime show PluginRuntimeState;
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
+import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -30,6 +32,22 @@ void main() {
     expect(plugins.map((plugin) => plugin.id), ["one", "two"]);
     expect(plugins.map((plugin) => plugin.isDefault), [true, false]);
     expect(plugins.map((plugin) => plugin.state), everyElement(PluginLifecycleState.ready));
+  });
+
+  test("orchestrator emits management invalidation after a settled runtime change", () async {
+    final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
+    addTearDown(harness.close);
+    final eventFuture = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriPluginManagementChanged)
+        .cast<SesoriPluginManagementChanged>()
+        .first;
+
+    final pluginRuntime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
+    pluginRuntime.emitRuntimeState(pluginId: "one", state: runtime.PluginRuntimeState.degraded);
+
+    final event = await eventFuture.timeout(const Duration(seconds: 2));
+    expect(event.revision, 1);
+    expect(harness.lifecycleService.managementSnapshot.revision, event.revision);
   });
 
   test("a sourced reconnect reconciles its active plugin and local events are already mapped", () async {

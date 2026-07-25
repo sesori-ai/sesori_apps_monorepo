@@ -57,6 +57,7 @@ const _$PluginManagementWorkStateEnumMap = {
 
 _PluginManagementResponse _$PluginManagementResponseFromJson(Map json) =>
     _PluginManagementResponse(
+      revision: (json['revision'] as num?)?.toInt() ?? 0,
       defaultPluginId: json['defaultPluginId'] as String?,
       defaultIdleTimeoutMins: (json['defaultIdleTimeoutMins'] as num).toInt(),
       plugins: (json['plugins'] as List<dynamic>)
@@ -71,6 +72,7 @@ _PluginManagementResponse _$PluginManagementResponseFromJson(Map json) =>
 Map<String, dynamic> _$PluginManagementResponseToJson(
   _PluginManagementResponse instance,
 ) => <String, dynamic>{
+  'revision': instance.revision,
   'defaultPluginId': ?instance.defaultPluginId,
   'defaultIdleTimeoutMins': instance.defaultIdleTimeoutMins,
   'plugins': instance.plugins.map((e) => e.toJson()).toList(),

@@ -3,6 +3,15 @@ import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('plugin management change round-trips its revision', () {
+    const event = SesoriSseEvent.pluginManagementChanged(revision: 4);
+
+    final json = event.toJson();
+
+    expect(json, {'type': 'plugin.management.changed', 'revision': 4});
+    expect(SesoriSseEvent.fromJson(json), event);
+  });
+
   // ---------------------------------------------------------------------------
   // Round-trip JSON compatibility
   // ---------------------------------------------------------------------------

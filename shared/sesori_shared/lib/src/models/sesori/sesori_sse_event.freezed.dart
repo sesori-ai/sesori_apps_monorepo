@@ -35,6 +35,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriCatalogImportProgress.fromJson(
             json
           );
+                case 'plugin.management.changed':
+          return SesoriPluginManagementChanged.fromJson(
+            json
+          );
                 case 'session.created':
           return SesoriSessionCreated.fromJson(
             json
@@ -509,6 +513,79 @@ class _$SesoriCatalogImportProgressCopyWithImpl<$Res>
   return _then(SesoriCatalogImportProgress(
 progress: null == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
 as CatalogImportProgress,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriPluginManagementChanged implements SesoriSseEvent {
+  const SesoriPluginManagementChanged({required this.revision, final  String? $type}): $type = $type ?? 'plugin.management.changed';
+  factory SesoriPluginManagementChanged.fromJson(Map<String, dynamic> json) => _$SesoriPluginManagementChangedFromJson(json);
+
+ final  int revision;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriPluginManagementChangedCopyWith<SesoriPluginManagementChanged> get copyWith => _$SesoriPluginManagementChangedCopyWithImpl<SesoriPluginManagementChanged>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriPluginManagementChangedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginManagementChanged&&(identical(other.revision, revision) || other.revision == revision));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,revision);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.pluginManagementChanged(revision: $revision)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriPluginManagementChangedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriPluginManagementChangedCopyWith(SesoriPluginManagementChanged value, $Res Function(SesoriPluginManagementChanged) _then) = _$SesoriPluginManagementChangedCopyWithImpl;
+@useResult
+$Res call({
+ int revision
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriPluginManagementChangedCopyWithImpl<$Res>
+    implements $SesoriPluginManagementChangedCopyWith<$Res> {
+  _$SesoriPluginManagementChangedCopyWithImpl(this._self, this._then);
+
+  final SesoriPluginManagementChanged _self;
+  final $Res Function(SesoriPluginManagementChanged) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? revision = null,}) {
+  return _then(SesoriPluginManagementChanged(
+revision: null == revision ? _self.revision : revision // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

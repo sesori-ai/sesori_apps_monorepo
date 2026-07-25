@@ -18,6 +18,7 @@ void main() {
 
   test("management response round-trips only read snapshot fields", () {
     const response = PluginManagementResponse(
+      revision: 7,
       defaultPluginId: "opencode",
       defaultIdleTimeoutMins: 30,
       plugins: [plugin],
@@ -28,16 +29,26 @@ void main() {
     final pluginJson = plugins!.single! as Map<String, dynamic>;
 
     expect(PluginManagementResponse.fromJson(json), response);
-    expect(json.keys, unorderedEquals(["defaultPluginId", "defaultIdleTimeoutMins", "plugins"]));
+    expect(json.keys, unorderedEquals(["revision", "defaultPluginId", "defaultIdleTimeoutMins", "plugins"]));
     expect(
       pluginJson.keys,
       unorderedEquals(["setup", "runtimeState", "workState", "idleTimeoutMins", "hasIdleTimeoutOverride"]),
     );
-    expect(json, isNot(contains("revision")));
+    expect(json["revision"], 7);
     expect(pluginJson, isNot(contains("enabled")));
     expect(pluginJson, isNot(contains("isDefault")));
     expect(json, isNot(contains("authority")));
     expect(json, isNot(contains("order")));
+  });
+
+  test("older management responses default to the initial process revision", () {
+    final json = const PluginManagementResponse(
+      defaultPluginId: "opencode",
+      defaultIdleTimeoutMins: 30,
+      plugins: [plugin],
+    ).toJson()..remove("revision");
+
+    expect(PluginManagementResponse.fromJson(json).revision, 0);
   });
 
   test("future runtime and work states decode to fail-closed unknown values", () {

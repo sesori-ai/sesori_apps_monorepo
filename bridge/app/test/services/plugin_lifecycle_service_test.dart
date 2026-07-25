@@ -97,8 +97,7 @@ void main() {
   });
 
   test("falls back when setup-ready OpenCode is not currently selectable", () async {
-    final alpha = _FakePluginApi(id: "alpha");
-    final runtime = createTestPluginRuntime(plugins: [alpha]);
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode", "alpha"]);
     addTearDown(runtime.dispose);
     final service = _service(
       runtime: runtime,
@@ -116,6 +115,7 @@ void main() {
         "alpha": PluginSetupReady(),
       },
     );
+    service.applyAvailability(availablePluginIds: const {"alpha"});
     await Future<void>.delayed(Duration.zero);
 
     expect(policy.defaultPluginId, "opencode");
@@ -240,6 +240,41 @@ void main() {
     expect(opencode.hasIdleTimeoutOverride, isTrue);
     expect(settingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: "opencode"), 45);
     expect(runtime.activePluginIds, isEmpty);
+  });
+
+  test("management revisions publish only settled externally visible changes", () async {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["alpha"]);
+    final service =
+        _service(
+          runtime: runtime,
+          plugins: const [
+            (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
+          ],
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"alpha": PluginSetupReady()},
+        );
+    addTearDown(() async {
+      await service.dispose();
+      await runtime.dispose();
+    });
+    final revisions = <int>[];
+    final subscription = service.managementRevisions.listen(revisions.add);
+    addTearDown(subscription.cancel);
+
+    expect(service.managementSnapshot.revision, 0);
+
+    service.applyAvailability(availablePluginIds: const {});
+    await Future<void>.delayed(Duration.zero);
+
+    expect(revisions, [1]);
+    expect(service.managementSnapshot.revision, 1);
+    expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.blocked);
+
+    service.applyAvailability(availablePluginIds: const {});
+    await Future<void>.delayed(Duration.zero);
+
+    expect(revisions, [1]);
   });
 
   test("runtime snapshots drive selectable metadata and derived default", () async {

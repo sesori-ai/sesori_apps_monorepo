@@ -55,6 +55,17 @@ Map<String, dynamic> _$SesoriCatalogImportProgressToJson(
   'type': instance.$type,
 };
 
+SesoriPluginManagementChanged _$SesoriPluginManagementChangedFromJson(
+  Map json,
+) => SesoriPluginManagementChanged(
+  revision: (json['revision'] as num).toInt(),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$SesoriPluginManagementChangedToJson(
+  SesoriPluginManagementChanged instance,
+) => <String, dynamic>{'revision': instance.revision, 'type': instance.$type};
+
 SesoriSessionCreated _$SesoriSessionCreatedFromJson(Map json) =>
     SesoriSessionCreated(
       info: Session.fromJson(Map<String, dynamic>.from(json['info'] as Map)),

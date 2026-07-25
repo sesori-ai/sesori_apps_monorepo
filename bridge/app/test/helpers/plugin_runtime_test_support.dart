@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
@@ -50,6 +52,8 @@ class TestPluginRuntime extends PluginRuntime {
 
   final Map<String, BridgePluginApi> _plugins;
   final Set<String> _eligiblePluginIds;
+  final Map<String, PluginRuntimeState> _states = {};
+  final StreamController<List<PluginRuntimeSnapshot>> _snapshotChanges = StreamController.broadcast(sync: true);
   bool generationCurrent = true;
   int currentGeneration = 1;
 
@@ -91,7 +95,13 @@ class TestPluginRuntime extends PluginRuntime {
   ];
 
   @override
-  Stream<List<PluginRuntimeSnapshot>> get snapshots => Stream.value(snapshot);
+  Stream<List<PluginRuntimeSnapshot>> get snapshots => Rx.concat([Stream.value(snapshot), _snapshotChanges.stream]);
+
+  void emitRuntimeState({required String pluginId, required PluginRuntimeState state}) {
+    if (!_plugins.containsKey(pluginId)) throw ArgumentError.value(pluginId, "pluginId", "is not registered");
+    _states[pluginId] = state;
+    _snapshotChanges.add(snapshot);
+  }
 
   @override
   Stream<SourcedPluginRuntimeEvent> get backendEvents {
@@ -110,7 +120,9 @@ class TestPluginRuntime extends PluginRuntime {
   ]);
 
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    if (!_snapshotChanges.isClosed) await _snapshotChanges.close();
+  }
 
   @override
   Future<T> use<T>({
@@ -193,7 +205,7 @@ class TestPluginRuntime extends PluginRuntime {
       eligible: true,
       startAllowed: true,
       generation: currentGeneration,
-      state: PluginRuntimeState.active,
+      state: _states[plugin.id] ?? PluginRuntimeState.active,
       workState: PluginWorkState.idle,
       leaseCount: 0,
       transition: PluginRuntimeTransition.none,
