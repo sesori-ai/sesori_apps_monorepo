@@ -2,10 +2,10 @@
 
 ## Current State
 
-- **Base:** P05 pre-review head `fcba6b48`; review fixes through `828c7a38` copied locally
+- **Base:** `origin/main` at P05 merge `92cbdf06`
 - **Current branch:** `setup-aware-plugin-management-commands`
-- **Current slice:** Stage 12-P06 / step 6 of 6, preparing locally
-- **Next action:** monitor PR #570; merge its final reviewed head after merge, reverify P06, and open step 6
+- **Current slice:** Stage 12-P06 / step 6 of 6, post-merge verification
+- **Next action:** reverify P06 against merged P05 and open step 6
 
 ## Delivery
 
@@ -15,8 +15,8 @@
 | [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 merged as `19ca475a` |
 | [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
 | [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 merged as `583c91f2` |
-| [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | PR #570 open; monitoring |
-| [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | preparing locally; waits for P05 merge |
+| [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | PR #570 merged as `92cbdf06` |
+| [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | post-merge verification |
 
 ## Source Material
 

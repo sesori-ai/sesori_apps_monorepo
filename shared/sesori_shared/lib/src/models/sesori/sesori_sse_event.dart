@@ -23,8 +23,8 @@ sealed class SesoriSessionEvent {}
 /// Typed representation of all known SSE event payloads.
 ///
 /// Uses Freezed [unionKey] on the `"type"` field to auto-deserialize from JSON.
-/// Unknown event types cause [fromJson] to throw — callers should catch and
-/// report via [FailureReporter.recordFailure].
+/// Unknown event types cause [fromJson] to throw so transport callers can skip
+/// events introduced by newer peers without hiding malformed known payloads.
 @Freezed(unionKey: "type", fromJson: true, toJson: true)
 sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------
