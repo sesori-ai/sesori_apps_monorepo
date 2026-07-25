@@ -2,11 +2,10 @@
 
 ## Current State
 
-- **Base:** P04 reviewed head `399a2b71`
+- **Base:** `origin/main` at P04 merge `583c91f2`
 - **Current branch:** `setup-aware-plugin-management-disable`
-- **Current slice:** Stage 12-P05 / step 5 of 6, implemented and verified locally
-- **Next action:** merge updated `origin/main` into P05, reverify, and open the
-  successor PR
+- **Current slice:** Stage 12-P05 / step 5 of 6, merged and reverified against P04
+- **Next action:** push P05, open the successor PR, and start monitoring it
 
 ## Delivery
 
@@ -16,7 +15,7 @@
 | [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 merged as `19ca475a` |
 | [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
 | [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 merged as `583c91f2` |
-| [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | implemented locally; waits for P04 merge |
+| [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | ready to open after post-merge verification |
 | [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | waits for P05 merge |
 
 ## Source Material
@@ -189,6 +188,12 @@
 - `dart analyze --fatal-infos` passed in shared and bridge app;
   `git diff --check` passed. Aristotle approved the complete 16-file
   architecture-bearing scope with no findings.
+- Committed the implementation as `32273ee0`, merged P04's `583c91f2`
+  `origin/main` result in `2787c40c`, and retained the verified P05 side of the
+  expected squash-history conflicts.
+- Post-merge reverification passed the shared contract tests (8), focused
+  runtime/lifecycle/route/Orchestrator tests (71), both fatal analyzers, and
+  `git diff --check`.
 
 ## Delivery Rules
 
