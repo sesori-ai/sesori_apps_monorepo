@@ -101,11 +101,10 @@ class RelayClient {
         throw StateError("Failed to create relay WebSocket channel");
       }
       unawaited(
-        channel.sink.done.catchError((Object error) {
-          logw("WebSocket sink closed with error (suppressed): ${error.toString()}");
+        channel.sink.done.catchError((Object error, StackTrace stackTrace) {
+          logw("WebSocket sink closed with error (suppressed)", error, stackTrace);
         }),
       );
-      _firstBinaryMessage = Completer<Uint8List>();
 
       _channelSubscription = channel.stream
           .asyncMap(_onSocketMessage)
@@ -121,6 +120,10 @@ class RelayClient {
             },
             onDone: _onSocketDone,
           );
+      // Upgrade failures reach both the stream and `ready`: subscribe first to
+      // drain channel closure, then await `ready` so this connect call owns the error.
+      await channel.ready;
+      _firstBinaryMessage = Completer<Uint8List>();
 
       // Auth token is sent before E2EE is established. This is intentional:
       // the relay requires a valid JWT to authenticate the WebSocket connection
