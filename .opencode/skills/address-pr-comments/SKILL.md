@@ -5,7 +5,7 @@ description: Address unresolved inline PR review comments on a GitHub pull reque
 
 # address-pr-comments
 
-Addresses unresolved inline PR review comments by assessing their validity, implementing fixes, and leaving a reply on each comment thread. Every thread gets a response — either confirming the fix or explaining why the comment was not addressed. Threads whose fix has been implemented and pushed are then **resolved** by the agent; threads that were declined (or need human judgment) stay unresolved so the reviewer can accept or reject the decision.
+Addresses unresolved inline PR review comments by assessing their validity, implementing fixes, and leaving a reply on each comment thread. Every thread gets a response — either confirming the fix or explaining why the comment was not addressed. Only addressed threads left exclusively by other AI agents or bots may be **resolved** by the agent. A thread containing any human-authored review comment always stays unresolved for a human to close, even when its fix was implemented and pushed.
 
 ## Core Rules
 
@@ -13,7 +13,7 @@ Addresses unresolved inline PR review comments by assessing their validity, impl
 2. **Every thread gets a reply**: After assessing and acting on a comment, you MUST post a reply to that comment thread. No thread should be left without a response.
 3. **Do not reply twice**: Before posting a reply, inspect the comments after the most recent `[Sesori reply]`. If the last comment is already a `[Sesori reply]` and there are no later reviewer comments, skip the thread. If the only later comments are acknowledgment-only bot comments (for example "Acknowledged", "Thanks", "Looks good", or "Accepted") with no new request, objection, question, or requested change, skip the thread. Do not skip if a later comment raises a follow-up, pushback, asks for clarification, or requests additional changes; handle that as a new actionable comment.
 4. **Reply prefix**: Every reply must start with `[Sesori reply]` so it is clear the response comes from the agent, not the human user.
-5. **Resolve what you fixed; leave what you declined**: After replying, RESOLVE the thread when its status is `Addressed` (fix implemented and pushed). Leave the thread UNRESOLVED when the status is `Not addressed`, `Partially addressed`, or `Question` — those carry a decision or an open point the human reviewer must be able to double-check and either accept (by resolving it themselves) or push back on.
+5. **Never resolve human comments**: After replying, RESOLVE an `Addressed` thread only when every non-`[Sesori reply]` review comment in it was authored by another AI agent or bot. NEVER resolve a thread containing a human-authored review comment; the human decides when to close it. Also leave every `Not addressed`, `Partially addressed`, or `Question` thread unresolved regardless of author.
 6. **All comments are assessed**: Every comment must be evaluated for validity. Do not automatically assume any comment is correct.
 7. **Extra scrutiny for AI/bot comments**: Comments from AI reviewers or bots require more careful assessment. They are more likely to be incorrect, irrelevant, or based on stale context.
 8. **Human comments are trusted by default**: Comments from actual humans should be assumed valid unless you have a strong reason to believe they are wrong, detrimental, or cause likely unintended side effects.
@@ -114,6 +114,7 @@ For human comments:
 - Assume the comment is correct unless you have strong evidence otherwise
 - If you disagree, still explain your reasoning in the reply
 - If you disagreed with a given reason, but the human replied to still go ahead and do it, you must proceed with the requested task
+- Never resolve the thread after replying, including when the requested fix is fully addressed
 
 ### Step 3: Implement Fixes
 
@@ -250,21 +251,22 @@ Use the included `reply.sh` helper script:
 
 The script automatically prefixes the body with `[Sesori reply]` if not already present.
 
-### Step 6: Resolve the Addressed Threads
+### Step 6: Resolve Addressed AI Threads Only
 
-After the reply is posted, resolve every thread whose status is `Addressed`,
-using the included `resolve.sh` helper (thread resolution requires the GraphQL
-API; the script maps the comment id to its thread and is idempotent):
+After the reply is posted, resolve a thread only when its status is `Addressed`
+and every non-`[Sesori reply]` review comment in it came from another AI agent
+or bot. Use the included `resolve.sh` helper (thread resolution requires the
+GraphQL API; the script maps the comment id to its thread and is idempotent):
 
 ```bash
 ./scripts/resolve.sh <pr-number> <thread_id>
 ```
 
-Do NOT resolve threads replied with `Not addressed`, `Partially addressed`, or
-`Question`. Those stay open on purpose: the human reviewer reads the rationale
-and either agrees (resolving the thread themselves) or pushes back — an
-unresolved thread is the review-queue signal for that decision. Resolving a
-declined thread would hide the disagreement.
+NEVER resolve a thread containing a human-authored review comment, even when
+the status is `Addressed`. Human reviewers own resolution of their threads.
+Also do not resolve threads replied with `Not addressed`, `Partially addressed`,
+or `Question`, regardless of author. Those stay open so the reviewer can accept,
+reject, or follow up on the agent's response.
 
 ## Edge Cases
 
@@ -307,17 +309,18 @@ User: "Address the comments on PR 42"
 1. Fetch unresolved comments using the `pr-inline-comments` skill
 2. Receive 3 threads:
    - Thread 1 (human): "This loop has an off-by-one error"
-   - Thread 2 (bot): "Consider using a more functional approach"
+   - Thread 2 (bot): "This branch can dereference null"
    - Thread 3 (human): "Missing null check here"
 3. Assess:
    - Thread 1: Valid. Fix the loop boundary.
-   - Thread 2: AI suggestion. Current imperative approach is clearer here. Do not implement.
+   - Thread 2: Valid AI finding. Add the missing null guard.
    - Thread 3: Valid. Add null check.
-4. Implement fixes for threads 1 and 3.
+4. Implement fixes for threads 1, 2, and 3.
 5. Make a single commit and push
 6. Post replies:
    - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nChanged the loop boundary from i <= n to i < n in src/utils.ts to fix the off-by-one error.]`
-   - Thread 2: `[Sesori reply] Not addressed\n\nThe current imperative approach is intentional and more readable here.]`
+   - Thread 2: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded the missing null guard before dereferencing the value.]`
    - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded null check in src/services/user_service.dart before accessing user.email.`
-7. Resolve threads 1 and 3 (`./scripts/resolve.sh 42 <thread_id>`). Thread 2
-   stays unresolved for the reviewer to accept or reject the decision.
+7. Resolve only thread 2 (`./scripts/resolve.sh 42 <thread_id>`) because it was
+   left by an AI reviewer and fully addressed. Leave human threads 1 and 3
+   unresolved for their authors to close.
