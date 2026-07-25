@@ -301,7 +301,7 @@ run their focused verification again.
   kept out of this series; P06 uses the existing catalog repository seam and
   introduces no new composition crossing.
 
-### 2026-07-26 — Stage 12 complete
+### Recorded 2026-07-26 — Stage 12 complete
 
 - The six replacement PRs merged as #563 (`f8f05c33`), #567 (`19ca475a`),
   #568 (`00a0da77`), #569 (`583c91f2`), #570 (`92cbdf06`), and #572

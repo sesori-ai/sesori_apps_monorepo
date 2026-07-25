@@ -60,7 +60,7 @@ pair after drift assessment and before branch creation.
 
 ## Findings and Plan Deltas
 
-- **2026-07-26 — Plan completion recorded:** Monorepo PR #504 merged as
+- **Recorded 2026-07-26 — Plan completion:** Monorepo PR #504 merged as
   `2acd7b87` on 2026-07-18. Both implementation waves are complete; advisory M01
   remains optional and does not keep the plan active.
 - **2026-07-18 — W02 baseline reassessed:** Current `main` at `120a6f413` includes
