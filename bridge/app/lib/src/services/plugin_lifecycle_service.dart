@@ -132,7 +132,9 @@ class PluginLifecycleService {
     _readyPluginIdsSubject = BehaviorSubject<List<String>>.seeded(
       _buildReadyPluginIds(_lifecycleRepository.snapshot),
     );
-    _lastPublishedManagementSnapshot = _buildManagementResponse(revision: 0);
+    if (_hasCompleteManagementRuntimeSnapshot) {
+      _lastPublishedManagementSnapshot = _buildManagementResponse(revision: 0);
+    }
     _runtimeSubscription = _lifecycleRepository.snapshots.listen(_applyRuntimeSnapshots);
     return (
       eligiblePluginIds: eligiblePluginIds,
@@ -333,7 +335,7 @@ class PluginLifecycleService {
   }
 
   void _publishManagementIfChanged() {
-    if (_managementRevisionController.isClosed) return;
+    if (_managementRevisionController.isClosed || !_hasCompleteManagementRuntimeSnapshot) return;
     if (_lifecycleRepository.snapshot.any((snapshot) => !snapshot.transitionSettled)) return;
     final next = _buildManagementResponse(revision: 0);
     final previous = _lastPublishedManagementSnapshot;
@@ -345,6 +347,13 @@ class PluginLifecycleService {
     _lastPublishedManagementSnapshot = next;
     _managementRevision++;
     _managementRevisionController.add(_managementRevision);
+  }
+
+  bool get _hasCompleteManagementRuntimeSnapshot {
+    final registeredPlugins = _registeredPlugins;
+    if (registeredPlugins == null) return false;
+    final runtimePluginIds = _lifecycleRepository.snapshot.map((snapshot) => snapshot.pluginId).toSet();
+    return registeredPlugins.every((plugin) => runtimePluginIds.contains(plugin.id));
   }
 
   shared.PluginRuntimeState _mapRuntimeState(PluginRuntimeState state) => switch (state) {
