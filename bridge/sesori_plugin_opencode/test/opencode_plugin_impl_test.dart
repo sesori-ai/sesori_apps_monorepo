@@ -384,17 +384,17 @@ void main() {
       );
     });
 
-    test("getSessionMessages filters patch and automatic compaction parts", () async {
+    test("getSessionMessages shows automatic compaction user messages", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       final messages = await plugin.getSessionMessages("ses-new-parts-filter");
 
       expect(messages, hasLength(2));
       final parts = messages.last.parts;
-      expect(
-        parts.map((part) => part.type).toList(),
-        equals([PluginMessagePartType.text]),
-      );
+      expect(messages.last.info, isA<PluginMessageUser>());
+      expect(parts, hasLength(1));
+      expect(parts.single.type, equals(PluginMessagePartType.text));
+      expect(parts.single.text, equals("/compact"));
     });
 
     test("getSessionMessages agent part carries agentName", () async {
@@ -1525,46 +1525,20 @@ class _FakeOpenCodeServer {
           },
           {
             "info": {
-              "role": "assistant",
+              "role": "user",
               "id": "m-npf",
               "sessionID": "ses-new-parts-filter",
-              "parentID": "m-npf-user",
-              "modelID": "gpt",
-              "providerID": "openai",
-              "mode": "primary",
               "agent": "build",
-              "path": {"cwd": "/repo", "root": "/repo"},
-              "cost": 0,
-              "tokens": {
-                "input": 0,
-                "output": 0,
-                "reasoning": 0,
-                "cache": {"read": 0, "write": 0},
-              },
+              "model": {"providerID": "openai", "modelID": "gpt"},
               "time": {"created": 123},
             },
             "parts": [
-              {
-                "id": "p-patch",
-                "sessionID": "ses-new-parts-filter",
-                "messageID": "m-npf",
-                "type": "patch",
-                "hash": "abc123",
-                "files": <String>[],
-              },
               {
                 "id": "p-compaction",
                 "sessionID": "ses-new-parts-filter",
                 "messageID": "m-npf",
                 "type": "compaction",
                 "auto": true,
-              },
-              {
-                "id": "p-text",
-                "sessionID": "ses-new-parts-filter",
-                "messageID": "m-npf",
-                "type": "text",
-                "text": "done",
               },
             ],
           },

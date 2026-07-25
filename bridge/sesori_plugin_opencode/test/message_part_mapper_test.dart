@@ -23,7 +23,7 @@ void main() {
     expect(part.type.isVisible, isTrue);
   });
 
-  test("keeps automatic compaction hidden", () {
+  test("maps automatic compaction to visible command text", () {
     final part = mapper.mapPart(
       const CompactionPart(
         id: "part-1",
@@ -35,8 +35,8 @@ void main() {
       ),
     );
 
-    expect(part.type, equals(PluginMessagePartType.compaction));
-    expect(part.text, isNull);
-    expect(part.type.isVisible, isFalse);
+    expect(part.type, equals(PluginMessagePartType.text));
+    expect(part.text, equals("/compact"));
+    expect(part.type.isVisible, isTrue);
   });
 }
