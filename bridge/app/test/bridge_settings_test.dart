@@ -189,18 +189,23 @@ void main() {
       expect((updated.toJson()['plugins'] as Map)['future-plugin'], {'futureOption': 'kept'});
     });
 
-    test('apply-all clears timeout overrides while preserving unknown fields', () {
+    test('apply-all clears selected timeout overrides while preserving unknown entries and fields', () {
       final original = BridgeSettings.fromJson({
         'plugins': {
           'opencode': {'idleTimeoutMins': 2, 'futureOption': true},
+          'future-plugin': {'idleTimeoutMins': 8, 'futureOption': 'kept'},
         },
       });
 
-      final updated = original.plugins.withDefaultIdleTimeout(idleTimeoutMins: 15, clearOverrides: true);
+      final updated = original.plugins.withDefaultIdleTimeout(
+        idleTimeoutMins: 15,
+        clearOverridePluginIds: const {'opencode'},
+      );
       final json = updated.toJson();
 
       expect(json['default'], {'idleTimeoutMins': 15});
       expect(json['opencode'], {'futureOption': true});
+      expect(json['future-plugin'], {'futureOption': 'kept', 'idleTimeoutMins': 8});
     });
 
     test('copyWith changes one legacy setting and preserves plugin policy', () {

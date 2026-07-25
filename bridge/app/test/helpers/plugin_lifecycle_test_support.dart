@@ -66,12 +66,20 @@ PluginRuntime runtimeForLifecycleService({required PluginLifecycleService servic
 enum _TestPluginOperation { activate }
 
 class _TestBridgeSettingsRepository implements BridgeSettingsRepository {
-  const _TestBridgeSettingsRepository({required this.settings});
+  _TestBridgeSettingsRepository({required this.settings});
 
-  final BridgeSettings settings;
+  BridgeSettings settings;
 
   @override
   BridgeSettings get currentSettings => settings;
+
+  @override
+  Future<BridgeSettings> loadSettings() async => settings;
+
+  @override
+  Future<void> saveSettings({required BridgeSettings settings}) async {
+    this.settings = settings;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

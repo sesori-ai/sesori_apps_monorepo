@@ -61,6 +61,7 @@ class PluginLifecycleService {
   final StreamController<String> _managementSnapshotTokenController = StreamController<String>.broadcast(sync: true);
   StreamSubscription<List<PluginLifecycleSnapshot>>? _runtimeSubscription;
   Future<void>? _disposeFuture;
+  Future<void> _settingsMutationTail = Future<void>.value();
   final Map<String, ({Duration duration, Timer timer})> _idleTimers = {};
   PluginManagementResponse? _lastPublishedManagementSnapshot;
   final Random _random = Random.secure();
@@ -218,6 +219,56 @@ class PluginLifecycleService {
   }
 
   Stream<String> get managementSnapshotTokens => _managementSnapshotTokenController.stream;
+
+  Future<PluginManagementResponse> updateIdleTimeout({required PluginIdleTimeoutUpdateRequest request}) {
+    final knownPluginIds = _knownPluginIds;
+    if (knownPluginIds == null || _setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    if (_lastPublishedManagementSnapshot == null) {
+      throw StateError("Plugin management snapshot is not ready.");
+    }
+    switch (request) {
+      case PluginIdleTimeoutApplyAllRequest():
+        break;
+      case PluginIdleTimeoutSetOverrideRequest(:final pluginId) ||
+          PluginIdleTimeoutClearOverrideRequest(:final pluginId):
+        if (!knownPluginIds.contains(pluginId)) {
+          throw PluginManagementPluginNotFoundException(pluginId);
+        }
+    }
+    return _withSettingsMutationTail(() async {
+      final current = await _bridgeSettingsRepository.loadSettings();
+      final plugins = switch (request) {
+        PluginIdleTimeoutApplyAllRequest(:final idleTimeoutMins) => current.plugins.withDefaultIdleTimeout(
+          idleTimeoutMins: idleTimeoutMins,
+          clearOverridePluginIds: knownPluginIds,
+        ),
+        PluginIdleTimeoutSetOverrideRequest(:final pluginId, :final idleTimeoutMins) =>
+          current.plugins.withPluginIdleTimeout(pluginId: pluginId, idleTimeoutMins: idleTimeoutMins),
+        PluginIdleTimeoutClearOverrideRequest(:final pluginId) => current.plugins.withPluginIdleTimeout(
+          pluginId: pluginId,
+          idleTimeoutMins: null,
+        ),
+      };
+      await _bridgeSettingsRepository.saveSettings(settings: current.copyWith(plugins: plugins));
+      _syncIdleTimers(_lifecycleRepository.snapshot);
+      _publishManagementIfChanged();
+      return managementSnapshot;
+    });
+  }
+
+  Future<T> _withSettingsMutationTail<T>(Future<T> Function() operation) {
+    final completer = Completer<T>();
+    _settingsMutationTail = _settingsMutationTail.then((_) async {
+      try {
+        completer.complete(await operation());
+      } on Object catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    return completer.future;
+  }
 
   void _applyRuntimeSnapshots(List<PluginLifecycleSnapshot> snapshots) {
     final setupById = _setupById;
@@ -541,4 +592,10 @@ class PluginLifecycleService {
     PluginLifecycleState.failed => "Check the bridge console and restart the bridge to retry this plugin.",
     PluginLifecycleState.ready => null,
   };
+}
+
+class PluginManagementPluginNotFoundException implements Exception {
+  const PluginManagementPluginNotFoundException(this.pluginId);
+
+  final String pluginId;
 }

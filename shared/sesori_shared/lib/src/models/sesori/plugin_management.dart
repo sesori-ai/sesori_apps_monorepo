@@ -70,3 +70,30 @@ sealed class PluginManagementResponse with _$PluginManagementResponse {
 
   factory PluginManagementResponse.fromJson(Map<String, dynamic> json) => _$PluginManagementResponseFromJson(json);
 }
+
+@Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
+sealed class PluginIdleTimeoutUpdateRequest with _$PluginIdleTimeoutUpdateRequest {
+  @FreezedUnionValue("applyAll")
+  const factory PluginIdleTimeoutUpdateRequest.applyAll({
+    @JsonKey(fromJson: _strictIntFromJson) required int idleTimeoutMins,
+  }) = PluginIdleTimeoutApplyAllRequest;
+
+  @FreezedUnionValue("setOverride")
+  const factory PluginIdleTimeoutUpdateRequest.setOverride({
+    required String pluginId,
+    @JsonKey(fromJson: _strictIntFromJson) required int idleTimeoutMins,
+  }) = PluginIdleTimeoutSetOverrideRequest;
+
+  @FreezedUnionValue("clearOverride")
+  const factory PluginIdleTimeoutUpdateRequest.clearOverride({
+    required String pluginId,
+  }) = PluginIdleTimeoutClearOverrideRequest;
+
+  factory PluginIdleTimeoutUpdateRequest.fromJson(Map<String, dynamic> json) =>
+      _$PluginIdleTimeoutUpdateRequestFromJson(json);
+}
+
+int _strictIntFromJson(num value) {
+  if (value is int) return value;
+  throw const FormatException("Expected an integer");
+}

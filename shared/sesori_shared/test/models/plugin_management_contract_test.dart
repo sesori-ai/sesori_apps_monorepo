@@ -77,4 +77,28 @@ void main() {
     expect(PluginRuntimeState.stopping.isRoutable, isFalse);
     expect(PluginRuntimeState.failed.isRoutable, isFalse);
   });
+
+  test("idle timeout update variants round-trip", () {
+    const requests = <PluginIdleTimeoutUpdateRequest>[
+      PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30),
+      PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "opencode", idleTimeoutMins: -1),
+      PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "opencode"),
+    ];
+
+    for (final request in requests) {
+      expect(PluginIdleTimeoutUpdateRequest.fromJson(request.toJson()), request);
+    }
+  });
+
+  test("idle timeout updates reject fractional timeout fields", () {
+    for (final json in const [
+      <String, dynamic>{"type": "applyAll", "idleTimeoutMins": 1.5},
+      <String, dynamic>{"type": "setOverride", "pluginId": "opencode", "idleTimeoutMins": -2.5},
+    ]) {
+      expect(
+        () => PluginIdleTimeoutUpdateRequest.fromJson(json),
+        throwsA(isA<FormatException>()),
+      );
+    }
+  });
 }

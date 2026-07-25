@@ -36,6 +36,7 @@ import "../routing/get_catalog_import_statuses_handler.dart";
 import "../routing/get_plugin_management_handler.dart";
 import "../routing/get_plugin_setup_handler.dart";
 import "../routing/get_plugins_handler.dart";
+import "../routing/patch_plugin_idle_timeout_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/catalog_import_service.dart";
@@ -421,6 +422,7 @@ class Orchestrator {
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
+        PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService),
         RestartBridgeHandler(restartService: _restartService),

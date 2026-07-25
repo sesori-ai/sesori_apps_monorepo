@@ -333,4 +333,180 @@ as List<PluginManagementMetadata>,
 
 }
 
+PluginIdleTimeoutUpdateRequest _$PluginIdleTimeoutUpdateRequestFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'applyAll':
+          return PluginIdleTimeoutApplyAllRequest.fromJson(
+            json
+          );
+                case 'setOverride':
+          return PluginIdleTimeoutSetOverrideRequest.fromJson(
+            json
+          );
+                case 'clearOverride':
+          return PluginIdleTimeoutClearOverrideRequest.fromJson(
+            json
+          );
+        
+          default:
+            throw CheckedFromJsonException(
+  json,
+  'type',
+  'PluginIdleTimeoutUpdateRequest',
+  'Invalid union type "${json['type']}"!'
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$PluginIdleTimeoutUpdateRequest {
+
+
+
+  /// Serializes this PluginIdleTimeoutUpdateRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutUpdateRequest);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginIdleTimeoutUpdateRequest()';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginIdleTimeoutApplyAllRequest implements PluginIdleTimeoutUpdateRequest {
+  const PluginIdleTimeoutApplyAllRequest({@JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins, final  String? $type}): $type = $type ?? 'applyAll';
+  factory PluginIdleTimeoutApplyAllRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutApplyAllRequestFromJson(json);
+
+@JsonKey(fromJson: _strictIntFromJson) final  int idleTimeoutMins;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginIdleTimeoutApplyAllRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutApplyAllRequest&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,idleTimeoutMins);
+
+@override
+String toString() {
+  return 'PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: $idleTimeoutMins)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginIdleTimeoutSetOverrideRequest implements PluginIdleTimeoutUpdateRequest {
+  const PluginIdleTimeoutSetOverrideRequest({required this.pluginId, @JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins, final  String? $type}): $type = $type ?? 'setOverride';
+  factory PluginIdleTimeoutSetOverrideRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutSetOverrideRequestFromJson(json);
+
+ final  String pluginId;
+@JsonKey(fromJson: _strictIntFromJson) final  int idleTimeoutMins;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginIdleTimeoutSetOverrideRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutSetOverrideRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,idleTimeoutMins);
+
+@override
+String toString() {
+  return 'PluginIdleTimeoutUpdateRequest.setOverride(pluginId: $pluginId, idleTimeoutMins: $idleTimeoutMins)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginIdleTimeoutClearOverrideRequest implements PluginIdleTimeoutUpdateRequest {
+  const PluginIdleTimeoutClearOverrideRequest({required this.pluginId, final  String? $type}): $type = $type ?? 'clearOverride';
+  factory PluginIdleTimeoutClearOverrideRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutClearOverrideRequestFromJson(json);
+
+ final  String pluginId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginIdleTimeoutClearOverrideRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutClearOverrideRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId);
+
+@override
+String toString() {
+  return 'PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: $pluginId)';
+}
+
+
+}
+
+
+
+
 // dart format on

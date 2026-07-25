@@ -77,3 +77,44 @@ Map<String, dynamic> _$PluginManagementResponseToJson(
   'defaultIdleTimeoutMins': instance.defaultIdleTimeoutMins,
   'plugins': instance.plugins.map((e) => e.toJson()).toList(),
 };
+
+PluginIdleTimeoutApplyAllRequest _$PluginIdleTimeoutApplyAllRequestFromJson(
+  Map json,
+) => PluginIdleTimeoutApplyAllRequest(
+  idleTimeoutMins: _strictIntFromJson(json['idleTimeoutMins'] as num),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PluginIdleTimeoutApplyAllRequestToJson(
+  PluginIdleTimeoutApplyAllRequest instance,
+) => <String, dynamic>{
+  'idleTimeoutMins': instance.idleTimeoutMins,
+  'type': instance.$type,
+};
+
+PluginIdleTimeoutSetOverrideRequest
+_$PluginIdleTimeoutSetOverrideRequestFromJson(Map json) =>
+    PluginIdleTimeoutSetOverrideRequest(
+      pluginId: json['pluginId'] as String,
+      idleTimeoutMins: _strictIntFromJson(json['idleTimeoutMins'] as num),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$PluginIdleTimeoutSetOverrideRequestToJson(
+  PluginIdleTimeoutSetOverrideRequest instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'idleTimeoutMins': instance.idleTimeoutMins,
+  'type': instance.$type,
+};
+
+PluginIdleTimeoutClearOverrideRequest
+_$PluginIdleTimeoutClearOverrideRequestFromJson(Map json) =>
+    PluginIdleTimeoutClearOverrideRequest(
+      pluginId: json['pluginId'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$PluginIdleTimeoutClearOverrideRequestToJson(
+  PluginIdleTimeoutClearOverrideRequest instance,
+) => <String, dynamic>{'pluginId': instance.pluginId, 'type': instance.$type};

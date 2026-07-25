@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
@@ -48,6 +49,26 @@ void main() {
     final event = await eventFuture.timeout(const Duration(seconds: 2));
     expect(event.snapshotToken, hasLength(22));
     expect(harness.lifecycleService.managementSnapshot.snapshotToken, event.snapshotToken);
+  });
+
+  test("orchestrator routes live plugin idle timeout updates", () async {
+    final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
+    addTearDown(harness.close);
+
+    final response = await harness.composition.session.router.route(
+      makeRequest(
+        "PATCH",
+        "/plugin/idle-timeout",
+        body: jsonEncode(
+          const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 25).toJson(),
+        ),
+      ),
+    );
+    final management = PluginManagementResponse.fromJson(jsonDecodeMap(response.body!));
+
+    expect(response.status, 200);
+    expect(management.plugins.single.idleTimeoutMins, 25);
+    expect(management.plugins.single.hasIdleTimeoutOverride, isTrue);
   });
 
   test("a sourced reconnect reconciles its active plugin and local events are already mapped", () async {

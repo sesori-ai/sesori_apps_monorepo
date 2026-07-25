@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -329,6 +330,171 @@ void main() {
     expect({initialToken, ...snapshotTokens}, hasLength(4));
   });
 
+  test("idle timeout writes serialize and preserve unknown plugin settings", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(
+          settingsByPluginId: {
+            "one": PluginLifecycleSettings(
+              idleTimeoutMins: 5,
+              additionalProperties: {"futureOption": "registered-kept"},
+            ),
+            "future-plugin": PluginLifecycleSettings(
+              idleTimeoutMins: 7,
+              additionalProperties: {"futureOption": "unknown-kept"},
+            ),
+          },
+        ),
+      ),
+    )..saveGate = Completer<void>();
+    final service = _singleIdleService(
+      lifecycleRepository: repository,
+      settingsRepository: settingsRepository,
+      timerScheduler: _ControllablePluginIdleTimerScheduler(),
+      residencyPolicy: PluginResidencyPolicy.transient,
+    );
+    addTearDown(service.dispose);
+    final snapshotTokens = <String>[];
+    final subscription = service.managementSnapshotTokens.listen(snapshotTokens.add);
+    addTearDown(subscription.cancel);
+
+    final applyAll = service.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30),
+    );
+    await settingsRepository.saveStarted.future;
+    final setOverride = service.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: -1),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(settingsRepository.loadCalls, 1);
+    settingsRepository.saveGate!.complete();
+    final responses = await Future.wait([applyAll, setOverride]);
+
+    expect(responses.first.defaultIdleTimeoutMins, 30);
+    expect(responses.first.plugins.single.hasIdleTimeoutOverride, isFalse);
+    expect(responses.last.plugins.single.idleTimeoutMins, -1);
+    expect(responses.last.plugins.single.hasIdleTimeoutOverride, isTrue);
+    expect(settingsRepository.loadCalls, 2);
+    expect(settingsRepository.settings.plugins.settingsByPluginId["one"]?.idleTimeoutMins, -1);
+    expect(settingsRepository.settings.plugins.toJson()["future-plugin"], {
+      "futureOption": "unknown-kept",
+      "idleTimeoutMins": 7,
+    });
+    expect(snapshotTokens, hasLength(2));
+    expect(service.managementSnapshot.snapshotToken, snapshotTokens.last);
+    expect(
+      () => service.updateIdleTimeout(
+        request: const PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "missing"),
+      ),
+      throwsA(isA<PluginManagementPluginNotFoundException>()),
+    );
+  });
+
+  test("successful timeout writes resync live timers while failed writes change nothing", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings());
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final service = _singleIdleService(
+      lifecycleRepository: repository,
+      settingsRepository: settingsRepository,
+      timerScheduler: timerScheduler,
+      residencyPolicy: PluginResidencyPolicy.transient,
+    );
+    addTearDown(service.dispose);
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
+    await _waitFor(() => timerScheduler.timers.length == 1);
+    final initialTimer = timerScheduler.timers.single;
+    final snapshotTokens = <String>[];
+    final subscription = service.managementSnapshotTokens.listen(snapshotTokens.add);
+    addTearDown(subscription.cancel);
+
+    final response = await service.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 25),
+    );
+
+    expect(initialTimer.isActive, isFalse);
+    expect(timerScheduler.timers.last.duration, const Duration(minutes: 25));
+    expect(timerScheduler.timers.last.isActive, isTrue);
+    expect(response.plugins.single.idleTimeoutMins, 25);
+    expect(snapshotTokens, hasLength(1));
+
+    final cleared = await service.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "one"),
+    );
+
+    expect(timerScheduler.timers[1].isActive, isFalse);
+    expect(timerScheduler.timers.last.duration, const Duration(minutes: defaultPluginIdleTimeoutMins));
+    expect(timerScheduler.timers.last.isActive, isTrue);
+    expect(cleared.plugins.single.idleTimeoutMins, defaultPluginIdleTimeoutMins);
+    expect(cleared.plugins.single.hasIdleTimeoutOverride, isFalse);
+    expect(snapshotTokens, hasLength(2));
+    final successfulToken = cleared.snapshotToken;
+
+    settingsRepository.saveError = StateError("disk full");
+    await expectLater(
+      service.updateIdleTimeout(
+        request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 40),
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(
+      settingsRepository.settings.plugins.idleTimeoutMinsFor(pluginId: "one"),
+      defaultPluginIdleTimeoutMins,
+    );
+    expect(timerScheduler.timers, hasLength(3));
+    expect(timerScheduler.timers.last.isActive, isTrue);
+    expect(service.managementSnapshot.snapshotToken, successfulToken);
+    expect(service.managementSnapshot.plugins.single.idleTimeoutMins, defaultPluginIdleTimeoutMins);
+    expect(snapshotTokens, hasLength(2));
+
+    settingsRepository.saveError = null;
+    final recovered = await service.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 15),
+    );
+
+    expect(recovered.plugins.single.idleTimeoutMins, 15);
+    expect(timerScheduler.timers, hasLength(4));
+    expect(timerScheduler.timers.last.duration, const Duration(minutes: 15));
+    expect(snapshotTokens, hasLength(3));
+  });
+
+  test("resident plugins persist timeout edits while retaining effective zero", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(
+          settingsByPluginId: {
+            "one": PluginLifecycleSettings(idleTimeoutMins: 45),
+          },
+        ),
+      ),
+    );
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final service = _singleIdleService(
+      lifecycleRepository: repository,
+      settingsRepository: settingsRepository,
+      timerScheduler: timerScheduler,
+      residencyPolicy: PluginResidencyPolicy.resident,
+    );
+    addTearDown(service.dispose);
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
+
+    final response = await service.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 20),
+    );
+
+    expect(settingsRepository.settings.plugins.settingsByPluginId["one"]?.idleTimeoutMins, 20);
+    expect(response.plugins.single.idleTimeoutMins, 0);
+    expect(response.plugins.single.hasIdleTimeoutOverride, isTrue);
+    expect(timerScheduler.timers, isEmpty);
+  });
+
   test("runtime snapshots drive selectable metadata and derived default", () async {
     final alpha = _FakePluginApi(id: "alpha");
     final beta = _FakePluginApi(id: "beta");
@@ -532,6 +698,27 @@ PluginLifecycleService _service({
   )..registerPlugins(plugins: plugins);
 }
 
+PluginLifecycleService _singleIdleService({
+  required PluginLifecycleRepository lifecycleRepository,
+  required BridgeSettingsRepository settingsRepository,
+  required PluginIdleTimerScheduler timerScheduler,
+  required PluginResidencyPolicy residencyPolicy,
+}) {
+  return PluginLifecycleService(
+      lifecycleRepository: lifecycleRepository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: settingsRepository,
+      idleTimerScheduler: timerScheduler,
+    )
+    ..registerPlugins(
+      plugins: [(id: "one", displayName: "One", residencyPolicy: residencyPolicy)],
+    )
+    ..initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+}
+
 class _FakePluginApi extends BridgeDerivedProjectsPluginApi {
   _FakePluginApi({required this.id});
 
@@ -628,6 +815,37 @@ class _IdleLifecycleRepository implements PluginLifecycleRepository {
       transitionSettled: transitionSettled,
     );
   }
+}
+
+class _MutableBridgeSettingsRepository implements BridgeSettingsRepository {
+  _MutableBridgeSettingsRepository({required this.settings});
+
+  BridgeSettings settings;
+  Completer<void>? saveGate;
+  Object? saveError;
+  int loadCalls = 0;
+  final Completer<void> saveStarted = Completer<void>();
+
+  @override
+  BridgeSettings get currentSettings => settings;
+
+  @override
+  Future<BridgeSettings> loadSettings() async {
+    loadCalls++;
+    return settings;
+  }
+
+  @override
+  Future<void> saveSettings({required BridgeSettings settings}) async {
+    if (!saveStarted.isCompleted) saveStarted.complete();
+    await saveGate?.future;
+    final error = saveError;
+    if (error != null) throw error;
+    this.settings = settings;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ControllablePluginIdleTimerScheduler implements PluginIdleTimerScheduler {
