@@ -4,8 +4,8 @@
 
 - **Base:** `origin/main` at P03 merge `00a0da77`
 - **Current branch:** `setup-aware-plugin-management-idle-timeouts`
-- **Current slice:** Stage 12-P04 / step 4 of 6, verified against merged P03
-- **Next action:** push and open the step-4/6 PR
+- **Current slice:** Stage 12-P04 / step 4 of 6, open as PR #569
+- **Next action:** monitor PR #569 and prepare P05 locally
 
 ## Delivery
 
@@ -14,7 +14,7 @@
 | [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 merged as `f8f05c33` |
 | [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 merged as `19ca475a` |
 | [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
-| [ ] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | verified against `00a0da77`; no PR |
+| [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 open; monitoring |
 | [ ] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | waits for P04 merge |
 | [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | waits for P05 merge |
 
@@ -158,6 +158,8 @@
 - Merged P03's `00a0da77` `origin/main` result into the local successor.
   Post-merge reverification passed the same shared tests (6), focused bridge
   tests (42), and fatal analyzers before the P04 PR opens.
+- Pushed and opened PR #569 with the fixed step-4/6 series title; monitoring
+  started immediately.
 
 ## Delivery Rules
 
