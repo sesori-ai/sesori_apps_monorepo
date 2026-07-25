@@ -41,6 +41,7 @@ class RelayClient {
 
   static const int _messageVersion = 0x01;
   static const Duration _handshakeTimeout = Duration(seconds: 15);
+  static const Duration _channelCloseTimeout = Duration(seconds: 3);
   static const Duration _requestTimeout = Duration(seconds: 30);
   int? _lastCloseCode;
   int? get lastCloseCode => _lastCloseCode;
@@ -122,7 +123,14 @@ class RelayClient {
           );
       // Upgrade failures reach both the stream and `ready`: subscribe first to
       // drain channel closure, then await `ready` so this connect call owns the error.
-      await channel.ready;
+      await channel.ready.timeout(
+        _handshakeTimeout,
+        onTimeout: () => throw TimeoutException(
+          "Timed out waiting for relay WebSocket upgrade",
+          _handshakeTimeout,
+        ),
+      );
+      if (_disposed) return;
       _firstBinaryMessage = Completer<Uint8List>();
 
       // Auth token is sent before E2EE is established. This is intentional:
@@ -181,6 +189,7 @@ class RelayClient {
       logd("Relay connected but bridge is offline — holding socket open");
       return;
     } catch (error, stackTrace) {
+      if (_disposed) return;
       loge("Failed to connect relay client", error, stackTrace);
       await _teardownChannelOnly();
       _connectionState = RelayClientConnectionState.disconnected;
@@ -559,12 +568,19 @@ class RelayClient {
     }
     _channelSubscription = null;
 
+    final channel = _channel;
+    _channel = null;
     try {
-      await _channel?.sink.close();
+      await channel?.sink.close().timeout(
+        _channelCloseTimeout,
+        onTimeout: () => throw TimeoutException(
+          "Timed out closing relay WebSocket channel",
+          _channelCloseTimeout,
+        ),
+      );
     } catch (error, stackTrace) {
       loge("Failed to close relay socket channel", error, stackTrace);
     }
-    _channel = null;
     _firstBinaryMessage = null;
   }
 
