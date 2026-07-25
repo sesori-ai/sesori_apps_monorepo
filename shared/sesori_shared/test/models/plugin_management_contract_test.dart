@@ -101,4 +101,49 @@ void main() {
       );
     }
   });
+
+  test("disable command variants and conflicts round-trip", () {
+    for (final request in const [
+      PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+      PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+    ]) {
+      final json = request.toJson();
+      expect(json, {"type": "disable", "mode": request.mode.name});
+      expect(PluginLifecycleCommandRequest.fromJson(json), request);
+    }
+
+    const conflict = PluginLifecycleConflict(
+      pluginId: "opencode",
+      reasons: [PluginLifecycleConflictReason.busy],
+      current: plugin,
+    );
+    expect(PluginLifecycleConflict.fromJson(conflict.toJson()), conflict);
+  });
+
+  test("disable commands require an exact type and explicit mode while future conflicts fail closed", () {
+    for (final json in const [
+      <String, dynamic>{"mode": "safe"},
+      <String, dynamic>{"type": "restart", "mode": "force"},
+      <String, dynamic>{"type": "future", "mode": "safe"},
+    ]) {
+      expect(
+        () => PluginLifecycleCommandRequest.fromJson(json),
+        throwsA(isA<FormatException>()),
+      );
+    }
+    expect(
+      () => PluginLifecycleCommandRequest.fromJson(const {"type": "disable"}),
+      throwsA(anything),
+    );
+    final json = const PluginLifecycleConflict(
+      pluginId: "opencode",
+      reasons: [PluginLifecycleConflictReason.busy],
+      current: plugin,
+    ).toJson()..["reasons"] = ["futureReason"];
+
+    expect(
+      PluginLifecycleConflict.fromJson(json).reasons,
+      [PluginLifecycleConflictReason.unknown],
+    );
+  });
 }

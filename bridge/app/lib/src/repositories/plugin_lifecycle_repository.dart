@@ -7,7 +7,7 @@ class PluginLifecycleSnapshot {
     required this.pluginId,
     required this.projectOwnership,
     required this.setup,
-    required this.eligible,
+    required this.accessGate,
     required this.startAllowed,
     required this.state,
     required this.workState,
@@ -18,7 +18,8 @@ class PluginLifecycleSnapshot {
   final String pluginId;
   final PluginProjectOwnership projectOwnership;
   final PluginSetupStatus setup;
-  final bool eligible;
+  final PluginRuntimeAccessGate accessGate;
+  bool get eligible => accessGate != PluginRuntimeAccessGate.disabled;
   final bool startAllowed;
   final PluginRuntimeState state;
   final PluginWorkState workState;
@@ -50,7 +51,9 @@ class PluginLifecycleRepository {
         for (final snapshot in _runtime.snapshot)
           PluginRuntimeAccess(
             pluginId: snapshot.pluginId,
-            eligible: eligiblePluginIds.contains(snapshot.pluginId),
+            gate: eligiblePluginIds.contains(snapshot.pluginId)
+                ? PluginRuntimeAccessGate.enabled
+                : PluginRuntimeAccessGate.disabled,
             startAllowed: startAllowedPluginIds.contains(snapshot.pluginId),
           ),
       ],
@@ -63,6 +66,15 @@ class PluginLifecycleRepository {
     required String pluginId,
     required PluginStopIntent intent,
   }) => _runtime.stop(pluginId: pluginId, intent: intent);
+
+  Future<PluginRuntimeCommandResult> prepareDisable({
+    required String pluginId,
+    required PluginStopIntent intent,
+  }) => _runtime.prepareDisable(pluginId: pluginId, intent: intent);
+
+  void commitDisable({required String pluginId}) => _runtime.commitDisable(pluginId: pluginId);
+
+  void rollbackDisable({required String pluginId}) => _runtime.rollbackDisable(pluginId: pluginId);
 
   Future<PluginRuntimeCommandResult> stopSafely({required String pluginId}) {
     return _runtime.stop(pluginId: pluginId, intent: PluginStopIntent.safe);
@@ -83,7 +95,7 @@ class PluginLifecycleRepository {
           pluginId: snapshot.pluginId,
           projectOwnership: snapshot.projectOwnership,
           setup: snapshot.setup,
-          eligible: snapshot.eligible,
+          accessGate: snapshot.accessGate,
           startAllowed: snapshot.startAllowed,
           state: snapshot.state,
           workState: snapshot.workState,

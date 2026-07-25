@@ -495,6 +495,174 @@ void main() {
     expect(timerScheduler.timers, isEmpty);
   });
 
+  test("disable commits durable eligibility and equal commands join", () async {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
+      ..saveGate = Completer<void>();
+    final service =
+        PluginLifecycleService(
+            lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+            preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: settingsRepository,
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
+          )
+          ..registerPlugins(
+            plugins: const [
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
+            ],
+          )
+          ..initialize(
+            disabledPluginIds: const {},
+            setupById: const {"one": PluginSetupReady()},
+          );
+    addTearDown(() async {
+      await service.dispose();
+      await runtime.dispose();
+    });
+    const request = PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe);
+    final initialToken = service.managementSnapshot.snapshotToken;
+
+    final first = service.command(pluginId: "one", request: request);
+    await settingsRepository.saveStarted.future;
+    final joined = service.command(pluginId: "one", request: request);
+
+    expect(settingsRepository.loadCalls, 1);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
+    expect(service.managementSnapshot.snapshotToken, isNot(initialToken));
+    expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.stopping);
+    settingsRepository.saveGate!.complete();
+    final responses = await Future.wait([first, joined]);
+
+    expect(responses[0], responses[1]);
+    expect(responses.last.defaultPluginId, isNull);
+    expect(responses.last.plugins.single.runtimeState, shared.PluginRuntimeState.disabled);
+    expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.disabled);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    expect(service.compositionView.eligiblePluginIds, isEmpty);
+  });
+
+  test("a different disable mode conflicts while a command is active", () async {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
+      ..saveGate = Completer<void>();
+    final service =
+        PluginLifecycleService(
+            lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+            preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: settingsRepository,
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
+          )
+          ..registerPlugins(
+            plugins: const [
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
+            ],
+          )
+          ..initialize(
+            disabledPluginIds: const {},
+            setupById: const {"one": PluginSetupReady()},
+          );
+    addTearDown(() async {
+      await service.dispose();
+      await runtime.dispose();
+    });
+    final safe = service.command(
+      pluginId: "one",
+      request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+    );
+    await settingsRepository.saveStarted.future;
+
+    expect(
+      () => service.command(
+        pluginId: "one",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+      ),
+      throwsA(
+        isA<PluginManagementConflictException>().having(
+          (error) => error.conflict.reasons,
+          "reasons",
+          [PluginLifecycleConflictReason.transitioning],
+        ),
+      ),
+    );
+
+    settingsRepository.saveGate!.complete();
+    await safe;
+  });
+
+  test("failed disable persistence rolls runtime access back and allows retry", () async {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
+      ..saveError = StateError("disk full");
+    final service =
+        PluginLifecycleService(
+            lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+            preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: settingsRepository,
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
+          )
+          ..registerPlugins(
+            plugins: const [
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
+            ],
+          )
+          ..initialize(
+            disabledPluginIds: const {},
+            setupById: const {"one": PluginSetupReady()},
+          );
+    addTearDown(() async {
+      await service.dispose();
+      await runtime.dispose();
+    });
+    const request = PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force);
+
+    await expectLater(
+      service.command(pluginId: "one", request: request),
+      throwsA(isA<PluginManagementCommandFailedException>()),
+    );
+
+    expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isFalse);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.eligible, isTrue);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    expect(service.compositionView.eligiblePluginIds, ["one"]);
+    expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.dormant);
+
+    settingsRepository.saveError = null;
+    final recovered = await service.command(pluginId: "one", request: request);
+
+    expect(recovered.plugins.single.runtimeState, shared.PluginRuntimeState.disabled);
+  });
+
+  test("safe disable conflicts map to the typed management response without writing settings", () async {
+    final repository = _ConflictingDisableLifecycleRepository();
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings());
+    final service = _singleIdleService(
+      lifecycleRepository: repository,
+      settingsRepository: settingsRepository,
+      timerScheduler: _ControllablePluginIdleTimerScheduler(),
+      residencyPolicy: PluginResidencyPolicy.transient,
+    );
+    addTearDown(service.dispose);
+
+    await expectLater(
+      service.command(
+        pluginId: "one",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+      ),
+      throwsA(
+        isA<PluginManagementConflictException>().having(
+          (error) => error.conflict.reasons,
+          "reasons",
+          [PluginLifecycleConflictReason.busy],
+        ),
+      ),
+    );
+
+    expect(settingsRepository.loadCalls, isZero);
+  });
+
   test("runtime snapshots drive selectable metadata and derived default", () async {
     final alpha = _FakePluginApi(id: "alpha");
     final beta = _FakePluginApi(id: "beta");
@@ -781,7 +949,7 @@ class _IdleLifecycleRepository implements PluginLifecycleRepository {
         pluginId: pluginId,
         projectOwnership: PluginProjectOwnership.native,
         setup: const PluginSetupReady(),
-        eligible: true,
+        accessGate: PluginRuntimeAccessGate.enabled,
         startAllowed: true,
         generation: 1,
         state: PluginRuntimeState.dormant,
@@ -807,12 +975,36 @@ class _IdleLifecycleRepository implements PluginLifecycleRepository {
       pluginId: "one",
       projectOwnership: PluginProjectOwnership.native,
       setup: const PluginSetupReady(),
-      eligible: true,
+      accessGate: PluginRuntimeAccessGate.enabled,
       startAllowed: true,
       state: state,
       workState: workState,
       leaseCount: leaseCount,
       transitionSettled: transitionSettled,
+    );
+  }
+}
+
+class _ConflictingDisableLifecycleRepository extends _IdleLifecycleRepository {
+  @override
+  Future<PluginRuntimeCommandResult> prepareDisable({
+    required String pluginId,
+    required PluginStopIntent intent,
+  }) async {
+    return PluginRuntimeCommandConflict(
+      snapshot: PluginRuntimeSnapshot(
+        pluginId: pluginId,
+        projectOwnership: PluginProjectOwnership.native,
+        setup: const PluginSetupReady(),
+        accessGate: PluginRuntimeAccessGate.enabled,
+        startAllowed: true,
+        generation: 1,
+        state: PluginRuntimeState.active,
+        workState: PluginWorkState.busy,
+        leaseCount: 0,
+        transition: PluginRuntimeTransition.none,
+      ),
+      reasons: const [PluginRuntimeConflictReason.busy],
     );
   }
 }

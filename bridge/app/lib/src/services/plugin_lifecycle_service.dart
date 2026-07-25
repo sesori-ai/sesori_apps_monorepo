@@ -62,6 +62,7 @@ class PluginLifecycleService {
   StreamSubscription<List<PluginLifecycleSnapshot>>? _runtimeSubscription;
   Future<void>? _disposeFuture;
   Future<void> _settingsMutationTail = Future<void>.value();
+  final Map<String, _ActivePluginCommand> _activePluginCommands = {};
   final Map<String, ({Duration duration, Timer timer})> _idleTimers = {};
   PluginManagementResponse? _lastPublishedManagementSnapshot;
   final Random _random = Random.secure();
@@ -220,6 +221,38 @@ class PluginLifecycleService {
 
   Stream<String> get managementSnapshotTokens => _managementSnapshotTokenController.stream;
 
+  Future<PluginManagementResponse> command({
+    required String pluginId,
+    required PluginLifecycleCommandRequest request,
+  }) {
+    final knownPluginIds = _knownPluginIds;
+    if (knownPluginIds == null || _setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    if (!knownPluginIds.contains(pluginId)) {
+      throw PluginManagementPluginNotFoundException(pluginId);
+    }
+    if (_lastPublishedManagementSnapshot == null) {
+      throw StateError("Plugin management snapshot is not ready.");
+    }
+    final active = _activePluginCommands[pluginId];
+    if (active != null) {
+      if (active.request == request) return active.completer.future;
+      throw PluginManagementConflictException(
+        PluginLifecycleConflict(
+          pluginId: pluginId,
+          reasons: const [PluginLifecycleConflictReason.transitioning],
+          current: _managementRowForPluginId(pluginId),
+        ),
+      );
+    }
+
+    final command = _ActivePluginCommand(request: request);
+    _activePluginCommands[pluginId] = command;
+    unawaited(_executeCommand(pluginId: pluginId, command: command));
+    return command.completer.future;
+  }
+
   Future<PluginManagementResponse> updateIdleTimeout({required PluginIdleTimeoutUpdateRequest request}) {
     final knownPluginIds = _knownPluginIds;
     if (knownPluginIds == null || _setupById == null) {
@@ -269,6 +302,107 @@ class PluginLifecycleService {
     });
     return completer.future;
   }
+
+  Future<void> _executeCommand({
+    required String pluginId,
+    required _ActivePluginCommand command,
+  }) async {
+    Object? failure;
+    StackTrace? failureStackTrace;
+    try {
+      switch (command.request) {
+        case PluginLifecycleDisableRequest(:final mode):
+          await _disable(pluginId: pluginId, mode: mode);
+      }
+    } on Object catch (error, stackTrace) {
+      failure = error;
+      failureStackTrace = stackTrace;
+    }
+
+    if (identical(_activePluginCommands[pluginId], command)) {
+      _activePluginCommands.remove(pluginId);
+    }
+    _publishManagementIfChanged();
+    if (failure == null) {
+      command.completer.complete(managementSnapshot);
+    } else {
+      command.completer.completeError(failure, failureStackTrace);
+    }
+  }
+
+  Future<void> _disable({required String pluginId, required PluginStopMode mode}) async {
+    if (!_requireEligiblePluginIds().contains(pluginId)) return;
+    final result = await _lifecycleRepository.prepareDisable(
+      pluginId: pluginId,
+      intent: switch (mode) {
+        PluginStopMode.safe => PluginStopIntent.safe,
+        PluginStopMode.force => PluginStopIntent.force,
+      },
+    );
+    switch (result) {
+      case PluginRuntimeCommandConflict(:final reasons):
+        throw PluginManagementConflictException(
+          PluginLifecycleConflict(
+            pluginId: pluginId,
+            reasons: reasons.map(_mapConflictReason).toList(growable: false),
+            current: _managementRowForPluginId(pluginId),
+          ),
+        );
+      case PluginRuntimeCommandFailed(:final message):
+        throw PluginManagementCommandFailedException(message);
+      case PluginRuntimeCommandApplied() || PluginRuntimeCommandCurrent():
+        break;
+    }
+
+    try {
+      await _withSettingsMutationTail(() async {
+        final current = await _bridgeSettingsRepository.loadSettings();
+        if (current.plugins.isDisabled(pluginId: pluginId)) return;
+        await _bridgeSettingsRepository.saveSettings(
+          settings: current.copyWith(
+            plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: true),
+          ),
+        );
+      });
+    } on Object catch (error) {
+      try {
+        _lifecycleRepository.rollbackDisable(pluginId: pluginId);
+      } on Object catch (rollbackError) {
+        throw PluginManagementCommandFailedException(
+          "Plugin disable persistence failed ($error) and runtime rollback failed ($rollbackError).",
+        );
+      }
+      _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
+      throw PluginManagementCommandFailedException("Plugin disable persistence failed: $error");
+    }
+
+    try {
+      _lifecycleRepository.commitDisable(pluginId: pluginId);
+    } on Object catch (error) {
+      try {
+        _lifecycleRepository.rollbackDisable(pluginId: pluginId);
+      } on Object catch (rollbackError) {
+        throw PluginManagementCommandFailedException(
+          "Plugin disable commit failed ($error) and runtime rollback failed ($rollbackError).",
+        );
+      }
+      throw PluginManagementCommandFailedException("Plugin disable commit failed: $error");
+    }
+    _eligiblePluginIds = List<String>.unmodifiable([
+      for (final pluginId in _requireEligiblePluginIds())
+        if (pluginId != result.snapshot.pluginId) pluginId,
+    ]);
+    _metadataById.remove(pluginId);
+    _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
+  }
+
+  PluginLifecycleConflictReason _mapConflictReason(PluginRuntimeConflictReason reason) => switch (reason) {
+    PluginRuntimeConflictReason.inFlight => PluginLifecycleConflictReason.inFlight,
+    PluginRuntimeConflictReason.busy => PluginLifecycleConflictReason.busy,
+    PluginRuntimeConflictReason.workStateUnknown => PluginLifecycleConflictReason.workStateUnknown,
+    PluginRuntimeConflictReason.transitioning => PluginLifecycleConflictReason.transitioning,
+    PluginRuntimeConflictReason.notEligible => PluginLifecycleConflictReason.notEnabled,
+  };
 
   void _applyRuntimeSnapshots(List<PluginLifecycleSnapshot> snapshots) {
     final setupById = _setupById;
@@ -323,7 +457,7 @@ class PluginLifecycleService {
   }
 
   bool _isSelectable(PluginLifecycleSnapshot snapshot) {
-    if (!snapshot.eligible) return false;
+    if (snapshot.accessGate != PluginRuntimeAccessGate.enabled) return false;
     return switch (snapshot.state) {
       PluginRuntimeState.dormant ||
       PluginRuntimeState.starting ||
@@ -373,6 +507,11 @@ class PluginLifecycleService {
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
     );
+  }
+
+  PluginManagementMetadata _managementRowForPluginId(String pluginId) {
+    final plugin = _registeredPlugins!.singleWhere((candidate) => candidate.id == pluginId);
+    return _managementRow(plugin: plugin);
   }
 
   PluginManagementResponse _buildManagementResponse({required String? snapshotToken}) {
@@ -487,7 +626,10 @@ class PluginLifecycleService {
     return List<String>.unmodifiable([
       for (final pluginId in _requireEligiblePluginIds())
         if (byId[pluginId] case final snapshot?)
-          if (snapshot.eligible && snapshot.startAllowed && snapshot.setup is PluginSetupReady) pluginId,
+          if (snapshot.accessGate == PluginRuntimeAccessGate.enabled &&
+              snapshot.startAllowed &&
+              snapshot.setup is PluginSetupReady)
+            pluginId,
     ]);
   }
 
@@ -542,7 +684,7 @@ class PluginLifecycleService {
   }
 
   bool _isIdleCandidate(PluginLifecycleSnapshot snapshot) {
-    return snapshot.eligible &&
+    return snapshot.accessGate == PluginRuntimeAccessGate.enabled &&
         snapshot.workState == PluginWorkState.idle &&
         snapshot.leaseCount == 0 &&
         snapshot.transitionSettled &&
@@ -598,4 +740,26 @@ class PluginManagementPluginNotFoundException implements Exception {
   const PluginManagementPluginNotFoundException(this.pluginId);
 
   final String pluginId;
+}
+
+class PluginManagementConflictException implements Exception {
+  const PluginManagementConflictException(this.conflict);
+
+  final PluginLifecycleConflict conflict;
+}
+
+class PluginManagementCommandFailedException implements Exception {
+  const PluginManagementCommandFailedException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class _ActivePluginCommand {
+  _ActivePluginCommand({required this.request});
+
+  final PluginLifecycleCommandRequest request;
+  final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
 }

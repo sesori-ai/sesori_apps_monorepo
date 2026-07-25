@@ -42,6 +42,10 @@ enum PluginRuntimeState {
 
 enum PluginManagementWorkState { idle, busy, unknown }
 
+enum PluginStopMode { safe, force }
+
+enum PluginLifecycleConflictReason { inFlight, busy, workStateUnknown, transitioning, notEnabled, unknown }
+
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginManagementMetadata with _$PluginManagementMetadata {
   const factory PluginManagementMetadata({
@@ -72,6 +76,26 @@ sealed class PluginManagementResponse with _$PluginManagementResponse {
 }
 
 @Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
+sealed class PluginLifecycleCommandRequest with _$PluginLifecycleCommandRequest {
+  @FreezedUnionValue("disable")
+  const factory PluginLifecycleCommandRequest.disable({
+    required PluginStopMode mode,
+    @JsonKey(name: "type", includeFromJson: false, includeToJson: true, toJson: _disableCommandTypeToJson)
+    @Default("disable")
+    String wireType,
+  }) = PluginLifecycleDisableRequest;
+
+  factory PluginLifecycleCommandRequest.fromJson(Map<String, dynamic> json) {
+    if (json["type"] != "disable") {
+      throw FormatException('Invalid plugin lifecycle command type: ${json["type"]}');
+    }
+    return _$PluginLifecycleCommandRequestFromJson(json);
+  }
+}
+
+String _disableCommandTypeToJson(String _) => "disable";
+
+@Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
 sealed class PluginIdleTimeoutUpdateRequest with _$PluginIdleTimeoutUpdateRequest {
   @FreezedUnionValue("applyAll")
   const factory PluginIdleTimeoutUpdateRequest.applyAll({
@@ -96,4 +120,16 @@ sealed class PluginIdleTimeoutUpdateRequest with _$PluginIdleTimeoutUpdateReques
 int _strictIntFromJson(num value) {
   if (value is int) return value;
   throw const FormatException("Expected an integer");
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class PluginLifecycleConflict with _$PluginLifecycleConflict {
+  const factory PluginLifecycleConflict({
+    required String pluginId,
+    @JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown)
+    required List<PluginLifecycleConflictReason> reasons,
+    required PluginManagementMetadata current,
+  }) = _PluginLifecycleConflict;
+
+  factory PluginLifecycleConflict.fromJson(Map<String, dynamic> json) => _$PluginLifecycleConflictFromJson(json);
 }

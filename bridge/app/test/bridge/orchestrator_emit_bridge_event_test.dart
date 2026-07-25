@@ -71,6 +71,22 @@ void main() {
     expect(management.plugins.single.hasIdleTimeoutOverride, isTrue);
   });
 
+  test("orchestrator registers the plugin lifecycle command route", () async {
+    final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
+    addTearDown(harness.close);
+
+    final response = await harness.composition.session.router.route(
+      makeRequest(
+        "POST",
+        "/plugin/missing/command",
+        body: jsonEncode(const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe).toJson()),
+      ),
+    );
+
+    expect(response.status, 404);
+    expect(response.body, "plugin not found");
+  });
+
   test("a sourced reconnect reconciles its active plugin and local events are already mapped", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(

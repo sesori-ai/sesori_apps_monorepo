@@ -333,6 +333,80 @@ as List<PluginManagementMetadata>,
 
 }
 
+PluginLifecycleCommandRequest _$PluginLifecycleCommandRequestFromJson(
+  Map<String, dynamic> json
+) {
+    return PluginLifecycleDisableRequest.fromJson(
+      json
+    );
+}
+
+/// @nodoc
+mixin _$PluginLifecycleCommandRequest {
+
+ PluginStopMode get mode;@JsonKey(name: "type", includeFromJson: false, includeToJson: true, toJson: _disableCommandTypeToJson) String get wireType;
+
+  /// Serializes this PluginLifecycleCommandRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleCommandRequest&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.wireType, wireType) || other.wireType == wireType));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mode,wireType);
+
+@override
+String toString() {
+  return 'PluginLifecycleCommandRequest(mode: $mode, wireType: $wireType)';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginLifecycleDisableRequest implements PluginLifecycleCommandRequest {
+  const PluginLifecycleDisableRequest({required this.mode, @JsonKey(name: "type", includeFromJson: false, includeToJson: true, toJson: _disableCommandTypeToJson) this.wireType = "disable"});
+  factory PluginLifecycleDisableRequest.fromJson(Map<String, dynamic> json) => _$PluginLifecycleDisableRequestFromJson(json);
+
+@override final  PluginStopMode mode;
+@override@JsonKey(name: "type", includeFromJson: false, includeToJson: true, toJson: _disableCommandTypeToJson) final  String wireType;
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginLifecycleDisableRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleDisableRequest&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.wireType, wireType) || other.wireType == wireType));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mode,wireType);
+
+@override
+String toString() {
+  return 'PluginLifecycleCommandRequest.disable(mode: $mode, wireType: $wireType)';
+}
+
+
+}
+
+
+
+
 PluginIdleTimeoutUpdateRequest _$PluginIdleTimeoutUpdateRequestFromJson(
   Map<String, dynamic> json
 ) {
@@ -508,5 +582,169 @@ String toString() {
 
 
 
+
+
+/// @nodoc
+mixin _$PluginLifecycleConflict {
+
+ String get pluginId;@JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) List<PluginLifecycleConflictReason> get reasons; PluginManagementMetadata get current;
+/// Create a copy of PluginLifecycleConflict
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginLifecycleConflictCopyWith<PluginLifecycleConflict> get copyWith => _$PluginLifecycleConflictCopyWithImpl<PluginLifecycleConflict>(this as PluginLifecycleConflict, _$identity);
+
+  /// Serializes this PluginLifecycleConflict to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other.reasons, reasons)&&(identical(other.current, current) || other.current == current));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(reasons),current);
+
+@override
+String toString() {
+  return 'PluginLifecycleConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginLifecycleConflictCopyWith<$Res>  {
+  factory $PluginLifecycleConflictCopyWith(PluginLifecycleConflict value, $Res Function(PluginLifecycleConflict) _then) = _$PluginLifecycleConflictCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId,@JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) List<PluginLifecycleConflictReason> reasons, PluginManagementMetadata current
+});
+
+
+$PluginManagementMetadataCopyWith<$Res> get current;
+
+}
+/// @nodoc
+class _$PluginLifecycleConflictCopyWithImpl<$Res>
+    implements $PluginLifecycleConflictCopyWith<$Res> {
+  _$PluginLifecycleConflictCopyWithImpl(this._self, this._then);
+
+  final PluginLifecycleConflict _self;
+  final $Res Function(PluginLifecycleConflict) _then;
+
+/// Create a copy of PluginLifecycleConflict
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? pluginId = null,Object? reasons = null,Object? current = null,}) {
+  return _then(_self.copyWith(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,reasons: null == reasons ? _self.reasons : reasons // ignore: cast_nullable_to_non_nullable
+as List<PluginLifecycleConflictReason>,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
+as PluginManagementMetadata,
+  ));
+}
+/// Create a copy of PluginLifecycleConflict
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginManagementMetadataCopyWith<$Res> get current {
+  
+  return $PluginManagementMetadataCopyWith<$Res>(_self.current, (value) {
+    return _then(_self.copyWith(current: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _PluginLifecycleConflict implements PluginLifecycleConflict {
+  const _PluginLifecycleConflict({required this.pluginId, @JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) required final  List<PluginLifecycleConflictReason> reasons, required this.current}): _reasons = reasons;
+  factory _PluginLifecycleConflict.fromJson(Map<String, dynamic> json) => _$PluginLifecycleConflictFromJson(json);
+
+@override final  String pluginId;
+ final  List<PluginLifecycleConflictReason> _reasons;
+@override@JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) List<PluginLifecycleConflictReason> get reasons {
+  if (_reasons is EqualUnmodifiableListView) return _reasons;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_reasons);
+}
+
+@override final  PluginManagementMetadata current;
+
+/// Create a copy of PluginLifecycleConflict
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PluginLifecycleConflictCopyWith<_PluginLifecycleConflict> get copyWith => __$PluginLifecycleConflictCopyWithImpl<_PluginLifecycleConflict>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginLifecycleConflictToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginLifecycleConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other._reasons, _reasons)&&(identical(other.current, current) || other.current == current));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(_reasons),current);
+
+@override
+String toString() {
+  return 'PluginLifecycleConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PluginLifecycleConflictCopyWith<$Res> implements $PluginLifecycleConflictCopyWith<$Res> {
+  factory _$PluginLifecycleConflictCopyWith(_PluginLifecycleConflict value, $Res Function(_PluginLifecycleConflict) _then) = __$PluginLifecycleConflictCopyWithImpl;
+@override @useResult
+$Res call({
+ String pluginId,@JsonKey(unknownEnumValue: PluginLifecycleConflictReason.unknown) List<PluginLifecycleConflictReason> reasons, PluginManagementMetadata current
+});
+
+
+@override $PluginManagementMetadataCopyWith<$Res> get current;
+
+}
+/// @nodoc
+class __$PluginLifecycleConflictCopyWithImpl<$Res>
+    implements _$PluginLifecycleConflictCopyWith<$Res> {
+  __$PluginLifecycleConflictCopyWithImpl(this._self, this._then);
+
+  final _PluginLifecycleConflict _self;
+  final $Res Function(_PluginLifecycleConflict) _then;
+
+/// Create a copy of PluginLifecycleConflict
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? reasons = null,Object? current = null,}) {
+  return _then(_PluginLifecycleConflict(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,reasons: null == reasons ? _self._reasons : reasons // ignore: cast_nullable_to_non_nullable
+as List<PluginLifecycleConflictReason>,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
+as PluginManagementMetadata,
+  ));
+}
+
+/// Create a copy of PluginLifecycleConflict
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginManagementMetadataCopyWith<$Res> get current {
+  
+  return $PluginManagementMetadataCopyWith<$Res>(_self.current, (value) {
+    return _then(_self.copyWith(current: value));
+  });
+}
+}
 
 // dart format on

@@ -128,7 +128,11 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
       )..applyAccess(
         entries: [
           for (final descriptor in descriptors)
-            PluginRuntimeAccess(pluginId: descriptor.id, eligible: true, startAllowed: true),
+            PluginRuntimeAccess(
+              pluginId: descriptor.id,
+              gate: PluginRuntimeAccessGate.enabled,
+              startAllowed: true,
+            ),
         ],
       );
 

@@ -246,7 +246,7 @@ void main() {
 
     runtime.applyAccess(
       entries: const [
-        PluginRuntimeAccess(pluginId: "one", eligible: true, startAllowed: false),
+        PluginRuntimeAccess(pluginId: "one", gate: PluginRuntimeAccessGate.enabled, startAllowed: false),
       ],
     );
 
@@ -298,6 +298,103 @@ void main() {
     expect(result, isA<PluginRuntimeCommandConflict>());
     expect((result as PluginRuntimeCommandConflict).reasons, contains(PluginRuntimeConflictReason.busy));
     expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+  });
+
+  test("prepare disable fences starts until rollback restores access", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    final result = await runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.safe);
+
+    expect(result, isA<PluginRuntimeCommandCurrent>());
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
+    await expectLater(
+      runtime.use(pluginId: "one", operation: _TestOperation.duringStop, body: (_) async {}),
+      throwsA(isA<PluginOperationException>()),
+    );
+
+    runtime.rollbackDisable(pluginId: "one");
+
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    expect(await runtime.start(pluginId: "one"), isA<PluginRuntimeCommandApplied>());
+  });
+
+  test("prepare disable restores access after a safe conflict", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+    factory.plugins.single.workStates.add(PluginWorkState.busy);
+    await _waitUntil(() => runtime.snapshot.single.workState == PluginWorkState.busy);
+
+    final result = await runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.safe);
+
+    expect(result, isA<PluginRuntimeCommandConflict>());
+    expect(result.snapshot.state, PluginRuntimeState.active);
+    expect(result.snapshot.eligible, isTrue);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    expect(
+      await runtime.use(pluginId: "one", operation: _TestOperation.read, body: (_) async => "available"),
+      "available",
+    );
+  });
+
+  test("commit disable makes the retained dormant slot ineligible", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    expect(
+      await runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.force),
+      isA<PluginRuntimeCommandCurrent>(),
+    );
+
+    runtime.commitDisable(pluginId: "one");
+
+    expect(runtime.snapshot.single.state, PluginRuntimeState.disabled);
+    expect(runtime.snapshot.single.eligible, isFalse);
+    expect(runtime.snapshot.single.startAllowed, isFalse);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    expect(await runtime.start(pluginId: "one"), isA<PluginRuntimeCommandConflict>());
+  });
+
+  test("access refresh cannot overwrite a prepared disable gate", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.safe);
+
+    runtime.applyAccess(
+      entries: const [
+        PluginRuntimeAccess(
+          pluginId: "one",
+          gate: PluginRuntimeAccessGate.disabled,
+          startAllowed: false,
+        ),
+      ],
+    );
+
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.draining);
+    expect(runtime.snapshot.single.startAllowed, isTrue);
+    runtime.commitDisable(pluginId: "one");
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.disabled);
+  });
+
+  test("runtime disposal waits for a prepared disable decision", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    await runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.safe);
+    var disposeCompleted = false;
+
+    final disposing = runtime.dispose().whenComplete(() => disposeCompleted = true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(disposeCompleted, isFalse);
+
+    runtime.rollbackDisable(pluginId: "one");
+    await disposing;
   });
 
   test("authentication failure fences and blocks its generation", () async {
@@ -410,6 +507,32 @@ void main() {
     expect(originalPlugin.shutdownInvocationCount, 1);
     expect(runtime.snapshot.single.generation, 1);
     expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+  });
+
+  test("disable conflict preserves another command's transition ownership", () async {
+    final shutdownGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(api: _FakeApi(), shutdownGate: shutdownGate.future),
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(() async {
+      if (!shutdownGate.isCompleted) shutdownGate.complete();
+      await runtime.dispose();
+    });
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
+    await _waitUntil(() => factory.plugins.single.shutdownInvocationCount == 1);
+    final conflict = await runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.force);
+
+    expect(conflict, isA<PluginRuntimeCommandConflict>());
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.enabled);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
+
+    shutdownGate.complete();
+    expect(await stopping, isA<PluginRuntimeCommandApplied>());
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
   });
 
@@ -535,6 +658,41 @@ void main() {
     commitGate.complete();
     expect(await operation, "committed");
     expect(await stopping, isA<PluginRuntimeCommandApplied>());
+  });
+
+  test("authentication loss cannot unsettle a prepared disable", () async {
+    final commitStarted = Completer<void>();
+    final commitGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final operation = runtime.useAndCommit<void, void>(
+      pluginId: "one",
+      operation: _TestOperation.durableCommit,
+      prepare: (_) async {},
+      commit: (_, _) async {
+        commitStarted.complete();
+        await commitGate.future;
+      },
+    );
+    await commitStarted.future;
+
+    final preparing = runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.force);
+    await _waitUntil(() => runtime.snapshot.single.accessGate == PluginRuntimeAccessGate.draining);
+    factory.api.eventsController.addError(
+      const PluginAuthenticationRequiredException("test", actionHint: "Authenticate locally."),
+    );
+    await _waitUntil(() => runtime.snapshot.single.setup is PluginSetupAuthenticationRequired);
+    commitGate.complete();
+    await operation;
+
+    expect(await preparing, isA<PluginRuntimeCommandApplied>());
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
+    runtime.rollbackDisable(pluginId: "one");
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.enabled);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.blocked);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
   });
 
   test("a terminal failure waits for a generation's durable commit", () async {
@@ -807,7 +965,7 @@ PluginRuntime _runtime({required _FakeGenerationFactory factory}) {
     entries: const [
       PluginRuntimeAccess(
         pluginId: "one",
-        eligible: true,
+        gate: PluginRuntimeAccessGate.enabled,
         startAllowed: true,
       ),
     ],

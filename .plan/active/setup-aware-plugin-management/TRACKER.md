@@ -2,10 +2,11 @@
 
 ## Current State
 
-- **Base:** `origin/main` at P03 merge `00a0da77`
-- **Current branch:** `setup-aware-plugin-management-idle-timeouts`
-- **Current slice:** Stage 12-P04 / step 4 of 6, open as PR #569
-- **Next action:** monitor PR #569 and prepare P05 locally
+- **Base:** P04 reviewed head `399a2b71`
+- **Current branch:** `setup-aware-plugin-management-disable`
+- **Current slice:** Stage 12-P05 / step 5 of 6, implemented and verified locally
+- **Next action:** merge updated `origin/main` into P05, reverify, and open the
+  successor PR
 
 ## Delivery
 
@@ -14,8 +15,8 @@
 | [x] | P01 — attach-only residency and diagnostics | `setup-aware-plugin-management-resident-attach` | PR #563 merged as `f8f05c33` |
 | [x] | P02 — read-only management snapshots | `setup-aware-plugin-management-read-snapshots` | PR #567 merged as `19ca475a` |
 | [x] | P03 — snapshot tokens and SSE invalidation | `setup-aware-plugin-management-invalidation` | PR #568 merged as `00a0da77` |
-| [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 open; monitoring |
-| [ ] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | waits for P04 merge |
+| [x] | P04 — live idle-timeout mutations | `setup-aware-plugin-management-idle-timeouts` | PR #569 merged as `583c91f2` |
+| [x] | P05 — transactional plugin disable | `setup-aware-plugin-management-disable` | implemented locally; waits for P04 merge |
 | [ ] | P06 — remaining commands and dynamic eligibility | `setup-aware-plugin-management-commands` | waits for P05 merge |
 
 ## Source Material
@@ -61,6 +62,10 @@
   with no findings. Shared request ownership, settings preservation, lifecycle
   write sequencing, route mapping, and the existing shared-router boundary were
   accepted.
+- P05 architecture implementation review approved all 16 changed files with no
+  findings. Shared wire ownership, runtime transaction retention, repository and
+  service sequencing, route registration, shutdown waiting, and the unchanged
+  runner/orchestrator/shared-router boundaries were accepted.
 
 ## Verification Log
 
@@ -160,6 +165,30 @@
   tests (42), and fatal analyzers before the P04 PR opens.
 - Pushed and opened PR #569 with the fixed step-4/6 series title; monitoring
   started immediately.
+
+### 2026-07-25 — P05 transactional plugin disable
+
+- Added the strict final-wire disable command, safe/force stop mode, and typed
+  forward-safe conflict response. Exact `type: disable` serialization and
+  decoding reject missing, unknown, and future command discriminators.
+- Replaced runtime eligibility state with enabled/draining/disabled access
+  gates. Disable preparation fences starts and acquisitions before checking
+  safe-stop conflicts, retains transition ownership through persistence, and
+  supports validated commit or rollback while shutdown waits for settlement.
+- The lifecycle service joins equal per-plugin disable commands, rejects a
+  different active mode, and uses P04's existing settings mutation tail for the
+  latest-load/save step. Durable success commits runtime access and eligibility;
+  failed persistence rolls back live access and returns an explicit failure.
+- Added `POST /plugin/:id/command` to the existing shared router with typed 400,
+  404, 409, and 500 mappings. Debug routing continues to reuse the same session
+  router and lifecycle service.
+- Correctness hardening covers foreign transition ownership, auth-loss cleanup,
+  access refresh during draining, truthful stopping snapshots, and exact wire
+  discrimination. Focused runtime, lifecycle, route, and Orchestrator tests
+  passed (71); shared contract tests passed (8).
+- `dart analyze --fatal-infos` passed in shared and bridge app;
+  `git diff --check` passed. Aristotle approved the complete 16-file
+  architecture-bearing scope with no findings.
 
 ## Delivery Rules
 

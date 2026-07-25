@@ -78,6 +78,24 @@ Map<String, dynamic> _$PluginManagementResponseToJson(
   'plugins': instance.plugins.map((e) => e.toJson()).toList(),
 };
 
+PluginLifecycleDisableRequest _$PluginLifecycleDisableRequestFromJson(
+  Map json,
+) => PluginLifecycleDisableRequest(
+  mode: $enumDecode(_$PluginStopModeEnumMap, json['mode']),
+);
+
+Map<String, dynamic> _$PluginLifecycleDisableRequestToJson(
+  PluginLifecycleDisableRequest instance,
+) => <String, dynamic>{
+  'mode': _$PluginStopModeEnumMap[instance.mode]!,
+  'type': _disableCommandTypeToJson(instance.wireType),
+};
+
+const _$PluginStopModeEnumMap = {
+  PluginStopMode.safe: 'safe',
+  PluginStopMode.force: 'force',
+};
+
 PluginIdleTimeoutApplyAllRequest _$PluginIdleTimeoutApplyAllRequestFromJson(
   Map json,
 ) => PluginIdleTimeoutApplyAllRequest(
@@ -118,3 +136,39 @@ _$PluginIdleTimeoutClearOverrideRequestFromJson(Map json) =>
 Map<String, dynamic> _$PluginIdleTimeoutClearOverrideRequestToJson(
   PluginIdleTimeoutClearOverrideRequest instance,
 ) => <String, dynamic>{'pluginId': instance.pluginId, 'type': instance.$type};
+
+_PluginLifecycleConflict _$PluginLifecycleConflictFromJson(Map json) =>
+    _PluginLifecycleConflict(
+      pluginId: json['pluginId'] as String,
+      reasons: (json['reasons'] as List<dynamic>)
+          .map(
+            (e) => $enumDecode(
+              _$PluginLifecycleConflictReasonEnumMap,
+              e,
+              unknownValue: PluginLifecycleConflictReason.unknown,
+            ),
+          )
+          .toList(),
+      current: PluginManagementMetadata.fromJson(
+        Map<String, dynamic>.from(json['current'] as Map),
+      ),
+    );
+
+Map<String, dynamic> _$PluginLifecycleConflictToJson(
+  _PluginLifecycleConflict instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'reasons': instance.reasons
+      .map((e) => _$PluginLifecycleConflictReasonEnumMap[e]!)
+      .toList(),
+  'current': instance.current.toJson(),
+};
+
+const _$PluginLifecycleConflictReasonEnumMap = {
+  PluginLifecycleConflictReason.inFlight: 'inFlight',
+  PluginLifecycleConflictReason.busy: 'busy',
+  PluginLifecycleConflictReason.workStateUnknown: 'workStateUnknown',
+  PluginLifecycleConflictReason.transitioning: 'transitioning',
+  PluginLifecycleConflictReason.notEnabled: 'notEnabled',
+  PluginLifecycleConflictReason.unknown: 'unknown',
+};
