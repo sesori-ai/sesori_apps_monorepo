@@ -117,7 +117,7 @@ void main() {
 
     test("ignores an unknown event type without reporting and continues", () async {
       final previousLogLevel = logLevel;
-      setLogLevel(LogLevel.trace);
+      setLogLevel(LogLevel.warning);
       addTearDown(() => setLogLevel(previousLogLevel));
 
       final logs = <String>[];

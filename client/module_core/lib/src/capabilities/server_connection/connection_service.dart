@@ -569,7 +569,7 @@ class ConnectionService {
         // Freezed uses this exception shape only for an unknown top-level union.
         // Malformed fields in known variants carry an inner error and remain reportable.
         if (e is CheckedFromJsonException && _isUnknownSseEventType(error: e, type: typeValue)) {
-          logt("Ignoring unknown SSE event type: $typeValue", e, st);
+          logw("Ignoring unknown SSE event type: $typeValue", e, st);
           return;
         }
 
