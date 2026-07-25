@@ -360,6 +360,16 @@ void main() {
     expect(await runtime.start(pluginId: "one"), isA<PluginRuntimeCommandConflict>());
   });
 
+  test("invalid disable commit settles the slot fail-closed", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+
+    expect(() => runtime.commitDisable(pluginId: "one"), throwsStateError);
+
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.disabled);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+    await runtime.dispose().timeout(const Duration(seconds: 1));
+  });
+
   test("access refresh cannot overwrite a prepared disable gate", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);

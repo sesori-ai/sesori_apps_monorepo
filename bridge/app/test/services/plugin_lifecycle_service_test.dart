@@ -656,6 +656,8 @@ void main() {
 
     expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
     expect(repository.rollbackCalls, isZero);
+    expect(repository.snapshot.single.accessGate, PluginRuntimeAccessGate.disabled);
+    expect(repository.snapshot.single.transitionSettled, isTrue);
   });
 
   test("safe disable conflicts map to the typed management response without writing settings", () async {
@@ -994,13 +996,15 @@ class _IdleLifecycleRepository implements PluginLifecycleRepository {
     required PluginWorkState workState,
     required int leaseCount,
     bool transitionSettled = true,
+    PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.enabled,
+    bool startAllowed = true,
   }) {
     return PluginLifecycleSnapshot(
       pluginId: "one",
       projectOwnership: PluginProjectOwnership.native,
       setup: const PluginSetupReady(),
-      accessGate: PluginRuntimeAccessGate.enabled,
-      startAllowed: true,
+      accessGate: accessGate,
+      startAllowed: startAllowed,
       state: state,
       workState: workState,
       leaseCount: leaseCount,
@@ -1058,7 +1062,19 @@ class _CommitFailingDisableLifecycleRepository extends _IdleLifecycleRepository 
   }
 
   @override
-  void commitDisable({required String pluginId}) => throw StateError("commit invariant failed");
+  void commitDisable({required String pluginId}) {
+    _current = [
+      _IdleLifecycleRepository._snapshot(
+        state: PluginRuntimeState.disabled,
+        workState: PluginWorkState.unknown,
+        leaseCount: 0,
+        accessGate: PluginRuntimeAccessGate.disabled,
+        startAllowed: false,
+      ),
+    ];
+    _snapshots.add(snapshot);
+    throw StateError("commit invariant failed");
+  }
 
   @override
   void rollbackDisable({required String pluginId}) {

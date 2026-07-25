@@ -490,12 +490,16 @@ class PluginRuntime {
   }) => _prepareDisable(pluginId: pluginId, intent: intent);
 
   void commitDisable({required String pluginId}) {
-    final slot = _requirePreparedDisableSlot(pluginId);
+    final slot = _requireSlot(pluginId);
+    final wasPrepared = _isPreparedDisableSlot(slot);
     slot
       ..accessGate = PluginRuntimeAccessGate.disabled
       ..startAllowed = false
       ..state = PluginRuntimeState.dormant;
     _settlePreparedDisable(slot);
+    if (!wasPrepared) {
+      throw StateError('Plugin "$pluginId" did not have a valid prepared disable; settled disabled.');
+    }
   }
 
   void rollbackDisable({required String pluginId}) {
@@ -811,25 +815,32 @@ class PluginRuntime {
 
   _PluginRuntimeSlot _requirePreparedDisableSlot(String pluginId) {
     final slot = _requireSlot(pluginId);
-    if (slot.accessGate != PluginRuntimeAccessGate.draining ||
-        slot.commandTransitionOwner == null ||
-        slot.commandTransitionCompleter == null ||
-        slot.transition != PluginRuntimeTransition.stopping ||
-        slot.plugin != null ||
-        slot.startFuture != null) {
+    if (!_isPreparedDisableSlot(slot)) {
       throw StateError('Plugin "$pluginId" does not have a prepared disable.');
     }
     return slot;
   }
 
+  bool _isPreparedDisableSlot(_PluginRuntimeSlot slot) {
+    return slot.accessGate == PluginRuntimeAccessGate.draining &&
+        slot.commandTransitionOwner != null &&
+        slot.commandTransitionCompleter != null &&
+        slot.transition == PluginRuntimeTransition.stopping &&
+        slot.plugin == null &&
+        slot.startFuture == null;
+  }
+
   void _settlePreparedDisable(_PluginRuntimeSlot slot) {
-    final transitionCompleter = slot.commandTransitionCompleter!;
+    final transitionCompleter = slot.commandTransitionCompleter;
     slot
       ..commandTransitionOwner = null
       ..commandTransitionCompleter = null
       ..transition = PluginRuntimeTransition.none;
-    _publishSnapshots();
-    transitionCompleter.complete();
+    try {
+      _publishSnapshots();
+    } finally {
+      if (transitionCompleter != null && !transitionCompleter.isCompleted) transitionCompleter.complete();
+    }
   }
 
   Future<PluginRuntimeCommandResult> _restart({
