@@ -225,6 +225,14 @@ Production files:
 
 ### Scope
 
+Add nullable `bridgeId` to shared `PluginManagementResponse` and regenerate its
+companions. `GetPluginManagementHandler` emits the existing
+`BridgeIdProvider.currentBridgeId` alongside the Stage 12 snapshot. The field
+is additive, decodes from older Stage 12 bridges as null, is omitted when
+null, and receives a dated compatibility comment. Mutations return the same
+identity-bearing response shape, so GET and mutation completions carry the same
+authoritative bridge identity.
+
 Extend `PluginApi` using the current Stage 12 routes:
 
 ```dart
@@ -259,12 +267,14 @@ sealed class PluginManagementLoadResult {
 ```
 
 A refresh failure after a supported snapshot is replayed as `supported` with
-the retained response and a non-null `refreshError` only while the connection
-still identifies the same bridge. A bare `failure` remains the initial load
-state or an unsupported-bridge request failure. The service scopes retained
-snapshots by the connected bridge identity/config; an identity-changing
-transition clears the retained response and must never replay bridge A's
-management state while commands route to bridge B.
+the retained response and a non-null `refreshError` only while the connected
+bridge's authoritative response identity matches the retained snapshot. A bare
+`failure` remains the initial load state or an unsupported-bridge request
+failure. `ServerConnectionConfig` is not an identity key; the service scopes
+snapshots by `PluginManagementResponse.bridgeId`, with `null` treated as one
+legacy-peer identity bucket. A different non-null ID clears the retained
+response and must never replay bridge A's management state while commands
+route to bridge B.
 
 ```dart
 sealed class PluginManagementMutationResult {
@@ -306,6 +316,9 @@ not enter this slice.
 
 Production files:
 
+- `shared/sesori_shared/lib/src/models/sesori/plugin_management.dart` and
+  regenerated companions
+- `bridge/app/lib/src/routing/get_plugin_management_handler.dart`
 - `client/module_core/lib/src/api/plugin_api.dart`
 - `client/module_core/lib/src/repositories/models/plugin_management_result.dart`
 - `client/module_core/lib/src/repositories/plugin_repository.dart`
@@ -315,6 +328,9 @@ Production files:
 
 ### Verification
 
+- Shared code generation and missing/null/known/omitted `bridgeId` management
+  compatibility tests.
+- Focused bridge management handler identity tests.
 - API method/path/body/typed-response tests for every route.
 - Repository tests for supported, unsupported 404, mutation 404, typed 409,
   malformed 409, successful-status undecodable mutation body to `uncertain`,
@@ -332,6 +348,7 @@ typedef _ManagementRequestFence = ({
   int connectionEpoch,
   int publicationGeneration,
   int staleGeneration,
+  String? bridgeId,
 });
 ```
 
@@ -425,13 +442,17 @@ fence any in-flight attempt by connection epoch.
 
 One private publication coordinator owns every snapshot application. Both GET
 and mutation completions capture `{connectionEpoch,
-publicationGeneration, staleGeneration}` before their request and revalidate
-that entire fence immediately before publishing. Any superseded publication
-generation means another local response has already become newer; the older
-response must not publish, regardless of its opaque token. The coordinator then
-preserves/re-arms staleness and schedules or awaits one clean authoritative
-GET. Publication generation orders local client publications only; it never
-orders bridge snapshots.
+publicationGeneration, staleGeneration, bridgeId}` before their request and
+revalidate that entire fence immediately before publishing. `bridgeId` comes
+from the authoritative management response; the coordinator stores it with
+each published snapshot. A response whose identity differs from the currently
+published identity clears and replaces the retained snapshot; a response whose
+identity differs from the captured request identity is fenced as superseded.
+Any superseded publication generation means another local response has already
+become newer; the older response must not publish, regardless of its opaque
+token. The coordinator then preserves/re-arms staleness and schedules or awaits
+one clean authoritative GET. Publication generation orders local client
+publications only; it never orders bridge snapshots.
 
 Refresh behavior:
 
@@ -442,9 +463,9 @@ Refresh behavior:
   state.
 - Only a successful supported/unsupported application consumes prior stale
   generations. Failure publishes `supported(refreshError:)` only when the
-  retained supported snapshot belongs to the currently connected bridge;
-  otherwise it publishes bare `failure` for the new bridge. Both paths
-  preserve/re-arm staleness without polling.
+  retained supported snapshot's `bridgeId` still belongs to the active fenced
+  identity; otherwise it publishes bare `failure` for the new bridge. Both
+  paths preserve/re-arm staleness without polling.
 - A trigger arriving while a GET is in flight schedules exactly one more drain.
 - Incoming `SesoriPluginManagementChanged` with a non-null token equal to the
   current response token is ignored. Null or different tokens mark stale.
@@ -476,9 +497,10 @@ Production files:
 
 - Constructor replay for an already-connected service performs exactly one
   initial management GET.
-- Initial connect, same-bridge reconnect, identity-changing bridge transition,
-  bridge-offline transition, manual refresh, management SSE refresh,
-  replay-loss refresh, equal-token suppression, and disposal.
+- Initial connect, same-`bridgeId` reconnect, changed-`bridgeId` transition,
+  legacy null-identity peer, bridge-offline transition, manual refresh,
+  management SSE refresh, replay-loss refresh, equal-token suppression, and
+  disposal.
 - Two triggers while one GET runs produce one follow-up drain.
 - Failed refresh preserves staleness; next success consumes it.
 - Refresh-before-mutation, mutation-before-refresh, and refresh-after-refresh
@@ -1011,8 +1033,8 @@ persisted disable/timeout/preference/session state altered.
 
 | Gate | Required coverage |
 |---|---|
-| After Step 1/7 | Connect through the normal app flow, open `random stuff`, verify each per-bridge harness choice persists across app reopen, falls back after a saved harness becomes unavailable, and keeps the older-bridge/no-`bridgeId` path on the bridge default without writing a preference. Restore the written preference afterward. |
-| After Step 5/7 | Explicitly resolve the Step 3 service through the app's integration path, then verify initial snapshot load, reconnect/replay-loss refresh, and management SSE invalidation against the real bridge. Open Settings, verify the Harnesses row is immediately below Notifications with the same grouped-row style, open the page, and verify logos, statuses, default badge, refresh, retained snapshot after refresh failure, unsupported state if an older bridge is available, and Notifications-style close behavior. |
+| After Step 1/7 | Connect through the normal app flow, open `random stuff`, verify each per-bridge harness choice persists across app reopen and falls back after a saved harness becomes unavailable. Restore the written preference afterward. Keep the omitted-`bridgeId` case in wire/service contract tests unless a real older-peer fixture is explicitly available; this repository's Step 1 bridge always emits the ID, so it cannot honestly exercise that path. |
+| After Step 5/7 | Explicitly resolve the Step 3 service through the app's integration path, then verify initial snapshot load, reconnect/replay-loss refresh, management SSE invalidation, and identity-scoped retained snapshots against the real bridge. Open Settings, verify the Harnesses row is immediately below Notifications with the same grouped-row style, open the page, and verify logos, statuses, default badge, refresh, retained snapshot after refresh failure, unsupported state if an older bridge is available, and Notifications-style close behavior. |
 | After Step 4/7 | Verify the new-session chooser renders the real OpenCode, Codex, and Cursor logos. Keep generic-logo verification in widget/contract tests unless an integration fixture can honestly return a null or unknown key; the normal three-descriptor bridge cannot produce that case. |
 | After Step 7/7 | In `random stuff`, exercise safe enable/disable/restart/setup-refresh, busy-conflict copy, explicit force confirmation, timeout apply-all/override/clear, persistence across bridge restart, and session creation from the resulting harness state. Verify current-main forced-disable session reconciliation remains visible, then restore the pre-E2E durable state. |
 
