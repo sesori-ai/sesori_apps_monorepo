@@ -334,7 +334,7 @@ run their focused verification again.
 - Added descriptor-declared opaque `brandLogoKey` transport and a Prego logo
   resolver that uses the existing OpenCode, Codex, and Cursor VESPR glyphs with
   a generic fallback.
-- Recorded per-slice estimates from 300-1,150 changed lines, including
+- Recorded per-slice estimates from 300-1,300 changed lines, including
   generated and mechanical output.
 - Required real simulator E2E with the source bridge running
   `--data-dir ~/.local/share/sesori-dev`, the existing login, and the

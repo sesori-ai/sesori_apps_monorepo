@@ -159,11 +159,15 @@ class NewSessionPluginService {
 ```
 
 `discover` preserves the existing success/failure `ApiResponse` contract and
-owns the complete selection precedence:
+owns the complete selection precedence. Current and saved selection candidates
+are considered only when the response supplies a non-null bridge identity;
+when `bridgeId` is absent, the current bridge default wins immediately so no
+selection silently crosses bridges:
 
 1. the current selection when its ID still identifies a ready or degraded
-   plugin;
-2. the saved preference when its ID identifies a ready or degraded plugin;
+   plugin and `bridgeId` is non-null;
+2. the saved preference when its ID identifies a ready or degraded plugin and
+   `bridgeId` is non-null;
 3. the current bridge default.
 
 Missing, disabled, blocked, failed, unavailable, or unknown current/saved
@@ -205,7 +209,7 @@ Production files:
 - Focused bridge plugin-list handler and router construction tests, plus
   bridge-app fatal analysis.
 - Preference API/repository/service tests for saved, default, unroutable,
-  stale, and storage-failure flows.
+  stale, storage-failure, and missing-`bridgeId` default-only flows.
 - Current new-session cubit and selection tests prove the service resolves
   current/saved/default precedence while the cubit only maps state, including
   `defaultModelID`, reconnect preservation, staged command, and last-submitted
@@ -242,11 +246,17 @@ sealed class PluginManagementLoadResult {
 
   const factory PluginManagementLoadResult.supported({
     required PluginManagementResponse response,
+    required ApiError? refreshError,
   });
   const factory PluginManagementLoadResult.unsupported();
   const factory PluginManagementLoadResult.failure({required ApiError error});
 }
 ```
+
+A refresh failure after a supported snapshot is replayed as `supported` with
+the retained response and a non-null `refreshError`; it does not replace the
+last usable snapshot with a bare failure. A bare `failure` remains the initial
+load state or an unsupported-bridge request failure.
 
 ```dart
 sealed class PluginManagementMutationResult {
@@ -259,7 +269,7 @@ sealed class PluginManagementMutationResult {
   const factory PluginManagementMutationResult.conflict({
     required PluginLifecycleConflict conflict,
   });
-  const factory PluginManagementMutationResult.uncertain({required ApiError error});
+  const factory PluginManagementMutationResult.uncertain();
   const factory PluginManagementMutationResult.failure({required ApiError error});
 }
 ```
@@ -372,6 +382,8 @@ sealed class PluginManagementCommandPlan {
 ```
 
 ```dart
+enum PluginManagementForceAction { disable, restart }
+
 sealed class PluginManagementForceAssessment {
   const PluginManagementForceAssessment();
 
@@ -417,7 +429,8 @@ Refresh behavior:
   connection epoch, unsuperseded publication generation, and current disposal
   state.
 - Only a successful supported/unsupported application consumes prior stale
-  generations. Failure publishes an explicit failure but preserves/re-arms
+  generations. Failure publishes `supported(refreshError:)` when a supported
+  snapshot already exists, otherwise bare `failure`; both preserve/re-arm
   staleness without polling.
 - A trigger arriving while a GET is in flight schedules exactly one more drain.
 - Incoming `SesoriPluginManagementChanged` with a non-null token equal to the
@@ -516,9 +529,9 @@ typedef RegisteredPluginMetadata = ({
 
 `BridgeRuntimeRunner` copies `descriptor.brandLogoKey` alongside the existing
 display name. `PluginLifecycleService` propagates the value into discovery and
-setup/management rows. The legacy 404 discovery fallback explicitly supplies
-`brandLogoKey: "opencode"` because that branch already manufactures OpenCode
-identity.
+setup/management rows. The legacy 404 discovery fallback supplies
+`brandLogoKey: null`; a peer that cannot declare branding renders the generic
+fallback rather than the client embedding another backend-specific key.
 
 Add a non-generated Prego primitive:
 
@@ -637,8 +650,10 @@ cubit behavior without replacing that state shape:
 
 ```dart
 enum PluginManagementActionStatus { idle, inProgress }
-enum PluginManagementForceAction { disable, restart }
 ```
+
+The Step 3 service file owns `PluginManagementForceAction`; this state imports
+that Layer-3 domain enum rather than redefining it:
 
 ```dart
 @Freezed()
@@ -649,9 +664,7 @@ sealed class PluginManagementActionError
   const factory PluginManagementActionError.conflict({
     required PluginLifecycleConflict conflict,
   });
-  const factory PluginManagementActionError.uncertain({
-    required ApiError error,
-  });
+  const factory PluginManagementActionError.uncertain();
   const factory PluginManagementActionError.request({
     required ApiError error,
   });
@@ -970,17 +983,25 @@ this repository. Launch the bridge with
 development bridge data, and use the existing `random stuff` project for
 session interactions.
 
+Before launching the E2E bridge, preflight the host for other Sesori bridge
+processes. Single-live-bridge replacement is not an acceptable implicit side
+effect: stop or wait out any unrelated bridge deliberately and record what was
+running so it can be restored afterward. Before mutations, snapshot the
+development data's plugin settings, secure preferences that this slice writes,
+and relevant `random stuff` session/catalog state. Restore those snapshots and
+clean up test sessions after verification; mandatory E2E must not leave
+persisted disable/timeout/preference/session state altered.
+
 | Gate | Required coverage |
 |---|---|
-| After Step 1/7 | Connect through the normal app flow, open `random stuff`, verify each per-bridge harness choice persists across app reopen, falls back after a saved harness becomes unavailable, and keeps the older-bridge/no-`bridgeId` path on the bridge default without writing a preference. |
-| After Step 3/7 | Verify initial snapshot load, reconnect/replay-loss refresh, and management SSE invalidation against the real bridge. No UI assertion is required before Step 5. |
-| After Step 4/7 | Verify the new-session chooser renders the real OpenCode, Codex, and Cursor logos and a generic fallback for an unbranded/unknown harness. |
-| After Step 5/7 | Open Settings, verify the Harnesses row is immediately below Notifications with the same grouped-row style, open the page, and verify logos, statuses, default badge, refresh, unsupported state if an older bridge is available, and Notifications-style close behavior. |
-| After Step 7/7 | In `random stuff`, exercise safe enable/disable/restart/setup-refresh, busy-conflict copy, explicit force confirmation, timeout apply-all/override/clear, persistence across bridge restart, and session creation from the resulting harness state. Verify current-main forced-disable session reconciliation remains visible. |
+| After Step 1/7 | Connect through the normal app flow, open `random stuff`, verify each per-bridge harness choice persists across app reopen, falls back after a saved harness becomes unavailable, and keeps the older-bridge/no-`bridgeId` path on the bridge default without writing a preference. Restore the written preference afterward. |
+| After Step 5/7 | Explicitly resolve the Step 3 service through the app's integration path, then verify initial snapshot load, reconnect/replay-loss refresh, and management SSE invalidation against the real bridge. Open Settings, verify the Harnesses row is immediately below Notifications with the same grouped-row style, open the page, and verify logos, statuses, default badge, refresh, retained snapshot after refresh failure, unsupported state if an older bridge is available, and Notifications-style close behavior. |
+| After Step 4/7 | Verify the new-session chooser renders the real OpenCode, Codex, and Cursor logos. Keep generic-logo verification in widget/contract tests unless an integration fixture can honestly return a null or unknown key; the normal three-descriptor bridge cannot produce that case. |
+| After Step 7/7 | In `random stuff`, exercise safe enable/disable/restart/setup-refresh, busy-conflict copy, explicit force confirmation, timeout apply-all/override/clear, persistence across bridge restart, and session creation from the resulting harness state. Verify current-main forced-disable session reconciliation remains visible, then restore the pre-E2E durable state. |
 
-Stop the temporary E2E bridge after verification. Do not kill an unrelated
-user bridge; identify the process by the explicit development data directory
-and port before stopping it.
+Stop the temporary E2E bridge after verification and restore any deliberately
+stopped pre-existing bridge. Do not kill an unrelated user bridge; identify
+and handle every bridge process before startup, not only after testing.
 
 ## Completion
 
