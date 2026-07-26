@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -21,9 +19,6 @@ class _ReplyCapture {
 GoRouter _createRouter({
   required SesoriQuestionAsked question,
   required _ReplyCapture capture,
-  required Stream<bool> isPendingStream,
-  required VoidCallback onResolvedRemotely,
-  bool Function()? isPendingNow,
 }) {
   return GoRouter(
     routes: [
@@ -40,9 +35,7 @@ GoRouter _createRouter({
                     question: question,
                     onReply: capture.onReply,
                     onReject: (_) {},
-                    isPendingStream: isPendingStream,
-                    isPendingNow: isPendingNow ?? () => true,
-                    onResolvedRemotely: onResolvedRemotely,
+                    isPendingStream: const Stream<bool>.empty(),
                   );
                 },
                 child: const Text("Open question modal"),
@@ -98,8 +91,6 @@ void main() {
         ],
       ),
       capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -137,8 +128,6 @@ void main() {
         ],
       ),
       capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -175,8 +164,6 @@ void main() {
         ],
       ),
       capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -213,8 +200,6 @@ void main() {
         ],
       ),
       capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -255,8 +240,6 @@ void main() {
         ],
       ),
       capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -295,8 +278,6 @@ void main() {
         ],
       ),
       capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -335,8 +316,6 @@ void main() {
         ],
       ),
       capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -378,8 +357,6 @@ void main() {
         ],
       ),
       capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -410,145 +387,5 @@ void main() {
         const ReplyAnswer(values: ["Gradual"]),
       ],
     );
-  });
-
-  testWidgets("dismisses itself when already resolved before the sheet subscribes", (tester) async {
-    final capture = _ReplyCapture();
-    final isPending = StreamController<bool>();
-    var remoteDismissals = 0;
-    addTearDown(isPending.close);
-    final router = _createRouter(
-      question: _questionAsked(
-        questions: const [
-          QuestionInfo(
-            question: "Choose a release channel",
-            header: "Release channel",
-            options: [QuestionOption(label: "Stable", description: "Release to everyone")],
-          ),
-        ],
-      ),
-      capture: capture,
-      isPendingStream: isPending.stream,
-      isPendingNow: () => false,
-      onResolvedRemotely: () => remoteDismissals++,
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openQuestionModal(tester);
-
-    expect(find.text("Choose a release channel"), findsNothing);
-    expect(capture.requestId, isNull);
-    expect(capture.answers, isNull);
-    expect(remoteDismissals, 1);
-  });
-
-  testWidgets("a local answer racing the resolved signal pops only the sheet", (tester) async {
-    final capture = _ReplyCapture();
-    final isPending = StreamController<bool>();
-    var remoteDismissals = 0;
-    addTearDown(isPending.close);
-    final router = _createRouter(
-      question: _questionAsked(
-        questions: const [
-          QuestionInfo(
-            question: "Choose a release channel",
-            header: "Release channel",
-            options: [QuestionOption(label: "Stable", description: "Release to everyone")],
-          ),
-        ],
-      ),
-      capture: capture,
-      isPendingStream: isPending.stream,
-      onResolvedRemotely: () => remoteDismissals++,
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openQuestionModal(tester);
-
-    // Answering resolves the request optimistically: the `false` emission
-    // arrives while the sheet is still mounted in its exit animation. The
-    // listener must not pop a second time (that would remove the page).
-    await tester.tap(find.text("Stable"));
-    await tester.pump();
-    await tester.tap(find.text("Submit"));
-    isPending.add(false);
-    await tester.pumpAndSettle();
-
-    expect(capture.requestId, "question-1");
-    expect(find.text("Choose a release channel"), findsNothing);
-    expect(find.byKey(const Key("open-question-modal")), findsOneWidget);
-    expect(remoteDismissals, 0);
-  });
-
-  testWidgets("ignores actions tapped during the exit animation after a remote resolution", (tester) async {
-    final capture = _ReplyCapture();
-    final isPending = StreamController<bool>();
-    addTearDown(isPending.close);
-    final router = _createRouter(
-      question: _questionAsked(
-        questions: const [
-          QuestionInfo(
-            question: "Choose a release channel",
-            header: "Release channel",
-            options: [QuestionOption(label: "Stable", description: "Release to everyone")],
-          ),
-        ],
-      ),
-      capture: capture,
-      isPendingStream: isPending.stream,
-      onResolvedRemotely: () {},
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openQuestionModal(tester);
-
-    isPending.add(false);
-    // Mid exit animation: the buttons are still on screen and tappable, but
-    // the request is already resolved — no answer may be sent.
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.text("Stable"), warnIfMissed: false);
-    await tester.tap(find.text("Submit"), warnIfMissed: false);
-    await tester.pumpAndSettle();
-
-    expect(capture.requestId, isNull);
-    expect(capture.answers, isNull);
-  });
-
-  testWidgets("ignores the resolved signal while exiting from a barrier dismissal", (tester) async {
-    final capture = _ReplyCapture();
-    final isPending = StreamController<bool>();
-    var remoteDismissals = 0;
-    addTearDown(isPending.close);
-    final router = _createRouter(
-      question: _questionAsked(
-        questions: const [
-          QuestionInfo(
-            question: "Choose a release channel",
-            header: "Release channel",
-            options: [QuestionOption(label: "Stable", description: "Release to everyone")],
-          ),
-        ],
-      ),
-      capture: capture,
-      isPendingStream: isPending.stream,
-      onResolvedRemotely: () => remoteDismissals++,
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openQuestionModal(tester);
-
-    // Barrier tap pops the route without going through the modal's dismiss
-    // path; a resolution landing mid-exit-animation must not pop the page.
-    await tester.tapAt(const Offset(200, 50));
-    await tester.pump(const Duration(milliseconds: 50));
-    isPending.add(false);
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key("open-question-modal")), findsOneWidget);
-    expect(remoteDismissals, 0);
   });
 }

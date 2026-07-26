@@ -1,4 +1,3 @@
-import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
@@ -9,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
+import "pending_request_auto_dismiss.dart";
 
 /// Bottom sheet that presents all server-driven questions within a single
 /// [SesoriQuestionAsked] event, one at a time.
@@ -19,20 +19,6 @@ class QuestionModal extends StatefulWidget {
   final SesoriQuestionAsked question;
   final void Function(String requestId, List<ReplyAnswer> answers) onReply;
   final void Function(String requestId) onReject;
-
-  /// Emits whether this request is still pending. When it reports `false`
-  /// (answered or rejected on another device), the sheet dismisses itself
-  /// instead of lingering as a stale modal.
-  final Stream<bool> isPendingStream;
-
-  /// Reads the latest pending status after the stream subscription is active,
-  /// so a resolution cannot be missed between presentation and subscription.
-  final bool Function() isPendingNow;
-
-  /// Called when the sheet self-dismisses because the request was resolved
-  /// on another device, so the presenter can chain the next pending prompt
-  /// the way a local answer would.
-  final VoidCallback onResolvedRemotely;
 
   /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
@@ -45,9 +31,6 @@ class QuestionModal extends StatefulWidget {
     required this.question,
     required this.onReply,
     required this.onReject,
-    required this.isPendingStream,
-    required this.isPendingNow,
-    required this.onResolvedRemotely,
     required this.topInset,
   });
 
@@ -63,8 +46,6 @@ class QuestionModal extends StatefulWidget {
     required void Function(String requestId, List<ReplyAnswer> answers) onReply,
     required void Function(String requestId) onReject,
     required Stream<bool> isPendingStream,
-    required bool Function() isPendingNow,
-    required VoidCallback onResolvedRemotely,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -75,14 +56,14 @@ class QuestionModal extends StatefulWidget {
       // transparent. The sheet caps itself below the status bar.
       backgroundColor: Colors.transparent,
       useSafeArea: false,
-      builder: (_) => QuestionModal(
-        question: question,
-        onReply: onReply,
-        onReject: onReject,
+      builder: (_) => PendingRequestAutoDismiss(
         isPendingStream: isPendingStream,
-        isPendingNow: isPendingNow,
-        onResolvedRemotely: onResolvedRemotely,
-        topInset: topInset,
+        child: QuestionModal(
+          question: question,
+          onReply: onReply,
+          onReject: onReject,
+          topInset: topInset,
+        ),
       ),
     );
   }
@@ -94,7 +75,6 @@ class QuestionModal extends StatefulWidget {
 class _QuestionModalState extends State<QuestionModal> {
   final TextEditingController _customController = TextEditingController();
   final FocusNode _customFocus = FocusNode();
-  StreamSubscription<bool>? _pendingSub;
 
   /// Index of the question currently being displayed.
   int _currentIndex = 0;
@@ -106,15 +86,7 @@ class _QuestionModalState extends State<QuestionModal> {
   final Set<String> _selectedLabels = {};
   bool _customSelected = false;
 
-  /// Guards against a double pop: a local answer pops the sheet and the
-  /// cubit's optimistic resolution then reports `false` on
-  /// [QuestionModal.isPendingStream] while this state is still mounted during
-  /// the exit animation — a second pop would remove the page underneath.
-  bool _dismissed = false;
-
   void _dismissModal() {
-    if (_dismissed) return;
-    _dismissed = true;
     context.pop();
   }
 
@@ -132,34 +104,7 @@ class _QuestionModalState extends State<QuestionModal> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_pendingSub != null) return;
-
-    // Pops this sheet's own route when the request leaves the pending list,
-    // e.g. answered on another device. Route-driven dismissals (barrier tap,
-    // swipe-down) bypass `_dismissModal`, so while the route is no longer
-    // current — exiting — a pop here would remove the page underneath.
-    _pendingSub = widget.isPendingStream.listen(_onPendingChanged);
-
-    // Subscribe first, then read the latest state. Any change between these
-    // operations is either observed by the stream or reflected by this read.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _onPendingChanged(widget.isPendingNow());
-    });
-  }
-
-  void _onPendingChanged(bool isPending) {
-    if (isPending || !mounted) return;
-    if (ModalRoute.of(context)?.isCurrent != true) return;
-    if (_dismissed) return;
-    _dismissModal();
-    widget.onResolvedRemotely();
-  }
-
-  @override
   void dispose() {
-    _pendingSub?.cancel();
     _customFocus.dispose();
     _customController.dispose();
     super.dispose();
@@ -236,9 +181,6 @@ class _QuestionModalState extends State<QuestionModal> {
   /// Collects the current answer and either advances to the next question
   /// or submits all answers if this is the last one.
   void _onProceed() {
-    // A remote resolution already dismissed this sheet; a tap landing during
-    // the exit animation must not send a stale answer.
-    if (_dismissed || ModalRoute.of(context)?.isCurrent != true) return;
     // Build the answer for the current question.
     final answer = _selectedLabels.toList();
     if (_hasSelectedCustomAnswer) {
@@ -250,8 +192,8 @@ class _QuestionModalState extends State<QuestionModal> {
 
     if (_isLastQuestion) {
       // All questions answered — submit.
-      _dismissModal();
       widget.onReply(widget.question.id, _collectedAnswers);
+      _dismissModal();
     } else {
       // Advance to next question — reset selection state.
       setState(() {
@@ -264,9 +206,8 @@ class _QuestionModalState extends State<QuestionModal> {
   }
 
   void _onReject() {
-    if (_dismissed || ModalRoute.of(context)?.isCurrent != true) return;
-    _dismissModal();
     widget.onReject(widget.question.id);
+    _dismissModal();
   }
 
   // ---------------------------------------------------------------------------

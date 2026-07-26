@@ -1,4 +1,3 @@
-import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
@@ -11,12 +10,13 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
 import "../../../core/widgets/markdown_styles.dart";
+import "pending_request_auto_dismiss.dart";
 
 /// Bottom sheet that presents a tool permission request from the AI assistant.
 ///
 /// Displays the tool name and description, and offers three actions:
 /// reject, allow once, or always allow.
-class PermissionModal extends StatefulWidget {
+class PermissionModal extends StatelessWidget {
   final SesoriPermissionAsked permission;
   final void Function({
     required String requestId,
@@ -24,20 +24,6 @@ class PermissionModal extends StatefulWidget {
     required PermissionReply reply,
   })
   onReply;
-
-  /// Emits whether this request is still pending. When it reports `false`
-  /// (answered on another device), the sheet dismisses itself instead of
-  /// lingering as a stale modal — without firing a reply.
-  final Stream<bool> isPendingStream;
-
-  /// Reads the latest pending status after the stream subscription is active,
-  /// so a resolution cannot be missed between presentation and subscription.
-  final bool Function() isPendingNow;
-
-  /// Called when the sheet self-dismisses because the request was resolved
-  /// on another device, so the presenter can chain the next pending prompt
-  /// the way a local reply would.
-  final VoidCallback onResolvedRemotely;
 
   /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
@@ -49,9 +35,6 @@ class PermissionModal extends StatefulWidget {
     super.key,
     required this.permission,
     required this.onReply,
-    required this.isPendingStream,
-    required this.isPendingNow,
-    required this.onResolvedRemotely,
     required this.topInset,
   });
 
@@ -70,8 +53,6 @@ class PermissionModal extends StatefulWidget {
     })
     onReply,
     required Stream<bool> isPendingStream,
-    required bool Function() isPendingNow,
-    required VoidCallback onResolvedRemotely,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -82,77 +63,22 @@ class PermissionModal extends StatefulWidget {
       // transparent. The sheet caps itself below the status bar.
       backgroundColor: Colors.transparent,
       useSafeArea: false,
-      builder: (_) => PermissionModal(
-        permission: permission,
-        onReply: onReply,
+      builder: (_) => PendingRequestAutoDismiss(
         isPendingStream: isPendingStream,
-        isPendingNow: isPendingNow,
-        onResolvedRemotely: onResolvedRemotely,
-        topInset: topInset,
+        child: PermissionModal(
+          permission: permission,
+          onReply: onReply,
+          topInset: topInset,
+        ),
       ),
     );
   }
 
-  @override
-  State<PermissionModal> createState() => _PermissionModalState();
-}
-
-class _PermissionModalState extends State<PermissionModal> {
-  StreamSubscription<bool>? _pendingSub;
-
-  /// Guards against a double pop: a local reply pops the sheet and the
-  /// cubit's optimistic resolution then reports `false` on
-  /// [PermissionModal.isPendingStream] while this state is still mounted
-  /// during the exit animation — a second pop would remove the page
-  /// underneath.
-  bool _dismissed = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_pendingSub != null) return;
-
-    // Pops this sheet's own route when the request leaves the pending list,
-    // e.g. answered on another device. Route-driven dismissals (barrier tap,
-    // swipe-down) bypass `_dismiss`, so while the route is no longer
-    // current — exiting — a pop here would remove the page underneath.
-    _pendingSub = widget.isPendingStream.listen(_onPendingChanged);
-
-    // Subscribe first, then read the latest state. Any change between these
-    // operations is either observed by the stream or reflected by this read.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _onPendingChanged(widget.isPendingNow());
-    });
-  }
-
-  void _onPendingChanged(bool isPending) {
-    if (isPending || !mounted) return;
-    if (ModalRoute.of(context)?.isCurrent != true) return;
-    if (_dismissed) return;
-    _dismiss();
-    widget.onResolvedRemotely();
-  }
-
-  @override
-  void dispose() {
-    _pendingSub?.cancel();
-    super.dispose();
-  }
-
-  void _dismiss() {
-    if (_dismissed) return;
-    _dismissed = true;
+  void _reply(BuildContext context, {required PermissionReply reply}) {
     context.pop();
-  }
-
-  void _reply({required PermissionReply reply}) {
-    // A remote resolution already dismissed this sheet; a tap landing during
-    // the exit animation must not send a stale reply.
-    if (_dismissed || ModalRoute.of(context)?.isCurrent != true) return;
-    _dismiss();
-    widget.onReply(
-      requestId: widget.permission.requestID,
-      sessionId: widget.permission.sessionID,
+    onReply(
+      requestId: permission.requestID,
+      sessionId: permission.sessionID,
       reply: reply,
     );
   }
@@ -168,14 +94,14 @@ class _PermissionModalState extends State<PermissionModal> {
     // Cap the body just under the sheet's own cap: a long description then
     // scrolls inside its Flexible slot while the action row stays pinned,
     // instead of pushing the (blocking) actions below the fold.
-    final maxBody = screenHeight - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
+    final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - bottomInset;
 
     return PregoBottomSheet(
       title: context.loc.diffPermissionRequestTitle,
-      topInset: widget.topInset,
+      topInset: topInset,
       // Closing the sheet answers the assistant: the X rejects, matching the
       // explicit reject button.
-      onClose: () => _reply(reply: PermissionReply.reject),
+      onClose: () => _reply(context, reply: PermissionReply.reject),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
         child: Column(
@@ -221,7 +147,7 @@ class _PermissionModalState extends State<PermissionModal> {
                             SizedBox(width: prego.spacing.md),
                             Expanded(
                               child: Text(
-                                widget.permission.tool,
+                                permission.tool,
                                 style: prego.textTheme.textSm.bold.monospace,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -248,7 +174,7 @@ class _PermissionModalState extends State<PermissionModal> {
                           children: [
                             Expanded(
                               child: MarkdownBody(
-                                data: widget.permission.description,
+                                data: permission.description,
                                 selectable: true,
                                 onTapLink: handleMarkdownLinkTap,
                                 styleSheet:
@@ -268,7 +194,7 @@ class _PermissionModalState extends State<PermissionModal> {
                             ),
                             SizedBox(width: prego.spacing.xs),
                             CopyIconButton(
-                              text: widget.permission.description,
+                              text: permission.description,
                               tooltip: context.loc.sessionDetailCopy,
                             ),
                           ],
@@ -290,21 +216,21 @@ class _PermissionModalState extends State<PermissionModal> {
                       foregroundColor: prego.colors.fgErrorPrimary,
                       side: BorderSide(color: prego.colors.fgErrorPrimary),
                     ),
-                    onPressed: () => _reply(reply: PermissionReply.reject),
+                    onPressed: () => _reply(context, reply: PermissionReply.reject),
                     child: Text(context.loc.diffPermissionReject),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _reply(reply: PermissionReply.once),
+                    onPressed: () => _reply(context, reply: PermissionReply.once),
                     child: Text(context.loc.diffPermissionOnce),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => _reply(reply: PermissionReply.always),
+                    onPressed: () => _reply(context, reply: PermissionReply.always),
                     child: Text(context.loc.diffPermissionAlwaysAllow),
                   ),
                 ),

@@ -23,16 +23,25 @@ class SessionDetailLoadService {
        _connectionService = connectionService;
 
   Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
-    return _loadSnapshot(sessionId: sessionId, projectId: projectId);
+    return _loadSnapshot(
+      sessionId: sessionId,
+      projectId: projectId,
+      requirePendingSnapshot: false,
+    );
   }
 
   Future<SessionDetailLoadResult> reload({required String sessionId, required String projectId}) {
-    return _loadSnapshot(sessionId: sessionId, projectId: projectId);
+    return _loadSnapshot(
+      sessionId: sessionId,
+      projectId: projectId,
+      requirePendingSnapshot: true,
+    );
   }
 
   Future<SessionDetailLoadResult> _loadSnapshot({
     required String sessionId,
     required String projectId,
+    required bool requirePendingSnapshot,
   }) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
@@ -85,23 +94,15 @@ class SessionDetailLoadService {
         ErrorResponse(:final error) => throw error,
       };
 
-      // A failed pending fetch yields null (not an empty list) so callers can
-      // preserve the previous pending state: an open question/permission is
-      // still awaiting an answer on the bridge and must not be treated as
-      // resolved just because the refetch failed.
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
-        ErrorResponse(:final error) => () {
-          logw("Failed to load pending questions", error);
-          return null;
-        }(),
+        ErrorResponse(:final error) when requirePendingSnapshot => throw error,
+        ErrorResponse() => <PendingQuestion>[],
       };
       final pendingPermissions = switch (permissionsResponse) {
         SuccessResponse(:final data) => data.data,
-        ErrorResponse(:final error) => () {
-          logw("Failed to load pending permissions", error);
-          return null;
-        }(),
+        ErrorResponse(:final error) when requirePendingSnapshot => throw error,
+        ErrorResponse() => <PendingPermission>[],
       };
       final childSessions = switch (childrenResponse) {
         SuccessResponse(:final data) => data.items,
@@ -205,14 +206,8 @@ class SessionDetailLoadService {
 class SessionDetailSnapshot {
   final String? projectId;
   final List<MessageWithParts> messages;
-
-  /// Null when the pending-questions fetch failed — the previous pending
-  /// state should be preserved rather than treated as "all resolved".
-  final List<PendingQuestion>? pendingQuestions;
-
-  /// Null when the pending-permissions fetch failed — the previous pending
-  /// state should be preserved rather than treated as "all resolved".
-  final List<PendingPermission>? pendingPermissions;
+  final List<PendingQuestion> pendingQuestions;
+  final List<PendingPermission> pendingPermissions;
   final List<Session> childSessions;
   final Map<String, SessionStatus> statuses;
   final List<AgentInfo?> agents;

@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -39,9 +37,6 @@ class _ReplyCapture {
 GoRouter _createRouter({
   required SesoriPermissionAsked permission,
   required _ReplyCapture capture,
-  required Stream<bool> isPendingStream,
-  required VoidCallback onResolvedRemotely,
-  bool Function()? isPendingNow,
 }) {
   return GoRouter(
     routes: [
@@ -57,9 +52,7 @@ GoRouter _createRouter({
                     context,
                     permission: permission,
                     onReply: capture.onReply,
-                    isPendingStream: isPendingStream,
-                    isPendingNow: isPendingNow ?? () => true,
-                    onResolvedRemotely: onResolvedRemotely,
+                    isPendingStream: const Stream<bool>.empty(),
                   );
                 },
                 child: const Text("Open permission modal"),
@@ -90,12 +83,7 @@ Future<void> _openPermissionModal(WidgetTester tester) async {
 void main() {
   testWidgets("groups the tool and highlighted request detail in one card", (tester) async {
     final capture = _ReplyCapture();
-    final router = _createRouter(
-      permission: _permission,
-      capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
-    );
+    final router = _createRouter(permission: _permission, capture: capture);
     addTearDown(router.dispose);
 
     await tester.pumpWidget(_buildApp(router: router));
@@ -133,12 +121,7 @@ void main() {
   ]) {
     testWidgets("forwards the ${replyCase.label.toLowerCase()} reply", (tester) async {
       final capture = _ReplyCapture();
-      final router = _createRouter(
-        permission: _permission,
-        capture: capture,
-        isPendingStream: const Stream<bool>.empty(),
-        onResolvedRemotely: () {},
-      );
+      final router = _createRouter(permission: _permission, capture: capture);
       addTearDown(router.dispose);
 
       await tester.pumpWidget(_buildApp(router: router));
@@ -152,124 +135,12 @@ void main() {
     });
   }
 
-  testWidgets("dismisses itself without replying when resolved on another device", (tester) async {
-    final capture = _ReplyCapture();
-    final isPending = StreamController<bool>();
-    var remoteDismissals = 0;
-    addTearDown(isPending.close);
-    final router = _createRouter(
-      permission: _permission,
-      capture: capture,
-      isPendingStream: isPending.stream,
-      onResolvedRemotely: () => remoteDismissals++,
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openPermissionModal(tester);
-    expect(find.text("bash"), findsOneWidget);
-
-    isPending.add(false);
-    await tester.pumpAndSettle();
-
-    expect(find.text("bash"), findsNothing);
-    expect(capture.requestId, isNull);
-    expect(capture.reply, isNull);
-    expect(remoteDismissals, 1);
-  });
-
-  testWidgets("a local reply racing the resolved signal pops only the sheet", (tester) async {
-    final capture = _ReplyCapture();
-    final isPending = StreamController<bool>();
-    var remoteDismissals = 0;
-    addTearDown(isPending.close);
-    final router = _createRouter(
-      permission: _permission,
-      capture: capture,
-      isPendingStream: isPending.stream,
-      onResolvedRemotely: () => remoteDismissals++,
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openPermissionModal(tester);
-
-    // Replying resolves the request optimistically: the `false` emission
-    // arrives while the sheet is still mounted in its exit animation. The
-    // listener must not pop a second time (that would remove the page).
-    await tester.tap(find.text("Once"));
-    isPending.add(false);
-    await tester.pumpAndSettle();
-
-    expect(capture.reply, PermissionReply.once);
-    expect(find.text("bash"), findsNothing);
-    expect(find.byKey(const Key("open-permission-modal")), findsOneWidget);
-    expect(remoteDismissals, 0);
-  });
-
-  testWidgets("ignores replies tapped during the exit animation after a remote resolution", (tester) async {
-    final capture = _ReplyCapture();
-    final isPending = StreamController<bool>();
-    addTearDown(isPending.close);
-    final router = _createRouter(
-      permission: _permission,
-      capture: capture,
-      isPendingStream: isPending.stream,
-      onResolvedRemotely: () {},
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openPermissionModal(tester);
-
-    isPending.add(false);
-    // Mid exit animation: the buttons are still on screen and tappable, but
-    // the request is already resolved — no reply may be sent.
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.text("Once"), warnIfMissed: false);
-    await tester.pumpAndSettle();
-
-    expect(capture.reply, isNull);
-  });
-
-  testWidgets("ignores the resolved signal while exiting from a barrier dismissal", (tester) async {
-    final capture = _ReplyCapture();
-    final isPending = StreamController<bool>();
-    var remoteDismissals = 0;
-    addTearDown(isPending.close);
-    final router = _createRouter(
-      permission: _permission,
-      capture: capture,
-      isPendingStream: isPending.stream,
-      onResolvedRemotely: () => remoteDismissals++,
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openPermissionModal(tester);
-
-    // Barrier tap pops the route without going through the modal's dismiss
-    // path; a resolution landing mid-exit-animation must not pop the page.
-    await tester.tapAt(const Offset(200, 50));
-    await tester.pump(const Duration(milliseconds: 50));
-    isPending.add(false);
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key("open-permission-modal")), findsOneWidget);
-    expect(remoteDismissals, 0);
-  });
-
   testWidgets("keeps actions visible for a long request detail", (tester) async {
     final capture = _ReplyCapture();
     final permission = _permission.copyWith(
       description: List.filled(80, "echo a long permission request").join("\n"),
     );
-    final router = _createRouter(
-      permission: permission,
-      capture: capture,
-      isPendingStream: const Stream<bool>.empty(),
-      onResolvedRemotely: () {},
-    );
+    final router = _createRouter(permission: permission, capture: capture);
     addTearDown(router.dispose);
 
     await tester.pumpWidget(_buildApp(router: router));

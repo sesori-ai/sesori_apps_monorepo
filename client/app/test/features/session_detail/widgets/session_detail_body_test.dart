@@ -112,19 +112,6 @@ const _permission = SesoriPermissionAsked(
   description: "Allow writing the release notes",
 );
 
-const _question2 = SesoriQuestionAsked(
-  id: "question-2",
-  sessionID: "session-1",
-  displaySessionId: null,
-  questions: [
-    QuestionInfo(
-      question: "Pick a rollout percentage",
-      header: "Rollout",
-      options: [QuestionOption(label: "10%", description: "Start small")],
-    ),
-  ],
-);
-
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -245,6 +232,54 @@ void main() {
     expect(find.text("Diffs"), findsOneWidget);
   });
 
+  testWidgets("closes an open question when it leaves pending state", (tester) async {
+    final questions = StreamController<SesoriQuestionAsked>.broadcast();
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(questions.close);
+    addTearDown(states.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => states.stream);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(pendingQuestions: const [_question]);
+    questions.add(_question);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsOneWidget);
+
+    state = state.copyWith(pendingQuestions: const []);
+    states.add(state);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsNothing);
+  });
+
+  testWidgets("closes an open permission when it leaves pending state", (tester) async {
+    final permissions = StreamController<SesoriPermissionAsked>.broadcast();
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(permissions.close);
+    addTearDown(states.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => states.stream);
+    when(() => cubit.permissionStream).thenAnswer((_) => permissions.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(pendingPermissions: const [_permission]);
+    permissions.add(_permission);
+    await tester.pumpAndSettle();
+    expect(find.text("write_release_notes"), findsOneWidget);
+
+    state = state.copyWith(pendingPermissions: const []);
+    states.add(state);
+    await tester.pumpAndSettle();
+    expect(find.text("write_release_notes"), findsNothing);
+  });
+
   testWidgets("presents a queued permission after answering an active question", (tester) async {
     final questionController = StreamController<SesoriQuestionAsked>.broadcast();
     final permissionController = StreamController<SesoriPermissionAsked>.broadcast();
@@ -325,105 +360,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Choose a release channel"), findsOneWidget);
-  });
-
-  testWidgets("closes an open question modal when the question is resolved on another device", (tester) async {
-    final questionController = StreamController<SesoriQuestionAsked>.broadcast();
-    final stateController = StreamController<SessionDetailState>.broadcast();
-    addTearDown(questionController.close);
-    addTearDown(stateController.close);
-    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
-    when(() => cubit.state).thenAnswer((_) => state);
-    when(() => cubit.stream).thenAnswer((_) => stateController.stream);
-    when(() => cubit.questionStream).thenAnswer((_) => questionController.stream);
-
-    await tester.pumpWidget(_buildApp(cubit: cubit));
-    await tester.pumpAndSettle();
-
-    state = state.copyWith(pendingQuestions: const [_question]);
-    questionController.add(_question);
-    await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
-
-    // The bridge broadcasts question.replied to every connected device; the
-    // cubit drops it from pending without any local answer.
-    state = state.copyWith(pendingQuestions: const []);
-    stateController.add(state);
-    await tester.pumpAndSettle();
-
-    expect(find.text("Choose a release channel"), findsNothing);
-    verifyNever(
-      () => cubit.replyToQuestion(
-        requestId: any(named: "requestId"),
-        sessionId: any(named: "sessionId"),
-        answers: any(named: "answers"),
-      ),
-    );
-  });
-
-  testWidgets("closes an open permission modal when the permission is resolved on another device", (tester) async {
-    final permissionController = StreamController<SesoriPermissionAsked>.broadcast();
-    final stateController = StreamController<SessionDetailState>.broadcast();
-    addTearDown(permissionController.close);
-    addTearDown(stateController.close);
-    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
-    when(() => cubit.state).thenAnswer((_) => state);
-    when(() => cubit.stream).thenAnswer((_) => stateController.stream);
-    when(() => cubit.permissionStream).thenAnswer((_) => permissionController.stream);
-
-    await tester.pumpWidget(_buildApp(cubit: cubit));
-    await tester.pumpAndSettle();
-
-    state = state.copyWith(pendingPermissions: const [_permission]);
-    permissionController.add(_permission);
-    await tester.pumpAndSettle();
-    expect(find.text("write_release_notes"), findsOneWidget);
-
-    state = state.copyWith(pendingPermissions: const []);
-    stateController.add(state);
-    await tester.pumpAndSettle();
-
-    expect(find.text("write_release_notes"), findsNothing);
-    verifyNever(
-      () => cubit.replyToPermission(
-        requestId: any(named: "requestId"),
-        sessionId: any(named: "sessionId"),
-        reply: PermissionReply.once,
-      ),
-    );
-  });
-
-  testWidgets("presents the next queued question after a remote resolution closes the active one", (tester) async {
-    final questionController = StreamController<SesoriQuestionAsked>.broadcast();
-    final stateController = StreamController<SessionDetailState>.broadcast();
-    addTearDown(questionController.close);
-    addTearDown(stateController.close);
-    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
-    when(() => cubit.state).thenAnswer((_) => state);
-    when(() => cubit.stream).thenAnswer((_) => stateController.stream);
-    when(() => cubit.questionStream).thenAnswer((_) => questionController.stream);
-
-    await tester.pumpWidget(_buildApp(cubit: cubit));
-    await tester.pumpAndSettle();
-
-    // Two questions pending; only the first auto-opens (the second's auto-show
-    // is suppressed while the sheet is up, as in the real flow).
-    state = state.copyWith(pendingQuestions: const [_question, _question2]);
-    questionController.add(_question);
-    await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
-    expect(find.text("Pick a rollout percentage"), findsNothing);
-
-    // The first question is answered on another device: it leaves the pending
-    // list, its sheet self-dismisses, and the queued question is presented.
-    state = state.copyWith(pendingQuestions: const [_question2]);
-    stateController.add(state);
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(milliseconds: 250));
-    await tester.pumpAndSettle();
-
-    expect(find.text("Choose a release channel"), findsNothing);
-    expect(find.text("Pick a rollout percentage"), findsOneWidget);
   });
 
   // Only the input row is grouped with the text field via a TextFieldTapRegion,

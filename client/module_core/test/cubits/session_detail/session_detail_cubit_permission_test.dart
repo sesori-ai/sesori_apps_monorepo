@@ -287,18 +287,8 @@ void main() {
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(
-        () => mockSessionService.listAgents(
-          projectId: any(named: "projectId"),
-          pluginId: "plugin-1",
-        ),
-      ).called(1);
-      verify(
-        () => mockSessionService.listProviders(
-          projectId: any(named: "projectId"),
-          pluginId: "plugin-1",
-        ),
-      ).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
     });
 
     test("non-loaded state buffers permission events and replays after loaded", () async {
@@ -493,78 +483,6 @@ void main() {
       // Reject targets the owning child session, not the open root.
       verify(() => mockSessionService.rejectQuestion(requestId: "q-child", sessionId: "child-1")).called(1);
     });
-
-    test("silent refresh preserves pending prompts when pending fetches fail", () async {
-      final cubit = _buildCubit(
-        sessionId: sessionId,
-        projectId: "project-1",
-        connectionService: mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        notificationCanceller: mockNotificationCanceller,
-        permissionRepository: mockPermissionRepository,
-        failureReporter: mockFailureReporter,
-      );
-      addTearDown(cubit.close);
-      await _awaitLoaded(cubit);
-
-      const question = SesoriQuestionAsked(
-        id: "question-1",
-        sessionID: sessionId,
-        displaySessionId: null,
-        questions: [],
-      );
-      const permission = SesoriPermissionAsked(
-        requestID: "permission-1",
-        sessionID: sessionId,
-        displaySessionId: null,
-        tool: "bash",
-        description: "Run tests",
-      );
-      sessionEvents
-        ..add(question)
-        ..add(permission);
-      await _waitUntil(
-        condition: () {
-          final state = cubit.state;
-          return state is SessionDetailLoaded &&
-              state.pendingQuestions.contains(question) &&
-              state.pendingPermissions.contains(permission);
-        },
-      );
-
-      final questionsFetch = Completer<ApiResponse<PendingQuestionResponse>>();
-      final permissionsFetch = Completer<ApiResponse<PendingPermissionResponse>>();
-      when(
-        () => mockSessionService.getPendingQuestions(sessionId: any(named: "sessionId")),
-      ).thenAnswer((_) => questionsFetch.future);
-      when(
-        () => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId")),
-      ).thenAnswer((_) => permissionsFetch.future);
-
-      globalEvents.add(
-        SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")),
-      );
-      await _waitUntil(
-        condition: () => switch (cubit.state) {
-          SessionDetailLoaded(:final isRefreshing) => isRefreshing,
-          SessionDetailLoading() || SessionDetailFailed() => false,
-        },
-      );
-
-      questionsFetch.complete(ApiResponse.error(ApiError.generic()));
-      permissionsFetch.complete(ApiResponse.error(ApiError.generic()));
-      await _waitUntil(
-        condition: () => switch (cubit.state) {
-          SessionDetailLoaded(:final isRefreshing) => !isRefreshing,
-          SessionDetailLoading() || SessionDetailFailed() => false,
-        },
-      );
-
-      final state = cubit.state as SessionDetailLoaded;
-      expect(state.pendingQuestions, [question]);
-      expect(state.pendingPermissions, [permission]);
-    });
   });
 }
 
@@ -695,12 +613,4 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
     await Future<void>.delayed(const Duration(milliseconds: 1));
   }
   fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
-}
-
-Future<void> _waitUntil({required bool Function() condition}) async {
-  for (var i = 0; i < 100; i++) {
-    if (condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 2));
-  }
-  fail("Timed out waiting for condition");
 }
