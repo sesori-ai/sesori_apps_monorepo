@@ -389,7 +389,12 @@ class RelayClient {
       );
     } catch (error, stackTrace) {
       _pendingRequests.remove(request.id);
-      loge("Failed to send relay request ${request.id}", error, stackTrace);
+      // Typed post-dispatch response losses are preserved by the transport and
+      // surfaced as an explicit uncertain outcome; the rethrow is their
+      // report, so only log genuinely unclassified failures here.
+      if (error is! TimeoutException && error is! RelayResponseLostException) {
+        loge("Failed to send relay request ${request.id}", error, stackTrace);
+      }
       rethrow;
     }
   }
