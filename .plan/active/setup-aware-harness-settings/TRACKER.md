@@ -47,5 +47,9 @@
   the dev bridge: `bridgeId` on the wire, per-bridge Codex preference
   persisted across app reopen, fallback to the OpenCode default after Codex
   was disabled; sessions/worktrees cleaned, preference rewritten to the
-  default, E2E bridge stopped. Confirming E2E pass follows after review
-  settles, per the PR-first flow.
+  default, E2E bridge stopped. Review fixes: discovery-bridge invalidation on
+  failure, single routability extension, composer-state clearing on
+  bridge-identity change (cubit regression tests). Confirming E2E pass on the
+  final head `b529a8a8` re-verified restored-preference selection, Codex
+  persistence across reopen, and disable fallback with full cleanup; A-to-B
+  bridge switch stays unit-tested only (single-bridge dev account).
