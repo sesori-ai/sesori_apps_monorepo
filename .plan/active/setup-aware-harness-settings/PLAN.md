@@ -149,6 +149,7 @@ class NewSessionPluginService {
 
   Future<ApiResponse<NewSessionPluginDiscovery>> discover({
     required String? currentSelectedPluginId,
+    required String? currentSelectionBridgeId,
   });
 
   Future<void> recordSelection({
@@ -160,15 +161,17 @@ class NewSessionPluginService {
 
 `discover` preserves the existing success/failure `ApiResponse` contract and
 owns the complete selection precedence. Current and saved selection candidates
-are considered only when the response supplies a non-null bridge identity;
-when `bridgeId` is absent, the current bridge default wins immediately so no
-selection silently crosses bridges:
+are considered only when the response supplies a non-null bridge identity. The
+current candidate must also originate from that same bridge identity; a screen
+carried across bridge A -> bridge B cannot leak A's selection into B:
 
-1. the current selection when its ID still identifies a ready or degraded
-   plugin and `bridgeId` is non-null;
+1. the current selection when its originating bridge ID equals the response
+   bridge ID and its plugin ID still identifies a ready or degraded plugin;
 2. the saved preference when its ID identifies a ready or degraded plugin and
-   `bridgeId` is non-null;
+   the response bridge ID is non-null;
 3. the current bridge default.
+
+When `bridgeId` is absent, the current bridge default wins immediately.
 
 Missing, disabled, blocked, failed, unavailable, or unknown current/saved
 plugins move to the next fallback. Secure-storage read failures are logged and
@@ -176,9 +179,10 @@ degrade to the default; write failures are logged and never block session
 creation.
 
 `NewSessionCubit` receives `NewSessionPluginService`, passes the current
-selection ID into discovery, and only maps the returned discovery result into
-composer state. It carries the discovery bridge ID and, immediately before
-submitting `createSession`, records the last submitted choice through explicit
+selection plugin ID and the bridge ID that produced that selection into
+discovery, and only maps the returned discovery result into composer state. It
+carries the latest discovery bridge ID and, immediately before submitting
+`createSession`, records the last submitted choice through explicit
 fire-and-forget `unawaited(...)`. Do not use it as a last viewed/focused
 selection.
 
@@ -209,7 +213,8 @@ Production files:
 - Focused bridge plugin-list handler and router construction tests, plus
   bridge-app fatal analysis.
 - Preference API/repository/service tests for saved, default, unroutable,
-  stale, storage-failure, and missing-`bridgeId` default-only flows.
+  stale, storage-failure, missing-`bridgeId` default-only, and bridge
+  identity-changing current-selection flows.
 - Current new-session cubit and selection tests prove the service resolves
   current/saved/default precedence while the cubit only maps state, including
   `defaultModelID`, reconnect preservation, staged command, and last-submitted
@@ -285,10 +290,14 @@ Extend `PluginRepository`:
 - HTTP 409 parses `PluginLifecycleConflict`; malformed 409 bodies map to
   explicit request failure rather than a partial conflict.
 - Successful mutation bodies remain typed `PluginManagementResponse`.
+- A 2xx mutation response whose body cannot be decoded maps to `uncertain`,
+  not ordinary failure: the bridge may have committed the mutation, and a
+  retryable-looking failure could execute it twice. The service schedules the
+  authoritative GET required to learn the outcome.
 - `uncertain` represents a mutation whose request was sent but whose outcome
-  cannot be truthfully published because the connection/service fence moved.
-  Consumers render it as an uncertain state requiring refresh, never as a
-  bridge rejection or a committed success.
+  cannot be truthfully published because the response cannot prove it or the
+  connection/service fence moved. Consumers render it as an uncertain state
+  requiring refresh, never as a bridge rejection or a committed success.
 - Existing discovery fallback behavior remains unchanged.
 
 Export the new public result surface and regenerate module-core DI if the
@@ -308,8 +317,8 @@ Production files:
 
 - API method/path/body/typed-response tests for every route.
 - Repository tests for supported, unsupported 404, mutation 404, typed 409,
-  malformed 409, uncertain result mapping, generic failure, and preserved
-  discovery fallback.
+  malformed 409, successful-status undecodable mutation body to `uncertain`,
+  generic failure, and preserved discovery fallback.
 - Module-core fatal analysis plus mobile and desktop fatal analysis.
 
 ## Step 3/7: Management Synchronization Service
@@ -476,6 +485,8 @@ Production files:
   publication races all reject superseded responses.
 - Disconnect during either request returns the required typed outcome without
   publication.
+- An undecodable successful mutation response returns `uncertain` and schedules
+  an authoritative GET without inviting an immediate duplicate retry.
 - Mutation after an intervening publication triggers authoritative GET and
   returns `uncertain` rather than unordered publication.
 - A failed first load after switching bridges never publishes the previous
