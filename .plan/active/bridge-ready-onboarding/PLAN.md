@@ -61,7 +61,8 @@ whether the one-time prompt is needed, but it must not gate relay startup.
 - The status endpoint is backed by notification-device-token presence, not a
   phone-to-bridge handshake
   (`client/module_core/lib/src/services/notification_registration_service.dart:97-106`;
-  auth reference `src/services/app-client-presence-service.ts:36-50`).
+  auth-server repository `sesori-ai/sesori_auth_server` reference
+  `src/services/app-client-presence-service.ts:36-50`).
 - Single-live ownership, bridge registration, `RelayClient` construction,
   runtime composition, and `OrchestratorSession.run` all happen after that gate
   (`bridge_runtime_runner.dart:715-904`).
@@ -100,14 +101,21 @@ whether the one-time prompt is needed, but it must not gate relay startup.
   read must not replace the current `await for` semantics with uncoordinated
   asynchronous `listen` callbacks.
 - `AppClientOnboardingService` is preparation-only. It performs the local marker
-  lookup and one immediate status request before runtime serving starts, returns
-  a typed presentation decision, and owns no formatter or `Console` output.
+  lookup and one immediate status request, returns a typed presentation
+  decision, and owns no formatter or `Console` output. The runner captures that
+  finite preparation future and starts the session without awaiting it, so
+  mobile-registration infrastructure cannot gate relay readiness.
 - A private `BridgeRuntimeRunner` method at the CLI composition boundary renders
-  the prompt synchronously after session startup. Do not add a one-consumer
-  presenter class. There is no background app-status task, timer, long-poll,
-  cancellation owner, or new process-lifetime service.
-- Existing endpoint-unavailable behavior remains fail-open and silent. This
-  plan does not change the released 404/405 compatibility fallback for older or
+  the prompt synchronously only after session startup and preparation both
+  complete while the lifecycle remains active. Do not add a one-consumer
+  presenter class. The captured immediate check may overlap session startup,
+  but there is no timer, long-poll, uncaptured task, cancellation owner, or new
+  process-lifetime service.
+- Existing endpoint-unavailable behavior remains fail-open and
+  presentation-silent: it emits no onboarding `Console` prompt/success content
+  and never blocks or fails startup. It preserves the existing `Log.w`
+  diagnostic, which remains observable at the configured log level. This plan
+  does not change the released 404/405 compatibility fallback for older or
   custom auth deployments.
 - The existing per-auth-backend/user marker remains authoritative. When a user
   installs the app after preparation reported absence, the next immediate
@@ -156,9 +164,13 @@ Future<OrchestratorSessionStartResult> start();
 Future<void> waitUntilStopped();
 ```
 
-`start` creates, stores, and internally observes one lifecycle future before the
-first startup operation can acquire a resource or fail. That lifecycle future
-owns startup, serving, and teardown under one `try/finally`:
+Calling `start` synchronously creates, stores, and internally observes one
+lifecycle future before the first startup operation can acquire a resource or
+fail, then returns the separate readiness future. Before awaiting readiness, the
+runner immediately captures `waitUntilStopped`, which is available as soon as
+`start` has been invoked and exposes that same lifecycle future to the shutdown
+coordinator. That lifecycle future owns startup, serving, and teardown under one
+`try/finally`:
 
 1. register the bridge with auth;
 2. connect `RelayClient`, which opens the socket and sends the existing bridge
@@ -166,21 +178,27 @@ owns startup, serving, and teardown under one `try/finally`:
 3. initialize the existing completion, maintenance, project-activity,
    permission, plugin-event, PR, unseen, and token re-auth subscriptions;
 4. build and publish the initial project summary exactly as today;
-5. create one `StreamIterator` from `RelayClient.read()` and invoke its first
-   `moveNext()` to establish the inbound subscription; and
+5. create the initial connection's `StreamIterator` from `RelayClient.read()`
+   and invoke its first `moveNext()` to establish the inbound subscription; and
 6. complete the startup handshake immediately after invoking that first
    `moveNext()`, without awaiting an inbound frame.
 
 The serving loop awaits that same pending first `moveNext()`, processes the
 current frame completely, then invokes/awaits the next `moveNext()`. This locks
 the readiness point without waiting for a phone or relay frame and preserves
-sequential frame processing. The lifecycle `finally` cancels the active
-iterator before/with the existing failure-isolated teardown. Do not replace the
-loop with uncoordinated asynchronous `listen` callbacks, and do not treat
-WebSocket opening alone as readiness.
+sequential frame processing. Each connection owns its own iterator: when the
+stream ends, cancel that iterator before reconnecting; after every successful
+`RelayClient.reconnect()`, create a fresh iterator from the replacement
+channel, invoke its first `moveNext()`, and serve that pending read. Only the
+initial iterator completes the startup-readiness handshake. The lifecycle
+`finally` also cancels whichever iterator is currently active before/with the
+existing failure-isolated teardown. Do not replace the loop with uncoordinated
+asynchronous `listen` callbacks, continue an exhausted iterator after reconnect,
+or treat WebSocket opening alone as readiness.
 
-After the startup handshake returns `ready`, `waitUntilStopped` exposes that
-same internally observed lifecycle future. It continues to own:
+Immediately after `start` is invoked, `waitUntilStopped` exposes that same
+internally observed lifecycle future, including its pre-readiness startup and
+cleanup. It continues to own:
 
 - relay frame processing and key exchange;
 - reconnect and takeover backoff;
@@ -188,26 +206,30 @@ same internally observed lifecycle future. It continues to own:
 - all existing failure-isolated teardown; and
 - propagation of the first teardown error.
 
-The lifecycle is one-shot. A second `start` fails immediately; waiting before a
-`ready` result fails immediately; repeated reads of the post-start wait future
-observe the same completion. `beginShutdown` and `cancel` remain callable by the
-existing shutdown coordinator and signal handlers and must still wake startup,
-an active normal backoff, or a takeover backoff promptly.
+The lifecycle is one-shot. A second `start` fails immediately;
+`waitUntilStopped` before the first `start` invocation fails immediately; every
+call after that invocation observes the same lifecycle completion, including
+pre-readiness failure/cleanup. `beginShutdown` and `cancel` remain callable by
+the existing shutdown coordinator and signal handlers and must still wake
+startup, an active normal backoff, or a takeover backoff promptly.
 
 If registration, connection, listener initialization, summary construction, or
 initial read arming fails before readiness, the lifecycle future runs complete
 partial-start teardown before `start` rethrows that failure.
-`waitUntilStopped` remains unavailable. If shutdown is requested before
-readiness, the lifecycle future tears down acquired resources, `start` returns
-`cancelled`, the runner shows no onboarding prompt, and the existing clean or
-supervised-sentinel shutdown outcome is preserved.
+The already-captured wait future lets a concurrent shutdown drain that teardown
+before later phases dispose plugin/shared resources. If shutdown is requested
+before readiness, the lifecycle future tears down acquired resources, `start`
+returns `cancelled`, the runner shows no onboarding prompt, and the existing
+clean or supervised-sentinel shutdown outcome is preserved.
 
 `BridgeRuntimeRunner` adopts the new API in behavior-preserving sequence:
 
 ```text
 existing app-onboarding gate
--> session.start
--> ready: capture wait future and await it
+-> startFuture = session.start
+-> sessionRun = session.waitUntilStopped (capture before awaiting readiness)
+-> await startFuture
+-> ready: await sessionRun
 -> cancelled: return through the existing clean/sentinel outcome
 ```
 
@@ -243,12 +265,16 @@ stop and update this plan rather than hiding that refactor in Step 2.
 - `start` does not complete before registration, connect/auth send, startup
   initialization, and initial read arming.
 - Registration, initial relay, listener, summary, or read-arming failure runs
-  partial-start teardown and then throws from `start`; no waitable serving phase
-  is exposed.
+  partial-start teardown and then throws from `start`; the wait future captured
+  at start invocation observes that same lifecycle completion for coordinator
+  draining.
 - Shutdown before readiness tears down, returns `cancelled`, and never shows a
   prompt or becomes a startup error.
 - Key exchange and request handling work after `start` while a caller has not
   yet awaited `waitUntilStopped`.
+- A normal drop, token re-authentication, and every successful reconnect create
+  a fresh iterator for the replacement relay channel and process a frame from
+  it; no exhausted iterator is reused.
 - All current reconnect, revocation, takeover, token re-auth, event ordering,
   and shutdown tests retain their behavior under the split API.
 - Every former `session.run()` production/test caller is updated in lockstep;
@@ -314,13 +340,16 @@ same PR: `AppClientStatusRepository.getStatus` and
 `SesoriServerApi.getAppClientStatus` become immediate-status operations without
 a `wait` parameter, and the API no longer builds a `wait=true` query.
 
-Preparation emits no QR or onboarding copy. For a `prompt` decision, a private
+Preparation emits no QR or onboarding copy and recovers every status/marker
+failure into its typed decision after preserving the existing warning. The
+runner starts this captured preparation future and the session lifecycle without
+awaiting the status result first. For a `prompt` decision, a private
 `BridgeRuntimeRunner` method constructs/uses the existing formatter and writes
-the generic QR/link after the bridge session is ready and its wait future has
-been captured. Copy must state that the bridge is running and that the user
-should install/open Sesori and sign into the same account. It must not claim that
-notification registration, relay pairing, or E2E connection has already
-completed.
+the generic QR/link only after the bridge session is ready and its lifecycle
+future has been captured. Copy must state that the bridge is running and that
+the user should install/open Sesori and sign into the same account. It must not
+claim that notification registration, relay pairing, or E2E connection has
+already completed.
 
 ### Runner Ordering
 
@@ -328,21 +357,26 @@ For standalone interactive starts only:
 
 ```text
 plugin inspect/availability
--> prepare onboarding decision (finite; no prompt)
 -> ownership, diagnostics, database, and runtime composition
--> session.start (one lifecycle future; registration + relay + listeners + first read armed)
--> ready: capture session.waitUntilStopped for shutdown ownership
--> synchronously render QR/link in BridgeRuntimeRunner when the decision requires it
+-> capture onboarding preparation future (finite immediate check; do not await)
+-> capture startFuture = session.start and sessionRun = session.waitUntilStopped
+-> await startFuture while onboarding preparation runs concurrently
+-> ready: race/coordinate the preparation result with sessionRun
+-> preparation wins while lifecycle remains active: synchronously render the prompt decision
+-> sessionRun completes first: render no prompt and surface/preserve its outcome
 -> await the captured serving future
 ```
 
 Supervised and non-interactive starts skip preparation/presentation and use the
-same `start -> ready/cancelled -> capture wait -> await wait` lifecycle.
+same `capture start -> capture wait -> await ready/cancelled -> await wait`
+lifecycle.
 
 If session startup fails, the prompt is never rendered. If presentation itself
 throws, the existing outer runner `finally` shuts down and drains the already
 captured serving future. A `cancelled` startup result also renders no prompt and
-returns through the existing clean/sentinel outcome.
+returns through the existing clean/sentinel outcome. A slow immediate status
+request can delay only the decision to show the prompt after readiness; it can
+never delay bridge registration, relay connection, or the inbound read loop.
 
 ### Expected Files
 
@@ -372,6 +406,8 @@ suites, and formatter/copy output at the existing CLI composition boundary.
 
 - Missing app registration performs exactly one immediate status request and
   returns a prompt decision.
+- The immediate status request starts without being awaited before
+  `session.start`; its 35-second deadline cannot delay relay readiness.
 - Preparing a prompt emits no stdout onboarding content.
 - The service has no formatter or `Console` dependency; the runner's private
   presentation method emits the QR/link and revised ready-state copy.
@@ -383,6 +419,8 @@ suites, and formatter/copy output at the existing CLI composition boundary.
   non-fatal according to the current compatibility behavior.
 - The runner starts and captures the session-serving future before prompt
   presentation.
+- If the lifecycle ends while preparation is pending, no prompt is rendered and
+  the lifecycle completion remains authoritative.
 - A phone can join, complete key exchange, and issue the health request while
   the prompt is visible and without registering a notification token.
 - Signal/restart shutdown drains the same serving future and does not wait for
@@ -409,7 +447,9 @@ Advisory manual check with a fresh standalone data directory/account:
 3. Confirm the app reaches the bridge without a prolonged bridge-offline state.
 4. Withhold or fail push-token registration and confirm bridge relay/key-exchange
    availability is unaffected.
-5. Restart after app registration and confirm the prompt is skipped and the
+5. Delay/fail the immediate app-status request and confirm relay readiness is
+   established before that request completes.
+6. Restart after app registration and confirm the prompt is skipped and the
    marker is written by the immediate status check.
 
 Run `aristotle-impl-review` against the Step 2 branch versus `main` because this
@@ -439,9 +479,16 @@ PR changes the composition-root lifecycle trigger and onboarding data flow.
 - **Lifecycle-future ownership:** Startup and serving begin before prompt
   presentation. Step 1 creates and internally observes one lifecycle future
   before resource acquisition, keeps startup/serving/teardown under its
-  `try/finally`, and exposes it to the runner only after readiness. Step 2
-  captures it before synchronous presentation so errors and shutdown are not
-  orphaned.
+  `try/finally`, and exposes it to the runner immediately after `start` is
+  invoked. The runner captures it before awaiting readiness or presenting, so
+  concurrent shutdown, errors, and cleanup are never orphaned.
+- **Reconnect iterator ownership:** A read iterator is bound to one relay
+  channel. Step 1 cancels the exhausted iterator and creates/arms a fresh one
+  after every reconnect; only the initial iterator controls startup readiness.
+- **Concurrent preparation:** The one bounded immediate status request overlaps
+  session startup so it cannot gate relay readiness. The runner renders only
+  when both readiness and a prompt decision exist while the lifecycle remains
+  active; lifecycle completion suppresses a stale prompt.
 - **Teardown drift:** Moving code across `run` can accidentally omit or duplicate
   teardown. Step 1 keeps all teardown on the single lifecycle future and verifies
   existing failure/reconnect/shutdown suites before any UX change.

@@ -45,6 +45,13 @@
 
 ## Findings And Plan Deltas
 
+- **2026-07-26 — PR feedback corrections:** Qualified the external auth-server
+  source reference; distinguished presentation-silent compatibility recovery
+  from warning-level diagnostics; required one fresh relay read iterator per
+  connection/reconnect; exposed the lifecycle future to the shutdown coordinator
+  immediately after `start` invocation; and made the bounded app-status
+  preparation concurrent with session startup so its 35-second deadline cannot
+  gate relay readiness.
 - **2026-07-26 — Plan delivery:** Opened plan PR
   [#580](https://github.com/sesori-ai/sesori_apps_monorepo/pull/580) from the
   dedicated `bridge-setup-ux-assessment` branch.
