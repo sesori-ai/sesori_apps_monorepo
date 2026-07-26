@@ -758,6 +758,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
+    _recordSessionActivity(sessionId);
     eventMapper.mapSentPrompt(sessionId: sessionId, parts: parts).forEach(_eventBuffer.add);
     _enqueueTurn(
       sessionId: sessionId,
@@ -785,6 +786,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final visibleBody = userVisibleArguments == null ? "/$command" : "/$command $userVisibleArguments";
     // Acceptance gate — see [sendPrompt].
     await _connectedClient();
+    _recordSessionActivity(sessionId);
     eventMapper
         .mapSentPrompt(
           sessionId: sessionId,
@@ -797,6 +799,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       model: model,
       variant: variant,
       agent: agent,
+    );
+  }
+
+  void _recordSessionActivity(String sessionId) {
+    _eventBuffer.add(
+      eventMapper.mapSessionActivity(
+        sessionId: sessionId,
+        updatedAtMs: DateTime.now().millisecondsSinceEpoch,
+      ),
     );
   }
 

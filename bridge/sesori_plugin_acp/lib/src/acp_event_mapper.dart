@@ -123,6 +123,30 @@ class AcpEventMapper {
     }
   }
 
+  /// Advances session recency for accepted outbound work. ACP agents do not
+  /// consistently emit a timestamp-bearing `session_info_update`, so the
+  /// plugin supplies its acceptance time while preserving strict monotonicity.
+  BridgeSseSessionUpdated mapSessionActivity({
+    required String sessionId,
+    required int updatedAtMs,
+  }) {
+    final snapshot = _sessionSnapshots[sessionId];
+    final previousUpdatedMs = snapshot?.updatedMs ?? snapshot?.createdMs;
+    final nextUpdatedMs = previousUpdatedMs == null || updatedAtMs > previousUpdatedMs
+        ? updatedAtMs
+        : previousUpdatedMs + 1;
+    setSessionSnapshot(
+      sessionId: sessionId,
+      title: null,
+      createdMs: null,
+      updatedMs: nextUpdatedMs,
+    );
+    return BridgeSseSessionUpdated(
+      info: _sessionUpdate(sessionId).toJson(),
+      titleChanged: false,
+    );
+  }
+
   /// Per-session project directory (an ACP project id *is* its `cwd`). The
   /// plugin records it so `session_info_update` (title) events are filed under
   /// the session's real project, not the launch [launchDirectory]. The mobile

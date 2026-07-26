@@ -605,6 +605,39 @@ void main() {
       expect(session.time?.updated, 3000);
     });
 
+    test("accepted activity advances recency and stale backend timestamps cannot regress it", () {
+      mapper.setSessionSnapshot(
+        sessionId: "s1",
+        title: "Existing title",
+        createdMs: 1000,
+        updatedMs: 2000,
+      );
+
+      final activity = mapper.mapSessionActivity(sessionId: "s1", updatedAtMs: 2000);
+      final activeSession = shared.Session.fromJson(activity.info);
+      expect(activity.titleChanged, isFalse);
+      expect(activeSession.title, "Existing title");
+      expect(activeSession.time, const shared.SessionTime(created: 1000, updated: 2001, archived: null));
+
+      final staleEvents = mapper.map(
+        update({
+          "sessionUpdate": "session_info_update",
+          "updatedAt": 1500,
+        }),
+      );
+      final staleSession = shared.Session.fromJson(staleEvents.whereType<BridgeSseSessionUpdated>().single.info);
+      expect(staleSession.time?.updated, 2001);
+
+      final newerEvents = mapper.map(
+        update({
+          "sessionUpdate": "session_info_update",
+          "updatedAt": 3000,
+        }),
+      );
+      final newerSession = shared.Session.fromJson(newerEvents.whereType<BridgeSseSessionUpdated>().single.info);
+      expect(newerSession.time?.updated, 3000);
+    });
+
     test("session_info_update without a title or timestamp emits nothing", () {
       final events = mapper.map(update({
         "sessionUpdate": "session_info_update",

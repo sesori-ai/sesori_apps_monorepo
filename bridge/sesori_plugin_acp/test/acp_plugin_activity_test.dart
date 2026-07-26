@@ -1,6 +1,7 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show Session;
 import "package:test/test.dart";
 
 /// Exercises [AcpPlugin.getActiveSessionsSummary] — the activity feed the
@@ -92,6 +93,11 @@ void main() {
         model: null,
       );
       await waitForFrame("session/prompt");
+
+      final recencyUpdate = emitted.whereType<BridgeSseSessionUpdated>().single;
+      final updatedSession = Session.fromJson(recencyUpdate.info);
+      expect(recencyUpdate.titleChanged, isFalse);
+      expect(updatedSession.time?.updated, greaterThan(updatedSession.time!.created));
 
       final running = plugin.getActiveSessionsSummary();
       expect(running, hasLength(1));
