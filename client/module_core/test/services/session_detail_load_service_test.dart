@@ -64,6 +64,24 @@ void main() {
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
     });
 
+    test("pending fetch failures remain indeterminate in the snapshot", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.getPendingQuestions(sessionId: "session-1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(
+        () => repository.getPendingPermissions(sessionId: "session-1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
+      expect(snapshot.pendingQuestions, isNull);
+      expect(snapshot.pendingPermissions, isNull);
+    });
+
     test("load gives the route project id precedence over session metadata", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);

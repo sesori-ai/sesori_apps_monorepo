@@ -23,6 +23,7 @@ GoRouter _createRouter({
   required _ReplyCapture capture,
   required Stream<bool> isPendingStream,
   required VoidCallback onResolvedRemotely,
+  bool Function()? isPendingNow,
 }) {
   return GoRouter(
     routes: [
@@ -40,6 +41,7 @@ GoRouter _createRouter({
                     onReply: capture.onReply,
                     onReject: (_) {},
                     isPendingStream: isPendingStream,
+                    isPendingNow: isPendingNow ?? () => true,
                     onResolvedRemotely: onResolvedRemotely,
                   );
                 },
@@ -401,16 +403,16 @@ void main() {
     await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
 
-      expect(
-        capture.answers,
-        [
-          const ReplyAnswer(values: ["Mobile", "Also notify QA"]),
-          const ReplyAnswer(values: ["Gradual"]),
-        ],
-      );
-    });
+    expect(
+      capture.answers,
+      [
+        const ReplyAnswer(values: ["Mobile", "Also notify QA"]),
+        const ReplyAnswer(values: ["Gradual"]),
+      ],
+    );
+  });
 
-  testWidgets("dismisses itself without replying when resolved on another device", (tester) async {
+  testWidgets("dismisses itself when already resolved before the sheet subscribes", (tester) async {
     final capture = _ReplyCapture();
     final isPending = StreamController<bool>();
     var remoteDismissals = 0;
@@ -427,16 +429,13 @@ void main() {
       ),
       capture: capture,
       isPendingStream: isPending.stream,
+      isPendingNow: () => false,
       onResolvedRemotely: () => remoteDismissals++,
     );
     addTearDown(router.dispose);
 
     await tester.pumpWidget(_buildApp(router: router));
     await _openQuestionModal(tester);
-    expect(find.text("Choose a release channel"), findsOneWidget);
-
-    isPending.add(false);
-    await tester.pumpAndSettle();
 
     expect(find.text("Choose a release channel"), findsNothing);
     expect(capture.requestId, isNull);

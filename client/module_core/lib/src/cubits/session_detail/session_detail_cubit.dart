@@ -348,8 +348,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               streamingText: streamingText,
               sessionStatus: refreshedSessionStatus,
               retryErrorMessage: retryMessage,
-              pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-              pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+              // A null pending list means its refetch failed; keep the
+              // previous state so still-open requests are not mistaken for
+              // remotely resolved.
+              pendingQuestions: switch (snapshot.pendingQuestions) {
+                final pending? => _mapPendingQuestions(pending),
+                null => latest.pendingQuestions,
+              },
+              pendingPermissions: switch (snapshot.pendingPermissions) {
+                final pending? => _mapPendingPermissions(pending),
+                null => latest.pendingPermissions,
+              },
               agent: latestAssistant?.agent,
               assistantAgentModel: assistantAgentModel,
               children: refreshedChildSessions,
@@ -522,16 +531,26 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriSessionUpdated(:final info) => info.parentID == _sessionId,
       // Permission/question events for a descendant (sub-agent) session that
       // surfaces on this session must be buffered so they replay after load.
-      SesoriPermissionAsked(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriPermissionReplied(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionAsked(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionReplied(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionRejected(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
+      SesoriPermissionAsked(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriPermissionReplied(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionAsked(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionReplied(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionRejected(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -1446,8 +1465,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       retryErrorMessage: initialRetryMessage,
-      pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-      pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+      pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions ?? const []),
+      pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions ?? const []),
       sessionTitle: snapshot.canonicalSessionTitle,
       agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,

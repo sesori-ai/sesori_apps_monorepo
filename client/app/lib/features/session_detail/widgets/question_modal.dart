@@ -25,6 +25,10 @@ class QuestionModal extends StatefulWidget {
   /// instead of lingering as a stale modal.
   final Stream<bool> isPendingStream;
 
+  /// Reads the latest pending status after the stream subscription is active,
+  /// so a resolution cannot be missed between presentation and subscription.
+  final bool Function() isPendingNow;
+
   /// Called when the sheet self-dismisses because the request was resolved
   /// on another device, so the presenter can chain the next pending prompt
   /// the way a local answer would.
@@ -42,6 +46,7 @@ class QuestionModal extends StatefulWidget {
     required this.onReply,
     required this.onReject,
     required this.isPendingStream,
+    required this.isPendingNow,
     required this.onResolvedRemotely,
     required this.topInset,
   });
@@ -58,6 +63,7 @@ class QuestionModal extends StatefulWidget {
     required void Function(String requestId, List<ReplyAnswer> answers) onReply,
     required void Function(String requestId) onReject,
     required Stream<bool> isPendingStream,
+    required bool Function() isPendingNow,
     required VoidCallback onResolvedRemotely,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
@@ -74,6 +80,7 @@ class QuestionModal extends StatefulWidget {
         onReply: onReply,
         onReject: onReject,
         isPendingStream: isPendingStream,
+        isPendingNow: isPendingNow,
         onResolvedRemotely: onResolvedRemotely,
         topInset: topInset,
       ),
@@ -122,16 +129,32 @@ class _QuestionModalState extends State<QuestionModal> {
     super.initState();
     _customFocus.addListener(_onCustomFocusChanged);
     _customController.addListener(_onCustomTextChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_pendingSub != null) return;
+
     // Pops this sheet's own route when the request leaves the pending list,
     // e.g. answered on another device. Route-driven dismissals (barrier tap,
     // swipe-down) bypass `_dismissModal`, so while the route is no longer
     // current — exiting — a pop here would remove the page underneath.
-    _pendingSub = widget.isPendingStream.listen((isPending) {
-      if (isPending || !mounted) return;
-      if (ModalRoute.of(context)?.isCurrent != true) return;
-      if (!_dismissed) widget.onResolvedRemotely();
-      _dismissModal();
+    _pendingSub = widget.isPendingStream.listen(_onPendingChanged);
+
+    // Subscribe first, then read the latest state. Any change between these
+    // operations is either observed by the stream or reflected by this read.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onPendingChanged(widget.isPendingNow());
     });
+  }
+
+  void _onPendingChanged(bool isPending) {
+    if (isPending || !mounted) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    if (_dismissed) return;
+    _dismissModal();
+    widget.onResolvedRemotely();
   }
 
   @override
@@ -215,7 +238,7 @@ class _QuestionModalState extends State<QuestionModal> {
   void _onProceed() {
     // A remote resolution already dismissed this sheet; a tap landing during
     // the exit animation must not send a stale answer.
-    if (_dismissed) return;
+    if (_dismissed || ModalRoute.of(context)?.isCurrent != true) return;
     // Build the answer for the current question.
     final answer = _selectedLabels.toList();
     if (_hasSelectedCustomAnswer) {
@@ -227,8 +250,8 @@ class _QuestionModalState extends State<QuestionModal> {
 
     if (_isLastQuestion) {
       // All questions answered — submit.
-      widget.onReply(widget.question.id, _collectedAnswers);
       _dismissModal();
+      widget.onReply(widget.question.id, _collectedAnswers);
     } else {
       // Advance to next question — reset selection state.
       setState(() {
@@ -241,9 +264,9 @@ class _QuestionModalState extends State<QuestionModal> {
   }
 
   void _onReject() {
-    if (_dismissed) return;
-    widget.onReject(widget.question.id);
+    if (_dismissed || ModalRoute.of(context)?.isCurrent != true) return;
     _dismissModal();
+    widget.onReject(widget.question.id);
   }
 
   // ---------------------------------------------------------------------------

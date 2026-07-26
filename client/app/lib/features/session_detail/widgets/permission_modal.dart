@@ -30,6 +30,10 @@ class PermissionModal extends StatefulWidget {
   /// lingering as a stale modal — without firing a reply.
   final Stream<bool> isPendingStream;
 
+  /// Reads the latest pending status after the stream subscription is active,
+  /// so a resolution cannot be missed between presentation and subscription.
+  final bool Function() isPendingNow;
+
   /// Called when the sheet self-dismisses because the request was resolved
   /// on another device, so the presenter can chain the next pending prompt
   /// the way a local reply would.
@@ -46,6 +50,7 @@ class PermissionModal extends StatefulWidget {
     required this.permission,
     required this.onReply,
     required this.isPendingStream,
+    required this.isPendingNow,
     required this.onResolvedRemotely,
     required this.topInset,
   });
@@ -65,6 +70,7 @@ class PermissionModal extends StatefulWidget {
     })
     onReply,
     required Stream<bool> isPendingStream,
+    required bool Function() isPendingNow,
     required VoidCallback onResolvedRemotely,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
@@ -80,6 +86,7 @@ class PermissionModal extends StatefulWidget {
         permission: permission,
         onReply: onReply,
         isPendingStream: isPendingStream,
+        isPendingNow: isPendingNow,
         onResolvedRemotely: onResolvedRemotely,
         topInset: topInset,
       ),
@@ -101,18 +108,29 @@ class _PermissionModalState extends State<PermissionModal> {
   bool _dismissed = false;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_pendingSub != null) return;
+
     // Pops this sheet's own route when the request leaves the pending list,
     // e.g. answered on another device. Route-driven dismissals (barrier tap,
     // swipe-down) bypass `_dismiss`, so while the route is no longer
     // current — exiting — a pop here would remove the page underneath.
-    _pendingSub = widget.isPendingStream.listen((isPending) {
-      if (isPending || !mounted) return;
-      if (ModalRoute.of(context)?.isCurrent != true) return;
-      if (!_dismissed) widget.onResolvedRemotely();
-      _dismiss();
+    _pendingSub = widget.isPendingStream.listen(_onPendingChanged);
+
+    // Subscribe first, then read the latest state. Any change between these
+    // operations is either observed by the stream or reflected by this read.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onPendingChanged(widget.isPendingNow());
     });
+  }
+
+  void _onPendingChanged(bool isPending) {
+    if (isPending || !mounted) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    if (_dismissed) return;
+    _dismiss();
+    widget.onResolvedRemotely();
   }
 
   @override
@@ -130,7 +148,7 @@ class _PermissionModalState extends State<PermissionModal> {
   void _reply({required PermissionReply reply}) {
     // A remote resolution already dismissed this sheet; a tap landing during
     // the exit animation must not send a stale reply.
-    if (_dismissed) return;
+    if (_dismissed || ModalRoute.of(context)?.isCurrent != true) return;
     _dismiss();
     widget.onReply(
       requestId: widget.permission.requestID,

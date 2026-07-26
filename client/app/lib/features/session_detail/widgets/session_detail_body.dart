@@ -196,14 +196,20 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   void _showQuestionModal(SesoriQuestionAsked question) {
     if (!_isCurrentPage) return;
     final cubit = context.read<SessionDetailCubit>();
+    bool isPendingNow() {
+      final state = cubit.state;
+      return state is! SessionDetailLoaded || state.pendingQuestions.any((q) => q.id == question.id);
+    }
+
+    // A queued presentation may run after this question was already resolved.
+    final state = cubit.state;
+    if (state is! SessionDetailLoaded || !state.pendingQuestions.any((q) => q.id == question.id)) return;
     cubit.clearNotifications();
     QuestionModal.show(
       context,
       question: question,
-      isPendingStream: _isPendingStream(
-        cubit: cubit,
-        isPending: (state) => state.pendingQuestions.any((q) => q.id == question.id),
-      ),
+      isPendingStream: cubit.stream.map((_) => isPendingNow()).distinct(),
+      isPendingNow: isPendingNow,
       onResolvedRemotely: _scheduleNextQuestionModal,
       onReply: (requestId, answers) async {
         final success = await context.read<SessionDetailCubit>().replyToQuestion(
@@ -227,14 +233,22 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   void _showPermissionModal(SesoriPermissionAsked permission) {
     if (!_isCurrentPage) return;
     final cubit = context.read<SessionDetailCubit>();
+    bool isPendingNow() {
+      final state = cubit.state;
+      return state is! SessionDetailLoaded || state.pendingPermissions.any((p) => p.requestID == permission.requestID);
+    }
+
+    // A queued presentation may run after this permission was already resolved.
+    final state = cubit.state;
+    if (state is! SessionDetailLoaded || !state.pendingPermissions.any((p) => p.requestID == permission.requestID)) {
+      return;
+    }
     cubit.clearNotifications();
     PermissionModal.show(
       context,
       permission: permission,
-      isPendingStream: _isPendingStream(
-        cubit: cubit,
-        isPending: (state) => state.pendingPermissions.any((p) => p.requestID == permission.requestID),
-      ),
+      isPendingStream: cubit.stream.map((_) => isPendingNow()).distinct(),
+      isPendingNow: isPendingNow,
       onResolvedRemotely: _scheduleNextPermissionModal,
       onReply:
           ({
@@ -252,26 +266,6 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
             _scheduleNextPermissionModal();
           },
     );
-  }
-
-  /// Maps cubit state to "request still pending" for an open sheet: `true`
-  /// while the request is in the loaded pending list. A non-loaded state keeps
-  /// the sheet open rather than dismissing on a transient reload. Seeded with
-  /// the current state so a resolution that races the sheet's presentation
-  /// (e.g. the `_scheduleModal` delay) is not missed.
-  Stream<bool> _isPendingStream({
-    required SessionDetailCubit cubit,
-    required bool Function(SessionDetailLoaded state) isPending,
-  }) async* {
-    bool toIsPending(SessionDetailState state) => state is! SessionDetailLoaded || isPending(state);
-    var last = toIsPending(cubit.state);
-    yield last;
-    await for (final state in cubit.stream) {
-      final pending = toIsPending(state);
-      if (pending == last) continue;
-      last = pending;
-      yield pending;
-    }
   }
 
   void _scheduleNextQuestionModal() {

@@ -41,6 +41,7 @@ GoRouter _createRouter({
   required _ReplyCapture capture,
   required Stream<bool> isPendingStream,
   required VoidCallback onResolvedRemotely,
+  bool Function()? isPendingNow,
 }) {
   return GoRouter(
     routes: [
@@ -57,6 +58,7 @@ GoRouter _createRouter({
                     permission: permission,
                     onReply: capture.onReply,
                     isPendingStream: isPendingStream,
+                    isPendingNow: isPendingNow ?? () => true,
                     onResolvedRemotely: onResolvedRemotely,
                   );
                 },
@@ -88,7 +90,12 @@ Future<void> _openPermissionModal(WidgetTester tester) async {
 void main() {
   testWidgets("groups the tool and highlighted request detail in one card", (tester) async {
     final capture = _ReplyCapture();
-    final router = _createRouter(permission: _permission, capture: capture, isPendingStream: const Stream<bool>.empty(), onResolvedRemotely: () {});
+    final router = _createRouter(
+      permission: _permission,
+      capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
+    );
     addTearDown(router.dispose);
 
     await tester.pumpWidget(_buildApp(router: router));
@@ -126,7 +133,12 @@ void main() {
   ]) {
     testWidgets("forwards the ${replyCase.label.toLowerCase()} reply", (tester) async {
       final capture = _ReplyCapture();
-      final router = _createRouter(permission: _permission, capture: capture, isPendingStream: const Stream<bool>.empty(), onResolvedRemotely: () {});
+      final router = _createRouter(
+        permission: _permission,
+        capture: capture,
+        isPendingStream: const Stream<bool>.empty(),
+        onResolvedRemotely: () {},
+      );
       addTearDown(router.dispose);
 
       await tester.pumpWidget(_buildApp(router: router));
@@ -252,7 +264,12 @@ void main() {
     final permission = _permission.copyWith(
       description: List.filled(80, "echo a long permission request").join("\n"),
     );
-    final router = _createRouter(permission: permission, capture: capture, isPendingStream: const Stream<bool>.empty(), onResolvedRemotely: () {});
+    final router = _createRouter(
+      permission: permission,
+      capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
+    );
     addTearDown(router.dispose);
 
     await tester.pumpWidget(_buildApp(router: router));
