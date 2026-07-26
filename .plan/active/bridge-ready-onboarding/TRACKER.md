@@ -2,11 +2,11 @@
 
 ## Plan State
 
-- **Status:** architecture review corrections applied; pending plan PR
+- **Status:** architecture review corrections applied; plan PR in review
 - **Plan slug:** `bridge-ready-onboarding`
 - **Implementation base:** `origin/main` at
   `f8c71eb78987aa8c64e397e8e8e3bb72eefa0692`
-- **Plan PR:** pending
+- **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/580
 - **Implementation state:** not started
 
 ## Plan Review
@@ -45,6 +45,9 @@
 
 ## Findings And Plan Deltas
 
+- **2026-07-26 — Plan delivery:** Opened plan PR
+  [#580](https://github.com/sesori-ai/sesori_apps_monorepo/pull/580) from the
+  dedicated `bridge-setup-ux-assessment` branch.
 - **2026-07-26 — Architecture review corrections:** Applied all four
   `aristotle-plan-review` findings without claiming approval of the revised
   plan: moved prompt rendering from `AppClientOnboardingService` to a private

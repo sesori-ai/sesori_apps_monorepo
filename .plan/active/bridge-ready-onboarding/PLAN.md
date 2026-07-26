@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `bridge-ready-onboarding`
-- **Status:** architecture review corrections applied; pending plan PR
+- **Status:** architecture review corrections applied; in review on plan PR
+  [#580](https://github.com/sesori-ai/sesori_apps_monorepo/pull/580)
 - **Plan date:** 2026-07-26
 - **Implementation base:** `origin/main` at
   `f8c71eb78987aa8c64e397e8e8e3bb72eefa0692`
