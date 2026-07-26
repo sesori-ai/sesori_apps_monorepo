@@ -157,6 +157,28 @@ void main() {
     expect(capture.reply, isNull);
   });
 
+  testWidgets("a local reply racing the resolved signal pops only the sheet", (tester) async {
+    final capture = _ReplyCapture();
+    final isPending = StreamController<bool>();
+    addTearDown(isPending.close);
+    final router = _createRouter(permission: _permission, capture: capture, isPendingStream: isPending.stream);
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+
+    // Replying resolves the request optimistically: the `false` emission
+    // arrives while the sheet is still mounted in its exit animation. The
+    // listener must not pop a second time (that would remove the page).
+    await tester.tap(find.text("Once"));
+    isPending.add(false);
+    await tester.pumpAndSettle();
+
+    expect(capture.reply, PermissionReply.once);
+    expect(find.text("bash"), findsNothing);
+    expect(find.byKey(const Key("open-permission-modal")), findsOneWidget);
+  });
+
   testWidgets("keeps actions visible for a long request detail", (tester) async {
     final capture = _ReplyCapture();
     final permission = _permission.copyWith(

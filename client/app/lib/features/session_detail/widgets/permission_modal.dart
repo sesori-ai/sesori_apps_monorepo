@@ -85,14 +85,21 @@ class PermissionModal extends StatefulWidget {
 class _PermissionModalState extends State<PermissionModal> {
   StreamSubscription<bool>? _pendingSub;
 
+  /// Guards against a double pop: a local reply pops the sheet and the
+  /// cubit's optimistic resolution then reports `false` on
+  /// [PermissionModal.isPendingStream] while this state is still mounted
+  /// during the exit animation — a second pop would remove the page
+  /// underneath.
+  bool _dismissed = false;
+
   @override
   void initState() {
     super.initState();
     // Pops this sheet's own route when the request leaves the pending list,
-    // e.g. answered on another device. A local reply pops the sheet first,
-    // disposing this state and cancelling the subscription, so no double-pop.
+    // e.g. answered on another device. `_dismiss` is idempotent, so a local
+    // reply already popping the sheet can't be doubled here.
     _pendingSub = widget.isPendingStream.listen((isPending) {
-      if (!isPending && mounted) context.pop();
+      if (!isPending) _dismiss();
     });
   }
 
@@ -102,8 +109,14 @@ class _PermissionModalState extends State<PermissionModal> {
     super.dispose();
   }
 
-  void _reply(BuildContext context, {required PermissionReply reply}) {
+  void _dismiss() {
+    if (_dismissed) return;
+    _dismissed = true;
     context.pop();
+  }
+
+  void _reply({required PermissionReply reply}) {
+    _dismiss();
     widget.onReply(
       requestId: widget.permission.requestID,
       sessionId: widget.permission.sessionID,
@@ -129,7 +142,7 @@ class _PermissionModalState extends State<PermissionModal> {
       topInset: widget.topInset,
       // Closing the sheet answers the assistant: the X rejects, matching the
       // explicit reject button.
-      onClose: () => _reply(context, reply: PermissionReply.reject),
+      onClose: () => _reply(reply: PermissionReply.reject),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
         child: Column(
@@ -244,21 +257,21 @@ class _PermissionModalState extends State<PermissionModal> {
                       foregroundColor: prego.colors.fgErrorPrimary,
                       side: BorderSide(color: prego.colors.fgErrorPrimary),
                     ),
-                    onPressed: () => _reply(context, reply: PermissionReply.reject),
+                    onPressed: () => _reply(reply: PermissionReply.reject),
                     child: Text(context.loc.diffPermissionReject),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _reply(context, reply: PermissionReply.once),
+                    onPressed: () => _reply(reply: PermissionReply.once),
                     child: Text(context.loc.diffPermissionOnce),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => _reply(context, reply: PermissionReply.always),
+                    onPressed: () => _reply(reply: PermissionReply.always),
                     child: Text(context.loc.diffPermissionAlwaysAllow),
                   ),
                 ),

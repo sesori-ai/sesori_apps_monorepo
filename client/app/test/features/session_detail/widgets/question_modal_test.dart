@@ -430,4 +430,40 @@ void main() {
     expect(capture.requestId, isNull);
     expect(capture.answers, isNull);
   });
+
+  testWidgets("a local answer racing the resolved signal pops only the sheet", (tester) async {
+    final capture = _ReplyCapture();
+    final isPending = StreamController<bool>();
+    addTearDown(isPending.close);
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a release channel",
+            header: "Release channel",
+            options: [QuestionOption(label: "Stable", description: "Release to everyone")],
+          ),
+        ],
+      ),
+      capture: capture,
+      isPendingStream: isPending.stream,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    // Answering resolves the request optimistically: the `false` emission
+    // arrives while the sheet is still mounted in its exit animation. The
+    // listener must not pop a second time (that would remove the page).
+    await tester.tap(find.text("Stable"));
+    await tester.pump();
+    await tester.tap(find.text("Submit"));
+    isPending.add(false);
+    await tester.pumpAndSettle();
+
+    expect(capture.requestId, "question-1");
+    expect(find.text("Choose a release channel"), findsNothing);
+    expect(find.byKey(const Key("open-question-modal")), findsOneWidget);
+  });
 }

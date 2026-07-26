@@ -91,7 +91,15 @@ class _QuestionModalState extends State<QuestionModal> {
   final Set<String> _selectedLabels = {};
   bool _customSelected = false;
 
+  /// Guards against a double pop: a local answer pops the sheet and the
+  /// cubit's optimistic resolution then reports `false` on
+  /// [QuestionModal.isPendingStream] while this state is still mounted during
+  /// the exit animation — a second pop would remove the page underneath.
+  bool _dismissed = false;
+
   void _dismissModal() {
+    if (_dismissed) return;
+    _dismissed = true;
     context.pop();
   }
 
@@ -107,10 +115,10 @@ class _QuestionModalState extends State<QuestionModal> {
     _customFocus.addListener(_onCustomFocusChanged);
     _customController.addListener(_onCustomTextChanged);
     // Pops this sheet's own route when the request leaves the pending list,
-    // e.g. answered on another device. A local answer pops the sheet first,
-    // disposing this state and cancelling the subscription, so no double-pop.
+    // e.g. answered on another device. `_dismissModal` is idempotent, so a
+    // local answer already popping the sheet can't be doubled here.
     _pendingSub = widget.isPendingStream.listen((isPending) {
-      if (!isPending && mounted) _dismissModal();
+      if (!isPending) _dismissModal();
     });
   }
 

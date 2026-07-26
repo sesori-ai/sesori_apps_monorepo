@@ -200,7 +200,10 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     QuestionModal.show(
       context,
       question: question,
-      isPendingStream: _isPendingStream(cubit.stream, (state) => state.pendingQuestions.any((q) => q.id == question.id)),
+      isPendingStream: _isPendingStream(
+        cubit: cubit,
+        isPending: (state) => state.pendingQuestions.any((q) => q.id == question.id),
+      ),
       onReply: (requestId, answers) async {
         final success = await context.read<SessionDetailCubit>().replyToQuestion(
           requestId: requestId,
@@ -228,8 +231,8 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       context,
       permission: permission,
       isPendingStream: _isPendingStream(
-        cubit.stream,
-        (state) => state.pendingPermissions.any((p) => p.requestID == permission.requestID),
+        cubit: cubit,
+        isPending: (state) => state.pendingPermissions.any((p) => p.requestID == permission.requestID),
       ),
       onReply:
           ({
@@ -251,11 +254,23 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
   /// Maps cubit state to "request still pending" for an open sheet: `true`
   /// while the request is in the loaded pending list. A non-loaded state keeps
-  /// the sheet open rather than dismissing on a transient reload.
-  Stream<bool> _isPendingStream(
-    Stream<SessionDetailState> states,
-    bool Function(SessionDetailLoaded state) isPending,
-  ) => states.map((state) => state is! SessionDetailLoaded || isPending(state)).distinct();
+  /// the sheet open rather than dismissing on a transient reload. Seeded with
+  /// the current state so a resolution that races the sheet's presentation
+  /// (e.g. the `_scheduleModal` delay) is not missed.
+  Stream<bool> _isPendingStream({
+    required SessionDetailCubit cubit,
+    required bool Function(SessionDetailLoaded state) isPending,
+  }) async* {
+    bool toIsPending(SessionDetailState state) => state is! SessionDetailLoaded || isPending(state);
+    var last = toIsPending(cubit.state);
+    yield last;
+    await for (final state in cubit.stream) {
+      final pending = toIsPending(state);
+      if (pending == last) continue;
+      last = pending;
+      yield pending;
+    }
+  }
 
   void _scheduleNextQuestionModal() {
     final state = context.read<SessionDetailCubit>().state;
