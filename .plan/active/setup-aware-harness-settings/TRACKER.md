@@ -1,0 +1,42 @@
+# Setup-Aware Harness Settings: Tracker
+
+## Current State
+
+- **Implementation base:** current `origin/main` after Stage 12 merge `6cedf5bd`
+- **Series state:** planned; no implementation branch has started
+- **Next action:** begin Step 1/7 from current `origin/main`
+
+## Delivery
+
+| Done | Slice | Branch | PR state |
+|---|---|---|---|
+| [ ] | Step 1/7 — per-bridge harness preference | `setup-aware-harness-settings-preferences` | planned; estimate 650-750 changed lines |
+| [ ] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | planned; estimate 300-400 changed lines |
+| [ ] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | planned; estimate 550-700 changed lines |
+| [ ] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | planned; estimate 750-900 changed lines |
+| [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | planned; estimate 1,100-1,300 changed lines |
+| [ ] | Step 6/7 — management actions | `setup-aware-harness-settings-state` | planned; estimate 650-800 changed lines |
+| [ ] | Step 7/7 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
+
+## Source Material
+
+- Frozen PR #511: https://github.com/sesori-ai/sesori_apps_monorepo/pull/511
+- Substantive old commit: `167a3ee7`
+- Action-preservation follow-up: `bc3918cb`
+- Frozen head: `4f07172f`
+- Never merge, rebase, or cherry-pick the frozen branch. Reconstruct each
+  behavior against current `main` and preserve newer connection, model-default,
+  settings, and forced-disable behavior.
+
+## E2E Environment
+
+- Use the available iOS simulator for mobile Harnesses E2E.
+- Run the source bridge with `--data-dir ~/.local/share/sesori-dev` so it
+  reuses the existing login and development bridge data.
+- Use the existing `random stuff` project for session interactions and
+  management verification.
+- Do not leave a temporary E2E bridge running after verification.
+
+## Verification Log
+
+No implementation verification has run yet.

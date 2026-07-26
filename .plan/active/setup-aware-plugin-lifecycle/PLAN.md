@@ -119,15 +119,17 @@ available:
 
 ### Client settings
 
-- Add Plugins as a dedicated sub-page of the merged redesigned Settings screen.
+- Add Harnesses as a dedicated sub-page of the merged redesigned Settings
+  screen, with its entry immediately below Notifications.
 - The mobile shell remains thin and uses Prego settings/grouped-row primitives.
 - Shared client ownership remains API -> repository -> service -> cubit.
-- The page shows all registrations, setup/runtime/work status, eligibility,
-  effective timeout, global timeout, per-plugin override, refresh, restart, and
-  safe disable with explicit force confirmation.
-- The page does not expose runtime installation or backend login.
-- Desktop compiles against shared module-core changes but gets no plugin settings
-  UI in this plan.
+- The overview page shows all registrations, descriptor-declared logos,
+  setup/runtime/work status, eligibility, and effective timeout. A dedicated
+  management page carries global timeout, per-plugin override, refresh,
+  restart, and safe disable with explicit force confirmation.
+- The pages do not expose runtime installation or backend login.
+- Desktop compiles against shared module-core changes but gets no Harnesses
+  settings UI in this plan.
 
 ## Durable Configuration
 
@@ -469,17 +471,20 @@ small secure-storage-backed plugin preference repository. Management refresh is
 triggered by connection/reconnect and the lifecycle invalidation SSE, with one
 coalesced refresh tail and no polling.
 
-The preference repository keys a nullable last-used plugin ID by the connected
-bridge ID returned by `GET /plugin`. Layer-3 `NewSessionPluginService` combines
-plugin discovery and that preference: it prefers the saved ID only when
-routable, otherwise uses the response's derived default, and records a valid
-choice when session creation is submitted. Persistence failure is logged and
-never blocks creation. When an older bridge omits its ID, the service uses the
-bridge default and does not invent a cross-bridge key.
+The preference repository keys a nullable last-submitted plugin ID by the
+connected bridge ID returned by `GET /plugin`. Layer-3
+`NewSessionPluginService` combines plugin discovery, the current selection, and
+that preference: it resolves current routable selection, then saved routable
+selection, then the response's derived default, and records a valid choice when
+session creation is submitted. Persistence failure is logged and never blocks
+creation. When an older bridge omits its ID, the service uses the bridge
+default and does not invent a cross-bridge key.
 
-`client/app` adds a Plugins row to the redesigned Settings landing page and a
-dedicated Prego `PluginSettingsScreen`. Business decisions, command convergence,
-and force intent remain in module-core. All copy is localized.
+`client/app` adds a Harnesses row immediately below Notifications on the
+redesigned Settings landing page, a Notifications-consistent
+`HarnessesSettingsScreen`, and a dedicated `HarnessManagementScreen`. Business
+decisions, command convergence, timeout input, and force intent remain in
+module-core Layer 3. All copy is localized.
 
 The concrete client classes are:
 
@@ -495,27 +500,31 @@ The concrete client classes are:
 - Layer 2 `PluginPreferenceRepository` depends only on `PluginPreferenceApi` and
   exposes typed read/write of a nullable plugin ID.
 - Layer 3 `PluginManagementService({required PluginRepository
-  pluginRepository, required ConnectionService connectionService})` owns initial
-  GET, one coalesced refresh tail, mutation publication, and subscriptions to
-  `ConnectionService.status` and `ConnectionService.events`. Connected state and
-  `plugin.management.changed` are symmetric staleness triggers.
+  pluginRepository, required ConnectionService connectionService})` owns one
+  replay-safe initial GET, one coalesced refresh tail, fenced GET/mutation
+  publication, timeout input classification, forceability classification, and
+  subscriptions to `ConnectionService.status`, `ConnectionService.events`, and
+  `ConnectionService.dataMayBeStale`. Connected state, replay loss, and
+  `plugin.management.changed` are staleness triggers.
 - Layer 4 `PluginManagementCubit({required PluginManagementService service})`
-  owns loading/action state, integer input validation, and typed safe-to-force
-  confirmation. It calls no API directly.
+  maps Layer-3 outcomes into loading/action state and confirmation state. It
+  calls no API directly and owns no domain validation or force policy.
 - Layer 3 `NewSessionPluginService({required PluginRepository pluginRepository,
   required PluginPreferenceRepository pluginPreferenceRepository})` resolves
-  discovery plus saved/default selection and owns the observable unawaited write
-  when valid creation is submitted.
+  discovery through current-selection, saved-selection, then default precedence
+  and owns the observable unawaited write when valid creation is submitted.
 - Existing `NewSessionCubit` receives required `NewSessionPluginService`, invokes
   those use cases, and only maps results to composer state.
 
 `configureCoreDependencies` registers both APIs, both repositories, and the
-service; cubits remain `BlocProvider`-constructed. `client/app` adds
-`AppRouteDef.settingsPlugins`, `AppRoute.settingsPlugins()`, the route mapping in
-`app_router.dart`, a Plugins landing row in `settings_screen.dart`, and
-`features/settings/plugin_settings_screen.dart`. The screen resolves the service
-through DI, watches the cubit, and composes only Prego widgets and localized
-copy.
+services; cubits remain `BlocProvider`-constructed. `client/app` adds
+`AppRouteDef.settingsHarnesses`, `AppRoute.settingsHarnesses()`,
+`AppRouteDef.settingsHarnessManagement`,
+`AppRoute.settingsHarnessManagement()`, route mappings in `app_router.dart`, a
+Harnesses landing row immediately below Notifications in
+`settings_screen.dart`, `features/settings/harnesses_settings_screen.dart`, and
+`features/settings/harness_management_screen.dart`. The screens resolve services
+through DI, watch cubits, and compose only Prego widgets and localized copy.
 
 ### Concurrent management invariants
 
@@ -668,17 +677,13 @@ the listed source files and committed with their stage.
 
 ### Stage 13 / former PR #511 files
 
-This ledger is provisional source material for a dedicated Stage 13 child plan;
-it is not one PR boundary. The child plan must split the work into coherent
-approximately-1,000-line slices and record a size estimate for each slice before
-the first implementation branch starts.
-
-| Workspace | Production files/classes |
-|---|---|
-| Shared and module-core transport/persistence | Add nullable `bridgeId` to `plugin_list_response.dart`; modify `plugin_api.dart`, add `plugin_preference_api.dart`, `plugin_repository.dart`, management result models, add `plugin_preference_repository.dart`, DI source, barrel exports. |
-| Module-core orchestration/state | Add `plugin_management_service.dart`, `new_session_plugin_service.dart`, `cubits/plugin_management/*`; modify `new_session_cubit.dart`. |
-| Mobile routing/presentation | `app_routes.dart`, `app_router.dart`, `settings_screen.dart`, add `plugin_settings_screen.dart`, `app_en.arb`. |
-| Downstream | Desktop/module-core exhaustive compilation only; no desktop route or screen. |
+The concrete Stage 13 replacement delivery is owned by
+`.plan/active/setup-aware-harness-settings`. That child plan contains the
+current seven-PR sequence, exact branches/titles, file boundaries, size
+estimates, compatibility handling, and verification gates. The original frozen
+PR #511 inventory remains source material only; reconstruct behavior against
+current main rather than porting its generated output, unordered revision
+logic, old Settings screen shape, or historical plan edits.
 
 ## Delivery Stages
 
@@ -741,26 +746,27 @@ The exact branches, PR titles, merge commits, and per-slice verification are
 recorded in `.plan/completed/setup-aware-plugin-management`. Frozen PR #510 was
 closed as superseded and remains source material only.
 
-### Stage 13 / former PR #511 — redesigned mobile plugin settings
+### Stage 13 / former PR #511 — redesigned mobile Harnesses settings
 
-- module-core API -> repository -> service -> cubit and preference storage;
-- per-bridge last-used new-session choice;
-- Settings landing row and dedicated Plugins sub-page using merged Prego
-  settings primitives;
-- focused interaction, conflict/force, reconnect, and route tests.
+The concrete replacement is the seven-PR child series in
+`.plan/active/setup-aware-harness-settings`:
 
-Stage 13 begins by creating a child delivery plan that reassesses current-main
-drift from frozen PR #511, defines independently reviewable slices, and gives
-each slice an estimated changed-line range. Each PR aims for approximately
-1,000 changed lines under the sizing guardrail above. No Stage 13 implementation
-branch starts until those review and size boundaries are recorded.
+1. per-bridge last-submitted harness preference;
+2. management transport and typed repository results;
+3. reconnect/SSE/replay-safe synchronization service;
+4. descriptor-declared harness logos rendered through a backend-neutral Prego
+   primitive;
+5. Notifications-consistent read-only Harnesses page directly below the
+   Notifications settings entry;
+6. mutation cubit actions over service-owned safe/force policy;
+7. dedicated Harness management controls page.
 
-Keep one open replacement PR and one local successor built from that PR's latest
-reviewed head. After the predecessor merges, merge updated `origin/main` into
-the successor, reverify, and open it before beginning the next local slice.
-Never work farther than one slice ahead. Frozen #508-#511 remain reference
-material and are not rewritten. Stage 13 is rebuilt only after Stage 12-P06
-merges.
+The child plan records exact branches, PR titles, production files, estimates,
+wire compatibility, race handling, focused tests, and real-simulator E2E using
+`--data-dir ~/.local/share/sesori-dev` and the `random stuff` project. Keep
+one open replacement PR and one local successor built from that PR's latest
+reviewed head. Never work farther than one slice ahead. Frozen #508-#511
+remain reference material and are not rewritten.
 
 ## Verification
 
