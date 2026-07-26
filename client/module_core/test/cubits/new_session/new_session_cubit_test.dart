@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
+import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -18,6 +19,7 @@ void main() {
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
     late MockPluginRepository mockPluginRepository;
+    late MockPluginPreferenceRepository mockPluginPreferenceRepository;
     late MockConnectionService mockConnectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late MockProjectRepository mockProjectRepository;
@@ -34,6 +36,7 @@ void main() {
     setUp(() {
       mockSessionService = MockSessionService();
       mockPluginRepository = MockPluginRepository();
+      mockPluginPreferenceRepository = MockPluginPreferenceRepository();
       mockConnectionService = MockConnectionService();
       connectionStatus = BehaviorSubject.seeded(
         const ConnectionStatus.connected(
@@ -48,8 +51,17 @@ void main() {
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
 
       when(mockPluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [defaultPlugin])),
+        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [defaultPlugin])),
       );
+      when(
+        () => mockPluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockPluginPreferenceRepository.writePluginId(
+          bridgeId: any(named: "bridgeId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async {});
 
       when(
         () => mockSessionService.listAgents(
@@ -95,7 +107,10 @@ void main() {
     NewSessionCubit buildCubit() => NewSessionCubit(
       connectionService: mockConnectionService,
       sessionService: mockSessionService,
-      pluginRepository: mockPluginRepository,
+      newSessionPluginService: NewSessionPluginService(
+        pluginRepository: mockPluginRepository,
+        pluginPreferenceRepository: mockPluginPreferenceRepository,
+      ),
       projectRepository: mockProjectRepository,
       selectionTracker: selectionTracker,
       projectId: "project-1",
@@ -122,7 +137,10 @@ void main() {
       final cubit = NewSessionCubit(
         connectionService: mockConnectionService,
         sessionService: mockSessionService,
-        pluginRepository: mockPluginRepository,
+        newSessionPluginService: NewSessionPluginService(
+          pluginRepository: mockPluginRepository,
+          pluginPreferenceRepository: mockPluginPreferenceRepository,
+        ),
         projectRepository: mockProjectRepository,
         selectionTracker: selectionTracker,
         projectId: "project-1",
@@ -246,7 +264,10 @@ void main() {
         return NewSessionCubit(
           connectionService: mockConnectionService,
           sessionService: mockSessionService,
-          pluginRepository: mockPluginRepository,
+          newSessionPluginService: NewSessionPluginService(
+            pluginRepository: mockPluginRepository,
+            pluginPreferenceRepository: mockPluginPreferenceRepository,
+          ),
           projectRepository: mockProjectRepository,
           selectionTracker: selectionTracker,
           projectId: "project-1",

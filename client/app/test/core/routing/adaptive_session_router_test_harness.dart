@@ -25,6 +25,8 @@ class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionSe
 
 class MockPluginRepository extends Mock implements PluginRepository {}
 
+class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository {}
+
 class AdaptiveSessionRouterTestHarness {
   late final MockProjectRepository projectRepository;
   late final MockBridgeRepository bridgeRepository;
@@ -87,6 +89,7 @@ class AdaptiveSessionRouterTestHarness {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         const PluginListResponse(
+          bridgeId: null,
           plugins: [
             PluginMetadata(
               id: "plugin-1",
@@ -200,6 +203,22 @@ class AdaptiveSessionRouterTestHarness {
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectRepository>(projectRepository);
     getIt.registerSingleton<PluginRepository>(pluginRepository);
+    final pluginPreferenceRepository = MockPluginPreferenceRepository();
+    when(
+      () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
+    ).thenAnswer((_) async => null);
+    when(
+      () => pluginPreferenceRepository.writePluginId(
+        bridgeId: any(named: "bridgeId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer((_) async {});
+    getIt.registerSingleton<NewSessionPluginService>(
+      NewSessionPluginService(
+        pluginRepository: pluginRepository,
+        pluginPreferenceRepository: pluginPreferenceRepository,
+      ),
+    );
     registerListServices(
       projectRepository: projectRepository,
     );

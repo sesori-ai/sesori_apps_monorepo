@@ -18,6 +18,7 @@ void main() {
 
   test("returns the backend-neutral plugin response unchanged", () async {
     const response = PluginListResponse(
+      bridgeId: "br_abc12345",
       plugins: [
         PluginMetadata(
           id: "plugin-b",
@@ -49,6 +50,7 @@ void main() {
       await repository.listPlugins(),
       ApiResponse<PluginListResponse>.success(
         const PluginListResponse(
+          bridgeId: null,
           plugins: [
             PluginMetadata(
               id: legacyMissingPluginId,

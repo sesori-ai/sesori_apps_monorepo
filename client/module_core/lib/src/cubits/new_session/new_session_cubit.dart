@@ -10,8 +10,8 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
-import "../../repositories/plugin_repository.dart";
 import "../../repositories/project_repository.dart";
+import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
@@ -19,7 +19,7 @@ import "new_session_state.dart";
 class NewSessionCubit extends Cubit<NewSessionState> {
   final ConnectionService _connectionService;
   final SessionService _sessionService;
-  final PluginRepository _pluginRepository;
+  final NewSessionPluginService _newSessionPluginService;
   final ProjectRepository _projectRepository;
   final NewSessionSelectionTracker _selectionTracker;
   final String _projectId;
@@ -27,20 +27,21 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
+  String? _discoveryBridgeId;
 
   static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
     required ConnectionService connectionService,
     required SessionService sessionService,
-    required PluginRepository pluginRepository,
+    required NewSessionPluginService newSessionPluginService,
     required ProjectRepository projectRepository,
     required NewSessionSelectionTracker selectionTracker,
     required String projectId,
     required bool? initialSupportsDedicatedWorktrees,
   }) : _connectionService = connectionService,
        _sessionService = sessionService,
-       _pluginRepository = pluginRepository,
+       _newSessionPluginService = newSessionPluginService,
        _projectRepository = projectRepository,
        _selectionTracker = selectionTracker,
        _projectId = projectId,
@@ -91,18 +92,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       supportsDedicatedWorktrees: null,
     );
     try {
-      final response = await _pluginRepository.listPlugins();
+      final response = await _newSessionPluginService.discover(
+        currentSelectedPluginId: state.agentModelData?.plugin?.id,
+        currentSelectionBridgeId: _discoveryBridgeId,
+      );
       if (!_canApplyLoad(generation: generation, pluginId: null)) return;
 
       switch (response) {
         case SuccessResponse(:final data):
           final plugins = data.plugins;
+          final selectedPlugin = data.selected;
+          _discoveryBridgeId = data.bridgeId;
           final currentData = state.agentModelData;
           final currentPluginId = currentData?.plugin?.id;
-          final currentPlugin = currentPluginId == null
-              ? null
-              : plugins.firstWhereOrNull((plugin) => plugin.id == currentPluginId && plugin.isRoutable);
-          final selectedPlugin = currentPlugin ?? plugins.where((plugin) => plugin.isDefault).singleOrNull;
           final canLoad = selectedPlugin?.isRoutable ?? false;
           final isSamePlugin = currentPluginId != null && selectedPlugin?.id == currentPluginId;
           final stagedCommand = isSamePlugin ? currentData?.stagedCommand : null;
@@ -645,6 +647,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     );
 
     final variantId = config.agentModel?.variant;
+    unawaited(
+      _newSessionPluginService.recordSelection(bridgeId: _discoveryBridgeId, plugin: selectedPlugin),
+    );
     final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
       pluginId: pluginId,

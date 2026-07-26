@@ -16,6 +16,7 @@ class PluginRepository {
       // COMPATIBILITY 2026-07-18 (v1.6.0): Bridges without plugin discovery return 404 and can only target OpenCode. Remove this fallback once those bridges are unsupported.
       return ApiResponse.success(
         const PluginListResponse(
+          bridgeId: null,
           plugins: [
             PluginMetadata(
               id: legacyMissingPluginId,

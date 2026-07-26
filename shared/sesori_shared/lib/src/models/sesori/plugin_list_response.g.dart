@@ -41,9 +41,11 @@ _PluginListResponse _$PluginListResponseFromJson(Map json) =>
             (e) => PluginMetadata.fromJson(Map<String, dynamic>.from(e as Map)),
           )
           .toList(),
+      bridgeId: json['bridgeId'] as String?,
     );
 
 Map<String, dynamic> _$PluginListResponseToJson(_PluginListResponse instance) =>
     <String, dynamic>{
       'plugins': instance.plugins.map((e) => e.toJson()).toList(),
+      'bridgeId': ?instance.bridgeId,
     };

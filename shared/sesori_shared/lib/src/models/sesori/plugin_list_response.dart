@@ -27,6 +27,10 @@ sealed class PluginMetadata with _$PluginMetadata {
 sealed class PluginListResponse with _$PluginListResponse {
   const factory PluginListResponse({
     required List<PluginMetadata> plugins,
+    // COMPATIBILITY 2026-07-26 (v1.7.0): Bridges predating per-bridge harness
+    // preferences omit the ID; null disables preference recall. Remove the
+    // nullable path once those bridges are unsupported.
+    required String? bridgeId,
   }) = _PluginListResponse;
 
   factory PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);

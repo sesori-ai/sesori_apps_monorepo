@@ -9,6 +9,7 @@ import "package:test/test.dart";
 
 import "../../helpers/plugin_lifecycle_test_support.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -44,7 +45,10 @@ void main() {
             );
       await Future<void>.delayed(Duration.zero);
       handler = GetPluginSetupHandler(lifecycleService: lifecycleService);
-      selectableHandler = GetPluginsHandler(lifecycleService: lifecycleService);
+      selectableHandler = GetPluginsHandler(
+        lifecycleService: lifecycleService,
+        bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      );
     });
 
     tearDown(() async {
@@ -84,6 +88,7 @@ void main() {
 
       expect(response.plugins.map((plugin) => plugin.id), ["ready"]);
       expect(response.plugins.single.isDefault, isTrue);
+      expect(response.bridgeId, "br_test1234");
     });
   });
 }

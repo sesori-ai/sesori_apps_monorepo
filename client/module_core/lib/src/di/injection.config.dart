@@ -22,6 +22,7 @@ import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
     as _i396;
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i231;
 import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
+import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i957;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
@@ -51,6 +52,8 @@ import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
     as _i471;
 import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
     as _i679;
+import 'package:sesori_dart_core/src/repositories/plugin_preference_repository.dart'
+    as _i594;
 import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
     as _i337;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
@@ -66,6 +69,8 @@ import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
 import 'package:sesori_dart_core/src/services/draft_store.dart' as _i1002;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
+import 'package:sesori_dart_core/src/services/new_session_plugin_service.dart'
+    as _i177;
 import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart'
     as _i913;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
@@ -136,6 +141,9 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i396.NotificationPreferencesApi(storage: gh<_i442.SecureStorage>()),
     );
+    gh.lazySingleton<_i957.PluginPreferenceApi>(
+      () => _i957.PluginPreferenceApi(storage: gh<_i442.SecureStorage>()),
+    );
     gh.lazySingleton<_i205.BridgeRepository>(
       () => _i205.BridgeRepository(api: gh<_i384.BridgeApi>()),
     );
@@ -196,6 +204,11 @@ extension GetItInjectableX on _i174.GetIt {
         api: gh<_i396.NotificationPreferencesApi>(),
       ),
     );
+    gh.lazySingleton<_i594.PluginPreferenceRepository>(
+      () => _i594.PluginPreferenceRepository(
+        api: gh<_i957.PluginPreferenceApi>(),
+      ),
+    );
     gh.lazySingleton<_i157.SessionViewApi>(
       () => _i157.SessionViewApi(
         connectionService: gh<_i369.ConnectionService>(),
@@ -251,6 +264,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i150.SessionViewRepository>(
       () => _i150.SessionViewRepository(api: gh<_i157.SessionViewApi>()),
+    );
+    gh.lazySingleton<_i177.NewSessionPluginService>(
+      () => _i177.NewSessionPluginService(
+        pluginRepository: gh<_i337.PluginRepository>(),
+        pluginPreferenceRepository: gh<_i594.PluginPreferenceRepository>(),
+      ),
     );
     gh.lazySingleton<_i703.ProjectListService>(
       () => _i703.ProjectListService(

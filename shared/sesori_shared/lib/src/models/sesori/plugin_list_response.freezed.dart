@@ -161,7 +161,10 @@ as String?,
 /// @nodoc
 mixin _$PluginListResponse {
 
- List<PluginMetadata> get plugins;
+ List<PluginMetadata> get plugins;// COMPATIBILITY 2026-07-26 (v1.7.0): Bridges predating per-bridge harness
+// preferences omit the ID; null disables preference recall. Remove the
+// nullable path once those bridges are unsupported.
+ String? get bridgeId;
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -174,16 +177,16 @@ $PluginListResponseCopyWith<PluginListResponse> get copyWith => _$PluginListResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, plugins));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(plugins));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(plugins),bridgeId);
 
 @override
 String toString() {
-  return 'PluginListResponse(plugins: $plugins)';
+  return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId)';
 }
 
 
@@ -194,7 +197,7 @@ abstract mixin class $PluginListResponseCopyWith<$Res>  {
   factory $PluginListResponseCopyWith(PluginListResponse value, $Res Function(PluginListResponse) _then) = _$PluginListResponseCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> plugins
+ List<PluginMetadata> plugins, String? bridgeId
 });
 
 
@@ -211,10 +214,11 @@ class _$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? bridgeId = freezed,}) {
   return _then(_self.copyWith(
 plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,
+as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -226,7 +230,7 @@ as List<PluginMetadata>,
 @JsonSerializable()
 
 class _PluginListResponse implements PluginListResponse {
-  const _PluginListResponse({required final  List<PluginMetadata> plugins}): _plugins = plugins;
+  const _PluginListResponse({required final  List<PluginMetadata> plugins, required this.bridgeId}): _plugins = plugins;
   factory _PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
 
  final  List<PluginMetadata> _plugins;
@@ -236,6 +240,10 @@ class _PluginListResponse implements PluginListResponse {
   return EqualUnmodifiableListView(_plugins);
 }
 
+// COMPATIBILITY 2026-07-26 (v1.7.0): Bridges predating per-bridge harness
+// preferences omit the ID; null disables preference recall. Remove the
+// nullable path once those bridges are unsupported.
+@override final  String? bridgeId;
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -250,16 +258,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other._plugins, _plugins));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other._plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId);
 
 @override
 String toString() {
-  return 'PluginListResponse(plugins: $plugins)';
+  return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId)';
 }
 
 
@@ -270,7 +278,7 @@ abstract mixin class _$PluginListResponseCopyWith<$Res> implements $PluginListRe
   factory _$PluginListResponseCopyWith(_PluginListResponse value, $Res Function(_PluginListResponse) _then) = __$PluginListResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<PluginMetadata> plugins
+ List<PluginMetadata> plugins, String? bridgeId
 });
 
 
@@ -287,10 +295,11 @@ class __$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,Object? bridgeId = freezed,}) {
   return _then(_PluginListResponse(
 plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,
+as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

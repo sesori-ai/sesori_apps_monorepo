@@ -425,7 +425,7 @@ class Orchestrator {
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
-        GetPluginsHandler(lifecycleService: _pluginLifecycleService),
+        GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
         RestartBridgeHandler(restartService: _restartService),
         GetCurrentProjectHandler(projectRepository: projectRepository),
         GetProjectsHandler(projectActivityService: projectActivityService),
