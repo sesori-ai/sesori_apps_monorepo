@@ -295,8 +295,17 @@ void main() {
 
     state = state.copyWith(pendingPermissions: const []);
     states.add(state);
+    await tester.pump();
+    await tester.tap(find.text("Once"), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(find.text("write_release_notes"), findsNothing);
+    verifyNever(
+      () => cubit.replyToPermission(
+        requestId: "permission-1",
+        sessionId: "session-1",
+        reply: PermissionReply.once,
+      ),
+    );
   });
 
   testWidgets("presents a queued permission after answering an active question", (tester) async {

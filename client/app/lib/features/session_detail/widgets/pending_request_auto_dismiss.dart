@@ -22,6 +22,7 @@ class PendingRequestAutoDismiss extends StatefulWidget {
 
 class _PendingRequestAutoDismissState extends State<PendingRequestAutoDismiss> {
   late final StreamSubscription<bool> _subscription;
+  bool _resolved = false;
 
   @override
   void initState() {
@@ -33,7 +34,8 @@ class _PendingRequestAutoDismissState extends State<PendingRequestAutoDismiss> {
   }
 
   void _dismissIfResolved(bool isPending) {
-    if (isPending || !mounted || ModalRoute.of(context)?.isCurrent != true) return;
+    if (isPending || _resolved || !mounted || ModalRoute.of(context)?.isCurrent != true) return;
+    setState(() => _resolved = true);
     context.pop();
   }
 
@@ -44,5 +46,5 @@ class _PendingRequestAutoDismissState extends State<PendingRequestAutoDismiss> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) => AbsorbPointer(absorbing: _resolved, child: widget.child);
 }
