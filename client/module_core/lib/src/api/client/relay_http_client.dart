@@ -192,6 +192,8 @@ class RelayHttpApiClient {
       // callers (e.g. plugin mutations) must be able to treat this as an
       // uncertain outcome instead of a retryable ordinary failure.
       return ApiResponse.error(ApiError.dartHttpClient(error));
+    } on RelayResponseLostException catch (error) {
+      return ApiResponse.error(ApiError.dartHttpClient(error));
     } catch (error, stackTrace) {
       loge("Relay API request failed", error, stackTrace);
       return ApiResponse.error(ApiError.generic());

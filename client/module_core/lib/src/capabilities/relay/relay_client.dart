@@ -153,7 +153,9 @@ class RelayClient {
               if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
                 firstBinaryMessage.completeError(error, stackTrace);
               }
-              _completeAllPendingWithError(StateError("Relay socket stream error: ${error.toString()}"));
+              _completeAllPendingWithError(
+                RelayResponseLostException(message: "Relay socket stream error: ${error.toString()}"),
+              );
             },
             onDone: _onSocketDone,
           );
@@ -447,7 +449,7 @@ class RelayClient {
     await _closeSseController();
     await _closeBridgeStatusController();
     await _closeSocketClosedController();
-    _completeAllPendingWithError(StateError("Relay disconnected"));
+    _completeAllPendingWithError(const RelayResponseLostException(message: "Relay disconnected"));
     _sessionEncryptor = null;
     _connectionState = RelayClientConnectionState.disconnected;
   }
@@ -526,7 +528,7 @@ class RelayClient {
 
     _sessionEncryptor = null;
     _connectionState = RelayClientConnectionState.disconnected;
-    _completeAllPendingWithError(StateError("Relay socket closed (code=$closeCode)"));
+    _completeAllPendingWithError(RelayResponseLostException(message: "Relay socket closed (code=$closeCode)"));
     unawaited(_teardownChannelOnly());
     unawaited(_closeSseController());
 
@@ -740,4 +742,16 @@ class RelayClient {
 /// tearing it down.
 class _BridgeOfflineDuringHandshake implements Exception {
   const _BridgeOfflineDuringHandshake();
+}
+
+/// A request frame was sent (or may have been sent) but its response can no
+/// longer arrive because the relay connection ended. Callers must treat the
+/// outcome as uncertain rather than as proof the request never executed.
+final class RelayResponseLostException implements Exception {
+  final String message;
+
+  const RelayResponseLostException({required this.message});
+
+  @override
+  String toString() => message;
 }

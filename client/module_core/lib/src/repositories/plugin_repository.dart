@@ -5,6 +5,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/plugin_api.dart";
+import "../capabilities/relay/relay_client.dart";
 import "models/plugin_management_result.dart";
 
 @lazySingleton
@@ -46,7 +47,7 @@ class PluginRepository {
       ErrorResponse(
         error: JsonParsingError() ||
             EmptyResponseError() ||
-            DartHttpClientError(innerError: TimeoutException()),
+            DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()),
       ) =>
         const PluginManagementMutationResult.uncertain(),
       ErrorResponse(:final error) => PluginManagementMutationResult.failure(error: error),

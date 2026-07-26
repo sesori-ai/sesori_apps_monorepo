@@ -4,6 +4,7 @@ import "dart:convert";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/plugin_api.dart";
+import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -228,6 +229,26 @@ void main() {
       ).thenAnswer(
         (_) async => ApiResponse.error(
           ApiError.dartHttpClient(TimeoutException("Relay request timed out", const Duration(seconds: 30))),
+        ),
+      );
+
+      final result = await repository.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
+      );
+
+      expect(result, isA<PluginManagementMutationResultUncertain>());
+    });
+
+    test("maps a socket-close response loss to uncertain", () async {
+      when(
+        () => api.command(
+          pluginId: any(named: "pluginId"),
+          request: any(named: "request"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.dartHttpClient(const RelayResponseLostException(message: "Relay socket closed (code=1001)")),
         ),
       );
 
