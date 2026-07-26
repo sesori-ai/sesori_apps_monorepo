@@ -163,7 +163,3 @@ extension NewSessionStateAgentModel on NewSessionState {
     NewSessionCreated() => null,
   };
 }
-
-extension PluginMetadataSelection on PluginMetadata {
-  bool get isRoutable => state == PluginLifecycleState.ready || state == PluginLifecycleState.degraded;
-}

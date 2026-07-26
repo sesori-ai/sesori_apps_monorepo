@@ -74,7 +74,7 @@ class NewSessionPluginService {
     if (bridgeId == null || currentSelectionBridgeId != bridgeId || currentSelectedPluginId == null) {
       return null;
     }
-    return plugins.firstWhereOrNull((plugin) => plugin.id == currentSelectedPluginId && plugin.isSelectable);
+    return plugins.firstWhereOrNull((plugin) => plugin.id == currentSelectedPluginId && plugin.isRoutable);
   }
 
   Future<PluginMetadata?> _savedSelection({required String? bridgeId, required List<PluginMetadata> plugins}) async {
@@ -87,10 +87,10 @@ class NewSessionPluginService {
       return null;
     }
     if (savedPluginId == null) return null;
-    return plugins.firstWhereOrNull((plugin) => plugin.id == savedPluginId && plugin.isSelectable);
+    return plugins.firstWhereOrNull((plugin) => plugin.id == savedPluginId && plugin.isRoutable);
   }
 }
 
-extension on PluginMetadata {
-  bool get isSelectable => state == PluginLifecycleState.ready || state == PluginLifecycleState.degraded;
+extension PluginMetadataSelection on PluginMetadata {
+  bool get isRoutable => state == PluginLifecycleState.ready || state == PluginLifecycleState.degraded;
 }

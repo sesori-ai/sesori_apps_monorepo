@@ -144,6 +144,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
     if (isClosed) return;
+    // A failed discovery cannot identify the connected bridge (it may have
+    // changed), so retained composer data must not record a preference under
+    // the previous bridge's key.
+    _discoveryBridgeId = null;
     final data = state.agentModelData;
     emit(
       NewSessionState.error(

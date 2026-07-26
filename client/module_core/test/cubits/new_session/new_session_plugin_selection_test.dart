@@ -974,6 +974,51 @@ void main() {
       ).called(1);
     });
 
+    test("failed rediscovery does not record under the stale bridge key", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        if (discoveryCalls == 1) {
+          return ApiResponse.success(const PluginListResponse(bridgeId: "br_test", plugins: [pluginA]));
+        }
+        return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
+      });
+      when(
+        () => sessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(pluginId: "plugin-a")));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() {
+        final data = cubit.state.agentModelData;
+        return cubit.state is NewSessionError && !(data?.isLoading ?? true);
+      });
+
+      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+
+      verifyNever(
+        () => pluginPreferenceRepository.writePluginId(
+          bridgeId: any(named: "bridgeId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
+    });
+
     test("skips preference recording when discovery carried no bridge identity", () async {
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])),
