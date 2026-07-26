@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CodexThreadEnvelopeDto {
 
- CodexThreadDto? get thread; String? get turnId; String? get model; String? get modelProvider; String? get cwd;
+ CodexThreadDto? get thread; String? get model; String? get modelProvider; String? get cwd;
 /// Create a copy of CodexThreadEnvelopeDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +26,16 @@ $CodexThreadEnvelopeDtoCopyWith<CodexThreadEnvelopeDto> get copyWith => _$CodexT
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadEnvelopeDto&&(identical(other.thread, thread) || other.thread == thread)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.model, model) || other.model == model)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cwd, cwd) || other.cwd == cwd));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadEnvelopeDto&&(identical(other.thread, thread) || other.thread == thread)&&(identical(other.model, model) || other.model == model)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cwd, cwd) || other.cwd == cwd));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,thread,turnId,model,modelProvider,cwd);
+int get hashCode => Object.hash(runtimeType,thread,model,modelProvider,cwd);
 
 @override
 String toString() {
-  return 'CodexThreadEnvelopeDto(thread: $thread, turnId: $turnId, model: $model, modelProvider: $modelProvider, cwd: $cwd)';
+  return 'CodexThreadEnvelopeDto(thread: $thread, model: $model, modelProvider: $modelProvider, cwd: $cwd)';
 }
 
 
@@ -46,7 +46,7 @@ abstract mixin class $CodexThreadEnvelopeDtoCopyWith<$Res>  {
   factory $CodexThreadEnvelopeDtoCopyWith(CodexThreadEnvelopeDto value, $Res Function(CodexThreadEnvelopeDto) _then) = _$CodexThreadEnvelopeDtoCopyWithImpl;
 @useResult
 $Res call({
- CodexThreadDto? thread, String? turnId, String? model, String? modelProvider, String? cwd
+ CodexThreadDto? thread, String? model, String? modelProvider, String? cwd
 });
 
 
@@ -63,11 +63,10 @@ class _$CodexThreadEnvelopeDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexThreadEnvelopeDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? thread = freezed,Object? turnId = freezed,Object? model = freezed,Object? modelProvider = freezed,Object? cwd = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? thread = freezed,Object? model = freezed,Object? modelProvider = freezed,Object? cwd = freezed,}) {
   return _then(_self.copyWith(
 thread: freezed == thread ? _self.thread : thread // ignore: cast_nullable_to_non_nullable
-as CodexThreadDto?,turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
-as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as CodexThreadDto?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,modelProvider: freezed == modelProvider ? _self.modelProvider : modelProvider // ignore: cast_nullable_to_non_nullable
 as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -94,11 +93,10 @@ $CodexThreadDtoCopyWith<$Res>? get thread {
 @JsonSerializable(createToJson: false)
 
 class _CodexThreadEnvelopeDto implements CodexThreadEnvelopeDto {
-  const _CodexThreadEnvelopeDto({required this.thread, required this.turnId, required this.model, required this.modelProvider, required this.cwd});
+  const _CodexThreadEnvelopeDto({required this.thread, required this.model, required this.modelProvider, required this.cwd});
   factory _CodexThreadEnvelopeDto.fromJson(Map<String, dynamic> json) => _$CodexThreadEnvelopeDtoFromJson(json);
 
 @override final  CodexThreadDto? thread;
-@override final  String? turnId;
 @override final  String? model;
 @override final  String? modelProvider;
 @override final  String? cwd;
@@ -113,16 +111,16 @@ _$CodexThreadEnvelopeDtoCopyWith<_CodexThreadEnvelopeDto> get copyWith => __$Cod
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadEnvelopeDto&&(identical(other.thread, thread) || other.thread == thread)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.model, model) || other.model == model)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cwd, cwd) || other.cwd == cwd));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadEnvelopeDto&&(identical(other.thread, thread) || other.thread == thread)&&(identical(other.model, model) || other.model == model)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cwd, cwd) || other.cwd == cwd));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,thread,turnId,model,modelProvider,cwd);
+int get hashCode => Object.hash(runtimeType,thread,model,modelProvider,cwd);
 
 @override
 String toString() {
-  return 'CodexThreadEnvelopeDto(thread: $thread, turnId: $turnId, model: $model, modelProvider: $modelProvider, cwd: $cwd)';
+  return 'CodexThreadEnvelopeDto(thread: $thread, model: $model, modelProvider: $modelProvider, cwd: $cwd)';
 }
 
 
@@ -133,7 +131,7 @@ abstract mixin class _$CodexThreadEnvelopeDtoCopyWith<$Res> implements $CodexThr
   factory _$CodexThreadEnvelopeDtoCopyWith(_CodexThreadEnvelopeDto value, $Res Function(_CodexThreadEnvelopeDto) _then) = __$CodexThreadEnvelopeDtoCopyWithImpl;
 @override @useResult
 $Res call({
- CodexThreadDto? thread, String? turnId, String? model, String? modelProvider, String? cwd
+ CodexThreadDto? thread, String? model, String? modelProvider, String? cwd
 });
 
 
@@ -150,11 +148,10 @@ class __$CodexThreadEnvelopeDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexThreadEnvelopeDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? thread = freezed,Object? turnId = freezed,Object? model = freezed,Object? modelProvider = freezed,Object? cwd = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? thread = freezed,Object? model = freezed,Object? modelProvider = freezed,Object? cwd = freezed,}) {
   return _then(_CodexThreadEnvelopeDto(
 thread: freezed == thread ? _self.thread : thread // ignore: cast_nullable_to_non_nullable
-as CodexThreadDto?,turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
-as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as CodexThreadDto?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,modelProvider: freezed == modelProvider ? _self.modelProvider : modelProvider // ignore: cast_nullable_to_non_nullable
 as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
 as String?,

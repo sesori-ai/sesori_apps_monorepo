@@ -356,6 +356,40 @@ void main() {
       expect(emitted.whereType<BridgeSseSessionIdle>(), hasLength(1));
     });
 
+    test("forced interruption cancels pending input for an untracked session", () async {
+      await connect();
+      const sessionId = "untracked-session";
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 501,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": sessionId,
+          "toolCall": {"toolCallId": "tc-501", "title": "Run", "kind": "execute"},
+          "options": [
+            {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      expect(await plugin.getPendingPermissions(sessionId: sessionId), hasLength(1));
+      emitted.clear();
+
+      final interrupted = await plugin.interruptActiveWork(
+        budget: const Duration(seconds: 1),
+      );
+
+      final cancel = frames("session/cancel").single;
+      expect((cancel["params"] as Map)["sessionId"], sessionId);
+      expect(await plugin.getPendingPermissions(sessionId: sessionId), isEmpty);
+      final clearingEvent = emitted.whereType<BridgeSsePermissionReplied>().single;
+      expect(clearingEvent.sessionID, sessionId);
+      expect(clearingEvent.reply, PluginPermissionReply.reject.name);
+      expect(interrupted, {sessionId});
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("an abort landing during turn selection still drops the turn", () async {
       final gated = _GatedSelectionPlugin(
         id: "acp",

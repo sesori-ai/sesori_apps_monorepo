@@ -1173,6 +1173,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       final activeSessionIds = <String>{
         for (final summary in getActiveSessionsSummary())
           for (final session in summary.activeSessions) ...[session.id, ...session.childSessionIds],
+        ...?_approvalRegistry?.pendingSessionIds,
       };
       if (activeSessionIds.isEmpty) return const <String>{};
 

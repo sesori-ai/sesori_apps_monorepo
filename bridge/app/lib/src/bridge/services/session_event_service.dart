@@ -50,25 +50,45 @@ class SessionEventService {
     );
   }
 
-  Future<List<BridgeSseEvent>> normalize({required SourcedBridgeEvent source}) async {
-    return _normalizeGuarded(source: source, drainPending: true);
+  Future<List<BridgeSseEvent>> normalize({
+    required SourcedBridgeEvent source,
+    required bool allowDuringStop,
+  }) async {
+    return _normalizeGuarded(
+      source: source,
+      allowDuringStop: allowDuringStop,
+      drainPending: true,
+    );
   }
 
   Future<List<BridgeSseEvent>> _normalizeGuarded({
     required SourcedBridgeEvent source,
+    required bool allowDuringStop,
     required bool drainPending,
   }) async {
-    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) {
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
       return const [];
     }
     try {
-      return await _normalize(source: source, drainPending: drainPending);
+      return await _normalize(
+        source: source,
+        allowDuringStop: allowDuringStop,
+        drainPending: drainPending,
+      );
     } on Object catch (error, stackTrace) {
-      if (_eventMapper.sessionInfo(event: source.event) != null &&
+      if (_isSessionPayloadEvent(source.event) &&
           !isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
         return const [];
       }
-      if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) {
+      if (!isCurrentEvent(
+        pluginId: source.pluginId,
+        generation: source.generation,
+        allowDuringStop: allowDuringStop,
+      )) {
         return const [];
       }
       Log.w("[sse] failed to normalize ${source.event.runtimeType}", error, stackTrace);
@@ -95,13 +115,18 @@ class SessionEventService {
   bool isCurrentEvent({
     required String pluginId,
     required int generation,
-    required BridgeSseEvent event,
+    required bool allowDuringStop,
   }) {
-    return _pluginRuntime.isCurrentEvent(pluginId: pluginId, generation: generation, event: event);
+    return _pluginRuntime.isCurrentEvent(
+      pluginId: pluginId,
+      generation: generation,
+      allowDuringStop: allowDuringStop,
+    );
   }
 
   Future<List<BridgeSseEvent>> _normalize({
     required SourcedBridgeEvent source,
+    required bool allowDuringStop,
     required bool drainPending,
   }) async {
     if (source.event is BridgeSseSessionDeleted) return const [];
@@ -109,7 +134,7 @@ class SessionEventService {
     final observed = _eventMapper.sessionInfo(event: source.event);
     if (observed == null) {
       return [
-        ?await _translate(source: source),
+        ?await _translate(source: source, allowDuringStop: allowDuringStop),
       ];
     }
     if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
@@ -118,7 +143,7 @@ class SessionEventService {
 
     final projection = await _projectSession(source: source, observed: observed);
     if (projection == null) return const [];
-    final normalized = await _translate(source: source);
+    final normalized = await _translate(source: source, allowDuringStop: allowDuringStop);
     final output = <BridgeSseEvent>[
       if (projection.inserted && source.event is! BridgeSseSessionCreated)
         ?await _createdEvent(sessionId: projection.binding.id),
@@ -328,6 +353,7 @@ class SessionEventService {
           projectionUpdatedAt: pending.projectionUpdatedAt,
           event: pending.event,
         ),
+        allowDuringStop: false,
         drainPending: false,
       );
       output.addAll([
@@ -357,13 +383,22 @@ class SessionEventService {
     );
   }
 
-  Future<BridgeSseEvent?> _translate({required SourcedBridgeEvent source}) async {
+  Future<BridgeSseEvent?> _translate({
+    required SourcedBridgeEvent source,
+    required bool allowDuringStop,
+  }) async {
     final backendSessionIds = _eventMapper.backendSessionIds(event: source.event);
     final bindings = await _sessionRepository.getStoredSessionsByBackendIds(
       pluginId: source.pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
-    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) return null;
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return null;
+    }
     if (bindings.length != backendSessionIds.length) {
       final missingBackendSessionIds = backendSessionIds.where((id) => !bindings.containsKey(id)).toList();
       if (missingBackendSessionIds.isNotEmpty &&
@@ -394,7 +429,13 @@ class SessionEventService {
         for (final entry in bindings.entries) entry.key: entry.value.id,
       },
     );
-    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) return null;
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return null;
+    }
     if (translated == null) return null;
 
     final translatedSession = _eventMapper.sessionInfo(event: translated);
@@ -411,6 +452,7 @@ class SessionEventService {
           source: source,
           session: session,
           titleChanged: titleChanged,
+          allowDuringStop: allowDuringStop,
         ),
         null => null,
       },
@@ -428,10 +470,23 @@ class SessionEventService {
     required SourcedBridgeEvent source,
     required Session session,
     required bool titleChanged,
+    required bool allowDuringStop,
   }) async {
-    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) return null;
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return null;
+    }
     final catalogSession = await _sessionRepository.getCatalogSession(sessionId: session.id);
-    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) return null;
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return null;
+    }
     if (catalogSession == null) return null;
     return BridgeSseSessionUpdated(info: catalogSession.toJson(), titleChanged: titleChanged);
   }
@@ -445,5 +500,13 @@ class SessionEventService {
   Future<BridgeSseEvent?> _createdEvent({required String sessionId}) async {
     final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
     return session == null ? null : BridgeSseSessionCreated(info: session.toJson());
+  }
+
+  bool _isSessionPayloadEvent(BridgeSseEvent event) {
+    return switch (event) {
+      BridgeSseTerminalHandoff(:final event) => _isSessionPayloadEvent(event),
+      BridgeSseSessionCreated() || BridgeSseSessionUpdated() || BridgeSseSessionDeleted() => true,
+      _ => false,
+    };
   }
 }

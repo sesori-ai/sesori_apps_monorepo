@@ -86,7 +86,7 @@ void main() {
       skillRepository: _StubSkillRepository(),
     );
 
-    await service.sendCommand(
+    final dispatched = await service.sendCommand(
       threadId: "thread-id",
       command: "review",
       arguments: "staged changes",
@@ -99,8 +99,9 @@ void main() {
     expect(input.text, r"$review staged changes");
     expect(threadRepository.lastModel, "gpt-5.6");
     expect(threadRepository.lastEffort, "high");
+    expect(dispatched.turnId, "turn");
 
-    await service.sendCommand(
+    final compacted = await service.sendCommand(
       threadId: "thread-id",
       command: "compact",
       arguments: "",
@@ -109,6 +110,7 @@ void main() {
       collaborationMode: null,
     );
     expect(threadRepository.compactCount, 1);
+    expect(compacted.turnId, isNull);
   });
 }
 

@@ -210,6 +210,8 @@ class AcpApprovalRegistry {
 
   bool get hasAnyPendingInput => _pending.isNotEmpty;
 
+  Set<String> get pendingSessionIds => Set<String>.unmodifiable(_pending.values.map((entry) => entry.sessionId));
+
   /// Resolves every pending approval for [sessionId] as cancelled — used when
   /// a turn is aborted. ACP still requires the client to answer an in-flight
   /// permission/question request, so this responds to the agent (unblocking

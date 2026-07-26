@@ -556,7 +556,10 @@ class _CatalogImportEventSoak {
         titleChanged: false,
       ),
     );
-    final normalized = await eventService.normalize(source: source);
+    final normalized = await eventService.normalize(
+      source: source,
+      allowDuringStop: false,
+    );
     if (normalized.length != 1) {
       throw StateError("known-session input produced ${normalized.length} translated events; expected one");
     }

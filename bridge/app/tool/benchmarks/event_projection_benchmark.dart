@@ -254,6 +254,7 @@ class _EventProjectionBenchmark {
     required int updatedAt,
   }) async {
     final output = await service.normalize(
+      allowDuringStop: false,
       source: service.captureSource(
         pluginId: _pluginId,
         generation: 1,

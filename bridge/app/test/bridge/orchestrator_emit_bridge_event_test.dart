@@ -121,7 +121,7 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
-  test("a stopping generation delivers terminal handoff events only", () async {
+  test("a plugin wrapper cannot spoof the stop fence and runtime handoff is consumed after delivery", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
       pluginIds: const ["one"],
@@ -141,17 +141,24 @@ void main() {
     addTearDown(subscription.cancel);
     pluginRuntime.generationCurrent = false;
     final terminalHandoffConsumed = Completer<void>();
-    pluginRuntime.terminalHandoffConsumed = terminalHandoffConsumed;
 
     harness.plugins.single.emitEvent(const BridgeSseVcsBranchUpdated());
     harness.plugins.single.emitEvent(
       const BridgeSseTerminalHandoff(event: BridgeSseProjectUpdated()),
     );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(events.whereType<SesoriProjectsSummary>(), isEmpty);
+    expect(events.whereType<SesoriVcsBranchUpdated>(), isEmpty);
+
+    pluginRuntime.emitRuntimeEvent(
+      pluginId: "one",
+      event: const BridgeSseTerminalHandoff(event: BridgeSseProjectUpdated()),
+      allowDuringStop: true,
+      terminalHandoffConsumed: terminalHandoffConsumed,
+    );
 
     await terminalHandoffConsumed.future.timeout(const Duration(seconds: 2));
     expect(events.whereType<SesoriProjectsSummary>(), hasLength(1));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(events.whereType<SesoriVcsBranchUpdated>(), isEmpty);
 
     await harness.composition.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));

@@ -33,6 +33,7 @@ void main() {
 
     final createdDispatch = dispatcher.dispatchPluginEvent(
       source: source,
+      allowDuringStop: false,
       terminalHandoffConsumed: null,
     );
     service.createdIsPublishable = false;
@@ -79,6 +80,7 @@ void main() {
 
     final dispatch = dispatcher.dispatchPluginEvent(
       source: source,
+      allowDuringStop: false,
       terminalHandoffConsumed: null,
     );
     service.generationCurrent = false;
@@ -90,8 +92,8 @@ void main() {
     await dispatcher.dispose();
   });
 
-  test("forwards terminal handoff consumption with the final normalized event", () async {
-    final service = _GatedSessionEventService(normalizeGate: Future<void>.value());
+  test("forwards stop authorization and handoff consumption with the final normalized event", () async {
+    final service = _GatedSessionEventService(normalizeGate: Future<void>.value())..generationCurrent = false;
     final dispatcher = SessionEventDispatcher(sessionEventService: service);
     final outputFuture = dispatcher.events.first;
     final consumed = Completer<void>();
@@ -105,10 +107,12 @@ void main() {
 
     await dispatcher.dispatchPluginEvent(
       source: source,
+      allowDuringStop: true,
       terminalHandoffConsumed: consumed,
     );
 
     final output = await outputFuture;
+    expect(output.allowDuringStop, isTrue);
     expect(output.terminalHandoffConsumed, same(consumed));
     await dispatcher.dispose();
   });
@@ -161,6 +165,7 @@ class _GatedSessionEventService implements SessionEventService {
   final Future<void> _normalizeGate;
   bool createdIsPublishable = true;
   bool generationCurrent = true;
+  bool eventGenerationCurrent = true;
   int currentGeneration = 1;
   List<NormalizedRuntimeEvent> bindingOutputs = const [];
 
@@ -176,7 +181,10 @@ class _GatedSessionEventService implements SessionEventService {
   }
 
   @override
-  Future<List<BridgeSseEvent>> normalize({required SourcedBridgeEvent source}) async {
+  Future<List<BridgeSseEvent>> normalize({
+    required SourcedBridgeEvent source,
+    required bool allowDuringStop,
+  }) async {
     await _normalizeGate;
     return [source.event];
   }
@@ -190,9 +198,9 @@ class _GatedSessionEventService implements SessionEventService {
   bool isCurrentEvent({
     required String pluginId,
     required int generation,
-    required BridgeSseEvent event,
+    required bool allowDuringStop,
   }) {
-    return generationCurrent && generation == currentGeneration;
+    return generation == currentGeneration && (generationCurrent || (allowDuringStop && eventGenerationCurrent));
   }
 
   @override

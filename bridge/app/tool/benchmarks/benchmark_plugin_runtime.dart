@@ -65,6 +65,7 @@ class BenchmarkPluginRuntime extends PluginRuntime {
           pluginId: plugin.id,
           generation: 1,
           event: event,
+          allowDuringStop: false,
           terminalHandoffConsumed: null,
         ),
       ),

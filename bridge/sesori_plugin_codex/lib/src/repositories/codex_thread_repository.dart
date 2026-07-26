@@ -84,7 +84,11 @@ class CodexThreadRepository {
         collaborationMode: collaborationMode,
       ),
     );
-    return response.turnId;
+    final turnId = _usefulText(response.turn?.id);
+    if (turnId == null) {
+      throw StateError("turn/start response missing turn.id");
+    }
+    return turnId;
   }
 
   Future<void> compactThread({required String threadId}) => _request(

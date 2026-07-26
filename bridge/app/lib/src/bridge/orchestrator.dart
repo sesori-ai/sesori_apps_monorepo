@@ -1049,7 +1049,7 @@ class OrchestratorSession {
             !_pluginRuntime.isCurrentEvent(
               pluginId: source.pluginId,
               generation: generation,
-              event: source.event,
+              allowDuringStop: source.allowDuringStop,
             )) {
           return;
         }
@@ -1066,6 +1066,7 @@ class OrchestratorSession {
     final pluginId = source.pluginId;
     final generation = source.generation;
     final sourcedEvent = source.event;
+    final allowDuringStop = source.allowDuringStop;
     final terminalHandoff = sourcedEvent is BridgeSseTerminalHandoff;
     final event = switch (sourcedEvent) {
       BridgeSseTerminalHandoff(:final event) => event,
@@ -1073,7 +1074,11 @@ class OrchestratorSession {
     };
     try {
       if (generation != null &&
-          !_pluginRuntime.isCurrentEvent(pluginId: pluginId, generation: generation, event: sourcedEvent)) {
+          !_pluginRuntime.isCurrentEvent(
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          )) {
         return;
       }
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
@@ -1109,7 +1114,11 @@ class OrchestratorSession {
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
       final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event);
       if (generation != null &&
-          !_pluginRuntime.isCurrentEvent(pluginId: pluginId, generation: generation, event: sourcedEvent)) {
+          !_pluginRuntime.isCurrentEvent(
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          )) {
         return;
       }
       if (sesoriEvent != null) {
@@ -1117,7 +1126,7 @@ class OrchestratorSession {
           event: sesoriEvent,
           pluginId: pluginId,
           generation: generation,
-          allowDuringStop: terminalHandoff,
+          allowDuringStop: allowDuringStop,
         );
       } else if (!refreshProjectsSummary) {
         Log.v("[sse] mapping returned null — event dropped");
@@ -1127,13 +1136,17 @@ class OrchestratorSession {
       // after delivering session.deleted so clients observe deletion first.
       if (refreshProjectsSummary) {
         if (generation != null &&
-            !_pluginRuntime.isCurrentEvent(pluginId: pluginId, generation: generation, event: sourcedEvent)) {
+            !_pluginRuntime.isCurrentEvent(
+              pluginId: pluginId,
+              generation: generation,
+              allowDuringStop: allowDuringStop,
+            )) {
           return;
         }
         await _buildAndDeliverProjectsSummaryInOrder(
           pluginId: pluginId,
           generation: generation,
-          allowDuringStop: terminalHandoff,
+          allowDuringStop: allowDuringStop,
         );
       }
     } catch (e, st) {
@@ -1222,9 +1235,11 @@ class OrchestratorSession {
   }) {
     if (generation == null) return true;
     if (pluginId == null) return false;
-    return allowDuringStop
-        ? _pluginRuntime.isCurrentEventGeneration(pluginId: pluginId, generation: generation)
-        : _pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation);
+    return _pluginRuntime.isCurrentEvent(
+      pluginId: pluginId,
+      generation: generation,
+      allowDuringStop: allowDuringStop,
+    );
   }
 
   void _enqueueWireEvent(SesoriSseEvent event) {

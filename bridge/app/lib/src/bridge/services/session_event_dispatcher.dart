@@ -10,11 +10,13 @@ typedef NormalizedSourcedBridgeEvent = ({
   String pluginId,
   int? generation,
   BridgeSseEvent event,
+  bool allowDuringStop,
   Completer<void>? terminalHandoffConsumed,
 });
 typedef _DispatchEvent = ({
   int? generation,
   BridgeSseEvent event,
+  bool allowDuringStop,
   Completer<void>? terminalHandoffConsumed,
 });
 
@@ -44,17 +46,22 @@ class SessionEventDispatcher {
 
   Future<void> dispatchPluginEvent({
     required SourcedBridgeEvent source,
+    required bool allowDuringStop,
     required Completer<void>? terminalHandoffConsumed,
   }) {
     return _dispatch(
       pluginId: source.pluginId,
       operation: () async {
-        final events = await _sessionEventService.normalize(source: source);
+        final events = await _sessionEventService.normalize(
+          source: source,
+          allowDuringStop: allowDuringStop,
+        );
         return [
           for (var index = 0; index < events.length; index++)
             (
               generation: source.generation,
               event: events[index],
+              allowDuringStop: allowDuringStop,
               terminalHandoffConsumed: index == events.length - 1 ? terminalHandoffConsumed : null,
             ),
         ];
@@ -67,7 +74,12 @@ class SessionEventDispatcher {
       pluginId: commit.pluginId,
       operation: () async => [
         for (final output in await _sessionEventService.handleBindingsCommitted(commit: commit))
-          (generation: output.generation, event: output.event, terminalHandoffConsumed: null),
+          (
+            generation: output.generation,
+            event: output.event,
+            allowDuringStop: false,
+            terminalHandoffConsumed: null,
+          ),
       ],
     );
   }
@@ -79,6 +91,7 @@ class SessionEventDispatcher {
         (
           generation: null,
           event: BridgeSseSessionDeleted(info: session.toJson()),
+          allowDuringStop: false,
           terminalHandoffConsumed: null,
         ),
       ],
@@ -116,7 +129,7 @@ class SessionEventDispatcher {
                 !_sessionEventService.isCurrentEvent(
                   pluginId: pluginId,
                   generation: generation,
-                  event: event,
+                  allowDuringStop: output.allowDuringStop,
                 )) {
               continue;
             }
@@ -124,6 +137,7 @@ class SessionEventDispatcher {
               pluginId: pluginId,
               generation: generation,
               event: event,
+              allowDuringStop: output.allowDuringStop,
               terminalHandoffConsumed: output.terminalHandoffConsumed,
             ));
           }

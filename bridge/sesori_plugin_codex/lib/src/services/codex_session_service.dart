@@ -179,7 +179,7 @@ class CodexSessionService {
     }
   }
 
-  Future<({CodexThreadRecord? resumedThread, String? resolvedModel})> sendCommand({
+  Future<({CodexThreadRecord? resumedThread, String? resolvedModel, String? turnId})> sendCommand({
     required String threadId,
     required String command,
     required String arguments,
@@ -198,8 +198,9 @@ class CodexSessionService {
       collaborationMode: collaborationMode,
     );
     var turnEffort = effort ?? turnMode?.defaultReasoningEffort;
+    String? turnId;
     try {
-      await _dispatchCommand(
+      turnId = await _dispatchCommand(
         threadId: threadId,
         command: command,
         arguments: arguments,
@@ -219,7 +220,7 @@ class CodexSessionService {
         collaborationMode: collaborationMode,
       );
       turnEffort = effort ?? turnMode?.defaultReasoningEffort;
-      await _dispatchCommand(
+      turnId = await _dispatchCommand(
         threadId: threadId,
         command: command,
         arguments: arguments,
@@ -234,10 +235,11 @@ class CodexSessionService {
     return (
       resumedThread: resumed,
       resolvedModel: command == compactionCommandName ? null : turnModel,
+      turnId: turnId,
     );
   }
 
-  Future<void> _dispatchCommand({
+  Future<String?> _dispatchCommand({
     required String threadId,
     required String command,
     required String arguments,
@@ -247,10 +249,10 @@ class CodexSessionService {
   }) async {
     if (command == compactionCommandName) {
       await _connectedThreadRepository.compactThread(threadId: threadId);
-      return;
+      return null;
     }
     final invocation = arguments.isEmpty ? "\$$command" : "\$$command $arguments";
-    await _connectedThreadRepository.startTurn(
+    return _connectedThreadRepository.startTurn(
       threadId: threadId,
       parts: [PluginPromptPart.text(text: invocation)],
       model: model,

@@ -5,9 +5,11 @@ sealed class BridgeSseEvent {
   const BridgeSseEvent();
 }
 
-/// Runtime-owned provenance for reconciliation emitted during a forced stop.
-/// Plugin implementations emit ordinary events; only the generation runtime
-/// wraps events after `BridgePlugin.interruptActiveWork` has quiesced history.
+/// Mapping provenance for reconciliation synthesized during a forced stop.
+///
+/// This wrapper carries no stop-fence authority. The generation runtime owns
+/// that authorization separately, so a plugin-emitted wrapper remains an
+/// ordinary fenced event.
 class BridgeSseTerminalHandoff extends BridgeSseEvent {
   final BridgeSseEvent event;
   const BridgeSseTerminalHandoff({required this.event});

@@ -55,10 +55,10 @@ class TestPluginRuntime extends PluginRuntime {
   final Map<String, PluginRuntimeState> _states = {};
   final Map<String, PluginRuntimeTransition> _transitions = {};
   final StreamController<List<PluginRuntimeSnapshot>> _snapshotChanges = StreamController.broadcast(sync: true);
+  final StreamController<SourcedPluginRuntimeEvent> _runtimeEvents = StreamController.broadcast(sync: true);
   bool generationCurrent = true;
   bool eventGenerationCurrent = true;
   int currentGeneration = 1;
-  Completer<void>? terminalHandoffConsumed;
 
   @override
   Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
@@ -83,10 +83,10 @@ class TestPluginRuntime extends PluginRuntime {
   bool isCurrentEvent({
     required String pluginId,
     required int generation,
-    required BridgeSseEvent event,
+    required bool allowDuringStop,
   }) {
     return isCurrentGeneration(pluginId: pluginId, generation: generation) ||
-        (event is BridgeSseTerminalHandoff && isCurrentEventGeneration(pluginId: pluginId, generation: generation));
+        (allowDuringStop && isCurrentEventGeneration(pluginId: pluginId, generation: generation));
   }
 
   @override
@@ -135,10 +135,27 @@ class TestPluginRuntime extends PluginRuntime {
             pluginId: plugin.id,
             generation: currentGeneration,
             event: event,
-            terminalHandoffConsumed: event is BridgeSseTerminalHandoff ? terminalHandoffConsumed : null,
+            allowDuringStop: false,
+            terminalHandoffConsumed: null,
           ),
         ),
+      _runtimeEvents.stream,
     ]);
+  }
+
+  void emitRuntimeEvent({
+    required String pluginId,
+    required BridgeSseEvent event,
+    required bool allowDuringStop,
+    required Completer<void>? terminalHandoffConsumed,
+  }) {
+    _runtimeEvents.add((
+      pluginId: pluginId,
+      generation: currentGeneration,
+      event: event,
+      allowDuringStop: allowDuringStop,
+      terminalHandoffConsumed: terminalHandoffConsumed,
+    ));
   }
 
   @override
@@ -151,6 +168,7 @@ class TestPluginRuntime extends PluginRuntime {
 
   @override
   Future<void> dispose() async {
+    if (!_runtimeEvents.isClosed) await _runtimeEvents.close();
     if (!_snapshotChanges.isClosed) await _snapshotChanges.close();
   }
 
@@ -256,7 +274,7 @@ class _AlwaysCurrentTestPluginRuntime extends TestPluginRuntime {
   bool isCurrentEvent({
     required String pluginId,
     required int generation,
-    required BridgeSseEvent event,
+    required bool allowDuringStop,
   }) => generation == 1;
 }
 

@@ -27,6 +27,7 @@ class PluginEventListener {
         unawaited(
           _dispatcher.dispatchPluginEvent(
             source: source,
+            allowDuringStop: event.allowDuringStop,
             terminalHandoffConsumed: event.terminalHandoffConsumed,
           ),
         );
