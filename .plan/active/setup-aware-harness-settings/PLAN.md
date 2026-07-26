@@ -254,9 +254,12 @@ sealed class PluginManagementLoadResult {
 ```
 
 A refresh failure after a supported snapshot is replayed as `supported` with
-the retained response and a non-null `refreshError`; it does not replace the
-last usable snapshot with a bare failure. A bare `failure` remains the initial
-load state or an unsupported-bridge request failure.
+the retained response and a non-null `refreshError` only while the connection
+still identifies the same bridge. A bare `failure` remains the initial load
+state or an unsupported-bridge request failure. The service scopes retained
+snapshots by the connected bridge identity/config; an identity-changing
+transition clears the retained response and must never replay bridge A's
+management state while commands route to bridge B.
 
 ```dart
 sealed class PluginManagementMutationResult {
@@ -429,9 +432,10 @@ Refresh behavior:
   connection epoch, unsuperseded publication generation, and current disposal
   state.
 - Only a successful supported/unsupported application consumes prior stale
-  generations. Failure publishes `supported(refreshError:)` when a supported
-  snapshot already exists, otherwise bare `failure`; both preserve/re-arm
-  staleness without polling.
+  generations. Failure publishes `supported(refreshError:)` only when the
+  retained supported snapshot belongs to the currently connected bridge;
+  otherwise it publishes bare `failure` for the new bridge. Both paths
+  preserve/re-arm staleness without polling.
 - A trigger arriving while a GET is in flight schedules exactly one more drain.
 - Incoming `SesoriPluginManagementChanged` with a non-null token equal to the
   current response token is ignored. Null or different tokens mark stale.
@@ -463,9 +467,9 @@ Production files:
 
 - Constructor replay for an already-connected service performs exactly one
   initial management GET.
-- Initial connect, reconnect, bridge-offline transition, manual refresh,
-  management SSE refresh, replay-loss refresh, equal-token suppression, and
-  disposal.
+- Initial connect, same-bridge reconnect, identity-changing bridge transition,
+  bridge-offline transition, manual refresh, management SSE refresh,
+  replay-loss refresh, equal-token suppression, and disposal.
 - Two triggers while one GET runs produce one follow-up drain.
 - Failed refresh preserves staleness; next success consumes it.
 - Refresh-before-mutation, mutation-before-refresh, and refresh-after-refresh
@@ -474,6 +478,8 @@ Production files:
   publication.
 - Mutation after an intervening publication triggers authoritative GET and
   returns `uncertain` rather than unordered publication.
+- A failed first load after switching bridges never publishes the previous
+  bridge's retained snapshot.
 - Module-core focused tests and fatal analysis; mobile and desktop fatal
   analysis.
 
