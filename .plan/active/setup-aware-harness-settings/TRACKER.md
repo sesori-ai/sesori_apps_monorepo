@@ -3,14 +3,15 @@
 ## Current State
 
 - **Implementation base:** current `origin/main` after Stage 12 merge `6cedf5bd`
-- **Series state:** planned; no implementation branch has started
-- **Next action:** begin Step 1/7 from current `origin/main`
+- **Series state:** Step 1/7 in review
+- **Next action:** wait for PR #579 review to settle, then run the confirming
+  simulator E2E pass before merge
 
 ## Delivery
 
 | Done | Slice | Branch | PR state |
 |---|---|---|---|
-| [ ] | Step 1/7 — per-bridge harness preference | `setup-aware-harness-settings-preferences` | planned; estimate 650-750 changed lines |
+| [ ] | Step 1/7 — per-bridge harness preference | `setup-aware-harness-settings-preferences` | PR #579 in review; 729 changed lines (estimate 650-750) |
 | [ ] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | planned; estimate 300-400 changed lines |
 | [ ] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | planned; estimate 550-700 changed lines |
 | [ ] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | planned; estimate 750-900 changed lines |
@@ -39,4 +40,12 @@
 
 ## Verification Log
 
-No implementation verification has run yet.
+- Step 1/7 (2026-07-26): shared contract tests + fatal analysis; bridge app
+  full suite (2147) + fatal analysis; module_core full suite (638) + fatal
+  analysis; mobile new-session/routing widget tests + fatal analysis;
+  Aristotle implementation review approved. First-pass simulator E2E against
+  the dev bridge: `bridgeId` on the wire, per-bridge Codex preference
+  persisted across app reopen, fallback to the OpenCode default after Codex
+  was disabled; sessions/worktrees cleaned, preference rewritten to the
+  default, E2E bridge stopped. Confirming E2E pass follows after review
+  settles, per the PR-first flow.
