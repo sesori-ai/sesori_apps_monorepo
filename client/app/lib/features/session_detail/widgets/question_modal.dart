@@ -46,6 +46,7 @@ class QuestionModal extends StatefulWidget {
     required void Function(String requestId, List<ReplyAnswer> answers) onReply,
     required void Function(String requestId) onReject,
     required Stream<bool> isPendingStream,
+    required bool Function() isPending,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -58,6 +59,7 @@ class QuestionModal extends StatefulWidget {
       useSafeArea: false,
       builder: (_) => PendingRequestAutoDismiss(
         isPendingStream: isPendingStream,
+        isPending: isPending,
         child: QuestionModal(
           question: question,
           onReply: onReply,

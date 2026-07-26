@@ -36,6 +36,7 @@ GoRouter _createRouter({
                     onReply: capture.onReply,
                     onReject: (_) {},
                     isPendingStream: const Stream<bool>.empty(),
+                    isPending: () => true,
                   );
                 },
                 child: const Text("Open question modal"),

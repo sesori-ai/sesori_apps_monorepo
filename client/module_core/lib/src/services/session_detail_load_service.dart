@@ -23,25 +23,16 @@ class SessionDetailLoadService {
        _connectionService = connectionService;
 
   Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
-    return _loadSnapshot(
-      sessionId: sessionId,
-      projectId: projectId,
-      requirePendingSnapshot: false,
-    );
+    return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
   Future<SessionDetailLoadResult> reload({required String sessionId, required String projectId}) {
-    return _loadSnapshot(
-      sessionId: sessionId,
-      projectId: projectId,
-      requirePendingSnapshot: true,
-    );
+    return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
   Future<SessionDetailLoadResult> _loadSnapshot({
     required String sessionId,
     required String projectId,
-    required bool requirePendingSnapshot,
   }) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
@@ -96,12 +87,10 @@ class SessionDetailLoadService {
 
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
-        ErrorResponse(:final error) when requirePendingSnapshot => throw error,
         ErrorResponse() => <PendingQuestion>[],
       };
       final pendingPermissions = switch (permissionsResponse) {
         SuccessResponse(:final data) => data.data,
-        ErrorResponse(:final error) when requirePendingSnapshot => throw error,
         ErrorResponse() => <PendingPermission>[],
       };
       final childSessions = switch (childrenResponse) {

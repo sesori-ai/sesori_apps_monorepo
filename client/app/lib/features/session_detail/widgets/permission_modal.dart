@@ -53,6 +53,7 @@ class PermissionModal extends StatelessWidget {
     })
     onReply,
     required Stream<bool> isPendingStream,
+    required bool Function() isPending,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -65,6 +66,7 @@ class PermissionModal extends StatelessWidget {
       useSafeArea: false,
       builder: (_) => PendingRequestAutoDismiss(
         isPendingStream: isPendingStream,
+        isPending: isPending,
         child: PermissionModal(
           permission: permission,
           onReply: onReply,

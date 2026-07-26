@@ -64,20 +64,6 @@ void main() {
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
     });
 
-    test("reload rejects a snapshot when pending input cannot be confirmed", () async {
-      connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository);
-      when(
-        () => repository.getPendingQuestions(sessionId: "session-1"),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-
-      final initial = await service.load(sessionId: "session-1", projectId: "project-1");
-      final refresh = await service.reload(sessionId: "session-1", projectId: "project-1");
-
-      expect(initial, isA<SessionDetailLoadResultLoaded>());
-      expect(refresh, isA<SessionDetailLoadResultFailed>());
-    });
-
     test("load gives the route project id precedence over session metadata", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);

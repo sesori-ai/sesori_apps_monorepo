@@ -256,6 +256,25 @@ void main() {
     expect(find.text("Choose a release channel"), findsNothing);
   });
 
+  testWidgets("does not leave a question stale when resolved during presentation", (tester) async {
+    final questions = StreamController<SesoriQuestionAsked>.broadcast();
+    addTearDown(questions.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(pendingQuestions: const [_question]);
+    questions.add(_question);
+    await tester.idle();
+    state = state.copyWith(pendingQuestions: const []);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Choose a release channel"), findsNothing);
+  });
+
   testWidgets("closes an open permission when it leaves pending state", (tester) async {
     final permissions = StreamController<SesoriPermissionAsked>.broadcast();
     final states = StreamController<SessionDetailState>.broadcast();

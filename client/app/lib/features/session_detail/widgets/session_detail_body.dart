@@ -196,17 +196,18 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   void _showQuestionModal(SesoriQuestionAsked question) {
     if (!_isCurrentPage) return;
     final cubit = context.read<SessionDetailCubit>();
-    final state = cubit.state;
-    if (state is! SessionDetailLoaded || !state.pendingQuestions.any((q) => q.id == question.id)) return;
+    bool isPending() {
+      final state = cubit.state;
+      return state is SessionDetailLoaded && state.pendingQuestions.any((q) => q.id == question.id);
+    }
+
+    if (!isPending()) return;
     cubit.clearNotifications();
     QuestionModal.show(
       context,
       question: question,
-      isPendingStream: cubit.stream
-          .map(
-            (state) => state is! SessionDetailLoaded || state.pendingQuestions.any((q) => q.id == question.id),
-          )
-          .distinct(),
+      isPendingStream: cubit.stream.map((_) => isPending()).distinct(),
+      isPending: isPending,
       onReply: (requestId, answers) async {
         final success = await context.read<SessionDetailCubit>().replyToQuestion(
           requestId: requestId,
@@ -229,21 +230,18 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   void _showPermissionModal(SesoriPermissionAsked permission) {
     if (!_isCurrentPage) return;
     final cubit = context.read<SessionDetailCubit>();
-    final state = cubit.state;
-    if (state is! SessionDetailLoaded || !state.pendingPermissions.any((p) => p.requestID == permission.requestID)) {
-      return;
+    bool isPending() {
+      final state = cubit.state;
+      return state is SessionDetailLoaded && state.pendingPermissions.any((p) => p.requestID == permission.requestID);
     }
+
+    if (!isPending()) return;
     cubit.clearNotifications();
     PermissionModal.show(
       context,
       permission: permission,
-      isPendingStream: cubit.stream
-          .map(
-            (state) =>
-                state is! SessionDetailLoaded ||
-                state.pendingPermissions.any((p) => p.requestID == permission.requestID),
-          )
-          .distinct(),
+      isPendingStream: cubit.stream.map((_) => isPending()).distinct(),
+      isPending: isPending,
       onReply:
           ({
             required String requestId,
