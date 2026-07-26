@@ -314,6 +314,72 @@ void main() {
     expect(find.text("Choose a release channel"), findsOneWidget);
   });
 
+  testWidgets("closes an open question modal when the question is resolved on another device", (tester) async {
+    final questionController = StreamController<SesoriQuestionAsked>.broadcast();
+    final stateController = StreamController<SessionDetailState>.broadcast();
+    addTearDown(questionController.close);
+    addTearDown(stateController.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => stateController.stream);
+    when(() => cubit.questionStream).thenAnswer((_) => questionController.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(pendingQuestions: const [_question]);
+    questionController.add(_question);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsOneWidget);
+
+    // The bridge broadcasts question.replied to every connected device; the
+    // cubit drops it from pending without any local answer.
+    state = state.copyWith(pendingQuestions: const []);
+    stateController.add(state);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Choose a release channel"), findsNothing);
+    verifyNever(
+      () => cubit.replyToQuestion(
+        requestId: any(named: "requestId"),
+        sessionId: any(named: "sessionId"),
+        answers: any(named: "answers"),
+      ),
+    );
+  });
+
+  testWidgets("closes an open permission modal when the permission is resolved on another device", (tester) async {
+    final permissionController = StreamController<SesoriPermissionAsked>.broadcast();
+    final stateController = StreamController<SessionDetailState>.broadcast();
+    addTearDown(permissionController.close);
+    addTearDown(stateController.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => stateController.stream);
+    when(() => cubit.permissionStream).thenAnswer((_) => permissionController.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(pendingPermissions: const [_permission]);
+    permissionController.add(_permission);
+    await tester.pumpAndSettle();
+    expect(find.text("write_release_notes"), findsOneWidget);
+
+    state = state.copyWith(pendingPermissions: const []);
+    stateController.add(state);
+    await tester.pumpAndSettle();
+
+    expect(find.text("write_release_notes"), findsNothing);
+    verifyNever(
+      () => cubit.replyToPermission(
+        requestId: any(named: "requestId"),
+        sessionId: any(named: "sessionId"),
+        reply: PermissionReply.once,
+      ),
+    );
+  });
+
   // Only the input row is grouped with the text field via a TextFieldTapRegion,
   // so tapping the send button does not fire the field's default `onTapOutside`
   // (which unfocuses and dismisses the keyboard) — without the region, send

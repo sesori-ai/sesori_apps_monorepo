@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
@@ -19,6 +20,11 @@ class QuestionModal extends StatefulWidget {
   final void Function(String requestId, List<ReplyAnswer> answers) onReply;
   final void Function(String requestId) onReject;
 
+  /// Emits whether this request is still pending. When it reports `false`
+  /// (answered or rejected on another device), the sheet dismisses itself
+  /// instead of lingering as a stale modal.
+  final Stream<bool> isPendingStream;
+
   /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
@@ -30,6 +36,7 @@ class QuestionModal extends StatefulWidget {
     required this.question,
     required this.onReply,
     required this.onReject,
+    required this.isPendingStream,
     required this.topInset,
   });
 
@@ -44,6 +51,7 @@ class QuestionModal extends StatefulWidget {
     required SesoriQuestionAsked question,
     required void Function(String requestId, List<ReplyAnswer> answers) onReply,
     required void Function(String requestId) onReject,
+    required Stream<bool> isPendingStream,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -58,6 +66,7 @@ class QuestionModal extends StatefulWidget {
         question: question,
         onReply: onReply,
         onReject: onReject,
+        isPendingStream: isPendingStream,
         topInset: topInset,
       ),
     );
@@ -70,6 +79,7 @@ class QuestionModal extends StatefulWidget {
 class _QuestionModalState extends State<QuestionModal> {
   final TextEditingController _customController = TextEditingController();
   final FocusNode _customFocus = FocusNode();
+  StreamSubscription<bool>? _pendingSub;
 
   /// Index of the question currently being displayed.
   int _currentIndex = 0;
@@ -96,10 +106,17 @@ class _QuestionModalState extends State<QuestionModal> {
     super.initState();
     _customFocus.addListener(_onCustomFocusChanged);
     _customController.addListener(_onCustomTextChanged);
+    // Pops this sheet's own route when the request leaves the pending list,
+    // e.g. answered on another device. A local answer pops the sheet first,
+    // disposing this state and cancelling the subscription, so no double-pop.
+    _pendingSub = widget.isPendingStream.listen((isPending) {
+      if (!isPending && mounted) _dismissModal();
+    });
   }
 
   @override
   void dispose() {
+    _pendingSub?.cancel();
     _customFocus.dispose();
     _customController.dispose();
     super.dispose();

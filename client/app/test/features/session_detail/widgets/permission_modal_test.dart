@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -37,6 +39,7 @@ class _ReplyCapture {
 GoRouter _createRouter({
   required SesoriPermissionAsked permission,
   required _ReplyCapture capture,
+  required Stream<bool> isPendingStream,
 }) {
   return GoRouter(
     routes: [
@@ -52,6 +55,7 @@ GoRouter _createRouter({
                     context,
                     permission: permission,
                     onReply: capture.onReply,
+                    isPendingStream: isPendingStream,
                   );
                 },
                 child: const Text("Open permission modal"),
@@ -82,7 +86,7 @@ Future<void> _openPermissionModal(WidgetTester tester) async {
 void main() {
   testWidgets("groups the tool and highlighted request detail in one card", (tester) async {
     final capture = _ReplyCapture();
-    final router = _createRouter(permission: _permission, capture: capture);
+    final router = _createRouter(permission: _permission, capture: capture, isPendingStream: const Stream<bool>.empty());
     addTearDown(router.dispose);
 
     await tester.pumpWidget(_buildApp(router: router));
@@ -120,7 +124,7 @@ void main() {
   ]) {
     testWidgets("forwards the ${replyCase.label.toLowerCase()} reply", (tester) async {
       final capture = _ReplyCapture();
-      final router = _createRouter(permission: _permission, capture: capture);
+      final router = _createRouter(permission: _permission, capture: capture, isPendingStream: const Stream<bool>.empty());
       addTearDown(router.dispose);
 
       await tester.pumpWidget(_buildApp(router: router));
@@ -134,12 +138,31 @@ void main() {
     });
   }
 
+  testWidgets("dismisses itself without replying when resolved on another device", (tester) async {
+    final capture = _ReplyCapture();
+    final isPending = StreamController<bool>();
+    addTearDown(isPending.close);
+    final router = _createRouter(permission: _permission, capture: capture, isPendingStream: isPending.stream);
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+    expect(find.text("bash"), findsOneWidget);
+
+    isPending.add(false);
+    await tester.pumpAndSettle();
+
+    expect(find.text("bash"), findsNothing);
+    expect(capture.requestId, isNull);
+    expect(capture.reply, isNull);
+  });
+
   testWidgets("keeps actions visible for a long request detail", (tester) async {
     final capture = _ReplyCapture();
     final permission = _permission.copyWith(
       description: List.filled(80, "echo a long permission request").join("\n"),
     );
-    final router = _createRouter(permission: permission, capture: capture);
+    final router = _createRouter(permission: permission, capture: capture, isPendingStream: const Stream<bool>.empty());
     addTearDown(router.dispose);
 
     await tester.pumpWidget(_buildApp(router: router));

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -19,6 +21,7 @@ class _ReplyCapture {
 GoRouter _createRouter({
   required SesoriQuestionAsked question,
   required _ReplyCapture capture,
+  required Stream<bool> isPendingStream,
 }) {
   return GoRouter(
     routes: [
@@ -35,6 +38,7 @@ GoRouter _createRouter({
                     question: question,
                     onReply: capture.onReply,
                     onReject: (_) {},
+                    isPendingStream: isPendingStream,
                   );
                 },
                 child: const Text("Open question modal"),
@@ -90,6 +94,7 @@ void main() {
         ],
       ),
       capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
     );
     addTearDown(router.dispose);
 
@@ -127,6 +132,7 @@ void main() {
         ],
       ),
       capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
     );
     addTearDown(router.dispose);
 
@@ -163,6 +169,7 @@ void main() {
         ],
       ),
       capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
     );
     addTearDown(router.dispose);
 
@@ -199,6 +206,7 @@ void main() {
         ],
       ),
       capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
     );
     addTearDown(router.dispose);
 
@@ -239,6 +247,7 @@ void main() {
         ],
       ),
       capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
     );
     addTearDown(router.dispose);
 
@@ -277,6 +286,7 @@ void main() {
         ],
       ),
       capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
     );
     addTearDown(router.dispose);
 
@@ -315,6 +325,7 @@ void main() {
         ],
       ),
       capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
     );
     addTearDown(router.dispose);
 
@@ -356,6 +367,7 @@ void main() {
         ],
       ),
       capture: capture,
+      isPendingStream: const Stream<bool>.empty(),
     );
     addTearDown(router.dispose);
 
@@ -379,12 +391,43 @@ void main() {
     await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
 
-    expect(
-      capture.answers,
-      [
-        const ReplyAnswer(values: ["Mobile", "Also notify QA"]),
-        const ReplyAnswer(values: ["Gradual"]),
-      ],
+      expect(
+        capture.answers,
+        [
+          const ReplyAnswer(values: ["Mobile", "Also notify QA"]),
+          const ReplyAnswer(values: ["Gradual"]),
+        ],
+      );
+    });
+
+  testWidgets("dismisses itself without replying when resolved on another device", (tester) async {
+    final capture = _ReplyCapture();
+    final isPending = StreamController<bool>();
+    addTearDown(isPending.close);
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a release channel",
+            header: "Release channel",
+            options: [QuestionOption(label: "Stable", description: "Release to everyone")],
+          ),
+        ],
+      ),
+      capture: capture,
+      isPendingStream: isPending.stream,
     );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+    expect(find.text("Choose a release channel"), findsOneWidget);
+
+    isPending.add(false);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Choose a release channel"), findsNothing);
+    expect(capture.requestId, isNull);
+    expect(capture.answers, isNull);
   });
 }

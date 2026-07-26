@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
@@ -15,7 +16,7 @@ import "../../../core/widgets/markdown_styles.dart";
 ///
 /// Displays the tool name and description, and offers three actions:
 /// reject, allow once, or always allow.
-class PermissionModal extends StatelessWidget {
+class PermissionModal extends StatefulWidget {
   final SesoriPermissionAsked permission;
   final void Function({
     required String requestId,
@@ -23,6 +24,11 @@ class PermissionModal extends StatelessWidget {
     required PermissionReply reply,
   })
   onReply;
+
+  /// Emits whether this request is still pending. When it reports `false`
+  /// (answered on another device), the sheet dismisses itself instead of
+  /// lingering as a stale modal — without firing a reply.
+  final Stream<bool> isPendingStream;
 
   /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
@@ -34,6 +40,7 @@ class PermissionModal extends StatelessWidget {
     super.key,
     required this.permission,
     required this.onReply,
+    required this.isPendingStream,
     required this.topInset,
   });
 
@@ -51,6 +58,7 @@ class PermissionModal extends StatelessWidget {
       required PermissionReply reply,
     })
     onReply,
+    required Stream<bool> isPendingStream,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -64,16 +72,41 @@ class PermissionModal extends StatelessWidget {
       builder: (_) => PermissionModal(
         permission: permission,
         onReply: onReply,
+        isPendingStream: isPendingStream,
         topInset: topInset,
       ),
     );
   }
 
+  @override
+  State<PermissionModal> createState() => _PermissionModalState();
+}
+
+class _PermissionModalState extends State<PermissionModal> {
+  StreamSubscription<bool>? _pendingSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pops this sheet's own route when the request leaves the pending list,
+    // e.g. answered on another device. A local reply pops the sheet first,
+    // disposing this state and cancelling the subscription, so no double-pop.
+    _pendingSub = widget.isPendingStream.listen((isPending) {
+      if (!isPending && mounted) context.pop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pendingSub?.cancel();
+    super.dispose();
+  }
+
   void _reply(BuildContext context, {required PermissionReply reply}) {
     context.pop();
-    onReply(
-      requestId: permission.requestID,
-      sessionId: permission.sessionID,
+    widget.onReply(
+      requestId: widget.permission.requestID,
+      sessionId: widget.permission.sessionID,
       reply: reply,
     );
   }
@@ -89,11 +122,11 @@ class PermissionModal extends StatelessWidget {
     // Cap the body just under the sheet's own cap: a long description then
     // scrolls inside its Flexible slot while the action row stays pinned,
     // instead of pushing the (blocking) actions below the fold.
-    final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - bottomInset;
+    final maxBody = screenHeight - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
 
     return PregoBottomSheet(
       title: context.loc.diffPermissionRequestTitle,
-      topInset: topInset,
+      topInset: widget.topInset,
       // Closing the sheet answers the assistant: the X rejects, matching the
       // explicit reject button.
       onClose: () => _reply(context, reply: PermissionReply.reject),
@@ -142,7 +175,7 @@ class PermissionModal extends StatelessWidget {
                             SizedBox(width: prego.spacing.md),
                             Expanded(
                               child: Text(
-                                permission.tool,
+                                widget.permission.tool,
                                 style: prego.textTheme.textSm.bold.monospace,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -169,7 +202,7 @@ class PermissionModal extends StatelessWidget {
                           children: [
                             Expanded(
                               child: MarkdownBody(
-                                data: permission.description,
+                                data: widget.permission.description,
                                 selectable: true,
                                 onTapLink: handleMarkdownLinkTap,
                                 styleSheet:
@@ -189,7 +222,7 @@ class PermissionModal extends StatelessWidget {
                             ),
                             SizedBox(width: prego.spacing.xs),
                             CopyIconButton(
-                              text: permission.description,
+                              text: widget.permission.description,
                               tooltip: context.loc.sessionDetailCopy,
                             ),
                           ],

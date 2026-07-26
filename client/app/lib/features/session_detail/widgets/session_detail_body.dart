@@ -195,10 +195,12 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
   void _showQuestionModal(SesoriQuestionAsked question) {
     if (!_isCurrentPage) return;
-    context.read<SessionDetailCubit>().clearNotifications();
+    final cubit = context.read<SessionDetailCubit>();
+    cubit.clearNotifications();
     QuestionModal.show(
       context,
       question: question,
+      isPendingStream: _isPendingStream(cubit.stream, (state) => state.pendingQuestions.any((q) => q.id == question.id)),
       onReply: (requestId, answers) async {
         final success = await context.read<SessionDetailCubit>().replyToQuestion(
           requestId: requestId,
@@ -220,10 +222,15 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
   void _showPermissionModal(SesoriPermissionAsked permission) {
     if (!_isCurrentPage) return;
-    context.read<SessionDetailCubit>().clearNotifications();
+    final cubit = context.read<SessionDetailCubit>();
+    cubit.clearNotifications();
     PermissionModal.show(
       context,
       permission: permission,
+      isPendingStream: _isPendingStream(
+        cubit.stream,
+        (state) => state.pendingPermissions.any((p) => p.requestID == permission.requestID),
+      ),
       onReply:
           ({
             required String requestId,
@@ -241,6 +248,14 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
           },
     );
   }
+
+  /// Maps cubit state to "request still pending" for an open sheet: `true`
+  /// while the request is in the loaded pending list. A non-loaded state keeps
+  /// the sheet open rather than dismissing on a transient reload.
+  Stream<bool> _isPendingStream(
+    Stream<SessionDetailState> states,
+    bool Function(SessionDetailLoaded state) isPending,
+  ) => states.map((state) => state is! SessionDetailLoaded || isPending(state)).distinct();
 
   void _scheduleNextQuestionModal() {
     final state = context.read<SessionDetailCubit>().state;
