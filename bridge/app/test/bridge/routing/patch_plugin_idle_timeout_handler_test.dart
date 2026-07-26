@@ -9,14 +9,14 @@ import "../../helpers/test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
-  PatchPluginIdleTimeoutHandler buildHandler(_FakePluginLifecycleService service) =>
+  PatchPluginIdleTimeoutHandler buildHandler({required _FakePluginLifecycleService service}) =>
       PatchPluginIdleTimeoutHandler(
         lifecycleService: service,
         bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
       );
 
   test("PatchPluginIdleTimeoutHandler handles only PATCH /plugin/idle-timeout", () {
-    final handler = buildHandler(_FakePluginLifecycleService());
+    final handler = buildHandler(service: _FakePluginLifecycleService());
 
     expect(handler.canHandle(makeRequest("PATCH", "/plugin/idle-timeout")), isTrue);
     expect(handler.canHandle(makeRequest("GET", "/plugin/idle-timeout")), isFalse);
@@ -25,7 +25,7 @@ void main() {
 
   test("PatchPluginIdleTimeoutHandler returns the updated management snapshot", () async {
     final service = _FakePluginLifecycleService();
-    final response = await buildHandler(service).handleInternal(
+    final response = await buildHandler(service: service).handleInternal(
       makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
@@ -46,7 +46,7 @@ void main() {
 
   test("PatchPluginIdleTimeoutHandler maps invalid, unknown, and failed writes", () async {
     final service = _FakePluginLifecycleService();
-    final handler = buildHandler(service);
+    final handler = buildHandler(service: service);
 
     final invalid = await handler.handleInternal(
       makeRequest(

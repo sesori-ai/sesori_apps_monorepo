@@ -9,14 +9,14 @@ import "../../helpers/test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
-  PostPluginLifecycleCommandHandler buildHandler(_FakePluginLifecycleService service) =>
+  PostPluginLifecycleCommandHandler buildHandler({required _FakePluginLifecycleService service}) =>
       PostPluginLifecycleCommandHandler(
         lifecycleService: service,
         bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
       );
 
   test("PostPluginLifecycleCommandHandler handles only plugin command posts", () {
-    final handler = buildHandler(_FakePluginLifecycleService());
+    final handler = buildHandler(service: _FakePluginLifecycleService());
 
     expect(handler.canHandle(makeRequest("POST", "/plugin/one/command")), isTrue);
     expect(handler.canHandle(makeRequest("GET", "/plugin/one/command")), isFalse);
@@ -25,7 +25,7 @@ void main() {
 
   test("PostPluginLifecycleCommandHandler dispatches a typed disable command", () async {
     final service = _FakePluginLifecycleService();
-    final response = await buildHandler(service).handleInternal(
+    final response = await buildHandler(service: service).handleInternal(
       makeRequest(
         "POST",
         "/plugin/one/command",
@@ -47,7 +47,7 @@ void main() {
 
   test("PostPluginLifecycleCommandHandler maps invalid, unknown, conflict, and failed commands", () async {
     final service = _FakePluginLifecycleService();
-    final handler = buildHandler(service);
+    final handler = buildHandler(service: service);
 
     final invalid = await handler.handleInternal(
       makeRequest("POST", "/plugin/one/command", body: jsonEncode(const {"type": "disable"})),
