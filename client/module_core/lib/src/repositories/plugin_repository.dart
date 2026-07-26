@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -38,9 +40,14 @@ class PluginRepository {
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PluginManagementMutationResult.notFound(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
         _mapConflict(body: body),
-      // A sent mutation whose 2xx outcome cannot be proven may have committed;
-      // never surface it as a retryable ordinary failure.
-      ErrorResponse(error: JsonParsingError() || EmptyResponseError()) =>
+      // A sent mutation whose outcome cannot be proven may have committed;
+      // never surface it as a retryable ordinary failure. This covers an
+      // undecodable or empty 2xx body and a post-dispatch response loss.
+      ErrorResponse(
+        error: JsonParsingError() ||
+            EmptyResponseError() ||
+            DartHttpClientError(innerError: TimeoutException()),
+      ) =>
         const PluginManagementMutationResult.uncertain(),
       ErrorResponse(:final error) => PluginManagementMutationResult.failure(error: error),
     };

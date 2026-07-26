@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:math";
 
@@ -186,6 +187,11 @@ class RelayHttpApiClient {
         loge("Failed to parse relay response JSON", error, stackTrace);
         return ApiResponse.error(ApiError.jsonParsing(responseBody));
       }
+    } on TimeoutException catch (error) {
+      // The request may have been dispatched before the response was lost;
+      // callers (e.g. plugin mutations) must be able to treat this as an
+      // uncertain outcome instead of a retryable ordinary failure.
+      return ApiResponse.error(ApiError.dartHttpClient(error));
     } catch (error, stackTrace) {
       loge("Relay API request failed", error, stackTrace);
       return ApiResponse.error(ApiError.generic());

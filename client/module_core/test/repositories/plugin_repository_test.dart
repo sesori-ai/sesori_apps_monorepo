@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
@@ -213,6 +214,26 @@ void main() {
 
       final result = await repository.updateIdleTimeout(
         request: const PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "codex"),
+      );
+
+      expect(result, isA<PluginManagementMutationResultUncertain>());
+    });
+
+    test("maps a post-dispatch response loss to uncertain", () async {
+      when(
+        () => api.command(
+          pluginId: any(named: "pluginId"),
+          request: any(named: "request"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.dartHttpClient(TimeoutException("Relay request timed out", const Duration(seconds: 30))),
+        ),
+      );
+
+      final result = await repository.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
       );
 
       expect(result, isA<PluginManagementMutationResultUncertain>());

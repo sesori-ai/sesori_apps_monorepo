@@ -23,7 +23,7 @@ class PluginApi {
     required PluginLifecycleCommandRequest request,
   }) {
     return _client.post(
-      "/plugin/$pluginId/command",
+      "/plugin/${Uri.encodeComponent(pluginId)}/command",
       body: request.toJson(),
       fromJson: PluginManagementResponse.fromJson,
     );
