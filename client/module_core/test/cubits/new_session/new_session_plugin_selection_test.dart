@@ -974,6 +974,48 @@ void main() {
       ).called(1);
     });
 
+    test("reconnect to a different bridge identity clears backend-local composer state", () async {
+      final command = testCommandInfo();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return discoveryCalls == 1
+            ? ApiResponse.success(const PluginListResponse(bridgeId: "br_a", plugins: [pluginA]))
+            : ApiResponse.success(const PluginListResponse(bridgeId: "br_b", plugins: [pluginA]));
+      });
+      when(
+        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async {
+        return discoveryCalls < 2 ? ApiResponse.success(_providerResponse()) : ApiResponse.error(ApiError.generic());
+      });
+      when(
+        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async {
+        return discoveryCalls < 2
+            ? ApiResponse.success(CommandListResponse(items: [command]))
+            : ApiResponse.error(ApiError.generic());
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectVariant(const SessionVariant(id: "high"));
+      cubit.stageCommand(command);
+      await _waitForComposer(cubit);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      final data = cubit.state.agentModelData!;
+      expect(data.plugin, pluginA);
+      expect(data.stagedCommand, isNull);
+      expect(data.commands, isEmpty);
+      expect(data.providers, isEmpty);
+      expect(data.agentModel, isNull);
+    });
+
     test("failed rediscovery does not record under the stale bridge key", () async {
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {

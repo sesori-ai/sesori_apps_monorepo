@@ -102,11 +102,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         case SuccessResponse(:final data):
           final plugins = data.plugins;
           final selectedPlugin = data.selected;
+          // The same plugin ID on a different bridge is a different backend:
+          // its staged command and catalogs must not survive the switch.
+          final bridgeIdentityChanged = _discoveryBridgeId != data.bridgeId;
           _discoveryBridgeId = data.bridgeId;
           final currentData = state.agentModelData;
           final currentPluginId = currentData?.plugin?.id;
           final canLoad = selectedPlugin?.isRoutable ?? false;
-          final isSamePlugin = currentPluginId != null && selectedPlugin?.id == currentPluginId;
+          final isSamePlugin =
+              !bridgeIdentityChanged && currentPluginId != null && selectedPlugin?.id == currentPluginId;
           final stagedCommand = isSamePlugin ? currentData?.stagedCommand : null;
           emit(
             NewSessionState.idle(
