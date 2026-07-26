@@ -57,4 +57,8 @@
   `bridgeId`; bridge routing suites (388) and full bridge directory (1140);
   module_core full suite (654) with new API route and repository mapping
   tests; mobile/desktop fatal analysis; Aristotle implementation review
-  approved. Confirming E2E checks follow after review settles.
+  approved. Review fixes: single-report malformed conflicts, named parameters,
+  encoded command path, post-dispatch response loss mapped to `uncertain`.
+  Confirming E2E on `cbd10948`: all three management routes carried the dev
+  bridge identity on GET and both mutation shapes; Step 1 gate rerun passed;
+  full cleanup with the E2E bridge stopped.
