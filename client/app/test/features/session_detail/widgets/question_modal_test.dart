@@ -517,4 +517,39 @@ void main() {
     expect(capture.requestId, isNull);
     expect(capture.answers, isNull);
   });
+
+  testWidgets("ignores the resolved signal while exiting from a barrier dismissal", (tester) async {
+    final capture = _ReplyCapture();
+    final isPending = StreamController<bool>();
+    var remoteDismissals = 0;
+    addTearDown(isPending.close);
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a release channel",
+            header: "Release channel",
+            options: [QuestionOption(label: "Stable", description: "Release to everyone")],
+          ),
+        ],
+      ),
+      capture: capture,
+      isPendingStream: isPending.stream,
+      onResolvedRemotely: () => remoteDismissals++,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    // Barrier tap pops the route without going through the modal's dismiss
+    // path; a resolution landing mid-exit-animation must not pop the page.
+    await tester.tapAt(const Offset(200, 50));
+    await tester.pump(const Duration(milliseconds: 50));
+    isPending.add(false);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("open-question-modal")), findsOneWidget);
+    expect(remoteDismissals, 0);
+  });
 }

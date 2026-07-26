@@ -123,10 +123,12 @@ class _QuestionModalState extends State<QuestionModal> {
     _customFocus.addListener(_onCustomFocusChanged);
     _customController.addListener(_onCustomTextChanged);
     // Pops this sheet's own route when the request leaves the pending list,
-    // e.g. answered on another device. `_dismissModal` is idempotent, so a
-    // local answer already popping the sheet can't be doubled here.
+    // e.g. answered on another device. Route-driven dismissals (barrier tap,
+    // swipe-down) bypass `_dismissModal`, so while the route is no longer
+    // current — exiting — a pop here would remove the page underneath.
     _pendingSub = widget.isPendingStream.listen((isPending) {
-      if (isPending) return;
+      if (isPending || !mounted) return;
+      if (ModalRoute.of(context)?.isCurrent != true) return;
       if (!_dismissed) widget.onResolvedRemotely();
       _dismissModal();
     });

@@ -104,10 +104,12 @@ class _PermissionModalState extends State<PermissionModal> {
   void initState() {
     super.initState();
     // Pops this sheet's own route when the request leaves the pending list,
-    // e.g. answered on another device. `_dismiss` is idempotent, so a local
-    // reply already popping the sheet can't be doubled here.
+    // e.g. answered on another device. Route-driven dismissals (barrier tap,
+    // swipe-down) bypass `_dismiss`, so while the route is no longer
+    // current — exiting — a pop here would remove the page underneath.
     _pendingSub = widget.isPendingStream.listen((isPending) {
-      if (isPending) return;
+      if (isPending || !mounted) return;
+      if (ModalRoute.of(context)?.isCurrent != true) return;
       if (!_dismissed) widget.onResolvedRemotely();
       _dismiss();
     });
