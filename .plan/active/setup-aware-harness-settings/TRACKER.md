@@ -3,16 +3,16 @@
 ## Current State
 
 - **Implementation base:** current `origin/main` after Stage 12 merge `6cedf5bd`
-- **Series state:** Step 1/7 in review
-- **Next action:** wait for PR #579 review to settle, then run the confirming
-  simulator E2E pass before merge
+- **Series state:** Step 2/7 in review
+- **Next action:** wait for PR #583 review to settle, then run the confirming
+  E2E checks before merge
 
 ## Delivery
 
 | Done | Slice | Branch | PR state |
 |---|---|---|---|
-| [ ] | Step 1/7 — per-bridge harness preference | `setup-aware-harness-settings-preferences` | PR #579 in review; 729 changed lines (estimate 650-750) |
-| [ ] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | planned; estimate 300-400 changed lines |
+| [x] | Step 1/7 — per-bridge harness preference | `setup-aware-harness-settings-preferences` | PR #579 merged; 729 changed lines (estimate 650-750) |
+| [ ] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | PR #583 in review; ~590 changed lines (estimate 300-400, test-driven overage) |
 | [ ] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | planned; estimate 550-700 changed lines |
 | [ ] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | planned; estimate 750-900 changed lines |
 | [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | planned; estimate 1,100-1,300 changed lines |
@@ -53,3 +53,8 @@
   final head `b529a8a8` re-verified restored-preference selection, Codex
   persistence across reopen, and disable fallback with full cleanup; A-to-B
   bridge switch stays unit-tested only (single-bridge dev account).
+- Step 2/7 (2026-07-27): shared contract tests for known/null/omitted
+  `bridgeId`; bridge routing suites (388) and full bridge directory (1140);
+  module_core full suite (654) with new API route and repository mapping
+  tests; mobile/desktop fatal analysis; Aristotle implementation review
+  approved. Confirming E2E checks follow after review settles.
