@@ -58,6 +58,7 @@ const _$PluginManagementWorkStateEnumMap = {
 _PluginManagementResponse _$PluginManagementResponseFromJson(Map json) =>
     _PluginManagementResponse(
       snapshotToken: json['snapshotToken'] as String?,
+      bridgeId: json['bridgeId'] as String?,
       defaultPluginId: json['defaultPluginId'] as String?,
       defaultIdleTimeoutMins: (json['defaultIdleTimeoutMins'] as num).toInt(),
       plugins: (json['plugins'] as List<dynamic>)
@@ -73,6 +74,7 @@ Map<String, dynamic> _$PluginManagementResponseToJson(
   _PluginManagementResponse instance,
 ) => <String, dynamic>{
   'snapshotToken': ?instance.snapshotToken,
+  'bridgeId': ?instance.bridgeId,
   'defaultPluginId': ?instance.defaultPluginId,
   'defaultIdleTimeoutMins': instance.defaultIdleTimeoutMins,
   'plugins': instance.plugins.map((e) => e.toJson()).toList(),

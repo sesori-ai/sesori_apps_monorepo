@@ -13,4 +13,29 @@ class PluginApi {
   Future<ApiResponse<PluginListResponse>> listPlugins() {
     return _client.get("/plugin", fromJson: PluginListResponse.fromJson);
   }
+
+  Future<ApiResponse<PluginManagementResponse>> getManagement() {
+    return _client.get("/plugin/management", fromJson: PluginManagementResponse.fromJson);
+  }
+
+  Future<ApiResponse<PluginManagementResponse>> command({
+    required String pluginId,
+    required PluginLifecycleCommandRequest request,
+  }) {
+    return _client.post(
+      "/plugin/$pluginId/command",
+      body: request.toJson(),
+      fromJson: PluginManagementResponse.fromJson,
+    );
+  }
+
+  Future<ApiResponse<PluginManagementResponse>> updateIdleTimeout({
+    required PluginIdleTimeoutUpdateRequest request,
+  }) {
+    return _client.patch(
+      "/plugin/idle-timeout",
+      body: request.toJson(),
+      fromJson: PluginManagementResponse.fromJson,
+    );
+  }
 }

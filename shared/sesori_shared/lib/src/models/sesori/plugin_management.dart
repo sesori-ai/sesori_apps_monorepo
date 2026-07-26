@@ -67,6 +67,10 @@ sealed class PluginManagementResponse with _$PluginManagementResponse {
     // omit snapshotToken; null means that peer cannot identify snapshot changes.
     // Make non-null when those bridge versions are unsupported.
     required String? snapshotToken,
+    // COMPATIBILITY 2026-07-27 (v1.7.0): Stage 12 bridge payloads omit the
+    // bridge identity; null means the peer cannot scope management snapshots
+    // to a bridge. Make non-null when those bridge versions are unsupported.
+    required String? bridgeId,
     required String? defaultPluginId,
     required int defaultIdleTimeoutMins,
     required List<PluginManagementMetadata> plugins,

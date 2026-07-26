@@ -97,6 +97,7 @@ export "src/platform/url_launcher.dart";
 export "src/repositories/appearance_store.dart";
 export "src/repositories/bridge_repository.dart";
 export "src/repositories/legal_repository.dart";
+export "src/repositories/models/plugin_management_result.dart";
 export "src/repositories/models/repo_provider.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";

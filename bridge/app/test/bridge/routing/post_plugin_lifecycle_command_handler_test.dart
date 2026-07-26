@@ -5,11 +5,18 @@ import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
+  PostPluginLifecycleCommandHandler buildHandler(_FakePluginLifecycleService service) =>
+      PostPluginLifecycleCommandHandler(
+        lifecycleService: service,
+        bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      );
+
   test("PostPluginLifecycleCommandHandler handles only plugin command posts", () {
-    final handler = PostPluginLifecycleCommandHandler(lifecycleService: _FakePluginLifecycleService());
+    final handler = buildHandler(_FakePluginLifecycleService());
 
     expect(handler.canHandle(makeRequest("POST", "/plugin/one/command")), isTrue);
     expect(handler.canHandle(makeRequest("GET", "/plugin/one/command")), isFalse);
@@ -18,7 +25,7 @@ void main() {
 
   test("PostPluginLifecycleCommandHandler dispatches a typed disable command", () async {
     final service = _FakePluginLifecycleService();
-    final response = await PostPluginLifecycleCommandHandler(lifecycleService: service).handleInternal(
+    final response = await buildHandler(service).handleInternal(
       makeRequest(
         "POST",
         "/plugin/one/command",
@@ -32,12 +39,15 @@ void main() {
     expect(response.status, 200);
     expect(service.receivedPluginId, "one");
     expect(service.receivedRequest, const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe));
-    expect(PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)), _response);
+    expect(
+      PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)),
+      _response.copyWith(bridgeId: "br_test1234"),
+    );
   });
 
   test("PostPluginLifecycleCommandHandler maps invalid, unknown, conflict, and failed commands", () async {
     final service = _FakePluginLifecycleService();
-    final handler = PostPluginLifecycleCommandHandler(lifecycleService: service);
+    final handler = buildHandler(service);
 
     final invalid = await handler.handleInternal(
       makeRequest("POST", "/plugin/one/command", body: jsonEncode(const {"type": "disable"})),
@@ -90,6 +100,7 @@ const _plugin = PluginManagementMetadata(
 
 const _response = PluginManagementResponse(
   snapshotToken: "snapshot-token",
+  bridgeId: null,
   defaultPluginId: "one",
   defaultIdleTimeoutMins: 10,
   plugins: [_plugin],

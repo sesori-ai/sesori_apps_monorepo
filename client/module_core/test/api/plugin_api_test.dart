@@ -63,4 +63,102 @@ void main() {
 
     expect(await api.listPlugins(), ApiResponse<PluginListResponse>.error(error));
   });
+
+  test("GET /plugin/management parses the typed snapshot", () async {
+    when(
+      () => client.get<PluginManagementResponse>("/plugin/management", fromJson: any(named: "fromJson")),
+    ).thenAnswer((invocation) async {
+      final fromJson =
+          invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
+      return ApiResponse.success(fromJson(_managementJson));
+    });
+
+    final response = await api.getManagement();
+
+    final data = (response as SuccessResponse<PluginManagementResponse>).data;
+    expect(data.bridgeId, "br_abc12345");
+    expect(data.snapshotToken, "snapshot-token");
+    expect(data.plugins.single.setup.id, "opencode");
+    verify(
+      () => client.get<PluginManagementResponse>("/plugin/management", fromJson: any(named: "fromJson")),
+    ).called(1);
+  });
+
+  test("POST /plugin/:id/command serializes the shared request model", () async {
+    when(
+      () => client.post<PluginManagementResponse>(
+        any(),
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).thenAnswer((invocation) async {
+      final fromJson =
+          invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
+      return ApiResponse.success(fromJson(_managementJson));
+    });
+
+    final response = await api.command(
+      pluginId: "codex",
+      request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+    );
+
+    expect(response, isA<SuccessResponse<PluginManagementResponse>>());
+    final captured = verify(
+      () => client.post<PluginManagementResponse>(
+        captureAny(),
+        body: captureAny(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).captured;
+    expect(captured[0], "/plugin/codex/command");
+    expect(captured[1], const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe).toJson());
+  });
+
+  test("PATCH /plugin/idle-timeout serializes the shared request model", () async {
+    when(
+      () => client.patch<PluginManagementResponse>(
+        any(),
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).thenAnswer((invocation) async {
+      final fromJson =
+          invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
+      return ApiResponse.success(fromJson(_managementJson));
+    });
+
+    final response = await api.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "codex", idleTimeoutMins: 45),
+    );
+
+    expect(response, isA<SuccessResponse<PluginManagementResponse>>());
+    final captured = verify(
+      () => client.patch<PluginManagementResponse>(
+        captureAny(),
+        body: captureAny(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).captured;
+    expect(captured[0], "/plugin/idle-timeout");
+    expect(
+      captured[1],
+      const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "codex", idleTimeoutMins: 45).toJson(),
+    );
+  });
 }
+
+const _managementJson = {
+  "snapshotToken": "snapshot-token",
+  "bridgeId": "br_abc12345",
+  "defaultPluginId": "opencode",
+  "defaultIdleTimeoutMins": 30,
+  "plugins": [
+    {
+      "setup": {"id": "opencode", "displayName": "OpenCode", "state": "ready", "actionHint": null},
+      "runtimeState": "active",
+      "workState": "idle",
+      "idleTimeoutMins": 30,
+      "hasIdleTimeoutOverride": false,
+    },
+  ],
+};

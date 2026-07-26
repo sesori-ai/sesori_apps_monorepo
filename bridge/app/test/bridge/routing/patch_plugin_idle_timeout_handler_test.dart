@@ -5,11 +5,18 @@ import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
+  PatchPluginIdleTimeoutHandler buildHandler(_FakePluginLifecycleService service) =>
+      PatchPluginIdleTimeoutHandler(
+        lifecycleService: service,
+        bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      );
+
   test("PatchPluginIdleTimeoutHandler handles only PATCH /plugin/idle-timeout", () {
-    final handler = PatchPluginIdleTimeoutHandler(lifecycleService: _FakePluginLifecycleService());
+    final handler = buildHandler(_FakePluginLifecycleService());
 
     expect(handler.canHandle(makeRequest("PATCH", "/plugin/idle-timeout")), isTrue);
     expect(handler.canHandle(makeRequest("GET", "/plugin/idle-timeout")), isFalse);
@@ -18,7 +25,7 @@ void main() {
 
   test("PatchPluginIdleTimeoutHandler returns the updated management snapshot", () async {
     final service = _FakePluginLifecycleService();
-    final response = await PatchPluginIdleTimeoutHandler(lifecycleService: service).handleInternal(
+    final response = await buildHandler(service).handleInternal(
       makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
@@ -31,12 +38,15 @@ void main() {
 
     expect(response.status, 200);
     expect(service.receivedRequest, const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30));
-    expect(PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)), _response);
+    expect(
+      PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)),
+      _response.copyWith(bridgeId: "br_test1234"),
+    );
   });
 
   test("PatchPluginIdleTimeoutHandler maps invalid, unknown, and failed writes", () async {
     final service = _FakePluginLifecycleService();
-    final handler = PatchPluginIdleTimeoutHandler(lifecycleService: service);
+    final handler = buildHandler(service);
 
     final invalid = await handler.handleInternal(
       makeRequest(
@@ -79,6 +89,7 @@ void main() {
 
 const _response = PluginManagementResponse(
   snapshotToken: "snapshot-token",
+  bridgeId: null,
   defaultPluginId: "one",
   defaultIdleTimeoutMins: 30,
   plugins: [],

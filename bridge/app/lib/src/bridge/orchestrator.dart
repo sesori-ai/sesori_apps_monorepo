@@ -421,9 +421,18 @@ class Orchestrator {
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
-        GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
-        PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
-        PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
+        GetPluginManagementHandler(
+          lifecycleService: _pluginLifecycleService,
+          bridgeIdProvider: _bridgeRegistrationService,
+        ),
+        PatchPluginIdleTimeoutHandler(
+          lifecycleService: _pluginLifecycleService,
+          bridgeIdProvider: _bridgeRegistrationService,
+        ),
+        PostPluginLifecycleCommandHandler(
+          lifecycleService: _pluginLifecycleService,
+          bridgeIdProvider: _bridgeRegistrationService,
+        ),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
         RestartBridgeHandler(restartService: _restartService),

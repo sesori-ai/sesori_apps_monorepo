@@ -3,21 +3,26 @@ import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   test("handles only GET /plugin/management", () {
-    final handler = GetPluginManagementHandler(lifecycleService: _FakePluginLifecycleService());
+    final handler = GetPluginManagementHandler(
+      lifecycleService: _FakePluginLifecycleService(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
+    );
 
     expect(handler.canHandle(makeRequest("GET", "/plugin/management")), isTrue);
     expect(handler.canHandle(makeRequest("POST", "/plugin/management")), isFalse);
     expect(handler.canHandle(makeRequest("GET", "/plugin/setup")), isFalse);
   });
 
-  test("returns the current lifecycle service snapshot", () async {
+  test("returns the current lifecycle service snapshot stamped with the bridge identity", () async {
     final response =
         await GetPluginManagementHandler(
           lifecycleService: _FakePluginLifecycleService(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         ).handleInternal(
           makeRequest("GET", "/plugin/management"),
           pathParams: const {},
@@ -26,12 +31,13 @@ void main() {
         );
 
     expect(response.status, 200);
-    expect(PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)), _response);
+    expect(PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)), _response.copyWith(bridgeId: "br_test1234"));
   });
 }
 
 const _response = PluginManagementResponse(
   snapshotToken: "snapshot-token",
+  bridgeId: null,
   defaultPluginId: "one",
   defaultIdleTimeoutMins: 10,
   plugins: [

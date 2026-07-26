@@ -19,6 +19,7 @@ void main() {
   test("management response round-trips only read snapshot fields", () {
     const response = PluginManagementResponse(
       snapshotToken: "snapshot-token",
+      bridgeId: "br_abc12345",
       defaultPluginId: "opencode",
       defaultIdleTimeoutMins: 30,
       plugins: [plugin],
@@ -29,12 +30,16 @@ void main() {
     final pluginJson = plugins!.single! as Map<String, dynamic>;
 
     expect(PluginManagementResponse.fromJson(json), response);
-    expect(json.keys, unorderedEquals(["snapshotToken", "defaultPluginId", "defaultIdleTimeoutMins", "plugins"]));
+    expect(
+      json.keys,
+      unorderedEquals(["snapshotToken", "bridgeId", "defaultPluginId", "defaultIdleTimeoutMins", "plugins"]),
+    );
     expect(
       pluginJson.keys,
       unorderedEquals(["setup", "runtimeState", "workState", "idleTimeoutMins", "hasIdleTimeoutOverride"]),
     );
     expect(json["snapshotToken"], "snapshot-token");
+    expect(json["bridgeId"], "br_abc12345");
     expect(pluginJson, isNot(contains("enabled")));
     expect(pluginJson, isNot(contains("isDefault")));
     expect(json, isNot(contains("authority")));
@@ -44,12 +49,26 @@ void main() {
   test("older management responses decode without a snapshot token", () {
     final json = const PluginManagementResponse(
       snapshotToken: null,
+      bridgeId: null,
       defaultPluginId: "opencode",
       defaultIdleTimeoutMins: 30,
       plugins: [plugin],
     ).toJson()..remove("snapshotToken");
 
     expect(PluginManagementResponse.fromJson(json).snapshotToken, isNull);
+  });
+
+  test("management response omits a null bridge ID and decodes a missing one as null", () {
+    final json = const PluginManagementResponse(
+      snapshotToken: "snapshot-token",
+      bridgeId: null,
+      defaultPluginId: "opencode",
+      defaultIdleTimeoutMins: 30,
+      plugins: [plugin],
+    ).toJson();
+
+    expect(json, isNot(contains("bridgeId")));
+    expect(PluginManagementResponse.fromJson(json).bridgeId, isNull);
   });
 
   test("future runtime and work states decode to fail-closed unknown values", () {

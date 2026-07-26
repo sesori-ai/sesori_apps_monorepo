@@ -676,6 +676,10 @@ class PluginLifecycleService {
     final settings = _bridgeSettingsRepository.currentSettings;
     return PluginManagementResponse(
       snapshotToken: snapshotToken,
+      // The service builds snapshots before the bridge identity is reachable
+      // in the runtime composition order; request handlers stamp the current
+      // identity at the transport egress instead.
+      bridgeId: null,
       defaultPluginId: _selectableDefaultPluginId(),
       defaultIdleTimeoutMins: settings.plugins.defaults.idleTimeoutMins ?? defaultPluginIdleTimeoutMins,
       plugins: [for (final plugin in registeredPlugins) _managementRow(plugin: plugin)],
