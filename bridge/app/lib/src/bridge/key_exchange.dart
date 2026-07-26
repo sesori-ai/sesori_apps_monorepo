@@ -4,24 +4,15 @@ import "package:sesori_shared/sesori_shared.dart";
 
 class KeyExchangeManager {
   final List<int> _roomKey;
-  final Map<int, bool> _pendingExchanges = <int, bool>{};
   final RelayCryptoService _cryptoService;
 
   KeyExchangeManager(List<int> roomKey, {RelayCryptoService? cryptoService})
     : _roomKey = List<int>.from(roomKey),
       _cryptoService = cryptoService ?? RelayCryptoService();
 
-  void startExchange(int connID) {
-    _pendingExchanges.remove(connID);
-    _pendingExchanges[connID] = true;
-  }
-
-  Future<List<int>> handleKeyExchange(int connID, RelayKeyExchange message) async {
-    final isPending = _pendingExchanges[connID] ?? false;
-    if (!isPending) {
-      throw StateError("no pending exchange for connID $connID");
-    }
-
+  /// The key-exchange frame is the initiation signal. The relay does not send
+  /// `phone_connected` snapshots when a bridge joins phones already online.
+  Future<List<int>> handleKeyExchange({required RelayKeyExchange message}) async {
     final bridgeKeyPair = await _cryptoService.generateKeyPair();
     final bridgePublicKey = await bridgeKeyPair.extractPublicKey();
     final bridgePublicKeyBytes = bridgePublicKey.bytes;
@@ -48,11 +39,6 @@ class KeyExchangeManager {
     final encryptor = _cryptoService.createSessionEncryptor(ephemeralKey);
     final encryptedFrame = await frame(readyJSON, encryptor: encryptor);
 
-    _pendingExchanges.remove(connID);
     return [...bridgePublicKeyBytes, ...encryptedFrame];
-  }
-
-  void removeExchange(int connID) {
-    _pendingExchanges.remove(connID);
   }
 }

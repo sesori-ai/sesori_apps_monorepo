@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
+import "package:meta/meta.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
@@ -23,6 +24,7 @@ class RelayClient {
 
   final RelayCryptoService _cryptoService;
   final RoomKeyStorage _roomKeyStorage;
+  final WebSocketChannel Function(Uri uri) _channelConnector;
 
   WebSocketChannel? _channel;
   StreamSubscription<void>? _channelSubscription;
@@ -31,6 +33,8 @@ class RelayClient {
   final Map<String, Completer<RelayResponse>> _pendingRequests = {};
   StreamController<RelaySseEvent>? _sseController;
   Completer<Uint8List>? _firstBinaryMessage;
+  List<int>? _pendingHandshakeFrame;
+  BridgeStatus? _lastBridgeStatus;
 
   final StreamController<BridgeStatus> _bridgeStatusController = StreamController<BridgeStatus>.broadcast();
   final StreamController<void> _socketClosedController = StreamController<void>.broadcast();
@@ -47,12 +51,42 @@ class RelayClient {
   int? get lastCloseCode => _lastCloseCode;
 
   RelayClient({
+    required String relayHost,
+    required RelayCryptoService cryptoService,
+    required RoomKeyStorage roomKeyStorage,
+    required String? authToken,
+  }) : this._(
+         relayHost: relayHost,
+         cryptoService: cryptoService,
+         roomKeyStorage: roomKeyStorage,
+         authToken: authToken,
+         channelConnector: WebSocketChannel.connect,
+       );
+
+  @visibleForTesting
+  RelayClient.withChannelConnector({
+    required String relayHost,
+    required RelayCryptoService cryptoService,
+    required RoomKeyStorage roomKeyStorage,
+    required String? authToken,
+    required WebSocketChannel Function(Uri uri) channelConnector,
+  }) : this._(
+         relayHost: relayHost,
+         cryptoService: cryptoService,
+         roomKeyStorage: roomKeyStorage,
+         authToken: authToken,
+         channelConnector: channelConnector,
+       );
+
+  RelayClient._({
     required this.relayHost,
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
-    this.authToken,
+    required this.authToken,
+    required WebSocketChannel Function(Uri uri) channelConnector,
   }) : _cryptoService = cryptoService,
-       _roomKeyStorage = roomKeyStorage;
+       _roomKeyStorage = roomKeyStorage,
+       _channelConnector = channelConnector;
 
   RelayClientConnectionState get connectionState => _connectionState;
 
@@ -60,8 +94,7 @@ class RelayClient {
   /// While the socket is held open with no bridge present (the bridge-absent
   /// park), there is no session encryptor, so this stays false and callers
   /// (e.g. RelayHttpApiClient) must not route requests through it.
-  bool get isConnected =>
-      _connectionState == RelayClientConnectionState.connected && _sessionEncryptor != null;
+  bool get isConnected => _connectionState == RelayClientConnectionState.connected && _sessionEncryptor != null;
   bool get didResume => _didResume;
 
   /// Stream of bridge online/offline events sent as text control frames by the relay.
@@ -93,10 +126,12 @@ class RelayClient {
     _connectionState = RelayClientConnectionState.connecting;
     _didResume = false;
     _lastCloseCode = null;
+    _pendingHandshakeFrame = null;
+    _lastBridgeStatus = null;
     final uri = Uri.parse("wss://$relayHost/ws");
 
     try {
-      _channel = WebSocketChannel.connect(uri);
+      _channel = _channelConnector(uri);
       final channel = _channel;
       if (channel == null) {
         throw StateError("Failed to create relay WebSocket channel");
@@ -113,6 +148,7 @@ class RelayClient {
             (data) {},
             onError: (Object error, StackTrace stackTrace) {
               loge("Relay socket stream error", error, stackTrace);
+              _pendingHandshakeFrame = null;
               final firstBinaryMessage = _firstBinaryMessage;
               if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
                 firstBinaryMessage.completeError(error, stackTrace);
@@ -186,6 +222,7 @@ class RelayClient {
       // armed would let a later bridge_disconnected or socket-close complete an
       // unobserved future, surfacing as an uncaught async error.
       _firstBinaryMessage = null;
+      _pendingHandshakeFrame = null;
       logd("Relay connected but bridge is offline — holding socket open");
       return;
     } catch (error, stackTrace) {
@@ -254,6 +291,7 @@ class RelayClient {
       // and let connect() resolve into the bridge-absent outcome.
       rethrow;
     } catch (error, stackTrace) {
+      _pendingHandshakeFrame = null;
       loge("Resume failed, clearing room key and falling back to DH key exchange", error, stackTrace);
       await _roomKeyStorage.clearRoomKey();
       return false;
@@ -278,7 +316,9 @@ class RelayClient {
     // Key exchange is sent as a binary frame (UTF-8 JSON bytes).
     // Text frames from phones are silently dropped by the relay phone handler.
     final keyExchange = RelayMessage.keyExchange(publicKey: encodedPublicKey);
-    channel.sink.add(utf8.encode(jsonEncode(keyExchange.toJson())));
+    final keyExchangeFrame = utf8.encode(jsonEncode(keyExchange.toJson()));
+    _pendingHandshakeFrame = keyExchangeFrame;
+    channel.sink.add(keyExchangeFrame);
 
     final firstEncryptedMessage = await completer.future.timeout(
       const Duration(seconds: 15),
@@ -432,6 +472,7 @@ class RelayClient {
     final encryptor = _sessionEncryptor;
     if (encryptor == null) {
       if (_firstBinaryMessage case final completer? when !completer.isCompleted) {
+        _pendingHandshakeFrame = null;
         completer.complete(bytes);
       } else {
         logw("Received extra binary frame before relay key exchange completion");
@@ -477,6 +518,7 @@ class RelayClient {
 
     final firstBinaryMessage = _firstBinaryMessage;
     if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
+      _pendingHandshakeFrame = null;
       firstBinaryMessage.completeError(
         StateError("Relay socket closed before key exchange (code=$closeCode)"),
       );
@@ -510,6 +552,18 @@ class RelayClient {
     channel.sink.add(payload);
   }
 
+  void _replayPendingHandshakeFrame() {
+    final channel = _channel;
+    final frame = _pendingHandshakeFrame;
+    final response = _firstBinaryMessage;
+    if (_disposed || channel == null || frame == null || response == null || response.isCompleted) {
+      return;
+    }
+
+    channel.sink.add(frame);
+    logd("Relay bridge changed during handshake; resent pending handshake frame");
+  }
+
   /// Sends an encrypted message using the provided [encryptor] instead of
   /// [_sessionEncryptor]. Used during handshake before the session is established.
   // ignore: no_slop_linter/prefer_required_named_parameters, private handshake helper mirrors call sites
@@ -525,6 +579,7 @@ class RelayClient {
     final jsonBytes = utf8.encode(jsonEncode(message.toJson()));
     final encryptedBytes = await encryptor.encrypt(jsonBytes);
     final payload = Uint8List.fromList([_messageVersion, ...encryptedBytes]);
+    _pendingHandshakeFrame = payload;
     channel.sink.add(payload);
   }
 
@@ -582,6 +637,8 @@ class RelayClient {
       loge("Failed to close relay socket channel", error, stackTrace);
     }
     _firstBinaryMessage = null;
+    _pendingHandshakeFrame = null;
+    _lastBridgeStatus = null;
   }
 
   Future<void> _closeSseController() async {
@@ -635,14 +692,24 @@ class RelayClient {
       switch (type) {
         case RelayProtocol.typeBridgeConnected:
           logd("Relay: bridge came online");
+          // The first status describes the bridge present when this phone
+          // joined. A later online status is a new bridge relay connection, so
+          // replay any handshake frame that the prior connection may have lost.
+          final hadKnownBridgeStatus = _lastBridgeStatus != null;
+          _lastBridgeStatus = BridgeStatus.online;
+          if (hadKnownBridgeStatus) {
+            _replayPendingHandshakeFrame();
+          }
           _bridgeStatusController.add(BridgeStatus.online);
         case RelayProtocol.typeBridgeDisconnected:
           logd("Relay: bridge went offline");
+          _lastBridgeStatus = BridgeStatus.offline;
           final firstBinaryMessage = _firstBinaryMessage;
           if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
             // Bridge absent during the handshake. Signal a distinct, non-fatal
             // outcome so connect() keeps the socket open and waits for a later
             // bridge_connected instead of tearing the socket down.
+            _pendingHandshakeFrame = null;
             firstBinaryMessage.completeError(const _BridgeOfflineDuringHandshake());
           }
           _bridgeStatusController.add(BridgeStatus.offline);

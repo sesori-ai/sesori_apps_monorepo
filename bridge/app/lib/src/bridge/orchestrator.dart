@@ -1476,14 +1476,8 @@ class OrchestratorSession {
         switch (type) {
           case "phone_connected":
             Log.v("phone_connected connID=$connID");
-            try {
-              kxManager.startExchange(connID);
-            } catch (e) {
-              Log.e("failed to start exchange for connId $connID: $e");
-            }
           case "phone_disconnected":
             Log.v("phone_disconnected connID=$connID");
-            kxManager.removeExchange(connID);
             activePhones.remove(connID);
             _sseManager.removeSubscriber(connID);
             _sessionViewTracker.releaseConnection(connID: connID);
@@ -1526,7 +1520,7 @@ class OrchestratorSession {
 
         List<int> encrypted;
         try {
-          encrypted = await kxManager.handleKeyExchange(connID, relayMessage);
+          encrypted = await kxManager.handleKeyExchange(message: relayMessage);
           Log.d("key exchange OK, sending ready to connID=$connID");
         } catch (e) {
           Log.e("failed key exchange for connId $connID: $e");

@@ -56,6 +56,7 @@ void main() {
         relayHost: "relay.example.com",
         cryptoService: RelayCryptoService(),
         roomKeyStorage: MockRoomKeyStorage(),
+        authToken: null,
       );
 
       expect(client.connectionState, equals(RelayClientConnectionState.disconnected));
@@ -66,6 +67,7 @@ void main() {
         relayHost: "relay.example.com",
         cryptoService: RelayCryptoService(),
         roomKeyStorage: MockRoomKeyStorage(),
+        authToken: null,
       );
 
       expect(client.isConnected, isFalse);
@@ -76,6 +78,7 @@ void main() {
         relayHost: "relay.example.com",
         cryptoService: RelayCryptoService(),
         roomKeyStorage: MockRoomKeyStorage(),
+        authToken: null,
       );
 
       expect(client.lastCloseCode, isNull);

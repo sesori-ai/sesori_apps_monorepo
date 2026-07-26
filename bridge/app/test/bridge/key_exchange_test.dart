@@ -16,9 +16,6 @@ void main() {
 
       roomKey[0] ^= 0xFF;
 
-      const connID = 1;
-      manager.startExchange(connID);
-
       final crypto = RelayCryptoService();
       final phoneKp = await crypto.generateKeyPair();
       final phonePub = await phoneKp.extractPublicKey();
@@ -29,7 +26,7 @@ void main() {
               )
               as RelayKeyExchange;
 
-      final response = await manager.handleKeyExchange(connID, kxMsg);
+      final response = await manager.handleKeyExchange(message: kxMsg);
       final ready = await _decryptReady(response, phoneKp);
       final decodedRoomKey = base64Url.decode(
         base64Url.normalize(ready.roomKey),
@@ -40,8 +37,6 @@ void main() {
 
     test("handleKeyExchange round-trip returns prefixed framed data", () async {
       final manager = KeyExchangeManager(makeRoomKey());
-      const connID = 1;
-      manager.startExchange(connID);
 
       final crypto = RelayCryptoService();
       final phoneKp = await crypto.generateKeyPair();
@@ -52,7 +47,7 @@ void main() {
               )
               as RelayKeyExchange;
 
-      final encrypted = await manager.handleKeyExchange(connID, kxMsg);
+      final encrypted = await manager.handleKeyExchange(message: kxMsg);
 
       const x25519PubKeyLen = 32;
       const protocolVersionLen = 1;
@@ -64,7 +59,7 @@ void main() {
       expect(encrypted[x25519PubKeyLen], equals(protocolVersion));
     });
 
-    test("handleKeyExchange throws when no exchange is pending", () async {
+    test("key exchange starts without a preceding phone_connected event", () async {
       final manager = KeyExchangeManager(makeRoomKey());
 
       final crypto = RelayCryptoService();
@@ -76,19 +71,16 @@ void main() {
               )
               as RelayKeyExchange;
 
-      expect(
-        () => manager.handleKeyExchange(1, kxMsg),
-        throwsA(isA<StateError>()),
-      );
+      final response = await manager.handleKeyExchange(message: kxMsg);
+
+      expect(response, isNotEmpty);
     });
 
     test("supports concurrent exchanges", () async {
       final manager = KeyExchangeManager(makeRoomKey());
       const connIDs = [1, 2, 3];
 
-      connIDs.forEach(manager.startExchange);
-
-      final futures = connIDs.map((connID) async {
+      final futures = connIDs.map((_) async {
         final crypto = RelayCryptoService();
         final phoneKp = await crypto.generateKeyPair();
         final phonePub = await phoneKp.extractPublicKey();
@@ -98,7 +90,7 @@ void main() {
                 )
                 as RelayKeyExchange;
 
-        final result = await manager.handleKeyExchange(connID, kxMsg);
+        final result = await manager.handleKeyExchange(message: kxMsg);
         return result;
       });
 
@@ -108,15 +100,10 @@ void main() {
       }
     });
 
-    test(
-      "startExchange twice for same connID replaces stale pending exchange",
-      () async {
-        final manager = KeyExchangeManager(makeRoomKey());
-        const connID = 42;
+    test("supports repeated exchanges", () async {
+      final manager = KeyExchangeManager(makeRoomKey());
 
-        manager.startExchange(connID);
-        manager.startExchange(connID);
-
+      Future<List<int>> exchange() async {
         final crypto = RelayCryptoService();
         final phoneKp = await crypto.generateKeyPair();
         final phonePub = await phoneKp.extractPublicKey();
@@ -125,32 +112,11 @@ void main() {
                   publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
                 )
                 as RelayKeyExchange;
+        return manager.handleKeyExchange(message: kxMsg);
+      }
 
-        final result = await manager.handleKeyExchange(connID, kxMsg);
-        expect(result, isNotEmpty);
-      },
-    );
-
-    test("removeExchange clears pending exchange", () async {
-      final manager = KeyExchangeManager(makeRoomKey());
-      const connID = 10;
-
-      manager.startExchange(connID);
-      manager.removeExchange(connID);
-
-      final crypto = RelayCryptoService();
-      final phoneKp = await crypto.generateKeyPair();
-      final phonePub = await phoneKp.extractPublicKey();
-      final kxMsg =
-          RelayMessage.keyExchange(
-                publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
-              )
-              as RelayKeyExchange;
-
-      expect(
-        () => manager.handleKeyExchange(connID, kxMsg),
-        throwsA(isA<StateError>()),
-      );
+      expect(await exchange(), isNotEmpty);
+      expect(await exchange(), isNotEmpty);
     });
   });
 }
