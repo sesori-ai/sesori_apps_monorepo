@@ -97,6 +97,10 @@ whether the one-time prompt is needed, but it must not gate relay startup.
 - `OrchestratorSession` remains the sole owner of relay serving, reconnect, and
   teardown. `BridgeRuntimeRunner` sequences lifecycle phases but does not own a
   second relay loop or duplicate teardown.
+- `RelayClient` owns both an in-flight connection channel and an established
+  channel. Closing/cancelling during the initial handshake must detach and close
+  the in-flight channel, and a cancelled attempt must never later promote that
+  channel or send a bridge auth frame.
 - Sequential relay-frame handling must remain sequential. Arming the initial
   read must not replace the current `await for` semantics with uncoordinated
   asynchronous `listen` callbacks.
@@ -109,8 +113,9 @@ whether the one-time prompt is needed, but it must not gate relay startup.
   the prompt synchronously only after session startup and preparation both
   complete while the lifecycle remains active. Do not add a one-consumer
   presenter class. The captured immediate check may overlap session startup,
-  but there is no timer, long-poll, uncaptured task, cancellation owner, or new
-  process-lifetime service.
+  but there is no polling/retry timer, long-poll, uncaptured task, cancellation
+  owner, or new process-lifetime service. Retain the request-local 35-second
+  deadline timer that aborts the one immediate HTTP request.
 - Existing endpoint-unavailable behavior remains fail-open and
   presentation-silent: it emits no onboarding `Console` prompt/success content
   and never blocks or fails startup. It preserves the existing `Log.w`
@@ -135,7 +140,7 @@ whether the one-time prompt is needed, but it must not gate relay startup.
 
 | Step | Branch | Exact PR title | Estimate | Review boundary |
 |---|---|---|---:|---|
-| 1/2 | `bridge-ready-onboarding-session-lifecycle` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 500-800 | Standalone lifecycle refactor with no onboarding behavior change. |
+| 1/2 | `bridge-ready-onboarding-session-lifecycle` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950 | Standalone lifecycle and pending-connect ownership refactor with no onboarding behavior change. |
 | 2/2 | `bridge-ready-onboarding-relay-first` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750 | Relay-ready prompt ordering, removal of the notification-registration gate, and deletion of the unused long-poll API variant. |
 
 "Standalone" in Step 1 means the PR is refactor-only, independently valid, and
@@ -213,6 +218,16 @@ pre-readiness failure/cleanup. `beginShutdown` and `cancel` remain callable by
 the existing shutdown coordinator and signal handlers and must still wake
 startup, an active normal backoff, or a takeover backoff promptly.
 
+To make shutdown during initial startup real rather than timeout-bound,
+`RelayClient.connect` must publish ownership of its pending channel before
+awaiting `channel.ready`. `close`/`reconnect` atomically detach and close pending
+and established channels as applicable. After `ready`, `connect` verifies that
+the attempt still owns the pending slot before promoting it, installing the done
+watcher, emitting connected state, or sending auth. A channel cancelled during
+the handshake may complete only as the lifecycle's expected `cancelled` path;
+it must not remain unowned until the existing 15-second connect timeout or later
+authenticate after shutdown.
+
 If registration, connection, listener initialization, summary construction, or
 initial read arming fails before readiness, the lifecycle future runs complete
 partial-start teardown before `start` rethrows that failure.
@@ -243,6 +258,7 @@ surface as an unhandled asynchronous error.
 Production:
 
 - `bridge/app/lib/src/bridge/orchestrator.dart`
+- `bridge/app/lib/src/bridge/relay_client.dart`
 - `bridge/app/lib/src/bridge/runtime/bridge_runtime_runner.dart`
 
 Lockstep tests and harnesses:
@@ -252,6 +268,8 @@ Lockstep tests and harnesses:
 - `bridge/app/test/bridge/orchestrator_emit_bridge_event_test.dart`
 - `bridge/app/test/bridge/orchestrator_token_reauth_test.dart`
 - `bridge/app/test/bridge/debug_server_test.dart`
+- `bridge/app/test/bridge/relay_client_test.dart` (new focused pending-connect
+  cancellation/late-promotion coverage)
 - a focused orchestrator lifecycle test if the contract is clearer outside the
   existing registration/error suites
 
@@ -270,6 +288,9 @@ stop and update this plan rather than hiding that refactor in Step 2.
   draining.
 - Shutdown before readiness tears down, returns `cancelled`, and never shows a
   prompt or becomes a startup error.
+- Shutdown during the initial WebSocket handshake closes the pending channel
+  promptly instead of waiting for the 15-second connect timeout; that channel
+  can never later become active or send auth.
 - Key exchange and request handling work after `start` while a caller has not
   yet awaited `waitUntilStopped`.
 - A normal drop, token re-authentication, and every successful reconnect create
@@ -289,7 +310,8 @@ dart test test/bridge/orchestrator_registration_test.dart \
   test/bridge/orchestrator_error_recovery_test.dart \
   test/bridge/orchestrator_emit_bridge_event_test.dart \
   test/bridge/orchestrator_token_reauth_test.dart \
-  test/bridge/debug_server_test.dart
+  test/bridge/debug_server_test.dart \
+  test/bridge/relay_client_test.dart
 dart analyze --fatal-infos
 ```
 
@@ -332,7 +354,8 @@ Preparation removes:
 - `TokenRefresher` from this service;
 - `AppOnboardingFormatter` and all `Console` output from this service;
 - the unbounded polling loop;
-- the five-second retry timer; and
+- the five-second retry timer (while preserving the request-local 35-second
+  deadline/abort timer); and
 - the terminal claims that startup is paused or later continuing.
 
 Remove the now-unused long-poll variant from the internal lower layers in the
@@ -485,6 +508,10 @@ PR changes the composition-root lifecycle trigger and onboarding data flow.
 - **Reconnect iterator ownership:** A read iterator is bound to one relay
   channel. Step 1 cancels the exhausted iterator and creates/arms a fresh one
   after every reconnect; only the initial iterator controls startup readiness.
+- **Pending-connect ownership:** The current relay client cannot close a channel
+  while `channel.ready` is pending. Step 1 makes that channel client-owned before
+  the await, closes it during cancellation, and prevents late promotion/auth so
+  shutdown does not wait for the 15-second connect timeout or orphan a socket.
 - **Concurrent preparation:** The one bounded immediate status request overlaps
   session startup so it cannot gate relay readiness. The runner renders only
   when both readiness and a prompt decision exist while the lifecycle remains

@@ -21,7 +21,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line budget | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/2 | `bridge-ready-onboarding-session-lifecycle` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 500-800; reassess at 1,300; maximum 1,500 | Not started |
+| [ ] | 1/2 | `bridge-ready-onboarding-session-lifecycle` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | Not started |
 | [ ] | 2/2 | `bridge-ready-onboarding-relay-first` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | Blocked on Step 1 merge |
 
 ## Execution Rules
@@ -45,6 +45,11 @@
 
 ## Findings And Plan Deltas
 
+- **2026-07-26 — Follow-up PR feedback:** Added `RelayClient` pending-handshake
+  ownership/cancellation to Step 1 so shutdown cannot wait for the 15-second
+  connect timeout or allow late channel promotion/auth; clarified that Step 2
+  removes polling/retry timers but retains the request-local 35-second deadline
+  timer that bounds and aborts the immediate status request.
 - **2026-07-26 — PR feedback corrections:** Qualified the external auth-server
   source reference; distinguished presentation-silent compatibility recovery
   from warning-level diagnostics; required one fresh relay read iterator per
