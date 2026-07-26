@@ -30,6 +30,11 @@ class PermissionModal extends StatefulWidget {
   /// lingering as a stale modal — without firing a reply.
   final Stream<bool> isPendingStream;
 
+  /// Called when the sheet self-dismisses because the request was resolved
+  /// on another device, so the presenter can chain the next pending prompt
+  /// the way a local reply would.
+  final VoidCallback onResolvedRemotely;
+
   /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
@@ -41,6 +46,7 @@ class PermissionModal extends StatefulWidget {
     required this.permission,
     required this.onReply,
     required this.isPendingStream,
+    required this.onResolvedRemotely,
     required this.topInset,
   });
 
@@ -59,6 +65,7 @@ class PermissionModal extends StatefulWidget {
     })
     onReply,
     required Stream<bool> isPendingStream,
+    required VoidCallback onResolvedRemotely,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -73,6 +80,7 @@ class PermissionModal extends StatefulWidget {
         permission: permission,
         onReply: onReply,
         isPendingStream: isPendingStream,
+        onResolvedRemotely: onResolvedRemotely,
         topInset: topInset,
       ),
     );
@@ -99,7 +107,9 @@ class _PermissionModalState extends State<PermissionModal> {
     // e.g. answered on another device. `_dismiss` is idempotent, so a local
     // reply already popping the sheet can't be doubled here.
     _pendingSub = widget.isPendingStream.listen((isPending) {
-      if (!isPending) _dismiss();
+      if (isPending) return;
+      if (!_dismissed) widget.onResolvedRemotely();
+      _dismiss();
     });
   }
 
@@ -116,6 +126,9 @@ class _PermissionModalState extends State<PermissionModal> {
   }
 
   void _reply({required PermissionReply reply}) {
+    // A remote resolution already dismissed this sheet; a tap landing during
+    // the exit animation must not send a stale reply.
+    if (_dismissed) return;
     _dismiss();
     widget.onReply(
       requestId: widget.permission.requestID,

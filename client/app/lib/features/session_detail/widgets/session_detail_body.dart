@@ -204,6 +204,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
         cubit: cubit,
         isPending: (state) => state.pendingQuestions.any((q) => q.id == question.id),
       ),
+      onResolvedRemotely: _scheduleNextQuestionModal,
       onReply: (requestId, answers) async {
         final success = await context.read<SessionDetailCubit>().replyToQuestion(
           requestId: requestId,
@@ -234,6 +235,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
         cubit: cubit,
         isPending: (state) => state.pendingPermissions.any((p) => p.requestID == permission.requestID),
       ),
+      onResolvedRemotely: _scheduleNextPermissionModal,
       onReply:
           ({
             required String requestId,

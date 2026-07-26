@@ -25,6 +25,11 @@ class QuestionModal extends StatefulWidget {
   /// instead of lingering as a stale modal.
   final Stream<bool> isPendingStream;
 
+  /// Called when the sheet self-dismisses because the request was resolved
+  /// on another device, so the presenter can chain the next pending prompt
+  /// the way a local answer would.
+  final VoidCallback onResolvedRemotely;
+
   /// Status-bar inset captured from the presenting context. The modal route
   /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
@@ -37,6 +42,7 @@ class QuestionModal extends StatefulWidget {
     required this.onReply,
     required this.onReject,
     required this.isPendingStream,
+    required this.onResolvedRemotely,
     required this.topInset,
   });
 
@@ -52,6 +58,7 @@ class QuestionModal extends StatefulWidget {
     required void Function(String requestId, List<ReplyAnswer> answers) onReply,
     required void Function(String requestId) onReject,
     required Stream<bool> isPendingStream,
+    required VoidCallback onResolvedRemotely,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -67,6 +74,7 @@ class QuestionModal extends StatefulWidget {
         onReply: onReply,
         onReject: onReject,
         isPendingStream: isPendingStream,
+        onResolvedRemotely: onResolvedRemotely,
         topInset: topInset,
       ),
     );
@@ -118,7 +126,9 @@ class _QuestionModalState extends State<QuestionModal> {
     // e.g. answered on another device. `_dismissModal` is idempotent, so a
     // local answer already popping the sheet can't be doubled here.
     _pendingSub = widget.isPendingStream.listen((isPending) {
-      if (!isPending) _dismissModal();
+      if (isPending) return;
+      if (!_dismissed) widget.onResolvedRemotely();
+      _dismissModal();
     });
   }
 
@@ -201,6 +211,9 @@ class _QuestionModalState extends State<QuestionModal> {
   /// Collects the current answer and either advances to the next question
   /// or submits all answers if this is the last one.
   void _onProceed() {
+    // A remote resolution already dismissed this sheet; a tap landing during
+    // the exit animation must not send a stale answer.
+    if (_dismissed) return;
     // Build the answer for the current question.
     final answer = _selectedLabels.toList();
     if (_hasSelectedCustomAnswer) {
@@ -226,6 +239,7 @@ class _QuestionModalState extends State<QuestionModal> {
   }
 
   void _onReject() {
+    if (_dismissed) return;
     widget.onReject(widget.question.id);
     _dismissModal();
   }

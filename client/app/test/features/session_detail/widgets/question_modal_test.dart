@@ -22,6 +22,7 @@ GoRouter _createRouter({
   required SesoriQuestionAsked question,
   required _ReplyCapture capture,
   required Stream<bool> isPendingStream,
+  required VoidCallback onResolvedRemotely,
 }) {
   return GoRouter(
     routes: [
@@ -39,6 +40,7 @@ GoRouter _createRouter({
                     onReply: capture.onReply,
                     onReject: (_) {},
                     isPendingStream: isPendingStream,
+                    onResolvedRemotely: onResolvedRemotely,
                   );
                 },
                 child: const Text("Open question modal"),
@@ -95,6 +97,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -133,6 +136,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -170,6 +174,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -207,6 +212,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -248,6 +254,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -287,6 +294,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -326,6 +334,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -368,6 +377,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: const Stream<bool>.empty(),
+      onResolvedRemotely: () {},
     );
     addTearDown(router.dispose);
 
@@ -403,6 +413,7 @@ void main() {
   testWidgets("dismisses itself without replying when resolved on another device", (tester) async {
     final capture = _ReplyCapture();
     final isPending = StreamController<bool>();
+    var remoteDismissals = 0;
     addTearDown(isPending.close);
     final router = _createRouter(
       question: _questionAsked(
@@ -416,6 +427,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: isPending.stream,
+      onResolvedRemotely: () => remoteDismissals++,
     );
     addTearDown(router.dispose);
 
@@ -429,11 +441,13 @@ void main() {
     expect(find.text("Choose a release channel"), findsNothing);
     expect(capture.requestId, isNull);
     expect(capture.answers, isNull);
+    expect(remoteDismissals, 1);
   });
 
   testWidgets("a local answer racing the resolved signal pops only the sheet", (tester) async {
     final capture = _ReplyCapture();
     final isPending = StreamController<bool>();
+    var remoteDismissals = 0;
     addTearDown(isPending.close);
     final router = _createRouter(
       question: _questionAsked(
@@ -447,6 +461,7 @@ void main() {
       ),
       capture: capture,
       isPendingStream: isPending.stream,
+      onResolvedRemotely: () => remoteDismissals++,
     );
     addTearDown(router.dispose);
 
@@ -465,5 +480,41 @@ void main() {
     expect(capture.requestId, "question-1");
     expect(find.text("Choose a release channel"), findsNothing);
     expect(find.byKey(const Key("open-question-modal")), findsOneWidget);
+    expect(remoteDismissals, 0);
+  });
+
+  testWidgets("ignores actions tapped during the exit animation after a remote resolution", (tester) async {
+    final capture = _ReplyCapture();
+    final isPending = StreamController<bool>();
+    addTearDown(isPending.close);
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a release channel",
+            header: "Release channel",
+            options: [QuestionOption(label: "Stable", description: "Release to everyone")],
+          ),
+        ],
+      ),
+      capture: capture,
+      isPendingStream: isPending.stream,
+      onResolvedRemotely: () {},
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    isPending.add(false);
+    // Mid exit animation: the buttons are still on screen and tappable, but
+    // the request is already resolved — no answer may be sent.
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.text("Stable"), warnIfMissed: false);
+    await tester.tap(find.text("Submit"), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(capture.requestId, isNull);
+    expect(capture.answers, isNull);
   });
 }

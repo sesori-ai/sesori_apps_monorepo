@@ -112,6 +112,19 @@ const _permission = SesoriPermissionAsked(
   description: "Allow writing the release notes",
 );
 
+const _question2 = SesoriQuestionAsked(
+  id: "question-2",
+  sessionID: "session-1",
+  displaySessionId: null,
+  questions: [
+    QuestionInfo(
+      question: "Pick a rollout percentage",
+      header: "Rollout",
+      options: [QuestionOption(label: "10%", description: "Start small")],
+    ),
+  ],
+);
+
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -378,6 +391,39 @@ void main() {
         reply: PermissionReply.once,
       ),
     );
+  });
+
+  testWidgets("presents the next queued question after a remote resolution closes the active one", (tester) async {
+    final questionController = StreamController<SesoriQuestionAsked>.broadcast();
+    final stateController = StreamController<SessionDetailState>.broadcast();
+    addTearDown(questionController.close);
+    addTearDown(stateController.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => stateController.stream);
+    when(() => cubit.questionStream).thenAnswer((_) => questionController.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Two questions pending; only the first auto-opens (the second's auto-show
+    // is suppressed while the sheet is up, as in the real flow).
+    state = state.copyWith(pendingQuestions: const [_question, _question2]);
+    questionController.add(_question);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(find.text("Pick a rollout percentage"), findsNothing);
+
+    // The first question is answered on another device: it leaves the pending
+    // list, its sheet self-dismisses, and the queued question is presented.
+    state = state.copyWith(pendingQuestions: const [_question2]);
+    stateController.add(state);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Choose a release channel"), findsNothing);
+    expect(find.text("Pick a rollout percentage"), findsOneWidget);
   });
 
   // Only the input row is grouped with the text field via a TextFieldTapRegion,
