@@ -135,8 +135,7 @@ class ActiveSessionTracker {
     // status baseline. A later acceptance must not be cleared by an older idle
     // response that happens to complete after the command was accepted.
     _provisionalAcceptedTurnRevisionBySession.removeWhere(
-      (sessionId, revision) =>
-          revision <= acceptedTurnBaselineRevision && allStatuses.containsKey(sessionId),
+      (sessionId, revision) => revision <= acceptedTurnBaselineRevision && allStatuses.containsKey(sessionId),
     );
 
     _sessionStatuses
@@ -337,6 +336,15 @@ class ActiveSessionTracker {
   }
 
   bool get hasAcceptedTurnEvidence => _provisionalAcceptedTurnRevisionBySession.isNotEmpty;
+
+  Set<String> get interruptibleSessionIds => Set<String>.unmodifiable({
+    ..._sessionStatuses.keys,
+    ..._provisionalAcceptedTurnRevisionBySession.keys,
+    for (final entry in _pendingQuestions.entries)
+      if (entry.value.isNotEmpty) entry.key,
+    for (final entry in _pendingPermissions.entries)
+      if (entry.value.isNotEmpty) entry.key,
+  });
 
   void populatePendingQuestions({
     required List<QuestionRequest> questions,

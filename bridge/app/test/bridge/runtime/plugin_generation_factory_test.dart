@@ -450,6 +450,9 @@ class _FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
+  Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
+
+  @override
   Future<void> shutdown({required Duration? budget}) async {}
 }
 

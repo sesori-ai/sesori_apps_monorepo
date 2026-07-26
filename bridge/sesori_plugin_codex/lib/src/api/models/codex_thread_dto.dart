@@ -7,6 +7,7 @@ part "codex_thread_dto.g.dart";
 sealed class CodexThreadEnvelopeDto with _$CodexThreadEnvelopeDto {
   const factory CodexThreadEnvelopeDto({
     required CodexThreadDto? thread,
+    required String? turnId,
     required String? model,
     required String? modelProvider,
     required String? cwd,

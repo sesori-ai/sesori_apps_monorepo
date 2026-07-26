@@ -56,7 +56,9 @@ class TestPluginRuntime extends PluginRuntime {
   final Map<String, PluginRuntimeTransition> _transitions = {};
   final StreamController<List<PluginRuntimeSnapshot>> _snapshotChanges = StreamController.broadcast(sync: true);
   bool generationCurrent = true;
+  bool eventGenerationCurrent = true;
   int currentGeneration = 1;
+  Completer<void>? terminalHandoffConsumed;
 
   @override
   Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
@@ -70,6 +72,21 @@ class TestPluginRuntime extends PluginRuntime {
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) {
     return generationCurrent && generation == currentGeneration && _plugins.containsKey(pluginId);
+  }
+
+  @override
+  bool isCurrentEventGeneration({required String pluginId, required int generation}) {
+    return eventGenerationCurrent && generation == currentGeneration && _plugins.containsKey(pluginId);
+  }
+
+  @override
+  bool isCurrentEvent({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) {
+    return isCurrentGeneration(pluginId: pluginId, generation: generation) ||
+        (event is BridgeSseTerminalHandoff && isCurrentEventGeneration(pluginId: pluginId, generation: generation));
   }
 
   @override
@@ -113,7 +130,14 @@ class TestPluginRuntime extends PluginRuntime {
   Stream<SourcedPluginRuntimeEvent> get backendEvents {
     return Rx.merge([
       for (final plugin in _plugins.values)
-        plugin.events.map((event) => (pluginId: plugin.id, generation: currentGeneration, event: event)),
+        plugin.events.map(
+          (event) => (
+            pluginId: plugin.id,
+            generation: currentGeneration,
+            event: event,
+            terminalHandoffConsumed: event is BridgeSseTerminalHandoff ? terminalHandoffConsumed : null,
+          ),
+        ),
     ]);
   }
 
@@ -224,6 +248,16 @@ class _AlwaysCurrentTestPluginRuntime extends TestPluginRuntime {
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) => generation == 1;
+
+  @override
+  bool isCurrentEventGeneration({required String pluginId, required int generation}) => generation == 1;
+
+  @override
+  bool isCurrentEvent({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) => generation == 1;
 }
 
 class _UnusedGenerationFactory implements PluginGenerationFactory {

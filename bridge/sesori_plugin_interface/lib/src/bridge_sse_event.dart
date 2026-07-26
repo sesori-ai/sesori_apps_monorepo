@@ -5,6 +5,14 @@ sealed class BridgeSseEvent {
   const BridgeSseEvent();
 }
 
+/// Runtime-owned provenance for reconciliation emitted during a forced stop.
+/// Plugin implementations emit ordinary events; only the generation runtime
+/// wraps events after `BridgePlugin.interruptActiveWork` has quiesced history.
+class BridgeSseTerminalHandoff extends BridgeSseEvent {
+  final BridgeSseEvent event;
+  const BridgeSseTerminalHandoff({required this.event});
+}
+
 class BridgeSseServerConnected extends BridgeSseEvent {
   const BridgeSseServerConnected();
 }

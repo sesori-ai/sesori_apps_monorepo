@@ -85,8 +85,7 @@ enum _PendingKind { permission, question }
 /// Per-request reply functions injected at construction time so the
 /// registry stays decoupled from [CodexAppServerClient].
 typedef ApprovalResponder = void Function(Object id, Object? result);
-typedef ApprovalErrorResponder =
-    void Function(Object id, int code, String message);
+typedef ApprovalErrorResponder = void Function(Object id, int code, String message);
 
 /// Routes codex server-originated approval requests to the bridge SSE
 /// stream and answers them when the bridge consumer replies.
@@ -189,13 +188,15 @@ class ApprovalRegistry {
 
   /// Returns the session id for a pending request, or null if the id is
   /// unknown.
-  String? sessionIdFor(String bridgeRequestId) =>
-      _pending[bridgeRequestId]?.sessionId;
+  String? sessionIdFor(String bridgeRequestId) => _pending[bridgeRequestId]?.sessionId;
 
-  bool hasPendingInput(String sessionId) =>
-      _pending.values.any((entry) => entry.sessionId == sessionId);
+  bool hasPendingInput(String sessionId) => _pending.values.any((entry) => entry.sessionId == sessionId);
 
   bool get hasAnyPendingInput => _pending.isNotEmpty;
+
+  Set<String> get pendingSessionIds => Set<String>.unmodifiable(
+    _pending.values.map((entry) => entry.sessionId),
+  );
 
   void cancelForSession(String sessionId) {
     final entries = _pending.values.where((entry) => entry.sessionId == sessionId).toList(growable: false);
@@ -381,8 +382,7 @@ class ApprovalRegistry {
   /// `PermissionAsked` event and the pending-permission snapshot so the two
   /// never drift.
   String _permissionDescriptionFor(_PendingApproval entry) =>
-      (entry.params["reason"] as String?) ??
-      _descriptionFallback(entry.method, entry.params);
+      (entry.params["reason"] as String?) ?? _descriptionFallback(entry.method, entry.params);
 
   /// Builds the JSON-RPC result payload for a permission reply, keyed by the
   /// request's wire method:

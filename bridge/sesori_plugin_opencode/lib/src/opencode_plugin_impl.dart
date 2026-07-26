@@ -420,6 +420,22 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }
 
   @override
+  Future<Set<String>> interruptActiveWork({required Duration budget}) {
+    return () async {
+      final activeSessionIds = _service.tracker.interruptibleSessionIds;
+      if (activeSessionIds.isEmpty) return const <String>{};
+
+      await Future.wait([
+        for (final sessionId in activeSessionIds) abortSession(sessionId: sessionId),
+      ]);
+      if (currentWorkState != PluginWorkState.idle) {
+        await workState.firstWhere((state) => state == PluginWorkState.idle);
+      }
+      return Set<String>.unmodifiable(activeSessionIds);
+    }().timeout(budget);
+  }
+
+  @override
   Future<List<PluginAgent>> getAgents({required String projectId}) {
     return _call(() => _service.getAgents(projectId: projectId));
   }

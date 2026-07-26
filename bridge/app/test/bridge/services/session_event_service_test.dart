@@ -117,6 +117,66 @@ void main() {
       );
     });
 
+    test("publishes a terminal event captured before its generation stopped routing", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      pluginRuntime.generationCurrent = false;
+
+      final output = await service.normalize(
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 1,
+          event: const BridgeSseTerminalHandoff(
+            event: BridgeSseSessionIdle(sessionID: "backend-root"),
+          ),
+        ),
+      );
+
+      expect(output, hasLength(1));
+      expect(output.single, isA<BridgeSseTerminalHandoff>());
+      expect(
+        ((output.single as BridgeSseTerminalHandoff).event as BridgeSseSessionIdle).sessionID,
+        "stable-root",
+      );
+      expect(
+        await service.normalize(
+          source: (
+            pluginId: plugin.id,
+            generation: 1,
+            projectionUpdatedAt: 2,
+            event: const BridgeSsePermissionAsked(
+              requestID: "stale",
+              sessionID: "backend-root",
+              displaySessionId: "backend-root",
+              tool: "shell",
+              description: "stale permission",
+            ),
+          ),
+        ),
+        isEmpty,
+      );
+
+      pluginRuntime.eventGenerationCurrent = false;
+      expect(
+        await service.normalize(
+          source: (
+            pluginId: plugin.id,
+            generation: 1,
+            projectionUpdatedAt: 3,
+            event: const BridgeSseTerminalHandoff(
+              event: BridgeSseSessionIdle(sessionID: "backend-root"),
+            ),
+          ),
+        ),
+        isEmpty,
+      );
+    });
+
     test("recursively drains out-of-order descendants under a durable same-plugin parent", () async {
       await _insertRoot(
         database: database,

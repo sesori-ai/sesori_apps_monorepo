@@ -58,13 +58,17 @@ class SessionEventService {
     required SourcedBridgeEvent source,
     required bool drainPending,
   }) async {
-    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
+    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) {
       return const [];
     }
     try {
       return await _normalize(source: source, drainPending: drainPending);
     } on Object catch (error, stackTrace) {
-      if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
+      if (_eventMapper.sessionInfo(event: source.event) != null &&
+          !isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
+        return const [];
+      }
+      if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) {
         return const [];
       }
       Log.w("[sse] failed to normalize ${source.event.runtimeType}", error, stackTrace);
@@ -88,6 +92,14 @@ class SessionEventService {
     return _pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation);
   }
 
+  bool isCurrentEvent({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) {
+    return _pluginRuntime.isCurrentEvent(pluginId: pluginId, generation: generation, event: event);
+  }
+
   Future<List<BridgeSseEvent>> _normalize({
     required SourcedBridgeEvent source,
     required bool drainPending,
@@ -99,6 +111,9 @@ class SessionEventService {
       return [
         ?await _translate(source: source),
       ];
+    }
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
+      return const [];
     }
 
     final projection = await _projectSession(source: source, observed: observed);
@@ -348,7 +363,7 @@ class SessionEventService {
       pluginId: source.pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
-    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) return null;
     if (bindings.length != backendSessionIds.length) {
       final missingBackendSessionIds = backendSessionIds.where((id) => !bindings.containsKey(id)).toList();
       if (missingBackendSessionIds.isNotEmpty &&
@@ -379,7 +394,7 @@ class SessionEventService {
         for (final entry in bindings.entries) entry.key: entry.value.id,
       },
     );
-    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) return null;
     if (translated == null) return null;
 
     final translatedSession = _eventMapper.sessionInfo(event: translated);
@@ -414,9 +429,9 @@ class SessionEventService {
     required Session session,
     required bool titleChanged,
   }) async {
-    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) return null;
     final catalogSession = await _sessionRepository.getCatalogSession(sessionId: session.id);
-    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+    if (!isCurrentEvent(pluginId: source.pluginId, generation: source.generation, event: source.event)) return null;
     if (catalogSession == null) return null;
     return BridgeSseSessionUpdated(info: catalogSession.toJson(), titleChanged: titleChanged);
   }

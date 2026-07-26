@@ -65,7 +65,7 @@ class CodexThreadRepository {
     return _mapRequired(dto: dto, operation: "thread/resume");
   }
 
-  Future<bool> startTurn({
+  Future<String?> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
     required String? model,
@@ -73,8 +73,8 @@ class CodexThreadRepository {
     required CodexCollaborationMode? collaborationMode,
   }) async {
     final input = parts.map(_mapTurnInput).whereType<CodexTurnInputDto>().toList();
-    if (input.isEmpty) return false;
-    await _request(
+    if (input.isEmpty) return null;
+    final response = await _request(
       operation: "turn/start",
       request: () => _appServerApi.startTurn(
         threadId: threadId,
@@ -84,7 +84,7 @@ class CodexThreadRepository {
         collaborationMode: collaborationMode,
       ),
     );
-    return true;
+    return response.turnId;
   }
 
   Future<void> compactThread({required String threadId}) => _request(

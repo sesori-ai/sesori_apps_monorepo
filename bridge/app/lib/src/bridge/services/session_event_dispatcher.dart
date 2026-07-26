@@ -6,8 +6,17 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/session_repository.dart";
 import "session_event_service.dart";
 
-typedef NormalizedSourcedBridgeEvent = ({String pluginId, int? generation, BridgeSseEvent event});
-typedef _DispatchEvent = ({int? generation, BridgeSseEvent event});
+typedef NormalizedSourcedBridgeEvent = ({
+  String pluginId,
+  int? generation,
+  BridgeSseEvent event,
+  Completer<void>? terminalHandoffConsumed,
+});
+typedef _DispatchEvent = ({
+  int? generation,
+  BridgeSseEvent event,
+  Completer<void>? terminalHandoffConsumed,
+});
 
 class SessionEventDispatcher {
   final SessionEventService _sessionEventService;
@@ -33,13 +42,23 @@ class SessionEventDispatcher {
     );
   }
 
-  Future<void> dispatchPluginEvent({required SourcedBridgeEvent source}) {
+  Future<void> dispatchPluginEvent({
+    required SourcedBridgeEvent source,
+    required Completer<void>? terminalHandoffConsumed,
+  }) {
     return _dispatch(
       pluginId: source.pluginId,
-      operation: () async => [
-        for (final event in await _sessionEventService.normalize(source: source))
-          (generation: source.generation, event: event),
-      ],
+      operation: () async {
+        final events = await _sessionEventService.normalize(source: source);
+        return [
+          for (var index = 0; index < events.length; index++)
+            (
+              generation: source.generation,
+              event: events[index],
+              terminalHandoffConsumed: index == events.length - 1 ? terminalHandoffConsumed : null,
+            ),
+        ];
+      },
     );
   }
 
@@ -48,7 +67,7 @@ class SessionEventDispatcher {
       pluginId: commit.pluginId,
       operation: () async => [
         for (final output in await _sessionEventService.handleBindingsCommitted(commit: commit))
-          (generation: output.generation, event: output.event),
+          (generation: output.generation, event: output.event, terminalHandoffConsumed: null),
       ],
     );
   }
@@ -56,7 +75,13 @@ class SessionEventDispatcher {
   Future<void> dispatchDeletedSession({required Session session}) {
     return _dispatch(
       pluginId: session.pluginId,
-      operation: () async => [(generation: null, event: BridgeSseSessionDeleted(info: session.toJson()))],
+      operation: () async => [
+        (
+          generation: null,
+          event: BridgeSseSessionDeleted(info: session.toJson()),
+          terminalHandoffConsumed: null,
+        ),
+      ],
     );
   }
 
@@ -88,13 +113,19 @@ class SessionEventDispatcher {
           final event = output.event;
           if (await _sessionEventService.canPublish(event: event)) {
             if (generation != null &&
-                !_sessionEventService.isCurrentGeneration(
+                !_sessionEventService.isCurrentEvent(
                   pluginId: pluginId,
                   generation: generation,
+                  event: event,
                 )) {
               continue;
             }
-            _eventsController.add((pluginId: pluginId, generation: generation, event: event));
+            _eventsController.add((
+              pluginId: pluginId,
+              generation: generation,
+              event: event,
+              terminalHandoffConsumed: output.terminalHandoffConsumed,
+            ));
           }
         }
       } on Object catch (error, stackTrace) {

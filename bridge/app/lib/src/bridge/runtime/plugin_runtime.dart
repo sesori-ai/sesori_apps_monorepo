@@ -54,7 +54,12 @@ class PluginRuntimeSnapshot {
   final PluginRuntimeTransition transition;
 }
 
-typedef SourcedPluginRuntimeEvent = ({String pluginId, int generation, BridgeSseEvent event});
+typedef SourcedPluginRuntimeEvent = ({
+  String pluginId,
+  int generation,
+  BridgeSseEvent event,
+  Completer<void>? terminalHandoffConsumed,
+});
 typedef SourcedPluginProvisionProgress = ({String pluginId, RuntimeProvisionProgress event});
 
 sealed class PluginRuntimeCommandResult {
@@ -450,6 +455,23 @@ class PluginRuntime {
   bool isCurrentGeneration({required String pluginId, required int generation}) {
     final slot = _slots[pluginId];
     return slot != null && slot.generation == generation && _isRoutable(slot);
+  }
+
+  /// Captured backend events stay valid while their generation is stopping.
+  /// Cancelling its event subscription prevents new arrivals; a successor
+  /// generation then fences any older event still queued for normalization.
+  bool isCurrentEventGeneration({required String pluginId, required int generation}) {
+    final slot = _slots[pluginId];
+    return slot != null && slot.generation == generation;
+  }
+
+  bool isCurrentEvent({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) {
+    return isCurrentGeneration(pluginId: pluginId, generation: generation) ||
+        (event is BridgeSseTerminalHandoff && isCurrentEventGeneration(pluginId: pluginId, generation: generation));
   }
 
   void requireCurrentGeneration({
@@ -992,8 +1014,23 @@ class PluginRuntime {
       startStackTrace = stackTrace;
     }
     await slot.cleanupFuture;
-    await _waitForDurableCommits(slot);
     final plugin = slot.plugin;
+    if (intent == PluginStopIntent.force && plugin != null) {
+      final budgetElapsed = Stopwatch()..start();
+      final barrierDrained = await _drainForcedStopBarrier(
+        slot: slot,
+        budgetElapsed: budgetElapsed,
+      );
+      if (barrierDrained && plugin.currentWorkState != PluginWorkState.idle) {
+        await _interruptActiveWork(
+          slot: slot,
+          plugin: plugin,
+          budgetElapsed: budgetElapsed,
+        );
+      }
+    } else {
+      await _waitForDurableCommits(slot);
+    }
     slot
       ..plugin = null
       ..state = PluginRuntimeState.stopping
@@ -1009,6 +1046,74 @@ class PluginRuntime {
     }
     if (startError != null) Error.throwWithStackTrace(startError, startStackTrace!);
     if (cleanupError != null) Error.throwWithStackTrace(cleanupError, cleanupStackTrace!);
+  }
+
+  Future<void> _interruptActiveWork({
+    required _PluginRuntimeSlot slot,
+    required BridgePlugin plugin,
+    required Stopwatch budgetElapsed,
+  }) async {
+    final pluginId = slot.registration.descriptor.id;
+    final Set<String> interruptedSessionIds;
+    try {
+      final remaining = _remainingShutdownBudget(budgetElapsed: budgetElapsed);
+      interruptedSessionIds = await plugin.interruptActiveWork(budget: remaining).timeout(remaining);
+    } on Object catch (error, stackTrace) {
+      Log.w('Plugin "$pluginId" could not quiesce active work before forced stop', error, stackTrace);
+      return;
+    }
+    final generation = slot.generation;
+    if (generation == null || _backendEventsSubject.isClosed) return;
+    for (final sessionId in interruptedSessionIds.toList()..sort()) {
+      _backendEventsSubject.add((
+        pluginId: pluginId,
+        generation: generation,
+        event: BridgeSseTerminalHandoff(
+          event: BridgeSseSessionIdle(sessionID: sessionId),
+        ),
+        terminalHandoffConsumed: null,
+      ));
+    }
+    if (interruptedSessionIds.isNotEmpty) {
+      final consumed = Completer<void>();
+      _backendEventsSubject.add((
+        pluginId: pluginId,
+        generation: generation,
+        event: const BridgeSseTerminalHandoff(
+          event: BridgeSseProjectUpdated(),
+        ),
+        terminalHandoffConsumed: consumed,
+      ));
+      try {
+        await consumed.future.timeout(_remainingShutdownBudget(budgetElapsed: budgetElapsed));
+      } on Object catch (error, stackTrace) {
+        Log.w('Plugin "$pluginId" terminal handoff was not consumed before forced stop', error, stackTrace);
+      }
+    }
+  }
+
+  Future<bool> _drainForcedStopBarrier({
+    required _PluginRuntimeSlot slot,
+    required Stopwatch budgetElapsed,
+  }) async {
+    final pluginId = slot.registration.descriptor.id;
+    try {
+      await _cancelOperationStreams(slot).timeout(_remainingShutdownBudget(budgetElapsed: budgetElapsed));
+      await _waitForLeaseDrain(slot).timeout(_remainingShutdownBudget(budgetElapsed: budgetElapsed));
+      await _waitForDurableCommits(slot).timeout(_remainingShutdownBudget(budgetElapsed: budgetElapsed));
+      return true;
+    } on Object catch (error, stackTrace) {
+      Log.w('Plugin "$pluginId" still had in-flight operations at forced stop', error, stackTrace);
+      return false;
+    }
+  }
+
+  Duration _remainingShutdownBudget({required Stopwatch budgetElapsed}) {
+    final remaining = _shutdownBudget - budgetElapsed.elapsed;
+    if (remaining <= Duration.zero) {
+      throw TimeoutException("Plugin forced-stop budget elapsed");
+    }
+    return remaining;
   }
 
   Future<_PluginLease> _acquire({
@@ -1223,7 +1328,12 @@ class PluginRuntime {
       slot.eventSubscription = started.api.events.listen(
         (event) {
           if (slot.generation == generation && !_backendEventsSubject.isClosed) {
-            _backendEventsSubject.add((pluginId: pluginId, generation: generation, event: event));
+            _backendEventsSubject.add((
+              pluginId: pluginId,
+              generation: generation,
+              event: event,
+              terminalHandoffConsumed: null,
+            ));
           }
         },
         onError: (Object error, StackTrace stackTrace) {

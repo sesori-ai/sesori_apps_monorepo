@@ -335,6 +335,27 @@ void main() {
       expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
+    test("forced interruption waits for ACP history to quiesce", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      await sendPrompt(sessionId, "long task");
+      final prompt = await waitForFrame("session/prompt");
+      var interruptionCompleted = false;
+
+      final interruption = plugin
+          .interruptActiveWork(budget: const Duration(seconds: 1))
+          .whenComplete(() => interruptionCompleted = true);
+      await waitForFrame("session/cancel");
+      await pump();
+      expect(interruptionCompleted, isFalse);
+
+      respondTo(prompt, {"stopReason": "cancelled"});
+
+      expect(await interruption, {sessionId});
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(emitted.whereType<BridgeSseSessionIdle>(), hasLength(1));
+    });
+
     test("an abort landing during turn selection still drops the turn", () async {
       final gated = _GatedSelectionPlugin(
         id: "acp",

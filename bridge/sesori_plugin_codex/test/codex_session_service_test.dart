@@ -172,7 +172,7 @@ class _StubThreadRepository extends CodexThreadRepository {
   }
 
   @override
-  Future<bool> startTurn({
+  Future<String?> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
     required String? model,
@@ -182,7 +182,7 @@ class _StubThreadRepository extends CodexThreadRepository {
     lastParts = parts;
     lastModel = model;
     lastEffort = effort;
-    return true;
+    return "turn";
   }
 
   @override

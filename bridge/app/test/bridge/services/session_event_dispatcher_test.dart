@@ -31,7 +31,10 @@ void main() {
       ),
     );
 
-    final createdDispatch = dispatcher.dispatchPluginEvent(source: source);
+    final createdDispatch = dispatcher.dispatchPluginEvent(
+      source: source,
+      terminalHandoffConsumed: null,
+    );
     service.createdIsPublishable = false;
     final deletedDispatch = dispatcher.dispatchDeletedSession(
       session: const Session(
@@ -74,13 +77,39 @@ void main() {
       ),
     );
 
-    final dispatch = dispatcher.dispatchPluginEvent(source: source);
+    final dispatch = dispatcher.dispatchPluginEvent(
+      source: source,
+      terminalHandoffConsumed: null,
+    );
     service.generationCurrent = false;
     normalizeGate.complete();
     await dispatch;
 
     expect(output, isEmpty);
     await subscription.cancel();
+    await dispatcher.dispose();
+  });
+
+  test("forwards terminal handoff consumption with the final normalized event", () async {
+    final service = _GatedSessionEventService(normalizeGate: Future<void>.value());
+    final dispatcher = SessionEventDispatcher(sessionEventService: service);
+    final outputFuture = dispatcher.events.first;
+    final consumed = Completer<void>();
+    final source = service.captureSource(
+      pluginId: "plugin",
+      generation: 1,
+      event: const BridgeSseTerminalHandoff(
+        event: BridgeSseProjectUpdated(),
+      ),
+    );
+
+    await dispatcher.dispatchPluginEvent(
+      source: source,
+      terminalHandoffConsumed: consumed,
+    );
+
+    final output = await outputFuture;
+    expect(output.terminalHandoffConsumed, same(consumed));
     await dispatcher.dispose();
   });
 
@@ -154,6 +183,15 @@ class _GatedSessionEventService implements SessionEventService {
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) {
+    return generationCurrent && generation == currentGeneration;
+  }
+
+  @override
+  bool isCurrentEvent({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) {
     return generationCurrent && generation == currentGeneration;
   }
 

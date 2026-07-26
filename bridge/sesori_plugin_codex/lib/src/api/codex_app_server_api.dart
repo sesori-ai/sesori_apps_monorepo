@@ -54,7 +54,7 @@ class CodexAppServerApi {
     );
   }
 
-  Future<void> startTurn({
+  Future<CodexThreadEnvelopeDto> startTurn({
     required String threadId,
     required List<CodexTurnInputDto> input,
     required String? model,
@@ -84,7 +84,8 @@ class CodexAppServerApi {
         ),
       ).toJson();
     }
-    await _client.request(method: "turn/start", params: params);
+    final result = await _client.request(method: "turn/start", params: params);
+    return _decodeResponse(result: result, operation: "turn/start");
   }
 
   Future<void> compactThread({required String threadId}) async {

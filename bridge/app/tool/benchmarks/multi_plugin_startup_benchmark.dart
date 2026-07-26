@@ -330,6 +330,9 @@ class _FakePlugin implements BridgePlugin {
   PluginDiagnostics describe() => PluginDiagnostics(pluginId: _api.id, endpoint: null, details: const {});
 
   @override
+  Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
+
+  @override
   Future<void> shutdown({required Duration? budget}) => _shutdownFuture ??= Future.wait([
     _statusController.close(),
     _api.dispose(),

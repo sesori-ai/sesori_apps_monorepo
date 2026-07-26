@@ -346,18 +346,24 @@ class CodexPlugin implements CodexManagedApi {
       // This fallback covers a turn started by another app-server client.
       _rolloutTailer.start(sessionId: threadId);
     }
-    final activityChanged = _maintainBookkeeping(notification);
-    if (notification.method == "turn/completed" && threadId != null) {
+    final terminalHistory =
+        notification.method == "turn/completed" ||
+        notification.method == "error" ||
+        notification.method == "thread/closed" ||
+        (notification.method == "thread/status/changed" &&
+            _eventMapper.isIdleThreadStatus(notification.params["status"]));
+    if (terminalHistory && threadId != null) {
       await _rolloutTailer.finish(sessionId: threadId);
     }
+    // Keep work state busy until the terminal rollout drain has emitted its
+    // final tool updates. Forced runtime teardown waits for this transition
+    // before disconnecting the generation's event stream.
+    final activityChanged = _maintainBookkeeping(notification);
     _eventMapper.map(notification).forEach(_eventBuffer.add);
     if (notification.method == "item/completed" && threadId != null) {
       // The app-server item is provisional; a rollout output written for the
       // same call id immediately enriches it with executor metadata.
       _rolloutTailer.drain(sessionId: threadId);
-    }
-    if (threadId != null && (notification.method == "error" || notification.method == "thread/closed")) {
-      _rolloutTailer.stop(sessionId: threadId);
     }
     if (threadId != null &&
         (notification.method == "turn/completed" ||
@@ -452,11 +458,11 @@ class CodexPlugin implements CodexManagedApi {
       case "thread/status/changed":
         if (threadId == null) return false;
         if (!_recordAuthoritativeTurnEvidence(threadId)) return false;
+        final idle = _eventMapper.isIdleThreadStatus(params["status"]);
+        if (idle) _activeTurnByThread.remove(threadId);
         return _setSessionStatus(
           threadId,
-          _eventMapper.isIdleThreadStatus(params["status"])
-              ? const PluginSessionStatus.idle()
-              : const PluginSessionStatus.busy(),
+          idle ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy(),
         );
       case "thread/closed":
         if (threadId == null) return false;
@@ -661,10 +667,17 @@ class CodexPlugin implements CodexManagedApi {
 
   @override
   Future<void> abortSession({required String sessionId}) async {
+    _approvalRegistry?.cancelForSession(sessionId);
     final turnId = _activeTurnByThread[sessionId];
-    if (turnId == null) return;
+    if (turnId == null) {
+      _syncWorkState();
+      return;
+    }
     final client = _client;
-    if (client == null) return;
+    if (client == null) {
+      _syncWorkState();
+      return;
+    }
     try {
       await client.request(
         method: "turn/interrupt",
@@ -676,7 +689,31 @@ class CodexPlugin implements CodexManagedApi {
       if (error.code != -32602) rethrow;
     } finally {
       _activeTurnByThread.remove(sessionId);
+      _syncWorkState();
     }
+  }
+
+  @override
+  Future<Set<String>> interruptActiveWork({required Duration budget}) {
+    return () async {
+      final activeSessionIds = <String>{
+        ..._provisionalAcceptedTurnThreadIds,
+        ..._activeTurnByThread.keys,
+        for (final entry in _sessionStatuses.entries)
+          if (_isActiveStatus(entry.value)) entry.key,
+        ...?_approvalRegistry?.pendingSessionIds,
+      };
+      if (activeSessionIds.isEmpty) return const <String>{};
+
+      await Future.wait([
+        for (final sessionId in activeSessionIds) abortSession(sessionId: sessionId),
+      ]);
+      await _notificationWork;
+      if (currentWorkState != PluginWorkState.idle) {
+        await workState.firstWhere((state) => state == PluginWorkState.idle);
+      }
+      return Set<String>.unmodifiable(activeSessionIds);
+    }().timeout(budget);
   }
 
   Future<void> _startTurn({
@@ -723,6 +760,8 @@ class CodexPlugin implements CodexManagedApi {
         _eventMapper.setThreadModel(threadId, resolvedModel);
       }
       if (!_deletedThreadIds.contains(threadId) && (_turnEvidenceRevisionByThread[threadId] ?? 0) == evidenceRevision) {
+        final turnId = dispatch.turnId;
+        if (turnId != null) _activeTurnByThread[threadId] = turnId;
         _provisionalAcceptedTurnThreadIds.add(threadId);
       }
       _syncWorkState();

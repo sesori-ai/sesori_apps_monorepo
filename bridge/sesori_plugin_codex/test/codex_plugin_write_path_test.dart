@@ -619,7 +619,7 @@ void main() {
         agent: null,
         model: null,
       );
-      await Future<void>.delayed(Duration.zero);
+      await plugin.workState.firstWhere((state) => state == PluginWorkState.idle).timeout(const Duration(seconds: 1));
 
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
@@ -853,6 +853,112 @@ void main() {
       final params = fake.sentParamsFor("turn/interrupt");
       expect(params["threadId"], equals("t-1"));
       expect(params["turnId"], equals("u-active"));
+    });
+
+    test("forced interruption includes an accepted turn before turn/started arrives", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-force", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-force"}),
+        const _Response(result: null),
+      ]);
+      await plugin.sendPrompt(
+        sessionId: "t-force",
+        parts: const [PluginPromptPart.text(text: "long task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      var interruptionCompleted = false;
+
+      final interruption = plugin
+          .interruptActiveWork(budget: const Duration(seconds: 2))
+          .whenComplete(() => interruptionCompleted = true);
+      for (var attempt = 0; attempt < 100 && !fake.sentMethods.contains("turn/interrupt"); attempt++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(fake.sentMethods, contains("turn/interrupt"));
+      expect(interruptionCompleted, isFalse);
+
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-force",
+        "turn": {"id": "u-force"},
+      });
+
+      expect(await interruption, {"t-force"});
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("error waits for terminal rollout history before reporting idle", () async {
+      const sessionId = "019a0000-1111-2222-3333-bbbbbbbbbbbb";
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/07/23/"
+          "rollout-2026-07-23T08-00-00-$sessionId.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "timestamp": "2026-07-23T08:00:00Z",
+          "type": "session_meta",
+          "payload": {
+            "id": sessionId,
+            "timestamp": "2026-07-23T08:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+            "cli_version": "0.144.1",
+          },
+        })}\n",
+      );
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": sessionId},
+          },
+        ),
+        const _Response(result: {"turnId": "u-error"}),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      await plugin.sendPrompt(
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "run a tool")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final record = jsonEncode(
+        _toolCall(
+          id: "fc-error",
+          callId: "call-error",
+          name: "exec_command",
+          arguments: '{"cmd":"sleep 1"}',
+        ),
+      );
+      final split = record.length ~/ 2;
+      rollout.writeAsStringSync(record.substring(0, split), mode: FileMode.append);
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.pushNotification("error", {
+        "threadId": sessionId,
+        "error": {"message": "turn failed"},
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      rollout.writeAsStringSync("${record.substring(split)}\n", mode: FileMode.append);
+      await idle.timeout(const Duration(seconds: 1));
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.messageID),
+        contains("call-error"),
+      );
     });
 
     test("notification stream is mapped into bridge events", () async {

@@ -13,6 +13,7 @@ _CodexThreadEnvelopeDto _$CodexThreadEnvelopeDtoFromJson(Map json) =>
           : CodexThreadDto.fromJson(
               Map<String, dynamic>.from(json['thread'] as Map),
             ),
+      turnId: json['turnId'] as String?,
       model: json['model'] as String?,
       modelProvider: json['modelProvider'] as String?,
       cwd: json['cwd'] as String?,

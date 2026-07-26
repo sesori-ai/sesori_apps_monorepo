@@ -12,6 +12,8 @@ abstract interface class OpenCodeManagedApi implements NativeProjectsPluginApi {
   Stream<PluginWorkState> get workState;
   PluginWorkState get currentWorkState;
 
+  Future<Set<String>> interruptActiveWork({required Duration budget});
+
   /// Hydrates the session tracker from the server and starts the SSE stream.
   ///
   /// Idempotent: repeated calls share a single in-flight cold-start. Rethrows a

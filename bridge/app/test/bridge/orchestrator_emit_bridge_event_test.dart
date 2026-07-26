@@ -121,6 +121,42 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("a stopping generation delivers terminal handoff events only", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final runFuture = harness.composition.session.run();
+    unawaited(runFuture.catchError((_) {}));
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    final pluginRuntime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
+    final events = <SesoriSseEvent>[];
+    final subscription = harness.composition.session.localWireEvents.listen(events.add);
+    addTearDown(subscription.cancel);
+    pluginRuntime.generationCurrent = false;
+    final terminalHandoffConsumed = Completer<void>();
+    pluginRuntime.terminalHandoffConsumed = terminalHandoffConsumed;
+
+    harness.plugins.single.emitEvent(const BridgeSseVcsBranchUpdated());
+    harness.plugins.single.emitEvent(
+      const BridgeSseTerminalHandoff(event: BridgeSseProjectUpdated()),
+    );
+
+    await terminalHandoffConsumed.future.timeout(const Duration(seconds: 2));
+    expect(events.whereType<SesoriProjectsSummary>(), hasLength(1));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(events.whereType<SesoriVcsBranchUpdated>(), isEmpty);
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+  });
+
   test("post-normalization work is concurrent across plugins and ordered within each plugin", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
@@ -437,11 +473,11 @@ class _OrchestratorHarness {
     }
 
     final ready = Completer<void>();
-    final subscription = composition.session.localWireEvents
-        .where((event) => event is SesoriVcsBranchUpdated)
-        .listen((_) {
-          if (!ready.isCompleted) ready.complete();
-        });
+    final subscription = composition.session.localWireEvents.where((event) => event is SesoriVcsBranchUpdated).listen((
+      _,
+    ) {
+      if (!ready.isCompleted) ready.complete();
+    });
     try {
       for (var attempt = 0; attempt < 200 && !ready.isCompleted; attempt++) {
         plugins.first.emitEvent(const BridgeSseVcsBranchUpdated());

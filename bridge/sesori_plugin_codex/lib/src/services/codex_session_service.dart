@@ -113,7 +113,7 @@ class CodexSessionService {
     return thread;
   }
 
-  Future<({CodexThreadRecord? resumedThread, String? resolvedModel, bool started})> startTurn({
+  Future<({CodexThreadRecord? resumedThread, String? resolvedModel, String? turnId, bool started})> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
     required String? model,
@@ -132,20 +132,21 @@ class CodexSessionService {
     );
     var turnEffort = effort ?? turnMode?.defaultReasoningEffort;
     try {
-      final started = await _connectedThreadRepository.startTurn(
+      final turnId = await _connectedThreadRepository.startTurn(
         threadId: threadId,
         parts: parts,
         model: turnModel,
         effort: turnEffort,
         collaborationMode: turnMode,
       );
-      if (started) {
+      if (turnId != null) {
         _rememberThreadModel(threadId: threadId, model: turnModel);
       }
       return (
         resumedThread: resumed,
         resolvedModel: turnModel,
-        started: started,
+        turnId: turnId,
+        started: turnId != null,
       );
     } on CodexThreadNotFoundException {
       resumed = await resumeThreadIfNeeded(threadId: threadId, force: true);
@@ -159,20 +160,21 @@ class CodexSessionService {
         collaborationMode: collaborationMode,
       );
       turnEffort = effort ?? turnMode?.defaultReasoningEffort;
-      final started = await _connectedThreadRepository.startTurn(
+      final turnId = await _connectedThreadRepository.startTurn(
         threadId: threadId,
         parts: parts,
         model: turnModel,
         effort: turnEffort,
         collaborationMode: turnMode,
       );
-      if (started) {
+      if (turnId != null) {
         _rememberThreadModel(threadId: threadId, model: turnModel);
       }
       return (
         resumedThread: resumed,
         resolvedModel: turnModel,
-        started: started,
+        turnId: turnId,
+        started: turnId != null,
       );
     }
   }

@@ -13,8 +13,8 @@ import "plugin_work_state.dart";
 /// and remote-server archetypes whose "lifecycle" is just connectivity.
 ///
 /// Mixing this in implements `status`, `currentStatus`, and `shutdown()`;
-/// the plugin only supplies `api`, `describe()`, and (optionally)
-/// [onShutdown]:
+/// the plugin supplies `api`, `describe()`, `interruptActiveWork()`, and
+/// (optionally) [onShutdown]:
 ///
 /// ```dart
 /// class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
@@ -24,6 +24,9 @@ import "plugin_work_state.dart";
 ///   @override
 ///   PluginDiagnostics describe() =>
 ///       PluginDiagnostics(pluginId: api.id, endpoint: _url, details: const {});
+///
+///   @override
+///   Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
 ///
 ///   @override
 ///   Future<void> onShutdown({required Duration? budget}) => _api.dispose();

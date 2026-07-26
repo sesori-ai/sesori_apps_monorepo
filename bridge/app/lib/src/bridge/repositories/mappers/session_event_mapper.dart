@@ -6,6 +6,7 @@ class SessionEventMapper {
 
   Session? sessionInfo({required BridgeSseEvent event}) {
     return switch (event) {
+      BridgeSseTerminalHandoff(:final event) => sessionInfo(event: event),
       BridgeSseSessionCreated(:final info) ||
       BridgeSseSessionUpdated(:final info) ||
       BridgeSseSessionDeleted(:final info) => Session.fromJson(info),
@@ -19,6 +20,7 @@ class SessionEventMapper {
       return {session.id, ?session.parentID};
     }
     return switch (event) {
+      BridgeSseTerminalHandoff(:final event) => backendSessionIds(event: event),
       BridgeSseSessionsUpdated(:final sessionID) ||
       BridgeSseSessionDiff(:final sessionID) ||
       BridgeSseSessionCompacted(:final sessionID) ||
@@ -64,8 +66,9 @@ class SessionEventMapper {
       BridgeSseTuiToastShow() ||
       BridgeSseWorktreeReady() ||
       BridgeSseWorktreeFailed() => const <String>{},
-      BridgeSseSessionCreated() || BridgeSseSessionUpdated() || BridgeSseSessionDeleted() =>
-        throw StateError("session event parsing unexpectedly returned no session"),
+      BridgeSseSessionCreated() ||
+      BridgeSseSessionUpdated() ||
+      BridgeSseSessionDeleted() => throw StateError("session event parsing unexpectedly returned no session"),
     };
   }
 
@@ -90,6 +93,13 @@ class SessionEventMapper {
     }
 
     return switch (event) {
+      BridgeSseTerminalHandoff(:final event) => switch (map(
+        event: event,
+        sessionIdsByBackendId: sessionIdsByBackendId,
+      )) {
+        final mappedEvent? => BridgeSseTerminalHandoff(event: mappedEvent),
+        null => null,
+      },
       BridgeSseSessionCreated(:final info) => switch (mappedSession(info)) {
         final session? => BridgeSseSessionCreated(info: session.toJson()),
         null => null,
@@ -129,16 +139,17 @@ class SessionEventMapper {
         final sessionId? => BridgeSseSessionIdle(sessionID: sessionId),
         null => null,
       },
-      BridgeSseCommandExecuted(:final name, :final sessionID, :final arguments, :final messageID) =>
-        switch (mapped(sessionID)) {
-          final sessionId? => BridgeSseCommandExecuted(
-            name: name,
-            sessionID: sessionId,
-            arguments: arguments,
-            messageID: messageID,
-          ),
-          null => null,
-        },
+      BridgeSseCommandExecuted(:final name, :final sessionID, :final arguments, :final messageID) => switch (mapped(
+        sessionID,
+      )) {
+        final sessionId? => BridgeSseCommandExecuted(
+          name: name,
+          sessionID: sessionId,
+          arguments: arguments,
+          messageID: messageID,
+        ),
+        null => null,
+      },
       BridgeSseMessageUpdated(:final info) => switch (Message.fromJson(info)) {
         final message => switch (mapped(message.sessionID)) {
           final sessionId? => BridgeSseMessageUpdated(info: message.copyWith(sessionID: sessionId).toJson()),
@@ -164,15 +175,14 @@ class SessionEventMapper {
           ),
           null => null,
         },
-      BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID) =>
-        switch (mapped(sessionID)) {
-          final sessionId? => BridgeSseMessagePartRemoved(
-            sessionID: sessionId,
-            messageID: messageID,
-            partID: partID,
-          ),
-          null => null,
-        },
+      BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID) => switch (mapped(sessionID)) {
+        final sessionId? => BridgeSseMessagePartRemoved(
+          sessionID: sessionId,
+          messageID: messageID,
+          partID: partID,
+        ),
+        null => null,
+      },
       BridgeSsePermissionAsked(
         :final requestID,
         :final sessionID,
@@ -191,48 +201,56 @@ class SessionEventMapper {
             ),
           _ => null,
         },
-      BridgeSsePermissionReplied(:final requestID, :final sessionID, :final displaySessionId, :final reply) =>
-        switch ((mapped(sessionID), mappedOptional(displaySessionId))) {
-          (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
-            BridgeSsePermissionReplied(
-              requestID: requestID,
-              sessionID: sessionId,
-              displaySessionId: displayId,
-              reply: reply,
-            ),
-          _ => null,
-        },
-      BridgeSseQuestionAsked(:final id, :final sessionID, :final displaySessionId, :final questions) =>
-        switch ((mapped(sessionID), mappedOptional(displaySessionId))) {
-          (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
-            BridgeSseQuestionAsked(
-              id: id,
-              sessionID: sessionId,
-              displaySessionId: displayId,
-              questions: questions,
-            ),
-          _ => null,
-        },
-      BridgeSseQuestionReplied(:final requestID, :final sessionID, :final displaySessionId) =>
-        switch ((mapped(sessionID), mappedOptional(displaySessionId))) {
-          (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
-            BridgeSseQuestionReplied(
-              requestID: requestID,
-              sessionID: sessionId,
-              displaySessionId: displayId,
-            ),
-          _ => null,
-        },
-      BridgeSseQuestionRejected(:final requestID, :final sessionID, :final displaySessionId) =>
-        switch ((mapped(sessionID), mappedOptional(displaySessionId))) {
-          (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
-            BridgeSseQuestionRejected(
-              requestID: requestID,
-              sessionID: sessionId,
-              displaySessionId: displayId,
-            ),
-          _ => null,
-        },
+      BridgeSsePermissionReplied(:final requestID, :final sessionID, :final displaySessionId, :final reply) => switch ((
+        mapped(sessionID),
+        mappedOptional(displaySessionId),
+      )) {
+        (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
+          BridgeSsePermissionReplied(
+            requestID: requestID,
+            sessionID: sessionId,
+            displaySessionId: displayId,
+            reply: reply,
+          ),
+        _ => null,
+      },
+      BridgeSseQuestionAsked(:final id, :final sessionID, :final displaySessionId, :final questions) => switch ((
+        mapped(sessionID),
+        mappedOptional(displaySessionId),
+      )) {
+        (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
+          BridgeSseQuestionAsked(
+            id: id,
+            sessionID: sessionId,
+            displaySessionId: displayId,
+            questions: questions,
+          ),
+        _ => null,
+      },
+      BridgeSseQuestionReplied(:final requestID, :final sessionID, :final displaySessionId) => switch ((
+        mapped(sessionID),
+        mappedOptional(displaySessionId),
+      )) {
+        (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
+          BridgeSseQuestionReplied(
+            requestID: requestID,
+            sessionID: sessionId,
+            displaySessionId: displayId,
+          ),
+        _ => null,
+      },
+      BridgeSseQuestionRejected(:final requestID, :final sessionID, :final displaySessionId) => switch ((
+        mapped(sessionID),
+        mappedOptional(displaySessionId),
+      )) {
+        (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
+          BridgeSseQuestionRejected(
+            requestID: requestID,
+            sessionID: sessionId,
+            displaySessionId: displayId,
+          ),
+        _ => null,
+      },
       BridgeSseTodoUpdated(:final sessionID) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseTodoUpdated(sessionID: sessionId),
         null => null,

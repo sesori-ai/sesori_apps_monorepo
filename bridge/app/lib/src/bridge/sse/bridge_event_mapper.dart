@@ -20,6 +20,7 @@ class BridgeEventMapper {
   SesoriSseEvent? map(BridgeSseEvent event) {
     try {
       return switch (event) {
+        BridgeSseTerminalHandoff() => throw StateError("terminal handoff must be unwrapped by Orchestrator"),
         BridgeSseServerConnected() => null,
         BridgeSseServerHeartbeat() => null,
         BridgeSseServerInstanceDisposed() => null,

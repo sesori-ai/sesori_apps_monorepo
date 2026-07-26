@@ -66,6 +66,11 @@ class CodexBridgePlugin implements BridgePlugin {
     );
   }
 
+  @override
+  Future<Set<String>> interruptActiveWork({required Duration budget}) {
+    return api.interruptActiveWork(budget: budget);
+  }
+
   /// Stops the plugin in order: disarm the monitor (so the child's deliberate
   /// exit is never mistaken for a crash), tear down the api, then stop the owned
   /// `codex app-server` process (when this bridge owns one). Idempotent —

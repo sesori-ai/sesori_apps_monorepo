@@ -59,6 +59,11 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
     );
   }
 
+  @override
+  Future<Set<String>> interruptActiveWork({required Duration budget}) {
+    return _plugin.interruptActiveWork(budget: budget);
+  }
+
   /// Eagerly establishes the ACP connection within [budget] so the agent is
   /// spawned and the `initialize` handshake done before the first mobile
   /// request, and the reported status reflects reality.

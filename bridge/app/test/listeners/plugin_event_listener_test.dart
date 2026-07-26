@@ -18,9 +18,20 @@ void main() {
         dispatcher: dispatcher,
       );
       listener.start();
+      final terminalHandoffConsumed = Completer<void>();
 
-      source.add((pluginId: "plugin-a", generation: 1, event: const BridgeSseSessionDiff(sessionID: "first")));
-      source.add((pluginId: "plugin-a", generation: 1, event: const BridgeSseProjectUpdated()));
+      source.add((
+        pluginId: "plugin-a",
+        generation: 1,
+        event: const BridgeSseSessionDiff(sessionID: "first"),
+        terminalHandoffConsumed: null,
+      ));
+      source.add((
+        pluginId: "plugin-a",
+        generation: 1,
+        event: const BridgeSseProjectUpdated(),
+        terminalHandoffConsumed: terminalHandoffConsumed,
+      ));
       await Future<void>.delayed(Duration.zero);
 
       expect(dispatcher.captured.map((source) => source.event.runtimeType), [
@@ -28,6 +39,7 @@ void main() {
         BridgeSseProjectUpdated,
       ]);
       expect(dispatcher.dispatched, hasLength(2));
+      expect(dispatcher.terminalHandoffConsumptions, [null, terminalHandoffConsumed]);
 
       firstGate.complete();
       await dispatcher.dispatched.last;
@@ -62,6 +74,7 @@ class _RecordingSessionEventDispatcher implements SessionEventDispatcher {
   final Future<void> _firstGate;
   final List<SourcedBridgeEvent> captured = [];
   final List<Future<void>> dispatched = [];
+  final List<Completer<void>?> terminalHandoffConsumptions = [];
 
   _RecordingSessionEventDispatcher({required Future<void> firstGate}) : _firstGate = firstGate;
 
@@ -82,9 +95,13 @@ class _RecordingSessionEventDispatcher implements SessionEventDispatcher {
   }
 
   @override
-  Future<void> dispatchPluginEvent({required SourcedBridgeEvent source}) {
+  Future<void> dispatchPluginEvent({
+    required SourcedBridgeEvent source,
+    required Completer<void>? terminalHandoffConsumed,
+  }) {
     final future = dispatched.isEmpty ? _firstGate : Future<void>.value();
     dispatched.add(future);
+    terminalHandoffConsumptions.add(terminalHandoffConsumed);
     return future;
   }
 

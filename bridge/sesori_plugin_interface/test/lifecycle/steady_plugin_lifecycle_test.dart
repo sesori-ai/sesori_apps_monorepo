@@ -246,6 +246,9 @@ class _SteadyPlugin with SteadyPluginLifecycle {
   PluginDiagnostics describe() => const PluginDiagnostics(pluginId: 'steady-test', endpoint: null, details: {});
 
   @override
+  Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
+
+  @override
   Future<void> onShutdown({required Duration? budget}) async {
     onShutdownCalls++;
     lastBudget = budget;

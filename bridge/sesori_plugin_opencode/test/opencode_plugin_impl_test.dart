@@ -507,6 +507,62 @@ void main() {
       );
     });
 
+    test("forced interruption includes an accepted prompt before busy SSE arrives", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      final initialProjectUpdated = Completer<void>();
+      final idleEvent = Completer<void>();
+      final subscription = plugin.events.listen((event) {
+        if (event is BridgeSseProjectUpdated && !initialProjectUpdated.isCompleted) {
+          initialProjectUpdated.complete();
+        }
+        if (event is BridgeSseSessionStatus &&
+            event.sessionID == "s-root" &&
+            event.status["type"] == "idle" &&
+            !idleEvent.isCompleted) {
+          idleEvent.complete();
+        }
+      });
+      addTearDown(subscription.cancel);
+      await initialProjectUpdated.future;
+      await plugin.sendPrompt(
+        sessionId: "s-root",
+        parts: const [PluginPromptPart.text(text: "long task")],
+        agent: null,
+        variant: null,
+        model: null,
+      );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      var completed = false;
+      final interruption = plugin.interruptActiveWork(budget: const Duration(seconds: 2)).then((sessionIds) {
+        completed = true;
+        return sessionIds;
+      });
+      expect(await server.waitForAbort(), "s-root");
+      expect(completed, isFalse);
+
+      await server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "session.status",
+            "properties": {
+              "sessionID": "s-root",
+              "status": {"type": "idle"},
+            },
+          },
+        }),
+      );
+      await idleEvent.future.timeout(const Duration(seconds: 1));
+      final interrupted = await interruption;
+
+      expect(interrupted, {"s-root"});
+      expect(server.abortedSessionIds, ["s-root"]);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("unknown and malformed SSE frames are ignored without emitting bridge events", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await server.waitForSseConnection();
@@ -872,6 +928,11 @@ class _FakeOpenCodeServer {
   int promptStatusCode = HttpStatus.ok;
   int commandStatusCode = HttpStatus.ok;
   bool acceptSseConnections = true;
+  final List<String> abortedSessionIds = [];
+  final Completer<String> _firstAbort = Completer<String>();
+  final Map<String, Map<String, dynamic>> sessionStatuses = {
+    "s-root": {"type": "idle"},
+  };
 
   /// Extra sessions appended to the `GET /session` response, so tests can
   /// stage sessions in directories the fixed fixtures don't cover.
@@ -966,9 +1027,7 @@ class _FakeOpenCodeServer {
       }
 
       if (request.method == "GET" && path == "/session/status") {
-        await _sendJson(request.response, {
-          "s-root": {"type": "idle"},
-        });
+        await _sendJson(request.response, sessionStatuses);
         return;
       }
 
@@ -1056,6 +1115,18 @@ class _FakeOpenCodeServer {
           return;
         }
         await _sendJson(request.response, true);
+        return;
+      }
+
+      final abortMatch = RegExp(r"^/session/([^/]+)/abort$").firstMatch(path);
+      if (abortMatch != null && request.method == "POST") {
+        final sessionId = abortMatch.group(1)!;
+        abortedSessionIds.add(sessionId);
+        sessionStatuses[sessionId] = {"type": "idle"};
+        await _sendJson(request.response, true);
+        if (!_firstAbort.isCompleted) {
+          _firstAbort.complete(sessionId);
+        }
         return;
       }
 
@@ -1681,6 +1752,7 @@ class _FakeOpenCodeServer {
         request.response.headers.contentType = ContentType("text", "event-stream");
         request.response.headers.set("cache-control", "no-cache");
         request.response.headers.set("connection", "keep-alive");
+        request.response.bufferOutput = false;
         request.response.write(": connected\n\n");
         await request.response.flush();
         _sseClients.add(request.response);
@@ -1702,6 +1774,8 @@ class _FakeOpenCodeServer {
   }
 
   Future<void> waitForSseConnection() => _firstSseClient.future;
+
+  Future<String> waitForAbort() => _firstAbort.future;
 
   Future<void> emitRawSse(String data) async {
     final futures = <Future<void>>[];

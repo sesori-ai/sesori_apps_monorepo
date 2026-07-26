@@ -779,9 +779,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required ({String providerID, String modelID})? model,
   }) async {
     final backendCommand = commandForDispatch(command: command);
-    final body = arguments.isEmpty
-        ? "/$backendCommand"
-        : "/$backendCommand $arguments";
+    final body = arguments.isEmpty ? "/$backendCommand" : "/$backendCommand $arguments";
     final visibleBody = userVisibleArguments == null ? "/$command" : "/$command $userVisibleArguments";
     // Acceptance gate — see [sendPrompt].
     await _connectedClient();
@@ -1168,6 +1166,24 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // turn was blocked on; otherwise the agent keeps waiting on that JSON-RPC
     // request and the phone shows a stale prompt.
     _approvalRegistry?.cancelForSession(sessionId);
+  }
+
+  Future<Set<String>> interruptActiveWork({required Duration budget}) {
+    return () async {
+      final activeSessionIds = <String>{
+        for (final summary in getActiveSessionsSummary())
+          for (final session in summary.activeSessions) ...[session.id, ...session.childSessionIds],
+      };
+      if (activeSessionIds.isEmpty) return const <String>{};
+
+      await Future.wait([
+        for (final sessionId in activeSessionIds) abortSession(sessionId: sessionId),
+      ]);
+      if (currentWorkState != PluginWorkState.idle) {
+        await workState.firstWhere((state) => state == PluginWorkState.idle);
+      }
+      return Set<String>.unmodifiable(activeSessionIds);
+    }().timeout(budget);
   }
 
   @override

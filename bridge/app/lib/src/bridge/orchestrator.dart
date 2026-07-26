@@ -1046,14 +1046,17 @@ class OrchestratorSession {
       try {
         final generation = source.generation;
         if (generation != null &&
-            !_pluginRuntime.isCurrentGeneration(
+            !_pluginRuntime.isCurrentEvent(
               pluginId: source.pluginId,
               generation: generation,
+              event: source.event,
             )) {
           return;
         }
         await _processPluginEvent(source);
       } finally {
+        final consumed = source.terminalHandoffConsumed;
+        if (consumed != null && !consumed.isCompleted) consumed.complete();
         release.complete();
       }
     }();
@@ -1062,9 +1065,15 @@ class OrchestratorSession {
   Future<void> _processPluginEvent(NormalizedSourcedBridgeEvent source) async {
     final pluginId = source.pluginId;
     final generation = source.generation;
-    final event = source.event;
+    final sourcedEvent = source.event;
+    final terminalHandoff = sourcedEvent is BridgeSseTerminalHandoff;
+    final event = switch (sourcedEvent) {
+      BridgeSseTerminalHandoff(:final event) => event,
+      _ => sourcedEvent,
+    };
     try {
-      if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+      if (generation != null &&
+          !_pluginRuntime.isCurrentEvent(pluginId: pluginId, generation: generation, event: sourcedEvent)) {
         return;
       }
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
@@ -1093,13 +1102,14 @@ class OrchestratorSession {
         if (config.yolo) await _permissionAutoApprovalService.approvePending();
       }
 
-      if (config.yolo && event is BridgeSseProjectUpdated) {
+      if (config.yolo && event is BridgeSseProjectUpdated && !terminalHandoff) {
         await _permissionAutoApprovalService.approvePending();
       }
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
       final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event);
-      if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+      if (generation != null &&
+          !_pluginRuntime.isCurrentEvent(pluginId: pluginId, generation: generation, event: sourcedEvent)) {
         return;
       }
       if (sesoriEvent != null) {
@@ -1107,6 +1117,7 @@ class OrchestratorSession {
           event: sesoriEvent,
           pluginId: pluginId,
           generation: generation,
+          allowDuringStop: terminalHandoff,
         );
       } else if (!refreshProjectsSummary) {
         Log.v("[sse] mapping returned null — event dropped");
@@ -1115,12 +1126,14 @@ class OrchestratorSession {
       // Both trigger types mean activity changed. Rebuild from repository data
       // after delivering session.deleted so clients observe deletion first.
       if (refreshProjectsSummary) {
-        if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+        if (generation != null &&
+            !_pluginRuntime.isCurrentEvent(pluginId: pluginId, generation: generation, event: sourcedEvent)) {
           return;
         }
         await _buildAndDeliverProjectsSummaryInOrder(
           pluginId: pluginId,
           generation: generation,
+          allowDuringStop: terminalHandoff,
         );
       }
     } catch (e, st) {
@@ -1144,8 +1157,9 @@ class OrchestratorSession {
     required SesoriSseEvent event,
     required String? pluginId,
     required int? generation,
+    required bool allowDuringStop,
   }) async {
-    if (!_isCurrentSource(pluginId: pluginId, generation: generation)) return;
+    if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
     Log.v(
       "[sse] mapped to: ${event.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
     );
@@ -1158,7 +1172,7 @@ class OrchestratorSession {
     if (event is SesoriSessionCreated) {
       await _routeUnseenActivity(event);
     }
-    if (!_isCurrentSource(pluginId: pluginId, generation: generation)) return;
+    if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
     _enqueueWireEvent(event);
     if (event is! SesoriSessionCreated) {
       try {
@@ -1177,6 +1191,7 @@ class OrchestratorSession {
   Future<void> _buildAndDeliverProjectsSummaryInOrder({
     required String? pluginId,
     required int? generation,
+    required bool allowDuringStop,
   }) {
     final previous = _projectsSummaryTail;
     final release = Completer<void>();
@@ -1184,13 +1199,14 @@ class OrchestratorSession {
     return () async {
       await previous;
       try {
-        if (!_isCurrentSource(pluginId: pluginId, generation: generation)) return;
+        if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
         final summary = await _buildProjectsSummary();
         if (summary != null) {
           await _deliverSseEvent(
             event: summary,
             pluginId: pluginId,
             generation: generation,
+            allowDuringStop: allowDuringStop,
           );
         }
       } finally {
@@ -1199,13 +1215,16 @@ class OrchestratorSession {
     }();
   }
 
-  bool _isCurrentSource({required String? pluginId, required int? generation}) {
+  bool _isCurrentSource({
+    required String? pluginId,
+    required int? generation,
+    required bool allowDuringStop,
+  }) {
     if (generation == null) return true;
-    return pluginId != null &&
-        _pluginRuntime.isCurrentGeneration(
-          pluginId: pluginId,
-          generation: generation,
-        );
+    if (pluginId == null) return false;
+    return allowDuringStop
+        ? _pluginRuntime.isCurrentEventGeneration(pluginId: pluginId, generation: generation)
+        : _pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation);
   }
 
   void _enqueueWireEvent(SesoriSseEvent event) {
