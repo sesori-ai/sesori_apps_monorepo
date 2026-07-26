@@ -73,8 +73,7 @@ class AcpApprovalRegistry {
     return AcpApprovalRegistry(
       emit: emit,
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
-      respondError: (id, code, message) =>
-          client.respondToServerRequestWithError(id: id, code: code, message: message),
+      respondError: (id, code, message) => client.respondToServerRequestWithError(id: id, code: code, message: message),
       idGenerator: idGenerator,
       activeSessionResolver: activeSessionResolver,
     );
@@ -104,8 +103,7 @@ class AcpApprovalRegistry {
   void respond(Object acpId, Object? result) => _respond(acpId, result);
 
   /// Respond to a server request with a JSON-RPC error.
-  void respondError(Object acpId, int code, String message) =>
-      _respondError(acpId, code, message);
+  void respondError(Object acpId, int code, String message) => _respondError(acpId, code, message);
 
   /// Generates the next stable bridge request id (`br-N`).
   String generateBridgeId() {
@@ -199,14 +197,12 @@ class AcpApprovalRegistry {
         .toList(growable: false);
   }
 
-  String? sessionIdFor(String bridgeRequestId) =>
-      _pending[bridgeRequestId]?.sessionId;
+  String? sessionIdFor(String bridgeRequestId) => _pending[bridgeRequestId]?.sessionId;
 
   /// Whether [sessionId] is blocked awaiting user input — a pending permission
   /// ask or question. Both kinds count, mirroring the OpenCode tracker's
   /// "awaiting input" notion (see `_rootHasPendingInput`).
-  bool hasPendingInput(String sessionId) =>
-      _pending.values.any((e) => e.sessionId == sessionId);
+  bool hasPendingInput(String sessionId) => _pending.values.any((e) => e.sessionId == sessionId);
 
   bool get hasAnyPendingInput => _pending.isNotEmpty;
 
@@ -290,8 +286,7 @@ class AcpApprovalRegistry {
   bool replyQuestion(String bridgeRequestId, List<List<String>> answers) {
     final entry = _pending.remove(bridgeRequestId);
     if (entry == null || entry.kind != _PendingKind.question) return false;
-    final payload = entry.replyBuilder?.call(answers) ??
-        {"answers": answers.map((row) => row.toList()).toList()};
+    final payload = entry.replyBuilder?.call(answers) ?? {"answers": answers.map((row) => row.toList()).toList()};
     _respond(entry.acpId, payload);
     _emit(
       BridgeSseQuestionReplied(
@@ -410,10 +405,7 @@ class AcpApprovalRegistry {
   List<Map<String, dynamic>> _optionsFrom(Map<String, dynamic> params) {
     final raw = params["options"];
     if (raw is! List) return const [];
-    return raw
-        .whereType<Map<dynamic, dynamic>>()
-        .map((m) => m.cast<String, dynamic>())
-        .toList(growable: false);
+    return raw.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()).toList(growable: false);
   }
 
   String? _selectOptionId(
