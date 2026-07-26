@@ -7,7 +7,8 @@
 - **Current branch:** Stage 13 rebuild branch TBD
 - **Current stage:** Stage 13 — redesigned mobile plugin settings
 - **Next action:** reassess drift from frozen PR #511 and define the Stage 13
-  replacement delivery
+  child delivery, including an estimated changed-line range for every
+  approximately-1,000-line PR slice before implementation starts
 
 ## Frozen Oversized Stack
 
@@ -38,7 +39,7 @@ run their focused verification again.
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 merged as `41e03f12` |
 | [x] | Stage 12 — headless management | six-PR child series | #563, #567-#570, and #572 merged; recorded in `.plan/completed/setup-aware-plugin-management` |
-| [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
+| [ ] | Stage 13 — redesigned mobile plugin settings | child series and branches TBD | reassess frozen #511, then define coherent ~1,000-line PR targets |
 
 ## Locked Redesign Deltas
 
@@ -56,6 +57,10 @@ run their focused verification again.
   persisted timeout settings; OpenCode `--opencode-no-auto-start` uses it.
 - Headless management removes authority/order/serialized enabled.
 - Settings work targets the merged Prego Settings landing/sub-page architecture.
+- Remaining delivery aims for approximately 1,000 changed lines per PR. This is
+  a reviewability target rather than a hard limit; simple generated or
+  mechanical excess requires an explicit rationale, while complex work splits
+  earlier when useful.
 - No compatibility machinery is retained for any contract from the superseded
   oversized stack.
 - Aggregate projects are bridge-owned and may include sessions from multiple
@@ -313,3 +318,14 @@ run their focused verification again.
 - Frozen PR #510 was closed as superseded. The completed child plan and its
   detailed verification record moved to
   `.plan/completed/setup-aware-plugin-management`.
+
+### 2026-07-26 — Stage 13 PR sizing guardrail
+
+- Added an approximately-1,000-changed-line planning target for each remaining
+  PR, with documented judgment for simple generated or mechanical excess.
+- Required the Stage 13 child plan to record per-slice changed-line estimates
+  before implementation and to split substantive work before a PR becomes
+  oversized.
+- Preserved coherent, compiling vertical slices as the primary boundary; the
+  numerical target does not justify broken intermediate contracts or
+  file-only splits.

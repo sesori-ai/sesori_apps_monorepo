@@ -549,6 +549,27 @@ copy.
   lose denylist enforcement for that run. The new bridge does not mirror legacy
   allowlists.
 
+## PR Sizing Guardrail
+
+- Plan each PR around approximately 1,000 changed lines (additions plus
+  deletions against its base). This is a reviewability target, not a hard
+  numerical gate.
+- Count generated and mechanical lockstep changes when estimating size so their
+  review cost stays visible. A PR may exceed the target when the excess is
+  simple generated output or repetitive low-risk code and the substantive
+  behavior remains one clear review boundary; document that rationale in the
+  PR body.
+- Architecture-heavy, stateful, security-sensitive, or concurrency-sensitive
+  work should split earlier when useful. Being below 1,000 lines does not make
+  a mixed or difficult diff reviewable.
+- Every child delivery plan records an estimated changed-line range for each PR.
+  Measure the actual branch diff while implementing. If substantive work is
+  trending materially beyond the target, stop and split it before opening the
+  PR rather than relying on review feedback to reduce an oversized diff.
+- Slices must still compile, pass their focused verification, and provide a
+  coherent review boundary. Do not create broken intermediate contracts or
+  artificial file-only splits merely to satisfy the target.
+
 ## Per-Stage Production File Ledger
 
 Generated Freezed/JSON/Injectable/localization companions are regenerated from
@@ -647,6 +668,11 @@ the listed source files and committed with their stage.
 
 ### Stage 13 / former PR #511 files
 
+This ledger is provisional source material for a dedicated Stage 13 child plan;
+it is not one PR boundary. The child plan must split the work into coherent
+approximately-1,000-line slices and record a size estimate for each slice before
+the first implementation branch starts.
+
 | Workspace | Production files/classes |
 |---|---|
 | Shared and module-core transport/persistence | Add nullable `bridgeId` to `plugin_list_response.dart`; modify `plugin_api.dart`, add `plugin_preference_api.dart`, `plugin_repository.dart`, management result models, add `plugin_preference_repository.dart`, DI source, barrel exports. |
@@ -722,6 +748,12 @@ closed as superseded and remains source material only.
 - Settings landing row and dedicated Plugins sub-page using merged Prego
   settings primitives;
 - focused interaction, conflict/force, reconnect, and route tests.
+
+Stage 13 begins by creating a child delivery plan that reassesses current-main
+drift from frozen PR #511, defines independently reviewable slices, and gives
+each slice an estimated changed-line range. Each PR aims for approximately
+1,000 changed lines under the sizing guardrail above. No Stage 13 implementation
+branch starts until those review and size boundaries are recorded.
 
 Keep one open replacement PR and one local successor built from that PR's latest
 reviewed head. After the predecessor merges, merge updated `origin/main` into
