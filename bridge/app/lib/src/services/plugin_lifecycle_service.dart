@@ -312,7 +312,7 @@ class PluginLifecycleService {
       final plugins = switch (request) {
         PluginIdleTimeoutApplyAllRequest(:final idleTimeoutMins) => current.plugins.withDefaultIdleTimeout(
           idleTimeoutMins: idleTimeoutMins,
-          clearOverridePluginIds: _pluginIdsSupporting(PluginControlCapability.idleTimeout),
+          clearOverridePluginIds: _pluginIdsSupporting(capability: PluginControlCapability.idleTimeout),
         ),
         PluginIdleTimeoutSetOverrideRequest(:final pluginId, :final idleTimeoutMins) =>
           current.plugins.withPluginIdleTimeout(pluginId: pluginId, idleTimeoutMins: idleTimeoutMins),
@@ -722,19 +722,20 @@ class PluginLifecycleService {
       idleTimeoutMins: _effectiveIdleTimeoutMins(plugin.id),
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
       managementCapabilities: {
-        for (final capability in plugin.managementCapabilities) _mapManagementCapability(capability),
+        for (final capability in plugin.managementCapabilities) _mapManagementCapability(capability: capability),
       },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
     );
   }
 
-  PluginManagementCapability _mapManagementCapability(PluginControlCapability capability) => switch (capability) {
-    PluginControlCapability.lifecycle => PluginManagementCapability.lifecycle,
-    PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
-    PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
-  };
+  PluginManagementCapability _mapManagementCapability({required PluginControlCapability capability}) =>
+      switch (capability) {
+        PluginControlCapability.lifecycle => PluginManagementCapability.lifecycle,
+        PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
+        PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
+      };
 
-  Set<String> _pluginIdsSupporting(PluginControlCapability capability) {
+  Set<String> _pluginIdsSupporting({required PluginControlCapability capability}) {
     final capabilitiesById = _managementCapabilitiesById;
     if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
     return {
@@ -744,9 +745,7 @@ class PluginLifecycleService {
   }
 
   void _requireManagementCapability({required String pluginId, required PluginControlCapability capability}) {
-    final capabilitiesById = _managementCapabilitiesById;
-    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
-    if (capabilitiesById[pluginId]?.contains(capability) ?? false) return;
+    if (_supportsManagementCapability(pluginId: pluginId, capability: capability)) return;
     throw PluginManagementConflictException(
       PluginLifecycleConflict(
         pluginId: pluginId,
@@ -754,6 +753,23 @@ class PluginLifecycleService {
         current: _managementRowForPluginId(pluginId),
       ),
     );
+  }
+
+  bool _supportsManagementCapability({required String pluginId, required PluginControlCapability capability}) {
+    final capabilitiesById = _managementCapabilitiesById;
+    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
+    return capabilitiesById[pluginId]?.contains(capability) ?? false;
+  }
+
+  bool _supportsIdleSuspension({required String pluginId}) {
+    return _supportsManagementCapability(
+          pluginId: pluginId,
+          capability: PluginControlCapability.lifecycle,
+        ) &&
+        _supportsManagementCapability(
+          pluginId: pluginId,
+          capability: PluginControlCapability.idleTimeout,
+        );
   }
 
   PluginManagementMetadata _managementRowForPluginId(String pluginId) {
@@ -912,7 +928,7 @@ class PluginLifecycleService {
     _idleTimers.keys.where((pluginId) => !currentIds.contains(pluginId)).toList().forEach(_cancelIdleTimer);
     for (final snapshot in snapshots) {
       final timeoutMins = _effectiveIdleTimeoutMins(snapshot.pluginId);
-      if (timeoutMins <= 0 || !_isIdleCandidate(snapshot)) {
+      if (!_supportsIdleSuspension(pluginId: snapshot.pluginId) || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) {
         _cancelIdleTimer(snapshot.pluginId);
         continue;
       }
@@ -959,6 +975,7 @@ class PluginLifecycleService {
   }) async {
     if (_disposing || !identical(_idleTimers[pluginId]?.timer, timer)) return;
     _idleTimers.remove(pluginId);
+    if (!_supportsIdleSuspension(pluginId: pluginId)) return;
     final snapshot = _lifecycleRepository.snapshot.where((entry) => entry.pluginId == pluginId).firstOrNull;
     final timeoutMins = _effectiveIdleTimeoutMins(pluginId);
     if (snapshot == null || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) return;

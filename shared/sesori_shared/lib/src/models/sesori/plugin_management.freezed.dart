@@ -15,11 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginManagementMetadata {
 
- PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridge payloads cannot declare
-// whether management operations are safe. Empty fails closed so newer
-// clients do not expose controls for an externally managed runtime. Remove
-// this default and make the field required when those bridges are unsupported.
-@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities; String? get actionHint;
+ PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities; String? get actionHint;
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -99,7 +95,7 @@ $PluginSetupMetadataCopyWith<$Res> get setup {
 @JsonSerializable()
 
 class _PluginManagementMetadata implements PluginManagementMetadata {
-  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) final  Set<PluginManagementCapability> managementCapabilities = const <PluginManagementCapability>{}, required this.actionHint}): _managementCapabilities = managementCapabilities;
+  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) required final  Set<PluginManagementCapability> managementCapabilities, required this.actionHint}): _managementCapabilities = managementCapabilities;
   factory _PluginManagementMetadata.fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
 
 @override final  PluginSetupMetadata setup;
@@ -107,15 +103,7 @@ class _PluginManagementMetadata implements PluginManagementMetadata {
 @override@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) final  PluginManagementWorkState workState;
 @override final  int idleTimeoutMins;
 @override final  bool hasIdleTimeoutOverride;
-// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridge payloads cannot declare
-// whether management operations are safe. Empty fails closed so newer
-// clients do not expose controls for an externally managed runtime. Remove
-// this default and make the field required when those bridges are unsupported.
  final  Set<PluginManagementCapability> _managementCapabilities;
-// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridge payloads cannot declare
-// whether management operations are safe. Empty fails closed so newer
-// clients do not expose controls for an externally managed runtime. Remove
-// this default and make the field required when those bridges are unsupported.
 @override@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities {
   if (_managementCapabilities is EqualUnmodifiableSetView) return _managementCapabilities;
   // ignore: implicit_dynamic_type

@@ -32,6 +32,11 @@ const _response = PluginManagementResponse(
       workState: PluginManagementWorkState.idle,
       idleTimeoutMins: 10,
       hasIdleTimeoutOverride: false,
+      managementCapabilities: {
+        PluginManagementCapability.lifecycle,
+        PluginManagementCapability.setupRefresh,
+        PluginManagementCapability.idleTimeout,
+      },
       actionHint: null,
     ),
     PluginManagementMetadata(
@@ -45,6 +50,11 @@ const _response = PluginManagementResponse(
       workState: PluginManagementWorkState.unknown,
       idleTimeoutMins: 20,
       hasIdleTimeoutOverride: true,
+      managementCapabilities: {
+        PluginManagementCapability.lifecycle,
+        PluginManagementCapability.setupRefresh,
+        PluginManagementCapability.idleTimeout,
+      },
       actionHint: "Future guidance.",
     ),
   ],

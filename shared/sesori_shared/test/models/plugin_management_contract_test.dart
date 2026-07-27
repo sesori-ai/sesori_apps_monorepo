@@ -71,12 +71,12 @@ void main() {
     );
   });
 
-  test("omitted management capabilities decode to empty", () {
+  test("management capabilities are required", () {
     final json = plugin.toJson()..remove("managementCapabilities");
 
     expect(
-      PluginManagementMetadata.fromJson(json).managementCapabilities,
-      isEmpty,
+      () => PluginManagementMetadata.fromJson(json),
+      throwsA(anything),
     );
   });
 

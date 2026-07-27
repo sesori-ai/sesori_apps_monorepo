@@ -156,8 +156,9 @@
   owns the controls UI. Historical merged PR title suffixes remain `/7`.
 - Step 7/8 (2026-07-27): added independent backend-neutral capability enums to
   the plugin interface and shared wire contract, with `bridge/app` owning the
-  mapping. Omitted legacy capability data fails closed to an empty set and
-  future values decode to `unknown`. OpenCode no-auto-start declares setup
+  mapping. The capability field is required with no default because it and the
+  controls ship together before production; future values decode to `unknown`.
+  OpenCode no-auto-start declares setup
   refresh only; managed OpenCode, Codex, and Cursor retain all default
   capabilities. The bridge rejects unsupported lifecycle and per-plugin timeout
   operations before runtime or settings effects, returns typed non-forceable
@@ -166,4 +167,7 @@
   OpenCode (398), and bridge app (2160) suites pass; fatal analysis is clean in
   those packages, Codex, Cursor, module_core, mobile, desktop, and
   module_desktop_core. Architecture review approved the Layer-0 independence,
-  bridge mapping/enforcement, and conservative compatibility behavior.
+  bridge mapping/enforcement, and required capability contract. PR review also
+  required idle suspension to check lifecycle plus timeout capabilities before
+  scheduling and stopping, and corrected new private helpers to required named
+  parameters.

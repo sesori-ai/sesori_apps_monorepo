@@ -617,6 +617,11 @@ PluginLifecycleConflict _conflict(List<PluginLifecycleConflictReason> reasons) {
       workState: PluginManagementWorkState.idle,
       idleTimeoutMins: 10,
       hasIdleTimeoutOverride: false,
+      managementCapabilities: {
+        PluginManagementCapability.lifecycle,
+        PluginManagementCapability.setupRefresh,
+        PluginManagementCapability.idleTimeout,
+      },
       actionHint: null,
     ),
   );

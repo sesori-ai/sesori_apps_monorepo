@@ -49,6 +49,11 @@ const _response = PluginManagementResponse(
       workState: PluginManagementWorkState.unknown,
       idleTimeoutMins: 10,
       hasIdleTimeoutOverride: false,
+      managementCapabilities: {
+        PluginManagementCapability.lifecycle,
+        PluginManagementCapability.setupRefresh,
+        PluginManagementCapability.idleTimeout,
+      },
       actionHint: null,
     ),
   ],

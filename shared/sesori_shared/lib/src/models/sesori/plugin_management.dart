@@ -56,13 +56,8 @@ sealed class PluginManagementMetadata with _$PluginManagementMetadata {
     @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required PluginManagementWorkState workState,
     required int idleTimeoutMins,
     required bool hasIdleTimeoutOverride,
-    // COMPATIBILITY 2026-07-27 (v1.7.0): Older bridge payloads cannot declare
-    // whether management operations are safe. Empty fails closed so newer
-    // clients do not expose controls for an externally managed runtime. Remove
-    // this default and make the field required when those bridges are unsupported.
-    @Default(<PluginManagementCapability>{})
     @JsonKey(unknownEnumValue: PluginManagementCapability.unknown)
-    Set<PluginManagementCapability> managementCapabilities,
+    required Set<PluginManagementCapability> managementCapabilities,
     required String? actionHint,
   }) = _PluginManagementMetadata;
 

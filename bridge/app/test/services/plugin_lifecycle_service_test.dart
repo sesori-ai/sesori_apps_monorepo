@@ -745,6 +745,28 @@ void main() {
     expect(timerScheduler.timers, isEmpty);
   });
 
+  test("idle suspension requires lifecycle and idle-timeout capabilities", () async {
+    final repository = _IdleLifecycleRepository();
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings());
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final service = _singleIdleService(
+      lifecycleRepository: repository,
+      settingsRepository: settingsRepository,
+      timerScheduler: timerScheduler,
+      residencyPolicy: PluginResidencyPolicy.transient,
+      managementCapabilities: const {PluginControlCapability.setupRefresh},
+    );
+    addTearDown(() async {
+      await service.dispose();
+      await repository.dispose();
+    });
+
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
+
+    expect(timerScheduler.timers, isEmpty);
+    expect(repository.stopCalls, isZero);
+  });
+
   test("unsupported lifecycle commands fail before runtime or settings effects", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupReady(),

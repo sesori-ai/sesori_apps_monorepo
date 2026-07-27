@@ -94,6 +94,11 @@ const _plugin = PluginManagementMetadata(
   workState: PluginManagementWorkState.idle,
   idleTimeoutMins: 10,
   hasIdleTimeoutOverride: false,
+  managementCapabilities: {
+    PluginManagementCapability.lifecycle,
+    PluginManagementCapability.setupRefresh,
+    PluginManagementCapability.idleTimeout,
+  },
   actionHint: null,
 );
 

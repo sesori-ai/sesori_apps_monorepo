@@ -23,17 +23,15 @@ _PluginManagementMetadata _$PluginManagementMetadataFromJson(Map json) =>
       ),
       idleTimeoutMins: (json['idleTimeoutMins'] as num).toInt(),
       hasIdleTimeoutOverride: json['hasIdleTimeoutOverride'] as bool,
-      managementCapabilities:
-          (json['managementCapabilities'] as List<dynamic>?)
-              ?.map(
-                (e) => $enumDecode(
-                  _$PluginManagementCapabilityEnumMap,
-                  e,
-                  unknownValue: PluginManagementCapability.unknown,
-                ),
-              )
-              .toSet() ??
-          const <PluginManagementCapability>{},
+      managementCapabilities: (json['managementCapabilities'] as List<dynamic>)
+          .map(
+            (e) => $enumDecode(
+              _$PluginManagementCapabilityEnumMap,
+              e,
+              unknownValue: PluginManagementCapability.unknown,
+            ),
+          )
+          .toSet(),
       actionHint: json['actionHint'] as String?,
     );
 

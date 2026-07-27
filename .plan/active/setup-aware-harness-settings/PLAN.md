@@ -908,11 +908,10 @@ enum PluginManagementCapability {
 }
 ```
 
-The transport field is non-null with a conservative empty legacy default and a
-dated compatibility comment: an older bridge that cannot declare control safety
-must not cause a newer app to expose process controls. The UI explains that the
-connected bridge must be updated when capability data is unavailable. Unknown
-enum values degrade as unsupported. Do not infer capability from
+The transport field is required and has no default. This capability contract and
+its controls ship together before either exists in production, so there is no
+released peer payload to preserve between internal implementation slices.
+Unknown enum values degrade as unsupported. Do not infer capability from
 `idleTimeoutMins <= 0`: that value also truthfully represents a managed plugin
 configured never to idle.
 
@@ -938,6 +937,8 @@ authoritative:
 - enable, disable, and restart reject plugins without `lifecycle` support;
 - setup refresh rejects plugins without `setupRefresh` support;
 - per-plugin timeout set/clear rejects plugins without `idleTimeout` support;
+- automatic idle suspension requires both `lifecycle` and `idleTimeout`
+  support, checked before scheduling and again before stopping;
 - apply-all updates the bridge default and only clears/applies per-plugin
   timeout state for capable plugins;
 - unsupported operations return a typed non-forceable conflict and never touch
@@ -955,8 +956,8 @@ Production files:
 
 ### Verification
 
-- Shared JSON covers declared capabilities, unknown values, and omitted legacy
-  payloads degrading to no controls.
+- Shared JSON covers declared capabilities, unknown values, and rejection of a
+  missing required capability field.
 - Interface tests cover the default declaration without importing shared; each
   concrete descriptor is updated in lockstep.
 - Descriptor and bridge-service tests prove no-auto-start OpenCode publishes no

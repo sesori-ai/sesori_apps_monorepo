@@ -307,6 +307,11 @@ const _managementPlugin = PluginManagementMetadata(
   workState: PluginManagementWorkState.busy,
   idleTimeoutMins: 30,
   hasIdleTimeoutOverride: false,
+  managementCapabilities: {
+    PluginManagementCapability.lifecycle,
+    PluginManagementCapability.setupRefresh,
+    PluginManagementCapability.idleTimeout,
+  },
   actionHint: null,
 );
 
@@ -327,5 +332,6 @@ const _conflictJson = {
     "workState": "busy",
     "idleTimeoutMins": 30,
     "hasIdleTimeoutOverride": false,
+    "managementCapabilities": ["lifecycle", "setupRefresh", "idleTimeout"],
   },
 };
