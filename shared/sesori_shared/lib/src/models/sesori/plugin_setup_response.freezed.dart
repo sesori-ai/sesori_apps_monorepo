@@ -15,7 +15,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginSetupMetadata {
 
- String get id; String get displayName;@JsonKey(unknownEnumValue: PluginSetupState.unknown) PluginSetupState get state; String? get actionHint;
+ String get id; String get displayName;// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridges omit brandLogoKey;
+// null renders the generic plugin logo. Make non-null only if every future
+// plugin is required to declare branding and those bridges are unsupported.
+ String? get brandLogoKey;@JsonKey(unknownEnumValue: PluginSetupState.unknown) PluginSetupState get state; String? get actionHint;
 /// Create a copy of PluginSetupMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +31,16 @@ $PluginSetupMetadataCopyWith<PluginSetupMetadata> get copyWith => _$PluginSetupM
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSetupMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSetupMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.brandLogoKey, brandLogoKey) || other.brandLogoKey == brandLogoKey)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,state,actionHint);
+int get hashCode => Object.hash(runtimeType,id,displayName,brandLogoKey,state,actionHint);
 
 @override
 String toString() {
-  return 'PluginSetupMetadata(id: $id, displayName: $displayName, state: $state, actionHint: $actionHint)';
+  return 'PluginSetupMetadata(id: $id, displayName: $displayName, brandLogoKey: $brandLogoKey, state: $state, actionHint: $actionHint)';
 }
 
 
@@ -48,7 +51,7 @@ abstract mixin class $PluginSetupMetadataCopyWith<$Res>  {
   factory $PluginSetupMetadataCopyWith(PluginSetupMetadata value, $Res Function(PluginSetupMetadata) _then) = _$PluginSetupMetadataCopyWithImpl;
 @useResult
 $Res call({
- String id, String displayName,@JsonKey(unknownEnumValue: PluginSetupState.unknown) PluginSetupState state, String? actionHint
+ String id, String displayName, String? brandLogoKey,@JsonKey(unknownEnumValue: PluginSetupState.unknown) PluginSetupState state, String? actionHint
 });
 
 
@@ -65,11 +68,12 @@ class _$PluginSetupMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginSetupMetadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? state = null,Object? actionHint = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? brandLogoKey = freezed,Object? state = null,Object? actionHint = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
-as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as String,brandLogoKey: freezed == brandLogoKey ? _self.brandLogoKey : brandLogoKey // ignore: cast_nullable_to_non_nullable
+as String?,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginSetupState,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -83,11 +87,15 @@ as String?,
 @JsonSerializable()
 
 class _PluginSetupMetadata implements PluginSetupMetadata {
-  const _PluginSetupMetadata({required this.id, required this.displayName, @JsonKey(unknownEnumValue: PluginSetupState.unknown) required this.state, required this.actionHint});
+  const _PluginSetupMetadata({required this.id, required this.displayName, required this.brandLogoKey, @JsonKey(unknownEnumValue: PluginSetupState.unknown) required this.state, required this.actionHint});
   factory _PluginSetupMetadata.fromJson(Map<String, dynamic> json) => _$PluginSetupMetadataFromJson(json);
 
 @override final  String id;
 @override final  String displayName;
+// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridges omit brandLogoKey;
+// null renders the generic plugin logo. Make non-null only if every future
+// plugin is required to declare branding and those bridges are unsupported.
+@override final  String? brandLogoKey;
 @override@JsonKey(unknownEnumValue: PluginSetupState.unknown) final  PluginSetupState state;
 @override final  String? actionHint;
 
@@ -104,16 +112,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSetupMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSetupMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.brandLogoKey, brandLogoKey) || other.brandLogoKey == brandLogoKey)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,state,actionHint);
+int get hashCode => Object.hash(runtimeType,id,displayName,brandLogoKey,state,actionHint);
 
 @override
 String toString() {
-  return 'PluginSetupMetadata(id: $id, displayName: $displayName, state: $state, actionHint: $actionHint)';
+  return 'PluginSetupMetadata(id: $id, displayName: $displayName, brandLogoKey: $brandLogoKey, state: $state, actionHint: $actionHint)';
 }
 
 
@@ -124,7 +132,7 @@ abstract mixin class _$PluginSetupMetadataCopyWith<$Res> implements $PluginSetup
   factory _$PluginSetupMetadataCopyWith(_PluginSetupMetadata value, $Res Function(_PluginSetupMetadata) _then) = __$PluginSetupMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String displayName,@JsonKey(unknownEnumValue: PluginSetupState.unknown) PluginSetupState state, String? actionHint
+ String id, String displayName, String? brandLogoKey,@JsonKey(unknownEnumValue: PluginSetupState.unknown) PluginSetupState state, String? actionHint
 });
 
 
@@ -141,11 +149,12 @@ class __$PluginSetupMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginSetupMetadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? state = null,Object? actionHint = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? brandLogoKey = freezed,Object? state = null,Object? actionHint = freezed,}) {
   return _then(_PluginSetupMetadata(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
-as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as String,brandLogoKey: freezed == brandLogoKey ? _self.brandLogoKey : brandLogoKey // ignore: cast_nullable_to_non_nullable
+as String?,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginSetupState,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

@@ -21,6 +21,7 @@ void main() {
     test("tracks the installer target separately from the compatibility floor", () {
       expect(CursorPluginDescriptor.minVersion, "2026.07.16");
       expect(CursorPluginDescriptor.targetVersion, "2026.07.20-8cc9c0b");
+      expect(const CursorPluginDescriptor().brandLogoKey, "cursor");
     });
 
     test("reports ready after version and read-only authentication probes", () async {

@@ -6,6 +6,7 @@ void main() {
     setup: PluginSetupMetadata(
       id: "opencode",
       displayName: "OpenCode",
+      brandLogoKey: "opencode",
       state: PluginSetupState.ready,
       actionHint: null,
     ),
@@ -40,6 +41,7 @@ void main() {
     );
     expect(json["snapshotToken"], "snapshot-token");
     expect(json["bridgeId"], "br_abc12345");
+    expect((pluginJson["setup"]! as Map<String, dynamic>)["brandLogoKey"], "opencode");
     expect(pluginJson, isNot(contains("enabled")));
     expect(pluginJson, isNot(contains("isDefault")));
     expect(json, isNot(contains("authority")));
@@ -56,6 +58,14 @@ void main() {
     ).toJson()..remove("snapshotToken");
 
     expect(PluginManagementResponse.fromJson(json).snapshotToken, isNull);
+  });
+
+  test("older management rows decode a missing brand logo key as null", () {
+    final json = plugin.toJson();
+    final setup = json["setup"]! as Map<String, dynamic>;
+    setup.remove("brandLogoKey");
+
+    expect(PluginManagementMetadata.fromJson(json).setup.brandLogoKey, isNull);
   });
 
   test("management response omits a null bridge ID and decodes a missing one as null", () {

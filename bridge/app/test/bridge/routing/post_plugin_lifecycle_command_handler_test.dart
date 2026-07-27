@@ -87,6 +87,7 @@ const _plugin = PluginManagementMetadata(
   setup: PluginSetupMetadata(
     id: "one",
     displayName: "One",
+    brandLogoKey: null,
     state: PluginSetupState.ready,
     actionHint: null,
   ),

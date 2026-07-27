@@ -15,7 +15,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginMetadata {
 
- String get id; String get displayName; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint;
+ String get id; String get displayName;// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridges omit brandLogoKey;
+// null renders the generic plugin logo. Make non-null only if every future
+// plugin is required to declare branding and those bridges are unsupported.
+ String? get brandLogoKey; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint;
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +31,16 @@ $PluginMetadataCopyWith<PluginMetadata> get copyWith => _$PluginMetadataCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.brandLogoKey, brandLogoKey) || other.brandLogoKey == brandLogoKey)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,isDefault,state,actionHint);
+int get hashCode => Object.hash(runtimeType,id,displayName,brandLogoKey,isDefault,state,actionHint);
 
 @override
 String toString() {
-  return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint)';
+  return 'PluginMetadata(id: $id, displayName: $displayName, brandLogoKey: $brandLogoKey, isDefault: $isDefault, state: $state, actionHint: $actionHint)';
 }
 
 
@@ -48,7 +51,7 @@ abstract mixin class $PluginMetadataCopyWith<$Res>  {
   factory $PluginMetadataCopyWith(PluginMetadata value, $Res Function(PluginMetadata) _then) = _$PluginMetadataCopyWithImpl;
 @useResult
 $Res call({
- String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint
+ String id, String displayName, String? brandLogoKey, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint
 });
 
 
@@ -65,11 +68,12 @@ class _$PluginMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? brandLogoKey = freezed,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
-as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
+as String,brandLogoKey: freezed == brandLogoKey ? _self.brandLogoKey : brandLogoKey // ignore: cast_nullable_to_non_nullable
+as String?,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
 as bool,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginLifecycleState,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -84,11 +88,15 @@ as String?,
 @JsonSerializable()
 
 class _PluginMetadata implements PluginMetadata {
-  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint});
+  const _PluginMetadata({required this.id, required this.displayName, required this.brandLogoKey, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint});
   factory _PluginMetadata.fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
 
 @override final  String id;
 @override final  String displayName;
+// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridges omit brandLogoKey;
+// null renders the generic plugin logo. Make non-null only if every future
+// plugin is required to declare branding and those bridges are unsupported.
+@override final  String? brandLogoKey;
 @override final  bool isDefault;
 @override@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) final  PluginLifecycleState state;
 @override final  String? actionHint;
@@ -106,16 +114,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.brandLogoKey, brandLogoKey) || other.brandLogoKey == brandLogoKey)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,isDefault,state,actionHint);
+int get hashCode => Object.hash(runtimeType,id,displayName,brandLogoKey,isDefault,state,actionHint);
 
 @override
 String toString() {
-  return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint)';
+  return 'PluginMetadata(id: $id, displayName: $displayName, brandLogoKey: $brandLogoKey, isDefault: $isDefault, state: $state, actionHint: $actionHint)';
 }
 
 
@@ -126,7 +134,7 @@ abstract mixin class _$PluginMetadataCopyWith<$Res> implements $PluginMetadataCo
   factory _$PluginMetadataCopyWith(_PluginMetadata value, $Res Function(_PluginMetadata) _then) = __$PluginMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint
+ String id, String displayName, String? brandLogoKey, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint
 });
 
 
@@ -143,11 +151,12 @@ class __$PluginMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? brandLogoKey = freezed,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,}) {
   return _then(_PluginMetadata(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
-as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
+as String,brandLogoKey: freezed == brandLogoKey ? _self.brandLogoKey : brandLogoKey // ignore: cast_nullable_to_non_nullable
+as String?,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
 as bool,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginLifecycleState,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
 as String?,

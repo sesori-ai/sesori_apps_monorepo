@@ -11,6 +11,7 @@ void main() {
   group("CodexRuntimeManifest", () {
     test("descriptor preserves the legacy shared runtime directory", () {
       expect(const CodexPluginDescriptor().stateStorage, PluginStateStorage.legacySharedRuntime);
+      expect(const CodexPluginDescriptor().brandLogoKey, "codex");
     });
 
     test("pinned versions", () {

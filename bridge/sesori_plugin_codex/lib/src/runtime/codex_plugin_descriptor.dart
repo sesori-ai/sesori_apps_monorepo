@@ -115,6 +115,9 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   String get displayName => "Codex";
 
   @override
+  String get brandLogoKey => "codex";
+
+  @override
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
 
   @override

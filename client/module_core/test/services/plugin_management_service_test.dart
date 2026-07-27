@@ -583,6 +583,7 @@ PluginLifecycleConflict _conflict(List<PluginLifecycleConflictReason> reasons) {
       setup: PluginSetupMetadata(
         id: "one",
         displayName: "One",
+        brandLogoKey: null,
         state: PluginSetupState.ready,
         actionHint: null,
       ),

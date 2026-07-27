@@ -84,6 +84,7 @@ class PluginRepository {
             PluginMetadata(
               id: legacyMissingPluginId,
               displayName: "OpenCode",
+              brandLogoKey: null,
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,

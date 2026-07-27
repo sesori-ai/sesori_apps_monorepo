@@ -32,7 +32,12 @@ Future<PluginLifecycleService> createPluginLifecycleService({
         ..registerPlugins(
           plugins: [
             for (final plugin in plugins)
-              (id: plugin.id, displayName: plugin.id, residencyPolicy: PluginResidencyPolicy.transient),
+              (
+                id: plugin.id,
+                displayName: plugin.id,
+                brandLogoKey: null,
+                residencyPolicy: PluginResidencyPolicy.transient,
+              ),
           ],
         )
         ..initialize(

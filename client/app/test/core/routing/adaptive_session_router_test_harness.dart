@@ -94,6 +94,7 @@ class AdaptiveSessionRouterTestHarness {
             PluginMetadata(
               id: "plugin-1",
               displayName: "Plugin One",
+              brandLogoKey: null,
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,

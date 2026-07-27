@@ -7,6 +7,10 @@ void main() {
 
     expect(ids, containsAll(["opencode", "codex", "cursor"]));
     expect(ids.toSet(), hasLength(ids.length));
+    expect(
+      {for (final plugin in knownPlugins) plugin.id: plugin.brandLogoKey},
+      {"opencode": "opencode", "codex": "codex", "cursor": "cursor"},
+    );
   });
 
   test("registered descriptors remain inert declarations", () {

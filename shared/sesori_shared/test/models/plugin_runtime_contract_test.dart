@@ -9,6 +9,7 @@ void main() {
         PluginMetadata(
           id: "codex",
           displayName: "Codex",
+          brandLogoKey: "codex",
           isDefault: true,
           state: PluginLifecycleState.degraded,
           actionHint: "Check the bridge console if this plugin needs attention.",
@@ -16,6 +17,7 @@ void main() {
         PluginMetadata(
           id: "opencode",
           displayName: "OpenCode",
+          brandLogoKey: null,
           isDefault: false,
           state: PluginLifecycleState.ready,
           actionHint: null,
@@ -26,6 +28,8 @@ void main() {
     expect(PluginListResponse.fromJson(response.toJson()), response);
     expect(response.toJson()["bridgeId"], "br_abc12345");
     expect(response.toJson()["plugins"], hasLength(2));
+    expect((response.toJson()["plugins"]! as List<Object?>).first, containsPair("brandLogoKey", "codex"));
+    expect((response.toJson()["plugins"]! as List<Object?>).last, isNot(contains("brandLogoKey")));
   });
 
   test("plugin discovery omits a null bridge ID and decodes a missing one as null", () {
@@ -46,6 +50,7 @@ void main() {
     });
 
     expect(metadata.state, PluginLifecycleState.unavailable);
+    expect(metadata.brandLogoKey, isNull);
   });
 
   test("plugin setup round-trips ordered generic metadata and maps future states to unknown", () {
@@ -54,12 +59,14 @@ void main() {
         PluginSetupMetadata(
           id: "codex",
           displayName: "Codex",
+          brandLogoKey: "codex",
           state: PluginSetupState.authenticationRequired,
           actionHint: "Run codex login on this machine.",
         ),
         PluginSetupMetadata(
           id: "opencode",
           displayName: "OpenCode",
+          brandLogoKey: null,
           state: PluginSetupState.ready,
           actionHint: null,
         ),
@@ -67,6 +74,9 @@ void main() {
     );
 
     expect(PluginSetupResponse.fromJson(response.toJson()), response);
+    final setupJson = response.toJson()["plugins"]! as List<Object?>;
+    expect(setupJson.first, containsPair("brandLogoKey", "codex"));
+    expect(setupJson.last, isNot(contains("brandLogoKey")));
     expect(
       PluginSetupMetadata.fromJson(const {
         "id": "future",
@@ -74,6 +84,14 @@ void main() {
         "state": "partially_ready",
       }).state,
       PluginSetupState.unknown,
+    );
+    expect(
+      PluginSetupMetadata.fromJson(const {
+        "id": "legacy",
+        "displayName": "Legacy",
+        "state": "ready",
+      }).brandLogoKey,
+      isNull,
     );
   });
 

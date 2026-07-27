@@ -9,6 +9,7 @@ part of 'plugin_list_response.dart';
 _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
   id: json['id'] as String,
   displayName: json['displayName'] as String,
+  brandLogoKey: json['brandLogoKey'] as String?,
   isDefault: json['isDefault'] as bool,
   state: $enumDecode(
     _$PluginLifecycleStateEnumMap,
@@ -22,6 +23,7 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
     <String, dynamic>{
       'id': instance.id,
       'displayName': instance.displayName,
+      'brandLogoKey': ?instance.brandLogoKey,
       'isDefault': instance.isDefault,
       'state': _$PluginLifecycleStateEnumMap[instance.state]!,
       'actionHint': ?instance.actionHint,

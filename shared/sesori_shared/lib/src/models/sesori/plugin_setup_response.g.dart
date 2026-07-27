@@ -10,6 +10,7 @@ _PluginSetupMetadata _$PluginSetupMetadataFromJson(Map json) =>
     _PluginSetupMetadata(
       id: json['id'] as String,
       displayName: json['displayName'] as String,
+      brandLogoKey: json['brandLogoKey'] as String?,
       state: $enumDecode(
         _$PluginSetupStateEnumMap,
         json['state'],
@@ -23,6 +24,7 @@ Map<String, dynamic> _$PluginSetupMetadataToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'displayName': instance.displayName,
+  'brandLogoKey': ?instance.brandLogoKey,
   'state': _$PluginSetupStateEnumMap[instance.state]!,
   'actionHint': ?instance.actionHint,
 };

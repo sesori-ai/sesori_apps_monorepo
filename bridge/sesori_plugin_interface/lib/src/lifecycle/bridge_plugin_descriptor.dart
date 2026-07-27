@@ -28,6 +28,13 @@ abstract class BridgePluginDescriptor {
   /// Human-readable name for logs and help output.
   String get displayName;
 
+  /// Optional stable presentation key for the plugin's brand logo.
+  ///
+  /// The bridge and shared contracts treat this value as opaque. Clients map
+  /// known keys to bundled presentation assets and use a generic fallback for
+  /// null or unknown keys.
+  String? get brandLogoKey => null;
+
   /// Whether this plugin exposes native projects or the bridge derives them
   /// from session directories.
   PluginProjectOwnership get projectOwnership;

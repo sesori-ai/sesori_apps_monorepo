@@ -111,6 +111,9 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   String get displayName => "Cursor";
 
   @override
+  String get brandLogoKey => "cursor";
+
+  @override
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
 
   @override

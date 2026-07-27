@@ -18,6 +18,7 @@ import "../../helpers/test_helpers.dart";
 const pluginA = PluginMetadata(
   id: "plugin-a",
   displayName: "Plugin A",
+  brandLogoKey: null,
   isDefault: true,
   state: PluginLifecycleState.ready,
   actionHint: null,
@@ -25,6 +26,7 @@ const pluginA = PluginMetadata(
 const pluginB = PluginMetadata(
   id: "plugin-b",
   displayName: "Plugin B",
+  brandLogoKey: null,
   isDefault: false,
   state: PluginLifecycleState.ready,
   actionHint: null,
@@ -220,6 +222,7 @@ void main() {
       const refreshedDefault = PluginMetadata(
         id: "plugin-c",
         displayName: "Plugin C",
+        brandLogoKey: null,
         isDefault: true,
         state: PluginLifecycleState.ready,
         actionHint: null,
@@ -227,6 +230,7 @@ void main() {
       const refreshedB = PluginMetadata(
         id: "plugin-b",
         displayName: "Plugin B refreshed",
+        brandLogoKey: null,
         isDefault: false,
         state: PluginLifecycleState.degraded,
         actionHint: "Check the bridge console.",
@@ -234,6 +238,7 @@ void main() {
       const unavailableB = PluginMetadata(
         id: "plugin-b",
         displayName: "Plugin B unavailable",
+        brandLogoKey: null,
         isDefault: false,
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
@@ -286,6 +291,7 @@ void main() {
       const unavailableB = PluginMetadata(
         id: "plugin-b",
         displayName: "Plugin B unavailable",
+        brandLogoKey: null,
         isDefault: false,
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
@@ -295,7 +301,9 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) {
         discoveryCalls++;
         if (discoveryCalls == 1) {
-          return Future.value(ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])));
+          return Future.value(
+            ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+          );
         }
         return reconnectDiscovery.future;
       });
@@ -331,6 +339,7 @@ void main() {
       const refreshedA = PluginMetadata(
         id: "plugin-a",
         displayName: "Plugin A refreshed",
+        brandLogoKey: null,
         isDefault: true,
         state: PluginLifecycleState.ready,
         actionHint: null,
@@ -527,6 +536,7 @@ void main() {
       const initialB = PluginMetadata(
         id: "plugin-b",
         displayName: "Plugin B",
+        brandLogoKey: null,
         isDefault: true,
         state: PluginLifecycleState.ready,
         actionHint: null,
@@ -534,6 +544,7 @@ void main() {
       const unavailableB = PluginMetadata(
         id: "plugin-b",
         displayName: "Plugin B unavailable",
+        brandLogoKey: null,
         isDefault: false,
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
@@ -648,6 +659,7 @@ void main() {
       const first = PluginMetadata(
         id: "blocked",
         displayName: "Blocked",
+        brandLogoKey: null,
         isDefault: false,
         state: PluginLifecycleState.failed,
         actionHint: "Restart the bridge.",
@@ -655,6 +667,7 @@ void main() {
       const second = PluginMetadata(
         id: "selected",
         displayName: "Selected",
+        brandLogoKey: null,
         isDefault: true,
         state: PluginLifecycleState.ready,
         actionHint: null,
@@ -679,6 +692,7 @@ void main() {
       const degraded = PluginMetadata(
         id: "degraded",
         displayName: "Degraded",
+        brandLogoKey: null,
         isDefault: true,
         state: PluginLifecycleState.degraded,
         actionHint: "Check the bridge console.",
@@ -727,6 +741,7 @@ void main() {
       const unavailable = PluginMetadata(
         id: "unavailable",
         displayName: "Unavailable",
+        brandLogoKey: null,
         isDefault: true,
         state: PluginLifecycleState.unavailable,
         actionHint: "Check the bridge console.",
@@ -734,6 +749,7 @@ void main() {
       const failed = PluginMetadata(
         id: "failed",
         displayName: "Failed",
+        brandLogoKey: null,
         isDefault: false,
         state: PluginLifecycleState.failed,
         actionHint: "Restart the bridge.",

@@ -128,6 +128,11 @@ class _PluginChoice extends StatelessWidget {
                   color: iconColor,
                 ),
                 SizedBox(width: prego.spacing.sm),
+                PregoBrandLogo(
+                  brandLogoKey: plugin.brandLogoKey,
+                  color: iconColor,
+                ),
+                SizedBox(width: prego.spacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

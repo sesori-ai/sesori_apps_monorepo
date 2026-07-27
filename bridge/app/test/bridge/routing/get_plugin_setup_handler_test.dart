@@ -31,8 +31,18 @@ void main() {
             )
             ..registerPlugins(
               plugins: const [
-                (id: "ready", displayName: "Ready", residencyPolicy: PluginResidencyPolicy.transient),
-                (id: "blocked", displayName: "Blocked", residencyPolicy: PluginResidencyPolicy.transient),
+                (
+                  id: "ready",
+                  displayName: "Ready",
+                  brandLogoKey: "ready-brand",
+                  residencyPolicy: PluginResidencyPolicy.transient,
+                ),
+                (
+                  id: "blocked",
+                  displayName: "Blocked",
+                  brandLogoKey: null,
+                  residencyPolicy: PluginResidencyPolicy.transient,
+                ),
               ],
             )
             ..initialize(
@@ -74,7 +84,9 @@ void main() {
 
       expect(response.plugins.map((plugin) => plugin.id), ["blocked", "ready"]);
       expect(response.plugins.first.state, PluginSetupState.authenticationRequired);
+      expect(response.plugins.first.brandLogoKey, isNull);
       expect(response.plugins.last.state, PluginSetupState.ready);
+      expect(response.plugins.last.brandLogoKey, "ready-brand");
       expect(response.plugins.first.actionHint, "Authenticate the backend locally, then retry.");
       expect(pluginRuntime.activePluginIds, operationalBefore);
     });
@@ -89,6 +101,7 @@ void main() {
 
       expect(response.plugins.map((plugin) => plugin.id), ["ready"]);
       expect(response.plugins.single.isDefault, isTrue);
+      expect(response.plugins.single.brandLogoKey, "ready-brand");
       expect(response.bridgeId, "br_test1234");
     });
   });

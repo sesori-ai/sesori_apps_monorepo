@@ -247,6 +247,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   String get displayName => "OpenCode";
 
   @override
+  String get brandLogoKey => "opencode";
+
+  @override
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
 
   @override
