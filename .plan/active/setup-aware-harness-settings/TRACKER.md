@@ -54,12 +54,15 @@
   persistence across reopen, and disable fallback with full cleanup; A-to-B
   bridge switch stays unit-tested only (single-bridge dev account).
 - Step 2/7 (2026-07-27): shared contract tests for known/null/omitted
-  `bridgeId`; bridge routing suites (388) and full bridge directory (1140);
-  module_core full suite (654) with new API route and repository mapping
+  `bridgeId`; full bridge suite (2146); module_core full suite (656) with new
+  API route and repository mapping
   tests; mobile/desktop fatal analysis; Aristotle implementation review
   approved. Review fixes: lifecycle service owns bridge identity injection,
   single-report malformed conflicts, named parameters, encoded command path,
   post-dispatch response loss mapped to `uncertain`.
   Confirming E2E on `cbd10948`: all three management routes carried the dev
   bridge identity on GET and both mutation shapes; Step 1 gate rerun passed;
-  full cleanup with the E2E bridge stopped.
+  full cleanup with the E2E bridge stopped. Final service-owned identity rerun
+  on `f0c4932d` again verified the same ID on GET, command, and idle-timeout
+  responses after late registration; override cleared, Codex re-enabled, and
+  bridge stopped (one external relay 429 was retried successfully).
