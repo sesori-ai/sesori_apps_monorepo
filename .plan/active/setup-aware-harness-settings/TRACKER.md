@@ -3,8 +3,8 @@
 ## Current State
 
 - **Implementation base:** `origin/main` at `075951cb` after Step 6/8 merged
-- **Series state:** Step 7/8 management capabilities implemented and verified
-- **Next action:** deliver and monitor the Step 7/8 PR
+- **Series state:** Step 7/8 PR #594 open; management capabilities implemented and verified
+- **Next action:** monitor and settle PR #594
 
 ## Delivery
 
@@ -16,7 +16,7 @@
 | [x] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | PR #590 merged as `99670e08`; simplified to use existing plugin IDs |
 | [x] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | PR #592 merged as `1b0f9874`; combined simulator E2E passed |
 | [x] | Step 6/8 — management actions | `setup-aware-harness-settings-state` | PR #593 merged as `075951cb`; estimate 650-800 changed lines |
-| [ ] | Step 7/8 — management capabilities | `setup-aware-harness-settings-capabilities` | ready for PR; estimate 650-850 changed lines |
+| [ ] | Step 7/8 — management capabilities | `setup-aware-harness-settings-capabilities` | PR #594 open; estimate 650-850 changed lines |
 | [ ] | Step 8/8 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
 
 ## Source Material
