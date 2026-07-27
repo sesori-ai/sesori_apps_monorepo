@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** Step 1 merged; Step 2 implemented and verified locally
+- **Status:** Step 1 merged; Step 2 PR in review
 - **Plan slug:** `bridge-ready-onboarding`
 - **Implementation base:** `origin/main` at
   `235caf8e2cb73a5607ae8dcb662d7eb6e85dd3b1`
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/580
-- **Implementation state:** Step 2 ready for commit/delivery
+- **Implementation state:** Step 2 PR: https://github.com/sesori-ai/sesori_apps_monorepo/pull/587
 
 ## Plan Review
 
@@ -22,7 +22,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line budget | State |
 |---|---|---|---|---:|---|
 | [x] | 1/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | [PR #585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) merged |
-| [ ] | 2/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | Implemented and verified locally |
+| [ ] | 2/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | [PR #587](https://github.com/sesori-ai/sesori_apps_monorepo/pull/587) in review |
 
 ## Execution Rules
 
@@ -40,7 +40,7 @@
 
 ## Current Pointer
 
-- **Next action:** commit and publish Step 2.
+- **Next action:** monitor Step 2 CI and review.
 
 ## Step 1 Verification
 
@@ -61,6 +61,9 @@
 
 ## Findings And Plan Deltas
 
+- **2026-07-27 — Step 2 delivery:** Opened implementation PR
+  [#587](https://github.com/sesori-ai/sesori_apps_monorepo/pull/587) and started
+  CI/review monitoring.
 - **2026-07-27 — Step 2 implementation:** Replaced the notification-registration
   gate with one finite, presentation-free immediate status decision; removed the
   long-poll `wait` contract; started preparation concurrently with relay startup;
