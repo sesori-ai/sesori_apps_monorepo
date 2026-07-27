@@ -196,8 +196,7 @@ class PluginLifecycleService {
     }
     final snapshot = _lastPublishedManagementSnapshot;
     if (snapshot == null) throw StateError("Plugin management snapshot is not ready.");
-    final bridgeId = _bridgeIdProvider.bridgeId;
-    if (bridgeId == null) throw StateError("Bridge identity is not registered.");
+    final bridgeId = _requireBridgeId();
     return PluginManagementResponse(
       snapshotToken: snapshot.snapshotToken,
       bridgeId: bridgeId,
@@ -235,6 +234,7 @@ class PluginLifecycleService {
     if (_lastPublishedManagementSnapshot == null) {
       throw StateError("Plugin management snapshot is not ready.");
     }
+    _requireBridgeId();
     final active = _activePluginCommands[pluginId];
     if (active != null) {
       if (active.request == request) return active.completer.future;
@@ -270,6 +270,7 @@ class PluginLifecycleService {
           throw PluginManagementPluginNotFoundException(pluginId);
         }
     }
+    _requireBridgeId();
     return _withSettingsMutationTail(() async {
       final current = await _bridgeSettingsRepository.loadSettings();
       final plugins = switch (request) {
@@ -330,10 +331,20 @@ class PluginLifecycleService {
     }
     _publishManagementIfChanged();
     if (failure == null) {
-      command.completer.complete(managementSnapshot);
+      try {
+        command.completer.complete(managementSnapshot);
+      } on Object catch (error, stackTrace) {
+        command.completer.completeError(error, stackTrace);
+      }
     } else {
       command.completer.completeError(failure, failureStackTrace);
     }
+  }
+
+  String _requireBridgeId() {
+    final bridgeId = _bridgeIdProvider.bridgeId;
+    if (bridgeId == null) throw StateError("Bridge identity is not registered.");
+    return bridgeId;
   }
 
   Future<void> _enable({required String pluginId, required _ActivePluginCommand command}) async {

@@ -232,6 +232,20 @@ void main() {
     // management must fail closed until the authority supplies an identity,
     // then attach that current identity when returning.
     expect(() => service.managementSnapshot, throwsStateError);
+    expect(
+      () => service.command(
+        pluginId: "opencode",
+        request: const PluginLifecycleCommandRequest.refresh(),
+      ),
+      throwsStateError,
+    );
+    expect(
+      () => service.updateIdleTimeout(
+        request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 60),
+      ),
+      throwsStateError,
+    );
+    expect(settingsRepository.currentSettings.plugins.defaults.idleTimeoutMins, 30);
     bridgeIdProvider.id = "br_test1234";
     final response = service.managementSnapshot;
 
@@ -600,6 +614,44 @@ void main() {
 
     settingsRepository.saveGate!.complete();
     await safe;
+  });
+
+  test("command completion surfaces identity loss after dispatch without hanging", () async {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
+      ..saveGate = Completer<void>();
+    final bridgeIdProvider = FakeBridgeIdProvider("br_test1234");
+    final service =
+        PluginLifecycleService(
+            lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+            preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: settingsRepository,
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
+            bridgeIdProvider: bridgeIdProvider,
+          )
+          ..registerPlugins(
+            plugins: const [
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
+            ],
+          )
+          ..initialize(
+            disabledPluginIds: const {},
+            setupById: const {"one": PluginSetupReady()},
+          );
+    addTearDown(() async {
+      await service.dispose();
+      await runtime.dispose();
+    });
+
+    final response = service.command(
+      pluginId: "one",
+      request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+    );
+    await settingsRepository.saveStarted.future;
+    bridgeIdProvider.id = null;
+    settingsRepository.saveGate!.complete();
+
+    await expectLater(response, throwsStateError);
   });
 
   test("failed disable persistence rolls runtime access back and allows retry", () async {

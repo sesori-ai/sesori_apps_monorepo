@@ -58,7 +58,7 @@
   API route and repository mapping
   tests; mobile/desktop fatal analysis; Aristotle implementation review
   approved. Review fixes: lifecycle service caches identity-free state and
-  requires the provider's current ID when building responses,
+  requires the provider's current ID before reads or mutation side effects,
   single-report malformed conflicts, named parameters, encoded command path,
   post-dispatch response loss mapped to `uncertain`.
   Confirming E2E on `cbd10948`: all three management routes carried the dev

@@ -231,7 +231,8 @@ companions. Compose the existing `BridgeRegistrationService` before
 lifecycle service cache only private identity-free management state. It builds
 the transport response when returning, requires the provider's current bridge
 ID to be non-null, and fails closed before registration rather than publishing
-an ambiguous modern snapshot. The wire field remains nullable only so newer
+an ambiguous modern snapshot or dispatching/persisting a mutation. The wire
+field remains nullable only so newer
 clients decode older Stage 12 bridges that omit it; null is omitted and receives
 a dated compatibility comment. GET and mutation handlers remain pass-through
 consumers of the same authoritative, identity-bearing service response shape.
