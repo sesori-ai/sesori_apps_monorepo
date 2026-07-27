@@ -2,9 +2,9 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `99670e08` after Step 4/7 merged
-- **Series state:** Step 5/7 PR #592 review fix verified; combined simulator E2E passed
-- **Next action:** merge PR #592, then begin Step 6/7
+- **Implementation base:** `origin/main` at `1b0f9874` after Step 5/7 merged
+- **Series state:** Step 6/7 branch started from the merged Step 5 contract
+- **Next action:** implement and deliver Step 6/7 management actions
 
 ## Delivery
 
@@ -14,8 +14,8 @@
 | [x] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | PR #583 merged as `ecd75b6c`; ~660 changed lines (estimate 300-400, test-driven overage) |
 | [x] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | PR #589 merged as `6fe69d5a`; 1,095 changed lines (estimate 550-700, race-matrix test overage) |
 | [x] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | PR #590 merged as `99670e08`; simplified to use existing plugin IDs |
-| [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | PR #592 ready; 1,735 initial changed lines (estimate 1,100-1,300, generated state/localization overage) |
-| [ ] | Step 6/7 — management actions | `setup-aware-harness-settings-state` | planned; estimate 650-800 changed lines |
+| [x] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | PR #592 merged as `1b0f9874`; combined simulator E2E passed |
+| [ ] | Step 6/7 — management actions | `setup-aware-harness-settings-state` | active; estimate 650-800 changed lines |
 | [ ] | Step 7/7 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
 
 ## Source Material

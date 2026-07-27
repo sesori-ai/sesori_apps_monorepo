@@ -53,6 +53,11 @@ eagerly "just in case."
 - Use enums for simple closed scalar sets and sealed classes for variants that
   carry different data or behavior. Parse external strings at the boundary;
   never use magic strings for domain state or decisions.
+- Make impossible state combinations unrepresentable. When variants have
+  different valid data, give each sealed variant only its required non-nullable
+  fields instead of flattening them into nullable coordination fields, booleans,
+  or sentinel values. Model independent state machines as separate sealed types
+  and compose their non-null instances.
 - Never use an empty string to represent missing data. Use `null` when absence
   is meaningful; do not avoid nullability when it accurately models the domain.
 - Bridge code must resolve the user home directory with
