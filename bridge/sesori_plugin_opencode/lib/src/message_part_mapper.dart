@@ -62,16 +62,38 @@ class MessagePartMapper {
       attempt: raw.attempt,
       retryError: raw.error.data.message,
     ),
-    FilePart() => _part(
-      raw.id,
-      raw.sessionID,
-      raw.messageID,
-      PluginMessagePartType.file,
-      mime: raw.mime,
-      filename: raw.filename,
-      url: raw.url,
-      path: raw.source is FileSource ? (raw.source as FileSource).path : null,
-    ),
+    FilePart() {
+      String? mime = raw.mime;
+      String? url = raw.url;
+      String? base64;
+      // Normalize data: URLs into base64 so the client can render them
+      // (Image.network does not support data: or file: schemes).
+      if (url != null && url.startsWith("data:")) {
+        final parts = url.split(",");
+        if (parts.length >= 2) {
+          base64 = parts.sublist(1).join(",");
+          if (mime == null || mime.isEmpty) {
+            final header = parts[0];
+            final mimeMatch = RegExp(r"data:([^;]+)").firstMatch(header);
+            if (mimeMatch != null) {
+              mime = mimeMatch.group(1);
+            }
+          }
+          url = null; // Don't send raw data: URL, base64 is set
+        }
+      }
+      return _part(
+        raw.id,
+        raw.sessionID,
+        raw.messageID,
+        PluginMessagePartType.file,
+        mime: mime,
+        filename: raw.filename,
+        url: url,
+        path: raw.source is FileSource ? (raw.source as FileSource).path : null,
+        base64: base64,
+      );
+    },
     SnapshotPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.snapshot),
     PatchPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.patch),
     CompactionPart() => _part(
