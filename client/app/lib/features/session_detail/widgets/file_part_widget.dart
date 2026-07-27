@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+import "package:url_launcher/url_launcher.dart";
 
 class FilePartWidget extends StatelessWidget {
   final MessagePart part;
@@ -58,22 +59,25 @@ class FilePartWidget extends StatelessWidget {
   Widget _buildFileLink(BuildContext context, IPregoTheme prego, String filename, String? url, String mime) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: prego.colors.bgSurfaceSecondary,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.insert_drive_file, size: 20, color: prego.colors.textSecondary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(filename, style: prego.textTheme.textSm.regular, overflow: TextOverflow.ellipsis),
-            ),
-            if (url != null)
-              Icon(Icons.open_in_new, size: 16, color: prego.colors.textSecondary),
-          ],
+      child: GestureDetector(
+        onTap: url != null ? () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: prego.colors.bgSurfaceSecondary,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.insert_drive_file, size: 20, color: prego.colors.textSecondary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(filename, style: prego.textTheme.textSm.regular, overflow: TextOverflow.ellipsis),
+              ),
+              if (url != null)
+                Icon(Icons.open_in_new, size: 16, color: prego.colors.textSecondary),
+            ],
+          ),
         ),
       ),
     );
