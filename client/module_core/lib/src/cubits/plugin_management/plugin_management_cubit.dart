@@ -28,6 +28,8 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   void _onSnapshot({required PluginManagementLoadResult snapshot}) {
     if (isClosed) return;
     switch (snapshot) {
+      case PluginManagementLoadResultLoading():
+        emit(const PluginManagementState.loading());
       case PluginManagementLoadResultSupported(:final response, :final refreshError):
         emit(
           PluginManagementState.ready(

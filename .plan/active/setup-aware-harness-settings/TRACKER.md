@@ -3,7 +3,7 @@
 ## Current State
 
 - **Implementation base:** `origin/main` at `99670e08` after Step 4/7 merged
-- **Series state:** Step 5/7 PR #592 review settled; combined simulator E2E passed
+- **Series state:** Step 5/7 PR #592 review fix verified; combined simulator E2E passed
 - **Next action:** merge PR #592, then begin Step 6/7
 
 ## Delivery
@@ -123,4 +123,10 @@
   stopped afterward. Owner review then replaced nullable ready-state
   coordination fields with independent sealed refresh, action-target, and
   action states; force confirmation carries the exact typed request that Step 6
-  will execute.
+  will execute. A later review found that the service could replay bridge A's
+  retained snapshot to a newly created cubit while bridge B's first load was
+  pending. Connection-epoch and authoritative identity invalidation now publish
+  loading immediately, with service and cubit regressions proving the prior
+  bridge cannot escape through replay. Full module_core (686) and focused tests
+  pass; module_core, mobile, and desktop analysis is clean; architecture review
+  approved the lifecycle ownership and publication fencing.

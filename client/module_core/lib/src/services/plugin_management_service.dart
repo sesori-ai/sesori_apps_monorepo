@@ -135,6 +135,7 @@ class PluginManagementService with Disposable {
         _connectionEpoch++;
         _connected = nextConnected;
         _forgetActiveBridgeIdentity();
+        _invalidatePublishedSnapshot();
       }
       if (nextConnected) _markStale();
       return;
@@ -144,6 +145,7 @@ class PluginManagementService with Disposable {
       _connectionEpoch++;
       _connected = nextConnected;
       _forgetActiveBridgeIdentity();
+      _invalidatePublishedSnapshot();
     }
     if (nextConnected) _markStale();
   }
@@ -152,7 +154,10 @@ class PluginManagementService with Disposable {
     if (event.data case SesoriPluginManagementChanged(:final snapshotToken)) {
       final currentToken = switch (_currentSnapshot) {
         PluginManagementLoadResultSupported(:final response) => response.snapshotToken,
-        PluginManagementLoadResultUnsupported() || PluginManagementLoadResultFailure() || null => null,
+        PluginManagementLoadResultLoading() ||
+        PluginManagementLoadResultUnsupported() ||
+        PluginManagementLoadResultFailure() ||
+        null => null,
       };
       if (snapshotToken == currentToken) return;
       _markStale();
@@ -205,7 +210,7 @@ class PluginManagementService with Disposable {
       candidate: result,
       consumeStalenessThrough: switch (result) {
         PluginManagementLoadResultSupported() || PluginManagementLoadResultUnsupported() => targetGeneration,
-        PluginManagementLoadResultFailure() => null,
+        PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() => null,
       },
       retainSupportedOnFailure: true,
     );
@@ -297,6 +302,8 @@ class PluginManagementService with Disposable {
 
     var publication = candidate;
     switch (candidate) {
+      case PluginManagementLoadResultLoading():
+        break;
       case PluginManagementLoadResultSupported(:final response):
         if (_responseIdentitySupersedesRequest(response: response, captured: captured)) {
           _invalidateBridgeIdentityFence();
@@ -334,6 +341,7 @@ class PluginManagementService with Disposable {
     if (!_activeBridgeIdentityKnown) return null;
     return switch (_currentSnapshot) {
       PluginManagementLoadResultSupported(:final response) when response.bridgeId == _activeBridgeId => response,
+      PluginManagementLoadResultLoading() ||
       PluginManagementLoadResultSupported() ||
       PluginManagementLoadResultUnsupported() ||
       PluginManagementLoadResultFailure() ||
@@ -349,6 +357,12 @@ class PluginManagementService with Disposable {
   void _invalidateBridgeIdentityFence() {
     _connectionEpoch++;
     _forgetActiveBridgeIdentity();
+    _invalidatePublishedSnapshot();
+  }
+
+  void _invalidatePublishedSnapshot() {
+    _publicationGeneration++;
+    _snapshots.add(const PluginManagementLoadResult.loading());
   }
 
   @override

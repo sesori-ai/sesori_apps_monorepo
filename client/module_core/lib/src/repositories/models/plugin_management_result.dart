@@ -4,6 +4,8 @@ import "package:sesori_shared/sesori_shared.dart";
 sealed class PluginManagementLoadResult {
   const PluginManagementLoadResult();
 
+  const factory PluginManagementLoadResult.loading() = PluginManagementLoadResultLoading;
+
   const factory PluginManagementLoadResult.supported({
     required PluginManagementResponse response,
     required ApiError? refreshError,
@@ -12,6 +14,10 @@ sealed class PluginManagementLoadResult {
   const factory PluginManagementLoadResult.unsupported() = PluginManagementLoadResultUnsupported;
 
   const factory PluginManagementLoadResult.failure({required ApiError error}) = PluginManagementLoadResultFailure;
+}
+
+final class PluginManagementLoadResultLoading extends PluginManagementLoadResult {
+  const PluginManagementLoadResultLoading();
 }
 
 final class PluginManagementLoadResultSupported extends PluginManagementLoadResult {

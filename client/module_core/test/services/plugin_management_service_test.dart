@@ -147,6 +147,32 @@ void main() {
       expect(_supportedResponse(service).bridgeId, "br_b");
     });
 
+    test("reconnect invalidates the replayed snapshot until the new bridge responds", () async {
+      final newBridgeLoad = Completer<PluginManagementLoadResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "a", bridgeId: "br_a")))
+        ..queueLoad(newBridgeLoad.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue && _supportedResponse(service).bridgeId == "br_a");
+
+      connection
+        ..emitStatus(const ConnectionStatus.connectionLost(config: _config))
+        ..emitStatus(_connected);
+      await _waitFor(() => repository.loadCalls == 2);
+
+      expect(service.snapshots.value, isA<PluginManagementLoadResultLoading>());
+      expect(await service.snapshots.first, isA<PluginManagementLoadResultLoading>());
+
+      newBridgeLoad.complete(_supported(_response(token: "b", bridgeId: "br_b")));
+      await _waitFor(() => service.snapshots.value is PluginManagementLoadResultSupported);
+      expect(_supportedResponse(service).bridgeId, "br_b");
+    });
+
     test("legacy null identity is retained only within its proven connection epoch", () async {
       final error = ApiError.generic();
       final repository = _FakePluginRepository()
@@ -288,7 +314,7 @@ void main() {
       mutation.complete(_success(_response(token: "mutation")));
 
       expect(await mutationFuture, isA<PluginManagementMutationResultUncertain>());
-      expect(_supportedResponse(service).snapshotToken, "initial");
+      expect(service.snapshots.value, isA<PluginManagementLoadResultLoading>());
     });
 
     test("a stale rejection after reconnect becomes uncertain and awaits the authoritative refresh", () async {
@@ -346,7 +372,7 @@ void main() {
       refresh.complete(_supported(_response(token: "late")));
       await refreshFuture;
 
-      expect(_supportedResponse(service).snapshotToken, "initial");
+      expect(service.snapshots.value, isA<PluginManagementLoadResultLoading>());
     });
 
     test("repository uncertain schedules a clean GET before returning", () async {

@@ -447,7 +447,11 @@ a second trigger. Only `ConnectionConnected` permits management HTTP. Offline,
 reconnecting, lost, and disconnected statuses reject or defer new attempts and
 fence any in-flight attempt by connection epoch.
 
-One private publication coordinator owns every snapshot application. Both GET
+One private publication coordinator owns every snapshot application. A
+connection-epoch or authoritative bridge-identity change immediately replaces
+the replayed snapshot with a loading publication so late subscribers cannot
+render facts from the prior bridge while the next authoritative GET is pending.
+Both GET
 and mutation completions capture `{connectionEpoch,
 publicationGeneration, staleGeneration, bridgeId}` before their request and
 revalidate that entire fence immediately before publishing. `bridgeId` comes

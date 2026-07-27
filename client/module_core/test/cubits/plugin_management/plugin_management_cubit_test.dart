@@ -66,6 +66,17 @@ void main() {
     expect(cubit.state, PluginManagementState.failure(error: error));
   });
 
+  test("maps snapshot invalidation back to loading", () async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await _settle();
+    expect(cubit.state, isA<PluginManagementReady>());
+
+    snapshots.add(const PluginManagementLoadResult.loading());
+    await _settle();
+
+    expect(cubit.state, const PluginManagementState.loading());
+  });
+
   test("delegates refresh and retains a published refresh error with the ready snapshot", () async {
     final error = ApiError.dartHttpClient(Exception("offline"));
     snapshots.add(PluginManagementLoadResult.supported(response: _response, refreshError: error));
