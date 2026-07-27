@@ -3,9 +3,9 @@
 ## Current State
 
 - **Implementation base:** `origin/main` at `ecd75b6c` after Step 2/7 merged
-- **Series state:** Step 3/7 implementation complete
-- **Next action:** raise the Step 3/7 synchronization-service PR and settle
-  review; the real integration E2E gate follows Step 5/7
+- **Series state:** Step 3/7 in review
+- **Next action:** settle PR #589 review; the real integration E2E gate follows
+  Step 5/7
 
 ## Delivery
 
@@ -13,7 +13,7 @@
 |---|---|---|---|
 | [x] | Step 1/7 — per-bridge harness preference | `setup-aware-harness-settings-preferences` | PR #579 merged; 729 changed lines (estimate 650-750) |
 | [x] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | PR #583 merged as `ecd75b6c`; ~660 changed lines (estimate 300-400, test-driven overage) |
-| [ ] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | implementation complete; ~1,080 changed lines (estimate 550-700, race-matrix test overage) |
+| [ ] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | PR #589 in review; 1,095 changed lines (estimate 550-700, race-matrix test overage) |
 | [ ] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | planned; estimate 750-900 changed lines |
 | [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | planned; estimate 1,100-1,300 changed lines |
 | [ ] | Step 6/7 — management actions | `setup-aware-harness-settings-state` | planned; estimate 650-800 changed lines |
