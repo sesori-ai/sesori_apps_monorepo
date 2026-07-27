@@ -42,7 +42,6 @@ const _response = PluginManagementResponse(
       setup: PluginSetupMetadata(
         id: "one",
         displayName: "One",
-        brandLogoKey: null,
         state: PluginSetupState.ready,
         actionHint: null,
       ),

@@ -33,7 +33,6 @@ void main() {
         PluginMetadata(
           id: "plugin-b",
           displayName: "Plugin B",
-          brandLogoKey: "plugin-b-brand",
           isDefault: false,
           state: PluginLifecycleState.failed,
           actionHint: "Restart the bridge.",
@@ -41,7 +40,6 @@ void main() {
         PluginMetadata(
           id: "plugin-a",
           displayName: "Plugin A",
-          brandLogoKey: null,
           isDefault: true,
           state: PluginLifecycleState.ready,
           actionHint: null,
@@ -67,7 +65,6 @@ void main() {
             PluginMetadata(
               id: legacyMissingPluginId,
               displayName: "OpenCode",
-              brandLogoKey: null,
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
@@ -303,7 +300,6 @@ const _managementPlugin = PluginManagementMetadata(
   setup: PluginSetupMetadata(
     id: "codex",
     displayName: "Codex",
-    brandLogoKey: "codex",
     state: PluginSetupState.ready,
     actionHint: null,
   ),

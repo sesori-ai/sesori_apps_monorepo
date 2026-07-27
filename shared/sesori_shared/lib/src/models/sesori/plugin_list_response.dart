@@ -15,10 +15,6 @@ sealed class PluginMetadata with _$PluginMetadata {
   const factory PluginMetadata({
     required String id,
     required String displayName,
-    // COMPATIBILITY 2026-07-27 (v1.7.0): Older bridges omit brandLogoKey;
-    // null renders the generic plugin logo. Make non-null only if every future
-    // plugin is required to declare branding and those bridges are unsupported.
-    required String? brandLogoKey,
     required bool isDefault,
     @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required PluginLifecycleState state,
     required String? actionHint,

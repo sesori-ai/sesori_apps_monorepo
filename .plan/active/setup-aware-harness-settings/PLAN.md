@@ -531,53 +531,11 @@ Use the existing generated Prego glyphs `VESPRSolid.opencode`,
 `VESPRSolid.codex`, and `VESPRSolid.cursor`; do not add or edit icon font
 assets or generated icon code.
 
-Add a presentation-only nullable key to the plugin interface:
-
-```dart
-abstract class BridgePluginDescriptor {
-  // Existing members...
-
-  /// Optional stable presentation key for the plugin's brand logo.
-  ///
-  /// The bridge and shared contracts treat this value as opaque. Clients map
-  /// known keys to bundled presentation assets and use a generic fallback for
-  /// null or unknown keys.
-  String? get brandLogoKey;
-}
-```
-
-Every in-repository descriptor declares intent:
-
-```dart
-OpenCodePluginDescriptor.brandLogoKey => "opencode";
-CodexPluginDescriptor.brandLogoKey => "codex";
-CursorPluginDescriptor.brandLogoKey => "cursor";
-```
-
-The values may match current IDs, but no consumer may derive the logo from the
-ID. Future or unbranded plugins return `null`.
-
-Add nullable `brandLogoKey` to shared `PluginMetadata` and
-`PluginSetupMetadata`; `PluginManagementMetadata` carries it through its
-embedded `setup`. The fields are additive, decode from missing older payloads
-as null, and are omitted when null. Include dated compatibility comments.
-
-Expand bridge-local registration metadata:
-
-```dart
-typedef RegisteredPluginMetadata = ({
-  String id,
-  String displayName,
-  String? brandLogoKey,
-  PluginResidencyPolicy residencyPolicy,
-});
-```
-
-`BridgeRuntimeRunner` copies `descriptor.brandLogoKey` alongside the existing
-display name. `PluginLifecycleService` propagates the value into discovery and
-setup/management rows. The legacy 404 discovery fallback supplies
-`brandLogoKey: null`; a peer that cannot declare branding renders the generic
-fallback rather than the client embedding another backend-specific key.
+Use the existing stable plugin ID as the presentation lookup key. Do not add a
+second logo-key field to plugin descriptors, bridge registration metadata, or
+shared wire contracts. The Prego presentation boundary recognizes bundled
+logos for the current `opencode`, `codex`, and `cursor` IDs and renders a
+generic fallback for every other plugin ID.
 
 Add a non-generated Prego primitive:
 
@@ -585,12 +543,12 @@ Add a non-generated Prego primitive:
 class PregoBrandLogo extends StatelessWidget {
   const PregoBrandLogo({
     super.key,
-    required this.brandLogoKey,
+    required this.pluginId,
     this.size = 20,
     this.color,
   });
 
-  final String? brandLogoKey;
+  final String pluginId;
   final double size;
   final Color? color;
 }
@@ -602,7 +560,7 @@ Its private/static resolver maps exactly:
 "opencode" -> VESPRSolid.opencode
 "codex"    -> VESPRSolid.codex
 "cursor"   -> VESPRSolid.cursor
-other/null -> TablerRegular.plug
+other      -> TablerRegular.plug
 ```
 
 The logo is decorative; visible display-name text remains the accessible
@@ -616,29 +574,15 @@ screens consume the primitive in later slices.
 
 Production files:
 
-- `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`
-- OpenCode, Codex, and Cursor descriptor source files
-- `bridge/app/lib/src/bridge/runtime/bridge_runtime_runner.dart`
-- `bridge/app/lib/src/services/plugin_lifecycle_service.dart`
-- `shared/sesori_shared/lib/src/models/sesori/plugin_list_response.dart`
-- `shared/sesori_shared/lib/src/models/sesori/plugin_setup_response.dart`
-- regenerated shared companions
-- `client/module_core/lib/src/repositories/plugin_repository.dart`
 - `client/module_prego/lib/components/icons/prego_brand_logo.dart`
 - `client/module_prego/lib/module_prego.dart`
 - `client/app/lib/features/new_session/new_session_plugin_chooser.dart`
 
 ### Verification
 
-- Descriptor contract and three concrete-key tests.
-- Bridge registration/discovery/setup/management propagation tests.
-- Shared missing/null/known/omitted-key compatibility tests and management
-  nesting coverage.
-- Prego widget tests for three mappings plus null and unknown fallback.
+- Prego widget tests for three mappings plus unknown-ID fallback.
 - Existing chooser rendering tests.
-- Code generation, focused tests, and fatal analysis in interface, concrete
-  plugin packages, bridge app, shared, module_prego, module_core, mobile, and
-  desktop as applicable.
+- Focused tests and fatal analysis in module_prego and mobile.
 
 ## Step 5/7: Harnesses Overview Page
 

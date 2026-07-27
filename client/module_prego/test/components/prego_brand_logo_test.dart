@@ -9,15 +9,14 @@ Widget _harness(PregoBrandLogo logo) {
 }
 
 void main() {
-  for (final mapping in <({String? key, IconData icon})>[
-    (key: "opencode", icon: VESPRSolid.opencode),
-    (key: "codex", icon: VESPRSolid.codex),
-    (key: "cursor", icon: VESPRSolid.cursor),
-    (key: "future-brand", icon: TablerRegular.plug),
-    (key: null, icon: TablerRegular.plug),
+  for (final mapping in <({String pluginId, IconData icon})>[
+    (pluginId: "opencode", icon: VESPRSolid.opencode),
+    (pluginId: "codex", icon: VESPRSolid.codex),
+    (pluginId: "cursor", icon: VESPRSolid.cursor),
+    (pluginId: "future-plugin", icon: TablerRegular.plug),
   ]) {
-    testWidgets("maps ${mapping.key ?? "null"} to its bundled glyph", (tester) async {
-      await tester.pumpWidget(_harness(PregoBrandLogo(brandLogoKey: mapping.key)));
+    testWidgets("maps ${mapping.pluginId} to its bundled glyph", (tester) async {
+      await tester.pumpWidget(_harness(PregoBrandLogo(pluginId: mapping.pluginId)));
 
       expect(find.byIcon(mapping.icon), findsOneWidget);
     });
@@ -28,7 +27,7 @@ void main() {
     await tester.pumpWidget(
       _harness(
         const PregoBrandLogo(
-          brandLogoKey: "opencode",
+          pluginId: "opencode",
           size: 28,
           color: color,
         ),

@@ -23,12 +23,7 @@ typedef PluginCompositionView = ({
   Map<String, PluginProjectOwnership> projectOwnershipById,
 });
 
-typedef RegisteredPluginMetadata = ({
-  String id,
-  String displayName,
-  String? brandLogoKey,
-  PluginResidencyPolicy residencyPolicy,
-});
+typedef RegisteredPluginMetadata = ({String id, String displayName, PluginResidencyPolicy residencyPolicy});
 
 typedef PluginStartupPolicy = ({
   List<String> eligiblePluginIds,
@@ -609,7 +604,6 @@ class PluginLifecycleService {
             return PluginMetadata(
               id: plugin.id,
               displayName: plugin.displayName,
-              brandLogoKey: plugin.brandLogoKey,
               isDefault: false,
               state: state,
               actionHint: _actionHint(state),
@@ -677,7 +671,6 @@ class PluginLifecycleService {
     return PluginSetupMetadata(
       id: plugin.id,
       displayName: plugin.displayName,
-      brandLogoKey: plugin.brandLogoKey,
       state: switch (setup) {
         PluginSetupNotInspected() => PluginSetupState.notInspected,
         PluginSetupReady() => PluginSetupState.ready,

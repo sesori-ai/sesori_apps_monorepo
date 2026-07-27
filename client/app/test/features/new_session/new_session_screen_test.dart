@@ -123,7 +123,6 @@ void main() {
             PluginMetadata(
               id: "plugin-1",
               displayName: "Plugin One",
-              brandLogoKey: "opencode",
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
@@ -265,23 +264,20 @@ void main() {
             PluginMetadata(
               id: "failed-id",
               displayName: "First Tool",
-              brandLogoKey: "future-brand",
               isDefault: false,
               state: PluginLifecycleState.failed,
               actionHint: "Restart the bridge to retry.",
             ),
             PluginMetadata(
-              id: "degraded-id",
+              id: "codex",
               displayName: "Second Tool",
-              brandLogoKey: "codex",
               isDefault: true,
               state: PluginLifecycleState.degraded,
               actionHint: "Check the bridge console.",
             ),
             PluginMetadata(
-              id: "unavailable-id",
+              id: "cursor",
               displayName: "Third Tool",
-              brandLogoKey: "cursor",
               isDefault: false,
               state: PluginLifecycleState.unavailable,
               actionHint: "Make this tool available on the bridge.",
@@ -311,15 +307,15 @@ void main() {
       isNull,
     );
     expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_unavailable-id"))).onTap,
+      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_cursor"))).onTap,
       isNull,
     );
     expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_degraded-id"))).onTap,
+      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_codex"))).onTap,
       isNotNull,
     );
     expect(find.text("failed-id"), findsNothing);
-    expect(find.text("degraded-id"), findsNothing);
+    expect(find.text("codex"), findsNothing);
   });
 
   testWidgets("uses on-brand foreground tokens for a selected plugin in dark mode", (tester) async {
@@ -331,7 +327,6 @@ void main() {
             PluginMetadata(
               id: "degraded-id",
               displayName: "Selected Tool",
-              brandLogoKey: null,
               isDefault: true,
               state: PluginLifecycleState.degraded,
               actionHint: "Check the bridge console.",
@@ -383,7 +378,6 @@ void main() {
               PluginMetadata(
                 id: "plugin-$index",
                 displayName: "Plugin $index",
-                brandLogoKey: null,
                 isDefault: index == 0,
                 state: PluginLifecycleState.ready,
                 actionHint: "Plugin $index action hint",
@@ -463,7 +457,6 @@ void main() {
     const toolA = PluginMetadata(
       id: "tool-a",
       displayName: "Tool A",
-      brandLogoKey: null,
       isDefault: true,
       state: PluginLifecycleState.ready,
       actionHint: null,
@@ -471,7 +464,6 @@ void main() {
     const toolB = PluginMetadata(
       id: "tool-b",
       displayName: "Tool B",
-      brandLogoKey: null,
       isDefault: false,
       state: PluginLifecycleState.degraded,
       actionHint: "Check the bridge console.",
@@ -539,7 +531,6 @@ void main() {
     const toolA = PluginMetadata(
       id: "tool-a",
       displayName: "Tool A",
-      brandLogoKey: null,
       isDefault: true,
       state: PluginLifecycleState.ready,
       actionHint: null,
@@ -547,7 +538,6 @@ void main() {
     const toolB = PluginMetadata(
       id: "tool-b",
       displayName: "Tool B",
-      brandLogoKey: null,
       isDefault: false,
       state: PluginLifecycleState.ready,
       actionHint: null,
@@ -629,7 +619,6 @@ void main() {
               PluginMetadata(
                 id: "plugin-1",
                 displayName: "Plugin One",
-                brandLogoKey: null,
                 isDefault: true,
                 state: PluginLifecycleState.ready,
                 actionHint: null,

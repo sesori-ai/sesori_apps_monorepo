@@ -27,7 +27,6 @@ void main() {
             {
               "id": "plugin-b",
               "displayName": "Plugin B",
-              "brandLogoKey": "plugin-b-brand",
               "isDefault": false,
               "state": "degraded",
               "actionHint": "Check the bridge console.",
@@ -49,10 +48,8 @@ void main() {
     final data = (response as SuccessResponse<PluginListResponse>).data;
     expect(data.plugins.map((plugin) => plugin.id), ["plugin-b", "plugin-a"]);
     expect(data.plugins.first.state, PluginLifecycleState.degraded);
-    expect(data.plugins.first.brandLogoKey, "plugin-b-brand");
     expect(data.plugins.first.actionHint, "Check the bridge console.");
     expect(data.plugins.last.isDefault, isTrue);
-    expect(data.plugins.last.brandLogoKey, isNull);
     verify(
       () => client.get<PluginListResponse>("/plugin", fromJson: any(named: "fromJson")),
     ).called(1);
@@ -81,7 +78,6 @@ void main() {
     expect(data.bridgeId, "br_abc12345");
     expect(data.snapshotToken, "snapshot-token");
     expect(data.plugins.single.setup.id, "opencode");
-    expect(data.plugins.single.setup.brandLogoKey, "opencode");
     verify(
       () => client.get<PluginManagementResponse>("/plugin/management", fromJson: any(named: "fromJson")),
     ).called(1);
@@ -155,13 +151,7 @@ const _managementJson = {
   "defaultIdleTimeoutMins": 30,
   "plugins": [
     {
-      "setup": {
-        "id": "opencode",
-        "displayName": "OpenCode",
-        "brandLogoKey": "opencode",
-        "state": "ready",
-        "actionHint": null,
-      },
+      "setup": {"id": "opencode", "displayName": "OpenCode", "state": "ready", "actionHint": null},
       "runtimeState": "active",
       "workState": "idle",
       "idleTimeoutMins": 30,

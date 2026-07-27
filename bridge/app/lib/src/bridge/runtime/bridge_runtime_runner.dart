@@ -640,7 +640,6 @@ class BridgeRuntimeRunner {
                 (
                   id: descriptor.id,
                   displayName: descriptor.displayName,
-                  brandLogoKey: descriptor.brandLogoKey,
                   residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
                 ),
             ],

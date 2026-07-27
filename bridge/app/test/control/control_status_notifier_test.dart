@@ -39,14 +39,7 @@ void main() {
 
   void emitPluginState(PluginLifecycleState state) {
     pluginMetadata.add([
-      PluginMetadata(
-        id: "plugin",
-        displayName: "Plugin",
-        brandLogoKey: null,
-        isDefault: true,
-        state: state,
-        actionHint: null,
-      ),
+      PluginMetadata(id: "plugin", displayName: "Plugin", isDefault: true, state: state, actionHint: null),
     ]);
   }
 

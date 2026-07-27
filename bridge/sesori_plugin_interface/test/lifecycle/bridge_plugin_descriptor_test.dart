@@ -6,7 +6,6 @@ void main() {
     test('is const-constructible and inert', () {
       const descriptor = _MinimalDescriptor();
       expect(descriptor.id, 'noop');
-      expect(descriptor.brandLogoKey, isNull);
       expect(descriptor.options, isEmpty);
       expect(descriptor.stateStorage, PluginStateStorage.isolated);
     });

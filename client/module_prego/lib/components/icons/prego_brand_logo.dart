@@ -6,12 +6,12 @@ import "../../icons/vespr_icons.g.dart";
 class PregoBrandLogo extends StatelessWidget {
   const PregoBrandLogo({
     super.key,
-    required this.brandLogoKey,
+    required this.pluginId,
     this.size = 20,
     this.color,
   });
 
-  final String? brandLogoKey;
+  final String pluginId;
   final double size;
   final Color? color;
 
@@ -19,17 +19,17 @@ class PregoBrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return ExcludeSemantics(
       child: Icon(
-        _iconFor(brandLogoKey),
+        _iconFor(pluginId),
         size: size,
         color: color,
       ),
     );
   }
 
-  static IconData _iconFor(String? brandLogoKey) => switch (brandLogoKey) {
+  static IconData _iconFor(String pluginId) => switch (pluginId) {
     "opencode" => VESPRSolid.opencode,
     "codex" => VESPRSolid.codex,
     "cursor" => VESPRSolid.cursor,
-    null || _ => TablerRegular.plug,
+    _ => TablerRegular.plug,
   };
 }

@@ -124,14 +124,12 @@ void main() {
         const PluginSetupMetadata(
           id: "cursor",
           displayName: "Cursor",
-          brandLogoKey: "cursor-brand",
           state: PluginSetupState.notInspected,
           actionHint: null,
         ),
         const PluginSetupMetadata(
           id: "opencode",
           displayName: "OpenCode",
-          brandLogoKey: "opencode-brand",
           state: PluginSetupState.authenticationRequired,
           actionHint: "Run opencode auth login.",
         ),
@@ -163,24 +161,9 @@ void main() {
           )
           ..registerPlugins(
             plugins: const [
-              (
-                id: "opencode",
-                displayName: "OpenCode",
-                brandLogoKey: "opencode",
-                residencyPolicy: PluginResidencyPolicy.resident,
-              ),
-              (
-                id: "alpha",
-                displayName: "Alpha",
-                brandLogoKey: null,
-                residencyPolicy: PluginResidencyPolicy.transient,
-              ),
-              (
-                id: "beta",
-                displayName: "Beta",
-                brandLogoKey: null,
-                residencyPolicy: PluginResidencyPolicy.transient,
-              ),
+              (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.resident),
+              (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
+              (id: "beta", displayName: "Beta", residencyPolicy: PluginResidencyPolicy.transient),
             ],
           )
           ..initialize(
@@ -222,12 +205,10 @@ void main() {
     final beta = response.plugins[1];
     final opencode = response.plugins[2];
     expect(alpha.runtimeState, shared.PluginRuntimeState.blocked);
-    expect(alpha.setup.brandLogoKey, isNull);
     expect(alpha.idleTimeoutMins, 30);
     expect(alpha.actionHint, "Install Alpha.");
     expect(beta.runtimeState, shared.PluginRuntimeState.disabled);
     expect(opencode.runtimeState, shared.PluginRuntimeState.dormant);
-    expect(opencode.setup.brandLogoKey, "opencode");
     expect(opencode.idleTimeoutMins, 0);
     expect(opencode.hasIdleTimeoutOverride, isTrue);
     expect(settingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: "opencode"), 45);
@@ -416,7 +397,7 @@ void main() {
           )
           ..registerPlugins(
             plugins: const [
-              (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.transient),
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
             ],
           )
           ..initialize(
@@ -559,7 +540,7 @@ void main() {
           )
           ..registerPlugins(
             plugins: const [
-              (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.transient),
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
             ],
           )
           ..initialize(
@@ -607,7 +588,7 @@ void main() {
           )
           ..registerPlugins(
             plugins: const [
-              (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.transient),
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
             ],
           )
           ..initialize(
@@ -657,7 +638,7 @@ void main() {
           )
           ..registerPlugins(
             plugins: const [
-              (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.transient),
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
             ],
           )
           ..initialize(
@@ -694,7 +675,7 @@ void main() {
           )
           ..registerPlugins(
             plugins: const [
-              (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.transient),
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
             ],
           )
           ..initialize(
@@ -1045,7 +1026,7 @@ void main() {
           bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )..registerPlugins(
           plugins: const [
-            (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.transient),
+            (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
           ],
         );
     addTearDown(service.dispose);
@@ -1071,7 +1052,7 @@ void main() {
           bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )..registerPlugins(
           plugins: const [
-            (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.transient),
+            (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
           ],
         );
     addTearDown(service.dispose);
@@ -1114,7 +1095,7 @@ void main() {
           bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )..registerPlugins(
           plugins: const [
-            (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.transient),
+            (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
           ],
         );
     addTearDown(service.dispose);
@@ -1152,7 +1133,7 @@ void main() {
           bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )..registerPlugins(
           plugins: const [
-            (id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: PluginResidencyPolicy.resident),
+            (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.resident),
           ],
         );
     addTearDown(service.dispose);
@@ -1170,15 +1151,9 @@ void main() {
   });
 }
 
-typedef _TestRegisteredPluginMetadata = ({
-  String id,
-  String displayName,
-  PluginResidencyPolicy residencyPolicy,
-});
-
 PluginLifecycleService _service({
   required PluginRuntime runtime,
-  required List<_TestRegisteredPluginMetadata> plugins,
+  required List<RegisteredPluginMetadata> plugins,
 }) {
   return PluginLifecycleService(
     lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
@@ -1186,17 +1161,7 @@ PluginLifecycleService _service({
     bridgeSettingsRepository: createTestBridgeSettingsRepository(),
     idleTimerScheduler: const PluginIdleTimerScheduler(),
     bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-  )..registerPlugins(
-    plugins: [
-      for (final plugin in plugins)
-        (
-          id: plugin.id,
-          displayName: plugin.displayName,
-          brandLogoKey: "${plugin.id}-brand",
-          residencyPolicy: plugin.residencyPolicy,
-        ),
-    ],
-  );
+  )..registerPlugins(plugins: plugins);
 }
 
 PluginLifecycleService _singleIdleService({
@@ -1213,7 +1178,7 @@ PluginLifecycleService _singleIdleService({
       bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
     )
     ..registerPlugins(
-      plugins: [(id: "one", displayName: "One", brandLogoKey: null, residencyPolicy: residencyPolicy)],
+      plugins: [(id: "one", displayName: "One", residencyPolicy: residencyPolicy)],
     )
     ..initialize(
       disabledPluginIds: const {},
@@ -1233,12 +1198,7 @@ PluginLifecycleService _commandService({
     bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
   )..registerPlugins(
     plugins: const [
-      (
-        id: "one",
-        displayName: "One",
-        brandLogoKey: null,
-        residencyPolicy: PluginResidencyPolicy.transient,
-      ),
+      (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
     ],
   );
 }
