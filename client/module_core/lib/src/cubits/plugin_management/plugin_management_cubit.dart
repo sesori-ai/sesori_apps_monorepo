@@ -10,7 +10,7 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   PluginManagementCubit({required PluginManagementService service})
     : _service = service,
       super(const PluginManagementState.loading()) {
-    _snapshotSubscription = service.snapshots.listen(_onSnapshot);
+    _snapshotSubscription = service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot));
   }
 
   final PluginManagementService _service;
@@ -19,12 +19,13 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   Future<void> refresh() => _service.refresh();
 
   void dismissRefreshError() {
+    if (isClosed) return;
     final current = state;
     if (current is! PluginManagementReady || current.refreshError == null) return;
     emit(current.copyWith(refreshError: null));
   }
 
-  void _onSnapshot(PluginManagementLoadResult snapshot) {
+  void _onSnapshot({required PluginManagementLoadResult snapshot}) {
     if (isClosed) return;
     switch (snapshot) {
       case PluginManagementLoadResultSupported(:final response, :final refreshError):

@@ -144,6 +144,21 @@ void main() {
     expect(find.text("20 min"), findsOneWidget);
   });
 
+  testWidgets("supported response with no registered harnesses shows an explicit empty state", (tester) async {
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: []),
+        refreshError: null,
+      ),
+    );
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    expect(find.text("No harnesses registered"), findsOneWidget);
+    expect(find.text("The connected bridge hasn't registered any coding harnesses."), findsOneWidget);
+  });
+
   testWidgets("ready refresh failure keeps the snapshot visible and can be dismissed", (tester) async {
     snapshots.add(
       PluginManagementLoadResult.supported(

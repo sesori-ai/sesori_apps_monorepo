@@ -421,6 +421,18 @@ abstract class AppLocalizations {
   /// **'Registered Harnesses'**
   String get harnessesRegisteredSection;
 
+  /// No description provided for @harnessesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No harnesses registered'**
+  String get harnessesEmptyTitle;
+
+  /// No description provided for @harnessesEmptyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The connected bridge hasn\'t registered any coding harnesses.'**
+  String get harnessesEmptyDescription;
+
   /// No description provided for @harnessesLoading.
   ///
   /// In en, this message translates to:

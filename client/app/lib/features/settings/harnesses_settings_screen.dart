@@ -167,18 +167,29 @@ class _ReadyView extends StatelessWidget {
         const SizedBox(height: PregoSpacing.xl),
         SettingsSection(
           title: loc.harnessesRegisteredSection,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var index = 0; index < response.plugins.length; index++) ...[
-                _HarnessCard(
-                  plugin: response.plugins[index],
-                  isDefault: response.plugins[index].setup.id == response.defaultPluginId,
+          child: response.plugins.isEmpty
+              ? PregoGroupedRows(
+                  children: [
+                    PregoGroupedRow(
+                      icon: TablerRegular.info_circle,
+                      title: Text(loc.harnessesEmptyTitle),
+                      subtitle: Text(loc.harnessesEmptyDescription),
+                      isLast: true,
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var index = 0; index < response.plugins.length; index++) ...[
+                      _HarnessCard(
+                        plugin: response.plugins[index],
+                        isDefault: response.plugins[index].setup.id == response.defaultPluginId,
+                      ),
+                      if (index != response.plugins.length - 1) const SizedBox(height: PregoSpacing.md),
+                    ],
+                  ],
                 ),
-                if (index != response.plugins.length - 1) const SizedBox(height: PregoSpacing.md),
-              ],
-            ],
-          ),
         ),
       ],
     );

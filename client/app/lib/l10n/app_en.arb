@@ -151,6 +151,8 @@
   "settingsHarnessesTitle": "Harnesses",
   "harnessesDescription": "View the coding harnesses registered by your connected bridge.",
   "harnessesRegisteredSection": "Registered Harnesses",
+  "harnessesEmptyTitle": "No harnesses registered",
+  "harnessesEmptyDescription": "The connected bridge hasn't registered any coding harnesses.",
   "harnessesLoading": "Loading harnesses",
   "harnessesUnsupportedTitle": "Harnesses aren't supported",
   "harnessesUnsupportedDescription": "Update the connected bridge to view and manage its harnesses.",

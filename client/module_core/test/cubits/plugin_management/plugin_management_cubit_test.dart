@@ -92,4 +92,13 @@ void main() {
     expect(state.response, _response);
     expect(state.refreshError, isNull);
   });
+
+  test("ignores a late refresh-error dismissal after close", () async {
+    final error = ApiError.dartHttpClient(Exception("offline"));
+    snapshots.add(PluginManagementLoadResult.supported(response: _response, refreshError: error));
+    await _settle();
+    await cubit.close();
+
+    expect(cubit.dismissRefreshError, returnsNormally);
+  });
 }

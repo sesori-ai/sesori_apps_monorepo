@@ -184,6 +184,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesRegisteredSection => 'Registered Harnesses';
 
   @override
+  String get harnessesEmptyTitle => 'No harnesses registered';
+
+  @override
+  String get harnessesEmptyDescription => 'The connected bridge hasn\'t registered any coding harnesses.';
+
+  @override
   String get harnessesLoading => 'Loading harnesses';
 
   @override
