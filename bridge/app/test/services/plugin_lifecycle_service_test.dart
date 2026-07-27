@@ -229,7 +229,9 @@ void main() {
     addTearDown(service.dispose);
 
     // Lifecycle initialization precedes bridge registration in the runtime;
-    // the service must attach the provider's current identity when returning.
+    // management must fail closed until the authority supplies an identity,
+    // then attach that current identity when returning.
+    expect(() => service.managementSnapshot, throwsStateError);
     bridgeIdProvider.id = "br_test1234";
     final response = service.managementSnapshot;
 
@@ -513,7 +515,7 @@ void main() {
             preferredDefaultPluginId: legacyMissingPluginId,
             bridgeSettingsRepository: settingsRepository,
             idleTimerScheduler: const PluginIdleTimerScheduler(),
-            bridgeIdProvider: FakeBridgeIdProvider(),
+            bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
           )
           ..registerPlugins(
             plugins: const [
@@ -561,7 +563,7 @@ void main() {
             preferredDefaultPluginId: legacyMissingPluginId,
             bridgeSettingsRepository: settingsRepository,
             idleTimerScheduler: const PluginIdleTimerScheduler(),
-            bridgeIdProvider: FakeBridgeIdProvider(),
+            bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
           )
           ..registerPlugins(
             plugins: const [
@@ -610,7 +612,7 @@ void main() {
             preferredDefaultPluginId: legacyMissingPluginId,
             bridgeSettingsRepository: settingsRepository,
             idleTimerScheduler: const PluginIdleTimerScheduler(),
-            bridgeIdProvider: FakeBridgeIdProvider(),
+            bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
           )
           ..registerPlugins(
             plugins: const [
@@ -962,7 +964,7 @@ void main() {
           preferredDefaultPluginId: legacyMissingPluginId,
           bridgeSettingsRepository: createTestBridgeSettingsRepository(),
           idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: FakeBridgeIdProvider(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )..registerPlugins(
           plugins: const [
             (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
@@ -988,7 +990,7 @@ void main() {
           preferredDefaultPluginId: legacyMissingPluginId,
           bridgeSettingsRepository: createTestBridgeSettingsRepository(),
           idleTimerScheduler: timerScheduler,
-          bridgeIdProvider: FakeBridgeIdProvider(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )..registerPlugins(
           plugins: const [
             (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
@@ -1031,7 +1033,7 @@ void main() {
             ),
           ),
           idleTimerScheduler: timerScheduler,
-          bridgeIdProvider: FakeBridgeIdProvider(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )..registerPlugins(
           plugins: const [
             (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
@@ -1069,7 +1071,7 @@ void main() {
           preferredDefaultPluginId: legacyMissingPluginId,
           bridgeSettingsRepository: settingsRepository,
           idleTimerScheduler: timerScheduler,
-          bridgeIdProvider: FakeBridgeIdProvider(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )..registerPlugins(
           plugins: const [
             (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.resident),
@@ -1099,7 +1101,7 @@ PluginLifecycleService _service({
     preferredDefaultPluginId: legacyMissingPluginId,
     bridgeSettingsRepository: createTestBridgeSettingsRepository(),
     idleTimerScheduler: const PluginIdleTimerScheduler(),
-    bridgeIdProvider: FakeBridgeIdProvider(),
+    bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
   )..registerPlugins(plugins: plugins);
 }
 
@@ -1114,7 +1116,7 @@ PluginLifecycleService _singleIdleService({
       preferredDefaultPluginId: legacyMissingPluginId,
       bridgeSettingsRepository: settingsRepository,
       idleTimerScheduler: timerScheduler,
-      bridgeIdProvider: FakeBridgeIdProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
     )
     ..registerPlugins(
       plugins: [(id: "one", displayName: "One", residencyPolicy: residencyPolicy)],
@@ -1134,7 +1136,7 @@ PluginLifecycleService _commandService({
     preferredDefaultPluginId: legacyMissingPluginId,
     bridgeSettingsRepository: settingsRepository ?? createTestBridgeSettingsRepository(),
     idleTimerScheduler: const PluginIdleTimerScheduler(),
-    bridgeIdProvider: FakeBridgeIdProvider(),
+    bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
   )..registerPlugins(
     plugins: const [
       (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),

@@ -30,7 +30,7 @@ void main() {
             preferredDefaultPluginId: legacyMissingPluginId,
             bridgeSettingsRepository: createTestBridgeSettingsRepository(),
             idleTimerScheduler: const PluginIdleTimerScheduler(),
-            bridgeIdProvider: FakeBridgeIdProvider(),
+            bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
           )
           ..registerPlugins(
             plugins: const [

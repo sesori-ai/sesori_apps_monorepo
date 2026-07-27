@@ -228,11 +228,13 @@ Production files:
 Add nullable `bridgeId` to shared `PluginManagementResponse` and regenerate its
 companions. Compose the existing `BridgeRegistrationService` before
 `PluginLifecycleService`, inject it through `BridgeIdProvider`, and have the
-lifecycle service attach the provider's current bridge ID whenever it returns a
-Stage 12 snapshot. The field is additive, decodes from older Stage 12 bridges
-as null, is omitted when null, and receives a dated compatibility comment. GET
-and mutation handlers remain pass-through consumers of the same authoritative,
-identity-bearing service response shape.
+lifecycle service cache only private identity-free management state. It builds
+the transport response when returning, requires the provider's current bridge
+ID to be non-null, and fails closed before registration rather than publishing
+an ambiguous modern snapshot. The wire field remains nullable only so newer
+clients decode older Stage 12 bridges that omit it; null is omitted and receives
+a dated compatibility comment. GET and mutation handlers remain pass-through
+consumers of the same authoritative, identity-bearing service response shape.
 
 Extend `PluginApi` using the current Stage 12 routes:
 

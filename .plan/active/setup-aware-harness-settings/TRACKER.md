@@ -57,7 +57,8 @@
   `bridgeId`; full bridge suite (2146); module_core full suite (656) with new
   API route and repository mapping
   tests; mobile/desktop fatal analysis; Aristotle implementation review
-  approved. Review fixes: lifecycle service owns bridge identity injection,
+  approved. Review fixes: lifecycle service caches identity-free state and
+  requires the provider's current ID when building responses,
   single-report malformed conflicts, named parameters, encoded command path,
   post-dispatch response loss mapped to `uncertain`.
   Confirming E2E on `cbd10948`: all three management routes carried the dev
