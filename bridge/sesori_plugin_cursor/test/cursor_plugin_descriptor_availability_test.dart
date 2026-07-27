@@ -49,6 +49,68 @@ void main() {
       ]);
     });
 
+    test("logs availability once across setup inspection and the startup gate", () async {
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 10,
+            stdoutBytes: utf8.encode("${CursorPluginDescriptor.targetVersion}\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 11,
+            stdoutBytes: utf8.encode("Authenticated\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 12,
+            stdoutBytes: utf8.encode("${CursorPluginDescriptor.targetVersion}\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+      final stderrLines = <String>[];
+      final previousLogLevel = Log.level;
+      try {
+        Log.level = LogLevel.debug;
+        await IOOverrides.runZoned(
+          () async {
+            const descriptor = CursorPluginDescriptor();
+            expect(
+              await descriptor.inspectSetup(
+                config: config,
+                processes: processes,
+                environment: const <String, String>{},
+                stateDirectory: stateDirectory,
+              ),
+              const PluginSetupReady(),
+            );
+            expect(
+              await descriptor.checkAvailability(
+                config: config,
+                processes: processes,
+                environment: const <String, String>{},
+              ),
+              isA<PluginAvailable>(),
+            );
+          },
+          stderr: () => _CapturingStdout(stderrLines),
+        );
+      } finally {
+        Log.level = previousLogLevel;
+      }
+
+      expect(
+        stderrLines.where((line) => line.contains("[cursor] available:")),
+        hasLength(1),
+      );
+      expect(processes.spawnedArguments, [
+        const ["--version"],
+        const ["status"],
+        const ["--version"],
+      ]);
+    });
+
     test("reports a non-provisionable missing runtime", () async {
       final processes = _ProbeProcessService(
         spawnError: const ProcessException("cursor-agent", ["--version"], "missing", 2),
@@ -467,4 +529,18 @@ class _ProbeProcess implements SpawnedProcess {
 
   @override
   ProcessIdentity get identity => throw UnimplementedError();
+}
+
+class _CapturingStdout implements Stdout {
+  _CapturingStdout(this.lines);
+
+  final List<String> lines;
+
+  @override
+  void writeln([Object? object = ""]) {
+    lines.add(object.toString());
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

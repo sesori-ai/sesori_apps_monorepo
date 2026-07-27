@@ -214,6 +214,9 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       processes: processes,
       environment: environment,
     );
+    if (result.state == _CursorRuntimeProbeState.ready) {
+      Log.d("[cursor] available: '$executablePath --version' -> ${result.version!}");
+    }
     return switch (result.state) {
       _CursorRuntimeProbeState.ready => const PluginAvailable(),
       _CursorRuntimeProbeState.missing => PluginUnavailable(
@@ -280,7 +283,6 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       return (state: _CursorRuntimeProbeState.unrecognized, version: null);
     }
     final version = parsed.toString();
-    Log.d("[cursor] available: '$executablePath --version' -> $version");
     return (state: _CursorRuntimeProbeState.ready, version: version);
   }
 
