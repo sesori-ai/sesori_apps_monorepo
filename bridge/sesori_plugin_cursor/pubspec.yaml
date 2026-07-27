@@ -11,6 +11,8 @@ dependencies:
     path: ../sesori_plugin_interface
   sesori_bridge_foundation:
     path: ../sesori_bridge_foundation
+  sesori_shared:
+    path: ../../shared/sesori_shared
   acp_plugin:
     path: ../sesori_plugin_acp
   path: ^1.9.1
@@ -18,8 +20,6 @@ dependencies:
   json_annotation: ^4.12.0
 
 dev_dependencies:
-  sesori_shared:
-    path: ../../shared/sesori_shared
   build_runner: any
   freezed: ^3.2.5
   json_serializable: ^6.14.0

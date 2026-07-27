@@ -94,6 +94,11 @@
   chooser. The initial implementation introduced a separate nullable logo key
   across plugin and wire contracts; product feedback removed that redundant
   contract and made the Prego presentation boundary map the existing stable
-  plugin ID directly. Focused Prego (5) and mobile new-session (23) tests pass;
-  fatal analysis is clean in both affected modules. The real simulator logo
-  E2E remains pending until after PR review.
+  plugin ID directly. A shared `Harness` enum now owns the three built-in IDs;
+  bridge producers and app presentation use `Harness.<value>.name`, while wire
+  contracts remain open strings and unknown IDs retain the generic fallback.
+  Full shared (337), focused Prego (5), mobile new-session (23), OpenCode (67),
+  Codex (17), and Cursor (41) tests pass; fatal analysis is clean in every
+  affected package. Aristotle approved the shared-enum dependency and open
+  string transport boundary. The real simulator logo E2E remains pending until
+  after PR review.

@@ -6,7 +6,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
-import "package:sesori_shared/sesori_shared.dart" show StringExtensions;
+import "package:sesori_shared/sesori_shared.dart" show Harness, StringExtensions;
 
 import "../opencode_plugin_impl.dart";
 import "open_code_bridge_plugin.dart";
@@ -241,7 +241,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   }
 
   @override
-  String get id => "opencode";
+  String get id => Harness.opencode.name;
 
   @override
   String get displayName => "OpenCode";

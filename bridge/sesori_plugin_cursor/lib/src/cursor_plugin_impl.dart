@@ -3,6 +3,7 @@ import "dart:io" show Directory;
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/cursor_catalog_probe_api.dart";
 import "cursor_approval_registry.dart";
@@ -17,7 +18,7 @@ import "trackers/cursor_catalog_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
 class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
-  static const String pluginId = "cursor";
+  static final String pluginId = Harness.cursor.name;
   static const String _providerId = "cursor";
 
   factory CursorPlugin({

@@ -533,9 +533,12 @@ assets or generated icon code.
 
 Use the existing stable plugin ID as the presentation lookup key. Do not add a
 second logo-key field to plugin descriptors, bridge registration metadata, or
-shared wire contracts. The Prego presentation boundary recognizes bundled
-logos for the current `opencode`, `codex`, and `cursor` IDs and renders a
-generic fallback for every other plugin ID.
+shared wire contracts. Add the shared built-in `Harness` enum with `opencode`,
+`codex`, and `cursor` values. Transport contracts continue carrying open
+`String pluginId` values so a newer bridge can advertise an unknown harness to
+an older app. Built-in producers and presentation comparisons use
+`Harness.<value>.name`; unknown strings remain valid and render the generic
+fallback.
 
 Add a non-generated Prego primitive:
 
@@ -564,25 +567,30 @@ other      -> TablerRegular.plug
 ```
 
 The logo is decorative; visible display-name text remains the accessible
-identity signal. Never interpret the key as a URL, asset path, font family,
-code point, capability, or behavior. Export the primitive from
+identity signal. Never interpret the plugin ID as a URL, asset path, font
+family, code point, capability, or behavior. Export the primitive from
 `module_prego.dart`.
 
-Update the existing new-session plugin chooser to render the declared logo in
+Update the existing new-session plugin chooser to render the ID-matched logo in
 each option, retaining its current layout and Prego tokens. The Harnesses
 screens consume the primitive in later slices.
 
 Production files:
 
+- `shared/sesori_shared/lib/src/models/sesori/plugin_identity.dart`
+- OpenCode, Codex, and Cursor plugin identity producers
+- Cursor and module_prego package dependency declarations
 - `client/module_prego/lib/components/icons/prego_brand_logo.dart`
 - `client/module_prego/lib/module_prego.dart`
 - `client/app/lib/features/new_session/new_session_plugin_chooser.dart`
 
 ### Verification
 
+- Shared and concrete-plugin tests preserve the three built-in string IDs.
 - Prego widget tests for three mappings plus unknown-ID fallback.
 - Existing chooser rendering tests.
-- Focused tests and fatal analysis in module_prego and mobile.
+- Focused tests and fatal analysis in shared, concrete plugin packages,
+  module_prego, and mobile.
 
 ## Step 5/7: Harnesses Overview Page
 

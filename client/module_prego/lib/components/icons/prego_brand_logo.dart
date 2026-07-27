@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "../../icons/tabler_icons.g.dart";
 import "../../icons/vespr_icons.g.dart";
@@ -27,9 +28,9 @@ class PregoBrandLogo extends StatelessWidget {
   }
 
   static IconData _iconFor(String pluginId) => switch (pluginId) {
-    "opencode" => VESPRSolid.opencode,
-    "codex" => VESPRSolid.codex,
-    "cursor" => VESPRSolid.cursor,
+    final id when id == Harness.opencode.name => VESPRSolid.opencode,
+    final id when id == Harness.codex.name => VESPRSolid.codex,
+    final id when id == Harness.cursor.name => VESPRSolid.cursor,
     _ => TablerRegular.plug,
   };
 }

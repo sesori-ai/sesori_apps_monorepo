@@ -3,6 +3,7 @@ import "dart:io" as io;
 
 import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "../opencode_plugin.dart";
 import "assistant_message_mapper.dart";
@@ -172,7 +173,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }
 
   @override
-  String get id => "opencode";
+  String get id => Harness.opencode.name;
 
   @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedProcessService, ManagedRuntimeMonitor;
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "codex_managed_api.dart";
 import "codex_ownership_record.dart";
@@ -57,7 +58,7 @@ class CodexBridgePlugin implements BridgePlugin {
   @override
   PluginDiagnostics describe() {
     return PluginDiagnostics(
-      pluginId: "codex",
+      pluginId: Harness.codex.name,
       endpoint: serverUrl,
       details: {
         "port": "$port",

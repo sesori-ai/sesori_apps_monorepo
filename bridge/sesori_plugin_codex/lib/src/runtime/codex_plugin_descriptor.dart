@@ -5,6 +5,7 @@ import "dart:math";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "../codex_plugin_impl.dart";
 import "codex_bridge_plugin.dart";
@@ -109,7 +110,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   ];
 
   @override
-  String get id => "codex";
+  String get id => Harness.codex.name;
 
   @override
   String get displayName => "Codex";

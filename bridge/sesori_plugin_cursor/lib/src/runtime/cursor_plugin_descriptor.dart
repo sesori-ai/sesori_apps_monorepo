@@ -4,6 +4,7 @@ import "dart:io" as io;
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandResult, HostProcessCommandExecutor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "../api/cursor_session_storage_api.dart";
 import "../cursor_binary.dart";
@@ -105,7 +106,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   ];
 
   @override
-  String get id => "cursor";
+  String get id => Harness.cursor.name;
 
   @override
   String get displayName => "Cursor";

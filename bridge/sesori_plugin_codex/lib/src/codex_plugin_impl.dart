@@ -3,6 +3,7 @@ import "dart:io" show Directory;
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/codex_app_server_api.dart";
 import "api/codex_rollout_api.dart";
@@ -39,7 +40,7 @@ import "services/codex_session_service.dart";
 ///
 /// Approval/permission flows still throw — those land in Phase 5.
 class CodexPlugin implements CodexManagedApi {
-  static const String pluginId = "codex";
+  static final String pluginId = Harness.codex.name;
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
   static const Duration _renameRetryTimeout = Duration(seconds: 2);
 

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedProcessService, ManagedRuntimeMonitor;
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
@@ -145,7 +146,7 @@ class OpenCodeBridgePlugin implements BridgePlugin {
   @override
   PluginDiagnostics describe() {
     return PluginDiagnostics(
-      pluginId: "opencode",
+      pluginId: Harness.opencode.name,
       endpoint: serverUrl,
       details: {
         "port": "$port",

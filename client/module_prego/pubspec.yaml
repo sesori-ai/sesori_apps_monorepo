@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  sesori_shared:
+    path: ../../shared/sesori_shared
   meta: ^1.18.0
   flutter_svg: ^2.3.0
   universal_platform: ^1.1.0
