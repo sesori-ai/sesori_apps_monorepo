@@ -2,12 +2,13 @@
 
 ## Plan State
 
-- **Status:** plan merged; Step 1 PR in review
+- **Status:** Complete; Step 1 and Step 2 merged
 - **Plan slug:** `bridge-ready-onboarding`
-- **Implementation base:** `origin/main` at
-  `f87b4c6603c682b4606a57010a41d3cab4d96ddd`
+- **Step 2 base:** `origin/main` at
+  `235caf8e2cb73a5607ae8dcb662d7eb6e85dd3b1`
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/580
-- **Implementation state:** Step 1 PR: https://github.com/sesori-ai/sesori_apps_monorepo/pull/585
+- **Implementation state:** complete; final PR
+  [#587](https://github.com/sesori-ai/sesori_apps_monorepo/pull/587) merged
 
 ## Plan Review
 
@@ -15,14 +16,15 @@
   directly; revised plan not re-reviewed
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-26
-- **Reviewed scope:** `.plan/active/bridge-ready-onboarding/`
+- **Reviewed scope at review time:** `.plan/active/bridge-ready-onboarding/`
+  (now archived here)
 
 ## Delivery Steps
 
 | Done | Step | Branch | Exact PR title | Changed-line budget | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | [PR #585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) in review |
-| [ ] | 2/2 | `bridge-ready-onboarding-relay-first` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | Blocked on Step 1 merge |
+| [x] | 1/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | [PR #585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) merged |
+| [x] | 2/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | [PR #587](https://github.com/sesori-ai/sesori_apps_monorepo/pull/587) merged |
 
 ## Execution Rules
 
@@ -40,8 +42,7 @@
 
 ## Current Pointer
 
-- **Next action:** monitor Step 1 CI and review; Step 2 remains blocked until
-  Step 1 merges.
+- **Next action:** None; the two-PR series is complete.
 
 ## Step 1 Verification
 
@@ -52,12 +53,31 @@
 - `aristotle-impl-review` approved the implementation on its second pass after
   the cancelled-startup path was fixed to preserve supervised exit sentinels.
 
+## Step 2 Verification
+
+- Focused onboarding service, status repository/API, runner guard, registration,
+  and lifecycle tests pass.
+- `dart analyze --fatal-infos` passes from `bridge/app`.
+- `aristotle-impl-review` approved the relay-first onboarding data flow and
+  composition-root lifecycle sequencing.
+
 ## Findings And Plan Deltas
 
-- **2026-07-27 — Startup baseline clarification:** PR #586 removes the redundant
-  post-setup plugin availability gate. Step 2 still begins at the same
-  post-setup runner location; its ordering, scope, and acceptance criteria are
-  unchanged.
+- **2026-07-27 — Plan completion:** Final implementation PR
+  [#587](https://github.com/sesori-ai/sesori_apps_monorepo/pull/587) merged. Both
+  delivery steps are complete, and the plan moved from `.plan/active` to
+  `.plan/completed` in the final PR.
+- **2026-07-27 — Step 2 delivery:** Opened implementation PR
+  [#587](https://github.com/sesori-ai/sesori_apps_monorepo/pull/587) and started
+  CI/review monitoring.
+- **2026-07-27 — Step 2 implementation:** Replaced the notification-registration
+  gate with one finite, presentation-free immediate status decision; removed the
+  long-poll `wait` contract; started preparation concurrently with relay startup;
+  and moved ready-state QR/link presentation into the runner after session
+  readiness. The existing user-directed worktree branch was reused.
+- **2026-07-27 — Step 1 merge:** Implementation PR
+  [#585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) merged and
+  became the Step 2 base.
 - **2026-07-27 — Step 1 delivery:** Opened implementation PR
   [#585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) and started
   CI/review monitoring.

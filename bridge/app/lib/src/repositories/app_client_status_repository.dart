@@ -24,12 +24,9 @@ class AppClientStatusRepository {
 
   final SesoriServerApi _api;
 
-  Future<AppClientStatusResult> getStatus({
-    required String accessToken,
-    required bool wait,
-  }) async {
+  Future<AppClientStatusResult> getStatus({required String accessToken}) async {
     try {
-      final response = await _api.getAppClientStatus(accessToken: accessToken, wait: wait);
+      final response = await _api.getAppClientStatus(accessToken: accessToken);
       return response.registered ? const AppClientRegistered() : const AppClientAbsent();
     } on SesoriServerApiException catch (error, stackTrace) {
       if (error.statusCode == 404 || error.statusCode == 405) {

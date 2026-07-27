@@ -19,29 +19,12 @@ void main() {
         requestDeadline: const Duration(seconds: 1),
       );
 
-      final response = await api.getAppClientStatus(accessToken: "secret-token", wait: false);
+      final response = await api.getAppClientStatus(accessToken: "secret-token");
 
       expect(response.registered, isTrue);
       expect(request.method, equals("GET"));
       expect(request.url, equals(Uri.parse("https://auth.example.test/auth/app-clients/status")));
       expect(request.headers["Authorization"], equals("Bearer secret-token"));
-    });
-
-    test("adds only wait=true for the long-poll request", () async {
-      late Uri requestUri;
-      final api = SesoriServerApi(
-        authBackendUrl: "https://auth.example.test",
-        client: MockClient((request) async {
-          requestUri = request.url;
-          return http.Response('{"registered":false}', 200);
-        }),
-        requestDeadline: const Duration(seconds: 1),
-      );
-
-      final response = await api.getAppClientStatus(accessToken: "token", wait: true);
-
-      expect(response.registered, isFalse);
-      expect(requestUri, equals(Uri.parse("https://auth.example.test/auth/app-clients/status?wait=true")));
     });
 
     test("rejects non-200 status and malformed response models", () async {
@@ -57,11 +40,11 @@ void main() {
       );
 
       await expectLater(
-        statusApi.getAppClientStatus(accessToken: "token", wait: false),
+        statusApi.getAppClientStatus(accessToken: "token"),
         throwsA(isA<SesoriServerApiException>().having((error) => error.statusCode, "statusCode", 503)),
       );
       await expectLater(
-        malformedApi.getAppClientStatus(accessToken: "token", wait: false),
+        malformedApi.getAppClientStatus(accessToken: "token"),
         throwsA(isA<TypeError>()),
       );
     });
@@ -75,7 +58,7 @@ void main() {
       );
 
       await expectLater(
-        api.getAppClientStatus(accessToken: "token", wait: false),
+        api.getAppClientStatus(accessToken: "token"),
         throwsA(isA<http.RequestAbortedException>()),
       );
       expect(client.abortObserved, isTrue);
@@ -89,7 +72,7 @@ void main() {
         requestDeadline: const Duration(milliseconds: 5),
       );
 
-      await api.getAppClientStatus(accessToken: "token", wait: false);
+      await api.getAppClientStatus(accessToken: "token");
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       expect(client.abortObserved, isFalse);
