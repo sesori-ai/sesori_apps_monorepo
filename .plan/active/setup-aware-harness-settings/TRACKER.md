@@ -165,9 +165,10 @@
   conflicts, and apply-all updates the global default while clearing overrides
   only for timeout-capable plugins. Review follow-up made the immutable
   registration snapshot authoritative for both published controls and command
-  authorization. Startup now removes lifecycle-uncontrollable plugins from a
-  stale persisted disabled set, so externally managed OpenCode cannot become
-  permanently unroutable after changing launch mode. Full shared (340), plugin
+  authorization. Startup now rejects a persisted disabled state for a plugin
+  without lifecycle control with an actionable config command, preserving
+  `plugins.disabled` as the authoritative policy without silently making a
+  rejected startup mutate it. Full shared (340), plugin
   interface (147), OpenCode (398), bridge app (2163), and module_core (696)
   suites pass; fatal analysis is clean in
   those packages, Codex, Cursor, module_core, mobile, desktop, and

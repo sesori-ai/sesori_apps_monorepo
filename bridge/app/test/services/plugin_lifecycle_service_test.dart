@@ -331,7 +331,7 @@ void main() {
     );
   });
 
-  test("re-enables disabled plugins that cannot be lifecycle-managed", () async {
+  test("reports disabled plugins that cannot be lifecycle-managed", () {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["external", "managed"]);
     addTearDown(runtime.dispose);
     final settingsRepository = _MutableBridgeSettingsRepository(
@@ -364,12 +364,15 @@ void main() {
         );
     addTearDown(service.dispose);
 
-    final disabledPluginIds = await service.reconcileUncontrollableDisabledPlugins(
+    final disabledPluginIds = service.uncontrollableDisabledPluginIds(
       disabledPluginIds: settingsRepository.currentSettings.plugins.disabledPluginIds,
     );
 
-    expect(disabledPluginIds, const {"managed", "future-plugin"});
-    expect(settingsRepository.currentSettings.plugins.disabledPluginIds, const {"managed", "future-plugin"});
+    expect(disabledPluginIds, const {"external"});
+    expect(
+      settingsRepository.currentSettings.plugins.disabledPluginIds,
+      const {"external", "managed", "future-plugin"},
+    );
   });
 
   test("management snapshot tokens publish only externally visible changes", () async {

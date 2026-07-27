@@ -649,19 +649,27 @@ class BridgeRuntimeRunner {
             ],
           );
       pluginLifecycleService = activePluginLifecycleService;
-      final disabledPluginIds = await activePluginLifecycleService.reconcileUncontrollableDisabledPlugins(
+      final uncontrollableDisabledPluginIds = activePluginLifecycleService.uncontrollableDisabledPluginIds(
         disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
       );
+      if (uncontrollableDisabledPluginIds.isNotEmpty) {
+        final pluginIds = uncontrollableDisabledPluginIds.toList()..sort();
+        Console.error(
+          "Cannot start because plugins without lifecycle control are disabled: ${pluginIds.join(', ')}. "
+          "Enable each plugin with `sesori-bridge config plugins enable <plugin-id>`.",
+        );
+        return 1;
+      }
       final eligiblePluginIds = {
         for (final descriptor in knownPlugins)
-          if (!disabledPluginIds.contains(descriptor.id)) descriptor.id,
+          if (!bridgeSettings.plugins.isDisabled(pluginId: descriptor.id)) descriptor.id,
       };
       final setupById = await lifecycleRepository.inspect(
         pluginIds: eligiblePluginIds,
         markUnselectedNotInspected: true,
       );
       final startupPolicy = activePluginLifecycleService.initialize(
-        disabledPluginIds: disabledPluginIds,
+        disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
         setupById: setupById,
       );
       for (final importPluginId in options.importPluginIds) {

@@ -103,26 +103,13 @@ class PluginLifecycleService {
     });
   }
 
-  Future<Set<String>> reconcileUncontrollableDisabledPlugins({required Set<String> disabledPluginIds}) async {
+  Set<String> uncontrollableDisabledPluginIds({required Set<String> disabledPluginIds}) {
     if (_eligiblePluginIds != null) throw StateError("Plugin lifecycle is already initialized.");
-    final uncontrollableDisabledPluginIds = disabledPluginIds.intersection(
-      _pluginIdsWithout(capability: PluginControlCapability.lifecycle),
+    return Set<String>.unmodifiable(
+      disabledPluginIds.intersection(
+        _pluginIdsWithout(capability: PluginControlCapability.lifecycle),
+      ),
     );
-    if (uncontrollableDisabledPluginIds.isEmpty) {
-      return Set<String>.unmodifiable(disabledPluginIds);
-    }
-
-    final current = await _bridgeSettingsRepository.loadSettings();
-    var plugins = current.plugins;
-    for (final pluginId in uncontrollableDisabledPluginIds) {
-      plugins = plugins.withPluginDisabled(pluginId: pluginId, disabled: false);
-    }
-    await _bridgeSettingsRepository.saveSettings(settings: current.copyWith(plugins: plugins));
-    Log.w(
-      "Re-enabled plugins that cannot be lifecycle-managed: "
-      "${(uncontrollableDisabledPluginIds.toList()..sort()).join(', ')}",
-    );
-    return Set<String>.unmodifiable(disabledPluginIds.difference(uncontrollableDisabledPluginIds));
   }
 
   PluginStartupPolicy initialize({
