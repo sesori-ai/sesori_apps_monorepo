@@ -66,8 +66,8 @@ class MessagePartMapper {
       String? mime = raw.mime;
       String? url = raw.url;
       String? base64;
-      // Normalize data: URLs into base64 so the client can render them
-      // (Image.network does not support data: or file: schemes).
+      // Normalize data: URLs into base64 so the client can render images
+      // via Image.memory (Image.network does not support data: scheme).
       if (url != null && url.startsWith("data:")) {
         final parts = url.split(",");
         if (parts.length >= 2) {
@@ -79,7 +79,8 @@ class MessagePartMapper {
               mime = mimeMatch.group(1);
             }
           }
-          url = null; // Don't send raw data: URL, base64 is set
+          // Keep url as fallback for non-image types (e.g. PDF) where
+          // the client may offer a download/link action.
         }
       }
       return _part(
