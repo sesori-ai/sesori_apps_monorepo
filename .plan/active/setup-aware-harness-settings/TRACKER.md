@@ -3,9 +3,8 @@
 ## Current State
 
 - **Implementation base:** `origin/main` at `99670e08` after Step 4/7 merged
-- **Series state:** Step 5/7 implemented locally
-- **Next action:** publish the Step 5/7 PR, settle review, then run the combined
-  real simulator logo and management-service integration E2E
+- **Series state:** Step 5/7 PR #592 review settled; combined simulator E2E passed
+- **Next action:** merge PR #592, then begin Step 6/7
 
 ## Delivery
 
@@ -15,7 +14,7 @@
 | [x] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | PR #583 merged as `ecd75b6c`; ~660 changed lines (estimate 300-400, test-driven overage) |
 | [x] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | PR #589 merged as `6fe69d5a`; 1,095 changed lines (estimate 550-700, race-matrix test overage) |
 | [x] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | PR #590 merged as `99670e08`; simplified to use existing plugin IDs |
-| [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | implemented locally; 1,735 changed lines (estimate 1,100-1,300, generated state/localization overage) |
+| [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | PR #592 ready; 1,735 initial changed lines (estimate 1,100-1,300, generated state/localization overage) |
 | [ ] | Step 6/7 — management actions | `setup-aware-harness-settings-state` | planned; estimate 650-800 changed lines |
 | [ ] | Step 7/7 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
 
@@ -115,4 +114,10 @@
   to remove the plan-mandated final Step 6 action fields as future-only. Those
   fields remain because this slice explicitly delivers the final state contract
   that Step 6 extends without replacement. Combined simulator logo and
-  management-service integration E2E remains scheduled after PR review.
+  management-service integration E2E on the reviewed PR head used the current
+  iOS simulator build and source bridge with the development data directory.
+  Settings retained all sections with Harnesses after Notifications; the page
+  rendered Codex, Cursor, and OpenCode with their distinct bundled logos,
+  OpenCode as Default, and live setup/runtime/work/timeout facts. Pull-to-refresh
+  retained the same snapshot without an error. The temporary E2E bridge was
+  stopped afterward.
