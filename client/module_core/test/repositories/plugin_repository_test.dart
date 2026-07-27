@@ -222,6 +222,22 @@ void main() {
       expect(result, isA<PluginManagementMutationResultUncertain>());
     });
 
+    test("maps a bridge-reported uncertain mutation to uncertain", () async {
+      when(
+        () => api.updateIdleTimeout(request: any(named: "request")),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "plugin mutation outcome is uncertain"),
+        ),
+      );
+
+      final result = await repository.updateIdleTimeout(
+        request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30),
+      );
+
+      expect(result, isA<PluginManagementMutationResultUncertain>());
+    });
+
     test("maps a post-dispatch response loss to uncertain", () async {
       when(
         () => api.command(

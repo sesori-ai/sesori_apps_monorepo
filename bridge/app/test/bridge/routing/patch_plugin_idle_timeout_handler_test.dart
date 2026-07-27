@@ -40,7 +40,7 @@ void main() {
     );
   });
 
-  test("PatchPluginIdleTimeoutHandler maps invalid, unknown, and failed writes", () async {
+  test("PatchPluginIdleTimeoutHandler maps invalid, unknown, uncertain, and failed writes", () async {
     final service = _FakePluginLifecycleService();
     final handler = buildHandler(service: service);
 
@@ -65,6 +65,17 @@ void main() {
       queryParams: const {},
       fragment: null,
     );
+    service.error = const PluginManagementMutationOutcomeUncertainException();
+    final uncertain = await handler.handleInternal(
+      makeRequest(
+        "PATCH",
+        "/plugin/idle-timeout",
+        body: jsonEncode(const PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "one").toJson()),
+      ),
+      pathParams: const {},
+      queryParams: const {},
+      fragment: null,
+    );
     service.error = StateError("disk full");
     final failed = await handler.handleInternal(
       makeRequest(
@@ -79,6 +90,7 @@ void main() {
 
     expect(invalid.status, 400);
     expect(unknown.status, 404);
+    expect(uncertain.status, 503);
     expect(failed.status, 500);
   });
 }

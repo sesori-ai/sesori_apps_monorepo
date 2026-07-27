@@ -308,6 +308,8 @@ Extend `PluginRepository`:
   not ordinary failure: the bridge may have committed the mutation, and a
   retryable-looking failure could execute it twice. The service schedules the
   authoritative GET required to learn the outcome.
+- A bridge mutation that commits before its identity fence moves returns 503;
+  the repository also maps that explicit post-commit response to `uncertain`.
 - `uncertain` represents a mutation whose request was sent but whose outcome
   cannot be truthfully published because the response cannot prove it or the
   connection/service fence moved. Consumers render it as an uncertain state

@@ -38,6 +38,8 @@ class PostPluginLifecycleCommandHandler
         headers: const {"content-type": "application/json"},
         body: jsonEncode(error.conflict.toJson()),
       );
+    } on PluginManagementMutationOutcomeUncertainException {
+      throw buildErrorResponse(request, 503, "plugin mutation outcome is uncertain");
     } on PluginManagementCommandFailedException {
       throw buildErrorResponse(request, 500, "plugin command failed");
     }

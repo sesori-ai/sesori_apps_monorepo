@@ -54,12 +54,13 @@
   persistence across reopen, and disable fallback with full cleanup; A-to-B
   bridge switch stays unit-tested only (single-bridge dev account).
 - Step 2/7 (2026-07-27): shared contract tests for known/null/omitted
-  `bridgeId`; full bridge suite (2148); module_core full suite (656) with new
+  `bridgeId`; full bridge suite (2148); module_core full suite (657) with new
   API route and repository mapping
   tests; mobile/desktop fatal analysis; Aristotle implementation review
   approved. Review fixes: lifecycle service caches identity-free state and
   requires the provider's current ID before reads or mutation side effects,
   including when a timeout write begins after waiting in the settings queue;
+  post-commit identity loss maps through HTTP 503 to typed `uncertain`;
   single-report malformed conflicts, named parameters, encoded command path,
   post-dispatch response loss mapped to `uncertain`.
   Confirming E2E on `cbd10948`: all three management routes carried the dev

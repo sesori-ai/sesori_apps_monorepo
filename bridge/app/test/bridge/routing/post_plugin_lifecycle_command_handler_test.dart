@@ -41,7 +41,7 @@ void main() {
     );
   });
 
-  test("PostPluginLifecycleCommandHandler maps invalid, unknown, conflict, and failed commands", () async {
+  test("PostPluginLifecycleCommandHandler maps invalid, unknown, conflict, uncertain, and failed commands", () async {
     final service = _FakePluginLifecycleService();
     final handler = buildHandler(service: service);
 
@@ -55,6 +55,8 @@ void main() {
     final unknown = await _send(handler, pluginId: "missing");
     service.error = const PluginManagementConflictException(_conflict);
     final conflict = await _send(handler, pluginId: "one");
+    service.error = const PluginManagementMutationOutcomeUncertainException();
+    final uncertain = await _send(handler, pluginId: "one");
     service.error = const PluginManagementCommandFailedException("disk full");
     final failed = await _send(handler, pluginId: "one");
 
@@ -62,6 +64,7 @@ void main() {
     expect(unknown.status, 404);
     expect(conflict.status, 409);
     expect(PluginLifecycleConflict.fromJson(jsonDecodeMap(conflict.body!)), _conflict);
+    expect(uncertain.status, 503);
     expect(failed.status, 500);
     expect(failed.body, "plugin command failed");
   });

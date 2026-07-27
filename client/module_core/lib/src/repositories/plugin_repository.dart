@@ -42,6 +42,9 @@ class PluginRepository {
       SuccessResponse(:final data) => PluginManagementMutationResult.success(response: data),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PluginManagementMutationResult.notFound(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) => _mapConflict(body: body),
+      // Management handlers use 503 when a mutation committed but its identity
+      // fence moved before they could publish an authoritative response.
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 503)) => const PluginManagementMutationResult.uncertain(),
       // A sent mutation whose outcome cannot be proven may have committed;
       // never surface it as a retryable ordinary failure. This covers an
       // undecodable or empty 2xx body and a post-dispatch response loss.

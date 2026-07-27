@@ -450,7 +450,7 @@ void main() {
       request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 45),
     );
     bridgeIdProvider.id = null;
-    final activeExpectation = expectLater(active, throwsStateError);
+    final activeExpectation = expectLater(active, throwsA(isA<PluginManagementMutationOutcomeUncertainException>()));
     final queuedExpectation = expectLater(queued, throwsStateError);
     settingsRepository.saveGate!.complete();
 
@@ -659,7 +659,7 @@ void main() {
     await safe;
   });
 
-  test("command completion surfaces identity loss after dispatch without hanging", () async {
+  test("command completion marks identity loss after dispatch as uncertain without hanging", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
     final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
       ..saveGate = Completer<void>();
@@ -694,7 +694,7 @@ void main() {
     bridgeIdProvider.id = null;
     settingsRepository.saveGate!.complete();
 
-    await expectLater(response, throwsStateError);
+    await expectLater(response, throwsA(isA<PluginManagementMutationOutcomeUncertainException>()));
   });
 
   test("failed disable persistence rolls runtime access back and allows retry", () async {

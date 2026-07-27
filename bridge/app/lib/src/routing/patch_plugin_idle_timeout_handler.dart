@@ -27,6 +27,8 @@ class PatchPluginIdleTimeoutHandler
       return await _lifecycleService.updateIdleTimeout(request: body);
     } on PluginManagementPluginNotFoundException {
       throw buildErrorResponse(request, 404, "plugin not found");
+    } on PluginManagementMutationOutcomeUncertainException {
+      throw buildErrorResponse(request, 503, "plugin mutation outcome is uncertain");
     }
   }
 }

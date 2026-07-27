@@ -191,12 +191,23 @@ class PluginLifecycleService {
   }
 
   PluginManagementResponse get managementSnapshot {
+    final snapshot = _requireManagementSnapshot();
+    return _buildManagementResponse(snapshot: snapshot, bridgeId: _requireBridgeId());
+  }
+
+  _PluginManagementSnapshot _requireManagementSnapshot() {
     if (_registeredPlugins == null || _setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
     final snapshot = _lastPublishedManagementSnapshot;
     if (snapshot == null) throw StateError("Plugin management snapshot is not ready.");
-    final bridgeId = _requireBridgeId();
+    return snapshot;
+  }
+
+  PluginManagementResponse _buildManagementResponse({
+    required _PluginManagementSnapshot snapshot,
+    required String bridgeId,
+  }) {
     return PluginManagementResponse(
       snapshotToken: snapshot.snapshotToken,
       bridgeId: bridgeId,
@@ -204,6 +215,13 @@ class PluginLifecycleService {
       defaultIdleTimeoutMins: snapshot.defaultIdleTimeoutMins,
       plugins: snapshot.plugins,
     );
+  }
+
+  PluginManagementResponse get _managementSnapshotAfterMutation {
+    final snapshot = _requireManagementSnapshot();
+    final bridgeId = _bridgeIdProvider.bridgeId;
+    if (bridgeId == null) throw const PluginManagementMutationOutcomeUncertainException();
+    return _buildManagementResponse(snapshot: snapshot, bridgeId: bridgeId);
   }
 
   Stream<List<PluginMetadata>> get metadataSnapshots {
@@ -290,7 +308,7 @@ class PluginLifecycleService {
       await _bridgeSettingsRepository.saveSettings(settings: current.copyWith(plugins: plugins));
       _syncIdleTimers(_lifecycleRepository.snapshot);
       _publishManagementIfChanged();
-      return managementSnapshot;
+      return _managementSnapshotAfterMutation;
     });
   }
 
@@ -334,7 +352,7 @@ class PluginLifecycleService {
     _publishManagementIfChanged();
     if (failure == null) {
       try {
-        command.completer.complete(managementSnapshot);
+        command.completer.complete(_managementSnapshotAfterMutation);
       } on Object catch (error, stackTrace) {
         command.completer.completeError(error, stackTrace);
       }
@@ -990,6 +1008,10 @@ class PluginManagementCommandFailedException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class PluginManagementMutationOutcomeUncertainException implements Exception {
+  const PluginManagementMutationOutcomeUncertainException();
 }
 
 class _ActivePluginCommand {
