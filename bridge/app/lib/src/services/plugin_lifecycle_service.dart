@@ -131,17 +131,6 @@ class PluginLifecycleService {
     );
   }
 
-  void applyAvailability({required Set<String> availablePluginIds}) {
-    final eligiblePluginIds = _requireEligiblePluginIds();
-    final setupById = _requireSetupById();
-    _startAllowedPluginIds = {
-      for (final pluginId in eligiblePluginIds)
-        if (availablePluginIds.contains(pluginId) && setupById[pluginId] is PluginSetupReady) pluginId,
-    };
-    _applyAccess();
-    _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
-  }
-
   PluginCompositionView get compositionView {
     final knownPluginIds = _knownPluginIds;
     final eligiblePluginIds = _requireEligiblePluginIds();

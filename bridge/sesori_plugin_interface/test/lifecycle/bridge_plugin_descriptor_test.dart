@@ -34,18 +34,6 @@ void main() {
       );
     });
 
-    test('checkAvailability reports available by default', () async {
-      const descriptor = _MinimalDescriptor();
-
-      final availability = await descriptor.checkAvailability(
-        config: const PluginConfig.empty(),
-        processes: const _UnusedProcessService(),
-        environment: const <String, String>{},
-      );
-
-      expect(availability, isA<PluginAvailable>());
-    });
-
     test('inspectSetup reports ready without process work by default', () async {
       const descriptor = _MinimalDescriptor();
 
@@ -212,7 +200,7 @@ class _MinimalDescriptor extends BridgePluginDescriptor {
   }
 }
 
-/// The default `checkAvailability` ignores its process service, so this fake
+/// The default setup inspection ignores its process service, so this fake
 /// throws on every call to prove the default never touches it.
 class _UnusedProcessService implements HostProcessService {
   const _UnusedProcessService();

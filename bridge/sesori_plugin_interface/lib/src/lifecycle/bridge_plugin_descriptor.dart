@@ -3,7 +3,6 @@ import "package:meta/meta.dart";
 import "../host/host_process_service.dart";
 import "../host/plugin_host.dart";
 import "bridge_plugin.dart";
-import "plugin_availability.dart";
 import "plugin_config.dart";
 import "plugin_option.dart";
 import "plugin_project_ownership.dart";
@@ -76,34 +75,11 @@ abstract class BridgePluginDescriptor {
     required String stateDirectory,
   }) async => const PluginSetupReady();
 
-  /// Reports whether this plugin's backend is available to run.
-  ///
-  /// Runs after authentication but **before** the cross-instance startup mutex
-  /// and before [start], so an unavailable backend never terminates a healthy
-  /// resident bridge (the same invariant that keeps [validateConfig] ahead of
-  /// the mutex). Must be read-only — probe only, acquire nothing.
-  ///
-  /// Return [PluginUnavailable] with a user-facing [PluginUnavailable.message]
-  /// (install guidance plus a verification command) when the backend cannot be
-  /// used; the bridge core prints that message via `Console.error` and skips
-  /// this descriptor. Startup fails only when no enabled descriptor is
-  /// available. Return [PluginAvailable] to let this descriptor proceed.
-  ///
-  /// [config] carries the parsed CLI options, [processes] lets a plugin probe a
-  /// local binary (e.g. run `--version`), and [environment] is the process
-  /// environment (PATH, etc.). The default accepts everything, which suits
-  /// plugins that need no local backend (e.g. remote-server plugins).
-  Future<PluginAvailability> checkAvailability({
-    required PluginConfig config,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) async => const PluginAvailable();
-
   /// Resolves an already-present backend runtime and reports progress.
   ///
-  /// Runs after [checkAvailability] returns [PluginAvailable] and immediately
-  /// before [start] under the bridge's startup mutex. It must never download,
-  /// install, sweep, or otherwise mutate a runtime. The stream's
+  /// Runs after setup inspection reports ready and immediately before [start]
+  /// under the bridge's startup mutex. It must never download, install, sweep,
+  /// or otherwise mutate a runtime. The stream's
   /// final event is terminal: [ProvisionReady] carries the resolved launch path,
   /// which the bridge exposes to [start] via [PluginHost.provisionedRuntimePath];
   /// [ProvisionFailed] is **non-fatal** — the bridge proceeds to [start], which

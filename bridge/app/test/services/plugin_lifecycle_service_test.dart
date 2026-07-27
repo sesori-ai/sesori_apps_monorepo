@@ -44,7 +44,7 @@ void main() {
     expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "zeta").state, PluginRuntimeState.blocked);
   });
 
-  test("prefers OpenCode as the default before falling back to alphabetical availability", () async {
+  test("prefers OpenCode as the default before falling back to alphabetical setup readiness", () async {
     final opencode = _FakePluginApi(id: "opencode");
     final alpha = _FakePluginApi(id: "alpha");
     final runtime = createTestPluginRuntime(plugins: [alpha, opencode]);
@@ -96,58 +96,6 @@ void main() {
     );
 
     expect(policy.defaultPluginId, "alpha");
-  });
-
-  test("falls back when setup-ready OpenCode is not currently selectable", () async {
-    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode", "alpha"]);
-    addTearDown(runtime.dispose);
-    final service = _service(
-      runtime: runtime,
-      plugins: const [
-        (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.transient),
-        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
-      ],
-    );
-    addTearDown(service.dispose);
-
-    final policy = service.initialize(
-      disabledPluginIds: const {},
-      setupById: const {
-        "opencode": PluginSetupReady(),
-        "alpha": PluginSetupReady(),
-      },
-    );
-    service.applyAvailability(availablePluginIds: const {"alpha"});
-    await Future<void>.delayed(Duration.zero);
-
-    expect(policy.defaultPluginId, "opencode");
-    expect(service.compositionView.defaultPluginId, "alpha");
-  });
-
-  test("availability narrows startup access without changing eligibility", () {
-    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["alpha", "beta"]);
-    addTearDown(runtime.dispose);
-    final service = _service(
-      runtime: runtime,
-      plugins: const [
-        (id: "alpha", displayName: "Alpha", residencyPolicy: PluginResidencyPolicy.transient),
-        (id: "beta", displayName: "Beta", residencyPolicy: PluginResidencyPolicy.transient),
-      ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
-      disabledPluginIds: const {},
-      setupById: const {
-        "alpha": PluginSetupReady(),
-        "beta": PluginSetupReady(),
-      },
-    );
-
-    service.applyAvailability(availablePluginIds: const {"beta"});
-
-    expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "alpha").state, PluginRuntimeState.blocked);
-    expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "beta").state, PluginRuntimeState.dormant);
-    expect(service.compositionView.eligiblePluginIds, ["alpha", "beta"]);
   });
 
   test("setup endpoint remains an alphabetical startup snapshot", () {
@@ -268,7 +216,15 @@ void main() {
     expect(initialToken, isNotNull);
     expect(initialToken, hasLength(22));
 
-    service.applyAvailability(availablePluginIds: const {});
+    runtime.applyAccess(
+      entries: const [
+        PluginRuntimeAccess(
+          pluginId: "alpha",
+          gate: PluginRuntimeAccessGate.enabled,
+          startAllowed: false,
+        ),
+      ],
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(snapshotTokens, hasLength(1));
@@ -276,7 +232,15 @@ void main() {
     expect(snapshotTokens.single, isNot(initialToken));
     expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.blocked);
 
-    service.applyAvailability(availablePluginIds: const {});
+    runtime.applyAccess(
+      entries: const [
+        PluginRuntimeAccess(
+          pluginId: "alpha",
+          gate: PluginRuntimeAccessGate.enabled,
+          startAllowed: false,
+        ),
+      ],
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(snapshotTokens, hasLength(1));

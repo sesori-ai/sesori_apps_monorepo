@@ -18,6 +18,11 @@ void main() {
       },
     );
 
+    test("tracks the installer target separately from the compatibility floor", () {
+      expect(CursorPluginDescriptor.minVersion, "2026.07.16");
+      expect(CursorPluginDescriptor.targetVersion, "2026.07.20-8cc9c0b");
+    });
+
     test("reports ready after version and read-only authentication probes", () async {
       final processes = _ProbeProcessService(
         processSequence: [
@@ -49,7 +54,7 @@ void main() {
       ]);
     });
 
-    test("logs availability once across setup inspection and the startup gate", () async {
+    test("logs the successful runtime probe at the probe boundary", () async {
       final processes = _ProbeProcessService(
         processSequence: [
           _ProbeProcess(
@@ -60,11 +65,6 @@ void main() {
           _ProbeProcess(
             pid: 11,
             stdoutBytes: utf8.encode("Authenticated\n"),
-            exitCode: Future<int>.value(0),
-          ),
-          _ProbeProcess(
-            pid: 12,
-            stdoutBytes: utf8.encode("${CursorPluginDescriptor.targetVersion}\n"),
             exitCode: Future<int>.value(0),
           ),
         ],
@@ -85,14 +85,6 @@ void main() {
               ),
               const PluginSetupReady(),
             );
-            expect(
-              await descriptor.checkAvailability(
-                config: config,
-                processes: processes,
-                environment: const <String, String>{},
-              ),
-              isA<PluginAvailable>(),
-            );
           },
           stderr: () => _CapturingStdout(stderrLines),
         );
@@ -107,7 +99,6 @@ void main() {
       expect(processes.spawnedArguments, [
         const ["--version"],
         const ["status"],
-        const ["--version"],
       ]);
     });
 
@@ -124,6 +115,80 @@ void main() {
       );
 
       expect(result, isA<PluginSetupRuntimeMissing>());
+    });
+
+    test("reports an outdated runtime without retaining version probe text", () async {
+      final processes = _ProbeProcessService(
+        process: _ProbeProcess(
+          pid: 12,
+          stdoutBytes: utf8.encode("2025.01.01 account-secret-output\n"),
+          exitCode: Future<int>.value(0),
+        ),
+      );
+
+      final result = await const CursorPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnavailable>());
+      expect(result.actionHint, isNot(contains("account-secret-output")));
+      expect(processes.spawnedArguments, [
+        const ["--version"],
+      ]);
+    });
+
+    test("reports unknown for an exit-zero unrecognized version", () async {
+      final processes = _ProbeProcessService(
+        process: _ProbeProcess(
+          pid: 13,
+          stdoutBytes: utf8.encode("future-version-format\n"),
+          exitCode: Future<int>.value(0),
+        ),
+      );
+
+      final result = await const CursorPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
+    });
+
+    test("reports unknown when '--version' exits non-zero", () async {
+      final processes = _ProbeProcessService(
+        process: _ProbeProcess(pid: 14, stdoutBytes: const <int>[], exitCode: Future<int>.value(1)),
+      );
+
+      final result = await const CursorPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
+    });
+
+    test("reports unknown and force-kills a hung version probe", () async {
+      final processes = _ProbeProcessService(
+        process: _ProbeProcess(pid: 15, stdoutBytes: const <int>[], exitCode: Completer<int>().future),
+      );
+      const descriptor = CursorPluginDescriptor(versionProbeTimeout: Duration(milliseconds: 20));
+
+      final result = await descriptor.inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
+      expect(processes.forceSignals, equals(<int>[15]));
     });
 
     test("reports authentication required without starting a login flow", () async {
@@ -182,154 +247,6 @@ void main() {
 
       expect(result, isA<PluginSetupUnknown>());
       expect(result.actionHint, isNot(contains("account-secret-output")));
-    });
-  });
-
-  group("CursorPluginDescriptor.checkAvailability", () {
-    // Keyed by the bare local option names (the mapper stores values unprefixed;
-    // only the public CLI flag is namespaced to `--cursor-bin`).
-    const config = PluginConfig(
-      values: {
-        CursorPluginDescriptor.binOption: "cursor-agent",
-        CursorPluginDescriptor.apiEndpointOption: null,
-      },
-    );
-
-    test("tracks the installer target separately from the compatibility floor", () {
-      expect(CursorPluginDescriptor.minVersion, "2026.07.16");
-      expect(CursorPluginDescriptor.targetVersion, "2026.07.20-8cc9c0b");
-    });
-
-    test("reports available when '<bin> --version' exits 0 with a recent build", () async {
-      final processes = _ProbeProcessService(
-        process: _ProbeProcess(
-          pid: 4242,
-          stdoutBytes: utf8.encode("${CursorPluginDescriptor.targetVersion}\n"),
-          exitCode: Future<int>.value(0),
-        ),
-      );
-
-      final result = await const CursorPluginDescriptor().checkAvailability(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{"PATH": "/usr/bin"},
-      );
-
-      expect(result, isA<PluginAvailable>());
-      // The probe runs exactly `<bin> --version`.
-      expect(processes.spawnedExecutables, equals(<String>["cursor-agent"]));
-      expect(processes.spawnedArguments.single, equals(<String>["--version"]));
-    });
-
-    test("does not retain version probe text beyond the parsed CalVer", () async {
-      final processes = _ProbeProcessService(
-        process: _ProbeProcess(
-          pid: 5,
-          stdoutBytes: utf8.encode("2025.01.01 account-secret-output\n"),
-          exitCode: Future<int>.value(0),
-        ),
-      );
-
-      final availability = await const CursorPluginDescriptor().checkAvailability(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{},
-      );
-
-      expect(availability, isA<PluginUnavailable>());
-      expect((availability as PluginUnavailable).message, contains("2025.01.01"));
-      expect(availability.message, isNot(contains("account-secret-output")));
-    });
-
-    test("preserves explicit startup for an exit-zero unrecognized version", () async {
-      final processes = _ProbeProcessService(
-        process: _ProbeProcess(
-          pid: 4243,
-          stdoutBytes: utf8.encode("future-version-format\n"),
-          exitCode: Future<int>.value(0),
-        ),
-      );
-
-      final result = await const CursorPluginDescriptor().checkAvailability(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{},
-      );
-
-      expect(result, isA<PluginAvailable>());
-    });
-
-    test("reports unavailable (outdated) when the build is below the minimum", () async {
-      final processes = _ProbeProcessService(
-        process: _ProbeProcess(
-          pid: 7,
-          stdoutBytes: utf8.encode("2026.05.28-09-00-00-deadbee\n"),
-          exitCode: Future<int>.value(0),
-        ),
-      );
-
-      final result = await const CursorPluginDescriptor().checkAvailability(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{},
-      );
-
-      expect(result, isA<PluginUnavailable>());
-      final message = (result as PluginUnavailable).message;
-      expect(message, contains("too old"));
-      expect(message, contains(CursorPluginDescriptor.minVersion));
-      expect(message, contains("cursor-agent update"));
-    });
-
-    test("reports unavailable (not installed) when the binary cannot be launched", () async {
-      final processes = _ProbeProcessService(
-        spawnError: const ProcessException("cursor-agent", ["--version"], "No such file or directory", 2),
-      );
-
-      final result = await const CursorPluginDescriptor().checkAvailability(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{},
-      );
-
-      expect(result, isA<PluginUnavailable>());
-      final message = (result as PluginUnavailable).message;
-      expect(message, contains("Cursor was not found"));
-      expect(message, contains("cursor-agent --version"));
-    });
-
-    test("reports unavailable (not working) when '--version' exits non-zero", () async {
-      final processes = _ProbeProcessService(
-        process: _ProbeProcess(pid: 11, stdoutBytes: const <int>[], exitCode: Future<int>.value(1)),
-      );
-
-      final result = await const CursorPluginDescriptor().checkAvailability(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{},
-      );
-
-      expect(result, isA<PluginUnavailable>());
-      expect((result as PluginUnavailable).message, contains("did not respond"));
-    });
-
-    test("reports unavailable and force-kills the probe when '--version' hangs", () async {
-      final processes = _ProbeProcessService(
-        // exitCode never completes -> the probe must time out.
-        process: _ProbeProcess(pid: 99, stdoutBytes: const <int>[], exitCode: Completer<int>().future),
-      );
-      const descriptor = CursorPluginDescriptor(versionProbeTimeout: Duration(milliseconds: 20));
-
-      final result = await descriptor.checkAvailability(
-        config: config,
-        processes: processes,
-        environment: const <String, String>{},
-      );
-
-      expect(result, isA<PluginUnavailable>());
-      expect((result as PluginUnavailable).message, contains("did not respond"));
-      // The hung probe is reaped so it cannot linger.
-      expect(processes.forceSignals, equals(<int>[99]));
     });
   });
 

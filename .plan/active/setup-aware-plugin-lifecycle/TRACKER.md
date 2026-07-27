@@ -45,6 +45,9 @@ run their focused verification again.
 - Denylist is the sole persisted eligibility source.
 - All plugin CLI options are registered; `--plugin` is removed.
 - Setup inspection skips denied plugins and never installs.
+- Setup readiness is the sole pre-start backend gate; the obsolete availability
+  re-probe after setup inspection is removed and does not affect Stage 13 client
+  contracts.
 - Setup adds `notInspected` and removes `canProvision`.
 - Deterministic ordering replaces persisted order and bridge last-used; the
   derived default prefers OpenCode when selectable, then the first selectable

@@ -261,38 +261,6 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     return value;
   }
 
-  /// Confirms an explicitly-configured codex binary is runnable before the
-  /// bridge commits to startup.
-  ///
-  /// When `--codex-bin` is an explicit path, probe it: an explicit override is a
-  /// user promise, so a broken one is a fatal config error. When no binary is
-  /// configured, resolution of a recent-enough PATH install or existing managed
-  /// runtime is deferred to [ensureRuntime], so report available here. This is
-  /// a READ-ONLY probe — it never mutates disk or hits the network.
-  @override
-  Future<PluginAvailability> checkAvailability({
-    required PluginConfig config,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) async {
-    final explicitBin = _explicitBin(config);
-    if (explicitBin == null) {
-      return const PluginAvailable();
-    }
-    const manifest = CodexRuntimeManifest();
-    return RuntimeAvailabilityProber(
-      displayName: manifest.displayName,
-      installDocsUrl: manifest.installDocsUrl,
-      runtimeId: manifest.runtimeId,
-    ).probe(
-      executablePath: explicitBin,
-      processes: processes,
-      environment: environment,
-      versionProbeTimeout: _versionProbeTimeout,
-      runInShell: io.Platform.isWindows,
-    );
-  }
-
   /// Resolves an existing codex runtime (a recent-enough PATH install or the
   /// pinned managed runtime when already installed). Skipped when an explicit
   /// `--codex-bin` path is set (it already names the binary). The resolved

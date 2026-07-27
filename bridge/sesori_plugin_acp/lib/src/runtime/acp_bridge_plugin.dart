@@ -70,8 +70,8 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
   ///
   /// A failure or timeout leaves the plugin [PluginDegraded] (recoverable: a
   /// later request re-drives [AcpPlugin.ensureConnected]) rather than failing
-  /// the whole bridge — the descriptor's `checkAvailability` already verified
-  /// the binary, so an agent that does not answer the handshake right now is a
+  /// the whole bridge — setup inspection already verified the binary, so an
+  /// agent that does not answer the handshake right now is a
   /// transient condition, not a fatal one. Never throws.
   Future<void> connect({
     required Duration budget,

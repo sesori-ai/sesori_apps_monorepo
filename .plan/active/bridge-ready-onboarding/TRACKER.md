@@ -54,6 +54,10 @@
 
 ## Findings And Plan Deltas
 
+- **2026-07-27 — Startup baseline clarification:** PR #586 removes the redundant
+  post-setup plugin availability gate. Step 2 still begins at the same
+  post-setup runner location; its ordering, scope, and acceptance criteria are
+  unchanged.
 - **2026-07-27 — Step 1 delivery:** Opened implementation PR
   [#585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) and started
   CI/review monitoring.

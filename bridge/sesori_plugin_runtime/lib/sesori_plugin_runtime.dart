@@ -4,7 +4,6 @@ export "src/managed_runtime_monitor.dart";
 export "src/managed_runtime_spec.dart";
 export "src/provisioning/managed_runtime_cleaner.dart";
 export "src/provisioning/managed_runtime_provision_service.dart";
-export "src/provisioning/runtime_availability_prober.dart";
 export "src/provisioning/runtime_install_service.dart";
 export "src/provisioning/runtime_manifest.dart";
 export "src/provisioning/runtime_version_validator.dart";

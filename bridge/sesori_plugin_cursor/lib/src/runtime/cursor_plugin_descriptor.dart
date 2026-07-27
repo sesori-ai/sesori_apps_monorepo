@@ -186,55 +186,6 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     );
   }
 
-  /// Confirms the Cursor CLI is installed and runnable before the
-  /// bridge commits to startup. Runs `<bin> --version`: exit 0 within
-  /// [versionProbeTimeout] is available; a failed launch (not installed / not
-  /// on PATH), a non-zero exit, or a timeout are unavailable. Never throws.
-  @override
-  Future<PluginAvailability> checkAvailability({
-    required PluginConfig config,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) async {
-    final executablePath = config.value(binOption) ?? CursorBinary.defaultBinary;
-    return _probeCursorBinary(
-      executablePath: executablePath,
-      processes: processes,
-      environment: environment,
-    );
-  }
-
-  Future<PluginAvailability> _probeCursorBinary({
-    required String executablePath,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) async {
-    final result = await _probeCursorRuntime(
-      executablePath: executablePath,
-      processes: processes,
-      environment: environment,
-    );
-    if (result.state == _CursorRuntimeProbeState.ready) {
-      Log.d("[cursor] available: '$executablePath --version' -> ${result.version!}");
-    }
-    return switch (result.state) {
-      _CursorRuntimeProbeState.ready => const PluginAvailable(),
-      _CursorRuntimeProbeState.missing => PluginUnavailable(
-        message: _notInstalledMessage(executablePath: executablePath),
-      ),
-      _CursorRuntimeProbeState.outdated => PluginUnavailable(
-        message: _outdatedMessage(executablePath: executablePath, version: result.version!),
-      ),
-      _CursorRuntimeProbeState.unknown => PluginUnavailable(
-        message: _notWorkingMessage(executablePath: executablePath),
-      ),
-      // Explicit CLI/settings startup historically treated any exit-zero
-      // version response as available. Setup inspection can stay conservative,
-      // but this legacy availability gate must keep that behavior.
-      _CursorRuntimeProbeState.unrecognized => const PluginAvailable(),
-    };
-  }
-
   Future<({_CursorRuntimeProbeState state, String? version})> _probeCursorRuntime({
     required String executablePath,
     required HostProcessService processes,
@@ -283,42 +234,13 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       return (state: _CursorRuntimeProbeState.unrecognized, version: null);
     }
     final version = parsed.toString();
+    Log.d("[cursor] available: '$executablePath --version' -> $version");
     return (state: _CursorRuntimeProbeState.ready, version: version);
   }
 
   String _normalizedStatusOutput(CommandResult result) {
     final combined = "${result.stdout}\n${result.stderr}";
     return combined.replaceAll(RegExp(r"\x1B\[[0-?]*[ -/]*[@-~]"), "").trim().toLowerCase();
-  }
-
-  String _notInstalledMessage({required String executablePath}) {
-    return [
-      "Cursor was not found — the Sesori bridge needs the Cursor CLI ($executablePath) to run.",
-      "",
-      "Verify it is installed:  $executablePath --version",
-      "Install the Cursor CLI:  curl https://cursor.com/install -fsS | bash",
-    ].join("\n");
-  }
-
-  String _notWorkingMessage({required String executablePath}) {
-    return [
-      'The Cursor CLI is installed but did not respond to "$executablePath --version".',
-      "",
-      "Re-check your install:   $executablePath --version",
-      "Update the Cursor CLI:   $executablePath update",
-    ].join("\n");
-  }
-
-  String _outdatedMessage({required String executablePath, required String version}) {
-    final headline =
-        "Cursor CLI $version is too old for the Sesori bridge — "
-        "model switching and chat history need $minVersion or newer.";
-    return [
-      headline,
-      "",
-      "Update the Cursor CLI:   $executablePath update",
-      "Then re-check:           $executablePath --version",
-    ].join("\n");
   }
 
   @override

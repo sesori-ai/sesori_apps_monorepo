@@ -52,8 +52,8 @@ whether the one-time prompt is needed, but it must not gate relay startup.
 ## Current Behavior
 
 - `BridgeRuntimeRunner` awaits `AppClientOnboardingService.run` immediately
-  after plugin setup inspection and availability checks
-  (`bridge/app/lib/src/bridge/runtime/bridge_runtime_runner.dart:691-714`).
+  after plugin setup inspection
+  (`bridge/app/lib/src/bridge/runtime/bridge_runtime_runner.dart:648-671`).
 - When the auth server reports no app client, the service prints the generic
   app-store QR/link and enters an unbounded loop of 30-second server long-polls,
   refreshing auth and retrying failures every five seconds
@@ -379,7 +379,7 @@ already completed.
 For standalone interactive starts only:
 
 ```text
-plugin inspect/availability
+plugin setup inspection
 -> ownership, diagnostics, database, and runtime composition
 -> capture onboarding preparation future (finite immediate check; do not await)
 -> capture startFuture = session.start and sessionRun = session.waitUntilStopped

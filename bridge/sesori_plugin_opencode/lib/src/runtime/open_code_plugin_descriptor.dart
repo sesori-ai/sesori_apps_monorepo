@@ -371,46 +371,6 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     return const PluginSetupReady();
   }
 
-  /// Confirms an explicitly-configured OpenCode binary is runnable before the
-  /// bridge commits to startup.
-  ///
-  /// In attach mode (`--opencode-no-auto-start`) the user runs their own server,
-  /// so no binary is needed — report available. When `--opencode-bin` is set, probe
-  /// it: an explicit override is a user promise, so a broken one is a fatal
-  /// config error (run `<bin> --version`; exit 0 within
-  /// [openCodeVersionProbeTimeout] is available). When no binary is configured,
-  /// runtime resolution (a recent-enough PATH install or existing managed runtime) is
-  /// deferred to [ensureRuntime], so report available here.
-  @override
-  Future<PluginAvailability> checkAvailability({
-    required PluginConfig config,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) async {
-    if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
-      return const PluginAvailable();
-    }
-    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-    if (explicitBin != null && explicitBin.isNotEmpty) {
-      const manifest = OpenCodeRuntimeManifest();
-      return RuntimeAvailabilityProber(
-        displayName: manifest.displayName,
-        installDocsUrl: manifest.installDocsUrl,
-        runtimeId: manifest.runtimeId,
-      ).probe(
-        executablePath: explicitBin,
-        processes: processes,
-        environment: environment,
-        versionProbeTimeout: _versionProbeTimeout,
-        // On Windows the binary is typically an `opencode.cmd`/`.ps1` shim that
-        // only resolves through a shell — matching how the managed runtime
-        // spawns `opencode serve`.
-        runInShell: io.Platform.isWindows,
-      );
-    }
-    return const PluginAvailable();
-  }
-
   /// Resolves an existing OpenCode runtime (a recent-enough PATH install or the
   /// pinned managed runtime when already installed). Skipped in attach mode and when an
   /// explicit `--opencode-bin` is set (both already have their binary). The

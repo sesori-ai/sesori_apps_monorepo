@@ -10,12 +10,10 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
     show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, DownloadProgress, OsVersionFormatter, PlatformOs;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
-        BridgePluginDescriptor,
         Console,
         Log,
         PluginConfig,
         PluginStartAbortedException,
-        PluginUnavailable,
         ProcessIdentity,
         ProcessUser,
         ServerClock,
@@ -647,47 +645,6 @@ class BridgeRuntimeRunner {
           return 1;
         }
       }
-      final descriptors = [
-        for (final pluginId in activePluginRuntime.startAllowedPluginIds)
-          knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId),
-      ];
-      final availabilityResults = await Future.wait(
-        descriptors.map((descriptor) async {
-          try {
-            return (
-              descriptor: descriptor,
-              availability: await descriptor.checkAvailability(
-                config: pluginConfigs[descriptor.id]!,
-                processes: hostProcessService,
-                environment: environment,
-              ),
-              error: null,
-              stackTrace: null,
-            );
-          } on Object catch (error, stackTrace) {
-            return (
-              descriptor: descriptor,
-              availability: null,
-              error: error,
-              stackTrace: stackTrace,
-            );
-          }
-        }),
-      );
-      final availableDescriptors = <BridgePluginDescriptor>[];
-      for (final result in availabilityResults) {
-        switch (result.availability) {
-          case PluginUnavailable(:final message):
-            Console.error(message);
-          case null:
-            Console.error("${result.descriptor.displayName} availability check failed: ${result.error}");
-          default:
-            availableDescriptors.add(result.descriptor);
-        }
-      }
-      activePluginLifecycleService.applyAvailability(
-        availablePluginIds: availableDescriptors.map((descriptor) => descriptor.id).toSet(),
-      );
       final runAppOnboarding = shouldRunAppOnboarding(
         isSupervised: options.isSupervised,
         isInteractive: terminalPromptApi.isInteractive,

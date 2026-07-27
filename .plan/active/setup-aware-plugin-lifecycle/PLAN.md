@@ -63,6 +63,8 @@ available:
 - No polling and no hidden probe on an ordinary operation against a blocked
   plugin. Recovery requires enable, explicit refresh, restart, or bridge
   restart.
+- A ready setup inspection is the sole pre-start backend readiness gate. Do not
+  immediately re-probe the same runtime through a separate availability phase.
 - `GET /plugin/setup` returns the current snapshot only and never activates or
   probes. Explicit refresh is allowed while the plugin is denied.
 
@@ -224,7 +226,6 @@ BridgeRuntimeRunner
   -> inspectSetup only for ids absent from disabledPluginIds
   -> fill denied ids with PluginSetupNotInspected
   -> PluginLifecycleService.initialize(disabled ids, setup map)
-  -> check existing-runtime availability only for setup-ready eligible ids
   -> compose zero or more eager Stage-10 starts and every non-plugin subsystem
 GetPluginSetupHandler / GetPluginsHandler
   -> immutable lifecycle snapshots; never descriptor calls

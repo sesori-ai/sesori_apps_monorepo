@@ -10,7 +10,6 @@ export "src/host/plugin_host.dart";
 export "src/lifecycle/bridge_plugin.dart";
 export "src/lifecycle/bridge_plugin_descriptor.dart";
 export "src/lifecycle/plugin_authentication_required_exception.dart";
-export "src/lifecycle/plugin_availability.dart";
 export "src/lifecycle/plugin_config.dart";
 export "src/lifecycle/plugin_diagnostics.dart";
 export "src/lifecycle/plugin_option.dart";
