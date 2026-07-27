@@ -3,7 +3,7 @@
 ## Current State
 
 - **Implementation base:** `origin/main` at `1b0f9874` after Step 5/7 merged
-- **Series state:** Step 6/7 PR #593 open; management actions implemented and verified
+- **Series state:** Step 6/8 PR #593 open; management actions implemented and verified
 - **Next action:** monitor and settle PR #593
 
 ## Delivery
@@ -15,8 +15,9 @@
 | [x] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | PR #589 merged as `6fe69d5a`; 1,095 changed lines (estimate 550-700, race-matrix test overage) |
 | [x] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | PR #590 merged as `99670e08`; simplified to use existing plugin IDs |
 | [x] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | PR #592 merged as `1b0f9874`; combined simulator E2E passed |
-| [ ] | Step 6/7 — management actions | `setup-aware-harness-settings-state` | PR #593 open; estimate 650-800 changed lines |
-| [ ] | Step 7/7 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
+| [ ] | Step 6/8 — management actions | `setup-aware-harness-settings-state` | PR #593 open; estimate 650-800 changed lines |
+| [ ] | Step 7/8 — management capabilities | `setup-aware-harness-settings-capabilities` | planned; estimate 650-850 changed lines |
+| [ ] | Step 8/8 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
 
 ## Source Material
 
@@ -130,7 +131,7 @@
   bridge cannot escape through replay. Full module_core (686) and focused tests
   pass; module_core, mobile, and desktop analysis is clean; architecture review
   approved the lifecycle ownership and publication fencing.
-- Step 6/7 (2026-07-27): extended the existing cubit over the final nested
+- Step 6/8 (2026-07-27): extended the existing cubit over the final nested
   sealed state contract with exact enable, safe-disable, safe-restart, setup
   refresh, apply-all timeout, per-harness override, clear-override, and explicit
   force-confirmation flows. Timeout parsing and forceability remain service
@@ -145,3 +146,11 @@
   review approved the service/cubit lifecycle ownership and boundaries. PR
   review added explicit force-confirmation dismissal so cancel returns the
   action lifecycle to idle and cannot leave all subsequent controls blocked.
+- Step 7/8 requirement clarification (2026-07-27): OpenCode attached with
+  `--opencode-no-auto-start` is externally managed and cannot be lifecycle- or
+  idle-timeout-controlled by Sesori. Step 7 will add an explicit backend-neutral
+  capability set from plugin descriptor through bridge enforcement and shared
+  transport to UI gating; it will not infer this mode from plugin ID or the
+  effective timeout value. Because that cross-layer contract and enforcement is
+  not tiny, the user approved expanding the series to eight PRs; Step 8/8 now
+  owns the controls UI. Historical merged PR title suffixes remain `/7`.

@@ -20,7 +20,7 @@ mergeable history: no replacement branch rebases, merges, or cherry-picks it.
 ## Goal
 
 Deliver the mobile Harnesses settings surface and per-bridge harness preference
-in seven independently reviewable PRs. Each slice compiles and verifies against
+in eight independently reviewable PRs. Each slice compiles and verifies against
 its base, exposes no placeholder user surface, and leaves no temporary public
 contract that a later slice must break.
 
@@ -34,6 +34,10 @@ presentation-facing copy use Harnesses.
 - Backend-specific behavior stays in its owning bridge plugin descriptor. Shared
   transport and clients consume backend-neutral contracts; Prego resolves an
   opaque presentation logo key without using plugin IDs as behavioral state.
+- Lifecycle controls are capability-gated. In particular, OpenCode attach mode
+  (`--opencode-no-auto-start`) is externally managed: Sesori must not offer or
+  execute enable, disable, or restart for it. Clients never infer this from the
+  plugin ID, runtime state, residency, or a non-positive timeout.
 - Layering remains Foundation -> API -> Repository -> Service -> Consumer.
   Cubits never call APIs and are never registered in DI.
 - Additive nullable wire fields must decode from older peers and must be omitted
@@ -66,13 +70,17 @@ presentation-facing copy use Harnesses.
 | 3/7 | `setup-aware-harness-settings-service` | `[setup-aware-harness-settings] feat(client): synchronize harness management [step 3/7]` | 550-700 | Replay, coalescing, reconnect, and mutation fencing. |
 | 4/7 | `setup-aware-harness-settings-branding` | `[setup-aware-harness-settings] feat(prego): render harness logos [step 4/7]` | 750-900 | Descriptor-to-Prego brand key flow plus chooser rendering. |
 | 5/7 | `setup-aware-harness-settings-overview` | `[setup-aware-harness-settings] feat(app): add harness settings overview [step 5/7]` | 1,100-1,300 | Notifications-style read-only Harnesses page, final state contract, and settings entry. |
-| 6/7 | `setup-aware-harness-settings-state` | `[setup-aware-harness-settings] feat(client): add harness management actions [step 6/7]` | 650-800 | Mutation cubit behavior over service-owned validation and force policy. |
-| 7/7 | `setup-aware-harness-settings-controls` | `[setup-aware-harness-settings] feat(app): add harness management controls [step 7/7]` | 800-1,000 | Management controls page with safe/force and timeout flows. |
+| 6/8 | `setup-aware-harness-settings-state` | `[setup-aware-harness-settings] feat(client): add harness management actions [step 6/8]` | 650-800 | Mutation cubit behavior over service-owned validation and force policy. |
+| 7/8 | `setup-aware-harness-settings-capabilities` | `[setup-aware-harness-settings] feat(bridge): declare harness management capabilities [step 7/8]` | 650-850 | Backend-neutral capability declaration, transport, and authoritative bridge enforcement. |
+| 8/8 | `setup-aware-harness-settings-controls` | `[setup-aware-harness-settings] feat(app): add harness management controls [step 8/8]` | 800-1,000 | Management controls page with capability-gated safe/force and timeout flows. |
 
 Steps 2 and 3 are functionally independent from Step 1, but the series still
 runs sequentially. Step 5 expects the Step 3 snapshot contract and the Step 4
-logo primitive. Steps 6 and 7 complete the control surface; no management
-mutation is exposed before Step 7.
+logo primitive. The series expanded from seven to eight slices after Steps 1-5
+merged, when product clarification required a cross-layer externally-managed
+capability contract. Their historical `/7` PR title suffixes remain unchanged;
+Steps 6-8 use the final `/8` total. Steps 6-8 complete the control surface; no
+management mutation is exposed before Step 8.
 
 ## Step 1/7: Per-Bridge Harness Preference
 
@@ -789,7 +797,7 @@ Production files:
 - Localization generation, focused module-core and Flutter tests, and fatal
   analysis in module_core, mobile, and desktop.
 
-## Step 6/7: Management Cubit Actions
+## Step 6/8: Management Cubit Actions
 
 ### Scope
 
@@ -883,9 +891,90 @@ Production files:
 - Focused service/cubit tests, module-core fatal analysis, and mobile/desktop
   fatal analysis.
 
-## Step 7/7: Harness Management Controls Page
+## Step 7/8: Management Capability Contract And Enforcement
 
 ### Scope
+
+First add the backend-neutral management capability contract needed by the
+controls. `PluginManagementMetadata` carries a closed set of independently
+supported operations rather than an OpenCode-specific flag:
+
+```dart
+enum PluginManagementCapability {
+  lifecycle,
+  setupRefresh,
+  idleTimeout,
+  unknown,
+}
+```
+
+The transport field is non-null with a conservative empty legacy default and a
+dated compatibility comment: an older bridge that cannot declare control safety
+must not cause a newer app to expose process controls. The UI explains that the
+connected bridge must be updated when capability data is unavailable. Unknown
+enum values degrade as unsupported. Do not infer capability from
+`idleTimeoutMins <= 0`: that value also truthfully represents a managed plugin
+configured never to idle.
+
+The plugin interface independently defines its Layer-0 enum and descriptor
+method; it never imports `sesori_shared`:
+
+```dart
+enum PluginControlCapability { lifecycle, setupRefresh, idleTimeout }
+
+Set<PluginControlCapability> managementCapabilities({
+  required PluginConfig config,
+});
+```
+
+The wire-facing `PluginManagementCapability` remains independently defined in
+`sesori_shared`. Existing descriptors default to all three interface
+capabilities. The OpenCode descriptor omits lifecycle and idle-timeout
+capabilities in no-auto-start attach mode while retaining setup refresh.
+`bridge/app` maps the interface enum to the shared enum during composition and
+publication; neither Layer-0 package depends on the other. The bridge remains
+authoritative:
+
+- enable, disable, and restart reject plugins without `lifecycle` support;
+- setup refresh rejects plugins without `setupRefresh` support;
+- per-plugin timeout set/clear rejects plugins without `idleTimeout` support;
+- apply-all updates the bridge default and only clears/applies per-plugin
+  timeout state for capable plugins;
+- unsupported operations return a typed non-forceable conflict and never touch
+  process state or persisted per-plugin settings.
+
+Production files:
+
+- `shared/sesori_shared/lib/src/models/sesori/plugin_management.dart` and
+  generated companions for the additive wire capability contract
+- `bridge/sesori_plugin_interface/` for the independent descriptor capability
+  enum and declaration
+- registered plugin descriptors and `bridge/app` composition mapping
+- `bridge/app/lib/src/services/plugin_lifecycle_service.dart` for authoritative
+  capability publication and command/settings enforcement
+
+### Verification
+
+- Shared JSON covers declared capabilities, unknown values, and omitted legacy
+  payloads degrading to no controls.
+- Interface tests cover the default declaration without importing shared; each
+  concrete descriptor is updated in lockstep.
+- Descriptor and bridge-service tests prove no-auto-start OpenCode publishes no
+  lifecycle/timeout capability, setup refresh remains explicit, unsupported
+  commands never touch runtime state, and unsupported timeout writes never
+  mutate settings.
+- Managed plugins retain every existing command and timeout flow; apply-all
+  skips externally managed harness settings while updating the bridge default.
+
+## Step 8/8: Harness Management Controls Page
+
+### Scope
+
+Step 8 renders only controls declared by the snapshot. An externally managed
+harness remains visible with setup/runtime/work context and copy explaining that
+its process is managed outside Sesori. Setup refresh remains available when its
+separate capability is declared. No client layer recognizes OpenCode or
+`no-auto-start`.
 
 Add the second typed route:
 
@@ -970,6 +1059,9 @@ Production files:
 
 ### Verification
 
+- Mobile tests prove controls follow capabilities and never infer external
+  management from plugin identity, runtime state, residency, or timeout value.
+
 - Route encode/decode, router registration, overview-to-management navigation,
   back, and close behavior.
 - Every loading/unsupported/failure/ready state.
@@ -1037,7 +1129,7 @@ persisted disable/timeout/preference/session state altered.
 | After Step 1/7 | Connect through the normal app flow, open `random stuff`, verify each per-bridge harness choice persists across app reopen and falls back after a saved harness becomes unavailable. Restore the written preference afterward. Keep the omitted-`bridgeId` case in wire/service contract tests unless a real older-peer fixture is explicitly available; this repository's Step 1 bridge always emits the ID, so it cannot honestly exercise that path. |
 | After Step 5/7 | Explicitly resolve the Step 3 service through the app's integration path, then verify initial snapshot load, reconnect/replay-loss refresh, management SSE invalidation, and identity-scoped retained snapshots against the real bridge. Open Settings, verify the Harnesses row is immediately below Notifications with the same grouped-row style, open the page, and verify logos, statuses, default badge, refresh, retained snapshot after refresh failure, unsupported state if an older bridge is available, and Notifications-style close behavior. |
 | After Step 4/7 | Verify the new-session chooser renders the real OpenCode, Codex, and Cursor logos. Keep generic-logo verification in widget/contract tests unless an integration fixture can honestly return a null or unknown key; the normal three-descriptor bridge cannot produce that case. |
-| After Step 7/7 | In `random stuff`, exercise safe enable/disable/restart/setup-refresh, busy-conflict copy, explicit force confirmation, timeout apply-all/override/clear, persistence across bridge restart, and session creation from the resulting harness state. Verify current-main forced-disable session reconciliation remains visible, then restore the pre-E2E durable state. |
+| After Step 8/8 | In `random stuff`, exercise safe enable/disable/restart/setup-refresh, busy-conflict copy, explicit force confirmation, timeout apply-all/override/clear, persistence across bridge restart, and session creation from the resulting harness state. Run OpenCode once in no-auto-start attach mode and verify lifecycle/timeout controls are absent while declared setup refresh remains available. Verify current-main forced-disable session reconciliation remains visible, then restore the pre-E2E durable state. |
 
 Stop the temporary E2E bridge after verification and restore any deliberately
 stopped pre-existing bridge. Do not kill an unrelated user bridge; identify
