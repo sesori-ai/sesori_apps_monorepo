@@ -74,6 +74,10 @@ Widget _app() {
         path: "/projects",
         builder: (context, state) => const Scaffold(body: Text("projects-route")),
       ),
+      GoRoute(
+        path: "/settings/harnesses/manage",
+        builder: (context, state) => const Scaffold(body: Text("manage-route")),
+      ),
     ],
   );
 
@@ -223,6 +227,17 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     verify(() => service.refresh()).called(1);
+  });
+
+  testWidgets("ready view opens Harness management", (tester) async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harnesses_manage")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("manage-route"), findsOneWidget);
   });
 
   testWidgets("close returns to Projects", (tester) async {

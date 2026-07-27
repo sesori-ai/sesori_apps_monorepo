@@ -165,6 +165,19 @@ class _ReadyView extends StatelessWidget {
           style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
         ),
         const SizedBox(height: PregoSpacing.xl),
+        PregoGroupedRows(
+          children: [
+            PregoGroupedRow(
+              key: const Key("harnesses_manage"),
+              icon: TablerRegular.settings,
+              title: Text(loc.settingsHarnessManagementTitle),
+              trailing: const Icon(TablerRegular.chevron_right),
+              onTap: () => context.pushRoute(const AppRoute.settingsHarnessManagement()),
+              isLast: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: PregoSpacing.xl),
         SettingsSection(
           title: loc.harnessesRegisteredSection,
           child: response.plugins.isEmpty

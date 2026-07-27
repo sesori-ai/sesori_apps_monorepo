@@ -178,6 +178,99 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsHarnessesTitle => 'Harnesses';
 
   @override
+  String get settingsHarnessManagementTitle => 'Manage Harnesses';
+
+  @override
+  String get harnessManagementDescription => 'Control the harnesses that support management through Sesori.';
+
+  @override
+  String get harnessManagementDefaultsSection => 'Bridge Default';
+
+  @override
+  String get harnessManagementDefaultTimeout => 'Default idle timeout';
+
+  @override
+  String get harnessManagementDefaultTimeoutDescription =>
+      'Apply this timeout to every harness that supports idle-timeout control.';
+
+  @override
+  String get harnessManagementEnabled => 'Enabled';
+
+  @override
+  String get harnessManagementRefreshSetup => 'Refresh setup';
+
+  @override
+  String get harnessManagementRestart => 'Restart';
+
+  @override
+  String get harnessManagementIdleTimeout => 'Idle timeout';
+
+  @override
+  String get harnessManagementClearOverride => 'Use bridge default';
+
+  @override
+  String get harnessManagementExternalTitle => 'Managed outside Sesori';
+
+  @override
+  String get harnessManagementExternalDescription =>
+      'This harness process is controlled externally. Sesori will not start, stop, restart, or suspend it.';
+
+  @override
+  String get harnessManagementDefaultTimeoutDialogTitle => 'Set default idle timeout';
+
+  @override
+  String harnessManagementTimeoutDialogTitle(String harnessName) {
+    return 'Set $harnessName idle timeout';
+  }
+
+  @override
+  String get harnessManagementTimeoutMinutesLabel => 'Minutes';
+
+  @override
+  String get harnessManagementTimeoutHelp => 'Use zero or a negative value to keep the harness running.';
+
+  @override
+  String get harnessManagementCancel => 'Cancel';
+
+  @override
+  String get harnessManagementSave => 'Save';
+
+  @override
+  String get harnessManagementForceDisableTitle => 'Force disable harness?';
+
+  @override
+  String get harnessManagementForceRestartTitle => 'Force restart harness?';
+
+  @override
+  String get harnessManagementForceDescription =>
+      'Active work may be interrupted. This action is sent once and cannot be undone.';
+
+  @override
+  String get harnessManagementForceAction => 'Force action';
+
+  @override
+  String get harnessManagementActionFailedTitle => 'Harness action failed';
+
+  @override
+  String get harnessManagementDismissActionError => 'Dismiss action error';
+
+  @override
+  String get harnessManagementInvalidTimeout => 'Enter a whole number of minutes.';
+
+  @override
+  String get harnessManagementNotFound => 'The harness is no longer registered on this bridge.';
+
+  @override
+  String get harnessManagementConflict => 'The bridge rejected the action because the harness state changed.';
+
+  @override
+  String get harnessManagementUncertain =>
+      'The connection changed before the result could be confirmed. Refresh before trying again.';
+
+  @override
+  String get harnessManagementRequestFailed => 'Check your connection and try again.';
+
+  @override
   String get harnessesDescription => 'View the coding harnesses registered by your connected bridge.';
 
   @override

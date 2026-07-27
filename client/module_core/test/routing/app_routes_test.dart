@@ -17,6 +17,20 @@ void main() {
       );
     });
 
+    test("settings Harness management route round-trips without extra state", () {
+      const route = AppRoute.settingsHarnessManagement();
+
+      expect(route.buildPath(), "/settings/harnesses/manage");
+      expect(
+        AppRoute.fromDef(
+          def: AppRouteDef.settingsHarnessManagement,
+          pathParams: const {},
+          queryParams: const {},
+        ),
+        isA<AppRouteSettingsHarnessManagement>(),
+      );
+    });
+
     test("sessions round-trips the known worktree capability", () {
       const route = AppRoute.sessions(
         projectId: "project-1",

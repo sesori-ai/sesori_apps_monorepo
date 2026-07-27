@@ -409,6 +409,180 @@ abstract class AppLocalizations {
   /// **'Harnesses'**
   String get settingsHarnessesTitle;
 
+  /// No description provided for @settingsHarnessManagementTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Harnesses'**
+  String get settingsHarnessManagementTitle;
+
+  /// No description provided for @harnessManagementDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Control the harnesses that support management through Sesori.'**
+  String get harnessManagementDescription;
+
+  /// No description provided for @harnessManagementDefaultsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge Default'**
+  String get harnessManagementDefaultsSection;
+
+  /// No description provided for @harnessManagementDefaultTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Default idle timeout'**
+  String get harnessManagementDefaultTimeout;
+
+  /// No description provided for @harnessManagementDefaultTimeoutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply this timeout to every harness that supports idle-timeout control.'**
+  String get harnessManagementDefaultTimeoutDescription;
+
+  /// No description provided for @harnessManagementEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get harnessManagementEnabled;
+
+  /// No description provided for @harnessManagementRefreshSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh setup'**
+  String get harnessManagementRefreshSetup;
+
+  /// No description provided for @harnessManagementRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get harnessManagementRestart;
+
+  /// No description provided for @harnessManagementIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle timeout'**
+  String get harnessManagementIdleTimeout;
+
+  /// No description provided for @harnessManagementClearOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Use bridge default'**
+  String get harnessManagementClearOverride;
+
+  /// No description provided for @harnessManagementExternalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed outside Sesori'**
+  String get harnessManagementExternalTitle;
+
+  /// No description provided for @harnessManagementExternalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This harness process is controlled externally. Sesori will not start, stop, restart, or suspend it.'**
+  String get harnessManagementExternalDescription;
+
+  /// No description provided for @harnessManagementDefaultTimeoutDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set default idle timeout'**
+  String get harnessManagementDefaultTimeoutDialogTitle;
+
+  /// No description provided for @harnessManagementTimeoutDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set {harnessName} idle timeout'**
+  String harnessManagementTimeoutDialogTitle(String harnessName);
+
+  /// No description provided for @harnessManagementTimeoutMinutesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get harnessManagementTimeoutMinutesLabel;
+
+  /// No description provided for @harnessManagementTimeoutHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Use zero or a negative value to keep the harness running.'**
+  String get harnessManagementTimeoutHelp;
+
+  /// No description provided for @harnessManagementCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get harnessManagementCancel;
+
+  /// No description provided for @harnessManagementSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get harnessManagementSave;
+
+  /// No description provided for @harnessManagementForceDisableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Force disable harness?'**
+  String get harnessManagementForceDisableTitle;
+
+  /// No description provided for @harnessManagementForceRestartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Force restart harness?'**
+  String get harnessManagementForceRestartTitle;
+
+  /// No description provided for @harnessManagementForceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Active work may be interrupted. This action is sent once and cannot be undone.'**
+  String get harnessManagementForceDescription;
+
+  /// No description provided for @harnessManagementForceAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Force action'**
+  String get harnessManagementForceAction;
+
+  /// No description provided for @harnessManagementActionFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Harness action failed'**
+  String get harnessManagementActionFailedTitle;
+
+  /// No description provided for @harnessManagementDismissActionError.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss action error'**
+  String get harnessManagementDismissActionError;
+
+  /// No description provided for @harnessManagementInvalidTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of minutes.'**
+  String get harnessManagementInvalidTimeout;
+
+  /// No description provided for @harnessManagementNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness is no longer registered on this bridge.'**
+  String get harnessManagementNotFound;
+
+  /// No description provided for @harnessManagementConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge rejected the action because the harness state changed.'**
+  String get harnessManagementConflict;
+
+  /// No description provided for @harnessManagementUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection changed before the result could be confirmed. Refresh before trying again.'**
+  String get harnessManagementUncertain;
+
+  /// No description provided for @harnessManagementRequestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get harnessManagementRequestFailed;
+
   /// No description provided for @harnessesDescription.
   ///
   /// In en, this message translates to:

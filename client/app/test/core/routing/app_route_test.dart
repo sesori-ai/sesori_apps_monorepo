@@ -14,6 +14,7 @@ import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
 import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
+import "package:sesori_mobile/features/settings/harness_management_screen.dart";
 import "package:sesori_mobile/features/settings/harnesses_settings_screen.dart";
 import "package:sesori_mobile/features/settings/notification_settings_screen.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
@@ -37,6 +38,7 @@ void main() {
       expect(const AppRoute.projects().buildPath(), "/projects");
       expect(const AppRoute.settings().buildPath(), "/settings");
       expect(const AppRoute.settingsHarnesses().buildPath(), "/settings/harnesses");
+      expect(const AppRoute.settingsHarnessManagement().buildPath(), "/settings/harnesses/manage");
     });
 
     test("substitutes projectId for sessions", () {
@@ -169,6 +171,12 @@ void main() {
       expect(children.map((route) => route.path), equals(["notifications", "harnesses", "profile"]));
       expect(children[0].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<NotificationSettingsScreen>());
       expect(children[1].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<HarnessesSettingsScreen>());
+      final harnessManagementRoute = children[1].routes.whereType<GoRoute>().single;
+      expect(harnessManagementRoute.path, "manage");
+      expect(
+        harnessManagementRoute.builder!(_FakeBuildContext(), _FakeGoRouterState()),
+        isA<HarnessManagementScreen>(),
+      );
       expect(children[2].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
       expect(
         _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[0].path),
@@ -177,6 +185,10 @@ void main() {
       expect(
         _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[1].path),
         AppRouteDef.settingsHarnesses.path,
+      );
+      expect(
+        _composeRoutePath(parentPath: AppRouteDef.settingsHarnesses.path, path: harnessManagementRoute.path),
+        AppRouteDef.settingsHarnessManagement.path,
       );
       expect(
         _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[2].path),
@@ -238,6 +250,7 @@ void main() {
           AppRouteDef.settings.path,
           AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsHarnesses.path,
+          AppRouteDef.settingsHarnessManagement.path,
           AppRouteDef.settingsProfile.path,
         ]),
       );

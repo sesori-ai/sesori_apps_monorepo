@@ -17,6 +17,7 @@ import "../../features/session_list/session_list_action_dispatcher.dart";
 import "../../features/session_list/session_list_cubit_provider.dart";
 import "../../features/session_list/session_list_panel.dart";
 import "../../features/session_list/session_list_screen.dart";
+import "../../features/settings/harness_management_screen.dart";
 import "../../features/settings/harnesses_settings_screen.dart";
 import "../../features/settings/notification_settings_screen.dart";
 import "../../features/settings/profile_screen.dart";
@@ -35,6 +36,7 @@ const _sessionDetailRouteSegment = ":$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
 const _settingsNotificationsRouteSegment = "notifications";
 const _settingsHarnessesRouteSegment = "harnesses";
+const _settingsHarnessManagementRouteSegment = "manage";
 const _settingsProfileRouteSegment = "profile";
 
 extension AppRouteToGoRoute on AppRouteDef {
@@ -95,6 +97,7 @@ extension AppRouteToGoRoute on AppRouteDef {
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
       AppRouteSettingsHarnesses() => const HarnessesSettingsScreen(),
+      AppRouteSettingsHarnessManagement() => const HarnessManagementScreen(),
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
@@ -383,6 +386,13 @@ List<RouteBase> _buildAppRoutes({
         GoRoute(
           path: _settingsHarnessesRouteSegment,
           builder: (context, state) => AppRouteDef.settingsHarnesses._buildScreen(context: context, state: state),
+          routes: [
+            GoRoute(
+              path: _settingsHarnessManagementRouteSegment,
+              builder: (context, state) =>
+                  AppRouteDef.settingsHarnessManagement._buildScreen(context: context, state: state),
+            ),
+          ],
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,

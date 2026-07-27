@@ -2,9 +2,9 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `075951cb` after Step 6/8 merged
-- **Series state:** Step 7/8 PR #594 open; management capabilities implemented and verified
-- **Next action:** monitor and settle PR #594
+- **Implementation base:** `origin/main` at `3adaf4e4` after Step 7/8 merged
+- **Series state:** Step 8/8 management controls implemented and verified; PR pending
+- **Next action:** open and settle the Step 8/8 PR
 
 ## Delivery
 
@@ -16,8 +16,8 @@
 | [x] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | PR #590 merged as `99670e08`; simplified to use existing plugin IDs |
 | [x] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | PR #592 merged as `1b0f9874`; combined simulator E2E passed |
 | [x] | Step 6/8 — management actions | `setup-aware-harness-settings-state` | PR #593 merged as `075951cb`; estimate 650-800 changed lines |
-| [ ] | Step 7/8 — management capabilities | `setup-aware-harness-settings-capabilities` | PR #594 open; estimate 650-850 changed lines |
-| [ ] | Step 8/8 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
+| [x] | Step 7/8 — management capabilities | `setup-aware-harness-settings-capabilities` | PR #594 merged as `3adaf4e4` |
+| [ ] | Step 8/8 — management controls | `setup-aware-harness-settings-controls` | implemented and verified; PR pending; estimate 800-1,000 changed lines |
 
 ## Source Material
 
@@ -177,3 +177,15 @@
   required idle suspension to check lifecycle plus timeout capabilities before
   scheduling and stopping, and corrected new private helpers to required named
   parameters.
+- Step 8/8 (2026-07-27): added the nested typed Harness management route and a
+  thin Flutter controls screen over the existing singleton management service
+  and cubit. The screen renders lifecycle, setup-refresh, and timeout controls
+  only from declared capabilities; externally managed harnesses retain status
+  context and setup refresh without lifecycle inference from plugin identity,
+  runtime state, or timeout values. Global/per-harness signed timeout dialogs,
+  safe lifecycle actions, one-shot force confirmation, action/refresh errors,
+  back/close navigation, and known/generic logos are covered. Full mobile (752)
+  and module_core (697) suites pass; fatal analysis is clean in mobile,
+  module_core, desktop, and module_desktop_core. Architecture review's sole
+  finding was applied by using the shared fail-closed `PluginRuntimeState.isEnabled`
+  semantic rather than classifying lifecycle state in the Flutter shell.
