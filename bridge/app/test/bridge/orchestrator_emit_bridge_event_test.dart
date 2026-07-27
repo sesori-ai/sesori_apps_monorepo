@@ -98,8 +98,8 @@ void main() {
       await relayServer.close();
     });
 
-    final runFuture = harness.composition.session.run();
-    unawaited(runFuture.catchError((_) {}));
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
     await relayServer.nextClient();
     await harness.activatePlugins();
     final before = [for (final plugin in harness.plugins) plugin.getProjectsCallCount];
@@ -131,8 +131,8 @@ void main() {
       await harness.close();
       await relayServer.close();
     });
-    final runFuture = harness.composition.session.run();
-    unawaited(runFuture.catchError((_) {}));
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
     await relayServer.nextClient();
     await harness.activatePlugins();
     final pluginRuntime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
@@ -175,8 +175,8 @@ void main() {
       await relayServer.close();
     });
 
-    final runFuture = harness.composition.session.run();
-    unawaited(runFuture.catchError((_) {}));
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
     await relayServer.nextClient();
     await harness.activatePlugins();
 
@@ -234,8 +234,8 @@ void main() {
       await relayServer.close();
     });
 
-    final runFuture = harness.composition.session.run();
-    unawaited(runFuture.catchError((_) {}));
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
     await relayServer.nextClient();
     await harness.activatePlugins();
     final subscribed = harness.composition.session.localWireEvents.firstWhere(
@@ -328,8 +328,8 @@ void main() {
       await relayServer.close();
     });
 
-    final runFuture = harness.composition.session.run();
-    unawaited(runFuture.catchError((_) {}));
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
     await relayServer.nextClient();
     await harness.activatePlugins();
 

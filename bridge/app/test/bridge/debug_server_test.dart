@@ -74,8 +74,8 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     restartService: effectiveRestartService,
     composition: composition,
   );
-  final runFuture = composition.session.run();
-  unawaited(runFuture.catchError((_) {}));
+  final running = await startTestOrchestratorSession(session: composition.session);
+  final runFuture = running.stopped;
   await relayServer.nextClient();
   await activateTestPlugin(service: lifecycleService, pluginId: plugin.id);
   if (plugin case final _SubscriptionAwarePlugin subscriptionAware) {

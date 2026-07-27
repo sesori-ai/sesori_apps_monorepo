@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
 import "package:http/http.dart" as http;
@@ -21,12 +22,13 @@ import "routing/routing_test_helpers.dart";
 
 void main() {
   group("OrchestratorSession bridge registration", () {
-    test("startup registration failure fails the run without connecting to the relay", () async {
+    test("startup registration failure fails startup and lifecycle without connecting to the relay", () async {
       final repository = FakeBridgeRegistrationRepository()
         ..registerError = BridgeRegistrationException(statusCode: 500, body: "boom");
       final harness = await _RegistrationHarness.start(repository: repository);
       addTearDown(harness.close);
 
+      await expectLater(harness.startFuture, throwsA(isA<BridgeRegistrationException>()));
       await expectLater(harness.runFuture, throwsA(isA<BridgeRegistrationException>()));
 
       expect(repository.registeredBridgeIds, equals([null]));
@@ -48,7 +50,7 @@ void main() {
       expect(authMessage["bridgeId"], equals("br_first001"));
     });
 
-    test("normal disconnect reconnects without re-registering", () async {
+    test("normal disconnect reconnects with a fresh inbound relay iterator", () async {
       final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
       final harness = await _RegistrationHarness.start(repository: repository);
       addTearDown(harness.close);
@@ -58,7 +60,26 @@ void main() {
       await firstSocket.close();
 
       final secondSocket = await harness.relayServer.nextClient();
-      final authMessage = await _firstTextMessage(secondSocket);
+      final secondMessages = StreamIterator<dynamic>(secondSocket);
+      expect(await secondMessages.moveNext(), isTrue);
+      final authMessage = jsonDecodeMap(secondMessages.current as String);
+
+      final phoneKeyPair = await RelayCryptoService().generateKeyPair();
+      final phonePublicKey = await phoneKeyPair.extractPublicKey();
+      final keyExchange = RelayMessage.keyExchange(
+        publicKey: base64Url.encode(phonePublicKey.bytes).replaceAll("=", ""),
+      );
+      secondSocket.add(<int>[
+        0,
+        7,
+        ...utf8.encode(jsonEncode(keyExchange.toJson())),
+      ]);
+
+      expect(await secondMessages.moveNext(), isTrue);
+      final response = secondMessages.current;
+      expect(response, isA<List<int>>());
+      expect((response as List<int>).sublist(0, 2), equals(const [0, 7]));
+      await secondMessages.cancel();
 
       expect(repository.registeredBridgeIds, equals([null]), reason: "registration is memoized per process");
       expect(authMessage["bridgeId"], equals("br_first001"));
@@ -171,7 +192,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 200));
 
       // A SIGTERM-style cancel must wake the loop immediately, not wait out the
-      // 2+ minute backoff. run() should return well within a few seconds.
+      // 2+ minute backoff. The lifecycle should stop well within a few seconds.
       final sw = Stopwatch()..start();
       await harness.session.cancel();
       await harness.runFuture.timeout(const Duration(seconds: 10));
@@ -222,6 +243,7 @@ class _RegistrationHarness {
   final FakeBridgePlugin plugin;
   final FakeBridgeIdStorage bridgeIdStorage;
   final OrchestratorSession session;
+  final Future<OrchestratorSessionStartResult> startFuture;
   final Future<void> runFuture;
   final _CountingRelayServer relayServer;
   final AppDatabase database;
@@ -232,6 +254,7 @@ class _RegistrationHarness {
     required this.plugin,
     required this.bridgeIdStorage,
     required this.session,
+    required this.startFuture,
     required this.runFuture,
     required this.relayServer,
     required this.database,
@@ -284,15 +307,16 @@ class _RegistrationHarness {
     );
 
     final session = orchestrator.create().session;
-    // Surface run() failures through [runFuture] without triggering an
-    // unhandled async error when a test only awaits it via expectLater later.
-    final runFuture = session.run();
-    unawaited(runFuture.catchError((_) {}));
+    final startFuture = session.start();
+    final runFuture = session.waitUntilStopped();
+    startFuture.ignore();
+    runFuture.ignore();
 
     return _RegistrationHarness._(
       plugin: plugin,
       bridgeIdStorage: bridgeIdStorage,
       session: session,
+      startFuture: startFuture,
       runFuture: runFuture,
       relayServer: relayServer,
       database: database,
@@ -304,9 +328,14 @@ class _RegistrationHarness {
   Future<void> close() async {
     await session.cancel();
     try {
+      await startFuture.timeout(const Duration(seconds: 10));
+    } on Object {
+      // Startup may have already completed with the error under test.
+    }
+    try {
       await runFuture.timeout(const Duration(seconds: 10));
     } on Object {
-      // run() may have already completed with the error under test.
+      // The lifecycle may have already completed with the error under test.
     }
     await lifecycleService.dispose();
     httpClient.close();

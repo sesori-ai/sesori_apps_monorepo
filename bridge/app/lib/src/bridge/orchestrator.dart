@@ -543,10 +543,12 @@ bool _gitPathExists({required String gitPath}) {
   return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
 }
 
+enum OrchestratorSessionStartResult { ready, cancelled }
+
 /// A running bridge session with immutable runtime state.
 ///
-/// Created by [Orchestrator.create]. Call [run] to start the relay loop
-/// and [cancel] to shut down gracefully.
+/// Created by [Orchestrator.create]. Call [start] once, capture
+/// [waitUntilStopped] immediately, and use [cancel] to shut down gracefully.
 class OrchestratorSession {
   final BridgeConfig config;
   final RelayClient _client;
@@ -589,6 +591,7 @@ class OrchestratorSession {
   final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
   Future<void> _projectsSummaryTail = Future<void>.value();
   final Random _backoffJitter = Random();
+  Future<void>? _lifecycleFuture;
 
   bool _cancelled = false;
   Object? _beginShutdownError;
@@ -709,18 +712,83 @@ class OrchestratorSession {
   RequestRouter get router => _router;
   Future<void> drainRoutedMutations() => _sessionMutationDispatcher.drain();
 
-  Future<void> run() async {
+  Future<OrchestratorSessionStartResult> start() {
+    if (_lifecycleFuture != null) {
+      return Future.error(StateError("OrchestratorSession has already started"), StackTrace.current);
+    }
+
+    final readiness = Completer<OrchestratorSessionStartResult>();
+    final lifecycleFuture = Future<void>.microtask(
+      () => _runLifecycle(readiness: readiness),
+    );
+    _lifecycleFuture = lifecycleFuture;
+    lifecycleFuture.ignore();
+    return readiness.future;
+  }
+
+  Future<void> waitUntilStopped() {
+    final lifecycleFuture = _lifecycleFuture;
+    if (lifecycleFuture == null) {
+      return Future.error(StateError("OrchestratorSession has not started"), StackTrace.current);
+    }
+    return lifecycleFuture;
+  }
+
+  Future<void> _runLifecycle({
+    required Completer<OrchestratorSessionStartResult> readiness,
+  }) async {
+    Object? firstError;
+    StackTrace? firstStackTrace;
+
+    try {
+      await _startAndServe(readiness: readiness);
+    } on Object catch (error, stackTrace) {
+      if (!_cancelled) {
+        firstError = error;
+        firstStackTrace = stackTrace;
+      }
+    }
+
+    try {
+      await _teardown();
+    } on Object catch (error, stackTrace) {
+      firstError ??= error;
+      firstStackTrace ??= stackTrace;
+    }
+
+    if (!readiness.isCompleted) {
+      if (_cancelled) {
+        readiness.complete(OrchestratorSessionStartResult.cancelled);
+      } else {
+        final error = firstError ?? StateError("OrchestratorSession stopped before becoming ready");
+        final stackTrace = firstStackTrace ?? StackTrace.current;
+        firstError = error;
+        firstStackTrace = stackTrace;
+        readiness.completeError(error, stackTrace);
+      }
+    }
+
+    if (firstError case final error?) {
+      Error.throwWithStackTrace(error, firstStackTrace ?? StackTrace.current);
+    }
+  }
+
+  Future<void> _startAndServe({
+    required Completer<OrchestratorSessionStartResult> readiness,
+  }) async {
     final kxManager = KeyExchangeManager(_roomKey);
     final activePhones = <int, bool>{};
 
     Log.d("registering bridge with auth server...");
     await _bridgeRegistrationService.ensureRegistered();
     Log.d("bridge registered");
+    if (_cancelled) return;
 
     try {
       Log.d("connecting to relay...");
       await _client.connect();
       Log.d("relay connected");
+      if (_cancelled) return;
 
       _sessionAbortService.abortStartedSessions
           .listen(_completionListener.markSessionAbortPending)
@@ -815,152 +883,184 @@ class OrchestratorSession {
     Console.message("Relay:  ${config.relayURL}");
     Console.message("Waiting for relay events...");
 
-    try {
-      while (!_cancelled) {
+    await _serveRelayConnections(
+      readiness: readiness,
+      kxManager: kxManager,
+      activePhones: activePhones,
+    );
+  }
+
+  Future<void> _teardown() async {
+    final teardownSw = Stopwatch()..start();
+    Object? firstTeardownError = _beginShutdownError;
+    StackTrace? firstTeardownStackTrace = _beginShutdownStackTrace;
+
+    Future<void> attempt(FutureOr<void> Function() action) async {
+      try {
+        await action();
+      } on Object catch (error, stackTrace) {
+        firstTeardownError ??= error;
+        firstTeardownStackTrace ??= stackTrace;
+      }
+    }
+
+    final sinceCancelMs = _cancelRequestedAt == null
+        ? null
+        : DateTime.now().difference(_cancelRequestedAt!).inMilliseconds;
+    Log.i("Disconnecting...");
+    Log.d(
+      "[shutdown] session teardown begin "
+      "(${sinceCancelMs == null ? "no cancel timestamp" : "${sinceCancelMs}ms since cancel()"}"
+      "${_inFlightRequestLabel == null ? "" : ", in-flight request: $_inFlightRequestLabel"})",
+    );
+    await Future.wait([
+      attempt(_subscriptions.cancel),
+      attempt(_promptDefaultsSubscriptions.cancel),
+      attempt(_catalogImportSubscriptions.cancel),
+    ]);
+    Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
+    await attempt(() async {
+      await Future.wait(_pluginEventProcessingTails.values);
+    });
+    Log.v("[shutdown] plugin event processing drained (+${teardownSw.elapsedMilliseconds}ms)");
+    await attempt(_sessionPromptService.dispose);
+    await Future.wait([
+      for (final listener in _pluginEventListeners) attempt(listener.dispose),
+      attempt(_sessionBindingCommitListener.dispose),
+      attempt(_sessionDeletionListener.dispose),
+    ]);
+    await attempt(_sessionEventDispatcher.dispose);
+    await attempt(_permissionAutoApprovalService.dispose);
+    await attempt(_sessionMutationDispatcher.dispose);
+    await attempt(_projectActivityService.dispose);
+    Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    await attempt(_sessionAbortService.dispose);
+    Log.v("[shutdown] session abort service disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    await attempt(_completionListener.dispose);
+    Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    await attempt(_maintenanceListener.dispose);
+    await attempt(_prSyncService.dispose);
+    Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
+    // shutdown coordinator's ordered step — the deprecated direct
+    // api.dispose() call is gone since the descriptor flip.
+    Log.v("stopping sse manager...");
+    await attempt(_sseManager.stop);
+    Log.v("sse manager stopped (+${teardownSw.elapsedMilliseconds}ms)");
+    Log.v("disposing push notification service...");
+    await attempt(_pushDispatcher.dispose);
+    Log.v("push notification service disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    await Future.wait([
+      attempt(_localWireEventsController.close),
+      attempt(_bytesSentController.close),
+    ]);
+    await attempt(() async {
+      Log.v("closing relay client...");
+      await _client.close();
+      Log.v("relay client closed (+${teardownSw.elapsedMilliseconds}ms)");
+    });
+    Log.d("[shutdown] session teardown complete (${teardownSw.elapsedMilliseconds}ms total)");
+    if (firstTeardownError != null) {
+      Error.throwWithStackTrace(firstTeardownError!, firstTeardownStackTrace!);
+    }
+  }
+
+  Future<void> _serveRelayConnections({
+    required Completer<OrchestratorSessionStartResult> readiness,
+    required KeyExchangeManager kxManager,
+    required Map<int, bool> activePhones,
+  }) async {
+    while (!_cancelled) {
+      final iterator = StreamIterator<RelayClientMessage>(_client.read());
+      final firstRead = iterator.moveNext();
+      if (!readiness.isCompleted) {
+        readiness.complete(OrchestratorSessionStartResult.ready);
+      }
+
+      try {
         try {
-          await _runRelayLoop(_roomKey, kxManager, activePhones);
-        } catch (e) {
-          if (_cancelled) break;
-          Log.w("relay loop ended: $e");
-        }
-
-        if (_cancelled) {
-          break;
-        }
-
-        Log.w("Relay connection lost. Reconnecting...");
-        _sseManager.orphanAll();
-        activePhones.clear();
-        // Every phone connection died with the relay link; drop their view
-        // declarations so no session stays "watched" by a ghost connection.
-        // Phones re-assert their current view on reconnect.
-        _sessionViewTracker.clearAll();
-
-        if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
-          Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
-          await _bridgeRegistrationService.handleBridgeRevoked();
-        }
-
-        // Another bridge on this account took the single relay slot. Reconnect
-        // only on a long backoff so two always-on bridges don't tight-loop
-        // kicking each other (ADR A22); headless/VM failover is preserved
-        // because we still retry, just slowly. The GUI is told separately via
-        // ControlStatusNotifier (it observes the same replaced-close on the
-        // connection-state stream); this loop owns only the backoff policy.
-        final takenOver = RelayCloseCodes.isBridgeReplaced(
-          closeCode: _client.closeCode,
-          closeReason: _client.closeReason,
-        );
-        if (takenOver) {
-          Console.warning(
-            "Another bridge for this account has taken over the relay connection. "
-            "Retrying on a long backoff — stop the other bridge to reclaim this slot.",
+          await _runRelayLoop(
+            iterator: iterator,
+            firstRead: firstRead,
+            roomKey: _roomKey,
+            kxManager: kxManager,
+            activePhones: activePhones,
           );
-        }
-
-        var backoff = _initialBackoff(takenOver: takenOver);
-        while (!_cancelled) {
-          await _backoffDelay(backoff);
-          if (_cancelled) {
-            return;
-          }
-
-          // Don't reconnect without a usable token: in supervised mode a
-          // signed-out / mid-login GUI yields no token, and reconnecting would
-          // re-authenticate the relay from a stale cached token. Back off and
-          // retry — a later refresh (or a token_update push) recovers.
-          if (!await _refreshAccessToken()) {
-            Log.w("No access token available — deferring reconnect (retrying in $backoff)");
-            backoff = _nextBackoff(backoff, takenOver: takenOver);
-            continue;
-          }
-
-          try {
-            await _bridgeRegistrationService.ensureRegistered();
-            await _client.reconnect();
-          } catch (e) {
-            Log.w("Reconnect failed: $e (retrying in $backoff)");
-            backoff = _nextBackoff(backoff, takenOver: takenOver);
-            continue;
-          }
-
-          backoff = _initialBackoff(takenOver: takenOver);
-          Log.i("Reconnected to relay");
-          break;
-        }
-      }
-    } finally {
-      final teardownSw = Stopwatch()..start();
-      Object? firstTeardownError = _beginShutdownError;
-      StackTrace? firstTeardownStackTrace = _beginShutdownStackTrace;
-
-      Future<void> attempt(FutureOr<void> Function() action) async {
-        try {
-          await action();
         } on Object catch (error, stackTrace) {
-          firstTeardownError ??= error;
-          firstTeardownStackTrace ??= stackTrace;
+          if (_cancelled) break;
+          Log.w("relay loop ended", error, stackTrace);
+        }
+      } finally {
+        try {
+          await iterator.cancel();
+        } on Object catch (error, stackTrace) {
+          Log.w("Failed to cancel relay read iterator", error, stackTrace);
         }
       }
 
-      final sinceCancelMs = _cancelRequestedAt == null
-          ? null
-          : DateTime.now().difference(_cancelRequestedAt!).inMilliseconds;
-      Log.i("Disconnecting...");
-      Log.d(
-        "[shutdown] session teardown begin "
-        "(${sinceCancelMs == null ? "no cancel timestamp" : "${sinceCancelMs}ms since cancel()"}"
-        "${_inFlightRequestLabel == null ? "" : ", in-flight request: $_inFlightRequestLabel"})",
+      if (_cancelled) {
+        break;
+      }
+
+      Log.w("Relay connection lost. Reconnecting...");
+      _sseManager.orphanAll();
+      activePhones.clear();
+      // Every phone connection died with the relay link; drop their view
+      // declarations so no session stays "watched" by a ghost connection.
+      // Phones re-assert their current view on reconnect.
+      _sessionViewTracker.clearAll();
+
+      if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
+        Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
+        await _bridgeRegistrationService.handleBridgeRevoked();
+      }
+
+      // Another bridge on this account took the single relay slot. Reconnect
+      // only on a long backoff so two always-on bridges don't tight-loop
+      // kicking each other (ADR A22); headless/VM failover is preserved
+      // because we still retry, just slowly. The GUI is told separately via
+      // ControlStatusNotifier (it observes the same replaced-close on the
+      // connection-state stream); this loop owns only the backoff policy.
+      final takenOver = RelayCloseCodes.isBridgeReplaced(
+        closeCode: _client.closeCode,
+        closeReason: _client.closeReason,
       );
-      await Future.wait([
-        attempt(_subscriptions.cancel),
-        attempt(_promptDefaultsSubscriptions.cancel),
-        attempt(_catalogImportSubscriptions.cancel),
-      ]);
-      Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
-      await attempt(() async {
-        await Future.wait(_pluginEventProcessingTails.values);
-      });
-      Log.v("[shutdown] plugin event processing drained (+${teardownSw.elapsedMilliseconds}ms)");
-      await attempt(_sessionPromptService.dispose);
-      await Future.wait([
-        for (final listener in _pluginEventListeners) attempt(listener.dispose),
-        attempt(_sessionBindingCommitListener.dispose),
-        attempt(_sessionDeletionListener.dispose),
-      ]);
-      await attempt(_sessionEventDispatcher.dispose);
-      await attempt(_permissionAutoApprovalService.dispose);
-      await attempt(_sessionMutationDispatcher.dispose);
-      await attempt(_projectActivityService.dispose);
-      Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      await attempt(_sessionAbortService.dispose);
-      Log.v("[shutdown] session abort service disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      await attempt(_completionListener.dispose);
-      Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      await attempt(_maintenanceListener.dispose);
-      await attempt(_prSyncService.dispose);
-      Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
-      // shutdown coordinator's ordered step — the deprecated direct
-      // api.dispose() call is gone since the descriptor flip.
-      Log.v("stopping sse manager...");
-      await attempt(_sseManager.stop);
-      Log.v("sse manager stopped (+${teardownSw.elapsedMilliseconds}ms)");
-      Log.v("disposing push notification service...");
-      await attempt(_pushDispatcher.dispose);
-      Log.v("push notification service disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      await Future.wait([
-        attempt(_localWireEventsController.close),
-        attempt(_bytesSentController.close),
-      ]);
-      await attempt(() async {
-        Log.v("closing relay client...");
-        await _client.close();
-        Log.v("relay client closed (+${teardownSw.elapsedMilliseconds}ms)");
-      });
-      Log.d("[shutdown] session teardown complete (${teardownSw.elapsedMilliseconds}ms total)");
-      if (firstTeardownError != null) {
-        Error.throwWithStackTrace(firstTeardownError!, firstTeardownStackTrace!);
+      if (takenOver) {
+        Console.warning(
+          "Another bridge for this account has taken over the relay connection. "
+          "Retrying on a long backoff — stop the other bridge to reclaim this slot.",
+        );
+      }
+
+      var backoff = _initialBackoff(takenOver: takenOver);
+      while (!_cancelled) {
+        await _backoffDelay(backoff);
+        if (_cancelled) {
+          return;
+        }
+
+        // Don't reconnect without a usable token: in supervised mode a
+        // signed-out / mid-login GUI yields no token, and reconnecting would
+        // re-authenticate the relay from a stale cached token. Back off and
+        // retry — a later refresh (or a token_update push) recovers.
+        if (!await _refreshAccessToken()) {
+          Log.w("No access token available — deferring reconnect (retrying in $backoff)");
+          backoff = _nextBackoff(backoff, takenOver: takenOver);
+          continue;
+        }
+
+        try {
+          await _bridgeRegistrationService.ensureRegistered();
+          await _client.reconnect();
+        } on Object catch (error, stackTrace) {
+          Log.w("Reconnect failed (retrying in $backoff)", error, stackTrace);
+          backoff = _nextBackoff(backoff, takenOver: takenOver);
+          continue;
+        }
+
+        backoff = _initialBackoff(takenOver: takenOver);
+        Log.i("Reconnected to relay");
+        break;
       }
     }
   }
@@ -1420,7 +1520,7 @@ class OrchestratorSession {
   /// Live re-auth trigger: the token provider emitted a token for a different
   /// auth identity while the relay was connected, so the open socket is still
   /// authenticated as the old identity. Closing the relay ends the active read
-  /// loop, after which [run]'s reconnect block force-pulls the new token and
+  /// loop, after which the serving loop's reconnect block force-pulls the new token and
   /// reconnects — the same path a relay-side drop drives. No-op once cancelled
   /// so a token emit during shutdown can't fight teardown.
   Future<void> _reauthenticateRelay() async {
@@ -1444,182 +1544,190 @@ class OrchestratorSession {
     }
   }
 
-  Future<void> _runRelayLoop(
-    List<int> roomKey,
-    KeyExchangeManager kxManager,
-    Map<int, bool> activePhones,
-  ) async {
-    await for (final msg in _client.read()) {
-      if (_cancelled) {
-        return;
-      }
-
-      Log.v("relay msg: isText=${msg.isText} len=${msg.data.length}");
-
-      if (msg.isText) {
-        Map<String, dynamic> control;
-        try {
-          control = jsonDecodeMap(utf8.decode(msg.data));
-        } catch (e) {
-          Log.e("failed to parse control message: $e");
-          continue;
+  Future<void> _runRelayLoop({
+    required StreamIterator<RelayClientMessage> iterator,
+    required Future<bool> firstRead,
+    required List<int> roomKey,
+    required KeyExchangeManager kxManager,
+    required Map<int, bool> activePhones,
+  }) async {
+    var hasMessage = await firstRead;
+    while (hasMessage) {
+      processMessage:
+      {
+        final msg = iterator.current;
+        if (_cancelled) {
+          return;
         }
 
-        final type = control["type"] as String?;
-        final connID = control["connId"] as int?;
-        Log.v("control: type=$type connID=$connID");
-        if (type == null || connID == null) {
-          Log.v("dropping control: null type or connID");
-          continue;
-        }
+        Log.v("relay msg: isText=${msg.isText} len=${msg.data.length}");
 
-        switch (type) {
-          case "phone_connected":
-            Log.v("phone_connected connID=$connID");
-          case "phone_disconnected":
-            Log.v("phone_disconnected connID=$connID");
-            activePhones.remove(connID);
-            _sseManager.removeSubscriber(connID);
-            _sessionViewTracker.releaseConnection(connID: connID);
-        }
-        continue;
-      }
-
-      if (msg.data.length < 2) {
-        Log.v("binary too short: ${msg.data.length}");
-        continue;
-      }
-
-      final connID = ByteData.sublistView(msg.data).getUint16(0, Endian.big);
-      final payload = msg.data.sublist(2);
-      if (payload.isEmpty) {
-        Log.v("empty payload for connID=$connID");
-        continue;
-      }
-
-      Log.v("binary: connID=$connID payloadLen=${payload.length} firstByte=0x${payload[0].toRadixString(16)}");
-
-      if (payload[0] == RelayProtocol.jsonStartByte) {
-        Log.v("JSON message (key exchange?)");
-        RelayMessage relayMessage;
-        try {
-          relayMessage = RelayMessage.fromJson(
-            jsonDecodeMap(utf8.decode(payload)),
-          );
-        } catch (e) {
-          Log.v("failed to parse relay JSON: $e");
-          continue;
-        }
-
-        Log.v("parsed: ${relayMessage.runtimeType}");
-
-        if (relayMessage is! RelayKeyExchange) {
-          Log.v("not a key exchange, skipping");
-          continue;
-        }
-
-        List<int> encrypted;
-        try {
-          encrypted = await kxManager.handleKeyExchange(message: relayMessage);
-          Log.d("key exchange OK, sending ready to connID=$connID");
-        } catch (e) {
-          Log.e("failed key exchange for connId $connID: $e");
-          continue;
-        }
-
-        try {
-          _client.send(connID, encrypted);
-          Log.d("ready sent to connID=$connID");
-        } catch (e) {
-          if (_cancelled) {
-            throw StateError("cancelled");
-          }
-          throw Exception("send ready for connId $connID: $e");
-        }
-
-        activePhones[connID] = true;
-        Log.d("phone $connID is now active");
-        continue;
-      }
-
-      Log.v(
-        "checking protocolVersion: payload[0]=0x${payload[0].toRadixString(16)} expected=0x${protocolVersion.toRadixString(16)}",
-      );
-      if (payload[0] == protocolVersion) {
-        final encryptor = RelayCryptoService().createSessionEncryptor(
-          SecretKey(List<int>.from(roomKey)),
-        );
-
-        List<int>? decrypted;
-        Object? decryptError;
-        try {
-          decrypted = await unframe(payload, encryptor: encryptor);
-        } catch (e) {
-          decryptError = e;
-        }
-
-        if (activePhones[connID] == true) {
-          if (decryptError != null || decrypted == null) {
-            Log.v(
-              "failed to decrypt from connId $connID: $decryptError",
-            );
-            continue;
-          }
-          Log.v("decrypted OK from connID=$connID, handling...");
-          await _handleDecryptedMessage(connID, decrypted);
-          Log.v("handled message from connID=$connID");
-          continue;
-        }
-
-        if (decryptError != null || decrypted == null) {
-          Log.v("not active, decrypt failed for connID=$connID: $decryptError — sending rekeyRequired");
-          final rekeyRequired = jsonEncode(
-            const RelayMessage.rekeyRequired().toJson(),
-          );
+        if (msg.isText) {
+          Map<String, dynamic> control;
           try {
-            _client.send(connID, utf8.encode(rekeyRequired));
-          } catch (_) {
+            control = jsonDecodeMap(utf8.decode(msg.data));
+          } catch (e) {
+            Log.e("failed to parse control message: $e");
+            break processMessage;
+          }
+
+          final type = control["type"] as String?;
+          final connID = control["connId"] as int?;
+          Log.v("control: type=$type connID=$connID");
+          if (type == null || connID == null) {
+            Log.v("dropping control: null type or connID");
+            break processMessage;
+          }
+
+          switch (type) {
+            case "phone_connected":
+              Log.v("phone_connected connID=$connID");
+            case "phone_disconnected":
+              Log.v("phone_disconnected connID=$connID");
+              activePhones.remove(connID);
+              _sseManager.removeSubscriber(connID);
+              _sessionViewTracker.releaseConnection(connID: connID);
+          }
+          break processMessage;
+        }
+
+        if (msg.data.length < 2) {
+          Log.v("binary too short: ${msg.data.length}");
+          break processMessage;
+        }
+
+        final connID = ByteData.sublistView(msg.data).getUint16(0, Endian.big);
+        final payload = msg.data.sublist(2);
+        if (payload.isEmpty) {
+          Log.v("empty payload for connID=$connID");
+          break processMessage;
+        }
+
+        Log.v("binary: connID=$connID payloadLen=${payload.length} firstByte=0x${payload[0].toRadixString(16)}");
+
+        if (payload[0] == RelayProtocol.jsonStartByte) {
+          Log.v("JSON message (key exchange?)");
+          RelayMessage relayMessage;
+          try {
+            relayMessage = RelayMessage.fromJson(
+              jsonDecodeMap(utf8.decode(payload)),
+            );
+          } catch (e) {
+            Log.v("failed to parse relay JSON: $e");
+            break processMessage;
+          }
+
+          Log.v("parsed: ${relayMessage.runtimeType}");
+
+          if (relayMessage is! RelayKeyExchange) {
+            Log.v("not a key exchange, skipping");
+            break processMessage;
+          }
+
+          List<int> encrypted;
+          try {
+            encrypted = await kxManager.handleKeyExchange(message: relayMessage);
+            Log.d("key exchange OK, sending ready to connID=$connID");
+          } catch (e) {
+            Log.e("failed key exchange for connId $connID: $e");
+            break processMessage;
+          }
+
+          try {
+            _client.send(connID, encrypted);
+            Log.d("ready sent to connID=$connID");
+          } catch (e) {
             if (_cancelled) {
               throw StateError("cancelled");
             }
+            throw Exception("send ready for connId $connID: $e");
           }
-          continue;
+
+          activePhones[connID] = true;
+          Log.d("phone $connID is now active");
+          break processMessage;
         }
 
-        RelayMessage parsedMessage;
-        try {
-          parsedMessage = RelayMessage.fromJson(
-            jsonDecodeMap(utf8.decode(decrypted)),
-          );
-        } catch (_) {
-          continue;
-        }
-
-        if (parsedMessage is! RelayResume) {
-          continue;
-        }
-
-        final ackJSON = utf8.encode(
-          jsonEncode(const RelayMessage.resumeAck().toJson()),
+        Log.v(
+          "checking protocolVersion: payload[0]=0x${payload[0].toRadixString(16)} expected=0x${protocolVersion.toRadixString(16)}",
         );
-        List<int> encryptedAck;
-        try {
-          encryptedAck = await frame(ackJSON, encryptor: encryptor);
-        } catch (_) {
-          continue;
-        }
+        if (payload[0] == protocolVersion) {
+          final encryptor = RelayCryptoService().createSessionEncryptor(
+            SecretKey(List<int>.from(roomKey)),
+          );
 
-        try {
-          _client.send(connID, encryptedAck);
-        } catch (e) {
-          if (_cancelled) {
-            throw StateError("cancelled");
+          List<int>? decrypted;
+          Object? decryptError;
+          try {
+            decrypted = await unframe(payload, encryptor: encryptor);
+          } catch (e) {
+            decryptError = e;
           }
-          throw Exception("send resume ack for connId $connID: $e");
-        }
 
-        activePhones[connID] = true;
+          if (activePhones[connID] == true) {
+            if (decryptError != null || decrypted == null) {
+              Log.v(
+                "failed to decrypt from connId $connID: $decryptError",
+              );
+              break processMessage;
+            }
+            Log.v("decrypted OK from connID=$connID, handling...");
+            await _handleDecryptedMessage(connID, decrypted);
+            Log.v("handled message from connID=$connID");
+            break processMessage;
+          }
+
+          if (decryptError != null || decrypted == null) {
+            Log.v("not active, decrypt failed for connID=$connID: $decryptError — sending rekeyRequired");
+            final rekeyRequired = jsonEncode(
+              const RelayMessage.rekeyRequired().toJson(),
+            );
+            try {
+              _client.send(connID, utf8.encode(rekeyRequired));
+            } catch (_) {
+              if (_cancelled) {
+                throw StateError("cancelled");
+              }
+            }
+            break processMessage;
+          }
+
+          RelayMessage parsedMessage;
+          try {
+            parsedMessage = RelayMessage.fromJson(
+              jsonDecodeMap(utf8.decode(decrypted)),
+            );
+          } catch (_) {
+            break processMessage;
+          }
+
+          if (parsedMessage is! RelayResume) {
+            break processMessage;
+          }
+
+          final ackJSON = utf8.encode(
+            jsonEncode(const RelayMessage.resumeAck().toJson()),
+          );
+          List<int> encryptedAck;
+          try {
+            encryptedAck = await frame(ackJSON, encryptor: encryptor);
+          } catch (_) {
+            break processMessage;
+          }
+
+          try {
+            _client.send(connID, encryptedAck);
+          } catch (e) {
+            if (_cancelled) {
+              throw StateError("cancelled");
+            }
+            throw Exception("send resume ack for connId $connID: $e");
+          }
+
+          activePhones[connID] = true;
+        }
       }
+      hasMessage = await iterator.moveNext();
     }
   }
 

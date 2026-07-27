@@ -246,6 +246,48 @@ void main() {
       expect(states.whereType<RelayDisconnected>(), isEmpty);
     });
 
+    test("close promptly cancels a pending WebSocket handshake without late promotion", () async {
+      final rawServer = await ServerSocket.bind("127.0.0.1", 0);
+      final accepted = Completer<Socket>();
+      Socket? acceptedSocket;
+      rawServer.listen((socket) {
+        if (accepted.isCompleted) {
+          socket.destroy();
+          return;
+        }
+        acceptedSocket = socket;
+        accepted.complete(socket);
+      });
+      addTearDown(() async {
+        acceptedSocket?.destroy();
+        await rawServer.close();
+      });
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${rawServer.port}",
+        accessTokenProvider: FakeAccessTokenProvider("jwt-token"),
+        bridgeIdProvider: FakeBridgeIdProvider("br_abc12345"),
+        connectTimeout: const Duration(seconds: 30),
+      );
+      final states = <RelayConnectionState>[];
+      client.connectionState.listen(states.add);
+
+      final connectFuture = client.connect();
+      connectFuture.ignore();
+      await accepted.future.timeout(const Duration(seconds: 2));
+
+      final stopwatch = Stopwatch()..start();
+      await client.close().timeout(const Duration(seconds: 5));
+      stopwatch.stop();
+
+      await expectLater(connectFuture, throwsA(anything));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 5)));
+      expect(states.whereType<RelayConnected>(), isEmpty);
+      expect(states.whereType<RelayDisconnected>(), isEmpty);
+      expect(() => client.send(1, const [1]), throwsA(isA<StateError>()));
+    });
+
     test("failed connect emits disconnected with no close code", () async {
       // A TCP server that accepts but never completes the WebSocket upgrade.
       final rawServer = await ServerSocket.bind("127.0.0.1", 0);

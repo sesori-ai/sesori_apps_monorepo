@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/auth/bridge_id_storage.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
+import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -175,6 +176,21 @@ class CapturingFailureReporter extends FakeFailureReporter {
 List<int> makeRoomKey() {
   final random = Random.secure();
   return List<int>.generate(32, (_) => random.nextInt(256));
+}
+
+Future<({Future<void> stopped})> startTestOrchestratorSession({
+  required OrchestratorSession session,
+}) async {
+  final startFuture = session.start();
+  final stopped = session.waitUntilStopped();
+  stopped.ignore();
+  final result = await startFuture;
+  if (result != OrchestratorSessionStartResult.ready) {
+    throw StateError("Test orchestrator session was cancelled before readiness");
+  }
+  return (
+    stopped: stopped,
+  );
 }
 
 Future<(HttpServer, Stream<List<int>>)> startTestRelayServer() async {

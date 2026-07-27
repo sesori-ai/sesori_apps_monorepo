@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -18,9 +19,10 @@ import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
+import "routing/routing_test_helpers.dart";
 
 void main() {
-  test("zero-plugin composition keeps the relay session online", () async {
+  test("zero-plugin composition becomes ready without an inbound relay frame", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final pluginRuntime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode"]);
@@ -70,7 +72,8 @@ void main() {
       filesystemAccessOk: true,
       statusNotifier: null,
     ).create();
-    final runFuture = composition.session.run();
+    final running = await startTestOrchestratorSession(session: composition.session);
+    final runFuture = running.stopped;
 
     try {
       await relayServer.nextClient();
@@ -87,6 +90,80 @@ void main() {
       await database.close();
       await relayServer.close();
     }
+  });
+
+  test("shutdown during the initial relay handshake returns cancelled promptly", () async {
+    final rawServer = await ServerSocket.bind("127.0.0.1", 0);
+    final accepted = Completer<Socket>();
+    Socket? acceptedSocket;
+    rawServer.listen((socket) {
+      if (accepted.isCompleted) {
+        socket.destroy();
+        return;
+      }
+      acceptedSocket = socket;
+      accepted.complete(socket);
+    });
+    addTearDown(() async {
+      acceptedSocket?.destroy();
+      await rawServer.close();
+    });
+
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final plugin = FakeBridgePlugin();
+    final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
+    addTearDown(lifecycleService.dispose);
+    final httpClient = http.Client();
+    addTearDown(httpClient.close);
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${rawServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+      bridgeIdProvider: FakeBridgeIdProvider(),
+      connectTimeout: const Duration(seconds: 30),
+    );
+    final session = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${rawServer.port}",
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
+      ),
+      client: relayClient,
+      legacyMissingPluginId: plugin.id,
+      pluginLifecycleService: lifecycleService,
+      pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      database: database,
+      httpClient: httpClient,
+      processRunner: ProcessRunner(),
+      accessTokenProvider: FakeAccessTokenProvider(""),
+      tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
+      failureReporter: FakeFailureReporter(),
+      restartService: buildTestRestartService(),
+      filesystemAccessOk: true,
+      statusNotifier: null,
+    ).create().session;
+
+    final startFuture = session.start();
+    final stopped = session.waitUntilStopped();
+    stopped.ignore();
+    addTearDown(() async {
+      await session.cancel();
+      await stopped.timeout(const Duration(seconds: 5));
+    });
+    await accepted.future.timeout(const Duration(seconds: 2));
+
+    final stopwatch = Stopwatch()..start();
+    await session.cancel().timeout(const Duration(seconds: 5));
+    expect(
+      await startFuture.timeout(const Duration(seconds: 5)),
+      OrchestratorSessionStartResult.cancelled,
+    );
+    await stopped.timeout(const Duration(seconds: 5));
+    stopwatch.stop();
+
+    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 5)));
   });
 
   group("OrchestratorSession SSE error recovery", () {
@@ -120,7 +197,17 @@ void main() {
 
       final session = orchestrator.create().session;
 
-      await expectLater(session.run(), throwsA(isA<Exception>()));
+      await expectLater(session.waitUntilStopped(), throwsA(isA<StateError>()));
+      final localWireEventsDone = session.localWireEvents.drain<void>();
+      final startFuture = session.start();
+      final stopped = session.waitUntilStopped();
+      stopped.ignore();
+      expect(identical(stopped, session.waitUntilStopped()), isTrue);
+
+      await expectLater(startFuture, throwsA(isA<Exception>()));
+      await expectLater(stopped, throwsA(isA<Exception>()));
+      await expectLater(localWireEventsDone, completes);
+      await expectLater(session.start(), throwsA(isA<StateError>()));
 
       expect(plugin.subscribeCount, equals(0));
 
@@ -224,7 +311,8 @@ class _TestHarness {
     );
 
     final session = orchestrator.create().session;
-    final runFuture = session.run();
+    final running = await startTestOrchestratorSession(session: session);
+    final runFuture = running.stopped;
 
     await relayServer.nextClient();
 

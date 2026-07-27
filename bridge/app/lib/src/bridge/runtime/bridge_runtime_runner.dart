@@ -900,13 +900,17 @@ class BridgeRuntimeRunner {
       updateLifecycle.start();
 
       try {
-        sessionRun = activeRuntime.session.run();
-        await sessionRun;
+        final sessionStart = activeRuntime.session.start();
+        sessionRun = activeRuntime.session.waitUntilStopped();
+        final startResult = await sessionStart;
+        if (startResult == OrchestratorSessionStartResult.ready) {
+          await sessionRun;
+        }
       } finally {
         // A supervised phone-triggered restart handed the session off by exiting
         // rather than spawning a successor; resolve the GUI-respawn sentinel here
-        // (in a finally) so it survives even if a teardown await in run()/cancel()
-        // throws — otherwise the error path below would return a crash code and
+        // (in a finally) so it survives even if session teardown throws —
+        // otherwise the error path below would return a crash code and
         // the GUI would back off instead of respawning. `restartService` is only
         // in scope inside this try, hence resolving into the outer-scoped local.
         // Assigned before the outer `finally`'s shutdown runs, so a hung-shutdown
@@ -915,10 +919,7 @@ class BridgeRuntimeRunner {
           requestedSupervisedExit = SupervisedExitCode.restart;
         }
       }
-      if (requestedSupervisedExit == SupervisedExitCode.restart) {
-        return SupervisedExitCode.restart.code;
-      }
-      return 0;
+      return requestedSupervisedExit?.code ?? 0;
     } on PluginStartAbortedException {
       if (startAbortController.isAborted) {
         Log.i("Plugin start aborted as requested.");

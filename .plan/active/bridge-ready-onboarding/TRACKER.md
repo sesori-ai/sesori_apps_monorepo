@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** architecture review corrections applied; plan PR in review
+- **Status:** plan merged; Step 1 implemented and verified locally
 - **Plan slug:** `bridge-ready-onboarding`
 - **Implementation base:** `origin/main` at
-  `f8c71eb78987aa8c64e397e8e8e3bb72eefa0692`
+  `f87b4c6603c682b4606a57010a41d3cab4d96ddd`
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/580
-- **Implementation state:** not started
+- **Implementation state:** Step 1 ready for commit/delivery; no implementation PR opened
 
 ## Plan Review
 
@@ -21,7 +21,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line budget | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/2 | `bridge-ready-onboarding-session-lifecycle` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | Not started |
+| [ ] | 1/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | Implemented and verified locally |
 | [ ] | 2/2 | `bridge-ready-onboarding-relay-first` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | Blocked on Step 1 merge |
 
 ## Execution Rules
@@ -40,11 +40,30 @@
 
 ## Current Pointer
 
-- **Next action:** merge the plan PR, then create Step 1 from current
-  `origin/main` and pin its actual base SHA in the PR body.
+- **Next action:** commit and publish Step 1 when requested; Step 2 remains
+  blocked until Step 1 merges.
+
+## Step 1 Verification
+
+- Focused lifecycle, registration, reconnect, relay-client, event, and debug
+  server tests pass.
+- `dart test test/bridge/runtime/bridge_runtime_runner_test.dart` passes.
+- `dart analyze --fatal-infos` passes from `bridge/app`.
+- `aristotle-impl-review` approved the implementation on its second pass after
+  the cancelled-startup path was fixed to preserve supervised exit sentinels.
 
 ## Findings And Plan Deltas
 
+- **2026-07-27 — Step 1 implementation:** Replaced the session `run` contract
+  with one-shot startup/readiness and lifecycle-wait operations, added pending
+  WebSocket handshake ownership/cancellation, armed a fresh relay iterator for
+  every connection, migrated all in-repository callers, and added focused
+  lifecycle/reconnect coverage. The user-directed existing worktree branch was
+  used instead of creating the planned Step 1 branch.
+- **2026-07-27 — Step 1 implementation review:** The first pass found that an
+  early cancelled-startup return could bypass supervised restart sentinel
+  finalization. The runner now finalizes typed exit state before returning; the
+  second review approved the implementation.
 - **2026-07-26 — Follow-up PR feedback:** Added `RelayClient` pending-handshake
   ownership/cancellation to Step 1 so shutdown cannot wait for the 15-second
   connect timeout or allow late channel promotion/auth; clarified that Step 2

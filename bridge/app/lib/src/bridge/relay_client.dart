@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io" show HttpClient;
 import "dart:typed_data";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
@@ -60,8 +61,8 @@ class RelayClient {
   final BridgeIdProvider _bridgeIdProvider;
   final Duration _pingInterval;
   final Duration _connectTimeout;
-  final StreamController<RelayConnectionState> _connectionState =
-      StreamController<RelayConnectionState>.broadcast();
+  final StreamController<RelayConnectionState> _connectionState = StreamController<RelayConnectionState>.broadcast();
+  _RelayConnectionAttempt? _pendingConnection;
   IOWebSocketChannel? _channel;
   String? _lastAuthedToken;
 
@@ -112,26 +113,43 @@ class RelayClient {
     // throwing parse must not leave observers stuck on a connecting state
     // that never resolves to a terminal one.
     final wsURL = _buildWebSocketURL(_relayURL);
+    if (_pendingConnection != null || _channel != null) {
+      throw StateError("Relay connection already exists or is in progress");
+    }
     _connectionState.add(const RelayConnecting());
+    final httpClient = HttpClient();
     final channel = IOWebSocketChannel.connect(
       wsURL,
       pingInterval: _pingInterval,
+      customClient: httpClient,
     );
+    final attempt = _RelayConnectionAttempt(channel: channel, httpClient: httpClient);
+    _pendingConnection = attempt;
 
     try {
       await channel.ready.timeout(_connectTimeout);
-    } catch (e) {
-      _connectionState.add(const RelayDisconnected(closeCode: null, closeReason: null));
-      // Clean up the channel if connection fails or times out to prevent
-      // zombie WebSocket connections from lingering.
-      try {
-        await channel.sink.close().timeout(const Duration(seconds: 1));
-      } catch (closeError) {
-        Log.w("Failed to clean up WebSocket channel: $closeError");
+    } on Object catch (error, stackTrace) {
+      // A detached attempt belongs to deliberate close(); only a still-owned
+      // failure reports disconnected and cleans up here.
+      if (identical(_pendingConnection, attempt)) {
+        _pendingConnection = null;
+        _connectionState.add(const RelayDisconnected(closeCode: null, closeReason: null));
+        httpClient.close(force: true);
+        await _closeChannel(
+          channel: channel,
+          timeout: const Duration(seconds: 1),
+          timeoutMessage: "WebSocket cleanup timed out after connect failure",
+          failureMessage: "Failed to clean up WebSocket channel after connect failure",
+        );
       }
-      rethrow;
+      Error.throwWithStackTrace(error, stackTrace);
     }
 
+    if (!identical(_pendingConnection, attempt)) {
+      throw StateError("Relay connect was cancelled");
+    }
+    _pendingConnection = null;
+    httpClient.close();
     _channel = channel;
     _watchChannelDone(channel);
     _connectionState.add(const RelayConnected());
@@ -235,17 +253,41 @@ class RelayClient {
   }
 
   Future<void> close() async {
+    final pendingConnection = _pendingConnection;
+    _pendingConnection = null;
+    pendingConnection?.httpClient.close(force: true);
     final channel = _channel;
     _channel = null;
-    if (channel == null) {
-      return;
-    }
+    await Future.wait([
+      if (pendingConnection != null)
+        _closeChannel(
+          channel: pendingConnection.channel,
+          timeout: const Duration(seconds: 3),
+          timeoutMessage: "Pending WebSocket close timed out — connection abandoned",
+          failureMessage: "Pending WebSocket close failed — connection abandoned",
+        ),
+      if (channel != null)
+        _closeChannel(
+          channel: channel,
+          timeout: const Duration(seconds: 3),
+          timeoutMessage: "WebSocket close handshake timed out — connection abandoned",
+          failureMessage: "WebSocket close failed — connection abandoned",
+        ),
+    ]);
+  }
+
+  Future<void> _closeChannel({
+    required IOWebSocketChannel channel,
+    required Duration timeout,
+    required String timeoutMessage,
+    required String failureMessage,
+  }) async {
     try {
-      await channel.sink.close().timeout(const Duration(seconds: 3));
-    } on TimeoutException {
-      Log.w("WebSocket close handshake timed out — connection abandoned");
-    } catch (e) {
-      Log.w("WebSocket close failed: $e — connection abandoned");
+      await channel.sink.close().timeout(timeout);
+    } on TimeoutException catch (error, stackTrace) {
+      Log.w(timeoutMessage, error, stackTrace);
+    } on Object catch (error, stackTrace) {
+      Log.w(failureMessage, error, stackTrace);
     }
   }
 
@@ -257,4 +299,11 @@ class RelayClient {
     final wsPath = trimmedPath.isEmpty ? "/ws" : "$trimmedPath/ws";
     return relayURI.replace(path: wsPath).toString();
   }
+}
+
+final class _RelayConnectionAttempt {
+  const _RelayConnectionAttempt({required this.channel, required this.httpClient});
+
+  final IOWebSocketChannel channel;
+  final HttpClient httpClient;
 }

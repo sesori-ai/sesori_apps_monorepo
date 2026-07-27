@@ -343,8 +343,8 @@ class _ReauthHarness {
     );
 
     final session = orchestrator.create().session;
-    final runFuture = session.run();
-    unawaited(runFuture.catchError((_) {}));
+    final running = await startTestOrchestratorSession(session: session);
+    final runFuture = running.stopped;
 
     return _ReauthHarness._(
       session: session,
@@ -363,7 +363,7 @@ class _ReauthHarness {
     try {
       await runFuture.timeout(const Duration(seconds: 10));
     } on Object {
-      // run() may have already completed.
+      // The lifecycle may have already completed.
     }
     await lifecycleService.dispose();
     httpClient.close();
