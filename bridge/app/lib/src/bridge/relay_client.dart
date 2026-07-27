@@ -283,6 +283,18 @@ class RelayClient {
     required String failureMessage,
   }) async {
     try {
+      await channel.ready.timeout(timeout);
+    } on TimeoutException catch (error, stackTrace) {
+      Log.w(timeoutMessage, error, stackTrace);
+      return;
+    } on Object {
+      // web_socket_channel never attaches its outbound sink when the upgrade
+      // fails, so sink.close() cannot complete. The failed ready future is the
+      // terminal signal; pending attempts have also force-closed HttpClient.
+      return;
+    }
+
+    try {
       await channel.sink.close().timeout(timeout);
     } on TimeoutException catch (error, stackTrace) {
       Log.w(timeoutMessage, error, stackTrace);

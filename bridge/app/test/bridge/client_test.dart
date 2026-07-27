@@ -310,6 +310,34 @@ void main() {
       expect((states[1] as RelayDisconnected).closeCode, isNull);
     });
 
+    test("rejected upgrade does not wait for unopened channel cleanup", () async {
+      final server = await HttpServer.bind("127.0.0.1", 0);
+      server.listen((request) {
+        request.response.statusCode = HttpStatus.tooManyRequests;
+        unawaited(request.response.close());
+      });
+      addTearDown(() => server.close(force: true));
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      final stopwatch = Stopwatch()..start();
+
+      await expectLater(
+        client.connect(),
+        throwsA(
+          predicate<Object>(
+            (error) => error.toString().contains("429"),
+          ),
+        ),
+      );
+      stopwatch.stop();
+
+      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 750)));
+    });
+
     test("reconnect after a remote drop emits connecting then connected again", () async {
       final server = await TestRelayServer.start();
       addTearDown(server.close);
