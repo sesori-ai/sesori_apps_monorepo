@@ -33,12 +33,8 @@ class SesoriServerApi {
   final http.Client _client;
   final Duration _requestDeadline;
 
-  Future<AppClientStatusResponse> getAppClientStatus({
-    required String accessToken,
-    required bool wait,
-  }) async {
-    final endpoint = Uri.parse("$_authBackendUrl/auth/app-clients/status");
-    final uri = wait ? endpoint.replace(queryParameters: const {"wait": "true"}) : endpoint;
+  Future<AppClientStatusResponse> getAppClientStatus({required String accessToken}) async {
+    final uri = Uri.parse("$_authBackendUrl/auth/app-clients/status");
     final abortCompleter = Completer<void>();
     final deadlineTimer = Timer(_requestDeadline, abortCompleter.complete);
     final request = http.AbortableRequest("GET", uri, abortTrigger: abortCompleter.future)

@@ -520,8 +520,7 @@ class BridgeRuntimeRunner {
       // token service is the access-token provider + refresher, pulling tokens
       // from the GUI over the loopback channel. Standalone keeps the
       // TokenManager, which refreshes against the auth server with the locally
-      // stored refresh token (no GUI exists to ask). Build it before interactive
-      // app onboarding so an unbounded wait can refresh its access token.
+      // stored refresh token (no GUI exists to ask).
       final String authAccessToken;
       final AccessTokenProvider accessTokenProvider;
       final TokenRefresher tokenRefresher;
@@ -688,30 +687,6 @@ class BridgeRuntimeRunner {
       activePluginLifecycleService.applyAvailability(
         availablePluginIds: availableDescriptors.map((descriptor) => descriptor.id).toSet(),
       );
-      final runAppOnboarding = shouldRunAppOnboarding(
-        isSupervised: options.isSupervised,
-        isInteractive: terminalPromptApi.isInteractive,
-      );
-      if (runAppOnboarding) {
-        await AppClientOnboardingService(
-          statusRepository: AppClientStatusRepository(
-            api: SesoriServerApi(
-              authBackendUrl: options.authBackendUrl,
-              client: httpClient,
-              requestDeadline: SesoriServerApi.defaultRequestDeadline,
-            ),
-          ),
-          stateRepository: AppOnboardingStateRepository(
-            storage: AppOnboardingStateStorage(
-              directoryPath: appOnboardingStateDirectoryPath(
-                dataDirectory: options.dataDirectory,
-              ),
-            ),
-          ),
-          formatter: AppOnboardingFormatter(out: io.stdout, environment: environment),
-          tokenRefresher: tokenRefresher,
-        ).run(accessToken: authAccessToken, authBackendUrl: options.authBackendUrl);
-      }
       // If this bridge was spawned by a restart, wait for the predecessor to
       // exit before single-live-bridge enforcement so the handoff is clean.
       final predecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
@@ -899,11 +874,45 @@ class BridgeRuntimeRunner {
       shutdownCoordinator.add(disposable: updateLifecycle.dispose);
       updateLifecycle.start();
 
+      final Future<AppClientOnboardingDecision>? onboardingPreparation;
+      if (shouldRunAppOnboarding(
+        isSupervised: options.isSupervised,
+        isInteractive: terminalPromptApi.isInteractive,
+      )) {
+        onboardingPreparation = AppClientOnboardingService(
+          statusRepository: AppClientStatusRepository(
+            api: SesoriServerApi(
+              authBackendUrl: options.authBackendUrl,
+              client: httpClient,
+              requestDeadline: SesoriServerApi.defaultRequestDeadline,
+            ),
+          ),
+          stateRepository: AppOnboardingStateRepository(
+            storage: AppOnboardingStateStorage(
+              directoryPath: appOnboardingStateDirectoryPath(
+                dataDirectory: options.dataDirectory,
+              ),
+            ),
+          ),
+        ).prepare(accessToken: authAccessToken, authBackendUrl: options.authBackendUrl);
+      } else {
+        onboardingPreparation = null;
+      }
+
       try {
         final sessionStart = activeRuntime.session.start();
         sessionRun = activeRuntime.session.waitUntilStopped();
         final startResult = await sessionStart;
         if (startResult == OrchestratorSessionStartResult.ready) {
+          if (onboardingPreparation case final preparation?) {
+            final decision = await Future.any<AppClientOnboardingDecision>([
+              sessionRun.then((_) => AppClientOnboardingDecision.skip),
+              preparation,
+            ]);
+            if (decision == AppClientOnboardingDecision.prompt) {
+              _presentAppOnboardingPrompt(environment: environment);
+            }
+          }
           await sessionRun;
         }
       } finally {
@@ -985,6 +994,18 @@ class BridgeRuntimeRunner {
     required bool isSupervised,
     required bool isInteractive,
   }) => !isSupervised && isInteractive;
+
+  static void _presentAppOnboardingPrompt({required Map<String, String> environment}) {
+    Console.message("");
+    Console.message("Your Sesori bridge is running");
+    Console.message("");
+    Console.message(
+      "Install or open Sesori using the QR code or link below, then sign in with this same account.",
+    );
+    Console.message("");
+    Console.message(AppOnboardingFormatter(out: io.stdout, environment: environment).formatDestination());
+    Console.message("");
+  }
 
   /// Whether [url] is an acceptable supervised control-channel endpoint: a
   /// loopback host over ws/wss. The GUI hosts the control channel on loopback,

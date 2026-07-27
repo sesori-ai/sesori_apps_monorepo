@@ -1,9 +1,6 @@
 import "dart:convert";
 import "dart:io";
 
-import "package:fake_async/fake_async.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/foundation/app_onboarding_formatter.dart";
 import "package:sesori_bridge/src/repositories/app_client_status_repository.dart";
 import "package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart";
 import "package:sesori_bridge/src/services/app_client_onboarding_service.dart";
@@ -15,19 +12,15 @@ void main() {
     late _FakeAppClientStatusRepository statusRepository;
     late _FakeAppOnboardingStateRepository stateRepository;
     late AppClientOnboardingService service;
-    late _FakeTokenRefresher tokenRefresher;
     late _CapturingStdout stdoutCapture;
     late _CapturingStdout stderrCapture;
 
     setUp(() {
       statusRepository = _FakeAppClientStatusRepository();
       stateRepository = _FakeAppOnboardingStateRepository();
-      tokenRefresher = _FakeTokenRefresher(accessToken: _token(userId: "user-a"));
       service = AppClientOnboardingService(
         statusRepository: statusRepository,
         stateRepository: stateRepository,
-        formatter: _StubAppOnboardingFormatter(),
-        tokenRefresher: tokenRefresher,
       );
       stdoutCapture = _CapturingStdout();
       stderrCapture = _CapturingStdout();
@@ -38,49 +31,52 @@ void main() {
       Log.level = LogLevel.info;
     });
 
-    test("matching marker performs no request and emits no output", () async {
+    test("matching marker skips without a request or output", () async {
       stateRepository.lookupResult = const AppOnboardingStatePresent();
 
-      await _runCaptured(
-        () => service.run(
-          accessToken: _token(userId: "user-a"),
-          authBackendUrl: "https://auth.test",
-        ),
+      final decision = await _prepareCaptured(
+        service: service,
+        accessToken: _token(userId: "user-a"),
         out: stdoutCapture,
         err: stderrCapture,
       );
 
-      expect(statusRepository.waitValues, isEmpty);
+      expect(decision, AppClientOnboardingDecision.skip);
+      expect(statusRepository.accessTokens, isEmpty);
       expect(stateRepository.markCalls, equals(0));
       expect(stdoutCapture.lines, isEmpty);
       expect(stderrCapture.lines, isEmpty);
     });
 
-    test("missing JWT userId warns and performs no marker or status request", () async {
-      await _runCaptured(
-        () => service.run(accessToken: _token(userId: null), authBackendUrl: "https://auth.test"),
+    test("missing JWT userId warns and skips all state and status work", () async {
+      final decision = await _prepareCaptured(
+        service: service,
+        accessToken: _token(userId: null),
         out: stdoutCapture,
         err: stderrCapture,
       );
 
+      expect(decision, AppClientOnboardingDecision.skip);
       expect(stateRepository.lookupCalls, equals(0));
-      expect(statusRepository.waitValues, isEmpty);
+      expect(statusRepository.accessTokens, isEmpty);
+      expect(stdoutCapture.lines, isEmpty);
       expect(stderrCapture.lines, hasLength(1));
     });
 
-    test("immediate registration marks the pair and continues silently", () async {
+    test("immediate registration marks the pair and skips silently", () async {
       statusRepository.results.add(const AppClientRegistered());
+      final accessToken = _token(userId: "user-a");
 
-      await _runCaptured(
-        () => service.run(
-          accessToken: _token(userId: "user-a"),
-          authBackendUrl: "https://auth.test/",
-        ),
+      final decision = await _prepareCaptured(
+        service: service,
+        accessToken: accessToken,
+        authBackendUrl: "https://auth.test/",
         out: stdoutCapture,
         err: stderrCapture,
       );
 
-      expect(statusRepository.waitValues, equals([false]));
+      expect(decision, AppClientOnboardingDecision.skip);
+      expect(statusRepository.accessTokens, equals([accessToken]));
       expect(stateRepository.markCalls, equals(1));
       expect(stateRepository.lastAuthBackendUrl, equals("https://auth.test/"));
       expect(stateRepository.lastUserId, equals("user-a"));
@@ -88,83 +84,25 @@ void main() {
       expect(stderrCapture.lines, isEmpty);
     });
 
-    test("confirmed absence shows guidance and polls until registration", () async {
-      tokenRefresher.accessToken = "refreshed-token";
-      statusRepository.results
-        ..add(const AppClientAbsent())
-        ..add(const AppClientAbsent())
-        ..add(const AppClientAbsent())
-        ..add(const AppClientRegistered());
+    test("confirmed absence returns prompt after exactly one silent status request", () async {
+      statusRepository.results.add(const AppClientAbsent());
+      final accessToken = _token(userId: "user-a");
 
-      await _runCaptured(
-        () => service.run(
-          accessToken: _token(userId: "user-a"),
-          authBackendUrl: "https://auth.test",
-        ),
+      final decision = await _prepareCaptured(
+        service: service,
+        accessToken: accessToken,
         out: stdoutCapture,
         err: stderrCapture,
       );
 
-      expect(statusRepository.waitValues, equals([false, true, true, true]));
-      expect(statusRepository.accessTokens, [
-        _token(userId: "user-a"),
-        "refreshed-token",
-        "refreshed-token",
-        "refreshed-token",
-      ]);
-      expect(stateRepository.markCalls, equals(1));
-      expect(stdoutCapture.lines, [
-        "",
-        "Connect the Sesori mobile app to continue",
-        "",
-        "Use the QR code or link below to install or open Sesori, then sign in with this same account.",
-        "",
-        AppOnboardingFormatter.appUrl,
-        "",
-        "Waiting for the Sesori mobile app to connect...",
-        "Bridge startup is paused and will continue automatically once connected.",
-        "",
-        "Sesori mobile app connected. Continuing bridge startup.",
-      ]);
+      expect(decision, AppClientOnboardingDecision.prompt);
+      expect(statusRepository.accessTokens, equals([accessToken]));
+      expect(stateRepository.markCalls, equals(0));
+      expect(stdoutCapture.lines, isEmpty);
+      expect(stderrCapture.lines, isEmpty);
     });
 
-    test("wait failure keeps startup paused and retries", () {
-      statusRepository.results
-        ..add(const AppClientAbsent())
-        ..add(
-          const AppClientStatusUnavailable(
-            error: FormatException("offline"),
-            stackTrace: StackTrace.empty,
-          ),
-        )
-        ..add(const AppClientRegistered());
-
-      fakeAsync((async) {
-        var completed = false;
-        _runCaptured(
-          () => service.run(
-            accessToken: _token(userId: "user-a"),
-            authBackendUrl: "https://auth.test",
-          ),
-          out: stdoutCapture,
-          err: stderrCapture,
-        ).then((_) => completed = true);
-
-        async.flushMicrotasks();
-        expect(statusRepository.waitValues, equals([false, true]));
-        expect(completed, isFalse);
-
-        async.elapse(const Duration(seconds: 5));
-        async.flushMicrotasks();
-        expect(statusRepository.waitValues, equals([false, true, true]));
-        expect(completed, isTrue);
-      });
-
-      expect(stateRepository.markCalls, equals(1));
-      expect(stderrCapture.lines, hasLength(1));
-    });
-
-    test("marker read failure warns but a confirmed status still attempts the write", () async {
+    test("marker read failure warns but confirmed registration still writes", () async {
       const readError = FileSystemException("cannot read marker");
       stateRepository.lookupResult = const AppOnboardingStateReadFailed(
         error: readError,
@@ -172,63 +110,69 @@ void main() {
       );
       statusRepository.results.add(const AppClientRegistered());
 
-      await _runCaptured(
-        () => service.run(
-          accessToken: _token(userId: "user-a"),
-          authBackendUrl: "https://auth.test",
-        ),
+      final decision = await _prepareCaptured(
+        service: service,
+        accessToken: _token(userId: "user-a"),
         out: stdoutCapture,
         err: stderrCapture,
       );
 
+      expect(decision, AppClientOnboardingDecision.skip);
       expect(stateRepository.markCalls, equals(1));
+      expect(stdoutCapture.lines, isEmpty);
       expect(stderrCapture.lines, hasLength(1));
     });
 
-    test("remote failure warns once and does not retry or mark", () async {
+    test("status failure warns and skips without retrying or marking", () async {
       statusRepository.results.add(
         const AppClientStatusUnavailable(error: FormatException("offline"), stackTrace: StackTrace.empty),
       );
 
-      await _runCaptured(
-        () => service.run(
-          accessToken: _token(userId: "user-a"),
-          authBackendUrl: "https://auth.test",
-        ),
+      final decision = await _prepareCaptured(
+        service: service,
+        accessToken: _token(userId: "user-a"),
         out: stdoutCapture,
         err: stderrCapture,
       );
 
-      expect(statusRepository.waitValues, equals([false]));
+      expect(decision, AppClientOnboardingDecision.skip);
+      expect(statusRepository.accessTokens, hasLength(1));
       expect(stateRepository.markCalls, equals(0));
+      expect(stdoutCapture.lines, isEmpty);
       expect(stderrCapture.lines, hasLength(1));
     });
 
-    test("marker write failure warns and startup continues", () async {
+    test("marker write failure remains observable and non-fatal", () async {
       stateRepository.markError = const FileSystemException("disk full");
       statusRepository.results.add(const AppClientRegistered());
 
-      await _runCaptured(
-        () => service.run(
-          accessToken: _token(userId: "user-a"),
-          authBackendUrl: "https://auth.test",
-        ),
+      final decision = await _prepareCaptured(
+        service: service,
+        accessToken: _token(userId: "user-a"),
         out: stdoutCapture,
         err: stderrCapture,
       );
 
+      expect(decision, AppClientOnboardingDecision.skip);
       expect(stateRepository.markCalls, equals(1));
+      expect(stdoutCapture.lines, isEmpty);
       expect(stderrCapture.lines, hasLength(1));
     });
   });
 }
 
-Future<void> _runCaptured(
-  Future<void> Function() operation, {
+Future<AppClientOnboardingDecision> _prepareCaptured({
+  required AppClientOnboardingService service,
+  required String accessToken,
+  String authBackendUrl = "https://auth.test",
   required _CapturingStdout out,
   required _CapturingStdout err,
 }) {
-  return IOOverrides.runZoned(operation, stdout: () => out, stderr: () => err);
+  return IOOverrides.runZoned(
+    () => service.prepare(accessToken: accessToken, authBackendUrl: authBackendUrl),
+    stdout: () => out,
+    stderr: () => err,
+  );
 }
 
 String _token({required String? userId}) {
@@ -238,24 +182,13 @@ String _token({required String? userId}) {
 
 class _FakeAppClientStatusRepository implements AppClientStatusRepository {
   final List<AppClientStatusResult> results = [];
-  final List<bool> waitValues = [];
   final List<String> accessTokens = [];
 
   @override
-  Future<AppClientStatusResult> getStatus({required String accessToken, required bool wait}) async {
+  Future<AppClientStatusResult> getStatus({required String accessToken}) async {
     accessTokens.add(accessToken);
-    waitValues.add(wait);
     return results.removeAt(0);
   }
-}
-
-class _FakeTokenRefresher implements TokenRefresher {
-  _FakeTokenRefresher({required this.accessToken});
-
-  String accessToken;
-
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => accessToken;
 }
 
 class _FakeAppOnboardingStateRepository implements AppOnboardingStateRepository {
@@ -284,11 +217,6 @@ class _FakeAppOnboardingStateRepository implements AppOnboardingStateRepository 
   Future<void> clearAll() {
     throw UnimplementedError("not used by onboarding service");
   }
-}
-
-class _StubAppOnboardingFormatter implements AppOnboardingFormatter {
-  @override
-  String formatDestination() => AppOnboardingFormatter.appUrl;
 }
 
 class _CapturingStdout implements Stdout {

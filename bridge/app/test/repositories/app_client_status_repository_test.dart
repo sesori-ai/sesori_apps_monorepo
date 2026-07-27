@@ -10,11 +10,11 @@ void main() {
       final repository = AppClientStatusRepository(api: api);
 
       api.response = const AppClientStatusResponse(registered: true);
-      expect(await repository.getStatus(accessToken: "token", wait: false), isA<AppClientRegistered>());
+      expect(await repository.getStatus(accessToken: "token"), isA<AppClientRegistered>());
 
       api.response = const AppClientStatusResponse(registered: false);
-      expect(await repository.getStatus(accessToken: "token", wait: true), isA<AppClientAbsent>());
-      expect(api.waitValues, equals([false, true]));
+      expect(await repository.getStatus(accessToken: "token"), isA<AppClientAbsent>());
+      expect(api.accessTokens, equals(["token", "token"]));
     });
 
     test("maps legacy endpoint omission statuses to unavailable", () async {
@@ -26,7 +26,7 @@ void main() {
           );
         final result = await AppClientStatusRepository(
           api: api,
-        ).getStatus(accessToken: "token", wait: false);
+        ).getStatus(accessToken: "token");
 
         expect(result, isA<AppClientStatusUnavailable>());
       }
@@ -38,7 +38,7 @@ void main() {
 
       final result = await AppClientStatusRepository(
         api: api,
-      ).getStatus(accessToken: "token", wait: false);
+      ).getStatus(accessToken: "token");
 
       expect(result, isA<AppClientStatusUnavailable>());
       expect((result as AppClientStatusUnavailable).error, same(error));
@@ -49,11 +49,11 @@ void main() {
 class _FakeSesoriServerApi implements SesoriServerApi {
   AppClientStatusResponse response = const AppClientStatusResponse(registered: false);
   Object? error;
-  final List<bool> waitValues = [];
+  final List<String> accessTokens = [];
 
   @override
-  Future<AppClientStatusResponse> getAppClientStatus({required String accessToken, required bool wait}) async {
-    waitValues.add(wait);
+  Future<AppClientStatusResponse> getAppClientStatus({required String accessToken}) async {
+    accessTokens.add(accessToken);
     if (error != null) throw error!;
     return response;
   }

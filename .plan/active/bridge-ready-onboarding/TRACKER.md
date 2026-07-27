@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** plan merged; Step 1 PR in review
+- **Status:** Step 1 merged; Step 2 implemented and verified locally
 - **Plan slug:** `bridge-ready-onboarding`
 - **Implementation base:** `origin/main` at
-  `f87b4c6603c682b4606a57010a41d3cab4d96ddd`
+  `235caf8e2cb73a5607ae8dcb662d7eb6e85dd3b1`
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/580
-- **Implementation state:** Step 1 PR: https://github.com/sesori-ai/sesori_apps_monorepo/pull/585
+- **Implementation state:** Step 2 ready for commit/delivery
 
 ## Plan Review
 
@@ -21,8 +21,8 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line budget | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | [PR #585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) in review |
-| [ ] | 2/2 | `bridge-ready-onboarding-relay-first` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | Blocked on Step 1 merge |
+| [x] | 1/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | [PR #585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) merged |
+| [ ] | 2/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | Implemented and verified locally |
 
 ## Execution Rules
 
@@ -40,8 +40,7 @@
 
 ## Current Pointer
 
-- **Next action:** monitor Step 1 CI and review; Step 2 remains blocked until
-  Step 1 merges.
+- **Next action:** commit and publish Step 2.
 
 ## Step 1 Verification
 
@@ -52,8 +51,24 @@
 - `aristotle-impl-review` approved the implementation on its second pass after
   the cancelled-startup path was fixed to preserve supervised exit sentinels.
 
+## Step 2 Verification
+
+- Focused onboarding service, status repository/API, runner guard, registration,
+  and lifecycle tests pass.
+- `dart analyze --fatal-infos` passes from `bridge/app`.
+- `aristotle-impl-review` approved the relay-first onboarding data flow and
+  composition-root lifecycle sequencing.
+
 ## Findings And Plan Deltas
 
+- **2026-07-27 — Step 2 implementation:** Replaced the notification-registration
+  gate with one finite, presentation-free immediate status decision; removed the
+  long-poll `wait` contract; started preparation concurrently with relay startup;
+  and moved ready-state QR/link presentation into the runner after session
+  readiness. The existing user-directed worktree branch was reused.
+- **2026-07-27 — Step 1 merge:** Implementation PR
+  [#585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) merged and
+  became the Step 2 base.
 - **2026-07-27 — Step 1 delivery:** Opened implementation PR
   [#585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) and started
   CI/review monitoring.
