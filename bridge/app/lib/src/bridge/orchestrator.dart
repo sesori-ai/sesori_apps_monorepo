@@ -614,6 +614,7 @@ class OrchestratorSession {
   /// to abandon a response instead of awaiting an OpenCode HTTP call that has
   /// outlived the relay session.
   final Completer<void> _shutdownCompleter = Completer<void>();
+  final Completer<void> _firstPhoneConnectedCompleter = Completer<void>();
 
   OrchestratorSession._({
     required this.config,
@@ -709,6 +710,10 @@ class OrchestratorSession {
   /// track bandwidth (e.g. with [BandwidthTracker]).
   Stream<int> get bytesSent => _bytesSentController.stream;
   Stream<SesoriSseEvent> get localWireEvents => _localWireEventsController.stream;
+
+  /// Completes after the first phone finishes key exchange or resume and can
+  /// send encrypted bridge traffic.
+  Future<void> get firstPhoneConnected => _firstPhoneConnectedCompleter.future;
   RequestRouter get router => _router;
   Future<void> drainRoutedMutations() => _sessionMutationDispatcher.drain();
 
@@ -1643,8 +1648,7 @@ class OrchestratorSession {
             throw Exception("send ready for connId $connID: $e");
           }
 
-          activePhones[connID] = true;
-          Log.d("phone $connID is now active");
+          _markPhoneConnected(connID: connID, activePhones: activePhones);
           break processMessage;
         }
 
@@ -1724,11 +1728,19 @@ class OrchestratorSession {
             throw Exception("send resume ack for connId $connID: $e");
           }
 
-          activePhones[connID] = true;
+          _markPhoneConnected(connID: connID, activePhones: activePhones);
         }
       }
       hasMessage = await iterator.moveNext();
     }
+  }
+
+  void _markPhoneConnected({required int connID, required Map<int, bool> activePhones}) {
+    activePhones[connID] = true;
+    if (!_firstPhoneConnectedCompleter.isCompleted) {
+      _firstPhoneConnectedCompleter.complete();
+    }
+    Log.d("phone $connID is now active");
   }
 
   Future<void> _handleDecryptedMessage(int connID, List<int> decrypted) async {

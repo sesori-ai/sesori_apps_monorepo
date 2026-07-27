@@ -43,6 +43,7 @@ import "../../control/bridge_control_message_dispatcher.dart";
 import "../../control/control_channel_loss_listener.dart";
 import "../../control/control_provision_notifier.dart";
 import "../../control/control_status_notifier.dart";
+import "../../foundation/app_connection_wait_indicator.dart";
 import "../../foundation/app_onboarding_formatter.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../listeners/catalog_import_console_listener.dart";
@@ -159,6 +160,8 @@ enum SupervisedExitCode {
   /// The process exit code reported to the GUI supervisor.
   final int code;
 }
+
+enum _PhoneConnectionWaitOutcome { connected, sessionStopped }
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
@@ -871,6 +874,11 @@ class BridgeRuntimeRunner {
             ]);
             if (decision == AppClientOnboardingDecision.prompt) {
               _presentAppOnboardingPrompt(environment: environment);
+              await _waitForFirstPhoneConnection(
+                firstPhoneConnected: activeRuntime.session.firstPhoneConnected,
+                sessionRun: sessionRun,
+                environment: environment,
+              );
             }
           }
           await sessionRun;
@@ -965,6 +973,29 @@ class BridgeRuntimeRunner {
     Console.message("");
     Console.message(AppOnboardingFormatter(out: io.stdout, environment: environment).formatDestination());
     Console.message("");
+  }
+
+  static Future<void> _waitForFirstPhoneConnection({
+    required Future<void> firstPhoneConnected,
+    required Future<void> sessionRun,
+    required Map<String, String> environment,
+  }) async {
+    final indicator = AppConnectionWaitIndicator(
+      out: io.stdout,
+      environment: environment,
+      frameInterval: const Duration(milliseconds: 80),
+    );
+    var connected = false;
+    indicator.start();
+    try {
+      final outcome = await Future.any<_PhoneConnectionWaitOutcome>([
+        sessionRun.then((_) => _PhoneConnectionWaitOutcome.sessionStopped),
+        firstPhoneConnected.then((_) => _PhoneConnectionWaitOutcome.connected),
+      ]);
+      connected = outcome == _PhoneConnectionWaitOutcome.connected;
+    } finally {
+      indicator.stop(connected: connected);
+    }
   }
 
   /// Whether [url] is an acceptable supervised control-channel endpoint: a

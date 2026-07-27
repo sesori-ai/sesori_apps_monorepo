@@ -63,6 +63,14 @@ void main() {
       final secondMessages = StreamIterator<dynamic>(secondSocket);
       expect(await secondMessages.moveNext(), isTrue);
       final authMessage = jsonDecodeMap(secondMessages.current as String);
+      final firstPhoneConnected = harness.session.firstPhoneConnected;
+
+      secondSocket.add(jsonEncode({"type": "phone_connected", "connId": 7}));
+      final rawSocketActivatedPhone = await Future.any<bool>([
+        firstPhoneConnected.then((_) => true),
+        Future<bool>.delayed(const Duration(milliseconds: 100), () => false),
+      ]);
+      expect(rawSocketActivatedPhone, isFalse);
 
       final phoneKeyPair = await RelayCryptoService().generateKeyPair();
       final phonePublicKey = await phoneKeyPair.extractPublicKey();
@@ -79,6 +87,7 @@ void main() {
       final response = secondMessages.current;
       expect(response, isA<List<int>>());
       expect((response as List<int>).sublist(0, 2), equals(const [0, 7]));
+      await firstPhoneConnected.timeout(const Duration(seconds: 2));
       await secondMessages.cancel();
 
       expect(repository.registeredBridgeIds, equals([null]), reason: "registration is memoized per process");
