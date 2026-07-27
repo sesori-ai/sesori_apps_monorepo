@@ -2,18 +2,18 @@
 
 ## Current State
 
-- **Implementation base:** current `origin/main` after Stage 12 merge `6cedf5bd`
-- **Series state:** Step 2/7 in review
-- **Next action:** wait for PR #583 review to settle, then run the confirming
-  E2E checks before merge
+- **Implementation base:** `origin/main` at `ecd75b6c` after Step 2/7 merged
+- **Series state:** Step 3/7 implementation complete
+- **Next action:** raise the Step 3/7 synchronization-service PR and settle
+  review; the real integration E2E gate follows Step 5/7
 
 ## Delivery
 
 | Done | Slice | Branch | PR state |
 |---|---|---|---|
 | [x] | Step 1/7 — per-bridge harness preference | `setup-aware-harness-settings-preferences` | PR #579 merged; 729 changed lines (estimate 650-750) |
-| [ ] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | PR #583 in review; ~590 changed lines (estimate 300-400, test-driven overage) |
-| [ ] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | planned; estimate 550-700 changed lines |
+| [x] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | PR #583 merged as `ecd75b6c`; ~660 changed lines (estimate 300-400, test-driven overage) |
+| [ ] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | implementation complete; ~1,080 changed lines (estimate 550-700, race-matrix test overage) |
 | [ ] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | planned; estimate 750-900 changed lines |
 | [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | planned; estimate 1,100-1,300 changed lines |
 | [ ] | Step 6/7 — management actions | `setup-aware-harness-settings-state` | planned; estimate 650-800 changed lines |
@@ -74,3 +74,14 @@
   `br_qdF5_X5_LUM6zi7D`; the override was cleared, Codex re-enabled, the
   temporary bridge stopped, and the unrelated bridge on port 7829 remained
   untouched.
+- Step 3/7 (2026-07-27): added the replay-backed management synchronization
+  service, a single publication coordinator, connection/publication/staleness
+  fences, identity-scoped retained snapshots (including legacy null identity),
+  coalesced refresh, mutation uncertainty refresh, and Layer-3 timeout/force
+  planning. Focused service suite (20) and full module_core suite (677) pass;
+  module_core, mobile, and desktop fatal analysis are clean. Aristotle's first
+  pass found that identity supersession did not invalidate other concurrently
+  captured old-bridge requests; the fix advances the request epoch before
+  forgetting identity and routes every publication through one coordinator.
+  The second pass approved. Real integration E2E remains scheduled after Step
+  5/7, when the app resolves and renders this service.
