@@ -79,7 +79,7 @@ extension PluginMessagePartMapping on PluginMessagePart {
     retryError: retryError,
     mime: mime,
     url: url,
-    path: path,
+    path: null, // Never send internal filesystem paths to mobile
     base64: base64,
     filename: filename,
   );

@@ -1,9 +1,11 @@
 import "dart:convert";
+import "dart:typed_data";
 
 import "package:flutter/material.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
-import "package:url_launcher/url_launcher.dart";
+import "../../../core/external_link.dart";
 
 class FilePartWidget extends StatelessWidget {
   final MessagePart part;
@@ -27,18 +29,25 @@ class FilePartWidget extends StatelessWidget {
 
   Widget _buildImage(BuildContext context, IPregoTheme prego, String? url, String? base64, String filename) {
     if (base64 != null) {
-      final bytes = base64Decode(base64);
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.memory(
-            bytes,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 48, color: prego.colors.textTertiary),
+      Uint8List? bytes;
+      try {
+        bytes = base64Decode(base64);
+      } on FormatException {
+        logw("FilePartWidget: malformed base64 for $filename");
+      }
+      if (bytes != null) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 48, color: prego.colors.textTertiary),
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
     if (url != null) {
       return Padding(
@@ -60,7 +69,7 @@ class FilePartWidget extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: GestureDetector(
-        onTap: url != null ? () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication) : null,
+        onTap: url != null ? () => unawaited(openExternalLink(url: Uri.parse(url))) : null,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
