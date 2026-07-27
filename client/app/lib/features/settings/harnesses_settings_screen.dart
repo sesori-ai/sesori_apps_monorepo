@@ -141,7 +141,7 @@ class _ReadyView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (state.refreshError != null) ...[
+        if (state.refresh is PluginManagementRefreshFailed) ...[
           PregoGroupedRows(
             children: [
               PregoGroupedRow(

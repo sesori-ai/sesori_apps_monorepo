@@ -6,8 +6,6 @@ import "../../services/plugin_management_service.dart";
 
 part "plugin_management_state.freezed.dart";
 
-enum PluginManagementActionStatus { idle, inProgress }
-
 @Freezed()
 sealed class PluginManagementActionError with _$PluginManagementActionError {
   const factory PluginManagementActionError.invalidIdleTimeout() = PluginManagementInvalidIdleTimeout;
@@ -26,6 +24,45 @@ sealed class PluginManagementActionError with _$PluginManagementActionError {
 }
 
 @Freezed()
+sealed class PluginManagementRefreshState with _$PluginManagementRefreshState {
+  const factory PluginManagementRefreshState.idle() = PluginManagementRefreshIdle;
+
+  const factory PluginManagementRefreshState.failed({
+    required ApiError error,
+  }) = PluginManagementRefreshFailed;
+}
+
+@Freezed()
+sealed class PluginManagementActionTarget with _$PluginManagementActionTarget {
+  const factory PluginManagementActionTarget.allHarnesses() = PluginManagementActionTargetAllHarnesses;
+
+  const factory PluginManagementActionTarget.harness({
+    required String pluginId,
+  }) = PluginManagementActionTargetHarness;
+}
+
+@Freezed()
+sealed class PluginManagementActionState with _$PluginManagementActionState {
+  const factory PluginManagementActionState.idle() = PluginManagementActionIdle;
+
+  const factory PluginManagementActionState.inProgress({
+    required PluginManagementActionTarget target,
+  }) = PluginManagementActionInProgress;
+
+  const factory PluginManagementActionState.failed({
+    required PluginManagementActionTarget target,
+    required PluginManagementActionError error,
+  }) = PluginManagementActionFailed;
+
+  const factory PluginManagementActionState.forceConfirmationRequired({
+    required String pluginId,
+    required PluginManagementForceAction action,
+    required PluginLifecycleConflict conflict,
+    required PluginLifecycleCommandRequest request,
+  }) = PluginManagementActionForceConfirmationRequired;
+}
+
+@Freezed()
 sealed class PluginManagementState with _$PluginManagementState {
   const factory PluginManagementState.loading() = PluginManagementLoading;
 
@@ -35,10 +72,7 @@ sealed class PluginManagementState with _$PluginManagementState {
 
   const factory PluginManagementState.ready({
     required PluginManagementResponse response,
-    required ApiError? refreshError,
-    required PluginManagementActionStatus actionStatus,
-    required String? actingPluginId,
-    required PluginManagementForceAction? pendingForceAction,
-    required PluginManagementActionError? actionError,
+    required PluginManagementRefreshState refresh,
+    required PluginManagementActionState action,
   }) = PluginManagementReady;
 }

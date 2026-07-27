@@ -21,8 +21,8 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   void dismissRefreshError() {
     if (isClosed) return;
     final current = state;
-    if (current is! PluginManagementReady || current.refreshError == null) return;
-    emit(current.copyWith(refreshError: null));
+    if (current is! PluginManagementReady || current.refresh is! PluginManagementRefreshFailed) return;
+    emit(current.copyWith(refresh: const PluginManagementRefreshState.idle()));
   }
 
   void _onSnapshot({required PluginManagementLoadResult snapshot}) {
@@ -32,11 +32,11 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
         emit(
           PluginManagementState.ready(
             response: response,
-            refreshError: refreshError,
-            actionStatus: PluginManagementActionStatus.idle,
-            actingPluginId: null,
-            pendingForceAction: null,
-            actionError: null,
+            refresh: switch (refreshError) {
+              final error? => PluginManagementRefreshState.failed(error: error),
+              null => const PluginManagementRefreshState.idle(),
+            },
+            action: const PluginManagementActionState.idle(),
           ),
         );
       case PluginManagementLoadResultUnsupported():

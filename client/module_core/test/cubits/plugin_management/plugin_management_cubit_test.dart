@@ -49,11 +49,8 @@ void main() {
       cubit.state,
       const PluginManagementState.ready(
         response: _response,
-        refreshError: null,
-        actionStatus: PluginManagementActionStatus.idle,
-        actingPluginId: null,
-        pendingForceAction: null,
-        actionError: null,
+        refresh: PluginManagementRefreshState.idle(),
+        action: PluginManagementActionState.idle(),
       ),
     );
   });
@@ -78,7 +75,10 @@ void main() {
 
     verify(() => service.refresh()).called(1);
     expect((cubit.state as PluginManagementReady).response, _response);
-    expect((cubit.state as PluginManagementReady).refreshError, error);
+    expect(
+      (cubit.state as PluginManagementReady).refresh,
+      PluginManagementRefreshState.failed(error: error),
+    );
   });
 
   test("dismisses a ready-state refresh error without dropping the snapshot", () async {
@@ -90,7 +90,7 @@ void main() {
 
     final state = cubit.state as PluginManagementReady;
     expect(state.response, _response);
-    expect(state.refreshError, isNull);
+    expect(state.refresh, const PluginManagementRefreshState.idle());
   });
 
   test("ignores a late refresh-error dismissal after close", () async {

@@ -120,4 +120,7 @@
   rendered Codex, Cursor, and OpenCode with their distinct bundled logos,
   OpenCode as Default, and live setup/runtime/work/timeout facts. Pull-to-refresh
   retained the same snapshot without an error. The temporary E2E bridge was
-  stopped afterward.
+  stopped afterward. Owner review then replaced nullable ready-state
+  coordination fields with independent sealed refresh, action-target, and
+  action states; force confirmation carries the exact typed request that Step 6
+  will execute.

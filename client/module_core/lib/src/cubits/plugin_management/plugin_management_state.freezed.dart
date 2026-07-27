@@ -289,6 +289,578 @@ $ApiErrorCopyWith<$Res> get error {
 }
 
 /// @nodoc
+mixin _$PluginManagementRefreshState {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshState);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginManagementRefreshState()';
+}
+
+
+}
+
+/// @nodoc
+class $PluginManagementRefreshStateCopyWith<$Res>  {
+$PluginManagementRefreshStateCopyWith(PluginManagementRefreshState _, $Res Function(PluginManagementRefreshState) __);
+}
+
+
+
+/// @nodoc
+
+
+class PluginManagementRefreshIdle implements PluginManagementRefreshState {
+  const PluginManagementRefreshIdle();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshIdle);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginManagementRefreshState.idle()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class PluginManagementRefreshFailed implements PluginManagementRefreshState {
+  const PluginManagementRefreshFailed({required this.error});
+  
+
+ final  ApiError error;
+
+/// Create a copy of PluginManagementRefreshState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginManagementRefreshFailedCopyWith<PluginManagementRefreshFailed> get copyWith => _$PluginManagementRefreshFailedCopyWithImpl<PluginManagementRefreshFailed>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshFailed&&(identical(other.error, error) || other.error == error));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,error);
+
+@override
+String toString() {
+  return 'PluginManagementRefreshState.failed(error: $error)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginManagementRefreshFailedCopyWith<$Res> implements $PluginManagementRefreshStateCopyWith<$Res> {
+  factory $PluginManagementRefreshFailedCopyWith(PluginManagementRefreshFailed value, $Res Function(PluginManagementRefreshFailed) _then) = _$PluginManagementRefreshFailedCopyWithImpl;
+@useResult
+$Res call({
+ ApiError error
+});
+
+
+$ApiErrorCopyWith<$Res> get error;
+
+}
+/// @nodoc
+class _$PluginManagementRefreshFailedCopyWithImpl<$Res>
+    implements $PluginManagementRefreshFailedCopyWith<$Res> {
+  _$PluginManagementRefreshFailedCopyWithImpl(this._self, this._then);
+
+  final PluginManagementRefreshFailed _self;
+  final $Res Function(PluginManagementRefreshFailed) _then;
+
+/// Create a copy of PluginManagementRefreshState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? error = null,}) {
+  return _then(PluginManagementRefreshFailed(
+error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as ApiError,
+  ));
+}
+
+/// Create a copy of PluginManagementRefreshState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ApiErrorCopyWith<$Res> get error {
+  
+  return $ApiErrorCopyWith<$Res>(_self.error, (value) {
+    return _then(_self.copyWith(error: value));
+  });
+}
+}
+
+/// @nodoc
+mixin _$PluginManagementActionTarget {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTarget);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginManagementActionTarget()';
+}
+
+
+}
+
+/// @nodoc
+class $PluginManagementActionTargetCopyWith<$Res>  {
+$PluginManagementActionTargetCopyWith(PluginManagementActionTarget _, $Res Function(PluginManagementActionTarget) __);
+}
+
+
+
+/// @nodoc
+
+
+class PluginManagementActionTargetAllHarnesses implements PluginManagementActionTarget {
+  const PluginManagementActionTargetAllHarnesses();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTargetAllHarnesses);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginManagementActionTarget.allHarnesses()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class PluginManagementActionTargetHarness implements PluginManagementActionTarget {
+  const PluginManagementActionTargetHarness({required this.pluginId});
+  
+
+ final  String pluginId;
+
+/// Create a copy of PluginManagementActionTarget
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginManagementActionTargetHarnessCopyWith<PluginManagementActionTargetHarness> get copyWith => _$PluginManagementActionTargetHarnessCopyWithImpl<PluginManagementActionTargetHarness>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTargetHarness&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,pluginId);
+
+@override
+String toString() {
+  return 'PluginManagementActionTarget.harness(pluginId: $pluginId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginManagementActionTargetHarnessCopyWith<$Res> implements $PluginManagementActionTargetCopyWith<$Res> {
+  factory $PluginManagementActionTargetHarnessCopyWith(PluginManagementActionTargetHarness value, $Res Function(PluginManagementActionTargetHarness) _then) = _$PluginManagementActionTargetHarnessCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginManagementActionTargetHarnessCopyWithImpl<$Res>
+    implements $PluginManagementActionTargetHarnessCopyWith<$Res> {
+  _$PluginManagementActionTargetHarnessCopyWithImpl(this._self, this._then);
+
+  final PluginManagementActionTargetHarness _self;
+  final $Res Function(PluginManagementActionTargetHarness) _then;
+
+/// Create a copy of PluginManagementActionTarget
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,}) {
+  return _then(PluginManagementActionTargetHarness(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+mixin _$PluginManagementActionState {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionState);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginManagementActionState()';
+}
+
+
+}
+
+/// @nodoc
+class $PluginManagementActionStateCopyWith<$Res>  {
+$PluginManagementActionStateCopyWith(PluginManagementActionState _, $Res Function(PluginManagementActionState) __);
+}
+
+
+
+/// @nodoc
+
+
+class PluginManagementActionIdle implements PluginManagementActionState {
+  const PluginManagementActionIdle();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionIdle);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PluginManagementActionState.idle()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class PluginManagementActionInProgress implements PluginManagementActionState {
+  const PluginManagementActionInProgress({required this.target});
+  
+
+ final  PluginManagementActionTarget target;
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginManagementActionInProgressCopyWith<PluginManagementActionInProgress> get copyWith => _$PluginManagementActionInProgressCopyWithImpl<PluginManagementActionInProgress>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionInProgress&&(identical(other.target, target) || other.target == target));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,target);
+
+@override
+String toString() {
+  return 'PluginManagementActionState.inProgress(target: $target)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginManagementActionInProgressCopyWith<$Res> implements $PluginManagementActionStateCopyWith<$Res> {
+  factory $PluginManagementActionInProgressCopyWith(PluginManagementActionInProgress value, $Res Function(PluginManagementActionInProgress) _then) = _$PluginManagementActionInProgressCopyWithImpl;
+@useResult
+$Res call({
+ PluginManagementActionTarget target
+});
+
+
+$PluginManagementActionTargetCopyWith<$Res> get target;
+
+}
+/// @nodoc
+class _$PluginManagementActionInProgressCopyWithImpl<$Res>
+    implements $PluginManagementActionInProgressCopyWith<$Res> {
+  _$PluginManagementActionInProgressCopyWithImpl(this._self, this._then);
+
+  final PluginManagementActionInProgress _self;
+  final $Res Function(PluginManagementActionInProgress) _then;
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? target = null,}) {
+  return _then(PluginManagementActionInProgress(
+target: null == target ? _self.target : target // ignore: cast_nullable_to_non_nullable
+as PluginManagementActionTarget,
+  ));
+}
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginManagementActionTargetCopyWith<$Res> get target {
+  
+  return $PluginManagementActionTargetCopyWith<$Res>(_self.target, (value) {
+    return _then(_self.copyWith(target: value));
+  });
+}
+}
+
+/// @nodoc
+
+
+class PluginManagementActionFailed implements PluginManagementActionState {
+  const PluginManagementActionFailed({required this.target, required this.error});
+  
+
+ final  PluginManagementActionTarget target;
+ final  PluginManagementActionError error;
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginManagementActionFailedCopyWith<PluginManagementActionFailed> get copyWith => _$PluginManagementActionFailedCopyWithImpl<PluginManagementActionFailed>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionFailed&&(identical(other.target, target) || other.target == target)&&(identical(other.error, error) || other.error == error));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,target,error);
+
+@override
+String toString() {
+  return 'PluginManagementActionState.failed(target: $target, error: $error)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginManagementActionFailedCopyWith<$Res> implements $PluginManagementActionStateCopyWith<$Res> {
+  factory $PluginManagementActionFailedCopyWith(PluginManagementActionFailed value, $Res Function(PluginManagementActionFailed) _then) = _$PluginManagementActionFailedCopyWithImpl;
+@useResult
+$Res call({
+ PluginManagementActionTarget target, PluginManagementActionError error
+});
+
+
+$PluginManagementActionTargetCopyWith<$Res> get target;$PluginManagementActionErrorCopyWith<$Res> get error;
+
+}
+/// @nodoc
+class _$PluginManagementActionFailedCopyWithImpl<$Res>
+    implements $PluginManagementActionFailedCopyWith<$Res> {
+  _$PluginManagementActionFailedCopyWithImpl(this._self, this._then);
+
+  final PluginManagementActionFailed _self;
+  final $Res Function(PluginManagementActionFailed) _then;
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? target = null,Object? error = null,}) {
+  return _then(PluginManagementActionFailed(
+target: null == target ? _self.target : target // ignore: cast_nullable_to_non_nullable
+as PluginManagementActionTarget,error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as PluginManagementActionError,
+  ));
+}
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginManagementActionTargetCopyWith<$Res> get target {
+  
+  return $PluginManagementActionTargetCopyWith<$Res>(_self.target, (value) {
+    return _then(_self.copyWith(target: value));
+  });
+}/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginManagementActionErrorCopyWith<$Res> get error {
+  
+  return $PluginManagementActionErrorCopyWith<$Res>(_self.error, (value) {
+    return _then(_self.copyWith(error: value));
+  });
+}
+}
+
+/// @nodoc
+
+
+class PluginManagementActionForceConfirmationRequired implements PluginManagementActionState {
+  const PluginManagementActionForceConfirmationRequired({required this.pluginId, required this.action, required this.conflict, required this.request});
+  
+
+ final  String pluginId;
+ final  PluginManagementForceAction action;
+ final  PluginLifecycleConflict conflict;
+ final  PluginLifecycleCommandRequest request;
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginManagementActionForceConfirmationRequiredCopyWith<PluginManagementActionForceConfirmationRequired> get copyWith => _$PluginManagementActionForceConfirmationRequiredCopyWithImpl<PluginManagementActionForceConfirmationRequired>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionForceConfirmationRequired&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.action, action) || other.action == action)&&(identical(other.conflict, conflict) || other.conflict == conflict)&&(identical(other.request, request) || other.request == request));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,pluginId,action,conflict,request);
+
+@override
+String toString() {
+  return 'PluginManagementActionState.forceConfirmationRequired(pluginId: $pluginId, action: $action, conflict: $conflict, request: $request)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginManagementActionForceConfirmationRequiredCopyWith<$Res> implements $PluginManagementActionStateCopyWith<$Res> {
+  factory $PluginManagementActionForceConfirmationRequiredCopyWith(PluginManagementActionForceConfirmationRequired value, $Res Function(PluginManagementActionForceConfirmationRequired) _then) = _$PluginManagementActionForceConfirmationRequiredCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, PluginManagementForceAction action, PluginLifecycleConflict conflict, PluginLifecycleCommandRequest request
+});
+
+
+$PluginLifecycleConflictCopyWith<$Res> get conflict;
+
+}
+/// @nodoc
+class _$PluginManagementActionForceConfirmationRequiredCopyWithImpl<$Res>
+    implements $PluginManagementActionForceConfirmationRequiredCopyWith<$Res> {
+  _$PluginManagementActionForceConfirmationRequiredCopyWithImpl(this._self, this._then);
+
+  final PluginManagementActionForceConfirmationRequired _self;
+  final $Res Function(PluginManagementActionForceConfirmationRequired) _then;
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? action = null,Object? conflict = null,Object? request = null,}) {
+  return _then(PluginManagementActionForceConfirmationRequired(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,action: null == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
+as PluginManagementForceAction,conflict: null == conflict ? _self.conflict : conflict // ignore: cast_nullable_to_non_nullable
+as PluginLifecycleConflict,request: null == request ? _self.request : request // ignore: cast_nullable_to_non_nullable
+as PluginLifecycleCommandRequest,
+  ));
+}
+
+/// Create a copy of PluginManagementActionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginLifecycleConflictCopyWith<$Res> get conflict {
+  
+  return $PluginLifecycleConflictCopyWith<$Res>(_self.conflict, (value) {
+    return _then(_self.copyWith(conflict: value));
+  });
+}
+}
+
+/// @nodoc
 mixin _$PluginManagementState {
 
 
@@ -462,15 +1034,12 @@ $ApiErrorCopyWith<$Res> get error {
 
 
 class PluginManagementReady implements PluginManagementState {
-  const PluginManagementReady({required this.response, required this.refreshError, required this.actionStatus, required this.actingPluginId, required this.pendingForceAction, required this.actionError});
+  const PluginManagementReady({required this.response, required this.refresh, required this.action});
   
 
  final  PluginManagementResponse response;
- final  ApiError? refreshError;
- final  PluginManagementActionStatus actionStatus;
- final  String? actingPluginId;
- final  PluginManagementForceAction? pendingForceAction;
- final  PluginManagementActionError? actionError;
+ final  PluginManagementRefreshState refresh;
+ final  PluginManagementActionState action;
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
@@ -482,16 +1051,16 @@ $PluginManagementReadyCopyWith<PluginManagementReady> get copyWith => _$PluginMa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refreshError, refreshError) || other.refreshError == refreshError)&&(identical(other.actionStatus, actionStatus) || other.actionStatus == actionStatus)&&(identical(other.actingPluginId, actingPluginId) || other.actingPluginId == actingPluginId)&&(identical(other.pendingForceAction, pendingForceAction) || other.pendingForceAction == pendingForceAction)&&(identical(other.actionError, actionError) || other.actionError == actionError));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.action, action) || other.action == action));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,response,refreshError,actionStatus,actingPluginId,pendingForceAction,actionError);
+int get hashCode => Object.hash(runtimeType,response,refresh,action);
 
 @override
 String toString() {
-  return 'PluginManagementState.ready(response: $response, refreshError: $refreshError, actionStatus: $actionStatus, actingPluginId: $actingPluginId, pendingForceAction: $pendingForceAction, actionError: $actionError)';
+  return 'PluginManagementState.ready(response: $response, refresh: $refresh, action: $action)';
 }
 
 
@@ -502,11 +1071,11 @@ abstract mixin class $PluginManagementReadyCopyWith<$Res> implements $PluginMana
   factory $PluginManagementReadyCopyWith(PluginManagementReady value, $Res Function(PluginManagementReady) _then) = _$PluginManagementReadyCopyWithImpl;
 @useResult
 $Res call({
- PluginManagementResponse response, ApiError? refreshError, PluginManagementActionStatus actionStatus, String? actingPluginId, PluginManagementForceAction? pendingForceAction, PluginManagementActionError? actionError
+ PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action
 });
 
 
-$PluginManagementResponseCopyWith<$Res> get response;$ApiErrorCopyWith<$Res>? get refreshError;$PluginManagementActionErrorCopyWith<$Res>? get actionError;
+$PluginManagementResponseCopyWith<$Res> get response;$PluginManagementRefreshStateCopyWith<$Res> get refresh;$PluginManagementActionStateCopyWith<$Res> get action;
 
 }
 /// @nodoc
@@ -519,15 +1088,12 @@ class _$PluginManagementReadyCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refreshError = freezed,Object? actionStatus = null,Object? actingPluginId = freezed,Object? pendingForceAction = freezed,Object? actionError = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? action = null,}) {
   return _then(PluginManagementReady(
 response: null == response ? _self.response : response // ignore: cast_nullable_to_non_nullable
-as PluginManagementResponse,refreshError: freezed == refreshError ? _self.refreshError : refreshError // ignore: cast_nullable_to_non_nullable
-as ApiError?,actionStatus: null == actionStatus ? _self.actionStatus : actionStatus // ignore: cast_nullable_to_non_nullable
-as PluginManagementActionStatus,actingPluginId: freezed == actingPluginId ? _self.actingPluginId : actingPluginId // ignore: cast_nullable_to_non_nullable
-as String?,pendingForceAction: freezed == pendingForceAction ? _self.pendingForceAction : pendingForceAction // ignore: cast_nullable_to_non_nullable
-as PluginManagementForceAction?,actionError: freezed == actionError ? _self.actionError : actionError // ignore: cast_nullable_to_non_nullable
-as PluginManagementActionError?,
+as PluginManagementResponse,refresh: null == refresh ? _self.refresh : refresh // ignore: cast_nullable_to_non_nullable
+as PluginManagementRefreshState,action: null == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
+as PluginManagementActionState,
   ));
 }
 
@@ -544,25 +1110,19 @@ $PluginManagementResponseCopyWith<$Res> get response {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$ApiErrorCopyWith<$Res>? get refreshError {
-    if (_self.refreshError == null) {
-    return null;
-  }
-
-  return $ApiErrorCopyWith<$Res>(_self.refreshError!, (value) {
-    return _then(_self.copyWith(refreshError: value));
+$PluginManagementRefreshStateCopyWith<$Res> get refresh {
+  
+  return $PluginManagementRefreshStateCopyWith<$Res>(_self.refresh, (value) {
+    return _then(_self.copyWith(refresh: value));
   });
 }/// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PluginManagementActionErrorCopyWith<$Res>? get actionError {
-    if (_self.actionError == null) {
-    return null;
-  }
-
-  return $PluginManagementActionErrorCopyWith<$Res>(_self.actionError!, (value) {
-    return _then(_self.copyWith(actionError: value));
+$PluginManagementActionStateCopyWith<$Res> get action {
+  
+  return $PluginManagementActionStateCopyWith<$Res>(_self.action, (value) {
+    return _then(_self.copyWith(action: value));
   });
 }
 }
