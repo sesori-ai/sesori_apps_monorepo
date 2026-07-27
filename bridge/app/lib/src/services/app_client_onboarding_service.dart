@@ -20,6 +20,18 @@ class AppClientOnboardingService {
     required String accessToken,
     required String authBackendUrl,
   }) async {
+    try {
+      return await _prepare(accessToken: accessToken, authBackendUrl: authBackendUrl);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not prepare Sesori app onboarding; continuing bridge startup", error, stackTrace);
+      return AppClientOnboardingDecision.skip;
+    }
+  }
+
+  Future<AppClientOnboardingDecision> _prepare({
+    required String accessToken,
+    required String authBackendUrl,
+  }) async {
     final userId = parseJwtUserId(accessToken);
     if (userId == null) {
       Log.w("Skipping app onboarding check: access token has no readable userId claim");

@@ -142,6 +142,22 @@ void main() {
       expect(stderrCapture.lines, hasLength(1));
     });
 
+    test("unexpected preparation failure warns and skips", () async {
+      statusRepository.error = StateError("unexpected status failure");
+
+      final decision = await _prepareCaptured(
+        service: service,
+        accessToken: _token(userId: "user-a"),
+        out: stdoutCapture,
+        err: stderrCapture,
+      );
+
+      expect(decision, AppClientOnboardingDecision.skip);
+      expect(stateRepository.markCalls, equals(0));
+      expect(stdoutCapture.lines, isEmpty);
+      expect(stderrCapture.lines, hasLength(1));
+    });
+
     test("marker write failure remains observable and non-fatal", () async {
       stateRepository.markError = const FileSystemException("disk full");
       statusRepository.results.add(const AppClientRegistered());
@@ -183,10 +199,12 @@ String _token({required String? userId}) {
 class _FakeAppClientStatusRepository implements AppClientStatusRepository {
   final List<AppClientStatusResult> results = [];
   final List<String> accessTokens = [];
+  Object? error;
 
   @override
   Future<AppClientStatusResult> getStatus({required String accessToken}) async {
     accessTokens.add(accessToken);
+    if (error != null) throw error!;
     return results.removeAt(0);
   }
 }

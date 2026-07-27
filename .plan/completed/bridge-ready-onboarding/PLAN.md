@@ -3,13 +3,17 @@
 ## Status
 
 - **Plan slug:** `bridge-ready-onboarding`
-- **Status:** architecture review corrections applied; in review on plan PR
-  [#580](https://github.com/sesori-ai/sesori_apps_monorepo/pull/580)
+- **Status:** complete; plan PR
+  [#580](https://github.com/sesori-ai/sesori_apps_monorepo/pull/580) and
+  implementation PRs
+  [#585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) and
+  [#587](https://github.com/sesori-ai/sesori_apps_monorepo/pull/587) merged
 - **Plan date:** 2026-07-26
+- **Completion date:** 2026-07-27
 - **Implementation base:** `origin/main` at
   `f8c71eb78987aa8c64e397e8e8e3bb72eefa0692`
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Delivery:** two sequential bridge-only PRs
+- **Delivery:** two sequential bridge-only PRs, both merged
 
 ## Goal
 
