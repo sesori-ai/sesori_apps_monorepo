@@ -812,6 +812,7 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
   });
   Future<void> clearIdleTimeoutOverride({required String pluginId});
   Future<void> confirmForce();
+  void dismissForceConfirmation();
   void dismissActionError();
   void dismissRefreshError();
 
@@ -953,7 +954,8 @@ Force confirmation:
 - Trigger only when cubit state exposes an allowed pending disable/restart.
 - Explicitly state that active work may be interrupted. Current main's #576
   reconciles sessions after forced disable, but the warning remains required.
-- Cancel leaves the original state.
+- Cancel dismisses the pending confirmation and returns the action lifecycle to
+  idle without sending a force request.
 - Confirm sends exactly one force command and never schedules a retry.
 
 Add remaining user-facing copy to `app_en.arb` and regenerate localization.

@@ -272,6 +272,35 @@ void main() {
       expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
     });
 
+    test("dismissing force confirmation allows another action", () async {
+      final conflict = _conflict(const [PluginLifecycleConflictReason.busy]);
+      when(
+        () => service.command(
+          pluginId: "one",
+          request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+        ),
+      ).thenAnswer((_) async => PluginManagementMutationResult.conflict(conflict: conflict));
+      when(
+        () => service.assessForce(conflict: conflict, action: PluginManagementForceAction.disable),
+      ).thenReturn(
+        const PluginManagementForceAssessment.requiresConfirmation(
+          request: PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+        ),
+      );
+      await cubit.disable(pluginId: "one");
+
+      cubit.dismissForceConfirmation();
+      await cubit.enable(pluginId: "two");
+
+      expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
+      verify(
+        () => service.command(
+          pluginId: "two",
+          request: const PluginLifecycleCommandRequest.enable(),
+        ),
+      ).called(1);
+    });
+
     test("maps a non-forceable conflict to an explicit action error", () async {
       final conflict = _conflict(const [PluginLifecycleConflictReason.unknown]);
       when(

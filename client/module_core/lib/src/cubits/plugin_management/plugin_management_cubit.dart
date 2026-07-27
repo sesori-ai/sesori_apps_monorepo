@@ -81,6 +81,16 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     );
   }
 
+  void dismissForceConfirmation() {
+    if (isClosed) return;
+    final current = state;
+    if (current is! PluginManagementReady || current.action is! PluginManagementActionForceConfirmationRequired) {
+      return;
+    }
+    _actionGeneration++;
+    emit(current.copyWith(action: const PluginManagementActionState.idle()));
+  }
+
   void dismissActionError() {
     if (isClosed) return;
     final current = state;

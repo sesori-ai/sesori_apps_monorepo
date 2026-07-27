@@ -142,4 +142,6 @@
   agent guidance now requires sealed variants with only their valid non-nullable
   fields. Full module_core (695), 53 focused mobile tests, and analysis in
   module_core, mobile, desktop, and module_desktop_core pass. Architecture
-  review approved the service/cubit lifecycle ownership and boundaries.
+  review approved the service/cubit lifecycle ownership and boundaries. PR
+  review added explicit force-confirmation dismissal so cancel returns the
+  action lifecycle to idle and cannot leave all subsequent controls blocked.
