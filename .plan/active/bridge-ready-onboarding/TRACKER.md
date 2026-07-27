@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** plan merged; Step 1 implemented and verified locally
+- **Status:** plan merged; Step 1 PR in review
 - **Plan slug:** `bridge-ready-onboarding`
 - **Implementation base:** `origin/main` at
   `f87b4c6603c682b4606a57010a41d3cab4d96ddd`
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/580
-- **Implementation state:** Step 1 ready for commit/delivery; no implementation PR opened
+- **Implementation state:** Step 1 PR: https://github.com/sesori-ai/sesori_apps_monorepo/pull/585
 
 ## Plan Review
 
@@ -21,7 +21,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line budget | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | Implemented and verified locally |
+| [ ] | 1/2 | `bridge-setup-ux-assessment` | `[bridge-ready-onboarding] refactor(bridge): separate session startup from serving [step 1/2]` | 650-950; reassess at 1,300; maximum 1,500 | [PR #585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) in review |
 | [ ] | 2/2 | `bridge-ready-onboarding-relay-first` | `[bridge-ready-onboarding] fix(bridge): start relay before mobile onboarding [step 2/2]` | 450-750; reassess at 1,300; maximum 1,500 | Blocked on Step 1 merge |
 
 ## Execution Rules
@@ -40,8 +40,8 @@
 
 ## Current Pointer
 
-- **Next action:** commit and publish Step 1 when requested; Step 2 remains
-  blocked until Step 1 merges.
+- **Next action:** monitor Step 1 CI and review; Step 2 remains blocked until
+  Step 1 merges.
 
 ## Step 1 Verification
 
@@ -54,6 +54,9 @@
 
 ## Findings And Plan Deltas
 
+- **2026-07-27 — Step 1 delivery:** Opened implementation PR
+  [#585](https://github.com/sesori-ai/sesori_apps_monorepo/pull/585) and started
+  CI/review monitoring.
 - **2026-07-27 — Step 1 implementation:** Replaced the session `run` contract
   with one-shot startup/readiness and lifecycle-wait operations, added pending
   WebSocket handshake ownership/cancellation, armed a fresh relay iterator for
