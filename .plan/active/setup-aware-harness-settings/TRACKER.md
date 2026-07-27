@@ -78,10 +78,14 @@
   service, a single publication coordinator, connection/publication/staleness
   fences, identity-scoped retained snapshots (including legacy null identity),
   coalesced refresh, mutation uncertainty refresh, and Layer-3 timeout/force
-  planning. Focused service suite (20) and full module_core suite (677) pass;
+  planning. Focused service suite (21) and full module_core suite (678) pass;
   module_core, mobile, and desktop fatal analysis are clean. Aristotle's first
   pass found that identity supersession did not invalidate other concurrently
   captured old-bridge requests; the fix advances the request epoch before
   forgetting identity and routes every publication through one coordinator.
-  The second pass approved. Real integration E2E remains scheduled after Step
-  5/7, when the app resolves and renders this service.
+  The second pass approved. PR review additionally fenced typed mutation
+  rejections when the connection epoch moves and corrected the remaining
+  positional private parameter. Disposal continues to await its owned,
+  transport-bounded refresh tail as required by the reviewed plan. Real
+  integration E2E remains scheduled after Step 5/7, when the app resolves and
+  renders this service.

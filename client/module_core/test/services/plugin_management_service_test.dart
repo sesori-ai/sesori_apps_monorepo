@@ -291,6 +291,41 @@ void main() {
       expect(_supportedResponse(service).snapshotToken, "initial");
     });
 
+    test("a stale rejection after reconnect becomes uncertain and awaits the authoritative refresh", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final reconnectRefresh = Completer<PluginManagementLoadResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial", bridgeId: "br_a")))
+        ..queueLoad(reconnectRefresh.future)
+        ..queueLoad(_supported(_response(token: "authoritative", bridgeId: "br_b")))
+        ..queueMutation(mutation.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(pluginRepository: repository, connectionService: connection);
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final mutationFuture = service.command(
+        pluginId: "one",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+      );
+      connection
+        ..emitStatus(const ConnectionStatus.connectionLost(config: _config))
+        ..emitStatus(_connected);
+      await _waitFor(() => repository.loadCalls == 2);
+      mutation.complete(
+        PluginManagementMutationResult.conflict(conflict: _conflict(const [PluginLifecycleConflictReason.busy])),
+      );
+      await _pump();
+      reconnectRefresh.complete(_supported(_response(token: "reconnected", bridgeId: "br_b")));
+
+      expect(await mutationFuture, isA<PluginManagementMutationResultUncertain>());
+      expect(_supportedResponse(service).bridgeId, "br_b");
+      expect(_supportedResponse(service).snapshotToken, "authoritative");
+    });
+
     test("disconnect during a refresh fences its response", () async {
       final refresh = Completer<PluginManagementLoadResult>();
       final repository = _FakePluginRepository()

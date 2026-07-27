@@ -228,6 +228,10 @@ class PluginManagementService with Disposable {
 
     final captured = _captureRequest(staleGeneration: _staleGeneration);
     final result = await request();
+    if (!_isConnectionFenceCurrent(captured.fence)) {
+      await _refreshAfterUncertainMutation();
+      return const PluginManagementMutationResult.uncertain();
+    }
     switch (result) {
       case PluginManagementMutationResultSuccess(:final response):
         final publication = _coordinatePublication(
@@ -314,11 +318,13 @@ class PluginManagementService with Disposable {
 
     _publicationGeneration++;
     _snapshots.add(publication);
-    if (consumeStalenessThrough != null) _consumeStalenessThrough(consumeStalenessThrough);
+    if (consumeStalenessThrough != null) {
+      _consumeStalenessThrough(generation: consumeStalenessThrough);
+    }
     return _PublicationOutcome.applied;
   }
 
-  void _consumeStalenessThrough(int generation) {
+  void _consumeStalenessThrough({required int generation}) {
     _consumedStaleGeneration = max(_consumedStaleGeneration, generation);
   }
 
