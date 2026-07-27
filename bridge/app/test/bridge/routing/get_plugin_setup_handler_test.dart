@@ -31,8 +31,18 @@ void main() {
             )
             ..registerPlugins(
               plugins: const [
-                (id: "ready", displayName: "Ready", residencyPolicy: PluginResidencyPolicy.transient),
-                (id: "blocked", displayName: "Blocked", residencyPolicy: PluginResidencyPolicy.transient),
+                (
+                  id: "ready",
+                  displayName: "Ready",
+                  residencyPolicy: PluginResidencyPolicy.transient,
+                  managementCapabilities: defaultManagementCapabilities,
+                ),
+                (
+                  id: "blocked",
+                  displayName: "Blocked",
+                  residencyPolicy: PluginResidencyPolicy.transient,
+                  managementCapabilities: defaultManagementCapabilities,
+                ),
               ],
             )
             ..initialize(

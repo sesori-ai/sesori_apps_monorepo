@@ -36,7 +36,12 @@ void main() {
           )
           ..registerPlugins(
             plugins: const [
-              (id: "opencode", displayName: "OpenCode", residencyPolicy: PluginResidencyPolicy.transient),
+              (
+                id: "opencode",
+                displayName: "OpenCode",
+                residencyPolicy: PluginResidencyPolicy.transient,
+                managementCapabilities: defaultManagementCapabilities,
+              ),
             ],
           )
           ..initialize(

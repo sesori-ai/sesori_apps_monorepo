@@ -24,6 +24,19 @@ void main() {
       );
     });
 
+    test('supports every management capability by default', () {
+      const descriptor = _MinimalDescriptor();
+
+      expect(
+        descriptor.managementCapabilities(config: const PluginConfig.empty()),
+        const {
+          PluginControlCapability.lifecycle,
+          PluginControlCapability.setupRefresh,
+          PluginControlCapability.idleTimeout,
+        },
+      );
+    });
+
     test('a descriptor can reject configuration with PluginConfigException', () {
       const descriptor = _ValidatingDescriptor();
       const config = PluginConfig(values: {'no-auto-start': true, 'port': null});

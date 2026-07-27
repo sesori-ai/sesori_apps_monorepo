@@ -23,7 +23,12 @@ typedef PluginCompositionView = ({
   Map<String, PluginProjectOwnership> projectOwnershipById,
 });
 
-typedef RegisteredPluginMetadata = ({String id, String displayName, PluginResidencyPolicy residencyPolicy});
+typedef RegisteredPluginMetadata = ({
+  String id,
+  String displayName,
+  PluginResidencyPolicy residencyPolicy,
+  Set<PluginControlCapability> managementCapabilities,
+});
 
 typedef PluginStartupPolicy = ({
   List<String> eligiblePluginIds,
@@ -59,6 +64,7 @@ class PluginLifecycleService {
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   Map<String, PluginResidencyPolicy>? _residencyPolicyById;
+  Map<String, Set<PluginControlCapability>>? _managementCapabilitiesById;
   List<String>? _eligiblePluginIds;
   Set<String> _startAllowedPluginIds = {};
   Map<String, PluginMetadata> _metadataById = <String, PluginMetadata>{};
@@ -91,6 +97,9 @@ class PluginLifecycleService {
     _knownPluginIds = Set<String>.unmodifiable(ids);
     _residencyPolicyById = Map<String, PluginResidencyPolicy>.unmodifiable({
       for (final plugin in plugins) plugin.id: plugin.residencyPolicy,
+    });
+    _managementCapabilitiesById = Map<String, Set<PluginControlCapability>>.unmodifiable({
+      for (final plugin in plugins) plugin.id: Set<PluginControlCapability>.unmodifiable(plugin.managementCapabilities),
     });
   }
 
@@ -242,6 +251,15 @@ class PluginLifecycleService {
       throw StateError("Plugin management snapshot is not ready.");
     }
     _requireBridgeId();
+    _requireManagementCapability(
+      pluginId: pluginId,
+      capability: switch (request) {
+        PluginLifecycleEnableRequest() ||
+        PluginLifecycleDisableRequest() ||
+        PluginLifecycleRestartRequest() => PluginControlCapability.lifecycle,
+        PluginLifecycleRefreshRequest() => PluginControlCapability.setupRefresh,
+      },
+    );
     final active = _activePluginCommands[pluginId];
     if (active != null) {
       if (active.request == request) return active.completer.future;
@@ -278,13 +296,23 @@ class PluginLifecycleService {
         }
     }
     _requireBridgeId();
+    switch (request) {
+      case PluginIdleTimeoutApplyAllRequest():
+        break;
+      case PluginIdleTimeoutSetOverrideRequest(:final pluginId) ||
+          PluginIdleTimeoutClearOverrideRequest(:final pluginId):
+        _requireManagementCapability(
+          pluginId: pluginId,
+          capability: PluginControlCapability.idleTimeout,
+        );
+    }
     return _withSettingsMutationTail(() async {
       _requireBridgeId();
       final current = await _bridgeSettingsRepository.loadSettings();
       final plugins = switch (request) {
         PluginIdleTimeoutApplyAllRequest(:final idleTimeoutMins) => current.plugins.withDefaultIdleTimeout(
           idleTimeoutMins: idleTimeoutMins,
-          clearOverridePluginIds: knownPluginIds,
+          clearOverridePluginIds: _pluginIdsSupporting(PluginControlCapability.idleTimeout),
         ),
         PluginIdleTimeoutSetOverrideRequest(:final pluginId, :final idleTimeoutMins) =>
           current.plugins.withPluginIdleTimeout(pluginId: pluginId, idleTimeoutMins: idleTimeoutMins),
@@ -693,7 +721,38 @@ class PluginLifecycleService {
       workState: _mapWorkState(snapshot.workState),
       idleTimeoutMins: _effectiveIdleTimeoutMins(plugin.id),
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
+      managementCapabilities: {
+        for (final capability in plugin.managementCapabilities) _mapManagementCapability(capability),
+      },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
+    );
+  }
+
+  PluginManagementCapability _mapManagementCapability(PluginControlCapability capability) => switch (capability) {
+    PluginControlCapability.lifecycle => PluginManagementCapability.lifecycle,
+    PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
+    PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
+  };
+
+  Set<String> _pluginIdsSupporting(PluginControlCapability capability) {
+    final capabilitiesById = _managementCapabilitiesById;
+    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
+    return {
+      for (final MapEntry(key: pluginId, value: capabilities) in capabilitiesById.entries)
+        if (capabilities.contains(capability)) pluginId,
+    };
+  }
+
+  void _requireManagementCapability({required String pluginId, required PluginControlCapability capability}) {
+    final capabilitiesById = _managementCapabilitiesById;
+    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
+    if (capabilitiesById[pluginId]?.contains(capability) ?? false) return;
+    throw PluginManagementConflictException(
+      PluginLifecycleConflict(
+        pluginId: pluginId,
+        reasons: const [PluginLifecycleConflictReason.unsupported],
+        current: _managementRowForPluginId(pluginId),
+      ),
     );
   }
 

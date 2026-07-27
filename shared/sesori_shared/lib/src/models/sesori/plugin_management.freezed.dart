@@ -15,7 +15,11 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginManagementMetadata {
 
- PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride; String? get actionHint;
+ PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridge payloads cannot declare
+// whether management operations are safe. Empty fails closed so newer
+// clients do not expose controls for an externally managed runtime. Remove
+// this default and make the field required when those bridges are unsupported.
+@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities; String? get actionHint;
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +32,16 @@ $PluginManagementMetadataCopyWith<PluginManagementMetadata> get copyWith => _$Pl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,idleTimeoutMins,hasIdleTimeoutOverride,actionHint);
+int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(managementCapabilities),actionHint);
 
 @override
 String toString() {
-  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, actionHint: $actionHint)';
+  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
 }
 
 
@@ -48,7 +52,7 @@ abstract mixin class $PluginManagementMetadataCopyWith<$Res>  {
   factory $PluginManagementMetadataCopyWith(PluginManagementMetadata value, $Res Function(PluginManagementMetadata) _then) = _$PluginManagementMetadataCopyWithImpl;
 @useResult
 $Res call({
- PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState, int idleTimeoutMins, bool hasIdleTimeoutOverride, String? actionHint
+ PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities, String? actionHint
 });
 
 
@@ -65,14 +69,15 @@ class _$PluginManagementMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? actionHint = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
   return _then(_self.copyWith(
 setup: null == setup ? _self.setup : setup // ignore: cast_nullable_to_non_nullable
 as PluginSetupMetadata,runtimeState: null == runtimeState ? _self.runtimeState : runtimeState // ignore: cast_nullable_to_non_nullable
 as PluginRuntimeState,workState: null == workState ? _self.workState : workState // ignore: cast_nullable_to_non_nullable
 as PluginManagementWorkState,idleTimeoutMins: null == idleTimeoutMins ? _self.idleTimeoutMins : idleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,hasIdleTimeoutOverride: null == hasIdleTimeoutOverride ? _self.hasIdleTimeoutOverride : hasIdleTimeoutOverride // ignore: cast_nullable_to_non_nullable
-as bool,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as bool,managementCapabilities: null == managementCapabilities ? _self.managementCapabilities : managementCapabilities // ignore: cast_nullable_to_non_nullable
+as Set<PluginManagementCapability>,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -94,7 +99,7 @@ $PluginSetupMetadataCopyWith<$Res> get setup {
 @JsonSerializable()
 
 class _PluginManagementMetadata implements PluginManagementMetadata {
-  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, required this.actionHint});
+  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) final  Set<PluginManagementCapability> managementCapabilities = const <PluginManagementCapability>{}, required this.actionHint}): _managementCapabilities = managementCapabilities;
   factory _PluginManagementMetadata.fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
 
 @override final  PluginSetupMetadata setup;
@@ -102,6 +107,21 @@ class _PluginManagementMetadata implements PluginManagementMetadata {
 @override@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) final  PluginManagementWorkState workState;
 @override final  int idleTimeoutMins;
 @override final  bool hasIdleTimeoutOverride;
+// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridge payloads cannot declare
+// whether management operations are safe. Empty fails closed so newer
+// clients do not expose controls for an externally managed runtime. Remove
+// this default and make the field required when those bridges are unsupported.
+ final  Set<PluginManagementCapability> _managementCapabilities;
+// COMPATIBILITY 2026-07-27 (v1.7.0): Older bridge payloads cannot declare
+// whether management operations are safe. Empty fails closed so newer
+// clients do not expose controls for an externally managed runtime. Remove
+// this default and make the field required when those bridges are unsupported.
+@override@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities {
+  if (_managementCapabilities is EqualUnmodifiableSetView) return _managementCapabilities;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_managementCapabilities);
+}
+
 @override final  String? actionHint;
 
 /// Create a copy of PluginManagementMetadata
@@ -117,16 +137,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other._managementCapabilities, _managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,idleTimeoutMins,hasIdleTimeoutOverride,actionHint);
+int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_managementCapabilities),actionHint);
 
 @override
 String toString() {
-  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, actionHint: $actionHint)';
+  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
 }
 
 
@@ -137,7 +157,7 @@ abstract mixin class _$PluginManagementMetadataCopyWith<$Res> implements $Plugin
   factory _$PluginManagementMetadataCopyWith(_PluginManagementMetadata value, $Res Function(_PluginManagementMetadata) _then) = __$PluginManagementMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState, int idleTimeoutMins, bool hasIdleTimeoutOverride, String? actionHint
+ PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities, String? actionHint
 });
 
 
@@ -154,14 +174,15 @@ class __$PluginManagementMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? actionHint = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
   return _then(_PluginManagementMetadata(
 setup: null == setup ? _self.setup : setup // ignore: cast_nullable_to_non_nullable
 as PluginSetupMetadata,runtimeState: null == runtimeState ? _self.runtimeState : runtimeState // ignore: cast_nullable_to_non_nullable
 as PluginRuntimeState,workState: null == workState ? _self.workState : workState // ignore: cast_nullable_to_non_nullable
 as PluginManagementWorkState,idleTimeoutMins: null == idleTimeoutMins ? _self.idleTimeoutMins : idleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,hasIdleTimeoutOverride: null == hasIdleTimeoutOverride ? _self.hasIdleTimeoutOverride : hasIdleTimeoutOverride // ignore: cast_nullable_to_non_nullable
-as bool,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as bool,managementCapabilities: null == managementCapabilities ? _self._managementCapabilities : managementCapabilities // ignore: cast_nullable_to_non_nullable
+as Set<PluginManagementCapability>,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

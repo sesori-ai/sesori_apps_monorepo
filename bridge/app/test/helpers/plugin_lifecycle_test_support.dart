@@ -11,6 +11,12 @@ import "test_helpers.dart";
 
 final Expando<PluginRuntime> _runtimes = Expando<PluginRuntime>();
 
+const defaultManagementCapabilities = <PluginControlCapability>{
+  PluginControlCapability.lifecycle,
+  PluginControlCapability.setupRefresh,
+  PluginControlCapability.idleTimeout,
+};
+
 Future<PluginLifecycleService> createSinglePluginLifecycleService({
   required BridgePluginApi plugin,
 }) {
@@ -32,7 +38,12 @@ Future<PluginLifecycleService> createPluginLifecycleService({
         ..registerPlugins(
           plugins: [
             for (final plugin in plugins)
-              (id: plugin.id, displayName: plugin.id, residencyPolicy: PluginResidencyPolicy.transient),
+              (
+                id: plugin.id,
+                displayName: plugin.id,
+                residencyPolicy: PluginResidencyPolicy.transient,
+                managementCapabilities: defaultManagementCapabilities,
+              ),
           ],
         )
         ..initialize(

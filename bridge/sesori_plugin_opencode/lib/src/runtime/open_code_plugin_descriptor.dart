@@ -266,6 +266,14 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   }
 
   @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
+      return const {PluginControlCapability.setupRefresh};
+    }
+    return super.managementCapabilities(config: config);
+  }
+
+  @override
   Future<PluginSetupStatus> inspectSetup({
     required PluginConfig config,
     required HostProcessService processes,

@@ -2,9 +2,9 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `1b0f9874` after Step 5/7 merged
-- **Series state:** Step 6/8 PR #593 open; management actions implemented and verified
-- **Next action:** monitor and settle PR #593
+- **Implementation base:** `origin/main` at `075951cb` after Step 6/8 merged
+- **Series state:** Step 7/8 management capabilities implemented and verified
+- **Next action:** deliver and monitor the Step 7/8 PR
 
 ## Delivery
 
@@ -15,8 +15,8 @@
 | [x] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | PR #589 merged as `6fe69d5a`; 1,095 changed lines (estimate 550-700, race-matrix test overage) |
 | [x] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | PR #590 merged as `99670e08`; simplified to use existing plugin IDs |
 | [x] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | PR #592 merged as `1b0f9874`; combined simulator E2E passed |
-| [ ] | Step 6/8 — management actions | `setup-aware-harness-settings-state` | PR #593 open; estimate 650-800 changed lines |
-| [ ] | Step 7/8 — management capabilities | `setup-aware-harness-settings-capabilities` | planned; estimate 650-850 changed lines |
+| [x] | Step 6/8 — management actions | `setup-aware-harness-settings-state` | PR #593 merged as `075951cb`; estimate 650-800 changed lines |
+| [ ] | Step 7/8 — management capabilities | `setup-aware-harness-settings-capabilities` | ready for PR; estimate 650-850 changed lines |
 | [ ] | Step 8/8 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
 
 ## Source Material
@@ -154,3 +154,16 @@
   effective timeout value. Because that cross-layer contract and enforcement is
   not tiny, the user approved expanding the series to eight PRs; Step 8/8 now
   owns the controls UI. Historical merged PR title suffixes remain `/7`.
+- Step 7/8 (2026-07-27): added independent backend-neutral capability enums to
+  the plugin interface and shared wire contract, with `bridge/app` owning the
+  mapping. Omitted legacy capability data fails closed to an empty set and
+  future values decode to `unknown`. OpenCode no-auto-start declares setup
+  refresh only; managed OpenCode, Codex, and Cursor retain all default
+  capabilities. The bridge rejects unsupported lifecycle and per-plugin timeout
+  operations before runtime or settings effects, returns typed non-forceable
+  conflicts, and apply-all updates the global default while clearing overrides
+  only for timeout-capable plugins. Full shared (340), plugin interface (147),
+  OpenCode (398), and bridge app (2160) suites pass; fatal analysis is clean in
+  those packages, Codex, Cursor, module_core, mobile, desktop, and
+  module_desktop_core. Architecture review approved the Layer-0 independence,
+  bridge mapping/enforcement, and conservative compatibility behavior.

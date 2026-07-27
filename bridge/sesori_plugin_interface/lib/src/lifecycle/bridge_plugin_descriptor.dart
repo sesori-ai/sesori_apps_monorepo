@@ -4,6 +4,7 @@ import "../host/host_process_service.dart";
 import "../host/plugin_host.dart";
 import "bridge_plugin.dart";
 import "plugin_config.dart";
+import "plugin_control_capability.dart";
 import "plugin_option.dart";
 import "plugin_project_ownership.dart";
 import "plugin_residency_policy.dart";
@@ -57,6 +58,19 @@ abstract class BridgePluginDescriptor {
   /// default applies the bridge's configured timeout.
   PluginResidencyPolicy residencyPolicy({required PluginConfig config}) {
     return PluginResidencyPolicy.transient;
+  }
+
+  /// Declares the management operations Sesori may perform under [config].
+  ///
+  /// This is independent from residency: a managed plugin may be configured
+  /// never to idle, while an externally managed plugin may still support setup
+  /// inspection. The default supports every bridge-owned operation.
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
+    return const {
+      PluginControlCapability.lifecycle,
+      PluginControlCapability.setupRefresh,
+      PluginControlCapability.idleTimeout,
+    };
   }
 
   /// Inspects whether this plugin's runtime and authentication are already set

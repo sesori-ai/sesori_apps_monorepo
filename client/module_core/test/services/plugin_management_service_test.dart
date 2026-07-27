@@ -538,6 +538,7 @@ void main() {
         const [],
         const [PluginLifecycleConflictReason.transitioning],
         const [PluginLifecycleConflictReason.notEnabled],
+        const [PluginLifecycleConflictReason.unsupported],
         const [PluginLifecycleConflictReason.unknown],
         const [PluginLifecycleConflictReason.busy, PluginLifecycleConflictReason.unknown],
       ]) {

@@ -11,6 +11,7 @@ export "src/lifecycle/bridge_plugin.dart";
 export "src/lifecycle/bridge_plugin_descriptor.dart";
 export "src/lifecycle/plugin_authentication_required_exception.dart";
 export "src/lifecycle/plugin_config.dart";
+export "src/lifecycle/plugin_control_capability.dart";
 export "src/lifecycle/plugin_diagnostics.dart";
 export "src/lifecycle/plugin_option.dart";
 export "src/lifecycle/plugin_project_ownership.dart";

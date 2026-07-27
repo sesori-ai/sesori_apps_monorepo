@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../bridge/routing/request_handler.dart";
@@ -27,6 +29,13 @@ class PatchPluginIdleTimeoutHandler
       return await _lifecycleService.updateIdleTimeout(request: body);
     } on PluginManagementPluginNotFoundException {
       throw buildErrorResponse(request, 404, "plugin not found");
+    } on PluginManagementConflictException catch (error) {
+      throw RelayResponse(
+        id: request.id,
+        status: 409,
+        headers: const {"content-type": "application/json"},
+        body: jsonEncode(error.conflict.toJson()),
+      );
     } on PluginManagementMutationOutcomeUncertainException {
       throw buildErrorResponse(request, 503, "plugin mutation outcome is uncertain");
     }

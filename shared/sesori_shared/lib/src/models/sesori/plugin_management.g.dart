@@ -23,6 +23,17 @@ _PluginManagementMetadata _$PluginManagementMetadataFromJson(Map json) =>
       ),
       idleTimeoutMins: (json['idleTimeoutMins'] as num).toInt(),
       hasIdleTimeoutOverride: json['hasIdleTimeoutOverride'] as bool,
+      managementCapabilities:
+          (json['managementCapabilities'] as List<dynamic>?)
+              ?.map(
+                (e) => $enumDecode(
+                  _$PluginManagementCapabilityEnumMap,
+                  e,
+                  unknownValue: PluginManagementCapability.unknown,
+                ),
+              )
+              .toSet() ??
+          const <PluginManagementCapability>{},
       actionHint: json['actionHint'] as String?,
     );
 
@@ -34,6 +45,9 @@ Map<String, dynamic> _$PluginManagementMetadataToJson(
   'workState': _$PluginManagementWorkStateEnumMap[instance.workState]!,
   'idleTimeoutMins': instance.idleTimeoutMins,
   'hasIdleTimeoutOverride': instance.hasIdleTimeoutOverride,
+  'managementCapabilities': instance.managementCapabilities
+      .map((e) => _$PluginManagementCapabilityEnumMap[e]!)
+      .toList(),
   'actionHint': ?instance.actionHint,
 };
 
@@ -53,6 +67,13 @@ const _$PluginManagementWorkStateEnumMap = {
   PluginManagementWorkState.idle: 'idle',
   PluginManagementWorkState.busy: 'busy',
   PluginManagementWorkState.unknown: 'unknown',
+};
+
+const _$PluginManagementCapabilityEnumMap = {
+  PluginManagementCapability.lifecycle: 'lifecycle',
+  PluginManagementCapability.setupRefresh: 'setupRefresh',
+  PluginManagementCapability.idleTimeout: 'idleTimeout',
+  PluginManagementCapability.unknown: 'unknown',
 };
 
 _PluginManagementResponse _$PluginManagementResponseFromJson(Map json) =>
@@ -202,5 +223,6 @@ const _$PluginLifecycleConflictReasonEnumMap = {
   PluginLifecycleConflictReason.workStateUnknown: 'workStateUnknown',
   PluginLifecycleConflictReason.transitioning: 'transitioning',
   PluginLifecycleConflictReason.notEnabled: 'notEnabled',
+  PluginLifecycleConflictReason.unsupported: 'unsupported',
   PluginLifecycleConflictReason.unknown: 'unknown',
 };

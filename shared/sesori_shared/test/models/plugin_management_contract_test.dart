@@ -13,6 +13,11 @@ void main() {
     workState: PluginManagementWorkState.idle,
     idleTimeoutMins: 0,
     hasIdleTimeoutOverride: true,
+    managementCapabilities: {
+      PluginManagementCapability.lifecycle,
+      PluginManagementCapability.setupRefresh,
+      PluginManagementCapability.idleTimeout,
+    },
     actionHint: null,
   );
 
@@ -36,7 +41,14 @@ void main() {
     );
     expect(
       pluginJson.keys,
-      unorderedEquals(["setup", "runtimeState", "workState", "idleTimeoutMins", "hasIdleTimeoutOverride"]),
+      unorderedEquals([
+        "setup",
+        "runtimeState",
+        "workState",
+        "idleTimeoutMins",
+        "hasIdleTimeoutOverride",
+        "managementCapabilities",
+      ]),
     );
     expect(json["snapshotToken"], "snapshot-token");
     expect(json["bridgeId"], "br_abc12345");
@@ -44,6 +56,37 @@ void main() {
     expect(pluginJson, isNot(contains("isDefault")));
     expect(json, isNot(contains("authority")));
     expect(json, isNot(contains("order")));
+  });
+
+  test("declared management capabilities round-trip", () {
+    final json = plugin.toJson();
+
+    expect(
+      json["managementCapabilities"],
+      unorderedEquals(["lifecycle", "setupRefresh", "idleTimeout"]),
+    );
+    expect(
+      PluginManagementMetadata.fromJson(json).managementCapabilities,
+      plugin.managementCapabilities,
+    );
+  });
+
+  test("omitted management capabilities decode to empty", () {
+    final json = plugin.toJson()..remove("managementCapabilities");
+
+    expect(
+      PluginManagementMetadata.fromJson(json).managementCapabilities,
+      isEmpty,
+    );
+  });
+
+  test("future management capabilities decode to unknown", () {
+    final json = plugin.toJson()..["managementCapabilities"] = ["lifecycle", "futureCapability"];
+
+    expect(
+      PluginManagementMetadata.fromJson(json).managementCapabilities,
+      {PluginManagementCapability.lifecycle, PluginManagementCapability.unknown},
+    );
   });
 
   test("older management responses decode without a snapshot token", () {
@@ -146,9 +189,10 @@ void main() {
 
     const conflict = PluginLifecycleConflict(
       pluginId: "opencode",
-      reasons: [PluginLifecycleConflictReason.busy],
+      reasons: [PluginLifecycleConflictReason.unsupported],
       current: plugin,
     );
+    expect(conflict.toJson()["reasons"], ["unsupported"]);
     expect(PluginLifecycleConflict.fromJson(conflict.toJson()), conflict);
   });
 

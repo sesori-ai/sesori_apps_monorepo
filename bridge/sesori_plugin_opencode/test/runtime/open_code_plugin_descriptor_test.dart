@@ -52,6 +52,28 @@ void main() {
       );
     });
 
+    test("allows only setup refresh in --no-auto-start mode", () {
+      expect(
+        descriptor.managementCapabilities(
+          config: const PluginConfig(values: {"no-auto-start": true}),
+        ),
+        const {PluginControlCapability.setupRefresh},
+      );
+    });
+
+    test("allows every management capability in managed mode", () {
+      expect(
+        descriptor.managementCapabilities(
+          config: const PluginConfig(values: {"no-auto-start": false}),
+        ),
+        const {
+          PluginControlCapability.lifecycle,
+          PluginControlCapability.setupRefresh,
+          PluginControlCapability.idleTimeout,
+        },
+      );
+    });
+
     test("validateConfig requires --port when --no-auto-start is set", () {
       expect(
         () => descriptor.validateConfig(
