@@ -169,6 +169,8 @@
   "harnessesEffectiveIdleTimeout": "Idle timeout",
   "harnessesCustomIdleTimeout": "Custom for this harness",
   "harnessesUsesDefaultIdleTimeout": "Uses the bridge default",
+  "harnessesNoIdleTimeout": "No timeout",
+  "harnessesNoIdleTimeoutDescription": "This harness stays running",
   "harnessesIdleTimeoutMinutes": "{minutes} min",
   "@harnessesIdleTimeoutMinutes": {
     "placeholders": {

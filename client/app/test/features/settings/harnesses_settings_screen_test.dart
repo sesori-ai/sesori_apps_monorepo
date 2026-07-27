@@ -159,6 +159,29 @@ void main() {
     expect(find.text("The connected bridge hasn't registered any coding harnesses."), findsOneWidget);
   });
 
+  testWidgets("zero and negative idle timeouts mean the harness stays running", (tester) async {
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(
+          plugins: [
+            _response.plugins[0].copyWith(idleTimeoutMins: 0, hasIdleTimeoutOverride: false),
+            _response.plugins[1].copyWith(idleTimeoutMins: -5, hasIdleTimeoutOverride: false),
+          ],
+        ),
+        refreshError: null,
+      ),
+    );
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    expect(find.text("No timeout"), findsNWidgets(2));
+    expect(find.text("This harness stays running"), findsNWidgets(2));
+    expect(find.text("Uses the bridge default"), findsNothing);
+    expect(find.text("0 min"), findsNothing);
+    expect(find.text("-5 min"), findsNothing);
+  });
+
   testWidgets("ready refresh failure keeps the snapshot visible and can be dismissed", (tester) async {
     snapshots.add(
       PluginManagementLoadResult.supported(

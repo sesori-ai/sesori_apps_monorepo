@@ -746,6 +746,10 @@ Prego tokens only. The ready state contains one read-only card per harness:
 - `PregoBrandLogo` in the leading slot.
 - display name and Default badge.
 - setup, runtime, work, and effective timeout rows.
+- effective timeout values at or below zero render as `No timeout` with
+  always-running guidance; they never render as zero minutes or claim to use
+  the bridge default, because a resident harness may override the default
+  operationally without a persisted per-harness timeout override.
 - action hint/setup guidance when present.
 - forward-compatible unknown setup/runtime/work values render readable copy
   and never crash.

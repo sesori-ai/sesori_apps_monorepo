@@ -529,6 +529,18 @@ abstract class AppLocalizations {
   /// **'Uses the bridge default'**
   String get harnessesUsesDefaultIdleTimeout;
 
+  /// No description provided for @harnessesNoIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'No timeout'**
+  String get harnessesNoIdleTimeout;
+
+  /// No description provided for @harnessesNoIdleTimeoutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This harness stays running'**
+  String get harnessesNoIdleTimeoutDescription;
+
   /// No description provided for @harnessesIdleTimeoutMinutes.
   ///
   /// In en, this message translates to:

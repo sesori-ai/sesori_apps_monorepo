@@ -207,6 +207,7 @@ class _HarnessCard extends StatelessWidget {
     final loc = context.loc;
     final pluginId = plugin.setup.id;
     final actionHint = plugin.actionHint ?? plugin.setup.actionHint;
+    final hasNoIdleTimeout = plugin.idleTimeoutMins <= 0;
 
     return PregoGroupedRows(
       key: Key("harnesses_card_$pluginId"),
@@ -242,9 +243,15 @@ class _HarnessCard extends StatelessWidget {
         PregoGroupedRow(
           title: Text(loc.harnessesEffectiveIdleTimeout),
           subtitle: Text(
-            plugin.hasIdleTimeoutOverride ? loc.harnessesCustomIdleTimeout : loc.harnessesUsesDefaultIdleTimeout,
+            hasNoIdleTimeout
+                ? loc.harnessesNoIdleTimeoutDescription
+                : plugin.hasIdleTimeoutOverride
+                ? loc.harnessesCustomIdleTimeout
+                : loc.harnessesUsesDefaultIdleTimeout,
           ),
-          trailing: Text(loc.harnessesIdleTimeoutMinutes(plugin.idleTimeoutMins)),
+          trailing: Text(
+            hasNoIdleTimeout ? loc.harnessesNoIdleTimeout : loc.harnessesIdleTimeoutMinutes(plugin.idleTimeoutMins),
+          ),
           isLast: true,
         ),
       ],

@@ -238,6 +238,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesUsesDefaultIdleTimeout => 'Uses the bridge default';
 
   @override
+  String get harnessesNoIdleTimeout => 'No timeout';
+
+  @override
+  String get harnessesNoIdleTimeoutDescription => 'This harness stays running';
+
+  @override
   String harnessesIdleTimeoutMinutes(int minutes) {
     return '$minutes min';
   }
