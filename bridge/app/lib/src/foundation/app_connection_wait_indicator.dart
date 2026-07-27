@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show TerminalColorValidator, TerminalGlyphValidator;
+    show Log, TerminalColorValidator, TerminalGlyphValidator;
 
 /// Renders the post-onboarding wait for the first usable phone connection.
 ///
@@ -25,6 +25,7 @@ class AppConnectionWaitIndicator {
   static const String connectedMessage = "Sesori connected on your phone.";
   static const List<String> _unicodeFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   static const List<String> _asciiFrames = ["|", "/", "-", r"\"];
+  static const int _animatedLineWidth = waitingMessage.length + 2;
 
   final Stdout _out;
   final Duration _frameInterval;
@@ -45,11 +46,12 @@ class AppConnectionWaitIndicator {
     _started = true;
 
     if (!_animated) {
-      _write("$staticWaitingMessage\n");
+      _write(text: "$staticWaitingMessage\n");
       return;
     }
 
     _drawFrame();
+    if (_writeFailed || _stopped) return;
     _timer = Timer.periodic(_frameInterval, (_) => _drawFrame());
   }
 
@@ -60,11 +62,11 @@ class AppConnectionWaitIndicator {
     _timer?.cancel();
 
     if (_drewAnimatedLine) {
-      _write("\r\x1b[2K");
+      _write(text: "\r\x1b[2K");
     }
     if (connected) {
       final prefix = _unicode ? "✓ " : "";
-      _write("$prefix$connectedMessage\n");
+      _write(text: "$prefix$connectedMessage\n");
     }
   }
 
@@ -73,19 +75,20 @@ class AppConnectionWaitIndicator {
     final frames = _unicode ? _unicodeFrames : _asciiFrames;
     final frame = frames[_frameIndex % frames.length];
     _frameIndex += 1;
-    if (_write("\r$frame $waitingMessage")) {
+    if (_write(text: "\r$frame $waitingMessage")) {
       _drewAnimatedLine = true;
     }
   }
 
-  bool _write(String text) {
+  bool _write({required String text}) {
     if (_writeFailed) return false;
     try {
       _out.write(text);
       return true;
-    } on Object {
+    } on Object catch (error, stackTrace) {
       _writeFailed = true;
       _timer?.cancel();
+      Log.w("Disabling the phone connection indicator after stdout failed", error, stackTrace);
       return false;
     }
   }
@@ -95,7 +98,7 @@ class AppConnectionWaitIndicator {
       return false;
     }
     try {
-      return out.hasTerminal;
+      return out.hasTerminal && out.terminalColumns >= _animatedLineWidth;
     } on Object {
       return false;
     }

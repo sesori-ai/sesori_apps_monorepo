@@ -7,7 +7,11 @@ import "package:test/test.dart";
 void main() {
   group("AppConnectionWaitIndicator", () {
     test("animates in place and replaces the wait with success", () {
-      final out = _CapturingStdout(hasTerminal: true, supportsAnsiEscapes: true);
+      final out = _CapturingStdout(
+        hasTerminal: true,
+        supportsAnsiEscapes: true,
+        terminalColumns: 80,
+      );
 
       fakeAsync((async) {
         final indicator = AppConnectionWaitIndicator(
@@ -29,7 +33,11 @@ void main() {
     });
 
     test("uses static ASCII status on a dumb terminal", () {
-      final out = _CapturingStdout(hasTerminal: true, supportsAnsiEscapes: true);
+      final out = _CapturingStdout(
+        hasTerminal: true,
+        supportsAnsiEscapes: true,
+        terminalColumns: 80,
+      );
 
       fakeAsync((async) {
         final indicator = AppConnectionWaitIndicator(
@@ -52,7 +60,11 @@ void main() {
     });
 
     test("uses ASCII animation when unicode glyphs are unavailable", () {
-      final out = _CapturingStdout(hasTerminal: true, supportsAnsiEscapes: true);
+      final out = _CapturingStdout(
+        hasTerminal: true,
+        supportsAnsiEscapes: true,
+        terminalColumns: 80,
+      );
 
       fakeAsync((async) {
         final indicator = AppConnectionWaitIndicator(
@@ -73,7 +85,11 @@ void main() {
     });
 
     test("clears animation without success when the session stops", () {
-      final out = _CapturingStdout(hasTerminal: true, supportsAnsiEscapes: true);
+      final out = _CapturingStdout(
+        hasTerminal: true,
+        supportsAnsiEscapes: true,
+        terminalColumns: 80,
+      );
 
       fakeAsync((_) {
         final indicator = AppConnectionWaitIndicator(
@@ -90,29 +106,64 @@ void main() {
       expect(out.written, isNot(contains(AppConnectionWaitIndicator.connectedMessage)));
     });
 
-    test("tolerates a broken output stream", () {
-      final out = _ThrowingStdout();
-      final indicator = AppConnectionWaitIndicator(
-        out: out,
-        environment: const {"LANG": "en_US.UTF-8"},
-        frameInterval: const Duration(milliseconds: 80),
+    test("uses static status when the animated line would wrap", () {
+      final out = _CapturingStdout(
+        hasTerminal: true,
+        supportsAnsiEscapes: true,
+        terminalColumns: AppConnectionWaitIndicator.waitingMessage.length + 1,
       );
 
-      expect(indicator.start, returnsNormally);
-      expect(() => indicator.stop(connected: true), returnsNormally);
+      fakeAsync((async) {
+        final indicator = AppConnectionWaitIndicator(
+          out: out,
+          environment: const {"LANG": "en_US.UTF-8"},
+          frameInterval: const Duration(milliseconds: 80),
+        );
+
+        indicator.start();
+        async.elapse(const Duration(seconds: 1));
+        indicator.stop(connected: false);
+      });
+
+      expect(out.written, "${AppConnectionWaitIndicator.staticWaitingMessage}\n");
+      expect(out.written, isNot(contains("\r")));
+    });
+
+    test("does not retain a timer after the initial write fails", () {
+      final out = _ThrowingStdout();
+
+      fakeAsync((async) {
+        final indicator = AppConnectionWaitIndicator(
+          out: out,
+          environment: const {"LANG": "en_US.UTF-8"},
+          frameInterval: const Duration(milliseconds: 80),
+        );
+
+        expect(indicator.start, returnsNormally);
+        expect(async.periodicTimerCount, 0);
+        expect(() => indicator.stop(connected: true), returnsNormally);
+      });
+
       expect(out.writeCalls, equals(1));
     });
   });
 }
 
 class _CapturingStdout implements Stdout {
-  _CapturingStdout({required this.hasTerminal, required this.supportsAnsiEscapes});
+  _CapturingStdout({
+    required this.hasTerminal,
+    required this.supportsAnsiEscapes,
+    required this.terminalColumns,
+  });
 
   @override
   final bool hasTerminal;
 
   @override
   final bool supportsAnsiEscapes;
+
+  @override
+  final int terminalColumns;
 
   final StringBuffer _buffer = StringBuffer();
   String get written => _buffer.toString();
@@ -132,6 +183,9 @@ class _ThrowingStdout implements Stdout {
 
   @override
   bool get supportsAnsiEscapes => true;
+
+  @override
+  int get terminalColumns => 80;
 
   @override
   void write(Object? object) {
