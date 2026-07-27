@@ -54,7 +54,7 @@
   persistence across reopen, and disable fallback with full cleanup; A-to-B
   bridge switch stays unit-tested only (single-bridge dev account).
 - Step 2/7 (2026-07-27): shared contract tests for known/null/omitted
-  `bridgeId`; full bridge suite (2146); module_core full suite (656) with new
+  `bridgeId`; full bridge suite (2147); module_core full suite (656) with new
   API route and repository mapping
   tests; mobile/desktop fatal analysis; Aristotle implementation review
   approved. Review fixes: lifecycle service caches identity-free state and
@@ -66,4 +66,9 @@
   full cleanup with the E2E bridge stopped. Final service-owned identity rerun
   on `f0c4932d` again verified the same ID on GET, command, and idle-timeout
   responses after late registration; override cleared, Codex re-enabled, and
-  bridge stopped (one external relay 429 was retried successfully).
+  bridge stopped (one external relay 429 was retried successfully). Final
+  mutation-guard rerun on `b0067458` verified registered GET, safe disable,
+  enable, timeout override, and timeout clear responses all carried
+  `br_qdF5_X5_LUM6zi7D`; the override was cleared, Codex re-enabled, the
+  temporary bridge stopped, and the unrelated bridge on port 7829 remained
+  untouched.
