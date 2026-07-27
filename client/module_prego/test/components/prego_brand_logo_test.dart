@@ -3,7 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 import "package:theme_prego/module_prego.dart";
 
-Widget _harness(PregoBrandLogo logo) {
+Widget _harness({required PregoBrandLogo logo}) {
   return MaterialApp(
     home: Scaffold(body: Center(child: logo)),
   );
@@ -17,7 +17,14 @@ void main() {
     (pluginId: "future-plugin", icon: TablerRegular.plug),
   ]) {
     testWidgets("maps ${mapping.pluginId} to its bundled glyph", (tester) async {
-      await tester.pumpWidget(_harness(PregoBrandLogo(pluginId: mapping.pluginId)));
+      await tester.pumpWidget(
+        _harness(
+          logo: PregoBrandLogo(
+            pluginId: mapping.pluginId,
+            color: null,
+          ),
+        ),
+      );
 
       expect(find.byIcon(mapping.icon), findsOneWidget);
     });
@@ -27,7 +34,7 @@ void main() {
     const color = Color(0xFF123456);
     await tester.pumpWidget(
       _harness(
-        PregoBrandLogo(
+        logo: PregoBrandLogo(
           pluginId: Harness.opencode.name,
           size: 28,
           color: color,

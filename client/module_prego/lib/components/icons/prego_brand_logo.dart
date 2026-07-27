@@ -9,7 +9,7 @@ class PregoBrandLogo extends StatelessWidget {
     super.key,
     required this.pluginId,
     this.size = 20,
-    this.color,
+    required this.color,
   });
 
   final String pluginId;
