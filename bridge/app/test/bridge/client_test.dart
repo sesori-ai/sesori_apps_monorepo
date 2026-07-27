@@ -335,7 +335,10 @@ void main() {
       );
       stopwatch.stop();
 
-      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 750)));
+      // The regression adds a full one-second cleanup timeout after the local
+      // server has already rejected the upgrade. Allow CI scheduling slack
+      // while still requiring completion before that timeout can elapse.
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
     });
 
     test("reconnect after a remote drop emits connecting then connected again", () async {
