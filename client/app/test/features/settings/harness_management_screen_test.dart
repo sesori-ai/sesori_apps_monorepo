@@ -222,7 +222,9 @@ void main() {
       of: find.byKey(const Key("harness_management_enabled_future-harness")),
       matching: find.byType(PregoSwitch),
     );
-    expect(tester.widget<PregoSwitch>(switchFinder).value, isFalse);
+    final lifecycleSwitch = tester.widget<PregoSwitch>(switchFinder);
+    expect(lifecycleSwitch.value, isFalse);
+    expect(lifecycleSwitch.onChanged, isNull);
     final restart = find.byKey(const Key("harness_management_restart_future-harness"));
     expect(tester.widget<PregoGroupedRow>(restart).onTap, isNull);
   });

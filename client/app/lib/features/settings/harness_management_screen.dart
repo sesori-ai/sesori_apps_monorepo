@@ -281,6 +281,7 @@ class _HarnessControlCard extends StatelessWidget {
     final idleTimeout = capabilities.contains(PluginManagementCapability.idleTimeout);
     final enabled = plugin.runtimeState.isEnabled;
     final blocked = _controlsBlocked(action);
+    final lifecycleBlocked = blocked || plugin.runtimeState == PluginRuntimeState.unknown;
     final actionForThisHarness = switch (action) {
       PluginManagementActionInProgress(
         target: PluginManagementActionTargetHarness(pluginId: final targetPluginId),
@@ -329,13 +330,13 @@ class _HarnessControlCard extends StatelessWidget {
               title: Text(loc.harnessManagementEnabled),
               trailing: PregoSwitch(
                 value: enabled,
-                onChanged: blocked
+                onChanged: lifecycleBlocked
                     ? null
                     : (value) => value
                           ? context.read<PluginManagementCubit>().enable(pluginId: pluginId)
                           : context.read<PluginManagementCubit>().disable(pluginId: pluginId),
               ),
-              onTap: blocked
+              onTap: lifecycleBlocked
                   ? null
                   : () => enabled
                         ? context.read<PluginManagementCubit>().disable(pluginId: pluginId)
@@ -355,7 +356,9 @@ class _HarnessControlCard extends StatelessWidget {
             key: Key("harness_management_restart_$pluginId"),
             icon: TablerRegular.rotate_clockwise,
             title: Text(loc.harnessManagementRestart),
-            onTap: blocked || !enabled ? null : () => context.read<PluginManagementCubit>().restart(pluginId: pluginId),
+            onTap: lifecycleBlocked || !enabled
+                ? null
+                : () => context.read<PluginManagementCubit>().restart(pluginId: pluginId),
             isLast: !idleTimeout,
           ),
         if (idleTimeout)
