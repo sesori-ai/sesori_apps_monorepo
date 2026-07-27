@@ -272,6 +272,7 @@ class PluginLifecycleService {
     }
     _requireBridgeId();
     return _withSettingsMutationTail(() async {
+      _requireBridgeId();
       final current = await _bridgeSettingsRepository.loadSettings();
       final plugins = switch (request) {
         PluginIdleTimeoutApplyAllRequest(:final idleTimeoutMins) => current.plugins.withDefaultIdleTimeout(
@@ -285,6 +286,7 @@ class PluginLifecycleService {
           idleTimeoutMins: null,
         ),
       };
+      _requireBridgeId();
       await _bridgeSettingsRepository.saveSettings(settings: current.copyWith(plugins: plugins));
       _syncIdleTimers(_lifecycleRepository.snapshot);
       _publishManagementIfChanged();

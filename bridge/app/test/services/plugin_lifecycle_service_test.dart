@@ -417,6 +417,49 @@ void main() {
     );
   });
 
+  test("queued idle timeout writes fail closed after bridge identity is revoked", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
+      ..saveGate = Completer<void>();
+    final bridgeIdProvider = FakeBridgeIdProvider("br_test1234");
+    final service =
+        PluginLifecycleService(
+            lifecycleRepository: repository,
+            preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: settingsRepository,
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
+            bridgeIdProvider: bridgeIdProvider,
+          )
+          ..registerPlugins(
+            plugins: const [
+              (id: "one", displayName: "One", residencyPolicy: PluginResidencyPolicy.transient),
+            ],
+          )
+          ..initialize(
+            disabledPluginIds: const {},
+            setupById: const {"one": PluginSetupReady()},
+          );
+    addTearDown(service.dispose);
+
+    final active = service.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30),
+    );
+    await settingsRepository.saveStarted.future;
+    final queued = service.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 45),
+    );
+    bridgeIdProvider.id = null;
+    final activeExpectation = expectLater(active, throwsStateError);
+    final queuedExpectation = expectLater(queued, throwsStateError);
+    settingsRepository.saveGate!.complete();
+
+    await Future.wait([activeExpectation, queuedExpectation]);
+    expect(settingsRepository.loadCalls, 1);
+    expect(settingsRepository.settings.plugins.defaults.idleTimeoutMins, 30);
+    expect(settingsRepository.settings.plugins.settingsByPluginId, isEmpty);
+  });
+
   test("successful timeout writes resync live timers while failed writes change nothing", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
