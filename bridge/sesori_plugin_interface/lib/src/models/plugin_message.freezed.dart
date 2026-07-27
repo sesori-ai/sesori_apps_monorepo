@@ -179,7 +179,8 @@ mixin _$PluginMessagePart {
  String? get tool; PluginToolState? get state;// subtask
  String? get prompt; String? get description; String? get agent;// agent
  String? get agentName;// retry
- int? get attempt; String? get retryError;
+ int? get attempt; String? get retryError;// file
+ String? get mime; String? get url; String? get path; String? get base64; String? get filename;
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -192,16 +193,16 @@ $PluginMessagePartCopyWith<PluginMessagePart> get copyWith => _$PluginMessagePar
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.path, path) || other.path == path)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,mime,url,path,base64,filename);
 
 @override
 String toString() {
-  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError)';
+  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, mime: $mime, url: $url, path: $path, base64: $base64, filename: $filename)';
 }
 
 
@@ -212,7 +213,7 @@ abstract mixin class $PluginMessagePartCopyWith<$Res>  {
   factory $PluginMessagePartCopyWith(PluginMessagePart value, $Res Function(PluginMessagePart) _then) = _$PluginMessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError
+ String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, String? mime, String? url, String? path, String? base64, String? filename
 });
 
 
@@ -229,7 +230,7 @@ class _$PluginMessagePartCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? mime = freezed,Object? url = freezed,Object? path = freezed,Object? base64 = freezed,Object? filename = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -244,6 +245,11 @@ as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullabl
 as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
 as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
 as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
+as String?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String?,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String?,base64: freezed == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
+as String?,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -340,7 +346,7 @@ class __$PluginMessagePartCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? mime = freezed,Object? url = freezed,Object? path = freezed,Object? base64 = freezed,Object? filename = freezed,}) {
   return _then(_PluginMessagePart(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -355,6 +361,11 @@ as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullabl
 as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
 as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
 as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
+as String?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String?,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String?,base64: freezed == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
+as String?,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
