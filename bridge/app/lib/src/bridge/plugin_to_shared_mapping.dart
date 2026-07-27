@@ -77,5 +77,10 @@ extension PluginMessagePartMapping on PluginMessagePart {
     agentName: agentName,
     attempt: attempt,
     retryError: retryError,
+    mime: mime,
+    url: url,
+    path: path,
+    base64: base64,
+    filename: filename,
   );
 }

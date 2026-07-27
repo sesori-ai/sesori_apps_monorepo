@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "models/openapi/agent_part.g.dart";
 import "models/openapi/compaction_part.g.dart";
 import "models/openapi/file_part.g.dart";
+import "models/openapi/file_source.g.dart";
 import "models/openapi/part.g.dart";
 import "models/openapi/patch_part.g.dart";
 import "models/openapi/reasoning_part.g.dart";
@@ -61,7 +62,16 @@ class MessagePartMapper {
       attempt: raw.attempt,
       retryError: raw.error.data.message,
     ),
-    FilePart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.file),
+    FilePart() => _part(
+      raw.id,
+      raw.sessionID,
+      raw.messageID,
+      PluginMessagePartType.file,
+      mime: raw.mime,
+      filename: raw.filename,
+      url: raw.url,
+      path: raw.source is FileSource ? (raw.source as FileSource).path : null,
+    ),
     SnapshotPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.snapshot),
     PatchPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.patch),
     CompactionPart() => _part(
@@ -93,6 +103,11 @@ class MessagePartMapper {
     String? agentName,
     int? attempt,
     String? retryError,
+    String? mime,
+    String? url,
+    String? path,
+    String? base64,
+    String? filename,
   }) => PluginMessagePart(
     id: id,
     sessionID: sessionID,
@@ -107,6 +122,11 @@ class MessagePartMapper {
     agentName: agentName,
     attempt: attempt,
     retryError: retryError,
+    mime: mime,
+    url: url,
+    path: path,
+    base64: base64,
+    filename: filename,
   );
 
   /// An unrecognized part shape. Every OpenCode part carries `id`,

@@ -28,6 +28,11 @@ Map<String, dynamic> _$PluginMessagePartToJson(_PluginMessagePart instance) =>
       'agentName': ?instance.agentName,
       'attempt': ?instance.attempt,
       'retryError': ?instance.retryError,
+      'mime': ?instance.mime,
+      'url': ?instance.url,
+      'path': ?instance.path,
+      'base64': ?instance.base64,
+      'filename': ?instance.filename,
     };
 
 const _$PluginMessagePartTypeEnumMap = {
