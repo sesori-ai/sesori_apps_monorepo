@@ -213,7 +213,7 @@ The target is a `catch` that **discards an error and continues as if nothing hap
 
 - **Swallow-and-continue must log.** A handler that recovers/degrades and keeps going (no-op and best-effort cleanup included) emits at least a `debug`/`warning` with enough context to know what failed and why continuing is safe.
 - **Catch-all (`on Object catch (error)` / `catch (e)`) should generally log** — reaching it means the cause is unknown.
-- **Don't double-log a surfaced failure.** When the catch already makes the failure observable — rethrow, throw a typed exception, or return/yield an explicit failure the caller renders (`ExplicitUpdateFailed`, `ProvisionFailed`, a `PluginUnavailable`, etc.) — do NOT add a redundant upfront `Log`. The returned/thrown failure is the signal.
+- **Don't double-log a surfaced failure.** When the catch already makes the failure observable — rethrow, throw a typed exception, or return/yield an explicit failure the caller renders (`ExplicitUpdateFailed`, `ProvisionFailed`, a `PluginSetupUnavailable`, etc.) — do NOT add a redundant upfront `Log`. The returned/thrown failure is the signal.
 - **Pass the error as the logger argument, not inlined.** `Log.w("what failed", error, stackTrace)`, never `Log.w("what failed: $error")`. `Log.d`/`Log.i` take only a message, so use `Log.w`/`Log.e` when attaching the caught error/stack.
 
 ### No Redundant Model Layers
