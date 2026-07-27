@@ -103,6 +103,28 @@ class PluginLifecycleService {
     });
   }
 
+  Future<Set<String>> reconcileUncontrollableDisabledPlugins({required Set<String> disabledPluginIds}) async {
+    if (_eligiblePluginIds != null) throw StateError("Plugin lifecycle is already initialized.");
+    final uncontrollableDisabledPluginIds = disabledPluginIds.intersection(
+      _pluginIdsWithout(capability: PluginControlCapability.lifecycle),
+    );
+    if (uncontrollableDisabledPluginIds.isEmpty) {
+      return Set<String>.unmodifiable(disabledPluginIds);
+    }
+
+    final current = await _bridgeSettingsRepository.loadSettings();
+    var plugins = current.plugins;
+    for (final pluginId in uncontrollableDisabledPluginIds) {
+      plugins = plugins.withPluginDisabled(pluginId: pluginId, disabled: false);
+    }
+    await _bridgeSettingsRepository.saveSettings(settings: current.copyWith(plugins: plugins));
+    Log.w(
+      "Re-enabled plugins that cannot be lifecycle-managed: "
+      "${(uncontrollableDisabledPluginIds.toList()..sort()).join(', ')}",
+    );
+    return Set<String>.unmodifiable(disabledPluginIds.difference(uncontrollableDisabledPluginIds));
+  }
+
   PluginStartupPolicy initialize({
     required Set<String> disabledPluginIds,
     required Map<String, PluginSetupStatus> setupById,
@@ -722,7 +744,8 @@ class PluginLifecycleService {
       idleTimeoutMins: _effectiveIdleTimeoutMins(plugin.id),
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
       managementCapabilities: {
-        for (final capability in plugin.managementCapabilities) _mapManagementCapability(capability: capability),
+        for (final capability in _managementCapabilitiesForPluginId(pluginId: plugin.id))
+          _mapManagementCapability(capability: capability),
       },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
     );
@@ -744,6 +767,21 @@ class PluginLifecycleService {
     };
   }
 
+  Set<String> _pluginIdsWithout({required PluginControlCapability capability}) {
+    final capabilitiesById = _managementCapabilitiesById;
+    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
+    return {
+      for (final MapEntry(key: pluginId, value: capabilities) in capabilitiesById.entries)
+        if (!capabilities.contains(capability)) pluginId,
+    };
+  }
+
+  Set<PluginControlCapability> _managementCapabilitiesForPluginId({required String pluginId}) {
+    final capabilitiesById = _managementCapabilitiesById;
+    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
+    return capabilitiesById[pluginId] ?? (throw StateError('Plugin "$pluginId" is not registered.'));
+  }
+
   void _requireManagementCapability({required String pluginId, required PluginControlCapability capability}) {
     if (_supportsManagementCapability(pluginId: pluginId, capability: capability)) return;
     throw PluginManagementConflictException(
@@ -756,9 +794,7 @@ class PluginLifecycleService {
   }
 
   bool _supportsManagementCapability({required String pluginId, required PluginControlCapability capability}) {
-    final capabilitiesById = _managementCapabilitiesById;
-    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
-    return capabilitiesById[pluginId]?.contains(capability) ?? false;
+    return _managementCapabilitiesForPluginId(pluginId: pluginId).contains(capability);
   }
 
   bool _supportsIdleSuspension({required String pluginId}) {

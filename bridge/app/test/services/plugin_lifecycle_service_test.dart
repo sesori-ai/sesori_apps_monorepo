@@ -301,6 +301,77 @@ void main() {
     );
   });
 
+  test("management snapshot uses the immutable capability registration snapshot", () {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final capabilities = <PluginControlCapability>{PluginControlCapability.setupRefresh};
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: capabilities,
+    );
+    capabilities
+      ..clear()
+      ..add(PluginControlCapability.lifecycle);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+    addTearDown(() async {
+      await service.dispose();
+      await repository.dispose();
+    });
+
+    expect(
+      service.managementSnapshot.plugins.single.managementCapabilities,
+      const {PluginManagementCapability.setupRefresh},
+    );
+  });
+
+  test("re-enables disabled plugins that cannot be lifecycle-managed", () async {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["external", "managed"]);
+    addTearDown(runtime.dispose);
+    final settingsRepository = _MutableBridgeSettingsRepository(
+      settings: const BridgeSettings(
+        plugins: BridgePluginSettings(disabledPluginIds: {"external", "managed", "future-plugin"}),
+      ),
+    );
+    final service =
+        PluginLifecycleService(
+          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: settingsRepository,
+          idleTimerScheduler: const PluginIdleTimerScheduler(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+        )..registerPlugins(
+          plugins: const [
+            (
+              id: "external",
+              displayName: "External",
+              residencyPolicy: PluginResidencyPolicy.resident,
+              managementCapabilities: {PluginControlCapability.setupRefresh},
+            ),
+            (
+              id: "managed",
+              displayName: "Managed",
+              residencyPolicy: PluginResidencyPolicy.transient,
+              managementCapabilities: defaultManagementCapabilities,
+            ),
+          ],
+        );
+    addTearDown(service.dispose);
+
+    final disabledPluginIds = await service.reconcileUncontrollableDisabledPlugins(
+      disabledPluginIds: settingsRepository.currentSettings.plugins.disabledPluginIds,
+    );
+
+    expect(disabledPluginIds, const {"managed", "future-plugin"});
+    expect(settingsRepository.currentSettings.plugins.disabledPluginIds, const {"managed", "future-plugin"});
+  });
+
   test("management snapshot tokens publish only externally visible changes", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["alpha"]);
     final service =

@@ -163,8 +163,13 @@
   capabilities. The bridge rejects unsupported lifecycle and per-plugin timeout
   operations before runtime or settings effects, returns typed non-forceable
   conflicts, and apply-all updates the global default while clearing overrides
-  only for timeout-capable plugins. Full shared (340), plugin interface (147),
-  OpenCode (398), and bridge app (2160) suites pass; fatal analysis is clean in
+  only for timeout-capable plugins. Review follow-up made the immutable
+  registration snapshot authoritative for both published controls and command
+  authorization. Startup now removes lifecycle-uncontrollable plugins from a
+  stale persisted disabled set, so externally managed OpenCode cannot become
+  permanently unroutable after changing launch mode. Full shared (340), plugin
+  interface (147), OpenCode (398), bridge app (2163), and module_core (696)
+  suites pass; fatal analysis is clean in
   those packages, Codex, Cursor, module_core, mobile, desktop, and
   module_desktop_core. Architecture review approved the Layer-0 independence,
   bridge mapping/enforcement, and required capability contract. PR review also

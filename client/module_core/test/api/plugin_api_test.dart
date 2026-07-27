@@ -156,6 +156,7 @@ const _managementJson = {
       "workState": "idle",
       "idleTimeoutMins": 30,
       "hasIdleTimeoutOverride": false,
+      "managementCapabilities": ["lifecycle", "setupRefresh", "idleTimeout"],
     },
   ],
 };
