@@ -7,11 +7,11 @@ class PatchPluginIdleTimeoutHandler
     extends BodyRequestHandler<PluginIdleTimeoutUpdateRequest, PluginManagementResponse> {
   PatchPluginIdleTimeoutHandler({required PluginLifecycleService lifecycleService})
     : _lifecycleService = lifecycleService,
-       super(
-         HttpMethod.patch,
-         "/plugin/idle-timeout",
-         fromJson: PluginIdleTimeoutUpdateRequest.fromJson,
-       );
+      super(
+        HttpMethod.patch,
+        "/plugin/idle-timeout",
+        fromJson: PluginIdleTimeoutUpdateRequest.fromJson,
+      );
 
   final PluginLifecycleService _lifecycleService;
 

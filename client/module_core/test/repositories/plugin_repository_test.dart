@@ -166,9 +166,11 @@ void main() {
 
       expect(
         result,
-        isA<PluginManagementMutationResultConflict>()
-            .having((r) => r.conflict.pluginId, "pluginId", "codex")
-            .having((r) => r.conflict.reasons, "reasons", [PluginLifecycleConflictReason.busy]),
+        isA<PluginManagementMutationResultConflict>().having((r) => r.conflict.pluginId, "pluginId", "codex").having(
+          (r) => r.conflict.reasons,
+          "reasons",
+          [PluginLifecycleConflictReason.busy],
+        ),
       );
     });
 

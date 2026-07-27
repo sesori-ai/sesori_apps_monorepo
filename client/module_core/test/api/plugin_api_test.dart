@@ -68,8 +68,7 @@ void main() {
     when(
       () => client.get<PluginManagementResponse>("/plugin/management", fromJson: any(named: "fromJson")),
     ).thenAnswer((invocation) async {
-      final fromJson =
-          invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
+      final fromJson = invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
       return ApiResponse.success(fromJson(_managementJson));
     });
 
@@ -92,8 +91,7 @@ void main() {
         fromJson: any(named: "fromJson"),
       ),
     ).thenAnswer((invocation) async {
-      final fromJson =
-          invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
+      final fromJson = invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
       return ApiResponse.success(fromJson(_managementJson));
     });
 
@@ -122,8 +120,7 @@ void main() {
         fromJson: any(named: "fromJson"),
       ),
     ).thenAnswer((invocation) async {
-      final fromJson =
-          invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
+      final fromJson = invocation.namedArguments[#fromJson] as PluginManagementResponse Function(Map<String, dynamic>);
       return ApiResponse.success(fromJson(_managementJson));
     });
 

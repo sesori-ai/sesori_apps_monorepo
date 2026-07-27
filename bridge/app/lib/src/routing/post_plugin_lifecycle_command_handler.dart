@@ -9,11 +9,11 @@ class PostPluginLifecycleCommandHandler
     extends BodyRequestHandler<PluginLifecycleCommandRequest, PluginManagementResponse> {
   PostPluginLifecycleCommandHandler({required PluginLifecycleService lifecycleService})
     : _lifecycleService = lifecycleService,
-       super(
-         HttpMethod.post,
-         "/plugin/:id/command",
-         fromJson: PluginLifecycleCommandRequest.fromJson,
-       );
+      super(
+        HttpMethod.post,
+        "/plugin/:id/command",
+        fromJson: PluginLifecycleCommandRequest.fromJson,
+      );
 
   final PluginLifecycleService _lifecycleService;
 

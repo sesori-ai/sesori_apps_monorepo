@@ -26,7 +26,9 @@ class PluginRepository {
     required String pluginId,
     required PluginLifecycleCommandRequest request,
   }) {
-    return _mapMutation(future: _api.command(pluginId: pluginId, request: request));
+    return _mapMutation(
+      future: _api.command(pluginId: pluginId, request: request),
+    );
   }
 
   Future<PluginManagementMutationResult> updateIdleTimeout({required PluginIdleTimeoutUpdateRequest request}) {
@@ -39,8 +41,7 @@ class PluginRepository {
     return switch (await future) {
       SuccessResponse(:final data) => PluginManagementMutationResult.success(response: data),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PluginManagementMutationResult.notFound(),
-      ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
-        _mapConflict(body: body),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) => _mapConflict(body: body),
       // A sent mutation whose outcome cannot be proven may have committed;
       // never surface it as a retryable ordinary failure. This covers an
       // undecodable or empty 2xx body and a post-dispatch response loss.
