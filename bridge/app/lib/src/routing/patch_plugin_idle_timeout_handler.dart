@@ -1,16 +1,12 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../auth/bridge_id_provider.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
 class PatchPluginIdleTimeoutHandler
     extends BodyRequestHandler<PluginIdleTimeoutUpdateRequest, PluginManagementResponse> {
-  PatchPluginIdleTimeoutHandler({
-    required PluginLifecycleService lifecycleService,
-    required BridgeIdProvider bridgeIdProvider,
-  }) : _lifecycleService = lifecycleService,
-       _bridgeIdProvider = bridgeIdProvider,
+  PatchPluginIdleTimeoutHandler({required PluginLifecycleService lifecycleService})
+    : _lifecycleService = lifecycleService,
        super(
          HttpMethod.patch,
          "/plugin/idle-timeout",
@@ -18,7 +14,6 @@ class PatchPluginIdleTimeoutHandler
        );
 
   final PluginLifecycleService _lifecycleService;
-  final BridgeIdProvider _bridgeIdProvider;
 
   @override
   Future<PluginManagementResponse> handle(
@@ -29,8 +24,7 @@ class PatchPluginIdleTimeoutHandler
     required String? fragment,
   }) async {
     try {
-      final response = await _lifecycleService.updateIdleTimeout(request: body);
-      return response.copyWith(bridgeId: _bridgeIdProvider.bridgeId);
+      return await _lifecycleService.updateIdleTimeout(request: body);
     } on PluginManagementPluginNotFoundException {
       throw buildErrorResponse(request, 404, "plugin not found");
     }

@@ -5,15 +5,11 @@ import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   PostPluginLifecycleCommandHandler buildHandler({required _FakePluginLifecycleService service}) =>
-      PostPluginLifecycleCommandHandler(
-        lifecycleService: service,
-        bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-      );
+      PostPluginLifecycleCommandHandler(lifecycleService: service);
 
   test("PostPluginLifecycleCommandHandler handles only plugin command posts", () {
     final handler = buildHandler(service: _FakePluginLifecycleService());
@@ -41,7 +37,7 @@ void main() {
     expect(service.receivedRequest, const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe));
     expect(
       PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)),
-      _response.copyWith(bridgeId: "br_test1234"),
+      _response,
     );
   });
 
@@ -100,7 +96,7 @@ const _plugin = PluginManagementMetadata(
 
 const _response = PluginManagementResponse(
   snapshotToken: "snapshot-token",
-  bridgeId: null,
+  bridgeId: "br_test1234",
   defaultPluginId: "one",
   defaultIdleTimeoutMins: 10,
   plugins: [_plugin],

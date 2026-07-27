@@ -2,17 +2,13 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../auth/bridge_id_provider.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
 class PostPluginLifecycleCommandHandler
     extends BodyRequestHandler<PluginLifecycleCommandRequest, PluginManagementResponse> {
-  PostPluginLifecycleCommandHandler({
-    required PluginLifecycleService lifecycleService,
-    required BridgeIdProvider bridgeIdProvider,
-  }) : _lifecycleService = lifecycleService,
-       _bridgeIdProvider = bridgeIdProvider,
+  PostPluginLifecycleCommandHandler({required PluginLifecycleService lifecycleService})
+    : _lifecycleService = lifecycleService,
        super(
          HttpMethod.post,
          "/plugin/:id/command",
@@ -20,7 +16,6 @@ class PostPluginLifecycleCommandHandler
        );
 
   final PluginLifecycleService _lifecycleService;
-  final BridgeIdProvider _bridgeIdProvider;
 
   @override
   Future<PluginManagementResponse> handle(
@@ -33,8 +28,7 @@ class PostPluginLifecycleCommandHandler
     try {
       final pluginId = pathParams["id"];
       if (pluginId == null) throw buildErrorResponse(request, 400, "plugin id is required");
-      final response = await _lifecycleService.command(pluginId: pluginId, request: body);
-      return response.copyWith(bridgeId: _bridgeIdProvider.bridgeId);
+      return await _lifecycleService.command(pluginId: pluginId, request: body);
     } on PluginManagementPluginNotFoundException {
       throw buildErrorResponse(request, 404, "plugin not found");
     } on PluginManagementConflictException catch (error) {

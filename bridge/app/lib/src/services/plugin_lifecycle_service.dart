@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PluginRuntimeState;
 import "package:sesori_shared/sesori_shared.dart" as shared show PluginRuntimeState;
 
+import "../auth/bridge_id_provider.dart";
 import "../bridge/runtime/plugin_runtime.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
@@ -41,15 +42,18 @@ class PluginLifecycleService {
     required String preferredDefaultPluginId,
     required BridgeSettingsRepository bridgeSettingsRepository,
     required PluginIdleTimerScheduler idleTimerScheduler,
+    required BridgeIdProvider bridgeIdProvider,
   }) : _lifecycleRepository = lifecycleRepository,
        _preferredDefaultPluginId = preferredDefaultPluginId,
        _bridgeSettingsRepository = bridgeSettingsRepository,
-       _idleTimerScheduler = idleTimerScheduler;
+       _idleTimerScheduler = idleTimerScheduler,
+       _bridgeIdProvider = bridgeIdProvider;
 
   final PluginLifecycleRepository _lifecycleRepository;
   final String _preferredDefaultPluginId;
   final BridgeSettingsRepository _bridgeSettingsRepository;
   final PluginIdleTimerScheduler _idleTimerScheduler;
+  final BridgeIdProvider _bridgeIdProvider;
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   Map<String, PluginResidencyPolicy>? _residencyPolicyById;
@@ -190,7 +194,13 @@ class PluginLifecycleService {
     }
     final snapshot = _lastPublishedManagementSnapshot;
     if (snapshot == null) throw StateError("Plugin management snapshot is not ready.");
-    return snapshot;
+    return PluginManagementResponse(
+      snapshotToken: snapshot.snapshotToken,
+      bridgeId: _bridgeIdProvider.bridgeId,
+      defaultPluginId: snapshot.defaultPluginId,
+      defaultIdleTimeoutMins: snapshot.defaultIdleTimeoutMins,
+      plugins: snapshot.plugins,
+    );
   }
 
   Stream<List<PluginMetadata>> get metadataSnapshots {
@@ -676,10 +686,7 @@ class PluginLifecycleService {
     final settings = _bridgeSettingsRepository.currentSettings;
     return PluginManagementResponse(
       snapshotToken: snapshotToken,
-      // The service builds snapshots before the bridge identity is reachable
-      // in the runtime composition order; request handlers stamp the current
-      // identity at the transport egress instead.
-      bridgeId: null,
+      bridgeId: _bridgeIdProvider.bridgeId,
       defaultPluginId: _selectableDefaultPluginId(),
       defaultIdleTimeoutMins: settings.plugins.defaults.idleTimeoutMins ?? defaultPluginIdleTimeoutMins,
       plugins: [for (final plugin in registeredPlugins) _managementRow(plugin: plugin)],

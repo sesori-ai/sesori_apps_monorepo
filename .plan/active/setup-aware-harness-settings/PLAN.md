@@ -226,12 +226,13 @@ Production files:
 ### Scope
 
 Add nullable `bridgeId` to shared `PluginManagementResponse` and regenerate its
-companions. `GetPluginManagementHandler` emits the existing
-`BridgeIdProvider.currentBridgeId` alongside the Stage 12 snapshot. The field
-is additive, decodes from older Stage 12 bridges as null, is omitted when
-null, and receives a dated compatibility comment. Mutations return the same
-identity-bearing response shape, so GET and mutation completions carry the same
-authoritative bridge identity.
+companions. Compose the existing `BridgeRegistrationService` before
+`PluginLifecycleService`, inject it through `BridgeIdProvider`, and have the
+lifecycle service attach the provider's current bridge ID whenever it returns a
+Stage 12 snapshot. The field is additive, decodes from older Stage 12 bridges
+as null, is omitted when null, and receives a dated compatibility comment. GET
+and mutation handlers remain pass-through consumers of the same authoritative,
+identity-bearing service response shape.
 
 Extend `PluginApi` using the current Stage 12 routes:
 
@@ -318,7 +319,8 @@ Production files:
 
 - `shared/sesori_shared/lib/src/models/sesori/plugin_management.dart` and
   regenerated companions
-- `bridge/app/lib/src/routing/get_plugin_management_handler.dart`
+- `bridge/app/lib/src/bridge/runtime/bridge_runtime_runner.dart`
+- `bridge/app/lib/src/services/plugin_lifecycle_service.dart`
 - `client/module_core/lib/src/api/plugin_api.dart`
 - `client/module_core/lib/src/repositories/models/plugin_management_result.dart`
 - `client/module_core/lib/src/repositories/plugin_repository.dart`

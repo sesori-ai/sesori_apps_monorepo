@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show legacyMissingPluginId;
 
 import "plugin_runtime_test_support.dart";
+import "test_helpers.dart";
 
 final Expando<PluginRuntime> _runtimes = Expando<PluginRuntime>();
 
@@ -26,6 +27,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           preferredDefaultPluginId: legacyMissingPluginId,
           bridgeSettingsRepository: createTestBridgeSettingsRepository(),
           idleTimerScheduler: const PluginIdleTimerScheduler(),
+          bridgeIdProvider: FakeBridgeIdProvider(),
         )
         ..registerPlugins(
           plugins: [
