@@ -68,6 +68,10 @@ eagerly "just in case."
 - Never hand-edit generated files. Change their source and run the generator.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
+- Assume the user will not inspect local-only changes unless they explicitly say
+  they will. Once a task is complete and ready for code review or implementation
+  testing, commit, push, and open a PR by default. Leave changes local only when
+  the user explicitly requests that.
 - When splitting any task across multiple PRs, title every PR
   `[<slug>] <description> [step <x>/<y>]`. For planned work, `<slug>` is the
   plan directory name under `.plan`; otherwise choose one stable, lowercase
