@@ -3,6 +3,20 @@ import "package:test/test.dart";
 
 void main() {
   group("AppRoute", () {
+    test("settings Harnesses route round-trips without extra state", () {
+      const route = AppRoute.settingsHarnesses();
+
+      expect(route.buildPath(), "/settings/harnesses");
+      expect(
+        AppRoute.fromDef(
+          def: AppRouteDef.settingsHarnesses,
+          pathParams: const {},
+          queryParams: const {},
+        ),
+        isA<AppRouteSettingsHarnesses>(),
+      );
+    });
+
     test("sessions round-trips the known worktree capability", () {
       const route = AppRoute.sessions(
         projectId: "project-1",

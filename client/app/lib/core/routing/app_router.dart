@@ -17,6 +17,7 @@ import "../../features/session_list/session_list_action_dispatcher.dart";
 import "../../features/session_list/session_list_cubit_provider.dart";
 import "../../features/session_list/session_list_panel.dart";
 import "../../features/session_list/session_list_screen.dart";
+import "../../features/settings/harnesses_settings_screen.dart";
 import "../../features/settings/notification_settings_screen.dart";
 import "../../features/settings/profile_screen.dart";
 import "../../features/settings/settings_screen.dart";
@@ -33,6 +34,7 @@ const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _sessionDetailRouteSegment = ":$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
 const _settingsNotificationsRouteSegment = "notifications";
+const _settingsHarnessesRouteSegment = "harnesses";
 const _settingsProfileRouteSegment = "profile";
 
 extension AppRouteToGoRoute on AppRouteDef {
@@ -92,6 +94,7 @@ extension AppRouteToGoRoute on AppRouteDef {
       AppRouteProjects() => const ProjectListScreen(),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
+      AppRouteSettingsHarnesses() => const HarnessesSettingsScreen(),
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
@@ -375,13 +378,15 @@ List<RouteBase> _buildAppRoutes({
       routes: [
         GoRoute(
           path: _settingsNotificationsRouteSegment,
-          builder: (context, state) =>
-              AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
+          builder: (context, state) => AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
+        ),
+        GoRoute(
+          path: _settingsHarnessesRouteSegment,
+          builder: (context, state) => AppRouteDef.settingsHarnesses._buildScreen(context: context, state: state),
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,
-          builder: (context, state) =>
-              AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
+          builder: (context, state) => AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
         ),
       ],
     ),

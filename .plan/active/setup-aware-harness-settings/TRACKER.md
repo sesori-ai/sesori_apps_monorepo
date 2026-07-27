@@ -2,10 +2,10 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `6fe69d5a` after Step 3/7 merged
-- **Series state:** Step 4/7 PR #590 in review
-- **Next action:** settle Step 4/7 review, then run its real
-  simulator logo E2E; the management-service integration E2E follows Step 5/7
+- **Implementation base:** `origin/main` at `99670e08` after Step 4/7 merged
+- **Series state:** Step 5/7 implemented locally
+- **Next action:** publish the Step 5/7 PR, settle review, then run the combined
+  real simulator logo and management-service integration E2E
 
 ## Delivery
 
@@ -14,8 +14,8 @@
 | [x] | Step 1/7 — per-bridge harness preference | `setup-aware-harness-settings-preferences` | PR #579 merged; 729 changed lines (estimate 650-750) |
 | [x] | Step 2/7 — management transport | `setup-aware-harness-settings-transport` | PR #583 merged as `ecd75b6c`; ~660 changed lines (estimate 300-400, test-driven overage) |
 | [x] | Step 3/7 — synchronization service | `setup-aware-harness-settings-service` | PR #589 merged as `6fe69d5a`; 1,095 changed lines (estimate 550-700, race-matrix test overage) |
-| [ ] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | PR #590 in review; simplified to use existing plugin IDs |
-| [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | planned; estimate 1,100-1,300 changed lines |
+| [x] | Step 4/7 — harness logos | `setup-aware-harness-settings-branding` | PR #590 merged as `99670e08`; simplified to use existing plugin IDs |
+| [ ] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | implemented locally; 1,735 changed lines (estimate 1,100-1,300, generated state/localization overage) |
 | [ ] | Step 6/7 — management actions | `setup-aware-harness-settings-state` | planned; estimate 650-800 changed lines |
 | [ ] | Step 7/7 — management controls | `setup-aware-harness-settings-controls` | planned; estimate 800-1,000 changed lines |
 
@@ -102,3 +102,17 @@
   affected package. Aristotle approved the shared-enum dependency and open
   string transport boundary. The real simulator logo E2E remains pending until
   after PR review.
+- Step 5/7 (2026-07-27): added the typed `/settings/harnesses` route, settings
+  landing row, replay-backed read-only `PluginManagementCubit`, final management
+  state contract, and localized Harnesses overview. The screen covers loading,
+  unsupported, initial failure/retry, retained-snapshot refresh failure,
+  pull-to-refresh, known/generic logos, default attribution, setup/runtime/work
+  unknowns, guidance, effective timeout, and close behavior without exposing
+  mutations. Full module_core (683) and 51 focused mobile route/settings tests
+  pass; module_core, mobile, desktop, and module_desktop_core fatal analysis is
+  clean. Architecture review confirmed the layer flow, stream ownership,
+  routing, desktop boundary, and backend neutrality; its sole rejection asked
+  to remove the plan-mandated final Step 6 action fields as future-only. Those
+  fields remain because this slice explicitly delivers the final state contract
+  that Step 6 extends without replacement. Combined simulator logo and
+  management-service integration E2E remains scheduled after PR review.

@@ -50,6 +50,10 @@ Widget _app({required AppearanceCubit appearance}) {
         path: "/settings/profile",
         builder: (context, state) => const Scaffold(body: Text("profile-route")),
       ),
+      GoRoute(
+        path: "/settings/harnesses",
+        builder: (context, state) => const Scaffold(body: Text("harnesses-route")),
+      ),
     ],
   );
 
@@ -125,6 +129,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("profile-route"), findsOneWidget);
+  });
+
+  testWidgets("Harnesses follows Notifications and navigates without changing other sections", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.text("Notifications")).dy,
+      lessThan(tester.getTopLeft(find.text("Harnesses")).dy),
+    );
+    expect(find.text("Account"), findsOneWidget);
+    expect(find.text("Appearance"), findsOneWidget);
+    expect(find.text("Support"), findsOneWidget);
+    expect(find.text("Legal"), findsOneWidget);
+    expect(find.text("Sesori"), findsOneWidget);
+
+    await tester.tap(find.text("Harnesses"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("harnesses-route"), findsOneWidget);
   });
 
   testWidgets("tapping a theme tile switches the appearance", (tester) async {

@@ -686,10 +686,10 @@ sealed class PluginManagementState with _$PluginManagementState {
 }
 ```
 
-The Step 5 cubit subscribes to the Step 3 replay stream, exposes `refresh()`,
-and emits ready with idle action fields. Mutation methods and controls remain
-out of this slice. A later refresh failure retains ready state with a
-dismissible `refreshError`.
+The Step 5 cubit subscribes to the Step 3 replay stream, exposes `refresh()` and
+`dismissRefreshError()`, and emits ready with idle action fields. Mutation
+methods and controls remain out of this slice. A later refresh failure retains
+ready state with a dismissible `refreshError`.
 
 The scaffold matches Notifications:
 

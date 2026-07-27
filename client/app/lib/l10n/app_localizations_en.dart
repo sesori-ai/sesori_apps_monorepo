@@ -175,6 +175,116 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsNotificationsTitle => 'Notifications';
 
   @override
+  String get settingsHarnessesTitle => 'Harnesses';
+
+  @override
+  String get harnessesDescription => 'View the coding harnesses registered by your connected bridge.';
+
+  @override
+  String get harnessesRegisteredSection => 'Registered Harnesses';
+
+  @override
+  String get harnessesLoading => 'Loading harnesses';
+
+  @override
+  String get harnessesUnsupportedTitle => 'Harnesses aren\'t supported';
+
+  @override
+  String get harnessesUnsupportedDescription => 'Update the connected bridge to view and manage its harnesses.';
+
+  @override
+  String get harnessesLoadFailedTitle => 'Failed to load harnesses';
+
+  @override
+  String get harnessesLoadFailedDescription => 'Check your connection and try again.';
+
+  @override
+  String get harnessesRetry => 'Retry';
+
+  @override
+  String get harnessesRefreshFailedTitle => 'Could not refresh harnesses';
+
+  @override
+  String get harnessesRefreshFailedDescription => 'Showing the last information received from the bridge.';
+
+  @override
+  String get harnessesDismissRefreshError => 'Dismiss refresh error';
+
+  @override
+  String get harnessesDefaultBadge => 'Default';
+
+  @override
+  String get harnessesSetupStatus => 'Setup';
+
+  @override
+  String get harnessesRuntimeStatus => 'Runtime';
+
+  @override
+  String get harnessesWorkStatus => 'Work';
+
+  @override
+  String get harnessesEffectiveIdleTimeout => 'Idle timeout';
+
+  @override
+  String get harnessesCustomIdleTimeout => 'Custom for this harness';
+
+  @override
+  String get harnessesUsesDefaultIdleTimeout => 'Uses the bridge default';
+
+  @override
+  String harnessesIdleTimeoutMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get harnessesSetupNotInspected => 'Not inspected';
+
+  @override
+  String get harnessesSetupReady => 'Ready';
+
+  @override
+  String get harnessesSetupRuntimeMissing => 'Runtime missing';
+
+  @override
+  String get harnessesSetupAuthenticationRequired => 'Authentication required';
+
+  @override
+  String get harnessesSetupUnavailable => 'Unavailable';
+
+  @override
+  String get harnessesStatusDisabled => 'Disabled';
+
+  @override
+  String get harnessesStatusBlocked => 'Blocked';
+
+  @override
+  String get harnessesStatusDormant => 'Dormant';
+
+  @override
+  String get harnessesStatusStarting => 'Starting';
+
+  @override
+  String get harnessesStatusActive => 'Active';
+
+  @override
+  String get harnessesStatusDegraded => 'Needs attention';
+
+  @override
+  String get harnessesStatusStopping => 'Stopping';
+
+  @override
+  String get harnessesStatusFailed => 'Failed';
+
+  @override
+  String get harnessesStatusUnknown => 'Unknown';
+
+  @override
+  String get harnessesWorkIdle => 'Idle';
+
+  @override
+  String get harnessesWorkBusy => 'Busy';
+
+  @override
   String get settingsProfileTitle => 'Profile';
 
   @override

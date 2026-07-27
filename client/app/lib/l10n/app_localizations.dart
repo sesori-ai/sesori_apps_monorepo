@@ -403,6 +403,222 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get settingsNotificationsTitle;
 
+  /// No description provided for @settingsHarnessesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Harnesses'**
+  String get settingsHarnessesTitle;
+
+  /// No description provided for @harnessesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'View the coding harnesses registered by your connected bridge.'**
+  String get harnessesDescription;
+
+  /// No description provided for @harnessesRegisteredSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered Harnesses'**
+  String get harnessesRegisteredSection;
+
+  /// No description provided for @harnessesLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading harnesses'**
+  String get harnessesLoading;
+
+  /// No description provided for @harnessesUnsupportedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Harnesses aren\'t supported'**
+  String get harnessesUnsupportedTitle;
+
+  /// No description provided for @harnessesUnsupportedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to view and manage its harnesses.'**
+  String get harnessesUnsupportedDescription;
+
+  /// No description provided for @harnessesLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load harnesses'**
+  String get harnessesLoadFailedTitle;
+
+  /// No description provided for @harnessesLoadFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get harnessesLoadFailedDescription;
+
+  /// No description provided for @harnessesRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get harnessesRetry;
+
+  /// No description provided for @harnessesRefreshFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh harnesses'**
+  String get harnessesRefreshFailedTitle;
+
+  /// No description provided for @harnessesRefreshFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the last information received from the bridge.'**
+  String get harnessesRefreshFailedDescription;
+
+  /// No description provided for @harnessesDismissRefreshError.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss refresh error'**
+  String get harnessesDismissRefreshError;
+
+  /// No description provided for @harnessesDefaultBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get harnessesDefaultBadge;
+
+  /// No description provided for @harnessesSetupStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup'**
+  String get harnessesSetupStatus;
+
+  /// No description provided for @harnessesRuntimeStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime'**
+  String get harnessesRuntimeStatus;
+
+  /// No description provided for @harnessesWorkStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get harnessesWorkStatus;
+
+  /// No description provided for @harnessesEffectiveIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle timeout'**
+  String get harnessesEffectiveIdleTimeout;
+
+  /// No description provided for @harnessesCustomIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom for this harness'**
+  String get harnessesCustomIdleTimeout;
+
+  /// No description provided for @harnessesUsesDefaultIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the bridge default'**
+  String get harnessesUsesDefaultIdleTimeout;
+
+  /// No description provided for @harnessesIdleTimeoutMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String harnessesIdleTimeoutMinutes(int minutes);
+
+  /// No description provided for @harnessesSetupNotInspected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not inspected'**
+  String get harnessesSetupNotInspected;
+
+  /// No description provided for @harnessesSetupReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get harnessesSetupReady;
+
+  /// No description provided for @harnessesSetupRuntimeMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime missing'**
+  String get harnessesSetupRuntimeMissing;
+
+  /// No description provided for @harnessesSetupAuthenticationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication required'**
+  String get harnessesSetupAuthenticationRequired;
+
+  /// No description provided for @harnessesSetupUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get harnessesSetupUnavailable;
+
+  /// No description provided for @harnessesStatusDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get harnessesStatusDisabled;
+
+  /// No description provided for @harnessesStatusBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get harnessesStatusBlocked;
+
+  /// No description provided for @harnessesStatusDormant.
+  ///
+  /// In en, this message translates to:
+  /// **'Dormant'**
+  String get harnessesStatusDormant;
+
+  /// No description provided for @harnessesStatusStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get harnessesStatusStarting;
+
+  /// No description provided for @harnessesStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get harnessesStatusActive;
+
+  /// No description provided for @harnessesStatusDegraded.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get harnessesStatusDegraded;
+
+  /// No description provided for @harnessesStatusStopping.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping'**
+  String get harnessesStatusStopping;
+
+  /// No description provided for @harnessesStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get harnessesStatusFailed;
+
+  /// No description provided for @harnessesStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get harnessesStatusUnknown;
+
+  /// No description provided for @harnessesWorkIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get harnessesWorkIdle;
+
+  /// No description provided for @harnessesWorkBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Busy'**
+  String get harnessesWorkBusy;
+
   /// No description provided for @settingsProfileTitle.
   ///
   /// In en, this message translates to:
