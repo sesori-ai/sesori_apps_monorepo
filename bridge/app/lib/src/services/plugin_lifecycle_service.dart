@@ -194,6 +194,9 @@ class PluginLifecycleService {
     }
     final snapshot = _lastPublishedManagementSnapshot;
     if (snapshot == null) throw StateError("Plugin management snapshot is not ready.");
+    // Lifecycle initialization can cache this snapshot before ensureRegistered
+    // assigns the provider's ID. Rebuild only the transport envelope here so
+    // every service response carries the provider's current identity.
     return PluginManagementResponse(
       snapshotToken: snapshot.snapshotToken,
       bridgeId: _bridgeIdProvider.bridgeId,
