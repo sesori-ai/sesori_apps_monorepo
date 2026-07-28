@@ -109,6 +109,7 @@ class WorktreeRepository {
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
     required String projectId,
     required String projectPath,
+    required bool refreshOrigin,
   }) async {
     try {
       final storedBranch = await _projectsDao.getBaseBranch(projectId: projectId);
@@ -116,6 +117,24 @@ class WorktreeRepository {
         projectPath: projectPath,
         storedBranch: storedBranch,
       );
+
+      if (refreshOrigin) {
+        try {
+          final fetched = await _gitApi.fetchOriginBranch(
+            projectPath: projectPath,
+            branchName: baseBranch,
+          );
+          if (!fetched) {
+            Log.w("[WorktreeRepository] failed to refresh origin/$baseBranch; using existing refs");
+          }
+        } on Object catch (error, stackTrace) {
+          Log.w(
+            "[WorktreeRepository] failed to refresh origin/$baseBranch; using existing refs",
+            error,
+            stackTrace,
+          );
+        }
+      }
 
       final localCommit = await _gitApi.resolveCommit(
         projectPath: projectPath,

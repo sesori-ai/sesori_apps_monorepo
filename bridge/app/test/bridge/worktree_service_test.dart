@@ -56,6 +56,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -97,6 +99,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -157,6 +161,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -224,6 +230,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -263,6 +271,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -300,6 +310,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // branch --list develop → non-empty (exists)
       processRunner.enqueue(result: _ok(stdout: "  develop\n"));
+      // fetch origin/develop → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse develop → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "deadbeef1234\n"));
       // git rev-parse origin/develop → no remote tracking branch
@@ -347,6 +359,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: ""));
       // symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -378,6 +392,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -406,6 +422,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -433,6 +451,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -462,6 +482,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
@@ -519,14 +541,16 @@ void main() {
     // Origin comparison scenarios
     // -----------------------------------------------------------------------
 
-    test("origin ahead: worktree starts from origin ref", () async {
+    test("freshly fetched origin ahead: worktree starts from origin ref", () async {
       // rev-parse HEAD → ok
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → refreshes the stale remote-tracking ref
+      processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
       processRunner.enqueue(result: _ok(stdout: "local111\n"));
-      // rev-parse origin/main → origin commit (different)
+      // rev-parse origin/main → newly fetched origin commit
       processRunner.enqueue(result: _ok(stdout: "origin222\n"));
       // merge-base --is-ancestor origin222 local111 → exit 1 (origin NOT ancestor of local)
       processRunner.enqueue(result: _fail(exitCode: 1));
@@ -545,6 +569,17 @@ void main() {
       expect(success.baseBranch, equals("origin/main"));
       expect(success.baseCommit, equals("origin222"));
 
+      expect(
+        processRunner.invocations[2].arguments,
+        equals([
+          "fetch",
+          "--no-tags",
+          "--no-recurse-submodules",
+          "origin",
+          "+refs/heads/main:refs/remotes/origin/main",
+        ]),
+      );
+
       // Verify worktree add used "origin/main" as start point
       final worktreeAddArgs = processRunner.invocations.last.arguments;
       expect(worktreeAddArgs.last, equals("origin/main"));
@@ -555,6 +590,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → success
+      processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
       processRunner.enqueue(result: _ok(stdout: "local111\n"));
       // rev-parse origin/main → origin commit (different)
@@ -586,6 +623,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → success
+      processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
       processRunner.enqueue(result: _ok(stdout: "samecommit\n"));
       // rev-parse origin/main → same commit
@@ -614,6 +653,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → success
+      processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
       processRunner.enqueue(result: _ok(stdout: "diverged-local\n"));
       // rev-parse origin/main → origin commit
@@ -643,6 +684,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → unavailable; continue with existing refs
+      processRunner.enqueue(result: _fail(exitCode: 1));
       // rev-parse main → local commit
       processRunner.enqueue(result: _ok(stdout: "local111\n"));
       // rev-parse origin/main → fail (no remote tracking branch)
@@ -670,6 +713,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // fetch origin/main → success
+      processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
       processRunner.enqueue(result: _ok(stdout: "local111\n"));
       // rev-parse origin/main → origin commit (different)

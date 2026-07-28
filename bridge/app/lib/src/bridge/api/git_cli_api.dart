@@ -187,6 +187,23 @@ class GitCliApi {
     return commit.isEmpty ? null : commit;
   }
 
+  Future<bool> fetchOriginBranch({
+    required String projectPath,
+    required String branchName,
+  }) async {
+    final result = await runGit(
+      projectPath: projectPath,
+      arguments: [
+        "fetch",
+        "--no-tags",
+        "--no-recurse-submodules",
+        "origin",
+        "+refs/heads/$branchName:refs/remotes/origin/$branchName",
+      ],
+    );
+    return result.exitCode == 0;
+  }
+
   Future<ProcessResult> verifyRevision({
     required String projectPath,
     required String revision,
