@@ -214,14 +214,15 @@ void main() {
       expect(find.text("now"), findsNothing);
     });
 
-    testWidgets("still speaks the time the sparkle took the space from", (tester) async {
+    testWidgets("still speaks the time the sparkle took the space from, after the state", (tester) async {
       final semantics = tester.ensureSemantics();
       final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
 
       await pumpTile(tester, tile(session: session, isActive: true));
       // Nothing on screen says when this session last changed, so the row's
-      // spoken label has to — in full, not as the "now" glance mark.
-      expect(find.bySemanticsLabel(RegExp("just now")), findsOneWidget);
+      // spoken label has to — in full, not as the "now" glance mark, and after
+      // the state that took the slot from it.
+      expect(find.bySemanticsLabel(RegExp("Running\njust now")), findsOneWidget);
 
       semantics.dispose();
     });

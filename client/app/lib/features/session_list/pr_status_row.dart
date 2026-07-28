@@ -4,11 +4,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
-
-/// The slot and glyph sizes the session row's footer details share, so this
-/// row lines up with the branch beside it.
-const double _iconSlotWidth = 20;
-const double _detailIconSize = 14;
+import "session_row_metrics.dart";
 
 // GitHub-inspired semantic status colors, chosen for light/dark contrast.
 const _kPrGreen = Color(0xFF3FB950);
@@ -41,8 +37,8 @@ class PrStatusRow extends StatelessWidget {
           // The same slot the footer's other detail marks sit in, so the two
           // details keep one rhythm across the line.
           child: SizedBox(
-            width: _iconSlotWidth,
-            child: Center(child: Icon(mergeIcon, size: _detailIconSize, color: mergeColor)),
+            width: kSessionRowIconSlotWidth,
+            child: Center(child: Icon(mergeIcon, size: kSessionRowDetailIconSize, color: mergeColor)),
           ),
         ),
         Flexible(

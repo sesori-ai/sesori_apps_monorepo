@@ -6,6 +6,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/status_colors.dart";
 import "pr_status_row.dart";
+import "session_row_metrics.dart";
 
 /// Builds the long-press actions for a session row. It is a builder rather than
 /// a ready-made list because the entries are owned by the screen's action
@@ -222,7 +223,7 @@ class SessionTile extends StatelessWidget {
         Semantics(
           label: context.loc.sessionListHarness(PregoBrandLogo.displayNameFor(session.pluginId)),
           child: SizedBox(
-            width: _iconSlotWidth,
+            width: kSessionRowIconSlotWidth,
             height: _titleLineHeight,
             child: Center(
               child: PregoBrandLogo(
@@ -283,15 +284,22 @@ class SessionTile extends StatelessWidget {
     final prego = context.prego;
     final updatedAt = session.time?.updated;
     final spokenTime = updatedAt == null ? null : context.formatTimestamp(updatedAt);
-    final icon = _stateIcon(context: context);
+    final state = _state(context: context);
 
-    if (icon != null) {
+    if (state != null) {
       return Padding(
         padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
         child: SizedBox(
-          width: _iconSlotWidth,
+          width: kSessionRowIconSlotWidth,
           height: _titleLineHeight,
-          child: Center(child: Semantics(label: spokenTime, child: icon)),
+          // Nested rather than one composed string so the state is spoken
+          // first: it is why the time lost the slot, so it leads the pair.
+          child: Center(
+            child: Semantics(
+              label: state.label,
+              child: Semantics(label: spokenTime, child: state.sparkle),
+            ),
+          ),
         ),
       );
     }
@@ -312,22 +320,22 @@ class SessionTile extends StatelessWidget {
   /// resting solid when there is activity the user hasn't opened, absent for a
   /// quiet session. A live turn is the more informative of the two, so it wins;
   /// unseen still shows through the title's weight.
-  Widget? _stateIcon({required BuildContext context}) {
+  ///
+  /// The sparkle is visual-only either way, so it never travels without the
+  /// words that say what it means — the caller has both or neither.
+  ({String label, Widget sparkle})? _state({required BuildContext context}) {
     if (isActive) {
-      // The twinkle is visual-only, so the merged row semantics carry the
-      // words the old "Running" label used to speak.
-      return Semantics(
+      return (
         label: context.loc.sessionListRunning,
-        child: PregoAiLoader(size: _stateIconSize, phase: PregoAiLoader.phaseFor(session.id)),
+        sparkle: PregoAiLoader(size: _stateIconSize, phase: PregoAiLoader.phaseFor(session.id)),
       );
     }
     if (unseen) {
-      // Same contract as the project list: the resting sparkle is decorative,
-      // so the spoken "New activity" label carries the unread meaning that
-      // title weight alone does not announce.
-      return Semantics(
+      // Same contract as the project list: the resting sparkle carries the
+      // unread meaning that title weight alone does not announce.
+      return (
         label: context.loc.sessionListNewActivity,
-        child: const PregoAiLoader(size: _stateIconSize, animate: false),
+        sparkle: const PregoAiLoader(size: _stateIconSize, animate: false),
       );
     }
     return null;
@@ -406,9 +414,9 @@ class _BranchDetail extends StatelessWidget {
       children: [
         ExcludeSemantics(
           child: SizedBox(
-            width: _iconSlotWidth,
+            width: kSessionRowIconSlotWidth,
             child: Center(
-              child: Icon(TablerRegular.git_branch, size: _detailIconSize, color: prego.colors.textSecondary),
+              child: Icon(TablerRegular.git_branch, size: kSessionRowDetailIconSize, color: prego.colors.textSecondary),
             ),
           ),
         ),
@@ -430,16 +438,8 @@ class _BranchDetail extends StatelessWidget {
 const double _titleLineHeight = 24;
 const double _footerLineHeight = 20;
 
-/// Every icon sits in a slot of this width — the harness logo leading the
-/// title, the state sparkle ending it, and the footer's detail marks — so the
-/// text beside each of them lines up down the list. The glyphs are smaller
-/// than their slot, which is what spaces them from their text; they need no
-/// gap of their own.
-const double _iconSlotWidth = 20;
-
 const double _brandLogoSize = 12;
 const double _stateIconSize = 16;
-const double _detailIconSize = 14;
 
 /// How much of the title's line box the fade covers. Wide enough to read as a
 /// trailing off rather than a clipped glyph.
