@@ -31,6 +31,11 @@
   cold-open buffering, strict campaign window, immutable export cutoffs,
   split auth/control IAM, dual start timestamps, outage-recoverable transforms,
   day-zero raw controls, and upstream GA4 retention/deletion.
+- [x] Apply valid second-round findings: timely per-account schema exposure,
+  bounded first-message deferral, empty-to-non-empty milestones, account-scoped
+  campaign completion, internal exclusion before auth aggregation, source
+  deletion tombstones, honest never-keyed deletion limits, and earliest upgrade
+  clearing of legacy Firebase global identity.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
@@ -65,9 +70,15 @@ step count across both repositories.
 - [ ] Local disable survives restart/logout, delayed stale auth work cannot
   reactivate another account, and supported online foreground clients observe a
   remote preference change within the declared 15-minute bound.
-- [ ] First production full-activation event joined to its auth milestone row.
+- [ ] Upgrade clears legacy Firebase global identity before custom sources, and
+  forced clear failure suppresses custom events without blocking the product.
+- [ ] First production full-activation event joins its auth milestone row and a
+  timely per-account schema-v1 exposure; preference-unknown first message is
+  deferred rather than lost.
 - [ ] Three complete event days reconcile through reporting models.
-- [ ] Stale auth snapshot abort/recovery and GA4 upstream deletion drills pass.
+- [ ] Stale auth snapshot abort/recovery and GA4 upstream deletion drills pass,
+  including auth-source non-repopulation, aggregate rebuild, and explicit
+  automatic-only never-keyed coverage limits.
 - [ ] Looker permissions, complete-period defaults, sample sizes, coverage,
   cohort maturity, and freshness verified.
 - [ ] First W1 cohort matured and reviewed.
