@@ -77,6 +77,11 @@
   persist voice-assisted origin in typed in-memory drafts; disclose both two-
   month upstream and 90-day exported-raw retention; and make internal/test
   exclusions permanent so rebuilds never resurrect historical traffic.
+- [x] Apply valid latest findings: clear legacy Firebase identity in foreground
+  and FCM-background execution; scope readiness to each authenticated generation;
+  service-own already-observed deferred session activity; isolate deletion
+  targets from auth-export access; and overlap deletion sweeps across mutable
+  late-arrival partitions plus watermark gaps.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
@@ -101,7 +106,7 @@ step count across both repositories.
 | 2/5 | `sesori_auth_server` | `[user-analytics] Enforce analytics preference and add export [step 2/5]` | Not started | Step 1 deployed and repeated backfill validation at zero missing |
 | 3/5 | apps monorepo | `[user-analytics] Add client analytics foundation and opt-out [step 3/5]` | Not started | Steps 1-2 endpoints/schema deployed |
 | 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | Not started | Step 3 released |
-| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/control IAM |
+| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
 ## Release Evidence
 
