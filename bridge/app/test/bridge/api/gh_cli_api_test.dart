@@ -5,6 +5,7 @@ import "dart:io";
 import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -55,6 +56,39 @@ void main() {
 
       expect(isAvailable, isFalse);
     });
+
+    test("reports a missing optional gh installation only once", () async {
+      final stderrLines = <String>[];
+      final previousLogLevel = Log.level;
+      addTearDown(() => Log.level = previousLogLevel);
+      Log.level = LogLevel.info;
+      processRunner
+        ..enqueueError(
+          error: const ProcessException("gh", <String>["--version"], "No such file or directory", 2),
+        )
+        ..enqueueError(
+          error: const ProcessException("gh", <String>["--version"], "No such file or directory", 2),
+        );
+
+      await IOOverrides.runZoned(
+        () async {
+          expect(await service.isAvailable(), isFalse);
+          expect(await service.isAvailable(), isFalse);
+        },
+        stderr: () => _CapturingStdout(stderrLines),
+      );
+
+      expect(stderrLines, hasLength(1));
+      expect(
+        stderrLines.single,
+        allOf(
+          contains("GitHub CLI (gh) is not installed or is unavailable on PATH"),
+          contains("GitHub pull request and CI status sync is disabled"),
+          contains("local worktree diffs do not require gh"),
+          isNot(contains("ProcessException")),
+        ),
+      );
+    });
   });
 
   group("GhCliApi.isAuthenticated", () {
@@ -74,7 +108,10 @@ void main() {
       expect(isAuthenticated, isTrue);
       expect(processRunner.invocations, hasLength(1));
       expect(processRunner.invocations.first.command, equals("gh"));
-      expect(processRunner.invocations.first.arguments, equals(["auth", "status"]));
+      expect(
+        processRunner.invocations.first.arguments,
+        equals(["auth", "status", "--hostname", "github.com"]),
+      );
     });
 
     test("returns false on non-zero exit code", () async {
@@ -83,6 +120,35 @@ void main() {
       final isAuthenticated = await service.isAuthenticated();
 
       expect(isAuthenticated, isFalse);
+    });
+
+    test("reports unauthenticated gh with actionable options only once", () async {
+      final stderrLines = <String>[];
+      final previousLogLevel = Log.level;
+      addTearDown(() => Log.level = previousLogLevel);
+      Log.level = LogLevel.info;
+      processRunner
+        ..enqueueResult(result: _fail(exitCode: 1))
+        ..enqueueResult(result: _fail(exitCode: 1));
+
+      await IOOverrides.runZoned(
+        () async {
+          expect(await service.isAuthenticated(), isFalse);
+          expect(await service.isAuthenticated(), isFalse);
+        },
+        stderr: () => _CapturingStdout(stderrLines),
+      );
+
+      expect(stderrLines, hasLength(1));
+      expect(
+        stderrLines.single,
+        allOf(
+          contains("GitHub CLI (gh) is not authenticated for github.com"),
+          contains("gh auth login"),
+          contains("GH_TOKEN/GITHUB_TOKEN"),
+          contains("Local worktree diffs do not require gh"),
+        ),
+      );
     });
   });
 
@@ -373,4 +439,21 @@ class _FakeProcessRunner implements ProcessRunner {
     }
     throw output;
   }
+}
+
+class _CapturingStdout implements Stdout {
+  final List<String> lines;
+
+  _CapturingStdout(this.lines);
+
+  @override
+  bool get supportsAnsiEscapes => false;
+
+  @override
+  void writeln([Object? object = ""]) {
+    lines.add(object.toString());
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

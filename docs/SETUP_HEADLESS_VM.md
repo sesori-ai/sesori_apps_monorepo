@@ -24,7 +24,12 @@ apt install git -y
 
 ---
 
-## 4. Install GitHub CLI (`gh`)
+## 4. (Optional) Install GitHub CLI (`gh`)
+
+Sesori uses `gh` only to add GitHub pull request, CI, review, and mergeability
+status to sessions. Git worktrees and local file diffs use `git` directly and
+do not require `gh`, so you can skip this step if you do not need GitHub status
+sync.
 
 ```bash
 (type -p wget >/dev/null || (sudo apt update && sudo apt install wget -y)) \
@@ -37,6 +42,16 @@ apt install git -y
 	&& sudo apt update \
 	&& sudo apt install gh -y
 ```
+
+To enable GitHub status sync, authenticate as the same OS user that will run
+`sesori-bridge` (`root` in the service below):
+
+```bash
+gh auth login
+```
+
+An inherited `GH_TOKEN` or `GITHUB_TOKEN` environment variable can be used
+instead of stored `gh` credentials.
 
 ---
 
