@@ -198,9 +198,11 @@ class GitCliApi {
       "origin",
       "+refs/heads/$branchName:refs/remotes/origin/$branchName",
     ];
-    final result = await runGit(
-      projectPath: projectPath,
-      arguments: arguments,
+    final result = await _processRunner.run(
+      "git",
+      arguments,
+      workingDirectory: projectPath,
+      timeout: const Duration(seconds: 30),
     );
     if (result.exitCode != 0) {
       throw ProcessException(

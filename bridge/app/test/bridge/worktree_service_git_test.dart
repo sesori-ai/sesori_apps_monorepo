@@ -254,6 +254,7 @@ void main() {
         ]),
       );
       expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
+      expect(processRunner.invocations.single.timeout, const Duration(seconds: 30));
     });
 
     test("fetchOriginBranch throws ProcessException when git fails", () async {
@@ -438,11 +439,13 @@ class _Invocation {
   final String command;
   final List<String> arguments;
   final String? workingDirectory;
+  final Duration timeout;
 
   const _Invocation({
     required this.command,
     required this.arguments,
     required this.workingDirectory,
+    required this.timeout,
   });
 }
 
@@ -482,6 +485,7 @@ class _FakeProcessRunner implements ProcessRunner {
         command: executable,
         arguments: List<String>.from(arguments),
         workingDirectory: workingDirectory,
+        timeout: timeout,
       ),
     );
 
