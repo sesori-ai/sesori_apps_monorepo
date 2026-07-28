@@ -216,15 +216,20 @@ class SessionTile extends StatelessWidget {
     return Row(
       children: [
         // Which harness is driving the session, in a fixed slot so titles line
-        // up down the list however many backends it mixes.
-        SizedBox(
-          width: _iconSlotWidth,
-          height: _titleLineHeight,
-          child: Center(
-            child: PregoBrandLogo(
-              pluginId: session.pluginId,
-              size: _brandLogoSize,
-              color: context.prego.colors.textSecondary,
+        // up down the list however many backends it mixes. The logo is the
+        // only thing on the row that says which one, so it is named in words
+        // too — the glyph itself stays decorative.
+        Semantics(
+          label: context.loc.sessionListHarness(PregoBrandLogo.displayNameFor(session.pluginId)),
+          child: SizedBox(
+            width: _iconSlotWidth,
+            height: _titleLineHeight,
+            child: Center(
+              child: PregoBrandLogo(
+                pluginId: session.pluginId,
+                size: _brandLogoSize,
+                color: context.prego.colors.textSecondary,
+              ),
             ),
           ),
         ),

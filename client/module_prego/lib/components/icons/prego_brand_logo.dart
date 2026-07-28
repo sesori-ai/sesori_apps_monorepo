@@ -33,4 +33,17 @@ class PregoBrandLogo extends StatelessWidget {
     final id when id == Harness.cursor.name => VESPRSolid.cursor,
     _ => TablerRegular.plug,
   };
+
+  /// What to call the harness this glyph stands for, for callers that have to
+  /// say in words what the logo says by sight.
+  ///
+  /// Brand names are proper nouns, so they are not translated. A newer bridge
+  /// can advertise a harness this build has never heard of; its id is then the
+  /// truest name available, and speaking it beats saying nothing.
+  static String displayNameFor(String pluginId) => switch (pluginId) {
+    final id when id == Harness.opencode.name => "OpenCode",
+    final id when id == Harness.codex.name => "Codex",
+    final id when id == Harness.cursor.name => "Cursor",
+    _ => pluginId,
+  };
 }

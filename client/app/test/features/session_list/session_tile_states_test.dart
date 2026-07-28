@@ -187,6 +187,20 @@ void main() {
 
       expect(find.byIcon(TablerRegular.plug), findsOneWidget);
     });
+
+    testWidgets("names the harness for assistive technology", (tester) async {
+      final semantics = tester.ensureSemantics();
+
+      // The logo is the row's only backend cue, so two otherwise-identical
+      // sessions have to be told apart by ear as well as by eye.
+      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "opencode")));
+      expect(find.bySemanticsLabel(RegExp("OpenCode session")), findsOneWidget);
+
+      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "harness-from-the-future")));
+      expect(find.bySemanticsLabel(RegExp("harness-from-the-future session")), findsOneWidget);
+
+      semantics.dispose();
+    });
   });
 
   group("the trailing slot", () {
@@ -347,7 +361,7 @@ void main() {
       expect(
         tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
         matchesSemantics(
-          label: "My Session\njust now\nsesori/add-search",
+          label: "plugin-1 session\nMy Session\njust now\nsesori/add-search",
           isButton: true,
           isFocusable: true,
           hasTapAction: true,

@@ -30,6 +30,13 @@ void main() {
     });
   }
 
+  test("names each harness it has a glyph for, and speaks an unknown id as-is", () {
+    expect(PregoBrandLogo.displayNameFor(Harness.opencode.name), "OpenCode");
+    expect(PregoBrandLogo.displayNameFor(Harness.codex.name), "Codex");
+    expect(PregoBrandLogo.displayNameFor(Harness.cursor.name), "Cursor");
+    expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
+  });
+
   testWidgets("forwards size and color while excluding decorative semantics", (tester) async {
     const color = Color(0xFF123456);
     await tester.pumpWidget(

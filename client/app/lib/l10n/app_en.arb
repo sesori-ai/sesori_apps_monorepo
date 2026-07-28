@@ -449,6 +449,15 @@
   "@sessionListNewActivity": {
     "description": "Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle"
   },
+  "sessionListHarness": "{harness} session",
+  "@sessionListHarness": {
+    "description": "Screen-reader label for the harness driving a session; the visual signal is the brand logo leading the row. The harness name is a brand and is not translated.",
+    "placeholders": {
+      "harness": {
+        "type": "String"
+      }
+    }
+  },
   "sessionListRunningRetrying": "Running (retrying)",
   "@sessionListRunningRetrying": {
     "description": "Label shown next to the red dot for sessions that are active but in a retry/error state"
