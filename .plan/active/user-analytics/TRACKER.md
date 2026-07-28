@@ -6,8 +6,11 @@
   milestones, and reporting constraints.
 - [x] Agree that first successfully accepted user-authored message is full
   activation.
-- [x] Agree on cross-repository scope, default-on account opt-out, campaign
-  links first, and Looker Studio.
+- [x] Agree on cross-repository scope, default-on optional analytics with an
+  in-app opt-out, campaign links first, and Looker Studio. The reviewed design
+  narrows the enforceable promise to installation-local Sesori custom events,
+  server reporting/supported-client synchronization, and explicitly disclosed
+  legacy/Firebase-automatic-event limits.
 - [x] First architecture pre-review rejected the draft as too vague about
   workspace/class/DI ownership, auth export composition, data flow,
   compatibility/rollback, and unavoidable GA4 raw fields.
@@ -23,14 +26,22 @@
   and forward-fix privacy floor. Per review rules, these corrections were not
   sent for a third approval pass; do not describe the revised plan as reviewer-
   approved.
+- [x] Apply valid automated PR findings: write-ahead local disable and logout
+  retry preservation, generation-safe/foreground preference reconciliation,
+  cold-open buffering, strict campaign window, immutable export cutoffs,
+  split auth/control IAM, dual start timestamps, outage-recoverable transforms,
+  day-zero raw controls, and upstream GA4 retention/deletion.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
-  billing, dataset location, measurement start, scheduler connectivity, and
-  dashboard access group.
+  billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
+  deletion configuration, scheduler connectivity, and dashboard access group.
 
 ## Immediate Operational Action
 
-- [ ] Enable or verify Firebase daily BigQuery export now; record the exact UTC
-  measurement start. Export is not retroactive.
+- [ ] Establish restricted project IAM, then enable or verify Firebase **daily-
+  only** BigQuery export; apply/verify raw dataset ACL and 90-day expiration
+  before the first daily table and record exact UTC `raw_export_start_at`.
+  Export is not retroactive. Record `behavioral_schema_v1_start_at` separately
+  only after the production custom schema appears.
 
 ## Implementation Series
 
@@ -43,7 +54,7 @@ step count across both repositories.
 | 2/5 | `sesori_auth_server` | `[user-analytics] Enforce analytics preference and add export [step 2/5]` | Not started | Step 1 deployed and repeated backfill validation at zero missing |
 | 3/5 | apps monorepo | `[user-analytics] Add client analytics foundation and opt-out [step 3/5]` | Not started | Steps 1-2 endpoints/schema deployed |
 | 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | Not started | Step 3 released |
-| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, Firebase export, private dataset/IAM |
+| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/control IAM |
 
 ## Release Evidence
 
@@ -51,8 +62,12 @@ step count across both repositories.
   zero missing; required-field enforcement deployed.
 - [ ] Auth export staging validation reconciled and daily schedule enabled.
 - [ ] Mobile analytics release available to production users.
+- [ ] Local disable survives restart/logout, delayed stale auth work cannot
+  reactivate another account, and supported online foreground clients observe a
+  remote preference change within the declared 15-minute bound.
 - [ ] First production full-activation event joined to its auth milestone row.
 - [ ] Three complete event days reconcile through reporting models.
+- [ ] Stale auth snapshot abort/recovery and GA4 upstream deletion drills pass.
 - [ ] Looker permissions, complete-period defaults, sample sizes, coverage,
   cohort maturity, and freshness verified.
 - [ ] First W1 cohort matured and reviewed.
