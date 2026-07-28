@@ -202,7 +202,7 @@ void main() {
     expect(find.byKey(const Key("harness_management_enabled_future-harness")), findsOneWidget);
     expect(find.byKey(const Key("harness_management_restart_future-harness")), findsOneWidget);
     expect(find.byKey(const Key("harness_management_timeout_future-harness")), findsOneWidget);
-    expect(find.byIcon(VESPRSolid.opencode), findsOneWidget);
+    expect(findBrandLogo("opencode"), findsOneWidget);
     expect(find.byIcon(TablerRegular.plug), findsOneWidget);
   });
 

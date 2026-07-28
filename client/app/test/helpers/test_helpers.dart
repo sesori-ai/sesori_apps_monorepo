@@ -4,6 +4,8 @@ import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
+import "package:flutter_svg/flutter_svg.dart";
+import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
 import "package:mocktail/mocktail.dart";
 import "package:record/record.dart";
@@ -648,3 +650,14 @@ AuthUser testAuthUser() {
     providerUsername: "testuser",
   );
 }
+
+/// Finds the brand artwork [PregoBrandLogo] draws for [pluginId].
+///
+/// Matched by asset rather than by rendered pixels: the artwork is what the
+/// component promises for a harness it knows, and loading it would mean
+/// decoding an SVG per assertion.
+Finder findBrandLogo(String pluginId) => find.byWidgetPredicate((widget) {
+  if (widget is! SvgPicture) return false;
+  final loader = widget.bytesLoader;
+  return loader is SvgAssetLoader && loader.assetName.endsWith("/$pluginId.svg");
+}, description: "brand artwork for $pluginId");

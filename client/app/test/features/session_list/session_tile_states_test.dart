@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/core/status_colors.dart";
 import "package:sesori_mobile/features/session_list/session_tile.dart";
@@ -68,10 +67,6 @@ void main() {
   /// contract is read off the widget, and that the flag really does start and
   /// stop the loop is PregoAiLoader's own test.
   bool sparkleTwinkles(WidgetTester tester) => tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate;
-
-  /// Which piece of brand artwork the row's leading slot is showing.
-  String assetOfLogo(WidgetTester tester) =>
-      (tester.widget<SvgPicture>(find.byType(SvgPicture)).bytesLoader as SvgAssetLoader).assetName;
 
   group("a session an agent is working in", () {
     testWidgets("marks itself with a twinkling sparkle and no label", (tester) async {
@@ -179,10 +174,10 @@ void main() {
   group("the harness leading the title", () {
     testWidgets("marks the row with the backend driving the session", (tester) async {
       await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "opencode")));
-      expect(assetOfLogo(tester), endsWith("opencode.svg"));
+      expect(findBrandLogo("opencode"), findsOneWidget);
 
       await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "codex")));
-      expect(assetOfLogo(tester), endsWith("codex.svg"));
+      expect(findBrandLogo("codex"), findsOneWidget);
     });
 
     testWidgets("falls back to a plug for a harness this app doesn't know", (tester) async {

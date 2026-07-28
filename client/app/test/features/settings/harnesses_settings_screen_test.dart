@@ -144,7 +144,7 @@ void main() {
 
     expect(find.byKey(const Key("harnesses_card_opencode")), findsOneWidget);
     expect(find.byKey(const Key("harnesses_card_future-harness")), findsOneWidget);
-    expect(find.byIcon(VESPRSolid.opencode), findsOneWidget);
+    expect(findBrandLogo("opencode"), findsOneWidget);
     expect(find.byIcon(TablerRegular.plug), findsOneWidget);
     expect(find.text("Default"), findsOneWidget);
     expect(find.text("Run login if requests fail."), findsOneWidget);
