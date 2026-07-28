@@ -237,12 +237,11 @@ void main() {
     test("fetchOriginBranch refreshes only the selected origin branch", () async {
       processRunner.enqueue(result: _processResult(exitCode: 0));
 
-      final result = await service.fetchOriginBranch(
+      await service.fetchOriginBranch(
         projectPath: "/repo/project",
         branchName: "main",
       );
 
-      expect(result, isTrue);
       expect(processRunner.invocations, hasLength(1));
       expect(
         processRunner.invocations.single.arguments,
@@ -257,15 +256,20 @@ void main() {
       expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
     });
 
-    test("fetchOriginBranch reports fetch failure", () async {
+    test("fetchOriginBranch throws ProcessException when git fails", () async {
       processRunner.enqueue(result: _processResult(exitCode: 1, stderr: "offline"));
 
-      final result = await service.fetchOriginBranch(
-        projectPath: "/repo/project",
-        branchName: "main",
+      await expectLater(
+        () => service.fetchOriginBranch(
+          projectPath: "/repo/project",
+          branchName: "main",
+        ),
+        throwsA(
+          isA<ProcessException>()
+              .having((error) => error.errorCode, "errorCode", 1)
+              .having((error) => error.message, "message", "offline"),
+        ),
       );
-
-      expect(result, isFalse);
     });
 
     group("inspectWorktreeSafety", () {

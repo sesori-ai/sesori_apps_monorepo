@@ -708,6 +708,26 @@ void main() {
       expect(worktreeAddArgs.last, equals("main"));
     });
 
+    test("unexpected fetch error aborts worktree creation", () async {
+      processRunner.enqueue(result: _ok()); // rev-parse HEAD
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n")); // symbolic-ref
+      processRunner.enqueueError(error: StateError("broken process runner")); // fetch
+      // These would let creation succeed if the unexpected error were swallowed.
+      processRunner.enqueue(result: _ok(stdout: "local111\n"));
+      processRunner.enqueue(result: _fail(exitCode: 128));
+      processRunner.enqueue(result: _ok(stdout: ""));
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeFallback>());
+      expect((result as WorktreeFallback).reason, equals("failed to resolve base branch/commit"));
+      expect(processRunner.invocations, hasLength(3));
+    });
+
     test("merge-base fails: worktree starts from origin ref", () async {
       // rev-parse HEAD → ok
       processRunner.enqueue(result: _ok());
@@ -1117,10 +1137,14 @@ class _FakeProcessRunner implements ProcessRunner {
   }
 
   final List<_Invocation> invocations = <_Invocation>[];
-  final List<ProcessResult> _queue = <ProcessResult>[];
+  final List<Object> _queue = <Object>[];
 
   void enqueue({required ProcessResult result}) {
     _queue.add(result);
+  }
+
+  void enqueueError({required Object error}) {
+    _queue.add(error);
   }
 
   @override
@@ -1143,7 +1167,11 @@ class _FakeProcessRunner implements ProcessRunner {
       throw StateError("No ProcessResult queued for: $executable $arguments");
     }
 
-    return _queue.removeAt(0);
+    final next = _queue.removeAt(0);
+    if (next is ProcessResult) {
+      return next;
+    }
+    throw next;
   }
 }
 
