@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/core/status_colors.dart";
 import "package:sesori_mobile/features/session_list/session_tile.dart";
@@ -67,6 +68,10 @@ void main() {
   /// contract is read off the widget, and that the flag really does start and
   /// stop the loop is PregoAiLoader's own test.
   bool sparkleTwinkles(WidgetTester tester) => tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate;
+
+  /// Which piece of brand artwork the row's leading slot is showing.
+  String assetOfLogo(WidgetTester tester) =>
+      (tester.widget<SvgPicture>(find.byType(SvgPicture)).bytesLoader as SvgAssetLoader).assetName;
 
   group("a session an agent is working in", () {
     testWidgets("marks itself with a twinkling sparkle and no label", (tester) async {
@@ -174,10 +179,10 @@ void main() {
   group("the harness leading the title", () {
     testWidgets("marks the row with the backend driving the session", (tester) async {
       await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "opencode")));
-      expect(find.byIcon(VESPRSolid.opencode), findsOneWidget);
+      expect(assetOfLogo(tester), endsWith("opencode.svg"));
 
       await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "codex")));
-      expect(find.byIcon(VESPRSolid.codex), findsOneWidget);
+      expect(assetOfLogo(tester), endsWith("codex.svg"));
     });
 
     testWidgets("falls back to a plug for a harness this app doesn't know", (tester) async {
@@ -330,30 +335,19 @@ void main() {
     });
   });
 
-  group("a title too long for its line", () {
-    testWidgets("fades out instead of ellipsizing", (tester) async {
-      await pumpTile(
-        tester,
-        tile(session: testSession(title: "A session title far too long to fit the width of a phone's list row")),
-      );
+  testWidgets("a title too long for its line fades out instead of ellipsizing", (tester) async {
+    await pumpTile(
+      tester,
+      tile(session: testSession(title: "A session title far too long to fit the width of a phone's list row")),
+    );
 
-      final title = tester.widget<Text>(find.textContaining("A session title"));
-      // The fade replaces the ellipsis: the glyphs run under the trailing slot
-      // and dissolve there rather than stopping on a hard "…".
-      expect(title.overflow, TextOverflow.clip);
-      expect(
-        find.ancestor(of: find.byWidget(title), matching: find.byType(ShaderMask)),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets("costs a title that fits nothing", (tester) async {
-      await pumpTile(tester, tile(session: testSession(title: "Short")));
-
-      // A mask is an offscreen pass per row that wears it, so rows with
-      // nothing to fade must not be wrapped in one.
-      expect(find.byType(ShaderMask), findsNothing);
-    });
+    // The fade replaces the ellipsis: the glyphs run toward the trailing slot
+    // and dissolve there rather than stopping on a hard "…". The paragraph
+    // fades itself, so a row that has nothing to fade pays nothing for it.
+    final title = tester.widget<Text>(find.textContaining("A session title"));
+    expect(title.overflow, TextOverflow.fade);
+    expect(title.maxLines, 1);
+    expect(find.byType(ShaderMask), findsNothing);
   });
 
   group("row chrome", () {

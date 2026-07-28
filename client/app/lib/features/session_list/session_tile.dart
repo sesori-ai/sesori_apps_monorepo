@@ -244,53 +244,25 @@ class SessionTile extends StatelessWidget {
   /// title trails away under the row's trailing slot instead of stopping on a
   /// hard "…".
   ///
-  /// The fade masks the glyphs themselves — a scrim painted in the row's
-  /// colour would band against the selected row's tint, the dark theme and the
-  /// glass scaffold behind it — and a mask costs an offscreen pass per row it
-  /// wraps. So the title is measured first and only the titles that actually
-  /// run out of room are wrapped; in a list, most of them fit.
+  /// [TextOverflow.fade] rather than a mask of our own: the paragraph already
+  /// has the layout, so it can fade the glyphs — which a scrim painted in the
+  /// row's colour could not, it would band against the selected row's tint,
+  /// the dark theme and the glass scaffold — and it only builds the shader for
+  /// the titles that really did overflow, without a row paying to be measured
+  /// twice. The ramp is an ellipsis wide rather than the design's, which is
+  /// the price of that.
   Widget _title({required BuildContext context}) {
     final prego = context.prego;
-    final textDirection = Directionality.of(context);
-    final title = session.title ?? context.loc.sessionListUntitled;
-    // Unopened activity leans on weight rather than a badge.
-    final style = (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
-      color: prego.colors.textPrimary,
-    );
-    final text = Text(
-      title,
-      style: style,
+
+    return Text(
+      session.title ?? context.loc.sessionListUntitled,
+      // Unopened activity leans on weight rather than a badge.
+      style: (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
+        color: prego.colors.textPrimary,
+      ),
       maxLines: 1,
       softWrap: false,
-      overflow: TextOverflow.clip,
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final painter = TextPainter(
-          text: TextSpan(text: title, style: style),
-          textDirection: textDirection,
-          textScaler: MediaQuery.textScalerOf(context),
-          maxLines: 1,
-        )..layout();
-        final fits = painter.width <= constraints.maxWidth;
-        painter.dispose();
-        if (fits) return text;
-
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            final fadeStart = bounds.width <= _titleFadeWidth ? 0.0 : 1 - _titleFadeWidth / bounds.width;
-            return LinearGradient(
-              begin: AlignmentDirectional.centerStart,
-              end: AlignmentDirectional.centerEnd,
-              colors: const [Colors.white, Colors.white, Colors.transparent],
-              stops: [0, fadeStart, 1],
-            ).createShader(bounds, textDirection: textDirection);
-          },
-          blendMode: BlendMode.dstIn,
-          child: text,
-        );
-      },
+      overflow: TextOverflow.fade,
     );
   }
 
@@ -463,7 +435,3 @@ const double _footerLineHeight = 20;
 
 const double _brandLogoSize = 12;
 const double _stateIconSize = 16;
-
-/// How much of the title's line box the fade covers. Wide enough to read as a
-/// trailing off rather than a clipped glyph.
-const double _titleFadeWidth = 32;
