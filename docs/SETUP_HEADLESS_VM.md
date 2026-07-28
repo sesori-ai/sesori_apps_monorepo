@@ -50,8 +50,18 @@ To enable GitHub status sync, authenticate as the same OS user that will run
 gh auth login
 ```
 
-An inherited `GH_TOKEN` or `GITHUB_TOKEN` environment variable can be used
-instead of stored `gh` credentials.
+For token authentication, a shell export will not be inherited by systemd.
+Create a root-only environment file instead (the service definition below
+loads it when present):
+
+```bash
+install -m 600 /dev/null /etc/sesori-bridge.env
+nano /etc/sesori-bridge.env
+```
+
+```ini
+GH_TOKEN=replace-with-token
+```
 
 ---
 
@@ -172,6 +182,7 @@ After=opencode.service
 Requires=opencode.service
 
 [Service]
+EnvironmentFile=-/etc/sesori-bridge.env
 ExecStart=/root/.local/bin/sesori-bridge --opencode-no-auto-start --opencode-port 9921 --log-level debug
 Restart=always
 RestartSec=3

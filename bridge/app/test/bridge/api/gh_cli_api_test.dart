@@ -5,7 +5,6 @@ import "dart:io";
 import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -39,12 +38,10 @@ void main() {
       expect(isAvailable, isFalse);
     });
 
-    test("returns false on timeout", () async {
+    test("propagates timeout", () async {
       processRunner.enqueueError(error: TimeoutException("timed out"));
 
-      final isAvailable = await service.isAvailable();
-
-      expect(isAvailable, isFalse);
+      await expectLater(service.isAvailable(), throwsA(isA<TimeoutException>()));
     });
 
     test("returns false on ProcessException", () async {
@@ -59,9 +56,6 @@ void main() {
 
     test("reports a missing optional gh installation only once", () async {
       final stderrLines = <String>[];
-      final previousLogLevel = Log.level;
-      addTearDown(() => Log.level = previousLogLevel);
-      Log.level = LogLevel.info;
       processRunner
         ..enqueueError(
           error: const ProcessException("gh", <String>["--version"], "No such file or directory", 2),
@@ -122,11 +116,14 @@ void main() {
       expect(isAuthenticated, isFalse);
     });
 
+    test("propagates timeout", () async {
+      processRunner.enqueueError(error: TimeoutException("timed out"));
+
+      await expectLater(service.isAuthenticated(), throwsA(isA<TimeoutException>()));
+    });
+
     test("reports unauthenticated gh with actionable options only once", () async {
       final stderrLines = <String>[];
-      final previousLogLevel = Log.level;
-      addTearDown(() => Log.level = previousLogLevel);
-      Log.level = LogLevel.info;
       processRunner
         ..enqueueResult(result: _fail(exitCode: 1))
         ..enqueueResult(result: _fail(exitCode: 1));

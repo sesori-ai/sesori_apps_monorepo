@@ -1,7 +1,6 @@
-import "dart:async";
 import "dart:io";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
 
 import "../foundation/process_runner.dart";
@@ -34,16 +33,6 @@ class GhCliApi {
             "GitHub pull request and CI status sync is disabled.",
       );
       return false;
-    } on Object catch (error, stackTrace) {
-      if (!_availabilityFailureReported) {
-        _availabilityFailureReported = true;
-        Log.w(
-          "GitHub CLI availability check failed. GitHub pull request and CI status sync is disabled.",
-          error,
-          stackTrace,
-        );
-      }
-      return false;
     }
   }
 
@@ -66,29 +55,19 @@ class GhCliApi {
             "GitHub pull request and CI status sync is disabled.",
       );
       return false;
-    } on Object catch (error, stackTrace) {
-      if (!_authenticationFailureReported) {
-        _authenticationFailureReported = true;
-        Log.w(
-          "GitHub CLI authentication check failed. GitHub pull request and CI status sync is disabled.",
-          error,
-          stackTrace,
-        );
-      }
-      return false;
     }
   }
 
   void _reportAvailabilityFailure({required String message}) {
     if (_availabilityFailureReported) return;
     _availabilityFailureReported = true;
-    Log.i(message);
+    Console.warning(message);
   }
 
   void _reportAuthenticationFailure() {
     if (_authenticationFailureReported) return;
     _authenticationFailureReported = true;
-    Log.i(
+    Console.warning(
       "GitHub CLI (gh) is not authenticated for github.com. Run 'gh auth login' or set GH_TOKEN/GITHUB_TOKEN "
       "to enable GitHub pull request and CI status sync.",
     );
