@@ -95,6 +95,22 @@ eagerly "just in case."
 - A recovered failure that continues must remain observable. Do not add a
   redundant log when the error is rethrown or returned as an explicit failure.
 
+## Analytics
+
+- When adding a user-facing feature or action, consider whether analytics would
+  answer a product decision, activation/retention question, or feature-adoption
+  question. Do not track every tap. Load
+  `.opencode/skills/add-analytics/SKILL.md` for the event-design, privacy,
+  architecture, and reporting checklist.
+- Instrument the authoritative outcome rather than a UI proxy, use closed
+  bounded parameters, and never report source code, prompts, transcripts,
+  paths, names, raw error text, or raw/hashed entity identifiers.
+- Until `.plan/active/user-analytics/` step 3 lands, the existing event union is
+  `client/app/lib/core/analytics/analytics_event.dart`. The step-3 PR moves the
+  source of truth to core product-analytics models and must remove this
+  transitional sentence while updating every consumer in lockstep; do not point
+  contributors at files that do not yet exist.
+
 ## Verification And Review
 
 - For localized production changes, run directly relevant tests and analyze the
