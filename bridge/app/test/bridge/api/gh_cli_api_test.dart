@@ -84,7 +84,7 @@ void main() {
         allOf(
           contains("GitHub CLI (gh) is not installed or is unavailable on PATH"),
           contains("GitHub pull request and CI status sync is disabled"),
-          contains("local worktree diffs do not require gh"),
+          isNot(contains("worktree")),
           isNot(contains("ProcessException")),
         ),
       );
@@ -146,7 +146,7 @@ void main() {
           contains("GitHub CLI (gh) is not authenticated for github.com"),
           contains("gh auth login"),
           contains("GH_TOKEN/GITHUB_TOKEN"),
-          contains("Local worktree diffs do not require gh"),
+          isNot(contains("worktree")),
         ),
       );
     });

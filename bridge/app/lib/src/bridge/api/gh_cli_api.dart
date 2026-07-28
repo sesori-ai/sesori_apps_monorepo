@@ -24,22 +24,21 @@ class GhCliApi {
       _reportAvailabilityFailure(
         message:
             "GitHub CLI (gh) is installed but unusable: 'gh --version' exited with code ${result.exitCode}. "
-            "GitHub pull request and CI status sync is disabled; local worktree diffs do not require gh.",
+            "GitHub pull request and CI status sync is disabled.",
       );
       return false;
     } on ProcessException {
       _reportAvailabilityFailure(
         message:
             "GitHub CLI (gh) is not installed or is unavailable on PATH. "
-            "GitHub pull request and CI status sync is disabled; local worktree diffs do not require gh.",
+            "GitHub pull request and CI status sync is disabled.",
       );
       return false;
     } on Object catch (error, stackTrace) {
       if (!_availabilityFailureReported) {
         _availabilityFailureReported = true;
         Log.w(
-          "GitHub CLI availability check failed. GitHub pull request and CI status sync is disabled; "
-          "local worktree diffs do not require gh.",
+          "GitHub CLI availability check failed. GitHub pull request and CI status sync is disabled.",
           error,
           stackTrace,
         );
@@ -64,15 +63,14 @@ class GhCliApi {
       _reportAvailabilityFailure(
         message:
             "GitHub CLI (gh) is not installed or is unavailable on PATH. "
-            "GitHub pull request and CI status sync is disabled; local worktree diffs do not require gh.",
+            "GitHub pull request and CI status sync is disabled.",
       );
       return false;
     } on Object catch (error, stackTrace) {
       if (!_authenticationFailureReported) {
         _authenticationFailureReported = true;
         Log.w(
-          "GitHub CLI authentication check failed. GitHub pull request and CI status sync is disabled; "
-          "local worktree diffs do not require gh.",
+          "GitHub CLI authentication check failed. GitHub pull request and CI status sync is disabled.",
           error,
           stackTrace,
         );
@@ -92,7 +90,7 @@ class GhCliApi {
     _authenticationFailureReported = true;
     Log.i(
       "GitHub CLI (gh) is not authenticated for github.com. Run 'gh auth login' or set GH_TOKEN/GITHUB_TOKEN "
-      "to enable GitHub pull request and CI status sync. Local worktree diffs do not require gh.",
+      "to enable GitHub pull request and CI status sync.",
     );
   }
 
