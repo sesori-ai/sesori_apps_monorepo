@@ -114,6 +114,41 @@ class GitCliApi {
     return "main";
   }
 
+  /// Resolves a repository base without consulting the mutable current HEAD.
+  Future<String?> resolveStableDefaultBranch({required String projectPath}) async {
+    final originHeadResult = await runGit(
+      projectPath: projectPath,
+      arguments: const ["symbolic-ref", "refs/remotes/origin/HEAD"],
+    );
+    final originHeadBranch = _extractBranchName(
+      output: originHeadResult.stdout,
+      prefix: "refs/remotes/origin/",
+    );
+    if (originHeadResult.exitCode == 0 && originHeadBranch != null) {
+      return await branchExists(projectPath: projectPath, branchName: originHeadBranch)
+          ? originHeadBranch
+          : "origin/$originHeadBranch";
+    }
+
+    final configuredDefaultBranchResult = await runGit(
+      projectPath: projectPath,
+      arguments: const ["config", "init.defaultBranch"],
+    );
+    final configuredDefaultBranch = configuredDefaultBranchResult.stdout.toString().trim();
+    if (configuredDefaultBranchResult.exitCode == 0 &&
+        configuredDefaultBranch.isNotEmpty &&
+        await branchExists(projectPath: projectPath, branchName: configuredDefaultBranch)) {
+      return configuredDefaultBranch;
+    }
+
+    for (final branch in const ["main", "master", "develop", "development", "trunk"]) {
+      if (await branchExists(projectPath: projectPath, branchName: branch)) {
+        return branch;
+      }
+    }
+    return null;
+  }
+
   /// URL of the repository's remote in [projectPath], preferring `origin` and
   /// falling back to the first listed remote. Null when the directory is
   /// missing (git cannot even start there — e.g. a stored project folder that
@@ -187,6 +222,13 @@ class GitCliApi {
     return commit.isEmpty ? null : commit;
   }
 
+  Future<ProcessResult> readHeadCommit({required String projectPath}) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: const ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"],
+    );
+  }
+
   Future<ProcessResult> readCurrentBranch({required String projectPath}) {
     return runGit(
       projectPath: projectPath,
@@ -201,6 +243,16 @@ class GitCliApi {
     return runGit(
       projectPath: projectPath,
       arguments: ["rev-parse", "--verify", revision],
+    );
+  }
+
+  Future<ProcessResult> checkRevisionExists({
+    required String projectPath,
+    required String revision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["rev-parse", "--verify", "--quiet", "--end-of-options", "$revision^{commit}"],
     );
   }
 

@@ -186,7 +186,7 @@ class SessionDiffService {
       final currentBranch = await _sessionDiffRepository.getCurrentBranch(
         projectPath: projectPath,
       );
-      if (currentBranch == startingBranch) {
+      if (startingBranch != null && currentBranch == startingBranch) {
         return SessionDiffExactRevision(revision: startCommit);
       }
 
@@ -230,7 +230,7 @@ class SessionDiffService {
     required String projectId,
     required String projectPath,
   }) async {
-    final projectBase = await _worktreeRepository.resolveBaseBranchAndCommit(
+    final projectBase = await _worktreeRepository.resolveProjectBaseBranch(
       projectId: projectId,
       projectPath: projectPath,
     );
@@ -239,7 +239,7 @@ class SessionDiffService {
         message: "project base branch is not reachable",
       );
     }
-    return SessionDiffMergeBaseRevision(revision: projectBase.baseBranch);
+    return SessionDiffMergeBaseRevision(revision: projectBase);
   }
 
   Future<_DiffFileReadResult> _readBefore({

@@ -97,11 +97,15 @@ class SessionDiffRepository {
     required String projectPath,
     required String revision,
   }) async {
-    final result = await _gitCliApi.verifyRevision(
+    final result = await _gitCliApi.checkRevisionExists(
       projectPath: projectPath,
       revision: revision,
     );
-    return result.exitCode == 0;
+    if (result.exitCode == 0) return true;
+    if (result.exitCode == 1) return false;
+    throw SessionDiffRepositoryException(
+      message: "git rev-parse --verify failed (exit ${result.exitCode})",
+    );
   }
 
   Future<bool> isAncestor({

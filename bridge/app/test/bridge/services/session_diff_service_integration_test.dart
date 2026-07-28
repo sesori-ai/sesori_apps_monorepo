@@ -60,9 +60,13 @@ void main() {
       repoDir = await Directory.systemTemp.createTemp("compute_session_diffs_repo_");
       worktreeDir = Directory("${repoDir.path}/session-wt");
 
-      await _runGit(processRunner, repoDir.path, ["init"]);
-      await _runGit(processRunner, repoDir.path, ["config", "user.email", "test@example.com"]);
-      await _runGit(processRunner, repoDir.path, ["config", "user.name", "Test"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["init"]);
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["config", "user.email", "test@example.com"],
+      );
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["config", "user.name", "Test"]);
 
       File("${repoDir.path}/tracked.txt")
         ..createSync(recursive: true)
@@ -70,14 +74,18 @@ void main() {
       File("${repoDir.path}/untouched.txt")
         ..createSync(recursive: true)
         ..writeAsStringSync("untouched\n");
-      await _runGit(processRunner, repoDir.path, ["add", "."]);
-      await _runGit(processRunner, repoDir.path, ["commit", "-m", "base"]);
-      await _runGit(processRunner, repoDir.path, ["branch", "-M", "main"]);
-      await _runGit(processRunner, repoDir.path, ["worktree", "add", worktreeDir.path, "-b", "session-branch"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "."]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "base"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["branch", "-M", "main"]);
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["worktree", "add", worktreeDir.path, "-b", "session-branch"],
+      );
 
       File("${worktreeDir.path}/tracked.txt").writeAsStringSync("committed tracked\n");
-      await _runGit(processRunner, worktreeDir.path, ["add", "tracked.txt"]);
-      await _runGit(processRunner, worktreeDir.path, ["commit", "-m", "session commit"]);
+      await _runGit(runner: processRunner, cwd: worktreeDir.path, args: ["add", "tracked.txt"]);
+      await _runGit(runner: processRunner, cwd: worktreeDir.path, args: ["commit", "-m", "session commit"]);
 
       File("${worktreeDir.path}/tracked.txt").writeAsStringSync("uncommitted tracked\n");
       File("${worktreeDir.path}/lib/new_untracked.dart")
@@ -94,7 +102,11 @@ void main() {
     tearDown(() async {
       await plugin.close();
       await db.close();
-      await _runGit(processRunner, repoDir.path, ["worktree", "remove", "--force", worktreeDir.path]);
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["worktree", "remove", "--force", worktreeDir.path],
+      );
       if (repoDir.existsSync()) {
         await repoDir.delete(recursive: true);
       }
@@ -122,7 +134,11 @@ void main() {
     });
 
     test("in-place session on its starting branch compares against the start commit", () async {
-      final startCommit = (await _runGit(processRunner, repoDir.path, ["rev-parse", "HEAD"])).stdout.toString().trim();
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
       await _insertInPlaceStoredSession(
         db: db,
         sessionId: "in-place-same-branch",
@@ -132,8 +148,8 @@ void main() {
       );
 
       File("${repoDir.path}/tracked.txt").writeAsStringSync("committed in-place\n");
-      await _runGit(processRunner, repoDir.path, ["add", "tracked.txt"]);
-      await _runGit(processRunner, repoDir.path, ["commit", "-m", "in-place commit"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "tracked.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "in-place commit"]);
       File("${repoDir.path}/tracked.txt").writeAsStringSync("local in-place\n");
 
       final diffs = await service.getDiffs(sessionId: "in-place-same-branch");
@@ -144,25 +160,33 @@ void main() {
     });
 
     test("rebased stacked branch compares against the rewritten starting branch", () async {
-      await _runGit(processRunner, repoDir.path, ["checkout", "-b", "stack-base"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "stack-base"]);
       File("${repoDir.path}/old-base.txt").writeAsStringSync("old base\n");
-      await _runGit(processRunner, repoDir.path, ["add", "old-base.txt"]);
-      await _runGit(processRunner, repoDir.path, ["commit", "-m", "original stack base"]);
-      final startCommit = (await _runGit(processRunner, repoDir.path, ["rev-parse", "HEAD"])).stdout.toString().trim();
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "old-base.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "original stack base"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
 
-      await _runGit(processRunner, repoDir.path, ["checkout", "-b", "stack-session"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "stack-session"]);
       File("${repoDir.path}/session-change.txt").writeAsStringSync("committed session change\n");
-      await _runGit(processRunner, repoDir.path, ["add", "session-change.txt"]);
-      await _runGit(processRunner, repoDir.path, ["commit", "-m", "stacked session change"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "session-change.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "stacked session change"]);
 
-      await _runGit(processRunner, repoDir.path, ["checkout", "main"]);
-      await _runGit(processRunner, repoDir.path, ["branch", "-f", "stack-base", "main"]);
-      await _runGit(processRunner, repoDir.path, ["checkout", "stack-base"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "main"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["branch", "-f", "stack-base", "main"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "stack-base"]);
       File("${repoDir.path}/rebased-base.txt").writeAsStringSync("rewritten base\n");
-      await _runGit(processRunner, repoDir.path, ["add", "rebased-base.txt"]);
-      await _runGit(processRunner, repoDir.path, ["commit", "-m", "rewritten stack base"]);
-      await _runGit(processRunner, repoDir.path, ["checkout", "stack-session"]);
-      await _runGit(processRunner, repoDir.path, ["rebase", "--onto", "stack-base", startCommit]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "rebased-base.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "rewritten stack base"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "stack-session"]);
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rebase", "--onto", "stack-base", startCommit],
+      );
 
       File("${repoDir.path}/session-change.txt").writeAsStringSync("local session change\n");
       File("${repoDir.path}/local-untracked.txt").writeAsStringSync("local only\n");
@@ -184,18 +208,21 @@ void main() {
     });
 
     test("unrelated branch compares against the project's base branch", () async {
-      await db.projectsDao.setBaseBranch(projectId: repoDir.path, baseBranch: "main");
-      await _runGit(processRunner, repoDir.path, ["checkout", "-b", "session-start"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "session-start"]);
       File("${repoDir.path}/starting-branch-only.txt").writeAsStringSync("not part of current work\n");
-      await _runGit(processRunner, repoDir.path, ["add", "starting-branch-only.txt"]);
-      await _runGit(processRunner, repoDir.path, ["commit", "-m", "starting branch"]);
-      final startCommit = (await _runGit(processRunner, repoDir.path, ["rev-parse", "HEAD"])).stdout.toString().trim();
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "starting-branch-only.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "starting branch"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
 
-      await _runGit(processRunner, repoDir.path, ["checkout", "main"]);
-      await _runGit(processRunner, repoDir.path, ["checkout", "-b", "unrelated"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "main"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "unrelated"]);
       File("${repoDir.path}/unrelated-branch.txt").writeAsStringSync("committed unrelated work\n");
-      await _runGit(processRunner, repoDir.path, ["add", "unrelated-branch.txt"]);
-      await _runGit(processRunner, repoDir.path, ["commit", "-m", "unrelated work"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "unrelated-branch.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "unrelated work"]);
       File("${repoDir.path}/unrelated-branch.txt").writeAsStringSync("local unrelated work\n");
       await _insertInPlaceStoredSession(
         db: db,
@@ -210,12 +237,59 @@ void main() {
 
       expect(byFile.keys, contains("unrelated-branch.txt"));
       expect(byFile.keys, isNot(contains("starting-branch-only.txt")));
-      expect((byFile["unrelated-branch.txt"]! as FileDiffContent).after, "local unrelated work\n");
+      final unrelated = byFile["unrelated-branch.txt"]! as FileDiffContent;
+      expect(unrelated.before, isEmpty);
+      expect(unrelated.after, "local unrelated work\n");
+      expect(unrelated.status, FileDiffStatus.added);
+    });
+
+    test("unrelated detached HEAD compares against the project's base branch", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "detached-start"]);
+      File("${repoDir.path}/detached-start-only.txt").writeAsStringSync("starting history\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "detached-start-only.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "detached start"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "main"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "detached-unrelated"]);
+      File("${repoDir.path}/detached-current.txt").writeAsStringSync("committed current work\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "detached-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "detached current"]);
+      final currentCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["checkout", "--detach", currentCommit],
+      );
+      File("${repoDir.path}/detached-current.txt").writeAsStringSync("local current work\n");
+      await db.projectsDao.setBaseBranch(projectId: repoDir.path, baseBranch: "main");
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-detached-unrelated",
+        projectId: repoDir.path,
+        startingBranch: null,
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-detached-unrelated");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("detached-current.txt"));
+      expect(byFile.keys, isNot(contains("detached-start-only.txt")));
+      expect((byFile["detached-current.txt"]! as FileDiffContent).before, isEmpty);
     });
 
     test("shows replacement content when a deleted file is recreated untracked", () async {
-      await _runGit(processRunner, worktreeDir.path, ["rm", "-f", "tracked.txt"]);
-      await _runGit(processRunner, worktreeDir.path, ["commit", "-m", "delete tracked"]);
+      await _runGit(runner: processRunner, cwd: worktreeDir.path, args: ["rm", "-f", "tracked.txt"]);
+      await _runGit(runner: processRunner, cwd: worktreeDir.path, args: ["commit", "-m", "delete tracked"]);
       File("${worktreeDir.path}/tracked.txt")
         ..createSync(recursive: true)
         ..writeAsStringSync("replacement tracked\n");
@@ -245,8 +319,8 @@ void main() {
     });
 
     test("keeps zero line counts for mode-only tracked changes", () async {
-      await _runGit(processRunner, worktreeDir.path, ["checkout", "--", "."]);
-      await _runGit(processRunner, worktreeDir.path, ["clean", "-fd"]);
+      await _runGit(runner: processRunner, cwd: worktreeDir.path, args: ["checkout", "--", "."]);
+      await _runGit(runner: processRunner, cwd: worktreeDir.path, args: ["clean", "-fd"]);
 
       await Process.run("chmod", ["711", "${worktreeDir.path}/untouched.txt"]);
 
@@ -264,28 +338,40 @@ void main() {
       final deletionRepo = await Directory.systemTemp.createTemp("compute_session_diffs_deletion_");
       final deletionWorktree = Directory("${deletionRepo.path}/session-wt");
       addTearDown(() async {
-        await _runGit(processRunner, deletionRepo.path, ["worktree", "remove", "--force", deletionWorktree.path]);
+        await _runGit(
+          runner: processRunner,
+          cwd: deletionRepo.path,
+          args: ["worktree", "remove", "--force", deletionWorktree.path],
+        );
         if (deletionRepo.existsSync()) {
           await deletionRepo.delete(recursive: true);
         }
       });
 
-      await _runGit(processRunner, deletionRepo.path, ["init"]);
-      await _runGit(processRunner, deletionRepo.path, ["config", "user.email", "test@example.com"]);
-      await _runGit(processRunner, deletionRepo.path, ["config", "user.name", "Test"]);
+      await _runGit(runner: processRunner, cwd: deletionRepo.path, args: ["init"]);
+      await _runGit(
+        runner: processRunner,
+        cwd: deletionRepo.path,
+        args: ["config", "user.email", "test@example.com"],
+      );
+      await _runGit(runner: processRunner, cwd: deletionRepo.path, args: ["config", "user.name", "Test"]);
       File("${deletionRepo.path}/tracked.txt")
         ..createSync(recursive: true)
         ..writeAsStringSync("line one\nline two\n");
-      await _runGit(processRunner, deletionRepo.path, ["add", "."]);
-      await _runGit(processRunner, deletionRepo.path, ["commit", "-m", "base"]);
-      await _runGit(processRunner, deletionRepo.path, ["branch", "-M", "main"]);
-      await _runGit(processRunner, deletionRepo.path, [
-        "worktree",
-        "add",
-        deletionWorktree.path,
-        "-b",
-        "session-branch",
-      ]);
+      await _runGit(runner: processRunner, cwd: deletionRepo.path, args: ["add", "."]);
+      await _runGit(runner: processRunner, cwd: deletionRepo.path, args: ["commit", "-m", "base"]);
+      await _runGit(runner: processRunner, cwd: deletionRepo.path, args: ["branch", "-M", "main"]);
+      await _runGit(
+        runner: processRunner,
+        cwd: deletionRepo.path,
+        args: [
+          "worktree",
+          "add",
+          deletionWorktree.path,
+          "-b",
+          "session-branch",
+        ],
+      );
       File("${deletionWorktree.path}/tracked.txt").writeAsStringSync("line one\n");
       await _insertStoredSession(
         db: db,
@@ -353,7 +439,11 @@ Future<void> _insertInPlaceStoredSession({
   );
 }
 
-Future<ProcessResult> _runGit(ProcessRunner runner, String cwd, List<String> args) async {
+Future<ProcessResult> _runGit({
+  required ProcessRunner runner,
+  required String cwd,
+  required List<String> args,
+}) async {
   final result = await runner.run("git", args, workingDirectory: cwd);
   if (result.exitCode != 0) {
     fail("git ${args.join(" ")} failed: ${result.stderr}");

@@ -44,17 +44,41 @@ void main() {
       );
 
       expect(result, (branch: "feature/stack-base", commit: "abc123"));
-      expect(processRunner.invocations[0].arguments, ["rev-parse", "HEAD"]);
+      expect(processRunner.invocations[0].arguments, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
       expect(processRunner.invocations[1].arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
     });
 
-    test("returns no snapshot without invoking Git for a non-Git project", () async {
+    test("captures Git state when the project is nested inside a worktree", () async {
+      processRunner.enqueue(result: ProcessResult(0, 0, "true\n", ""));
+      processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
+      processRunner.enqueue(result: ProcessResult(0, 0, "feature/nested\n", ""));
+
+      final result = await repository(isGitRepository: false).resolveCurrentBranchAndCommit(
+        projectPath: "/repo/packages/nested",
+      );
+
+      expect(result, (branch: "feature/nested", commit: "abc123"));
+      expect(processRunner.invocations[0].arguments, ["rev-parse", "--is-inside-work-tree"]);
+    });
+
+    test("returns no snapshot when the project is outside a Git worktree", () async {
+      processRunner.enqueue(result: ProcessResult(0, 128, "", "fatal: not a git repository"));
+
       final result = await repository(isGitRepository: false).resolveCurrentBranchAndCommit(
         projectPath: "/plain-directory",
       );
 
       expect(result, isNull);
-      expect(processRunner.invocations, isEmpty);
+      expect(processRunner.invocations.single.arguments, ["rev-parse", "--is-inside-work-tree"]);
+    });
+
+    test("propagates unexpected Git process failures", () async {
+      await expectLater(
+        repository(isGitRepository: true).resolveCurrentBranchAndCommit(
+          projectPath: "/repo",
+        ),
+        throwsA(isA<StateError>()),
+      );
     });
   });
 
