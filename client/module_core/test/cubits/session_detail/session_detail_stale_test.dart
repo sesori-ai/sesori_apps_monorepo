@@ -168,6 +168,41 @@ void main() {
       },
     );
 
+    test("reconnect refresh applies changed diff capability", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      expect((cubit.state as SessionDetailLoaded).supportsSessionDiffs, isTrue);
+      stubSessionRepositoryGetSession(
+        repository: mockSessionRepository,
+        sessionId: sessionId,
+        session: testSession(id: sessionId).copyWith(supportsSessionDiffs: false),
+      );
+
+      connectionStatus.add(connectionLostStatus);
+      await Future<void>.delayed(Duration.zero);
+      connectionStatus.add(connectedStatus);
+
+      for (var i = 0; i < 100; i++) {
+        final state = cubit.state;
+        if (state is SessionDetailLoaded && !state.isRefreshing && !state.supportsSessionDiffs) break;
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+      }
+      expect((cubit.state as SessionDetailLoaded).supportsSessionDiffs, isFalse);
+    });
+
     test("deferred refresh: stale when connected triggers immediate refresh", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,

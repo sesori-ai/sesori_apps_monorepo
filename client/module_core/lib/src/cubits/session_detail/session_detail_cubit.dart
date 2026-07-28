@@ -354,6 +354,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               assistantAgentModel: assistantAgentModel,
               children: refreshedChildSessions,
               childStatuses: childStatuses,
+              isRootSession: snapshot.isRootSession,
+              supportsSessionDiffs: snapshot.supportsSessionDiffs,
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: snapshot.commands,

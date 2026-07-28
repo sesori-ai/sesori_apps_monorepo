@@ -223,14 +223,14 @@ class SessionDiffService {
         projectPath: projectPath,
         revision: startingBranch,
       );
-      final startCommitIsAncestor = startingBranchIsAncestor
-          ? false
-          : await _sessionDiffRepository.isAncestor(
-              projectPath: projectPath,
-              revision: startCommit,
-            );
-      if (startingBranchIsAncestor || startCommitIsAncestor) {
+      if (startingBranchIsAncestor) {
         return SessionDiffMergeBaseRevision(revision: startingBranch);
+      }
+      if (await _sessionDiffRepository.isAncestor(
+        projectPath: projectPath,
+        revision: startCommit,
+      )) {
+        return SessionDiffExactRevision(revision: startCommit);
       }
       return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
     } on SessionDiffRepositoryException catch (error) {

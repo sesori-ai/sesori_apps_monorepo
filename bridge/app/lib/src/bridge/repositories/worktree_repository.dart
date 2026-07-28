@@ -1,3 +1,6 @@
+import "dart:async";
+import "dart:io";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../../api/database/daos/projects_dao.dart";
@@ -109,6 +112,7 @@ class WorktreeRepository {
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
     required String projectId,
     required String projectPath,
+    required bool refreshOrigin,
   }) async {
     try {
       final storedBranch = await _projectsDao.getBaseBranch(projectId: projectId);
@@ -116,6 +120,27 @@ class WorktreeRepository {
         projectPath: projectPath,
         storedBranch: storedBranch,
       );
+
+      if (refreshOrigin) {
+        try {
+          await _gitApi.fetchOriginBranch(
+            projectPath: projectPath,
+            branchName: baseBranch,
+          );
+        } on ProcessException catch (error, stackTrace) {
+          Log.w(
+            "[WorktreeRepository] failed to refresh origin/$baseBranch; using existing refs",
+            error,
+            stackTrace,
+          );
+        } on TimeoutException catch (error, stackTrace) {
+          Log.w(
+            "[WorktreeRepository] failed to refresh origin/$baseBranch; using existing refs",
+            error,
+            stackTrace,
+          );
+        }
+      }
 
       final localCommit = await _gitApi.resolveCommit(
         projectPath: projectPath,

@@ -74,6 +74,7 @@ class WorktreeService {
     final baseBranchAndCommit = await _worktreeRepository.resolveBaseBranchAndCommit(
       projectId: projectId,
       projectPath: projectPath,
+      refreshOrigin: true,
     );
     if (baseBranchAndCommit == null) {
       Log.w(
@@ -166,6 +167,7 @@ class WorktreeService {
     return _worktreeRepository.resolveBaseBranchAndCommit(
       projectId: projectId,
       projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
+      refreshOrigin: false,
     );
   }
 

@@ -221,6 +221,51 @@ void main() {
       expect(byFile.keys, isNot(contains("before-session.txt")));
     });
 
+    test("divergent starting branch keeps an ancestral start commit baseline", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "rescued-start"]);
+      File("${repoDir.path}/before-rescue.txt").writeAsStringSync("before rescue\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "before-rescue.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "before rescue"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "rescued-current"]);
+      File("${repoDir.path}/after-rescue.txt").writeAsStringSync("after rescue\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "after-rescue.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "after rescue"]);
+      final tree = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD^{tree}"],
+      )).stdout.toString().trim();
+      final divergentCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["commit-tree", tree, "-m", "divergent root"],
+      )).stdout.toString().trim();
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["branch", "-f", "rescued-start", divergentCommit],
+      );
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-rescued",
+        projectId: repoDir.path,
+        startingBranch: "rescued-start",
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-rescued");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("after-rescue.txt"));
+      expect(byFile.keys, isNot(contains("before-rescue.txt")));
+    });
+
     test("nested project diffs stay inside the opened directory", () async {
       final nestedDir = Directory("${repoDir.path}/packages/opened")..createSync(recursive: true);
       final siblingDir = Directory("${repoDir.path}/packages/private")..createSync(recursive: true);
