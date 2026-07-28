@@ -45,7 +45,13 @@ void main() {
       );
 
       expect(result, (branch: "feature/stack-base", commit: "abc123"));
-      expect(processRunner.invocations[0].arguments, ["status", "--porcelain", "--", "."]);
+      expect(processRunner.invocations[0].arguments, [
+        "status",
+        "--porcelain",
+        "--untracked-files=normal",
+        "--",
+        ".",
+      ]);
       expect(processRunner.invocations[1].arguments, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
       expect(processRunner.invocations[2].arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
     });
@@ -83,7 +89,13 @@ void main() {
       );
 
       expect(result, isNull);
-      expect(processRunner.invocations.single.arguments, ["status", "--porcelain", "--", "."]);
+      expect(processRunner.invocations.single.arguments, [
+        "status",
+        "--porcelain",
+        "--untracked-files=normal",
+        "--",
+        ".",
+      ]);
     });
 
     test("returns no snapshot when Git snapshot capture fails", () async {

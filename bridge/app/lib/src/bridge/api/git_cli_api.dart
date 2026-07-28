@@ -248,7 +248,7 @@ class GitCliApi {
   Future<ProcessResult> readWorkingTreeStatus({required String projectPath}) {
     return runGit(
       projectPath: projectPath,
-      arguments: const ["status", "--porcelain", "--", "."],
+      arguments: const ["status", "--porcelain", "--untracked-files=normal", "--", "."],
     );
   }
 
