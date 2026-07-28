@@ -29,6 +29,7 @@ extension PluginSessionMapper on PluginSession {
       },
       pullRequest: null,
       promptDefaults: null,
+      supportsSessionDiffs: false,
     );
   }
 }
@@ -71,6 +72,9 @@ Session enrichSharedSession({
       title: storedSession.title ?? storedSession.catalogTitle,
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
+      supportsSessionDiffs: storedSession.isDedicated
+          ? storedSession.worktreePath != null && storedSession.baseBranch != null
+          : storedSession.baseCommit != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),
       unseen: unseenCalculator.isUnseen(
         activity: storedSession.lastActivityAt,

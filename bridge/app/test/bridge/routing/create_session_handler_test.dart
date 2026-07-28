@@ -238,7 +238,7 @@ void main() {
       expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
     });
 
-    test("dedicated=false skips worktree prep and stores resolved base branch metadata", () async {
+    test("dedicated=false skips worktree prep and stores the checked-out branch metadata", () async {
       plugin.createSessionResult = const PluginSession(
         id: "simple-1",
         projectID: "p1",
@@ -247,10 +247,9 @@ void main() {
         title: "Simple",
         time: null,
       );
-      worktreeService.resolveBaseBranchAndCommitResult = (
-        baseBranch: "main",
-        baseCommit: "abc123def456",
-        startPoint: "main",
+      worktreeService.resolveCurrentBranchAndCommitResult = (
+        branch: "feature/current",
+        commit: "abc123def456",
       );
 
       final result = await handler.handle(
@@ -272,8 +271,8 @@ void main() {
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "simple-1");
       expect(worktreeService.prepareCallCount, equals(0));
-      expect(worktreeService.resolveBaseBranchAndCommitCallCount, equals(1));
-      expect(worktreeService.lastResolveBaseBranchProjectId, equals("/repo"));
+      expect(worktreeService.resolveCurrentBranchAndCommitCallCount, equals(1));
+      expect(worktreeService.lastResolveCurrentBranchProjectId, equals("/repo"));
       expect(plugin.lastCreateSessionDirectory, equals("/repo"));
       expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
 
@@ -287,7 +286,7 @@ void main() {
       expect(dbSession.isDedicated, isFalse);
       expect(dbSession.worktreePath, isNull);
       expect(dbSession.branchName, isNull);
-      expect(dbSession.baseBranch, equals("main"));
+      expect(dbSession.baseBranch, equals("feature/current"));
       expect(dbSession.baseCommit, equals("abc123def456"));
       expect(dbSession.createdAt, greaterThan(0));
     });
@@ -309,10 +308,9 @@ void main() {
         title: "Moved",
         time: null,
       );
-      worktreeService.resolveBaseBranchAndCommitResult = (
-        baseBranch: "main",
-        baseCommit: "abc123def456",
-        startPoint: "main",
+      worktreeService.resolveCurrentBranchAndCommitResult = (
+        branch: "main",
+        commit: "abc123def456",
       );
 
       final result = await handler.handle(
@@ -335,9 +333,9 @@ void main() {
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "moved-1");
       // The backend gets the live directory as the session cwd...
       expect(plugin.lastCreateSessionDirectory, equals("/moved/repo"));
-      // ...while the base-branch lookup and the stored session→project
+      // ...while the starting-branch lookup and the stored session→project
       // attribution stay keyed on the stable identifier.
-      expect(worktreeService.lastResolveBaseBranchProjectId, equals("/repo"));
+      expect(worktreeService.lastResolveCurrentBranchProjectId, equals("/repo"));
       final dbSession = await _expectStoredBinding(
         database: db,
         sessionId: result.id,
@@ -1192,14 +1190,14 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
   String? lastPreparePreferredBranchName;
-  String? lastResolveBaseBranchProjectId;
+  String? lastResolveCurrentBranchProjectId;
   int prepareCallCount = 0;
-  int resolveBaseBranchAndCommitCallCount = 0;
+  int resolveCurrentBranchAndCommitCallCount = 0;
   WorktreeResult prepareResult = WorktreeFallback(
     originalPath: "/repo",
     reason: "default",
   );
-  ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
+  ({String? branch, String commit})? resolveCurrentBranchAndCommitResult;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -1228,12 +1226,12 @@ class _FakeWorktreeService extends WorktreeService {
   }
 
   @override
-  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
+  Future<({String? branch, String commit})?> resolveCurrentBranchAndCommit({
     required String projectId,
   }) async {
-    resolveBaseBranchAndCommitCallCount++;
-    lastResolveBaseBranchProjectId = projectId;
-    return resolveBaseBranchAndCommitResult;
+    resolveCurrentBranchAndCommitCallCount++;
+    lastResolveCurrentBranchProjectId = projectId;
+    return resolveCurrentBranchAndCommitResult;
   }
 }
 

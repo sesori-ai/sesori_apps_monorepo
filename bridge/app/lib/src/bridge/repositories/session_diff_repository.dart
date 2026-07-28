@@ -4,18 +4,18 @@ import "mappers/git_diff_output_mapper.dart";
 sealed class SessionDiffQueryResult {}
 
 class SessionDiffQuerySuccess extends SessionDiffQueryResult {
-  final String mergeBase;
+  final String baseRevision;
   final List<SessionDiffEntry> entries;
   final Map<String, SessionDiffLineCounts> lineCountsByFile;
 
   SessionDiffQuerySuccess({
-    required this.mergeBase,
+    required this.baseRevision,
     required this.entries,
     required this.lineCountsByFile,
   });
 }
 
-class SessionDiffBaseBranchUnreachable extends SessionDiffQueryResult {}
+class SessionDiffBaseUnreachable extends SessionDiffQueryResult {}
 
 class SessionDiffNoCommonAncestor extends SessionDiffQueryResult {}
 
@@ -23,6 +23,29 @@ class SessionDiffQueryFailure extends SessionDiffQueryResult {
   final String message;
 
   SessionDiffQueryFailure({required this.message});
+}
+
+class SessionDiffRepositoryException implements Exception {
+  final String message;
+
+  const SessionDiffRepositoryException({required this.message});
+
+  @override
+  String toString() => message;
+}
+
+sealed class SessionDiffComparisonBase {
+  final String revision;
+
+  const SessionDiffComparisonBase({required this.revision});
+}
+
+class SessionDiffExactRevision extends SessionDiffComparisonBase {
+  const SessionDiffExactRevision({required super.revision});
+}
+
+class SessionDiffMergeBaseRevision extends SessionDiffComparisonBase {
+  const SessionDiffMergeBaseRevision({required super.revision});
 }
 
 sealed class SessionDiffRevisionFileReadResult {}
@@ -49,39 +72,98 @@ class SessionDiffRepository {
   }) : _gitCliApi = gitCliApi,
        _outputMapper = outputMapper;
 
-  Future<SessionDiffQueryResult> query({
-    required String worktreePath,
-    required String baseBranch,
+  Future<String?> getCurrentBranch({
+    required String projectPath,
   }) async {
-    final verifyResult = await _gitCliApi.verifyRevision(
-      projectPath: worktreePath,
-      revision: baseBranch,
-    );
-    if (verifyResult.exitCode != 0) {
-      return SessionDiffBaseBranchUnreachable();
+    final result = await _gitCliApi.readCurrentBranch(projectPath: projectPath);
+    if (result.exitCode == 1) {
+      return null;
     }
-
-    final mergeBaseResult = await _gitCliApi.findMergeBase(
-      projectPath: worktreePath,
-      baseRevision: baseBranch,
-    );
-    if (mergeBaseResult.exitCode == 1) {
-      return SessionDiffNoCommonAncestor();
-    }
-    if (mergeBaseResult.exitCode != 0) {
-      final stderr = _outputMapper.decodeOutput(output: mergeBaseResult.stderr).trim();
-      return SessionDiffQueryFailure(
-        message: "git merge-base failed (exit ${mergeBaseResult.exitCode}): $stderr",
+    if (result.exitCode != 0) {
+      throw SessionDiffRepositoryException(
+        message: "git symbolic-ref failed (exit ${result.exitCode})",
       );
     }
-    final mergeBase = _outputMapper.parseSingleSha(output: mergeBaseResult.stdout);
-    if (mergeBase == null) {
-      return SessionDiffQueryFailure(message: "git merge-base returned unexpected output");
+    final branch = result.stdout.toString().trim();
+    if (branch.isEmpty) {
+      throw const SessionDiffRepositoryException(
+        message: "git symbolic-ref returned an empty branch",
+      );
+    }
+    return branch;
+  }
+
+  Future<bool> revisionExists({
+    required String projectPath,
+    required String revision,
+  }) async {
+    final result = await _gitCliApi.verifyRevision(
+      projectPath: projectPath,
+      revision: revision,
+    );
+    return result.exitCode == 0;
+  }
+
+  Future<bool> isAncestor({
+    required String projectPath,
+    required String revision,
+  }) async {
+    final result = await _gitCliApi.isAncestor(
+      projectPath: projectPath,
+      revision: revision,
+    );
+    if (result.exitCode == 0) {
+      return true;
+    }
+    if (result.exitCode == 1) {
+      return false;
+    }
+    throw SessionDiffRepositoryException(
+      message: "git merge-base --is-ancestor failed (exit ${result.exitCode})",
+    );
+  }
+
+  Future<SessionDiffQueryResult> query({
+    required String worktreePath,
+    required SessionDiffComparisonBase comparisonBase,
+  }) async {
+    final revision = comparisonBase.revision;
+    final verifyResult = await _gitCliApi.verifyRevision(
+      projectPath: worktreePath,
+      revision: revision,
+    );
+    if (verifyResult.exitCode != 0) {
+      return SessionDiffBaseUnreachable();
+    }
+
+    late final String baseRevision;
+    switch (comparisonBase) {
+      case SessionDiffExactRevision():
+        baseRevision = revision;
+      case SessionDiffMergeBaseRevision():
+        final mergeBaseResult = await _gitCliApi.findMergeBase(
+          projectPath: worktreePath,
+          baseRevision: revision,
+        );
+        if (mergeBaseResult.exitCode == 1) {
+          return SessionDiffNoCommonAncestor();
+        }
+        if (mergeBaseResult.exitCode != 0) {
+          final stderr = _outputMapper.decodeOutput(output: mergeBaseResult.stderr).trim();
+          return SessionDiffQueryFailure(
+            message: "git merge-base failed (exit ${mergeBaseResult.exitCode}): $stderr",
+          );
+        }
+        final mergeBase = _outputMapper.parseSingleSha(output: mergeBaseResult.stdout);
+        if (mergeBase == null) {
+          return SessionDiffQueryFailure(message: "git merge-base returned unexpected output");
+        }
+        baseRevision = mergeBase;
     }
 
     final nameStatusResult = await _gitCliApi.diffNameStatus(
       projectPath: worktreePath,
-      revision: mergeBase,
+      revision: baseRevision,
     );
     if (nameStatusResult.exitCode != 0) {
       return SessionDiffQueryFailure(message: "git diff --name-status failed");
@@ -89,7 +171,7 @@ class SessionDiffRepository {
 
     final numstatResult = await _gitCliApi.diffNumstat(
       projectPath: worktreePath,
-      revision: mergeBase,
+      revision: baseRevision,
     );
     if (numstatResult.exitCode != 0) {
       return SessionDiffQueryFailure(message: "git diff --numstat failed");
@@ -101,7 +183,7 @@ class SessionDiffRepository {
     }
 
     return SessionDiffQuerySuccess(
-      mergeBase: mergeBase,
+      baseRevision: baseRevision,
       entries: _outputMapper.mergeTrackedAndUntrackedEntries(
         trackedEntries: _outputMapper.parseNameStatus(output: nameStatusResult.stdout),
         untrackedPaths: _outputMapper.parseUntrackedPaths(output: untrackedResult.stdout),

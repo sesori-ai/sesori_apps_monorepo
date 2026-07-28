@@ -142,6 +142,36 @@ class WorktreeRepository {
     }
   }
 
+  Future<({String? branch, String commit})?> resolveCurrentBranchAndCommit({
+    required String projectPath,
+  }) async {
+    try {
+      if (!await _gitApi.isGitInitialized(projectPath: projectPath)) {
+        return null;
+      }
+      final commit = await _gitApi.resolveCommit(projectPath: projectPath, ref: "HEAD");
+      if (commit == null) {
+        return null;
+      }
+
+      final branchResult = await _gitApi.readCurrentBranch(projectPath: projectPath);
+      if (branchResult.exitCode == 1) {
+        return (branch: null, commit: commit);
+      }
+      if (branchResult.exitCode != 0) {
+        throw StateError("git symbolic-ref failed with exit ${branchResult.exitCode}");
+      }
+      final branch = branchResult.stdout.toString().trim();
+      if (branch.isEmpty) {
+        throw StateError("git symbolic-ref returned an empty branch");
+      }
+      return (branch: branch, commit: commit);
+    } on Object catch (error, stackTrace) {
+      Log.w("[WorktreeRepository] failed to resolve current branch/commit for $projectPath", error, stackTrace);
+      return null;
+    }
+  }
+
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
     required String expectedBranch,

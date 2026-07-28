@@ -18,6 +18,7 @@ void main() {
       children: [],
       childStatuses: {},
       isRootSession: true,
+      supportsSessionDiffs: true,
       queuedMessages: [],
       availableAgents: [],
       availableProviders: [],

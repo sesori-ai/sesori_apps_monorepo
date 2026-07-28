@@ -74,6 +74,7 @@ SessionDetailLoaded _loadedState({
     children: const [],
     childStatuses: const {},
     isRootSession: true,
+    supportsSessionDiffs: true,
     queuedMessages: const [],
     availableAgents: [testAgentInfo()],
     availableProviders: [provider],
@@ -175,6 +176,7 @@ void main() {
       children: const [],
       childStatuses: const {},
       isRootSession: true,
+      supportsSessionDiffs: true,
       queuedMessages: const [],
       availableAgents: [testAgentInfo()],
       availableProviders: testProviderListResponse().items,
@@ -230,6 +232,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Diffs"), findsOneWidget);
+  });
+
+  testWidgets("hides the diff button when the bridge cannot compute session diffs", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+    ).copyWith(supportsSessionDiffs: false);
+    when(() => cubit.state).thenReturn(state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(TablerRegular.git_compare), findsNothing);
   });
 
   testWidgets("closes an open question when it leaves pending state", (tester) async {

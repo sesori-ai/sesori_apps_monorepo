@@ -36,18 +36,25 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final gitCliApi = GitCliApi(
+        processRunner: processRunner,
+        gitPathExists: ({required String gitPath}) => true,
+      );
       service = SessionDiffService(
         sessionRepository: sessionRepository,
         sessionDiffRepository: SessionDiffRepository(
-          gitCliApi: GitCliApi(
-            processRunner: processRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ),
+          gitCliApi: gitCliApi,
           outputMapper: const GitDiffOutputMapper(),
         ),
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
+        ),
+        worktreeRepository: singlePluginWorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          gitApi: gitCliApi,
+          plugin: plugin,
         ),
       );
       repoDir = await Directory.systemTemp.createTemp("compute_session_diffs_repo_");
@@ -112,6 +119,98 @@ void main() {
       expect(untracked.after, equals("class New {}\n"));
       expect(untracked.status, FileDiffStatus.added);
       expect(untracked.additions, equals(1));
+    });
+
+    test("in-place session on its starting branch compares against the start commit", () async {
+      final startCommit = (await _runGit(processRunner, repoDir.path, ["rev-parse", "HEAD"])).stdout.toString().trim();
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-same-branch",
+        projectId: repoDir.path,
+        startingBranch: "main",
+        startCommit: startCommit,
+      );
+
+      File("${repoDir.path}/tracked.txt").writeAsStringSync("committed in-place\n");
+      await _runGit(processRunner, repoDir.path, ["add", "tracked.txt"]);
+      await _runGit(processRunner, repoDir.path, ["commit", "-m", "in-place commit"]);
+      File("${repoDir.path}/tracked.txt").writeAsStringSync("local in-place\n");
+
+      final diffs = await service.getDiffs(sessionId: "in-place-same-branch");
+
+      final tracked = diffs.singleWhere((diff) => diff.file == "tracked.txt") as FileDiffContent;
+      expect(tracked.before, "base tracked\n");
+      expect(tracked.after, "local in-place\n");
+    });
+
+    test("rebased stacked branch compares against the rewritten starting branch", () async {
+      await _runGit(processRunner, repoDir.path, ["checkout", "-b", "stack-base"]);
+      File("${repoDir.path}/old-base.txt").writeAsStringSync("old base\n");
+      await _runGit(processRunner, repoDir.path, ["add", "old-base.txt"]);
+      await _runGit(processRunner, repoDir.path, ["commit", "-m", "original stack base"]);
+      final startCommit = (await _runGit(processRunner, repoDir.path, ["rev-parse", "HEAD"])).stdout.toString().trim();
+
+      await _runGit(processRunner, repoDir.path, ["checkout", "-b", "stack-session"]);
+      File("${repoDir.path}/session-change.txt").writeAsStringSync("committed session change\n");
+      await _runGit(processRunner, repoDir.path, ["add", "session-change.txt"]);
+      await _runGit(processRunner, repoDir.path, ["commit", "-m", "stacked session change"]);
+
+      await _runGit(processRunner, repoDir.path, ["checkout", "main"]);
+      await _runGit(processRunner, repoDir.path, ["branch", "-f", "stack-base", "main"]);
+      await _runGit(processRunner, repoDir.path, ["checkout", "stack-base"]);
+      File("${repoDir.path}/rebased-base.txt").writeAsStringSync("rewritten base\n");
+      await _runGit(processRunner, repoDir.path, ["add", "rebased-base.txt"]);
+      await _runGit(processRunner, repoDir.path, ["commit", "-m", "rewritten stack base"]);
+      await _runGit(processRunner, repoDir.path, ["checkout", "stack-session"]);
+      await _runGit(processRunner, repoDir.path, ["rebase", "--onto", "stack-base", startCommit]);
+
+      File("${repoDir.path}/session-change.txt").writeAsStringSync("local session change\n");
+      File("${repoDir.path}/local-untracked.txt").writeAsStringSync("local only\n");
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-stacked",
+        projectId: repoDir.path,
+        startingBranch: "stack-base",
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-stacked");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, containsAll(["session-change.txt", "local-untracked.txt"]));
+      expect(byFile.keys, isNot(contains("old-base.txt")));
+      expect(byFile.keys, isNot(contains("rebased-base.txt")));
+      expect((byFile["session-change.txt"]! as FileDiffContent).after, "local session change\n");
+    });
+
+    test("unrelated branch compares against the project's base branch", () async {
+      await db.projectsDao.setBaseBranch(projectId: repoDir.path, baseBranch: "main");
+      await _runGit(processRunner, repoDir.path, ["checkout", "-b", "session-start"]);
+      File("${repoDir.path}/starting-branch-only.txt").writeAsStringSync("not part of current work\n");
+      await _runGit(processRunner, repoDir.path, ["add", "starting-branch-only.txt"]);
+      await _runGit(processRunner, repoDir.path, ["commit", "-m", "starting branch"]);
+      final startCommit = (await _runGit(processRunner, repoDir.path, ["rev-parse", "HEAD"])).stdout.toString().trim();
+
+      await _runGit(processRunner, repoDir.path, ["checkout", "main"]);
+      await _runGit(processRunner, repoDir.path, ["checkout", "-b", "unrelated"]);
+      File("${repoDir.path}/unrelated-branch.txt").writeAsStringSync("committed unrelated work\n");
+      await _runGit(processRunner, repoDir.path, ["add", "unrelated-branch.txt"]);
+      await _runGit(processRunner, repoDir.path, ["commit", "-m", "unrelated work"]);
+      File("${repoDir.path}/unrelated-branch.txt").writeAsStringSync("local unrelated work\n");
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-unrelated",
+        projectId: repoDir.path,
+        startingBranch: "session-start",
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-unrelated");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("unrelated-branch.txt"));
+      expect(byFile.keys, isNot(contains("starting-branch-only.txt")));
+      expect((byFile["unrelated-branch.txt"]! as FileDiffContent).after, "local unrelated work\n");
     });
 
     test("shows replacement content when a deleted file is recreated untracked", () async {
@@ -230,9 +329,34 @@ Future<void> _insertStoredSession({
   );
 }
 
-Future<void> _runGit(ProcessRunner runner, String cwd, List<String> args) async {
+Future<void> _insertInPlaceStoredSession({
+  required AppDatabase db,
+  required String sessionId,
+  required String projectId,
+  required String? startingBranch,
+  required String startCommit,
+}) async {
+  await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+  await db.sessionDao.insertSession(
+    pluginId: "opencode",
+    sessionId: sessionId,
+    backendSessionId: sessionId,
+    projectId: projectId,
+    isDedicated: false,
+    createdAt: 1,
+    worktreePath: null,
+    branchName: null,
+    baseBranch: startingBranch,
+    baseCommit: startCommit,
+    lastAgent: null,
+    lastAgentModel: null,
+  );
+}
+
+Future<ProcessResult> _runGit(ProcessRunner runner, String cwd, List<String> args) async {
   final result = await runner.run("git", args, workingDirectory: cwd);
   if (result.exitCode != 0) {
     fail("git ${args.join(" ")} failed: ${result.stderr}");
   }
+  return result;
 }

@@ -38,6 +38,7 @@ SessionDetailState _loadedState({
     children: const [],
     childStatuses: const {},
     isRootSession: true,
+    supportsSessionDiffs: true,
     queuedMessages: const [],
     availableAgents: const [],
     availableProviders: const [],

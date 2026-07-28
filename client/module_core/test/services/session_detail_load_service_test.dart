@@ -58,10 +58,29 @@ void main() {
       expect(loaded.snapshot.messages, hasLength(1));
       expect(loaded.snapshot.commands, hasLength(1));
       expect(loaded.snapshot.canonicalSessionTitle, "Canonical title");
+      expect(loaded.snapshot.supportsSessionDiffs, isTrue);
       verify(() => repository.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
       verify(() => repository.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
       verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
+    });
+
+    test("load carries the session diff capability into the snapshot", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      stubSessionRepositoryGetSession(
+        repository: repository,
+        sessionId: "session-1",
+        session: testSession(
+          id: "session-1",
+          title: "Canonical title",
+        ).copyWith(supportsSessionDiffs: false),
+      );
+
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      expect((result as SessionDetailLoadResultLoaded).snapshot.supportsSessionDiffs, isFalse);
     });
 
     test("load gives the route project id precedence over session metadata", () async {

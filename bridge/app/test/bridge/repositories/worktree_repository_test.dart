@@ -10,6 +10,54 @@ import "package:test/test.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
+  group("WorktreeRepository.resolveCurrentBranchAndCommit", () {
+    late AppDatabase db;
+    late _FakeProcessRunner processRunner;
+    late _FakeBridgePlugin plugin;
+
+    setUp(() {
+      db = createTestDatabase();
+      processRunner = _FakeProcessRunner();
+      plugin = _FakeBridgePlugin();
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    WorktreeRepository repository({required bool isGitRepository}) => singlePluginWorktreeRepository(
+      projectsDao: db.projectsDao,
+      sessionDao: db.sessionDao,
+      gitApi: GitCliApi(
+        processRunner: processRunner,
+        gitPathExists: ({required String gitPath}) => isGitRepository,
+      ),
+      plugin: plugin,
+    );
+
+    test("captures the checked-out branch and HEAD", () async {
+      processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
+      processRunner.enqueue(result: ProcessResult(0, 0, "feature/stack-base\n", ""));
+
+      final result = await repository(isGitRepository: true).resolveCurrentBranchAndCommit(
+        projectPath: "/repo",
+      );
+
+      expect(result, (branch: "feature/stack-base", commit: "abc123"));
+      expect(processRunner.invocations[0].arguments, ["rev-parse", "HEAD"]);
+      expect(processRunner.invocations[1].arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+    });
+
+    test("returns no snapshot without invoking Git for a non-Git project", () async {
+      final result = await repository(isGitRepository: false).resolveCurrentBranchAndCommit(
+        projectPath: "/plain-directory",
+      );
+
+      expect(result, isNull);
+      expect(processRunner.invocations, isEmpty);
+    });
+  });
+
   group("WorktreeRepository.removeWorktree", () {
     late AppDatabase db;
     late _FakeProcessRunner processRunner;

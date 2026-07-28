@@ -23,14 +23,16 @@ void main() {
   group("GetSessionDiffsHandler success", () {
     late AppDatabase db;
     late SessionRepository sessionRepository;
+    late FakeBridgePlugin plugin;
     late FakeProcessRunner processRunner;
     late GetSessionDiffsHandler handler;
     late Directory tempDir;
 
     setUp(() async {
       db = createTestDatabase();
+      plugin = FakeBridgePlugin();
       sessionRepository = singlePluginSessionRepository(
-        plugin: FakeBridgePlugin(),
+        plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
@@ -41,23 +43,31 @@ void main() {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       );
+      final gitCliApi = GitCliApi(
+        processRunner: processRunner,
+        gitPathExists: ({required String gitPath}) => true,
+      );
       handler = GetSessionDiffsHandler(
         sessionDiffService: SessionDiffService(
           sessionRepository: sessionRepository,
           sessionDiffRepository: SessionDiffRepository(
-            gitCliApi: GitCliApi(
-              processRunner: processRunner,
-              gitPathExists: ({required String gitPath}) => true,
-            ),
+            gitCliApi: gitCliApi,
             outputMapper: const GitDiffOutputMapper(),
           ),
           filesystemRepository: filesystemRepository,
+          worktreeRepository: singlePluginWorktreeRepository(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            gitApi: gitCliApi,
+            plugin: plugin,
+          ),
         ),
       );
       tempDir = await Directory.systemTemp.createTemp("session_diff_handler_success_test_");
     });
 
     tearDown(() async {
+      await plugin.close();
       await db.close();
       if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);

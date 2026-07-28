@@ -51,6 +51,12 @@ sealed class Session with _$Session {
     // that predates branch reporting.
     required String? branchName,
     @Default(false) bool hasWorktree,
+    // Whether the bridge has enough Git metadata to compute this session's
+    // file changes. This is a capability, not an assertion that changes exist.
+    // COMPATIBILITY 2026-07-28 (v1.7.0): Older bridges omit this capability.
+    // Default to the prior visible-button behavior; require the field once
+    // those bridges are unsupported.
+    @Default(true) bool supportsSessionDiffs,
     // Whether this session has unseen activity (new changes the user has not
     // viewed). Backend-computed; advances on activity and is cleared by viewing
     // the session or an explicit mark-as-read. Defaults to false so older

@@ -252,12 +252,12 @@ class SessionCreationService {
     if (dedicatedWorktree) {
       return (worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
     }
-    final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectId: projectId);
+    final startBranchAndCommit = await _worktreeService.resolveCurrentBranchAndCommit(projectId: projectId);
     return (
       worktreePath: null,
       branchName: null,
-      baseBranch: baseBranchAndCommit?.baseBranch,
-      baseCommit: baseBranchAndCommit?.baseCommit,
+      baseBranch: startBranchAndCommit?.branch,
+      baseCommit: startBranchAndCommit?.commit,
     );
   }
 

@@ -24,6 +24,9 @@ class SessionCatalogMapper {
           ? null
           : SessionPromptDefaults(agent: row.lastAgent, model: row.lastAgentModel),
       hasWorktree: row.worktreePath != null,
+      supportsSessionDiffs: row.isDedicated
+          ? row.worktreePath != null && row.baseBranch != null
+          : row.baseCommit != null,
       unseen: unseen,
     );
   }

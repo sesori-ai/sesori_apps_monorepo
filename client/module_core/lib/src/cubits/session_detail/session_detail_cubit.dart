@@ -1454,6 +1454,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       children: childSessions,
       childStatuses: childStatuses,
       isRootSession: snapshot.isRootSession,
+      supportsSessionDiffs: snapshot.supportsSessionDiffs,
       queuedMessages: _promptQueue.items,
       availableAgents: agents,
       availableProviders: providers,

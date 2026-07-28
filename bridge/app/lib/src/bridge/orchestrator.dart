@@ -383,6 +383,7 @@ class Orchestrator {
         outputMapper: const GitDiffOutputMapper(),
       ),
       filesystemRepository: filesystemRepository,
+      worktreeRepository: worktreeRepository,
     );
     final sessionEventService = SessionEventService(
       sessionRepository: sessionRepository,

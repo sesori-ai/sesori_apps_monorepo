@@ -63,6 +63,7 @@ _Session _$SessionFromJson(Map json) => _Session(
         ),
   branchName: json['branchName'] as String?,
   hasWorktree: json['hasWorktree'] as bool? ?? false,
+  supportsSessionDiffs: json['supportsSessionDiffs'] as bool? ?? true,
   unseen: json['unseen'] as bool? ?? false,
 );
 
@@ -81,6 +82,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'promptDefaults': ?instance.promptDefaults?.toJson(),
   'branchName': ?instance.branchName,
   'hasWorktree': instance.hasWorktree,
+  'supportsSessionDiffs': instance.supportsSessionDiffs,
   'unseen': instance.unseen,
 };
 

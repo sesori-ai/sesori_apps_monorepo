@@ -137,6 +137,7 @@ class SessionDetailLoadService {
           canonicalSessionTitle: session?.title ?? fallbackContext?.sessionTitle,
           promptDefaults: promptDefaults,
           isRootSession: session != null ? session.parentID == null : null,
+          supportsSessionDiffs: session?.supportsSessionDiffs ?? false,
         ),
         isBridgeConnected: _connectionService.currentStatus is ConnectionConnected,
       );
@@ -209,6 +210,7 @@ class SessionDetailSnapshot {
   /// metadata confirms `parentID == null`; `false` when `parentID != null`;
   /// `null` when the session metadata lookup failed, so we cannot tell.
   final bool? isRootSession;
+  final bool supportsSessionDiffs;
 
   const SessionDetailSnapshot({
     required this.projectId,
@@ -223,6 +225,7 @@ class SessionDetailSnapshot {
     required this.canonicalSessionTitle,
     required this.promptDefaults,
     required this.isRootSession,
+    required this.supportsSessionDiffs,
   });
 }
 

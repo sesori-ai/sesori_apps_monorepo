@@ -6,6 +6,7 @@ import "../repositories/filesystem_repository.dart";
 import "../repositories/mappers/git_diff_output_mapper.dart";
 import "../repositories/session_diff_repository.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/worktree_repository.dart";
 
 class SessionDiffSessionNotFoundException implements Exception {}
 
@@ -47,14 +48,17 @@ class SessionDiffService {
   final SessionRepository _sessionRepository;
   final SessionDiffRepository _sessionDiffRepository;
   final FilesystemRepository _filesystemRepository;
+  final WorktreeRepository _worktreeRepository;
 
   SessionDiffService({
     required SessionRepository sessionRepository,
     required SessionDiffRepository sessionDiffRepository,
     required FilesystemRepository filesystemRepository,
+    required WorktreeRepository worktreeRepository,
   }) : _sessionRepository = sessionRepository,
        _sessionDiffRepository = sessionDiffRepository,
-       _filesystemRepository = filesystemRepository;
+       _filesystemRepository = filesystemRepository,
+       _worktreeRepository = worktreeRepository;
 
   Future<List<FileDiff>> getDiffs({required String sessionId}) async {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
@@ -62,25 +66,43 @@ class SessionDiffService {
       throw SessionDiffSessionNotFoundException();
     }
 
-    final worktreePath = session.worktreePath;
-    final baseBranch = session.baseBranch;
-    if (worktreePath == null || baseBranch == null) return const [];
-    if (!_filesystemRepository.directoryExists(path: worktreePath)) return const [];
-    if (baseBranch.isEmpty) {
-      throw const BaseBranchUnreachableException(message: "invalid base branch format: ''");
+    final String worktreePath;
+    final SessionDiffComparisonBase comparisonBase;
+    if (session.isDedicated) {
+      final dedicatedWorktreePath = session.worktreePath;
+      final baseBranch = session.baseBranch;
+      if (dedicatedWorktreePath == null || baseBranch == null) return const [];
+      if (baseBranch.isEmpty) {
+        throw const BaseBranchUnreachableException(message: "invalid base branch format: ''");
+      }
+      if (!_filesystemRepository.directoryExists(path: dedicatedWorktreePath)) return const [];
+      worktreePath = dedicatedWorktreePath;
+      comparisonBase = SessionDiffMergeBaseRevision(revision: baseBranch);
+    } else {
+      final startCommit = session.baseCommit;
+      if (startCommit == null) return const [];
+      final projectPath = await _sessionRepository.getProjectPath(projectId: session.projectId);
+      if (projectPath == null) return const [];
+      if (!_filesystemRepository.directoryExists(path: projectPath)) return const [];
+      worktreePath = projectPath;
+      comparisonBase = await _resolveInPlaceComparisonBase(
+        projectId: session.projectId,
+        projectPath: projectPath,
+        startingBranch: session.baseBranch,
+        startCommit: startCommit,
+      );
     }
-
     final queryResult = await _sessionDiffRepository.query(
       worktreePath: worktreePath,
-      baseBranch: baseBranch,
+      comparisonBase: comparisonBase,
     );
     final snapshot = switch (queryResult) {
       SessionDiffQuerySuccess() => queryResult,
-      SessionDiffBaseBranchUnreachable() => throw BaseBranchUnreachableException(
-        message: "base branch '$baseBranch' is not reachable",
+      SessionDiffBaseUnreachable() => throw BaseBranchUnreachableException(
+        message: "diff base '${comparisonBase.revision}' is not reachable",
       ),
       SessionDiffNoCommonAncestor() => throw BaseBranchUnreachableException(
-        message: "no common ancestor between '$baseBranch' and HEAD",
+        message: "no common ancestor between '${comparisonBase.revision}' and HEAD",
       ),
       SessionDiffQueryFailure(:final message) => throw GitDiffQueryException(message: message),
     };
@@ -100,7 +122,7 @@ class SessionDiffService {
 
       final beforeResult = await _readBefore(
         worktreePath: worktreePath,
-        revision: snapshot.mergeBase,
+        revision: snapshot.baseRevision,
         entry: entry,
       );
       final afterResult = _readAfter(
@@ -152,6 +174,72 @@ class SessionDiffService {
       );
     }
     return diffs;
+  }
+
+  Future<SessionDiffComparisonBase> _resolveInPlaceComparisonBase({
+    required String projectId,
+    required String projectPath,
+    required String? startingBranch,
+    required String startCommit,
+  }) async {
+    try {
+      final currentBranch = await _sessionDiffRepository.getCurrentBranch(
+        projectPath: projectPath,
+      );
+      if (currentBranch == startingBranch) {
+        return SessionDiffExactRevision(revision: startCommit);
+      }
+
+      if (startingBranch == null) {
+        if (await _sessionDiffRepository.isAncestor(
+          projectPath: projectPath,
+          revision: startCommit,
+        )) {
+          return SessionDiffExactRevision(revision: startCommit);
+        }
+        return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
+      }
+
+      if (!await _sessionDiffRepository.revisionExists(
+        projectPath: projectPath,
+        revision: startingBranch,
+      )) {
+        return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
+      }
+
+      final startingBranchIsAncestor = await _sessionDiffRepository.isAncestor(
+        projectPath: projectPath,
+        revision: startingBranch,
+      );
+      final startCommitIsAncestor = startingBranchIsAncestor
+          ? false
+          : await _sessionDiffRepository.isAncestor(
+              projectPath: projectPath,
+              revision: startCommit,
+            );
+      if (startingBranchIsAncestor || startCommitIsAncestor) {
+        return SessionDiffMergeBaseRevision(revision: startingBranch);
+      }
+      return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
+    } on SessionDiffRepositoryException catch (error) {
+      throw GitDiffQueryException(message: error.message);
+    }
+  }
+
+  Future<SessionDiffComparisonBase> _resolveProjectBase({
+    required String projectId,
+    required String projectPath,
+  }) async {
+    final projectBase = await _worktreeRepository.resolveBaseBranchAndCommit(
+      projectId: projectId,
+      projectPath: projectPath,
+    );
+    if (projectBase == null) {
+      throw const BaseBranchUnreachableException(
+        message: "project base branch is not reachable",
+      );
+    }
+    return SessionDiffMergeBaseRevision(revision: projectBase.baseBranch);
   }
 
   Future<_DiffFileReadResult> _readBefore({

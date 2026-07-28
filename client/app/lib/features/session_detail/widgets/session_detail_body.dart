@@ -85,10 +85,10 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       ].join(" · "),
       SessionDetailLoading() || SessionDetailFailed() => "",
     };
-    final isRootSession = state is SessionDetailLoaded && state.isRootSession == true;
+    final canShowDiffs = state is SessionDetailLoaded && state.isRootSession == true && state.supportsSessionDiffs;
 
     final actions = <Widget>[
-      if (isRootSession)
+      if (canShowDiffs)
         PregoButtonsIconGlass(
           icon: TablerRegular.git_compare,
           semanticLabel: loc.sessionDetailFileChangesTooltip,

@@ -187,6 +187,13 @@ class GitCliApi {
     return commit.isEmpty ? null : commit;
   }
 
+  Future<ProcessResult> readCurrentBranch({required String projectPath}) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: const ["symbolic-ref", "--quiet", "--short", "HEAD"],
+    );
+  }
+
   Future<ProcessResult> verifyRevision({
     required String projectPath,
     required String revision,
@@ -204,6 +211,16 @@ class GitCliApi {
     return runGit(
       projectPath: projectPath,
       arguments: ["merge-base", baseRevision, "HEAD"],
+    );
+  }
+
+  Future<ProcessResult> isAncestor({
+    required String projectPath,
+    required String revision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["merge-base", "--is-ancestor", revision, "HEAD"],
     );
   }
 
