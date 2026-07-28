@@ -238,6 +238,8 @@ clear the hash persisted by current releases. It runs immediately after Firebase
 initialization and before custom sources. Vendor automatic initialization can
 precede that supported reset, so the plan treats possible pre-clear automatic
 rows as legacy raw data rather than promising an impossible zero-width window.
+If clear fails, classify/disclose that whole process as potentially legacy-
+keyed; disabling only custom events is not described as stopping automatic data.
 
 The core service combines installation-local intent with the server preference:
 
@@ -259,11 +261,15 @@ The core service combines installation-local intent with the server preference:
 - Server success stores synchronized disabled. Failure preserves the pending
   record and surfaces “disabled on this device; account sync pending”; retry is
   allowed only after post-splash readiness or explicit user action.
-- Enable keeps custom sharing inactive until server success and synchronized
-  local persistence.
+- Enable first persists inactive `pendingEnable`, then keeps custom sharing
+  inactive through server success until synchronized local persistence. A final
+  local write failure remains a truthful pending-finalization state across
+  restart, never a displayed failure followed by silent activation.
 - Logout/account loss never deletes a pending disable. The logout flow attempts
   one authenticated sync before credentials are cleared; if it fails, it
   preserves the record and requires reauthentication to finish server sync.
+  Every preference operation has a 10-second deadline, so it cannot hold logout
+  or the foreground reconciliation slot indefinitely.
 
 The setting is not advertised as a universal Firebase or legacy-client kill
 switch. It immediately controls Sesori-defined custom events on this
@@ -337,23 +343,25 @@ mixed `src/analytics/` bucket. The concrete dependency direction is:
 | `AnalyticsEvent`, bounded enums, `AnalyticsScreen`, `AnalyticsDeliveryResult`, `ProductAnalyticsPreference`, `ProductAnalyticsState`, `CampaignCode`, and persisted record variants under `module_core/lib/src/models/product_analytics/` | Domain models; no SDK/Flutter dependencies | Closed event/screen/preference/state values. `AnalyticsScreen` is independent of routing; `AnalyticsRouteListener` performs the exhaustive `AppRouteDef -> AnalyticsScreen` mapping. Delivery is `acceptedBySdk`, `deferredUntilPreference`, or `failed`, never an untruthful “reported” boolean. Campaign completion is account-scoped; the in-memory pending activation variant carries only one typed message-success event and its auth generation. |
 | `AnalyticsClient` in `module_core/lib/src/platform/analytics_client.dart` | Foundation external-sink capability | Typed `logEvent({required AnalyticsEvent event, required String userKey})`. The key is already pseudonymous and is serialized as the custom `user_key` event parameter, never global SDK identity. Methods throw SDK failures; they accept no arbitrary map/name or raw account ID. |
 | `AnalyticsApi` in `module_core/lib/src/api/analytics_api.dart` | Layer 1; constructor requires `AnalyticsClient` | Thin API over the external client. It is the only core class that invokes the platform sink. |
-| `ProductAnalyticsPreferenceApi` in `module_core/lib/src/api/product_analytics_preference_api.dart` | Layer 1; constructor requires `AuthenticatedHttpApiClient` | Calls authenticated GET/PUT `/product-analytics/preference`, serializes the closed enum, parses external strings at the boundary, and returns explicit success/failure. It does not mutate auth state. |
+| `ProductAnalyticsPreferenceApi` in `module_core/lib/src/api/product_analytics_preference_api.dart` | Layer 1; constructor requires `AuthenticatedHttpApiClient` | Calls authenticated GET/PUT `/product-analytics/preference` under a fixed 10-second operation deadline, serializes the closed enum, parses external strings at the boundary, and returns explicit success/timeout/failure. It does not mutate auth state; late transport completion is detached and cannot complete the bounded operation twice. |
 | `ProductAnalyticsPreferenceStorage` and `CampaignAttributionStorage` in `module_core/lib/src/storage/` | Layer 1 storage; each constructor requires `SecureStorage` | Read/write/delete only their closed persisted records. They do not reconcile accounts, call APIs, hash IDs, or emit analytics. |
 | `ProductAnalyticsRepository` in `module_core/lib/src/repositories/product_analytics_repository.dart` | Layer 2; constructor requires `AnalyticsApi` | Converts raw authenticated user ID to lowercase SHA-256, passes only the pseudonymous key downward, and maps API exceptions to explicit `AnalyticsDeliveryResult` without redundant logging. It adds `schema_version=1` through the typed event serialization contract. |
-| `ProductAnalyticsPreferenceRepository` in `module_core/lib/src/repositories/product_analytics_preference_repository.dart` | Layer 2; requires `ProductAnalyticsPreferenceApi` and `ProductAnalyticsPreferenceStorage` | Fetch/update server preference, scope local records to one account, persist only `synced(userId, preference)` or `pendingDisable(userId)`, and expose explicit results. Enable is never persisted pending. |
-| `CampaignAttributionRepository` in `module_core/lib/src/repositories/campaign_attribution_repository.dart` | Layer 2; requires `CampaignAttributionStorage` | Enforces a 24-hour pending TTL and persists either pre-auth `pending(code, capturedAt)` or `acceptedBySdk(userId, code, completedAt)`. Completion deduplicates only that account; any later valid pre-auth capture after logout replaces the completed record with pending before the next account is known. Absence genuinely means no campaign. It never stores a full URI/UTM text. |
+| `ProductAnalyticsPreferenceRepository` in `module_core/lib/src/repositories/product_analytics_preference_repository.dart` | Layer 2; requires `ProductAnalyticsPreferenceApi` and `ProductAnalyticsPreferenceStorage` | Fetch/update server preference, scope local records to one account, and persist only `synced(userId, preference)`, `pendingDisable(userId)`, or `pendingEnable(userId)`. `pendingEnable` is an inactive write-ahead/finalization state, never permission to emit. |
+| `CampaignAttributionRepository` in `module_core/lib/src/repositories/campaign_attribution_repository.dart` | Layer 2; requires `CampaignAttributionStorage` | Enforces a 24-hour TTL and persists pre-auth `pendingUnbound(code, capturedAt)`, post-attempt `pendingRetry(userId, code, capturedAt)`, or `acceptedBySdk(userId, code, completedAt)`. The first authenticated attempt binds any failure to that user; another account can never consume it. Any later valid pre-auth capture after logout replaces completed/failed state before the next account is known. Absence genuinely means no campaign. It never stores a full URI/UTM text. |
 | `ProductAnalyticsService` in `module_core/lib/src/services/product_analytics_service.dart` | Layer 3, `@lazySingleton`; requires `AuthSession` (read-only), existing `LifecycleSource`, `ProductAnalyticsRepository`, and `ProductAnalyticsPreferenceRepository` | Sole owner of preference/custom-event lifecycle and Consumer `logEvent`. Exposes a replaying state stream plus `start`, `markPostSplashReady`, `setPreference`, `retryPendingDisable`, and `dispose`. It performs no network work until readiness, revalidates while foregrounded, serializes reconciliation per auth generation, and sends no custom event unless active. While preference is unknown, it may retain exactly one bounded activation-candidate event for the current generation; all other inactive events remain unbuffered. |
-| `CampaignAttributionService` in `module_core/lib/src/services/campaign_attribution_service.dart` | Layer 3, `@lazySingleton`; requires read-only `AuthSession`, `CampaignAttributionRepository`, and `ProductAnalyticsService` | Captures a validated first touch and attempts the event only on an active transition/start. It marks account-scoped `acceptedBySdk` only when the service returns that typed result; failure leaves `pending` for a later lifecycle attempt without a timer loop. |
+| `CampaignAttributionService` in `module_core/lib/src/services/campaign_attribution_service.dart` | Layer 3, `@lazySingleton`; requires read-only `AuthSession`, `CampaignAttributionRepository`, and `ProductAnalyticsService` | Holds at most one bounded URI classification while auth restoration is unknown. It persists pre-auth first touch only after restoration conclusively yields unauthenticated, discards it if authenticated, and attempts only when the bound/current account matches. SDK failure changes unbound pending to account-bound retry; accepted state is also account-scoped. |
 | `AnalyticsRouteListener` in `module_core/lib/src/listeners/analytics_route_listener.dart` | Consumer/listener, `@lazySingleton`; requires `RouteSource` and `ProductAnalyticsService` | Owns route subscription, maps `AppRouteDef` exhaustively to `AnalyticsScreen`, signals readiness on the first non-splash route, and reports stable screens only while active. It never passes a route model/path to Foundation. |
 | `CampaignAttributionListener` in `module_core/lib/src/listeners/campaign_attribution_listener.dart` | Consumer/listener, `@lazySingleton`; requires `DeepLinkSource` and `CampaignAttributionService` | Replaces the obsolete app `DeepLinkService`, owns the one URI subscription, validates only approved `sesori.com/link` campaign codes, and ignores all other/legacy callback URIs without logging complete values. |
 | `NotificationOpenAnalyticsListener` in `module_core/lib/src/listeners/notification_open_analytics_listener.dart` | Consumer/listener, `@lazySingleton`; requires the bounded notification-open source and `ProductAnalyticsService` | Buffers at most the one validated cold-start open until preference reconciliation, emits it only if the same account becomes active, and drops it on disable, logout/account switch, or process-lifetime timeout. No entity ID enters the buffer. |
 | `ProductAnalyticsPreferenceCubit` in `module_core/lib/src/cubits/product_analytics_preference/` | Consumer; constructor requires `ProductAnalyticsService` | Subscribes to service state and exposes toggle/retry intents. Mobile Settings constructs it; it is not in DI. |
 | `FirebaseAnalyticsClient` in `app/lib/core/platform/firebase_analytics_client.dart` | Thin mobile Foundation adapter, `@LazySingleton(as: AnalyticsClient)`; requires `FirebaseAnalytics` | Serializes only typed custom events plus `schema_version` and `user_key`, and throws failures upward. It never applies global identity/collection overrides and contains no route/campaign/preference/hash business logic. Firebase-disabled environments use the existing no-op SDK object. |
-| `FirebaseAnalyticsIdentityMigration` in `app/lib/core/platform/firebase_analytics_identity_migration.dart` | Mobile-only pre-core bootstrap helper; requires `FirebaseAnalytics` | Immediately after Firebase initialization and before DI/listeners, awaits `setUserId(id: null)` to clear the hash persisted by prior releases. It does nothing else to consent/collection. Failure leaves the process custom-event adapter disabled and retries next launch. Keep this cleanup through minimum-supported-version adoption plus the 90-day raw window, then remove it explicitly. |
+| `FirebaseAnalyticsIdentityMigration` in `app/lib/core/platform/firebase_analytics_identity_migration.dart` | Mobile-only pre-core bootstrap helper; requires `FirebaseAnalytics` | Immediately after Firebase initialization and before DI/listeners, awaits `setUserId(id: null)` to clear the hash persisted by prior releases. It does nothing else to consent/collection. Failure leaves the process custom-event adapter disabled and retries next launch; because automatic collection cannot then be safely reconfigured without another persisted override, the **entire failed process** is classified/disclosed as potentially legacy-keyed and remains covered by recurring legacy deletion. Keep this cleanup through minimum-supported-version adoption plus the 90-day raw window, then remove it explicitly. |
 | `NoOpAnalyticsClient` in `desktop/lib/core/platform/no_op_analytics_client.dart` | Desktop phase-1 Foundation adapter | Satisfies shared core DI and accepts operations without collection. No desktop listeners are started. |
 
-`AnalyticsScreen` pins snake-case wire values for login, projects, settings and
-its subpages, sessions, new session, session detail, and session diffs. Screen
+`AnalyticsScreen` pins snake-case wire values for login, projects, approved
+settings groupings, sessions, new session, session detail, and session diffs.
+`settingsHarnesses` and `settingsHarnessManagement` both map to generic
+`settings`; they never produce harness-specific wire values. Screen
 activity is the Sesori custom `product_screen_viewed` event rather than Firebase
 `screen_view`, so the custom-event gate and `user_key` always apply. The
 route listener's exhaustive switch also handles splash explicitly (readiness
@@ -391,7 +399,10 @@ listener exists yet. A native automatic startup event can still occur between
 vendor SDK initialization and this earliest supported reset; treat any such
 legacy-keyed row as restricted raw legacy data, exclude automatic events from
 behavioral models, cover it through the legacy `USER_ID` deletion path, and do
-not claim that upgrade retroactively removes it.
+not claim that upgrade retroactively removes it. If the clear fails, this legacy
+classification applies to every automatic event for that whole process—not only
+startup—while all custom events remain disabled. Recurring deletion sweeps keep
+submitting the legacy user key; do not claim automatic collection was stopped.
 
 ### Preference and lifecycle data flow
 
@@ -406,12 +417,14 @@ then may the service fetch/reconcile for the currently authenticated account.
 If login is still unauthenticated, it waits for the later auth emission. Thus
 `restoreLocalSession()` cannot trigger a splash-time network request.
 
-**Reconciliation:** A same-account local `pendingDisable` keeps custom sharing off
-and PUTs disabled after readiness. Otherwise the repository GETs the server
-preference; returned disabled stays off, while returned enabled in a release
-build allows `ProductAnalyticsRepository` to hash the account ID for each typed
-event. Debug/profile/unsupported builds retain the desired preference but
-publish `ProductAnalyticsState.inactive(buildUnsupported)`.
+**Reconciliation:** A same-account local `pendingDisable` keeps custom sharing
+off and PUTs disabled after readiness. `pendingEnable` also stays inactive: GET
+disabled returns to synchronized disabled; GET enabled must first finalize
+synchronized enabled storage before event acceptance. Otherwise the repository
+GETs the server preference; returned disabled stays off, while returned enabled
+in a release build allows `ProductAnalyticsRepository` to hash the account ID
+for each typed event. Debug/profile/unsupported builds retain the desired
+preference but publish `ProductAnalyticsState.inactive(buildUnsupported)`.
 
 Every auth emission/account switch/logout increments a monotonically increasing
 service generation. Each GET, PUT, persistence operation, and scheduled refresh
@@ -424,7 +437,11 @@ within one generation. After initial readiness the service refreshes on each
 time while continuously resumed. A returned disabled value synchronously marks
 the current generation inactive before any follow-up persistence await. Network
 failure preserves the honest prior local state and last-successful-check time;
-the UI makes the conditional online propagation bound explicit.
+the UI makes the conditional online propagation bound explicit. Every preference
+GET/PUT has the API's 10-second operation deadline. Timeout releases the sole
+reconciliation slot and advances no state; generation checks ignore any detached
+late completion. Disable intent remains durable, so neither logout nor future
+15-minute checks can be held indefinitely by one request.
 
 **Schema exposure and first-message deferral:** On each process's first active
 transition, the service attempts `analytics_schema_ready` before later buffered
@@ -447,34 +464,44 @@ surfaces unsaved failure unless the server confirms disabled. Retry occurs only
 from Settings or a later post-splash lifecycle, never from a timer or splash
 auth emission.
 
-**Enable:** Custom sharing remains off while the preference repository PUTs
-enabled. Only server success followed by synchronized local persistence allows
-the analytics repository to hash/send. Failed enable remains disabled and is
-not persisted for automatic future activation.
+**Enable:** Custom sharing remains off. The first awaited operation writes
+`pendingEnable(userId)`; if that write fails, no server PUT occurs. The service
+then PUTs enabled under the bounded deadline and, on success, must persist
+synchronized enabled before activation. If final persistence fails,
+`pendingEnable` remains durable and the UI reports “enabled on account; local
+finalization pending,” not failure; restart/retry stays inactive until final
+storage succeeds. PUT failure/timeout also remains inactive and requires
+explicit retry/cancellation, or a later reconciliation that confirms server
+enabled and successfully finalizes local storage. The UI always says pending,
+not failed, until one of those outcomes; no later activation contradicts the
+displayed result.
 
 **Logout/account switch:** Before explicit logout clears credentials, the auth
 consumer asks the service to attempt one pending disable sync. Regardless of
 success it immediately suppresses custom events. Failure must not block logout:
 the encrypted pending record remains scoped by raw ID and is retried after that
 account reauthenticates; it never applies to another account. Unexpected token
-loss preserves the same record. No path claims or requests a Firebase-wide data
-reset.
+loss preserves the same record. The attempt is bounded by the 10-second API
+deadline, after which logout clears credentials and continues. No path claims or
+requests a Firebase-wide data reset.
 
 **Screen flow:** The route listener retains the latest `AnalyticsScreen` while
 inactive. Inactive-to-active emits `product_screen_viewed` once; later changed
 screen enums emit once. Foundation sees neither `AppRouteDef` nor a concrete URI.
 
-**Campaign flow:** The campaign listener converts only an approved URI received
-while unauthenticated to `CampaignCode`; authenticated/post-signup opens are
-ignored. The service/repository stores first touch plus capture time before auth
-and expires it after 24 hours. On active state it attempts
+**Campaign flow:** During splash/session restoration, authenticated state is
+`unknown`, not unauthenticated. The listener may hold one validated bounded code
+in memory, but stores nothing until restoration resolves: authenticated drops
+it; conclusively unauthenticated stores `pendingUnbound(code, capturedAt)`.
+Authenticated/post-signup opens are ignored. On active state it attempts
 `campaign_attributed`. `acceptedBySdk` is persisted only from the typed accepted
 result as `acceptedBySdk(userId, code, completedAt)` and deduplicates only that
 account. Any later valid pre-auth link after logout replaces prior completion
 with pending before the next account is known; if account B then signs up, A's
 completion cannot consume B's first touch. If A logs back in instead, the
-warehouse age/earliest rules make the extra attempt harmless. A failed result
-leaves pending, with at most one attempt per active lifecycle; BigQuery accepts
+warehouse age/earliest rules make the extra attempt harmless. The first failed
+SDK attempt converts unbound state to `pendingRetry(userId, ...)`; only that same
+current account may retry, and account switch discards it. BigQuery accepts
 attribution only when the account is at most 24 hours old at event time and
 selects the earliest eligible event. Existing
 accounts opening campaign links before login therefore remain unattributed.
@@ -495,7 +522,7 @@ Existing wire names remain unchanged. Add only the following initial events:
 | --- | --- | --- | --- |
 | `analytics_schema_ready` | The process first becomes active for an authenticated account under schema v1 | none beyond shared schema/key | Per-account instrumentation-capable exposure; never activity |
 | `project_inventory_loaded` | The first successful empty inventory and the first successful non-empty inventory in a cubit lifetime | `inventory_state=empty/non_empty` | First project available from earliest non-empty; empty is onboarding friction |
-| `session_activity_viewed` | The first successful empty snapshot and the first successful non-empty snapshot in a cubit lifetime | `activity_state=empty/non_empty` | Meaningful monitoring from earliest non-empty; empty is diagnostic only |
+| `session_activity_viewed` | The first successful empty snapshot in a cubit lifetime, and at most one successful non-empty snapshot per UTC date while that session detail is visible/foregrounded | `activity_state=empty/non_empty` | Earliest non-empty is the monitoring milestone; dated non-empty events support WAU/retention without SSE inflation |
 | `session_message_sent` | Existing-session send returns success, including a queued send that later succeeds | `submission_kind=text/command` | Full activation, control activity |
 | `session_created_with_message` | `createSessionWithMessage` returns success | `submission_kind`, `workspace_kind=project/dedicated_worktree` | Full activation, remote creation, worktrees |
 | `session_creation_failed` | That creation returns an explicit failure | `failure_reason` from bounded `RemoteFailureReason`, `workspace_kind` | Creation friction; never activation |
@@ -521,8 +548,8 @@ an additional `session_message_sent`.
 - `ProductAnalyticsService`: schema-ready exposure on first active transition.
 - `ProjectListCubit`: first successful empty and first successful non-empty
   inventory states.
-- `SessionDetailCubit._loadMessages`: first successful empty and first
-  successful non-empty activity states.
+- `SessionDetailCubit._loadMessages` plus its existing lifecycle handling: first
+  empty diagnostic and one visible/foreground non-empty activity per UTC date.
 - `SessionDetailCubit.sendMessage` and `_drainQueuedMessages`: accepted
   existing-session messages.
 - `NewSessionCubit.createSession`: accepted created session/message and bounded
@@ -550,7 +577,7 @@ merely to avoid updating tests.
 | Owner change | Exact flow and deduplication |
 | --- | --- |
 | `ProjectListCubit` | Add required `ProductAnalyticsService` and retain the bounded inventory states already emitted in that cubit lifetime. Emit the first successful `empty` once and the first later/same-lifecycle `non_empty` once; refreshes never repeat either classification. The warehouse milestone uses only earliest non-empty. |
-| `SessionDetailCubit` view | Add required product analytics service and retain the bounded activity states already emitted. Initial empty may emit once; a later non-empty transition from refresh/SSE emits once and is not suppressed by the earlier empty diagnostic. Repeated snapshots in either state do not emit. |
+| `SessionDetailCubit` view | Add required product analytics service. Retain one lifetime empty-diagnostic guard plus the last UTC date for which visible/foreground non-empty activity was emitted. Initial or later empty emits once; the first successful non-empty load/refresh/SSE on each UTC date emits once while the route is visible and lifecycle resumed. Background events emit nothing; resume reload can emit for a new date. This preserves earliest monitoring while supporting later WAU/retention without per-SSE counts. |
 | `SessionDetailCubit` send paths | Direct `sendMessage` and `_drainQueuedMessages` call one private `_reportAcceptedSubmission` only on `SuccessResponse`. The queued item retains only text/command for sending; analytics derives text/command without reading content. Error/requeue emits nothing, and each dequeued successful item reports once. |
 | `NewSessionCubit` | Add required product analytics service. Capture workspace/submission classifications before awaiting. `SuccessResponse` makes one `session_created_with_message` call; `ErrorResponse` emits only bounded `session_creation_failed`. It never also emits the existing-session event. |
 | `SessionDetailCubit` question/permission/abort | Report after each existing method's success branch. Question answers/rejections carry no answer data; permission maps the existing `PermissionReply` enum; abort reports only after every root/active-child response succeeds. |
@@ -843,9 +870,11 @@ not weaken the written privacy boundary to fit an unchecked property.
 
 1. **`events_flattened`**: flatten only catalogued Sesori custom events/parameters
    from GA4, use `event_timestamp` in UTC, require schema version and non-null
-   custom `user_key`, and retain Firebase platform/app version/build. Exclude
-   internal/test keys, but deliberately do **not** join the current auth snapshot
-   here. Raw bundle/install fields may be used transiently to discard
+   custom `user_key`, and retain Firebase platform/app version/build. Anti-join
+   both active internal/test keys and the permanent deletion-exclusion keys on
+   every build/recomputation, but deliberately do **not** join the time-varying
+   current auth eligibility snapshot here. Raw bundle/install fields may be used
+   transiently to discard
    byte-identical export duplicates but are not selected into the table. This
    recoverable 90-day fact layer prevents a transient auth-export outage from
    permanently discarding otherwise eligible events.
@@ -933,8 +962,13 @@ only three days.
   suppression operation, verifies preference disabled plus
   `productAnalyticsExportSuppressedAt`, and only then adds `user_key` to a
   restricted deletion-exclusion control. It deletes matching auth-private/
-  curated/reporting rows and rebuilds identifier-free setup cohorts; the source
-  tombstone prevents the next daily export from restoring either contribution.
+  curated/reporting rows and rebuilds identifier-free setup cohorts. It does not
+  declare warehouse completion until an auth export with
+  `runCutoff >= productAnalyticsExportSuppressedAt` has published, then performs
+  one final delete/rebuild and verifies the key/contribution remains absent.
+  Thus an export staged before the tombstone may finish, but cannot restore data
+  after the verified tombstone-aware run/final cleanup; no broad cross-system
+  lock is required.
 - From the still-retained raw window, resolve only `user_pseudo_id` values whose
   installation emitted a matching keyed custom event and submit GA4 User
   Deletion API requests as app-instance IDs. Also submit the hashed key as legacy
@@ -944,9 +978,18 @@ only three days.
   deletion request; do not claim otherwise. Its unlinked GA4 data is governed by
   the verified two-month upstream retention. State this limit in the privacy
   notice/deletion response rather than creating a persistent account-device map.
+- Keep deletion-exclusion tombstones permanent and run a daily upstream deletion
+  sweep over newly landed raw partitions. For every tombstoned key it discovers
+  newly uploaded keyed installation IDs (including events queued while a
+  supported client was offline), resubmits GA app-instance deletion, deletes any
+  matching warehouse rows, and always submits the legacy `USER_ID` while that
+  migration window remains possible. The request can report source/warehouse
+  deletion plus recurring enforcement installed, but must not promise that an
+  offline client's future upload can never transiently reach restricted raw.
   Record request IDs/completion without raw account/install IDs. Test the API
-  credential, request format, source non-repopulation, aggregate rebuild, and a
-  non-production deletion before rollout.
+  credential, request format, in-flight export ordering, delayed offline upload,
+  flattened anti-join/non-repopulation, aggregate rebuild, and a non-production
+  deletion before rollout.
 
 ## Looker Studio
 
@@ -1044,13 +1087,14 @@ directory name.
   disclosure updates.
 - Test API parsing, layer wiring, fail-closed custom events during splash,
   post-splash fetch, pending-disable storage as the first awaited operation,
-  storage failure, crash/restart pending recovery, legacy-ID clear success/
-  failure ordering before custom sources, logout sync failure/account-switch
-  preservation,
-  enable-after-server success, delayed GET/PUT/storage completions across rapid
-  login/logout/account switches, foreground/15-minute refresh propagation,
-  debug suppression, core identity hash, route-to-screen mapping, event wire
-  pins, and mobile/desktop DI.
+  storage failure, crash/restart pending recovery, pending-enable write-ahead/
+  finalization failure, 10-second timeout releasing logout/reconciliation,
+  legacy-ID clear success/failure ordering and whole-process disclosure, logout
+  sync failure/account-switch preservation, enable-after-server success, delayed
+  GET/PUT/storage completions across rapid login/logout/account switches,
+  foreground/15-minute refresh propagation, harness routes mapping only to
+  generic settings, debug suppression, core identity hash, route-to-screen
+  mapping, event wire pins, and mobile/desktop DI.
 - Release only after both auth PRs are deployed. Once users can opt out, this
   custom-event lifecycle becomes a non-rollback privacy floor: subsequent
   client fixes must preserve it or suppress all Sesori custom events.
@@ -1067,22 +1111,24 @@ directory name.
   non-blocking.
 - Buffer only the first activation-candidate outcome while same-generation
   preference is unknown, then emit on active or drop on disabled/auth change;
-  report first empty and first later non-empty inventory/activity/diff states
-  separately.
+  report first empty/non-empty transitions for milestones and at most one
+  visible non-empty session activity per UTC date for WAU/retention.
 - Preserve bounded notification category/event type through open dispatch and
   classify push/local plus cold/warm; buffer the single cold-start open until
   same-account preference resolution and drop it on disable/logout/timeout.
 - Add core campaign Storage -> repository -> service -> deep-link listener,
-  24-hour pre-auth capture/attribution rules, typed SDK-acceptance result, and
-  remove the obsolete app `DeepLinkService` and full URI logging.
+  auth-restoration hold, 24-hour pre-auth capture/attribution rules, account-
+  bound failed retry, typed SDK-acceptance result, and remove the obsolete app
+  `DeepLinkService` and full URI logging.
 - Regenerate only source-generated outputs.
 - Add focused tests that failures/taps/queued-only operations do not activate,
   each successful message path makes one service call, new-session success is not
   double counted, sensitive inputs cannot enter parameter maps, notification
   classification and first-message deferral survive preference resolution,
-  empty-to-non-empty transitions report once, post-signup/old-account links
-  cannot become acquisition, account A completion cannot consume account B's
-  first touch, and campaign values are bounded.
+  empty-to-non-empty transitions report once, resumed/later-date monitoring can
+  report again without SSE inflation, auth-unknown links wait for restoration,
+  post-signup/old-account links cannot become acquisition, and account A failed/
+  completed state cannot consume account B's first touch.
 
 ### PR 5/5 — Warehouse models and dashboards
 
@@ -1100,6 +1146,9 @@ directory name.
 - Schedule the auth export and three-day event recomputation, then reconcile
   source counts and freshness; verify stale auth snapshots abort publication and
   recovery backfills the missed window.
+- Apply deletion exclusion in flattened facts, schedule the recurring upstream
+  tombstone sweep, and require a tombstone-aware auth export plus final cleanup
+  before declaring warehouse deletion complete.
 - Build and permission the seven-page Looker report.
 - Run a release-build smoke test through account -> bridge -> project -> message
   and verify the event, auth join, full activation, complete-day table, and
@@ -1114,7 +1163,7 @@ directory name.
 | Before 1/5 | Existing clients/events continue. Firebase daily export should be linked only through the controlled day-zero sequence so its non-retroactive clock starts safely. | Complete restricted-project IAM, daily-only link, raw expiration/settings verification, and record `raw_export_start_at`. | Unlinking loses future export and is not a useful rollback; stop rollout and correct IAM/expiration/location before derived datasets or new instrumentation. |
 | After 1/5 | Dedicated GET/PUT preference endpoints work; old clients are unaffected because auth responses did not change. New users always write preference; old documents read as enabled during migration. | Deploy write-first web code to all serving instances, verify new writes, run/re-run backfill, and record zero missing. | Roll back before any opt-out client release if necessary. The added field is ignored by old code; do not remove it. Re-run backfill after returning to step 1. |
 | After 2/5 | Preference schema is required and export command/job image is deployable but unscheduled. Existing clients remain unaffected. | Require recorded zero-missing evidence from step 1; deploy enforcement; smoke-test account creation and endpoints; deploy job disabled. | Roll back web/job to step 1, whose honest missing-field default can read every document. Stop any job; published tables stay at last good state. |
-| After 3/5 | Mobile clears the prior global Firebase user ID before custom sources, can disable/enable Sesori custom events on this installation, and syncs its server reporting/supported-client preference; existing custom events and stable screens obey the lifecycle; Firebase automatic install events retain the separately disclosed property behavior; desktop remains no-op. | Both auth endpoints/schema must be live. If legacy-ID clear fails, custom events stay disabled for that process; if preference is unavailable, GET/enable fails closed and disable remains local pending without blocking logout. | **Forward-fix only after public release.** Preserve both legacy-ID cleanup and local custom-event gating through their declared floors. For a severe defect, suppress all custom events; do not claim control over legacy/automatic events. Server preference data is never rolled back. |
+| After 3/5 | Mobile clears the prior global Firebase user ID before custom sources, can disable/enable Sesori custom events on this installation, and syncs its server reporting/supported-client preference; existing custom events and stable screens obey the lifecycle; Firebase automatic install events retain the separately disclosed property behavior; desktop remains no-op. | Both auth endpoints/schema must be live. If legacy-ID clear fails, custom events stay disabled and all automatic events for that process are classified as potentially legacy-keyed; if preference is unavailable, GET/enable fails closed and disable remains local pending without blocking logout. | **Forward-fix only after public release.** Preserve both legacy-ID cleanup and local custom-event gating through their declared floors. For a severe defect, suppress all custom events; do not claim automatic collection stopped on clear failure or that legacy behavior is controlled. Server preference data is never rolled back. |
 | After 4/5 | New activation/engagement events accumulate in GA4 raw export. Product operations remain unchanged if Firebase is unavailable. | Step 3 custom-key/preference/schema lifecycle must be released. BigQuery needs no GA4 custom-dimension registration. | Forward-fix the app while retaining step-3 privacy behavior; event-specific defects may be disabled/removed. Missing future event names yield null/zero data, not product failure. |
 | After 5/5 | Auth job, curated models, authorized reporting views, and Looker provide the complete metric contract. | Create same-location datasets/IAM; deploy SQL/tests; schedule auth export; validate its first publish; schedule event transforms; then connect Looker. | Pause schedules/job and revert reporting views/dashboard sources to last known-good SQL. Raw GA4 and prior auth published tables remain; app behavior is unaffected. |
 
@@ -1141,7 +1190,9 @@ the separately released app.
   custom-event sharing on for convenience.
 - Seed the current release's global Firebase user ID, upgrade to the new build,
   and verify null-clear completes before any custom source starts; force clear
-  failure and verify custom events remain disabled while product startup works.
+  failure and verify custom events remain disabled while product startup works,
+  then verify the runbook classifies the whole process's automatic rows as
+  potentially legacy-keyed rather than claiming collection stopped.
 
 ### Auth server
 
@@ -1159,8 +1210,9 @@ the separately released app.
   inclusion, failed/queued exclusion, deferred first-message selection, timely
   per-account schema exposure, legacy-without-exposure exclusion, 7-day cohort
   maturity, W1/W4 boundaries, internal/disabled/suppressed filtering before
-  aggregates, the 24-hour campaign rule, unknown campaign, stale-auth-snapshot
-  publication abort/recovery, and late-event replacement.
+  aggregates, deletion exclusion in flattened recomputation, daily monitoring
+  activity without SSE duplication, the 24-hour campaign rule, unknown campaign,
+  stale-auth-snapshot publication abort/recovery, and late-event replacement.
 - Reconcile GA4 custom event counts -> flattened events -> daily activity ->
   reporting totals for at least three complete days.
 - Verify auth export credentials cannot write controls/curated/reporting, Looker
@@ -1169,8 +1221,10 @@ the separately released app.
 - Verify raw ACL/default expiration and GA4 two-month retention before data
   acceptance, then complete one non-production GA User Deletion API exercise
   through auth-source tombstone, warehouse suppression/deletion, aggregate
-  rebuild/non-repopulation, and upstream request status. Verify the deletion
-  response states the automatic-only never-keyed installation limit.
+  rebuild/non-repopulation after an in-flight pre-tombstone export, delayed
+  offline-client upload plus recurring sweep, and upstream request status.
+  Verify the deletion response states both the transient future-upload and
+  automatic-only never-keyed installation limits.
 
 ## Rollout And Two-Month Readiness
 
@@ -1216,8 +1270,13 @@ no cohort has matured.
   and never claim account-wide enforcement without minimum-version controls.
 - **Legacy global identity on upgrade:** clear it at earliest post-Firebase
   bootstrap before custom sources and keep the migration for the raw-retention
-  window. Automatic events before that supported reset remain restricted legacy
-  raw data and are never represented as fully preventable.
+  window. Automatic events before a successful reset—or for the whole process
+  when reset fails—remain restricted legacy raw data and are never represented
+  as fully preventable.
+- **Offline upload after deletion:** permanent source/control tombstones,
+  flattened anti-join, and daily upstream resweeps prevent durable reporting and
+  repeatedly delete newly discovered keyed installs; the response remains
+  honest that a later upload may transiently enter restricted vendor/raw data.
 - **Privacy rollback floor:** after the opt-out release, use forward fixes that
   preserve local pending-disable/custom-event gating or suppress all custom
   events; never republish old startup emission as rollback.
@@ -1245,15 +1304,18 @@ The work is complete when:
 - A production release makes one analytics emission attempt per confirmed
   first-message success path with a pseudonymous custom `user_key`, immediately
   honors installation-local disable/re-enable semantics, preserves pending
-  server sync across logout/restart, defers the first same-generation message
-  while preference is unknown, clears legacy global identity before custom
-  sources, and never claims to control legacy or automatic events; duplicate
-  delivery cannot change the earliest activation.
+  disable/enable sync across logout/restart, bounds preference operations,
+  defers the first same-generation message while preference is unknown, clears
+  legacy global identity before custom sources, and never claims to control
+  legacy or automatic events; duplicate delivery cannot change activation.
 - The auth job publishes validated eligible milestones and external-account
   setup cohorts without raw identity or internal/deletion-suppressed accounts.
 - BigQuery derives the metric contract above from versioned SQL, passes fixture
   assertions, survives stale auth snapshots without permanent event loss, and
   remains fresh after recovery/late data.
+- Privacy deletion remains excluded from flattened/reporting rebuilds, survives
+  an in-flight old auth export, and has recurring upstream enforcement for later
+  keyed uploads with its unavoidable transient/never-keyed limits disclosed.
 - Looker exposes only aggregate authorized views and shows complete-period,
   denominator, coverage, maturity, and freshness labels.
 - The executive page can truthfully report new accounts, setup, full
