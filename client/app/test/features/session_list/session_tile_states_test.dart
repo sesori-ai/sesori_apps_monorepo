@@ -215,13 +215,38 @@ void main() {
     });
 
     testWidgets("keeps a session older than the relative window to one narrow line", (tester) async {
-      // Past 30 days the slot shows a date; it drops the year for this one and
-      // never wraps, so a stale session can't reshape the row.
+      // Past 30 days the slot shows a date, and some locales write those with
+      // spaces; it holds one line so a stale session can't reshape the row.
       await pumpTile(tester, tile(session: testSession(title: "My Session", updatedAt: 1700000000000)));
 
       final stamp = tester.widget<Text>(find.textContaining("2023"));
       expect(stamp.maxLines, 1);
       expect(stamp.softWrap, isFalse);
+    });
+
+    testWidgets("spells the year of a session from an earlier one", (tester) async {
+      final lastYear = DateTime(DateTime.now().year - 1, 6, 15);
+
+      await pumpTile(
+        tester,
+        tile(session: testSession(title: "My Session", updatedAt: lastYear.millisecondsSinceEpoch)),
+      );
+
+      expect(find.textContaining("${lastYear.year}"), findsOneWidget);
+    });
+
+    testWidgets("leaves the year off a session from this one", (tester) async {
+      // The year only earns the slot's width when leaving it out would be
+      // ambiguous. (In the first weeks of January this date is still inside
+      // the relative window, which spells no year either.)
+      final thisYear = DateTime(DateTime.now().year);
+
+      await pumpTile(
+        tester,
+        tile(session: testSession(title: "My Session", updatedAt: thisYear.millisecondsSinceEpoch)),
+      );
+
+      expect(find.textContaining("${thisYear.year}"), findsNothing);
     });
 
     testWidgets("still speaks the time the sparkle took the space from, after the state", (tester) async {
