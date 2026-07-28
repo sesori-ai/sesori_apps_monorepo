@@ -153,6 +153,7 @@ class WorktreeRepository {
       final startPointResult = await _gitApi.resolveStartPointForBranch(
         projectPath: projectPath,
         baseBranch: baseBranch,
+        remoteName: "origin",
         localCommit: localCommit,
       );
 
@@ -201,10 +202,12 @@ class WorktreeRepository {
       if (branchResult.exitCode != 0) {
         throw StateError("git symbolic-ref failed with exit ${branchResult.exitCode}");
       }
-      final branch = branchResult.stdout.toString().trim();
-      if (branch.isEmpty) {
-        throw StateError("git symbolic-ref returned an empty branch");
+      const localBranchPrefix = "refs/heads/";
+      final branchRef = branchResult.stdout.toString().trim();
+      if (!branchRef.startsWith(localBranchPrefix) || branchRef.length == localBranchPrefix.length) {
+        throw StateError("git symbolic-ref returned an invalid local branch");
       }
+      final branch = branchRef.substring(localBranchPrefix.length);
       return (branch: branch, commit: commit);
     } on Object catch (error, stackTrace) {
       Log.w("[WorktreeRepository] failed to capture Git snapshot for $projectPath", error, stackTrace);

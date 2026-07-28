@@ -116,45 +116,19 @@ class GitCliApi {
 
   /// Resolves a repository base without consulting the mutable current HEAD.
   Future<String?> resolveStableDefaultBranch({required String projectPath}) async {
-    final originHeadResult = await runGit(
-      projectPath: projectPath,
-      arguments: const ["symbolic-ref", "refs/remotes/origin/HEAD"],
-    );
-    final originHeadBranch = _extractBranchName(
-      output: originHeadResult.stdout,
-      prefix: "refs/remotes/origin/",
-    );
-    if (originHeadResult.exitCode == 0 && originHeadBranch != null) {
-      if (await branchExists(projectPath: projectPath, branchName: originHeadBranch)) {
-        final localBranchRevision = "refs/heads/$originHeadBranch";
-        final localCommit = await resolveCommit(
-          projectPath: projectPath,
-          ref: localBranchRevision,
-        );
-        if (localCommit != null) {
-          final startPoint = await resolveStartPointForBranch(
-            projectPath: projectPath,
-            baseBranch: originHeadBranch,
-            localCommit: localCommit,
-          );
-          return startPoint.ref == originHeadBranch ? localBranchRevision : "refs/remotes/origin/$originHeadBranch";
-        }
-      }
-      final originBranch = "refs/remotes/origin/$originHeadBranch";
-      final originBranchResult = await checkRevisionExists(
+    final remotes = await _readRemoteNames(projectPath: projectPath);
+    final orderedRemotes = [
+      if (remotes.contains("origin")) "origin",
+      for (final remote in remotes)
+        if (remote != "origin") remote,
+    ];
+    for (final remoteName in orderedRemotes) {
+      final remoteDefault = await _resolveStableRemoteDefaultBranch(
         projectPath: projectPath,
-        revision: originBranch,
+        remoteName: remoteName,
       );
-      if (originBranchResult.exitCode == 0) {
-        return originBranch;
-      }
-      if (originBranchResult.exitCode != 1) {
-        throw ProcessException(
-          "git",
-          ["rev-parse", "--verify", "--quiet", "--end-of-options", "$originBranch^{commit}"],
-          originBranchResult.stderr.toString(),
-          originBranchResult.exitCode,
-        );
+      if (remoteDefault != null) {
+        return remoteDefault;
       }
     }
 
@@ -184,16 +158,7 @@ class GitCliApi {
   /// remote has no URL configured.
   Future<String?> getRemoteUrl({required String projectPath}) async {
     try {
-      final remotesResult = await runGit(projectPath: projectPath, arguments: const ["remote"]);
-      if (remotesResult.exitCode != 0) {
-        return null;
-      }
-      final remotes = remotesResult.stdout
-          .toString()
-          .split("\n")
-          .map((line) => line.trim())
-          .where((line) => line.isNotEmpty)
-          .toList();
+      final remotes = await _readRemoteNames(projectPath: projectPath);
       if (remotes.isEmpty) {
         return null;
       }
@@ -267,7 +232,7 @@ class GitCliApi {
   Future<ProcessResult> readCurrentBranch({required String projectPath}) {
     return runGit(
       projectPath: projectPath,
-      arguments: const ["symbolic-ref", "--quiet", "--short", "HEAD"],
+      arguments: const ["symbolic-ref", "--quiet", "HEAD"],
     );
   }
 
@@ -417,32 +382,33 @@ class GitCliApi {
   Future<({String ref, String commit})> resolveStartPointForBranch({
     required String projectPath,
     required String baseBranch,
+    required String remoteName,
     required String localCommit,
   }) async {
-    final originRef = "origin/$baseBranch";
-    final originRevision = "refs/remotes/origin/$baseBranch";
-    final originResult = await runGit(
+    final remoteRef = "$remoteName/$baseBranch";
+    final remoteRevision = "refs/remotes/$remoteName/$baseBranch";
+    final remoteResult = await runGit(
       projectPath: projectPath,
-      arguments: ["rev-parse", originRevision],
+      arguments: ["rev-parse", remoteRevision],
     );
-    if (originResult.exitCode != 0) {
+    if (remoteResult.exitCode != 0) {
       return (ref: baseBranch, commit: localCommit);
     }
 
-    final originCommit = originResult.stdout.toString().trim();
-    if (originCommit == localCommit) {
+    final remoteCommit = remoteResult.stdout.toString().trim();
+    if (remoteCommit == localCommit) {
       return (ref: baseBranch, commit: localCommit);
     }
 
     final mergeBaseResult = await runGit(
       projectPath: projectPath,
-      arguments: ["merge-base", "--is-ancestor", originCommit, localCommit],
+      arguments: ["merge-base", "--is-ancestor", remoteCommit, localCommit],
     );
     if (mergeBaseResult.exitCode == 0) {
       return (ref: baseBranch, commit: localCommit);
     }
 
-    return (ref: originRef, commit: originCommit);
+    return (ref: remoteRef, commit: remoteCommit);
   }
 
   Future<GitWorktreeSafetySnapshot> inspectWorktreeSafety({required String worktreePath}) async {
@@ -569,6 +535,72 @@ class GitCliApi {
 
   Future<ProcessResult> runGit({required String projectPath, required List<String> arguments}) {
     return _processRunner.run("git", arguments, workingDirectory: projectPath);
+  }
+
+  Future<List<String>> _readRemoteNames({required String projectPath}) async {
+    final result = await runGit(projectPath: projectPath, arguments: const ["remote"]);
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        "git",
+        const ["remote"],
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
+    return result.stdout.toString().split("\n").map((line) => line.trim()).where((line) => line.isNotEmpty).toList();
+  }
+
+  Future<String?> _resolveStableRemoteDefaultBranch({
+    required String projectPath,
+    required String remoteName,
+  }) async {
+    final remotePrefix = "refs/remotes/$remoteName/";
+    final remoteHeadResult = await runGit(
+      projectPath: projectPath,
+      arguments: ["symbolic-ref", "${remotePrefix}HEAD"],
+    );
+    final remoteHeadBranch = _extractBranchName(
+      output: remoteHeadResult.stdout,
+      prefix: remotePrefix,
+    );
+    if (remoteHeadResult.exitCode != 0 || remoteHeadBranch == null) {
+      return null;
+    }
+
+    final localBranchRevision = "refs/heads/$remoteHeadBranch";
+    if (await branchExists(projectPath: projectPath, branchName: remoteHeadBranch)) {
+      final localCommit = await resolveCommit(
+        projectPath: projectPath,
+        ref: localBranchRevision,
+      );
+      if (localCommit != null) {
+        final startPoint = await resolveStartPointForBranch(
+          projectPath: projectPath,
+          baseBranch: remoteHeadBranch,
+          remoteName: remoteName,
+          localCommit: localCommit,
+        );
+        return startPoint.ref == remoteHeadBranch ? localBranchRevision : "refs/remotes/$remoteName/$remoteHeadBranch";
+      }
+    }
+
+    final remoteBranchRevision = "refs/remotes/$remoteName/$remoteHeadBranch";
+    final remoteBranchResult = await checkRevisionExists(
+      projectPath: projectPath,
+      revision: remoteBranchRevision,
+    );
+    if (remoteBranchResult.exitCode == 0) {
+      return remoteBranchRevision;
+    }
+    if (remoteBranchResult.exitCode == 1) {
+      return null;
+    }
+    throw ProcessException(
+      "git",
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "$remoteBranchRevision^{commit}"],
+      remoteBranchResult.stderr.toString(),
+      remoteBranchResult.exitCode,
+    );
   }
 
   String? _extractBranchName({required Object? output, required String prefix}) {

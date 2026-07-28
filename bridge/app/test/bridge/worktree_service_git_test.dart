@@ -175,6 +175,7 @@ void main() {
 
     test("resolveStableDefaultBranch skips a dangling origin HEAD", () async {
       processRunner
+        ..enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"))
         ..enqueue(result: _processResult(exitCode: 0, stdout: "refs/remotes/origin/main\n"))
         ..enqueue(result: _processResult(exitCode: 0))
         ..enqueue(result: _processResult(exitCode: 1))
@@ -187,13 +188,14 @@ void main() {
 
       expect(defaultBranch, "refs/heads/trunk");
       expect(
-        processRunner.invocations[2].arguments,
+        processRunner.invocations[3].arguments,
         ["rev-parse", "--verify", "--quiet", "--end-of-options", "refs/remotes/origin/main^{commit}"],
       );
     });
 
     test("resolveStableDefaultBranch uses an updated origin branch over stale local", () async {
       processRunner
+        ..enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"))
         ..enqueue(result: _processResult(exitCode: 0, stdout: "refs/remotes/origin/main\n"))
         ..enqueue(result: _processResult(exitCode: 0, stdout: "  main\n"))
         ..enqueue(result: _processResult(exitCode: 0, stdout: "local-main\n"))
@@ -205,7 +207,7 @@ void main() {
       );
 
       expect(defaultBranch, "refs/remotes/origin/main");
-      expect(processRunner.invocations[2].arguments, ["rev-parse", "refs/heads/main"]);
+      expect(processRunner.invocations[3].arguments, ["rev-parse", "refs/heads/main"]);
       expect(
         processRunner.invocations.last.arguments,
         ["merge-base", "--is-ancestor", "remote-main", "local-main"],
@@ -381,6 +383,7 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
+          remoteName: "origin",
           localCommit: "abc123",
         );
 
@@ -400,6 +403,7 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
+          remoteName: "origin",
           localCommit: "abc123",
         );
 
@@ -420,6 +424,7 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
+          remoteName: "origin",
           localCommit: "abc123",
         );
 
@@ -444,6 +449,7 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
+          remoteName: "origin",
           localCommit: "abc123",
         );
 
@@ -468,6 +474,7 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
+          remoteName: "origin",
           localCommit: "diverged-local",
         );
 
@@ -484,6 +491,7 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
+          remoteName: "origin",
           localCommit: "abc123",
         );
 

@@ -84,13 +84,14 @@ class SessionDiffRepository {
         message: "git symbolic-ref failed (exit ${result.exitCode})",
       );
     }
-    final branch = result.stdout.toString().trim();
-    if (branch.isEmpty) {
+    const localBranchPrefix = "refs/heads/";
+    final branchRef = result.stdout.toString().trim();
+    if (!branchRef.startsWith(localBranchPrefix) || branchRef.length == localBranchPrefix.length) {
       throw const SessionDiffRepositoryException(
-        message: "git symbolic-ref returned an empty branch",
+        message: "git symbolic-ref returned an invalid local branch",
       );
     }
-    return branch;
+    return branchRef.substring(localBranchPrefix.length);
   }
 
   Future<bool> revisionExists({

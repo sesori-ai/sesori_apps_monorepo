@@ -159,6 +159,30 @@ void main() {
       expect(tracked.after, "local in-place\n");
     });
 
+    test("same-name tag does not change the current branch identity", () async {
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-tagged-current",
+        projectId: repoDir.path,
+        startingBranch: "main",
+        startCommit: startCommit,
+      );
+
+      File("${repoDir.path}/tagged-current.txt").writeAsStringSync("session work\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "tagged-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "tagged current"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["tag", "main", startCommit]);
+
+      final diffs = await service.getDiffs(sessionId: "in-place-tagged-current");
+
+      expect(diffs.map((diff) => diff.file), contains("tagged-current.txt"));
+    });
+
     test("rewritten starting branch falls back to the project base", () async {
       await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "rewritten-same"]);
       File("${repoDir.path}/old-history.txt").writeAsStringSync("old history\n");
@@ -442,6 +466,58 @@ void main() {
       expect(byFile.keys, contains("sibling-current.txt"));
       expect(byFile.keys, isNot(contains("upstream-after-start.txt")));
       expect(byFile.keys, isNot(contains("sibling-start.txt")));
+    });
+
+    test("non-origin remote default is used as the project base", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "upstream-start"]);
+      File("${repoDir.path}/upstream-start.txt").writeAsStringSync("before session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "upstream-start.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "upstream start"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "main"]);
+      File("${repoDir.path}/upstream-update.txt").writeAsStringSync("upstream update\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "upstream-update.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "upstream update"]);
+      final upstreamCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["remote", "add", "upstream", repoDir.path]);
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["update-ref", "refs/remotes/upstream/main", upstreamCommit],
+      );
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["symbolic-ref", "refs/remotes/upstream/HEAD", "refs/remotes/upstream/main"],
+      );
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "upstream-current"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["branch", "-D", "main"]);
+      File("${repoDir.path}/upstream-current.txt").writeAsStringSync("current work\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "upstream-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "upstream current"]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-upstream-base",
+        projectId: repoDir.path,
+        startingBranch: "upstream-start",
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-upstream-base");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("upstream-current.txt"));
+      expect(byFile.keys, isNot(contains("upstream-update.txt")));
+      expect(byFile.keys, isNot(contains("upstream-start.txt")));
     });
 
     test("stored project base is resolved through refs heads", () async {

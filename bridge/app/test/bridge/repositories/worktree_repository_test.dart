@@ -38,7 +38,7 @@ void main() {
     test("captures the checked-out branch and HEAD", () async {
       processRunner.enqueue(result: ProcessResult(0, 0, "", ""));
       processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
-      processRunner.enqueue(result: ProcessResult(0, 0, "feature/stack-base\n", ""));
+      processRunner.enqueue(result: ProcessResult(0, 0, "refs/heads/feature/stack-base\n", ""));
 
       final result = await repository(isGitRepository: true).resolveCurrentBranchAndCommit(
         projectPath: "/repo",
@@ -53,14 +53,14 @@ void main() {
         ".",
       ]);
       expect(processRunner.invocations[1].arguments, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
-      expect(processRunner.invocations[2].arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+      expect(processRunner.invocations[2].arguments, ["symbolic-ref", "--quiet", "HEAD"]);
     });
 
     test("captures Git state when the project is nested inside a worktree", () async {
       processRunner.enqueue(result: ProcessResult(0, 0, "true\n", ""));
       processRunner.enqueue(result: ProcessResult(0, 0, "", ""));
       processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
-      processRunner.enqueue(result: ProcessResult(0, 0, "feature/nested\n", ""));
+      processRunner.enqueue(result: ProcessResult(0, 0, "refs/heads/feature/nested\n", ""));
 
       final result = await repository(isGitRepository: false).resolveCurrentBranchAndCommit(
         projectPath: "/repo/packages/nested",
