@@ -222,7 +222,20 @@ class WorktreeRepository {
   }) async {
     final storedBranch = await _projectsDao.getBaseBranch(projectId: projectId);
     if (storedBranch != null && await _gitApi.branchExists(projectPath: projectPath, branchName: storedBranch)) {
-      return "refs/heads/$storedBranch";
+      final localBranchRevision = "refs/heads/$storedBranch";
+      final localCommit = await _gitApi.resolveCommit(
+        projectPath: projectPath,
+        ref: localBranchRevision,
+      );
+      if (localCommit != null) {
+        final startPoint = await _gitApi.resolveStartPointForBranch(
+          projectPath: projectPath,
+          baseBranch: storedBranch,
+          remoteName: "origin",
+          localCommit: localCommit,
+        );
+        return startPoint.ref == storedBranch ? localBranchRevision : "refs/remotes/origin/$storedBranch";
+      }
     }
     return _gitApi.resolveStableDefaultBranch(projectPath: projectPath);
   }

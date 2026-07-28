@@ -561,6 +561,56 @@ void main() {
       expect(byFile.keys, isNot(contains("upstream-start.txt")));
     });
 
+    test("stored project base reconciles a newer origin tracking ref", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "stored-tracking-start"]);
+      File("${repoDir.path}/stored-tracking-start.txt").writeAsStringSync("before session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "stored-tracking-start.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "stored tracking start"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "remote-main", "main"]);
+      File("${repoDir.path}/stored-tracking-upstream.txt").writeAsStringSync("upstream\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "stored-tracking-upstream.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "stored tracking upstream"]);
+      final remoteMainCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["update-ref", "refs/remotes/origin/main", remoteMainCommit],
+      );
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["checkout", "-b", "stored-tracking-current", remoteMainCommit],
+      );
+      File("${repoDir.path}/stored-tracking-current.txt").writeAsStringSync("current work\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "stored-tracking-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "stored tracking current"]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-stored-tracking",
+        projectId: repoDir.path,
+        startingBranch: "stored-tracking-start",
+        startCommit: startCommit,
+      );
+      await db.projectsDao.setBaseBranch(projectId: repoDir.path, baseBranch: "main");
+
+      final diffs = await service.getDiffs(sessionId: "in-place-stored-tracking");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("stored-tracking-current.txt"));
+      expect(byFile.keys, isNot(contains("stored-tracking-upstream.txt")));
+      expect(byFile.keys, isNot(contains("stored-tracking-start.txt")));
+    });
+
     test("stored project base is resolved through refs heads", () async {
       await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "tagged-base-start"]);
       File("${repoDir.path}/tagged-base-start.txt").writeAsStringSync("before session\n");
