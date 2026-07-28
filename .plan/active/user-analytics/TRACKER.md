@@ -72,6 +72,11 @@
   as including non-excludable internal/test traffic; move existing onboarding
   events to confirmed platform outcomes; add PR-4 activation-capable readiness;
   and begin Apple login analytics before the native authorization sheet.
+- [x] Apply valid next-round findings: preserve authoritative occurrence time
+  through deferred delivery; retain OAuth provider across interruption/resume;
+  persist voice-assisted origin in typed in-memory drafts; disclose both two-
+  month upstream and 90-day exported-raw retention; and make internal/test
+  exclusions permanent so rebuilds never resurrect historical traffic.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
@@ -126,7 +131,8 @@ step count across both repositories.
   including in-flight export ordering, delayed offline upload/recurring sweep,
   flattened non-repopulation, aggregate rebuild, and explicit transient/future-
   automatic-only/never-keyed coverage limits; recurring enforcement is claimed
-  only for future keyed uploads.
+  only for future keyed uploads, and responses distinguish two-month upstream
+  retention from 90-day restricted exported-raw expiration.
 - [ ] Three-page Looker permissions, complete-period defaults, sample sizes,
   coverage, cohort maturity, and freshness verified.
 - [ ] First W1 cohort matured and reviewed.

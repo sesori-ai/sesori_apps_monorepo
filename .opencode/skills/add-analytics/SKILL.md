@@ -64,6 +64,9 @@ PR after updating all in-repository consumers in lockstep.
 
 Never use a widget tap as a proxy when a confirmed outcome exists. Never emit a
 success event when an operation is queued, merely attempted, or later requeued.
+Capture product-event occurrence time at that authoritative seam before any
+preference deferral; a later Firebase emission timestamp must not move funnel or
+retention timing.
 
 ## Screen reporting
 
@@ -88,7 +91,8 @@ success event when an operation is queued, merely attempted, or later requeued.
 - Do not rename a released wire value. Add a schema version when semantics must
   change.
 - `input_mode=voice_assisted` means a successful transcript contributed to the
-  submitted composer value; it never means the final text was unedited.
+  submitted composer value; it never means the final text was unedited. Preserve
+  that bounded origin with any restored composer draft.
 
 ## Identity and privacy
 
