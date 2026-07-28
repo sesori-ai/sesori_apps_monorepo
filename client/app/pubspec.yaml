@@ -63,7 +63,7 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   app_links: ^7.2.1
   url_launcher: ^6.3.2
-  share_plus: ^13.2.1
+  share_plus: ^13.3.0
   universal_platform: ^1.1.0
   device_info_plus: ^13.2.0
   package_info_plus: ^10.2.1
@@ -71,12 +71,12 @@ dependencies:
   path: any
   path_provider: ^2.1.6
   re_highlight: ^0.0.3
-  wakelock_plus: ^1.6.1
+  wakelock_plus: ^1.7.0
   firebase_core: ^4.12.1
   firebase_analytics: ^12.4.5
   firebase_crashlytics: ^5.2.6
   firebase_messaging: ^16.4.3
-  flutter_local_notifications: ^22.1.0
+  flutter_local_notifications: ^22.2.0
   flutter_svg: ^2.3.0
   cue: ^0.3.1
   sign_in_with_apple: ^8.1.0
