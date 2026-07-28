@@ -432,6 +432,47 @@ void main() {
       expect(byFile.keys, isNot(contains("deleted-start.txt")));
     });
 
+    test("detached start uses the surviving commit merge base", () async {
+      final mainCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "main"],
+      )).stdout.toString().trim();
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "detached-related-start"]);
+      File("${repoDir.path}/detached-related-start.txt").writeAsStringSync("before session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "detached-related-start.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "detached related start"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "--detach", startCommit]);
+
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["checkout", "-b", "detached-related-current", mainCommit],
+      );
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["branch", "-D", "main"]);
+      File("${repoDir.path}/detached-related-current.txt").writeAsStringSync("current work\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "detached-related-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "detached related current"]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-detached-related",
+        projectId: repoDir.path,
+        startingBranch: null,
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-detached-related");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("detached-related-current.txt"));
+      expect(byFile.keys, isNot(contains("detached-related-start.txt")));
+    });
+
     test("sibling branch prefers the configured project base", () async {
       await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "sibling-start"]);
       File("${repoDir.path}/sibling-start.txt").writeAsStringSync("before session\n");
