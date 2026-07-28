@@ -367,6 +367,79 @@ void main() {
       expect(byFile.keys, isNot(contains("release-only.txt")));
     });
 
+    test("sibling branch prefers the configured project base", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "sibling-start"]);
+      File("${repoDir.path}/sibling-start.txt").writeAsStringSync("before session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "sibling-start.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "sibling start"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "main"]);
+      File("${repoDir.path}/upstream-after-start.txt").writeAsStringSync("upstream\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "upstream-after-start.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "upstream update"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "sibling-current"]);
+      File("${repoDir.path}/sibling-current.txt").writeAsStringSync("current work\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "sibling-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "sibling current"]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-sibling",
+        projectId: repoDir.path,
+        startingBranch: "sibling-start",
+        startCommit: startCommit,
+      );
+      await db.projectsDao.setBaseBranch(projectId: repoDir.path, baseBranch: "main");
+
+      final diffs = await service.getDiffs(sessionId: "in-place-sibling");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("sibling-current.txt"));
+      expect(byFile.keys, isNot(contains("upstream-after-start.txt")));
+      expect(byFile.keys, isNot(contains("sibling-start.txt")));
+    });
+
+    test("stored project base is resolved through refs heads", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "tagged-base-start"]);
+      File("${repoDir.path}/tagged-base-start.txt").writeAsStringSync("before session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "tagged-base-start.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "tagged base start"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "main"]);
+      File("${repoDir.path}/tagged-base-upstream.txt").writeAsStringSync("upstream\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "tagged-base-upstream.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "tagged base upstream"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "tagged-base-current"]);
+      File("${repoDir.path}/tagged-base-current.txt").writeAsStringSync("current work\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "tagged-base-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "tagged base current"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["tag", "main", startCommit]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-tagged-base",
+        projectId: repoDir.path,
+        startingBranch: null,
+        startCommit: startCommit,
+      );
+      await db.projectsDao.setBaseBranch(projectId: repoDir.path, baseBranch: "main");
+
+      final diffs = await service.getDiffs(sessionId: "in-place-tagged-base");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("tagged-base-current.txt"));
+      expect(byFile.keys, isNot(contains("tagged-base-upstream.txt")));
+      expect(byFile.keys, isNot(contains("tagged-base-start.txt")));
+    });
+
     test("nested project diffs stay inside the opened directory", () async {
       final nestedDir = Directory("${repoDir.path}/packages/opened")..createSync(recursive: true);
       final siblingDir = Directory("${repoDir.path}/packages/private")..createSync(recursive: true);

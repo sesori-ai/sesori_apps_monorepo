@@ -219,7 +219,7 @@ class WorktreeRepository {
   }) async {
     final storedBranch = await _projectsDao.getBaseBranch(projectId: projectId);
     if (storedBranch != null && await _gitApi.branchExists(projectPath: projectPath, branchName: storedBranch)) {
-      return storedBranch;
+      return "refs/heads/$storedBranch";
     }
     return _gitApi.resolveStableDefaultBranch(projectPath: projectPath);
   }

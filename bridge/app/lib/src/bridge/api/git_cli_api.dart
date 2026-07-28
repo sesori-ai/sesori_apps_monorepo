@@ -126,9 +126,10 @@ class GitCliApi {
     );
     if (originHeadResult.exitCode == 0 && originHeadBranch != null) {
       if (await branchExists(projectPath: projectPath, branchName: originHeadBranch)) {
+        final localBranchRevision = "refs/heads/$originHeadBranch";
         final localCommit = await resolveCommit(
           projectPath: projectPath,
-          ref: originHeadBranch,
+          ref: localBranchRevision,
         );
         if (localCommit != null) {
           final startPoint = await resolveStartPointForBranch(
@@ -136,10 +137,10 @@ class GitCliApi {
             baseBranch: originHeadBranch,
             localCommit: localCommit,
           );
-          return startPoint.ref;
+          return startPoint.ref == originHeadBranch ? localBranchRevision : "refs/remotes/origin/$originHeadBranch";
         }
       }
-      final originBranch = "origin/$originHeadBranch";
+      final originBranch = "refs/remotes/origin/$originHeadBranch";
       final originBranchResult = await checkRevisionExists(
         projectPath: projectPath,
         revision: originBranch,
@@ -165,12 +166,12 @@ class GitCliApi {
     if (configuredDefaultBranchResult.exitCode == 0 &&
         configuredDefaultBranch.isNotEmpty &&
         await branchExists(projectPath: projectPath, branchName: configuredDefaultBranch)) {
-      return configuredDefaultBranch;
+      return "refs/heads/$configuredDefaultBranch";
     }
 
     for (final branch in const ["main", "master", "develop", "development", "trunk"]) {
       if (await branchExists(projectPath: projectPath, branchName: branch)) {
-        return branch;
+        return "refs/heads/$branch";
       }
     }
     return null;
@@ -419,9 +420,10 @@ class GitCliApi {
     required String localCommit,
   }) async {
     final originRef = "origin/$baseBranch";
+    final originRevision = "refs/remotes/origin/$baseBranch";
     final originResult = await runGit(
       projectPath: projectPath,
-      arguments: ["rev-parse", originRef],
+      arguments: ["rev-parse", originRevision],
     );
     if (originResult.exitCode != 0) {
       return (ref: baseBranch, commit: localCommit);
