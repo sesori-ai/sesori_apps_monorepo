@@ -32,7 +32,7 @@
   cold-open buffering, strict campaign window, immutable export cutoffs,
   split auth/control IAM, dual start timestamps, outage-recoverable transforms,
   day-zero raw controls, and upstream GA4 retention/deletion.
-- [x] Apply valid second-round findings: timely per-account schema exposure,
+- [x] Apply valid second-round findings: timely per-account foundation exposure,
   bounded first-message deferral, empty-to-non-empty milestones, account-scoped
   campaign completion, internal exclusion before auth aggregation, source
   deletion tombstones, honest never-keyed deletion limits, and earliest upgrade
@@ -65,6 +65,13 @@
   newer disable; move monitoring activity to a route-visible listener; defer the
   obsolete notification finding with its feature; and narrow recurring upstream
   deletion to future keyed uploads without a persistent account-install map.
+- [x] Apply valid follow-up findings: retain fixed measurement-critical
+  candidates until preference resolves without prematurely consuming guards;
+  verify permission `ApiResponse` before success; sweep all permanent deletion
+  tombstones for newly landed keyed rows; label account-less login diagnostics
+  as including non-excludable internal/test traffic; move existing onboarding
+  events to confirmed platform outcomes; add PR-4 activation-capable readiness;
+  and begin Apple login analytics before the native authorization sheet.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
@@ -75,8 +82,8 @@
   only** BigQuery export; apply/verify raw dataset ACL and 90-day expiration
   before the first daily table and record exact UTC `raw_export_start_at`.
   Export is not retroactive. Record `behavioral_schema_v1_start_at` separately
-  only after the production account-linked product schema appears; account-less
-  login events do not qualify.
+  only after production `analytics_activation_ready` appears; foundation-only
+  and account-less login events do not qualify.
 
 ## Implementation Series
 
@@ -105,8 +112,9 @@ step count across both repositories.
   forced clear failure suppresses custom events without blocking the product or
   pretending the process's automatic events lost legacy identity.
 - [ ] First production full-activation event joins its auth milestone row and a
-  timely per-account schema-v1 exposure; preference-unknown first message is
-  deferred rather than lost.
+  timely per-account `analytics_activation_ready` exposure from the outcome
+  release; foundation-only binaries remain unmeasurable and preference-unknown
+  first message is deferred rather than lost.
 - [ ] Typed/voice-assisted successful messages and content-free transcription
   completions appear without transcript/audio-derived data; account-less login
   aggregates contain only pinned provider/failure dimensions and no user key.
