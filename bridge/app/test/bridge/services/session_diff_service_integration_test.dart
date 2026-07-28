@@ -367,6 +367,47 @@ void main() {
       expect(byFile.keys, isNot(contains("release-only.txt")));
     });
 
+    test("missing custom branch uses the surviving start commit merge base", () async {
+      final mainCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "main"],
+      )).stdout.toString().trim();
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "deleted-start"]);
+      File("${repoDir.path}/deleted-start.txt").writeAsStringSync("before session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "deleted-start.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "deleted start"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["checkout", "-b", "deleted-current", mainCommit],
+      );
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["branch", "-D", "main"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["branch", "-D", "deleted-start"]);
+      File("${repoDir.path}/deleted-current.txt").writeAsStringSync("current work\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "deleted-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "deleted current"]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-deleted-start",
+        projectId: repoDir.path,
+        startingBranch: "deleted-start",
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-deleted-start");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("deleted-current.txt"));
+      expect(byFile.keys, isNot(contains("deleted-start.txt")));
+    });
+
     test("sibling branch prefers the configured project base", () async {
       await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "sibling-start"]);
       File("${repoDir.path}/sibling-start.txt").writeAsStringSync("before session\n");

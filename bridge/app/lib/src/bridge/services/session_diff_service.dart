@@ -235,7 +235,7 @@ class SessionDiffService {
         return _resolveProjectBase(
           projectId: projectId,
           projectPath: projectPath,
-          fallbackRevision: null,
+          fallbackRevision: startCommitExists ? startCommit : null,
         );
       }
 
