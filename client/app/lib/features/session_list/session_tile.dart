@@ -16,15 +16,18 @@ import "pr_status_row.dart";
 /// snackbar, closing a deleted session's detail route).
 typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext context, Session session);
 
-/// A single session row: a title line led by the session's state icon, over an
-/// indented footer with the workspace branch, pull-request status and when the
-/// session last changed.
+/// A single session row: a title line led by the harness driving the session
+/// and ended by how it is doing, over an indented footer with the workspace
+/// branch and pull-request status.
 ///
-/// The icon slot carries the liveness the old status line spelled out: the
-/// sparkle twinkles while an agent works and rests solid — the same "new
-/// activity" mark the project list uses — when the session has activity the
-/// user hasn't opened. Only states that need words keep them, as coloured
-/// footer labels.
+/// The title line's two ends answer different questions. The leading slot says
+/// which backend owns the session, so a list mixing harnesses stays readable
+/// at a glance. The trailing slot carries the liveness the old status line
+/// spelled out: the sparkle twinkles while an agent works and rests solid —
+/// the same "new activity" mark the project list uses — when the session has
+/// activity the user hasn't opened, and gives way to when the session last
+/// changed once there is neither. Only states that need words keep them, as
+/// coloured footer labels.
 ///
 /// Tapping opens the session; long-pressing — or right-clicking with a mouse —
 /// opens its actions in a [PregoAnchorMenu] anchored to the row, which blurs
@@ -210,29 +213,93 @@ class SessionTile extends StatelessWidget {
   }
 
   Widget _titleRow({required BuildContext context}) {
-    final prego = context.prego;
     return Row(
-      spacing: PregoSpacing.xxs,
       children: [
-        // The slot is held open even without an icon, so titles line up down
-        // the list whatever each row's state is.
+        // Which harness is driving the session, in a fixed slot so titles line
+        // up down the list however many backends it mixes.
         SizedBox(
           width: _iconSlotWidth,
           height: _titleLineHeight,
-          child: Center(child: _stateIcon(context: context)),
-        ),
-        Expanded(
-          child: Text(
-            session.title ?? context.loc.sessionListUntitled,
-            // Unopened activity leans on weight rather than a badge.
-            style: (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
-              color: prego.colors.textPrimary,
+          child: Center(
+            child: PregoBrandLogo(
+              pluginId: session.pluginId,
+              size: _brandLogoSize,
+              color: context.prego.colors.textSecondary,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
+        Expanded(child: _title(context: context)),
+        _trailingSlot(context: context),
       ],
+    );
+  }
+
+  /// The session's title, cut off by a fade rather than an ellipsis: a long
+  /// title trails away under the row's trailing slot instead of stopping on a
+  /// hard "…".
+  ///
+  /// The mask only bites in the last [_titleFadeWidth] of the line box, so a
+  /// title that fits its width is painted untouched. It fades the glyphs
+  /// themselves — a scrim painted in the row's colour would band against the
+  /// selected row's tint, the dark theme and the glass scaffold behind it.
+  Widget _title({required BuildContext context}) {
+    final prego = context.prego;
+    final textDirection = Directionality.of(context);
+
+    return ShaderMask(
+      shaderCallback: (bounds) {
+        final fadeStart = bounds.width <= _titleFadeWidth ? 0.0 : 1 - _titleFadeWidth / bounds.width;
+        return LinearGradient(
+          begin: AlignmentDirectional.centerStart,
+          end: AlignmentDirectional.centerEnd,
+          colors: const [Colors.white, Colors.white, Colors.transparent],
+          stops: [0, fadeStart, 1],
+        ).createShader(bounds, textDirection: textDirection);
+      },
+      blendMode: BlendMode.dstIn,
+      child: Text(
+        session.title ?? context.loc.sessionListUntitled,
+        // Unopened activity leans on weight rather than a badge.
+        style: (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
+          color: prego.colors.textPrimary,
+        ),
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
+      ),
+    );
+  }
+
+  /// The end of the title line: the state sparkle when the session has one to
+  /// show, otherwise when it last changed. They share the slot rather than
+  /// stack — a working session is the more urgent thing to say, so it takes
+  /// the space and the time rides along in the slot's spoken label instead.
+  Widget _trailingSlot({required BuildContext context}) {
+    final prego = context.prego;
+    final updatedAt = session.time?.updated;
+    final spokenTime = updatedAt == null ? null : context.formatTimestamp(updatedAt);
+    final icon = _stateIcon(context: context);
+
+    if (icon != null) {
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+        child: SizedBox(
+          width: _iconSlotWidth,
+          height: _titleLineHeight,
+          child: Center(child: Semantics(label: spokenTime, child: icon)),
+        ),
+      );
+    }
+    if (updatedAt == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+      child: Text(
+        context.formatTimestampCompact(updatedAt),
+        // "2d" is a glance mark; assistive technology hears the phrase.
+        semanticsLabel: spokenTime,
+        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+      ),
     );
   }
 
@@ -262,33 +329,10 @@ class SessionTile extends StatelessWidget {
   }
 
   /// The row's second line, indented under the title: branch, pull request and
-  /// any state that needs words, with the last-updated time holding the end.
+  /// any state that needs words. When the session last changed is told by the
+  /// title line's trailing slot, not here.
   Widget _footerRow({required BuildContext context}) {
-    final prego = context.prego;
-    final updatedAt = session.time?.updated;
     final status = _statusLabel(context: context);
-    final details = Row(
-      spacing: PregoSpacing.md,
-      children: [
-        // The branch yields and ellipsizes when the line runs out of width —
-        // branch names are the one unbounded detail — so it can't push the
-        // rest out of the row.
-        if (session.branchName case final branch?) Flexible(child: _BranchDetail(branch: branch)),
-        if (session.pullRequest case final pr?) Flexible(flex: 2, child: PrStatusRow(pr: pr)),
-        if (status != null) Flexible(child: status),
-      ],
-    );
-    final timestamp = updatedAt == null
-        ? null
-        : Text(
-            context.formatTimestamp(updatedAt),
-            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-          );
-    final footerFontSize = prego.textTheme.textXs.regular.fontSize ?? 12;
-    final stackTimestamp =
-        timestamp != null &&
-        (session.branchName != null || session.pullRequest != null || status != null) &&
-        MediaQuery.textScalerOf(context).scale(footerFontSize) > _footerLineHeight;
 
     // The line box is held open even when there is nothing to say, so a quiet
     // session doesn't shrink its row out of the list's pitch. A minimum rather
@@ -298,22 +342,17 @@ class SessionTile extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: _footerLineHeight),
       child: Padding(
         padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl),
-        child: stackTimestamp
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: PregoSpacing.xxs,
-                children: [
-                  details,
-                  Align(alignment: AlignmentDirectional.centerEnd, child: timestamp),
-                ],
-              )
-            : Row(
-                spacing: PregoSpacing.md,
-                children: [
-                  Expanded(child: details),
-                  ?timestamp,
-                ],
-              ),
+        child: Row(
+          spacing: PregoSpacing.md,
+          children: [
+            // The branch yields and ellipsizes when the line runs out of width
+            // — branch names are the one unbounded detail — so it can't push
+            // the rest out of the row.
+            if (session.branchName case final branch?) Flexible(child: _BranchDetail(branch: branch)),
+            if (session.pullRequest case final pr?) Flexible(flex: 2, child: PrStatusRow(pr: pr)),
+            if (status != null) Flexible(child: status),
+          ],
+        ),
       ),
     );
   }
@@ -359,7 +398,6 @@ class _BranchDetail extends StatelessWidget {
       // would claim the whole allotment and strand its neighbours at the far
       // end.
       mainAxisSize: MainAxisSize.min,
-      spacing: _detailIconGap,
       children: [
         ExcludeSemantics(
           child: SizedBox(
@@ -387,13 +425,17 @@ class _BranchDetail extends StatelessWidget {
 const double _titleLineHeight = 24;
 const double _footerLineHeight = 20;
 
-/// The state and detail icons sit in fixed slots so titles — and the footer
-/// details under them — line up with each other down the list.
+/// Every icon sits in a slot of this width — the harness logo leading the
+/// title, the state sparkle ending it, and the footer's detail marks — so the
+/// text beside each of them lines up down the list. The glyphs are smaller
+/// than their slot, which is what spaces them from their text; they need no
+/// gap of their own.
 const double _iconSlotWidth = 20;
 
-const double _stateIconSize = 14;
+const double _brandLogoSize = 12;
+const double _stateIconSize = 16;
 const double _detailIconSize = 14;
 
-/// The design pairs a footer icon with its text tighter than any spacing
-/// token.
-const double _detailIconGap = 3;
+/// How much of the title's line box the fade covers. Wide enough to read as a
+/// trailing off rather than a clipped glyph.
+const double _titleFadeWidth = 32;

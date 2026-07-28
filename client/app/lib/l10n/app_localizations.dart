@@ -2359,6 +2359,30 @@ abstract class AppLocalizations {
   /// **'{days}d ago'**
   String timestampDaysAgo(int days);
 
+  /// Shortest form of 'just now', for the few characters a session row's trailing slot can hold.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get timestampCompactNow;
+
+  /// Shortest form of '{minutes}m ago', for the few characters a session row's trailing slot can hold.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m'**
+  String timestampCompactMinutes(int minutes);
+
+  /// Shortest form of '{hours}h ago', for the few characters a session row's trailing slot can hold.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String timestampCompactHours(int hours);
+
+  /// Shortest form of '{days}d ago', for the few characters a session row's trailing slot can hold.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}d'**
+  String timestampCompactDays(int days);
+
   /// No description provided for @sessionDetailModelFallback.
   ///
   /// In en, this message translates to:

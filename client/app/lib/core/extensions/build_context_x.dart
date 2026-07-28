@@ -48,6 +48,24 @@ extension BuildContextLocalization on BuildContext {
     return DateFormat.yMd(loc.localeName).format(date);
   }
 
+  /// The same instant as [formatTimestamp], shortened to what a list row's
+  /// trailing slot can hold: "now", "5m", "3h", "2d". The slot is a few
+  /// characters wide, so the phrasing drops rather than wraps; anything older
+  /// than a month falls back to the same short date [formatTimestamp] uses.
+  ///
+  /// Spoken output should still use [formatTimestamp] — "2d" is a glance mark,
+  /// not a phrase.
+  String formatTimestampCompact(int ms) {
+    final date = DateTime.fromMillisecondsSinceEpoch(ms);
+    final diff = DateTime.now().difference(date);
+
+    if (diff.inMinutes < 1) return loc.timestampCompactNow;
+    if (diff.inHours < 1) return loc.timestampCompactMinutes(diff.inMinutes);
+    if (diff.inDays < 1) return loc.timestampCompactHours(diff.inHours);
+    if (diff.inDays < 30) return loc.timestampCompactDays(diff.inDays);
+    return DateFormat.yMd(loc.localeName).format(date);
+  }
+
   /// Compact, glanceable timestamp for an individual chat message
   /// (revealed by swiping the transcript). Shows the localized
   /// time-of-day (e.g. "9:41 AM") for messages from today, prefixes the

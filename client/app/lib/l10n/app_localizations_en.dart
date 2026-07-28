@@ -1225,6 +1225,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get timestampCompactNow => 'now';
+
+  @override
+  String timestampCompactMinutes(int minutes) {
+    return '${minutes}m';
+  }
+
+  @override
+  String timestampCompactHours(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String timestampCompactDays(int days) {
+    return '${days}d';
+  }
+
+  @override
   String get sessionDetailModelFallback => 'Model';
 
   @override

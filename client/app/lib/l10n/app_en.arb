@@ -670,6 +670,37 @@
       }
     }
   },
+  "timestampCompactNow": "now",
+  "@timestampCompactNow": {
+    "description": "Shortest form of 'just now', for the few characters a session row's trailing slot can hold."
+  },
+  "timestampCompactMinutes": "{minutes}m",
+  "@timestampCompactMinutes": {
+    "description": "Shortest form of '{minutes}m ago', for the few characters a session row's trailing slot can hold.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "timestampCompactHours": "{hours}h",
+  "@timestampCompactHours": {
+    "description": "Shortest form of '{hours}h ago', for the few characters a session row's trailing slot can hold.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "timestampCompactDays": "{days}d",
+  "@timestampCompactDays": {
+    "description": "Shortest form of '{days}d ago', for the few characters a session row's trailing slot can hold.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "sessionDetailModelFallback": "Model",
   "sessionDetailAgentFallback": "Agent",
   "sessionDetailRetryLabel": "Retry",
