@@ -183,37 +183,45 @@ class SessionDiffService {
     required String startCommit,
   }) async {
     try {
+      final startCommitExists = await _sessionDiffRepository.revisionExists(
+        projectPath: projectPath,
+        revision: startCommit,
+      );
       final currentBranch = await _sessionDiffRepository.getCurrentBranch(
         projectPath: projectPath,
       );
       if (startingBranch != null && currentBranch == startingBranch) {
-        if (await _sessionDiffRepository.isAncestor(
-          projectPath: projectPath,
-          revision: startCommit,
-        )) {
+        if (startCommitExists &&
+            await _sessionDiffRepository.isAncestor(
+              projectPath: projectPath,
+              revision: startCommit,
+            )) {
           return SessionDiffExactRevision(revision: startCommit);
         }
         return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
       }
 
       if (startingBranch == null) {
-        if (await _sessionDiffRepository.isAncestor(
-          projectPath: projectPath,
-          revision: startCommit,
-        )) {
+        if (startCommitExists &&
+            await _sessionDiffRepository.isAncestor(
+              projectPath: projectPath,
+              revision: startCommit,
+            )) {
           return SessionDiffExactRevision(revision: startCommit);
         }
         return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
       }
 
+      final startingBranchRevision = "refs/heads/$startingBranch";
       if (!await _sessionDiffRepository.revisionExists(
         projectPath: projectPath,
-        revision: startingBranch,
+        revision: startingBranchRevision,
       )) {
-        if (await _sessionDiffRepository.isAncestor(
-          projectPath: projectPath,
-          revision: startCommit,
-        )) {
+        if (startCommitExists &&
+            await _sessionDiffRepository.isAncestor(
+              projectPath: projectPath,
+              revision: startCommit,
+            )) {
           return SessionDiffExactRevision(revision: startCommit);
         }
         return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
@@ -221,16 +229,23 @@ class SessionDiffService {
 
       final startingBranchIsAncestor = await _sessionDiffRepository.isAncestor(
         projectPath: projectPath,
-        revision: startingBranch,
+        revision: startingBranchRevision,
       );
       if (startingBranchIsAncestor) {
-        return SessionDiffMergeBaseRevision(revision: startingBranch);
+        return SessionDiffMergeBaseRevision(revision: startingBranchRevision);
       }
-      if (await _sessionDiffRepository.isAncestor(
-        projectPath: projectPath,
-        revision: startCommit,
-      )) {
+      if (startCommitExists &&
+          await _sessionDiffRepository.isAncestor(
+            projectPath: projectPath,
+            revision: startCommit,
+          )) {
         return SessionDiffExactRevision(revision: startCommit);
+      }
+      if (await _sessionDiffRepository.hasCommonAncestor(
+        projectPath: projectPath,
+        revision: startingBranchRevision,
+      )) {
+        return SessionDiffMergeBaseRevision(revision: startingBranchRevision);
       }
       return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
     } on SessionDiffRepositoryException catch (error) {

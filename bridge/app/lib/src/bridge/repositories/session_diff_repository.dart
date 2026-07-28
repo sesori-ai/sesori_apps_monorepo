@@ -127,6 +127,30 @@ class SessionDiffRepository {
     );
   }
 
+  Future<bool> hasCommonAncestor({
+    required String projectPath,
+    required String revision,
+  }) async {
+    final result = await _gitCliApi.findMergeBase(
+      projectPath: projectPath,
+      baseRevision: revision,
+    );
+    if (result.exitCode == 0) {
+      if (_outputMapper.parseSingleSha(output: result.stdout) == null) {
+        throw const SessionDiffRepositoryException(
+          message: "git merge-base returned unexpected output",
+        );
+      }
+      return true;
+    }
+    if (result.exitCode == 1) {
+      return false;
+    }
+    throw SessionDiffRepositoryException(
+      message: "git merge-base failed (exit ${result.exitCode})",
+    );
+  }
+
   Future<SessionDiffQueryResult> query({
     required String worktreePath,
     required SessionDiffComparisonBase comparisonBase,

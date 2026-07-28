@@ -191,6 +191,36 @@ void main() {
       expect((byFile["rewritten-current.txt"]! as FileDiffContent).before, isEmpty);
     });
 
+    test("pruned start commit falls back to the project base", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "pruned-start"]);
+      File("${repoDir.path}/pruned-history.txt").writeAsStringSync("pruned history\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "pruned-history.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "pruned history"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-pruned",
+        projectId: repoDir.path,
+        startingBranch: "pruned-start",
+        startCommit: startCommit,
+      );
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["reset", "--hard", "main"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["reflog", "expire", "--expire=now", "--all"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["gc", "--prune=now"]);
+      File("${repoDir.path}/tracked.txt").writeAsStringSync("after prune\n");
+
+      final diffs = await service.getDiffs(sessionId: "in-place-pruned");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("tracked.txt"));
+      expect(byFile.keys, isNot(contains("pruned-history.txt")));
+    });
+
     test("renamed starting branch keeps the start commit baseline", () async {
       await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "before-rename"]);
       File("${repoDir.path}/before-session.txt").writeAsStringSync("before session\n");
@@ -219,6 +249,37 @@ void main() {
 
       expect(byFile.keys, contains("after-session.txt"));
       expect(byFile.keys, isNot(contains("before-session.txt")));
+    });
+
+    test("saved branch is resolved through refs heads when a tag has the same name", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "tagged-start"]);
+      File("${repoDir.path}/before-tagged-session.txt").writeAsStringSync("before tagged session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "before-tagged-session.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "before tagged session"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "tagged-current"]);
+      File("${repoDir.path}/after-tagged-session.txt").writeAsStringSync("after tagged session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "after-tagged-session.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "after tagged session"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["tag", "tagged-start", "main"]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-tagged",
+        projectId: repoDir.path,
+        startingBranch: "tagged-start",
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-tagged");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("after-tagged-session.txt"));
+      expect(byFile.keys, isNot(contains("before-tagged-session.txt")));
     });
 
     test("divergent starting branch keeps an ancestral start commit baseline", () async {
@@ -264,6 +325,46 @@ void main() {
 
       expect(byFile.keys, contains("after-rescue.txt"));
       expect(byFile.keys, isNot(contains("before-rescue.txt")));
+    });
+
+    test("related custom branches use the saved branch merge base", () async {
+      final mainCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "main"],
+      )).stdout.toString().trim();
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "release"]);
+      File("${repoDir.path}/release-only.txt").writeAsStringSync("release only\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "release-only.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "release only"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+
+      await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["checkout", "-b", "custom-current", mainCommit],
+      );
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["branch", "-D", "main"]);
+      File("${repoDir.path}/custom-current.txt").writeAsStringSync("custom current\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "custom-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "custom current"]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-custom-base",
+        projectId: repoDir.path,
+        startingBranch: "release",
+        startCommit: startCommit,
+      );
+
+      final diffs = await service.getDiffs(sessionId: "in-place-custom-base");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("custom-current.txt"));
+      expect(byFile.keys, isNot(contains("release-only.txt")));
     });
 
     test("nested project diffs stay inside the opened directory", () async {
