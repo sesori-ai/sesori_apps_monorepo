@@ -214,6 +214,7 @@ class SessionTile extends StatelessWidget {
   }
 
   Widget _titleRow({required BuildContext context}) {
+    final prego = context.prego;
     return Row(
       children: [
         // Which harness is driving the session, in a fixed slot so titles line
@@ -234,6 +235,7 @@ class SessionTile extends StatelessWidget {
             ),
           ),
         ),
+        SizedBox(width: prego.spacing.xs),
         Expanded(child: _title(context: context)),
         _trailingSlot(context: context),
       ],
@@ -349,7 +351,7 @@ class SessionTile extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: _footerLineHeight),
       child: Padding(
-        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl),
+        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.x2l),
         child: Row(
           spacing: PregoSpacing.md,
           children: [
