@@ -138,6 +138,18 @@ eagerly "just in case."
   approve it. Prefer a dedicated PR without unrelated functionality changes
   when practical.
 
+## Analytics
+
+When adding a user-facing action or feature, consider whether an analytics
+event is warranted. The goal is to track the activation funnel, engagement
+depth, and feature adoption — not every tap. Ask: "Would this metric change a
+product decision or appear in an investor update?" If yes, add it. If no, skip
+it.
+
+New events go in `module_core/lib/src/platform/analytics_event.dart` as a new
+`AnalyticsEvent` union case. See `.opencode/skills/add-analytics/SKILL.md` for
+the full event-design checklist.
+
 ## Repeated Pitfalls
 
 - Do not solve speculative edge cases with broad locks, registries, lifecycle
