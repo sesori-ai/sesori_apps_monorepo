@@ -128,9 +128,15 @@ class _PluginChoice extends StatelessWidget {
                   color: iconColor,
                 ),
                 SizedBox(width: prego.spacing.sm),
-                PregoBrandLogo(
-                  pluginId: plugin.id,
-                  color: iconColor,
+                // The mark carries its own colours, so a row that is out of
+                // play mutes it rather than recolouring it — which also dims
+                // the branded artwork a tint could never have reached.
+                Opacity(
+                  opacity: isEnabled ? 1 : _mutedMarkOpacity,
+                  child: PregoBrandLogo(
+                    pluginId: plugin.id,
+                    color: iconColor,
+                  ),
                 ),
                 SizedBox(width: prego.spacing.sm),
                 Expanded(
@@ -190,3 +196,7 @@ class _PluginChoice extends StatelessWidget {
     );
   }
 }
+
+/// How far a harness mark is dimmed on a row that cannot be picked, so it
+/// reads as out of play alongside the row's tertiary text.
+const double _mutedMarkOpacity = 0.4;
