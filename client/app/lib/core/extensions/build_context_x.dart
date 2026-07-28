@@ -50,20 +50,27 @@ extension BuildContextLocalization on BuildContext {
 
   /// The same instant as [formatTimestamp], shortened to what a list row's
   /// trailing slot can hold: "now", "5m", "3h", "2d". The slot is a few
-  /// characters wide, so the phrasing drops rather than wraps; anything older
-  /// than a month falls back to the same short date [formatTimestamp] uses.
+  /// characters wide, so the phrasing drops rather than wraps.
+  ///
+  /// Past the relative window the date itself has to fit that slot, so it
+  /// drops the year for dates in this one — the same split
+  /// [formatMessageTimestamp] makes, for the same reason: a year is only worth
+  /// the width when leaving it out would be ambiguous.
   ///
   /// Spoken output should still use [formatTimestamp] — "2d" is a glance mark,
   /// not a phrase.
-  String formatTimestampCompact(int ms) {
+  String formatTimestampCompact({required int ms}) {
     final date = DateTime.fromMillisecondsSinceEpoch(ms);
-    final diff = DateTime.now().difference(date);
+    final now = DateTime.now();
+    final diff = now.difference(date);
 
     if (diff.inMinutes < 1) return loc.timestampCompactNow;
     if (diff.inHours < 1) return loc.timestampCompactMinutes(diff.inMinutes);
     if (diff.inDays < 1) return loc.timestampCompactHours(diff.inHours);
     if (diff.inDays < 30) return loc.timestampCompactDays(diff.inDays);
-    return DateFormat.yMd(loc.localeName).format(date);
+
+    final pattern = date.year == now.year ? DateFormat.Md(loc.localeName) : DateFormat.yMd(loc.localeName);
+    return pattern.format(date);
   }
 
   /// Compact, glanceable timestamp for an individual chat message

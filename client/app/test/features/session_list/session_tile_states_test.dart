@@ -214,6 +214,16 @@ void main() {
       expect(find.text("now"), findsNothing);
     });
 
+    testWidgets("keeps a session older than the relative window to one narrow line", (tester) async {
+      // Past 30 days the slot shows a date; it drops the year for this one and
+      // never wraps, so a stale session can't reshape the row.
+      await pumpTile(tester, tile(session: testSession(title: "My Session", updatedAt: 1700000000000)));
+
+      final stamp = tester.widget<Text>(find.textContaining("2023"));
+      expect(stamp.maxLines, 1);
+      expect(stamp.softWrap, isFalse);
+    });
+
     testWidgets("still speaks the time the sparkle took the space from, after the state", (tester) async {
       final semantics = tester.ensureSemantics();
       final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
@@ -295,20 +305,30 @@ void main() {
     });
   });
 
-  testWidgets("a title too long for its line fades out instead of ellipsizing", (tester) async {
-    await pumpTile(
-      tester,
-      tile(session: testSession(title: "A session title far too long to fit the width of a phone's list row")),
-    );
+  group("a title too long for its line", () {
+    testWidgets("fades out instead of ellipsizing", (tester) async {
+      await pumpTile(
+        tester,
+        tile(session: testSession(title: "A session title far too long to fit the width of a phone's list row")),
+      );
 
-    final title = tester.widget<Text>(find.textContaining("A session title"));
-    // The fade replaces the ellipsis: the glyphs run under the trailing slot
-    // and dissolve there rather than stopping on a hard "…".
-    expect(title.overflow, TextOverflow.clip);
-    expect(
-      find.ancestor(of: find.byWidget(title), matching: find.byType(ShaderMask)),
-      findsOneWidget,
-    );
+      final title = tester.widget<Text>(find.textContaining("A session title"));
+      // The fade replaces the ellipsis: the glyphs run under the trailing slot
+      // and dissolve there rather than stopping on a hard "…".
+      expect(title.overflow, TextOverflow.clip);
+      expect(
+        find.ancestor(of: find.byWidget(title), matching: find.byType(ShaderMask)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets("costs a title that fits nothing", (tester) async {
+      await pumpTile(tester, tile(session: testSession(title: "Short")));
+
+      // A mask is an offscreen pass per row that wears it, so rows with
+      // nothing to fade must not be wrapped in one.
+      expect(find.byType(ShaderMask), findsNothing);
+    });
   });
 
   group("row chrome", () {
