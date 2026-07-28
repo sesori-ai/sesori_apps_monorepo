@@ -573,6 +573,7 @@ void main() {
         processRunner.invocations[2].arguments,
         equals([
           "fetch",
+          "--no-write-fetch-head",
           "--no-tags",
           "--no-recurse-submodules",
           "origin",

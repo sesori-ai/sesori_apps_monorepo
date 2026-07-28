@@ -191,8 +191,12 @@ class GitCliApi {
     required String projectPath,
     required String branchName,
   }) async {
+    if (branchName.contains("*")) {
+      throw ArgumentError.value(branchName, "branchName", "must name one exact branch");
+    }
     final arguments = [
       "fetch",
+      "--no-write-fetch-head",
       "--no-tags",
       "--no-recurse-submodules",
       "origin",
@@ -203,6 +207,7 @@ class GitCliApi {
       arguments,
       workingDirectory: projectPath,
       timeout: const Duration(seconds: 30),
+      environment: const {"GIT_TERMINAL_PROMPT": "0"},
     );
     if (result.exitCode != 0) {
       throw ProcessException(

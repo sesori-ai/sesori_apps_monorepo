@@ -247,6 +247,7 @@ void main() {
         processRunner.invocations.single.arguments,
         equals([
           "fetch",
+          "--no-write-fetch-head",
           "--no-tags",
           "--no-recurse-submodules",
           "origin",
@@ -255,6 +256,22 @@ void main() {
       );
       expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
       expect(processRunner.invocations.single.timeout, const Duration(seconds: 30));
+      expect(
+        processRunner.invocations.single.environment,
+        const {"GIT_TERMINAL_PROMPT": "0"},
+      );
+    });
+
+    test("fetchOriginBranch rejects a wildcard branch without running git", () async {
+      await expectLater(
+        () => service.fetchOriginBranch(
+          projectPath: "/repo/project",
+          branchName: "release/*",
+        ),
+        throwsArgumentError,
+      );
+
+      expect(processRunner.invocations, isEmpty);
     });
 
     test("fetchOriginBranch throws ProcessException when git fails", () async {
@@ -440,12 +457,14 @@ class _Invocation {
   final List<String> arguments;
   final String? workingDirectory;
   final Duration timeout;
+  final Map<String, String>? environment;
 
   const _Invocation({
     required this.command,
     required this.arguments,
     required this.workingDirectory,
     required this.timeout,
+    required this.environment,
   });
 }
 
@@ -486,6 +505,7 @@ class _FakeProcessRunner implements ProcessRunner {
         arguments: List<String>.from(arguments),
         workingDirectory: workingDirectory,
         timeout: timeout,
+        environment: environment,
       ),
     );
 
