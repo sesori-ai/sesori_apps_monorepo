@@ -145,33 +145,46 @@ class WorktreeRepository {
   Future<({String? branch, String commit})?> resolveCurrentBranchAndCommit({
     required String projectPath,
   }) async {
-    final isGitRoot = await _gitApi.isGitInitialized(projectPath: projectPath);
-    if (!isGitRoot && !await _gitApi.isInsideGitWorkTree(projectPath: projectPath)) {
+    try {
+      final isGitRoot = await _gitApi.isGitInitialized(projectPath: projectPath);
+      if (!isGitRoot && !await _gitApi.isInsideGitWorkTree(projectPath: projectPath)) {
+        return null;
+      }
+
+      final statusResult = await _gitApi.readWorkingTreeStatus(projectPath: projectPath);
+      if (statusResult.exitCode != 0) {
+        throw StateError("git status failed with exit ${statusResult.exitCode}");
+      }
+      if (statusResult.stdout.toString().trim().isNotEmpty) {
+        return null;
+      }
+
+      final headResult = await _gitApi.readHeadCommit(projectPath: projectPath);
+      if (headResult.exitCode == 1) return null;
+      if (headResult.exitCode != 0) {
+        throw StateError("git rev-parse HEAD failed with exit ${headResult.exitCode}");
+      }
+      final commit = headResult.stdout.toString().trim();
+      if (commit.isEmpty) {
+        throw StateError("git rev-parse HEAD returned an empty commit");
+      }
+
+      final branchResult = await _gitApi.readCurrentBranch(projectPath: projectPath);
+      if (branchResult.exitCode == 1) {
+        return (branch: null, commit: commit);
+      }
+      if (branchResult.exitCode != 0) {
+        throw StateError("git symbolic-ref failed with exit ${branchResult.exitCode}");
+      }
+      final branch = branchResult.stdout.toString().trim();
+      if (branch.isEmpty) {
+        throw StateError("git symbolic-ref returned an empty branch");
+      }
+      return (branch: branch, commit: commit);
+    } on Object catch (error, stackTrace) {
+      Log.w("[WorktreeRepository] failed to capture Git snapshot for $projectPath", error, stackTrace);
       return null;
     }
-
-    final headResult = await _gitApi.readHeadCommit(projectPath: projectPath);
-    if (headResult.exitCode == 1) return null;
-    if (headResult.exitCode != 0) {
-      throw StateError("git rev-parse HEAD failed with exit ${headResult.exitCode}");
-    }
-    final commit = headResult.stdout.toString().trim();
-    if (commit.isEmpty) {
-      throw StateError("git rev-parse HEAD returned an empty commit");
-    }
-
-    final branchResult = await _gitApi.readCurrentBranch(projectPath: projectPath);
-    if (branchResult.exitCode == 1) {
-      return (branch: null, commit: commit);
-    }
-    if (branchResult.exitCode != 0) {
-      throw StateError("git symbolic-ref failed with exit ${branchResult.exitCode}");
-    }
-    final branch = branchResult.stdout.toString().trim();
-    if (branch.isEmpty) {
-      throw StateError("git symbolic-ref returned an empty branch");
-    }
-    return (branch: branch, commit: commit);
   }
 
   /// Resolves a stable project base after the checkout may have changed.

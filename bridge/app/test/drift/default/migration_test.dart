@@ -10,6 +10,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
+import 'generated/schema_v12.dart' as v12;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1112,7 +1113,9 @@ void main() {
               (await newDb.select(newDb.projectsTable).get()).single;
           expect(project.projectionUpdatedAt, 200);
           expect(project.displayName, 'One');
-          final projectColumns = await newDb.customSelect("PRAGMA table_info('projects_table')").get();
+          final projectColumns = await newDb
+              .customSelect("PRAGMA table_info('projects_table')")
+              .get();
           expect(
             projectColumns.map((row) => row.read<String>('name')),
             isNot(contains('worktree_counter')),
@@ -1244,6 +1247,73 @@ void main() {
       );
     },
   );
+
+  test(
+    'migration v11 -> v12 disables diffs for legacy in-place sessions',
+    () async {
+      await verifier.testWithDataIntegrity(
+        oldVersion: 11,
+        newVersion: 12,
+        createOld: v11.DatabaseAtV11.new,
+        createNew: v12.DatabaseAtV12.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insert(
+            oldDb.projectsTable,
+            const v11.ProjectsTableData(
+              projectId: 'project-1',
+              path: '/projects/one',
+              hidden: 0,
+              baseBranch: 'main',
+              createdAt: 1,
+              updatedAt: 1,
+              projectionUpdatedAt: 1,
+            ),
+          );
+          batch.insertAll(oldDb.sessionsTable, const [
+            v11.SessionsTableData(
+              sessionId: 'in-place',
+              backendSessionId: 'in-place',
+              projectId: 'project-1',
+              directory: '/projects/one',
+              isDedicated: 0,
+              baseBranch: 'main',
+              baseCommit: 'legacy-project-base',
+              createdAt: 1,
+              updatedAt: 1,
+              projectionUpdatedAt: 1,
+              pluginId: 'opencode',
+            ),
+            v11.SessionsTableData(
+              sessionId: 'dedicated',
+              backendSessionId: 'dedicated',
+              projectId: 'project-1',
+              directory: '/projects/one/.worktrees/dedicated',
+              worktreePath: '/projects/one/.worktrees/dedicated',
+              branchName: 'dedicated',
+              isDedicated: 1,
+              baseBranch: 'main',
+              baseCommit: 'dedicated-base',
+              createdAt: 1,
+              updatedAt: 1,
+              projectionUpdatedAt: 1,
+              pluginId: 'opencode',
+            ),
+          ]);
+        },
+        validateItems: (newDb) async {
+          final sessions = {
+            for (final row in await newDb.select(newDb.sessionsTable).get())
+              row.sessionId: row,
+          };
+          expect(sessions['in-place']?.baseBranch, isNull);
+          expect(sessions['in-place']?.baseCommit, isNull);
+          expect(sessions['dedicated']?.baseBranch, 'main');
+          expect(sessions['dedicated']?.baseCommit, 'dedicated-base');
+        },
+      );
+    },
+  );
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -1254,7 +1324,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    11,
+    12,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

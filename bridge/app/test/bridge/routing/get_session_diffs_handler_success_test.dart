@@ -126,10 +126,10 @@ void main() {
           );
         }
         if (arguments.length >= 2 && arguments[0] == "show") {
-          if (arguments[1] == "abc123:lib/modified.dart") {
+          if (arguments[1] == "abc123:./lib/modified.dart") {
             return ProcessResult(1, 0, "modified before\n", "");
           }
-          if (arguments[1] == "abc123:lib/deleted.dart") {
+          if (arguments[1] == "abc123:./lib/deleted.dart") {
             return ProcessResult(1, 0, "deleted before\n", "");
           }
           return ProcessResult(1, 128, "", "fatal");

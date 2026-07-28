@@ -187,7 +187,13 @@ class SessionDiffService {
         projectPath: projectPath,
       );
       if (startingBranch != null && currentBranch == startingBranch) {
-        return SessionDiffExactRevision(revision: startCommit);
+        if (await _sessionDiffRepository.isAncestor(
+          projectPath: projectPath,
+          revision: startCommit,
+        )) {
+          return SessionDiffExactRevision(revision: startCommit);
+        }
+        return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
       }
 
       if (startingBranch == null) {
@@ -204,6 +210,12 @@ class SessionDiffService {
         projectPath: projectPath,
         revision: startingBranch,
       )) {
+        if (await _sessionDiffRepository.isAncestor(
+          projectPath: projectPath,
+          revision: startCommit,
+        )) {
+          return SessionDiffExactRevision(revision: startCommit);
+        }
         return _resolveProjectBase(projectId: projectId, projectPath: projectPath);
       }
 

@@ -159,6 +159,102 @@ void main() {
       expect(tracked.after, "local in-place\n");
     });
 
+    test("rewritten starting branch falls back to the project base", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "rewritten-same"]);
+      File("${repoDir.path}/old-history.txt").writeAsStringSync("old history\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "old-history.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "old history"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-rewritten-same",
+        projectId: repoDir.path,
+        startingBranch: "rewritten-same",
+        startCommit: startCommit,
+      );
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["reset", "--hard", "main"]);
+      File("${repoDir.path}/rewritten-current.txt").writeAsStringSync("committed current\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "rewritten-current.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "rewritten current"]);
+      File("${repoDir.path}/rewritten-current.txt").writeAsStringSync("local current\n");
+
+      final diffs = await service.getDiffs(sessionId: "in-place-rewritten-same");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("rewritten-current.txt"));
+      expect(byFile.keys, isNot(contains("old-history.txt")));
+      expect((byFile["rewritten-current.txt"]! as FileDiffContent).before, isEmpty);
+    });
+
+    test("renamed starting branch keeps the start commit baseline", () async {
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "before-rename"]);
+      File("${repoDir.path}/before-session.txt").writeAsStringSync("before session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "before-session.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "before session"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-renamed",
+        projectId: repoDir.path,
+        startingBranch: "before-rename",
+        startCommit: startCommit,
+      );
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["branch", "-m", "after-rename"]);
+      File("${repoDir.path}/after-session.txt").writeAsStringSync("after session\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "after-session.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "after session"]);
+
+      final diffs = await service.getDiffs(sessionId: "in-place-renamed");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, contains("after-session.txt"));
+      expect(byFile.keys, isNot(contains("before-session.txt")));
+    });
+
+    test("nested project diffs stay inside the opened directory", () async {
+      final nestedDir = Directory("${repoDir.path}/packages/opened")..createSync(recursive: true);
+      final siblingDir = Directory("${repoDir.path}/packages/private")..createSync(recursive: true);
+      File("${nestedDir.path}/tracked.txt").writeAsStringSync("nested before\n");
+      File("${siblingDir.path}/secret.txt").writeAsStringSync("secret before\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "packages"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "nested baseline"]);
+      final startCommit = (await _runGit(
+        runner: processRunner,
+        cwd: nestedDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-nested",
+        projectId: nestedDir.path,
+        startingBranch: "main",
+        startCommit: startCommit,
+      );
+
+      File("${nestedDir.path}/tracked.txt").writeAsStringSync("nested after\n");
+      File("${nestedDir.path}/new.txt").writeAsStringSync("nested new\n");
+      File("${siblingDir.path}/secret.txt").deleteSync();
+      File("${siblingDir.path}/untracked-secret.txt").writeAsStringSync("private\n");
+
+      final diffs = await service.getDiffs(sessionId: "in-place-nested");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, unorderedEquals(["tracked.txt", "new.txt"]));
+      final tracked = byFile["tracked.txt"]! as FileDiffContent;
+      expect(tracked.before, "nested before\n");
+      expect(tracked.after, "nested after\n");
+    });
+
     test("rebased stacked branch compares against the rewritten starting branch", () async {
       await _runGit(runner: processRunner, cwd: repoDir.path, args: ["checkout", "-b", "stack-base"]);
       File("${repoDir.path}/old-base.txt").writeAsStringSync("old base\n");

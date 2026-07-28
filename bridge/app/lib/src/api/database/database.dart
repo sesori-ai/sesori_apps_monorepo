@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -247,6 +247,16 @@ class AppDatabase extends _$AppDatabase {
         if (violations.isNotEmpty) {
           throw StateError("Migration v10->v11 left foreign key violations: ${violations.map((row) => row.data)}");
         }
+      },
+      from11To12: (m, schema) async {
+        // Released bridges stored the project base in these fields for
+        // in-place sessions. That is not a session-start snapshot, so disable
+        // diffs for those rows instead of interpreting legacy data incorrectly.
+        await m.database.customStatement(
+          "UPDATE sessions_table "
+          "SET base_branch = NULL, base_commit = NULL "
+          "WHERE is_dedicated = 0",
+        );
       },
     ),
     beforeOpen: (details) async {

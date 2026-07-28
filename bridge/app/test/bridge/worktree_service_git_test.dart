@@ -173,6 +173,25 @@ void main() {
       expect(processRunner.invocations, hasLength(3));
     });
 
+    test("resolveStableDefaultBranch skips a dangling origin HEAD", () async {
+      processRunner
+        ..enqueue(result: _processResult(exitCode: 0, stdout: "refs/remotes/origin/main\n"))
+        ..enqueue(result: _processResult(exitCode: 0))
+        ..enqueue(result: _processResult(exitCode: 1))
+        ..enqueue(result: _processResult(exitCode: 0, stdout: "trunk\n"))
+        ..enqueue(result: _processResult(exitCode: 0, stdout: "  trunk\n"));
+
+      final defaultBranch = await service.resolveStableDefaultBranch(
+        projectPath: "/repo/project",
+      );
+
+      expect(defaultBranch, "trunk");
+      expect(
+        processRunner.invocations[2].arguments,
+        ["rev-parse", "--verify", "--quiet", "--end-of-options", "origin/main^{commit}"],
+      );
+    });
+
     test("branchExists returns true for non-empty git branch --list output", () async {
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "  main\n"));
 

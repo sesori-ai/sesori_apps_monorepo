@@ -36,6 +36,7 @@ void main() {
     );
 
     test("captures the checked-out branch and HEAD", () async {
+      processRunner.enqueue(result: ProcessResult(0, 0, "", ""));
       processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
       processRunner.enqueue(result: ProcessResult(0, 0, "feature/stack-base\n", ""));
 
@@ -44,12 +45,14 @@ void main() {
       );
 
       expect(result, (branch: "feature/stack-base", commit: "abc123"));
-      expect(processRunner.invocations[0].arguments, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
-      expect(processRunner.invocations[1].arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+      expect(processRunner.invocations[0].arguments, ["status", "--porcelain", "--", "."]);
+      expect(processRunner.invocations[1].arguments, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
+      expect(processRunner.invocations[2].arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
     });
 
     test("captures Git state when the project is nested inside a worktree", () async {
       processRunner.enqueue(result: ProcessResult(0, 0, "true\n", ""));
+      processRunner.enqueue(result: ProcessResult(0, 0, "", ""));
       processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
       processRunner.enqueue(result: ProcessResult(0, 0, "feature/nested\n", ""));
 
@@ -72,13 +75,23 @@ void main() {
       expect(processRunner.invocations.single.arguments, ["rev-parse", "--is-inside-work-tree"]);
     });
 
-    test("propagates unexpected Git process failures", () async {
-      await expectLater(
-        repository(isGitRepository: true).resolveCurrentBranchAndCommit(
-          projectPath: "/repo",
-        ),
-        throwsA(isA<StateError>()),
+    test("returns no snapshot when the working tree is already dirty", () async {
+      processRunner.enqueue(result: ProcessResult(0, 0, " M existing.dart\n", ""));
+
+      final result = await repository(isGitRepository: true).resolveCurrentBranchAndCommit(
+        projectPath: "/repo",
       );
+
+      expect(result, isNull);
+      expect(processRunner.invocations.single.arguments, ["status", "--porcelain", "--", "."]);
+    });
+
+    test("returns no snapshot when Git snapshot capture fails", () async {
+      final result = await repository(isGitRepository: true).resolveCurrentBranchAndCommit(
+        projectPath: "/repo",
+      );
+
+      expect(result, isNull);
     });
   });
 

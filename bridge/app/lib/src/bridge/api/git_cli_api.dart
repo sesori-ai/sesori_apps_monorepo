@@ -125,9 +125,25 @@ class GitCliApi {
       prefix: "refs/remotes/origin/",
     );
     if (originHeadResult.exitCode == 0 && originHeadBranch != null) {
-      return await branchExists(projectPath: projectPath, branchName: originHeadBranch)
-          ? originHeadBranch
-          : "origin/$originHeadBranch";
+      if (await branchExists(projectPath: projectPath, branchName: originHeadBranch)) {
+        return originHeadBranch;
+      }
+      final originBranch = "origin/$originHeadBranch";
+      final originBranchResult = await checkRevisionExists(
+        projectPath: projectPath,
+        revision: originBranch,
+      );
+      if (originBranchResult.exitCode == 0) {
+        return originBranch;
+      }
+      if (originBranchResult.exitCode != 1) {
+        throw ProcessException(
+          "git",
+          ["rev-parse", "--verify", "--quiet", "--end-of-options", "$originBranch^{commit}"],
+          originBranchResult.stderr.toString(),
+          originBranchResult.exitCode,
+        );
+      }
     }
 
     final configuredDefaultBranchResult = await runGit(
@@ -229,6 +245,13 @@ class GitCliApi {
     );
   }
 
+  Future<ProcessResult> readWorkingTreeStatus({required String projectPath}) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: const ["status", "--porcelain", "--", "."],
+    );
+  }
+
   Future<ProcessResult> readCurrentBranch({required String projectPath}) {
     return runGit(
       projectPath: projectPath,
@@ -287,9 +310,12 @@ class GitCliApi {
         "--no-ext-diff",
         "--no-color",
         "--no-renames",
+        "--relative",
         "--name-status",
         "-z",
         revision,
+        "--",
+        ".",
       ],
     );
   }
@@ -305,9 +331,12 @@ class GitCliApi {
         "--no-ext-diff",
         "--no-color",
         "--no-renames",
+        "--relative",
         "--numstat",
         "-z",
         revision,
+        "--",
+        ".",
       ],
     );
   }
@@ -315,7 +344,7 @@ class GitCliApi {
   Future<ProcessResult> listUntrackedFiles({required String projectPath}) {
     return runGit(
       projectPath: projectPath,
-      arguments: const ["ls-files", "--others", "--exclude-standard", "-z"],
+      arguments: const ["ls-files", "--others", "--exclude-standard", "-z", "--", "."],
     );
   }
 
@@ -326,7 +355,7 @@ class GitCliApi {
   }) {
     return runGit(
       projectPath: projectPath,
-      arguments: ["cat-file", "-s", "$revision:$file"],
+      arguments: ["cat-file", "-s", "$revision:./$file"],
     );
   }
 
@@ -337,7 +366,7 @@ class GitCliApi {
   }) {
     return runGit(
       projectPath: projectPath,
-      arguments: ["show", "$revision:$file"],
+      arguments: ["show", "$revision:./$file"],
     );
   }
 
