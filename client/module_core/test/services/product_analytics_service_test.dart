@@ -1092,6 +1092,30 @@ void main() {
     expect(analyticsRepository.calls, isEmpty);
   });
 
+  test("a synchronous auth change rejects events before the stream listener runs", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+    analyticsRepository.calls.clear();
+
+    authSession.emit(state: const AuthState.authenticated(user: _userB));
+    final result = await service.logEvent(
+      event: const ProductAnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.connectSetup),
+      occurredAtUtc: DateTime.utc(2026, 7, 29),
+    );
+
+    expect(result, AnalyticsDeliveryResult.failed);
+    expect(analyticsRepository.calls, isEmpty);
+  });
+
   test("account switch suppresses the previous user key before the new local read completes", () async {
     createService();
     final enabledA = _record(
