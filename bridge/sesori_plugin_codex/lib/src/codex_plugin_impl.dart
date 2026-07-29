@@ -15,6 +15,7 @@ import "codex_metadata_repository.dart";
 import "models/codex_collaboration_mode.dart";
 import "repositories/codex_catalog_repository.dart";
 import "repositories/codex_message_repository.dart";
+import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
 import "repositories/models/codex_thread_record.dart";
@@ -239,6 +240,7 @@ class CodexPlugin implements CodexManagedApi {
         final appServerApi = CodexAppServerApi(client: client);
         _sessionService.attachAppServerRepositories(
           threadRepository: CodexThreadRepository(appServerApi: appServerApi),
+          modelRepository: CodexModelRepository(appServerApi: appServerApi),
           skillRepository: CodexSkillRepository(appServerApi: appServerApi),
         );
         _subscribeToNotifications(client);
@@ -1009,57 +1011,7 @@ class CodexPlugin implements CodexManagedApi {
   ) => _sessionService.getSessionMessages(sessionId: sessionId);
 
   @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    final (:modelID, :providerID) = _sessionService.resolveModelDefaults(projectId: projectId);
-    var resolvedModelID = modelID;
-    if (resolvedModelID == null) {
-      String? firstVisibleModelID;
-      for (final model in await _listModels()) {
-        if (model["hidden"] == true) continue;
-        final id = model["id"] as String?;
-        if (id == null || id.isEmpty) continue;
-        firstVisibleModelID ??= id;
-        if (model["isDefault"] == true) {
-          resolvedModelID = id;
-          break;
-        }
-      }
-      resolvedModelID ??= firstVisibleModelID;
-    }
-    final agentModel = resolvedModelID == null
-        ? null
-        : PluginAgentModel(
-            modelID: resolvedModelID,
-            providerID: providerID,
-            variant: null,
-          );
-    return [
-      for (final collaborationMode in CodexCollaborationMode.values)
-        if (agentModel != null || collaborationMode == CodexCollaborationMode.defaultMode)
-          PluginAgent(
-            name: collaborationMode.agentName,
-            description: collaborationMode.description,
-            model: agentModel,
-            mode: PluginAgentMode.primary,
-            hidden: false,
-          ),
-    ];
-  }
-
-  static String _providerDisplayName(String providerId) {
-    return switch (providerId.toLowerCase()) {
-      "openai" => "OpenAI",
-      "anthropic" => "Anthropic",
-      "google" => "Google",
-      "mistral" => "Mistral",
-      "groq" => "Groq",
-      "xai" => "xAI",
-      "deepseek" => "DeepSeek",
-      "azure" => "Azure OpenAI",
-      "amazon-bedrock" || "bedrock" => "Amazon Bedrock",
-      _ => providerId,
-    };
-  }
+  Future<List<PluginAgent>> getAgents({required String projectId}) => _sessionService.getAgents(projectId: projectId);
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
@@ -1117,141 +1069,8 @@ class CodexPlugin implements CodexManagedApi {
   }
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    final (:modelID, :providerID) = _sessionService.resolveModelDefaults(projectId: projectId);
-
-    // Prefer codex's live catalog (`model/list`) so the mobile picker shows
-    // every model the user can switch to, not just the configured default.
-    final models = await _listModels();
-    if (models.isNotEmpty) {
-      String? defaultId;
-      final pluginModels = <PluginModel>[];
-      for (final model in models) {
-        if (model["hidden"] == true) continue;
-        final id = model["id"] as String?;
-        if (id == null || id.isEmpty) continue;
-        if (model["isDefault"] == true) defaultId = id;
-        final displayName = model["displayName"] as String?;
-        pluginModels.add(
-          PluginModel(
-            id: id,
-            name: displayName == null || displayName.isEmpty ? id : displayName,
-            variants: _reasoningEffortVariants(model),
-            family: null,
-            isAvailable: true,
-            releaseDate: null,
-          ),
-        );
-      }
-      if (pluginModels.isNotEmpty) {
-        final defaultModelID = _sessionService.selectCatalogDefaultModel(
-          scopedModelID: modelID,
-          catalogModelIds: [for (final model in pluginModels) model.id],
-          catalogDefaultId: defaultId,
-        );
-        return PluginProvidersResult(
-          providers: [
-            PluginProvider.custom(
-              id: providerID,
-              name: _providerDisplayName(providerID),
-              authType: PluginProviderAuthType.unknown,
-              models: pluginModels,
-              // Non-null: the catalog is non-empty here, so the repository
-              // always resolves at least the first catalog model.
-              defaultModelID: defaultModelID ?? pluginModels.first.id,
-            ),
-          ],
-        );
-      }
-    }
-
-    // Offline / `model/list` unavailable — fall back to the single configured
-    // model so the picker still shows something usable.
-    if (modelID == null) {
-      return const PluginProvidersResult(providers: []);
-    }
-    return PluginProvidersResult(
-      providers: [
-        PluginProvider.custom(
-          id: providerID,
-          name: _providerDisplayName(providerID),
-          authType: PluginProviderAuthType.unknown,
-          models: [
-            PluginModel(
-              id: modelID,
-              name: modelID,
-              variants: const [],
-              family: null,
-              isAvailable: true,
-              releaseDate: null,
-            ),
-          ],
-          defaultModelID: modelID,
-        ),
-      ],
-    );
-  }
-
-  /// Extracts a codex model's reasoning-effort tokens (the mobile "variants")
-  /// from its `model/list` entry, ordered the way the variant picker should
-  /// present them.
-  ///
-  /// codex reports `supportedReasoningEfforts` as `{reasoningEffort, description}`
-  /// options (e.g. low/medium/high/xhigh) plus a `defaultReasoningEffort`. The
-  /// effort tokens are codex's `ReasoningEffort` enum values, which pass straight
-  /// through as the `turn/start` `effort` override — no mapping table needed.
-  ///
-  /// `defaultReasoningEffort` is surfaced FIRST: the mobile picker auto-selects
-  /// the first variant when a user switches model (with no prior pick), so
-  /// leading with codex's own default keeps a model switch at the model's
-  /// intended effort instead of silently dropping to the lowest one. The picker
-  /// also offers a synthetic "default" (null) row, and codex applies
-  /// `defaultReasoningEffort` whenever no `effort` is sent, so the null
-  /// selection and the leading token resolve to the same effort.
-  List<String> _reasoningEffortVariants(Map<String, dynamic> model) {
-    final supported = model["supportedReasoningEfforts"];
-    if (supported is! List) return const [];
-    final efforts = <String>[];
-    for (final option in supported) {
-      String? token;
-      if (option is String) {
-        token = option;
-      } else if (option is Map) {
-        final value = option["reasoningEffort"];
-        if (value is String) token = value;
-      }
-      if (token != null && token.isNotEmpty && !efforts.contains(token)) {
-        efforts.add(token);
-      }
-    }
-    final defaultEffort = model["defaultReasoningEffort"];
-    if (defaultEffort is String && efforts.remove(defaultEffort)) {
-      efforts.insert(0, defaultEffort);
-    }
-    return efforts;
-  }
-
-  /// Fetches codex's model catalog via the `model/list` RPC. Returns an empty
-  /// list when the transport isn't connected or the call fails, so callers can
-  /// fall back to the locally-derived default.
-  Future<List<Map<String, dynamic>>> _listModels() async {
-    final client = _client;
-    if (client == null) return const [];
-    try {
-      final result = await client.request(
-        method: "model/list",
-        params: const <String, dynamic>{},
-      );
-      final data = (result as Map?)?["data"];
-      if (data is! List) return const [];
-      return [
-        for (final entry in data)
-          if (entry is Map) entry.cast<String, dynamic>(),
-      ];
-    } on Object {
-      return const [];
-    }
-  }
+  Future<PluginProvidersResult> getProviders({required String projectId}) =>
+      _sessionService.getProviders(projectId: projectId);
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {

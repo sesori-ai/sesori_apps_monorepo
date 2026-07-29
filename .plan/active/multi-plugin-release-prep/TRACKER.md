@@ -2,19 +2,18 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `9da014e2`
-- **Series state:** Step 1/6 plan PR #605 is open from
-  `multi-plugin-release-prep`
-- **Current step:** Step 1/6 — durable plan and tracker
-- **Next action:** review and merge the plan PR, then start Step 2/6 from updated
-  `origin/main`
+- **Implementation base:** `origin/main` at `fb961d16`
+- **Series state:** Step 1/6 plan PR #605 is merged; Step 2/6 is implemented
+  and locally verified on `multi-plugin-release-prep-codex-options`
+- **Current step:** Step 2/6 — typed Codex session-option discovery
+- **Next action:** commit and open the Step 2/6 PR for review
 
 ## Delivery
 
 | Done | Step | Branch | PR state |
 |---|---|---|---|
-| [ ] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 open |
-| [ ] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | Blocked on Step 1 merge |
+| [x] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 merged |
+| [ ] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | Implementation verified locally |
 | [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | Blocked on Step 2 merge |
 | [ ] | Step 4/6 — durable bridge cache and aggregate route | `multi-plugin-release-prep-bridge-cache` | Blocked on Step 3 merge |
 | [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4 merge |
@@ -75,4 +74,10 @@
 - Step 1/6 (2026-07-29): finalized the scope-aware aggregate session-options
   and single-screen Harnesses settings plan. `git diff --check` passed; no
   Dart/Flutter suites were run for this documentation-only slice. Committed as
-  `3c46773c`, pushed, and opened PR #605.
+  `3c46773c`, pushed, opened as PR #605, and merged to `main` as `fb961d16`.
+- Step 2/6 (2026-07-29): added typed Codex `model/list` DTO/API/repository
+  ownership, moved model and collaboration-option construction into
+  `CodexSessionService`, and reduced the plugin facade to route delegation.
+  Generated Freezed/JSON sources, all 201 Codex package tests, focused fatal
+  analysis, formatting, and `git diff --check` passed. Aristotle implementation
+  review approved the branch-local architecture with no findings.

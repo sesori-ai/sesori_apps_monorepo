@@ -6,6 +6,7 @@ import "../codex_metadata_repository.dart";
 import "../models/codex_collaboration_mode.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
+import "../repositories/codex_model_repository.dart";
 import "../repositories/codex_skill_repository.dart";
 import "../repositories/codex_thread_repository.dart";
 import "../repositories/models/codex_thread_record.dart";
@@ -37,20 +38,24 @@ class CodexSessionService {
   final String _launchDirectory;
 
   CodexThreadRepository? _threadRepository;
+  CodexModelRepository? _modelRepository;
   CodexSkillRepository? _skillRepository;
   final Set<String> _loadedThreads = {};
   final Map<String, String> _threadModels = {};
 
   void attachAppServerRepositories({
     required CodexThreadRepository threadRepository,
+    required CodexModelRepository modelRepository,
     required CodexSkillRepository skillRepository,
   }) {
     _threadRepository = threadRepository;
+    _modelRepository = modelRepository;
     _skillRepository = skillRepository;
   }
 
   void detachAppServerRepositories() {
     _threadRepository = null;
+    _modelRepository = null;
     _skillRepository = null;
     _loadedThreads.clear();
     _threadModels.clear();
@@ -85,6 +90,36 @@ class CodexSessionService {
       return commands;
     }
     return [...commands, _compactionCommand];
+  }
+
+  Future<List<PluginAgent>> getAgents({required String projectId}) async {
+    final options = await _resolveModelOptions(projectId: projectId);
+    return options.agents;
+  }
+
+  Future<PluginProvidersResult> getProviders({
+    required String projectId,
+  }) async {
+    final options = await _resolveModelOptions(projectId: projectId);
+    return options.providers;
+  }
+
+  Future<
+    ({
+      List<PluginAgent> agents,
+      List<PluginCommand> commands,
+      PluginProvidersResult providers,
+    })
+  >
+  getSessionOptions({required String projectId}) async {
+    final modelOptionsFuture = _resolveModelOptions(projectId: projectId);
+    final commandsFuture = getCommands(projectId: projectId);
+    final modelOptions = await modelOptionsFuture;
+    return (
+      agents: modelOptions.agents,
+      commands: await commandsFuture,
+      providers: modelOptions.providers,
+    );
   }
 
   Future<CodexThreadRecord> startThread({
@@ -372,6 +407,102 @@ class CodexSessionService {
     }
     if (catalogDefaultId != null) return catalogDefaultId;
     return catalogModelIds.isEmpty ? null : catalogModelIds.first;
+  }
+
+  Future<
+    ({
+      List<PluginAgent> agents,
+      PluginProvidersResult providers,
+    })
+  >
+  _resolveModelOptions({required String projectId}) async {
+    final (:modelID, :providerID) = resolveModelDefaults(
+      projectId: projectId,
+    );
+    final catalog = await _listModels();
+    final models = catalog.models.isEmpty
+        ? [
+            if (modelID != null)
+              PluginModel(
+                id: modelID,
+                name: modelID,
+                variants: const [],
+                family: null,
+                isAvailable: true,
+                releaseDate: null,
+              ),
+          ]
+        : catalog.models;
+    final selectedModelID = selectCatalogDefaultModel(
+      scopedModelID: modelID,
+      catalogModelIds: [for (final model in models) model.id],
+      catalogDefaultId: catalog.defaultModelID,
+    );
+    final agentModel = selectedModelID == null
+        ? null
+        : PluginAgentModel(
+            modelID: selectedModelID,
+            providerID: providerID,
+            variant: null,
+          );
+    return (
+      agents: [
+        for (final collaborationMode in CodexCollaborationMode.values)
+          if (agentModel != null || collaborationMode == CodexCollaborationMode.defaultMode)
+            PluginAgent(
+              name: collaborationMode.agentName,
+              description: collaborationMode.description,
+              model: agentModel,
+              mode: PluginAgentMode.primary,
+              hidden: false,
+            ),
+      ],
+      providers: PluginProvidersResult(
+        providers: selectedModelID == null
+            ? const []
+            : [
+                PluginProvider.custom(
+                  id: providerID,
+                  name: _providerDisplayName(providerID),
+                  authType: PluginProviderAuthType.unknown,
+                  models: models,
+                  defaultModelID: selectedModelID,
+                ),
+              ],
+      ),
+    );
+  }
+
+  Future<CodexModelCatalog> _listModels() async {
+    final repository = _modelRepository;
+    if (repository == null) {
+      return (defaultModelID: null, models: const <PluginModel>[]);
+    }
+    try {
+      return await repository.listModels();
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[codex] model discovery failed; using configured fallback",
+        error,
+        stackTrace,
+      );
+      return (defaultModelID: null, models: const <PluginModel>[]);
+    }
+  }
+
+  String _providerDisplayName(String providerID) {
+    return switch (providerID.toLowerCase()) {
+      "openai" => "OpenAI",
+      "anthropic" => "Anthropic",
+      "google" => "Google",
+      "mistral" => "Mistral",
+      "groq" => "Groq",
+      "xai" => "xAI",
+      "deepseek" => "DeepSeek",
+      "azure" => "Azure OpenAI",
+      "amazon-bedrock" || "bedrock" => "Amazon Bedrock",
+      _ => providerID,
+    };
   }
 
   CodexThreadRepository get _connectedThreadRepository {
