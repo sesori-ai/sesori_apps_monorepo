@@ -1,0 +1,447 @@
+# Multi-Plugin Release Preparation
+
+## Status
+
+- **Plan slug:** `multi-plugin-release-prep`
+- **Status:** ready for delivery as a six-PR series
+- **Plan delivery:** this document and its tracker are Step 1/6
+- **Implementation base:** `origin/main` at `9da014e2`
+- **Approved product direction:** Codex remains project-aware; Cursor and the
+  ACP-backed option state use plugin-scoped caching; OpenCode remains
+  project-scoped
+
+## Goal
+
+Prepare the first multi-plugin release so that opening New Session and switching
+between harnesses does not start dormant backends merely to render agents,
+models, variants, or commands. The bridge owns a durable, scope-aware options
+cache and exposes one aggregate API that starts a harness only after explicit
+user refresh.
+
+Complete the release preparation by consolidating the two mobile Harnesses
+settings screens into one capability-driven surface with Prego timeout and
+force-confirmation sheets.
+
+## Delivery Rules
+
+- This plan is a fixed six-PR series. Every title uses
+  `[multi-plugin-release-prep] ... [step x/6]`.
+- Keep one implementation PR open at a time. Start a successor from the latest
+  reviewed predecessor, but open it only after the predecessor merges and the
+  successor is synchronized with current `origin/main` and reverified.
+- Internal Dart plugin contracts update every in-repository implementation in
+  lockstep. Do not add compatibility shims for internal interfaces.
+- Client/bridge transport remains backward and forward compatible. An older
+  peer's limitation is explicit rather than represented as an empty successful
+  catalog.
+- Generated Freezed, JSON, Drift, Injectable, and localization files are always
+  regenerated from source and never hand-edited.
+- Approximately 1,000 changed lines is a reviewability target, not a hard gate.
+  Generated migration/model output can exceed it when the substantive boundary
+  remains coherent and the PR body names the overage.
+
+## Current Behavior
+
+### New-session loading
+
+- `GET /plugin` reads `PluginLifecycleService.selectableMetadataSnapshot` and
+  does not inspect, acquire, or start a plugin.
+- After discovery, `NewSessionCubit` independently requests `/agent`,
+  `/provider`, and `/command` for the selected project and plugin.
+- Each bridge repository reaches the backend through `PluginRuntime.use`, so a
+  dormant plugin starts. Switching plugins or reconnecting can repeat that cost.
+- The client has only a provider-only process cache. It is not durable, does not
+  cache agents or commands, and can retain provider data indefinitely.
+- Cursor catalog discovery can spend its ACP connection budget and a bounded
+  catalog-probe budget. Codex agent/provider loading can issue duplicate
+  `model/list` calls.
+
+### Actual option scopes
+
+| Plugin | Current option behavior | Durable aggregate scope |
+|---|---|---|
+| OpenCode | Agents, configured providers/models, and commands are resolved with a project directory. | Project |
+| Codex | Collaboration modes and `model/list` are global, but the default model/provider is resolved from project rollout/config evidence and skills are requested with project CWD. | Project |
+| Cursor | Modes, models, thought variants, and command tracker state belong to the connected Cursor process/account. A project path is only a catalog-probe seed. | Plugin |
+| ACP base | One synthetic agent, current provider/model, and advertised commands belong to the connected ACP process. ACP is the base used by Cursor, not a separately registered release descriptor. | Plugin internally |
+
+Codex intentionally remains project-scoped. Splitting its global model catalog
+from project defaults and skills would require component-level persistence,
+completeness, retention, and race handling. The small duplicated catalog is the
+simpler and more truthful first-release tradeoff.
+
+### Harness settings
+
+- `HarnessesSettingsScreen` provides the overview and
+  `HarnessManagementScreen` provides controls through a second nested route.
+- Both screens construct `PluginManagementCubit` over the same singleton
+  service and duplicate harness-card status presentation.
+- Operational rows can remain visible when setup is not ready or a harness is
+  disabled, producing facts or actions that are not meaningful in that state.
+- Timeout editing and force confirmation still use Material `AlertDialog`
+  presentation rather than the established Prego bottom-sheet language.
+
+## Locked Product Decisions
+
+### Aggregate route and refresh semantics
+
+There is one new route:
+
+```http
+POST /session/options
+POST /session/options?refresh=true
+```
+
+- The body is the existing shared `PluginProjectIdRequest`.
+- Missing `refresh` and exact `refresh=false` are cache-only and must never
+  acquire or start a dormant plugin.
+- Exact `refresh=true` is an explicit user refresh and may start only the
+  requested plugin.
+- Any other parsed value returns HTTP 400. The existing router canonicalizes
+  query parameters; this work does not broaden `RequestHandlerBase` solely to
+  distinguish duplicate query spellings.
+- A successful response is the new shared `SessionOptionsResponse`, containing
+  required `Agents`, `ProviderListResponse`, and `CommandListResponse` values.
+- A cache-only miss, expired row, or invalidated project-path row returns HTTP
+  503. It is never encoded as three successful empty lists.
+- Project absence remains 404. Plugin/runtime failures retain their existing
+  `PluginOperationException` status mapping.
+- An explicit refresh failure retains any prior bridge snapshot but still
+  returns failure, allowing the app to preserve visible data while reporting
+  that refresh did not complete.
+
+### Compatibility matrix
+
+| Client / bridge | Behavior |
+|---|---|
+| New client / new bridge | Initial load is cache-only. Refresh may start exactly the selected harness. A cache miss leaves session creation available with backend defaults. |
+| Old client / new bridge | Existing `/agent`, `/provider`, and `/command` behavior is unchanged and can still start the requested harness. |
+| New client / old bridge | Aggregate 404 becomes an explicit unsupported state. Create remains available with null agent/model/variant/command. Explicit Refresh explains that legacy live requests may start the harness, then invokes the existing three routes. |
+
+The legacy routes remain unchanged and do not write the new aggregate cache.
+Successful session creation provides the automatic cache-seeding path for old
+clients without coupling legacy repositories to the new service.
+
+### Cache scope and invalidation
+
+- Add `PluginSessionOptionsScope { plugin, project }` to the inert
+  `BridgePluginDescriptor` contract.
+- OpenCode and Codex descriptors declare `project`; Cursor declares `plugin`.
+- `BridgeRuntimeRunner` carries the declaration into registered metadata and
+  `PluginCompositionView`. Bridge core consumes an immutable scope map and never
+  branches on plugin IDs.
+- A plugin-scoped cache has one durable row for that bridge plugin.
+- A project-scoped cache uses stable project ID plus the current resolved path.
+  A path mismatch invalidates the old row rather than serving options captured
+  for another directory.
+- Project deletion cascades project rows. Plugin rows are independent of project
+  deletion.
+- Retention is 30 days, evaluated with injected `ServerClock`. Timestamps are
+  never race tokens.
+- Refresh triggers are only explicit aggregate refresh and successful session
+  creation while that plugin generation is already active. There is no
+  all-project fanout, polling, or reinterpretation of generic backend events.
+
+### Client behavior
+
+- The client performs one aggregate request rather than three requests.
+- No new persistent or process-wide client cache is added. The durable bridge
+  is the cache authority; current cubit state may remain visible during a
+  refresh failure.
+- `NewSessionOptionsService` owns hidden/subagent filtering, available-model
+  validation, default selection, variant derivation, and restored-selection
+  revalidation.
+- `NewSessionCubit` owns connection/plugin/project/user-intent orchestration,
+  request-generation fencing, tracker writes, and state emission only.
+- When no cache exists, the UI offers Refresh and keeps Create usable with
+  backend defaults. It does not show an indefinite loading spinner.
+
+### Harness settings destination
+
+- `HarnessesSettingsScreen` becomes the only Harnesses settings screen.
+- Remove `HarnessManagementScreen`, its route, and the overview-to-management
+  navigation row.
+- Keep one screen-owned `PluginManagementCubit`; do not merge plugin-management
+  state with new-session option state.
+- Setup not ready: show setup status/guidance and only capability-supported
+  setup or eligibility actions that remain meaningful; hide runtime, work,
+  restart, and timeout facts.
+- Setup ready but disabled: show disabled status and the supported enable action;
+  hide runtime, work, restart, and timeout facts.
+- Setup ready and enabled: show only capability-supported operational facts and
+  controls. Do not render meaningless `unknown` rows when absence is the honest
+  presentation.
+- Per-harness timeout choices are `Use bridge default`, `No timeout`, and
+  `Custom`. Global timeout choices are `No timeout` and `Custom`.
+- `No timeout` maps to canonical integer `0`; custom input must parse to a
+  strictly positive integer. The service/cubit constructs the existing typed
+  timeout requests.
+- Timeout editing uses `showPregoBottomSheet`, `PregoInputField`, grouped radio
+  semantics, and Prego buttons. Force confirmation uses a non-dismissible Prego
+  sheet with explicit cancel and one destructive confirmation.
+- Preserve current test keys where practical to keep widget-test churn focused
+  on behavior rather than selectors.
+
+## Architecture
+
+### Touched workspaces
+
+- `shared/sesori_shared`: aggregate response wire model.
+- `bridge/sesori_plugin_interface`: aggregate plugin model, completeness, and
+  descriptor cache-scope contract.
+- `bridge/sesori_plugin_opencode`: project-scoped aggregate service operation.
+- `bridge/sesori_plugin_codex`: typed model-list API/repository and
+  project-aware aggregate service operation.
+- `bridge/sesori_plugin_acp`: model/provider state tracker and ACP option
+  service used by Cursor.
+- `bridge/sesori_plugin_cursor`: plugin-scoped aggregate service operation.
+- `bridge/app`: runtime capture primitive, scope composition, Drift cache,
+  repository/service policy, route, session-creation listener, and lifecycle.
+- `client/module_core`: aggregate API/repository result, option-resolution
+  service, cubit/state, DI, and compatibility behavior.
+- `client/app`: New Session cache/refresh presentation and consolidated mobile
+  Harnesses settings UI.
+- `client/desktop` and `client/module_desktop_core`: downstream exhaustive
+  analysis only; no new UI.
+
+### Plugin option boundary
+
+Add internal `PluginSessionOptions` with required agents, providers, commands,
+and `PluginSessionOptionsCompleteness { partial, complete }`. Add
+`BridgePluginApi.getSessionOptions({required String projectId})`. Existing
+individual methods remain because released routes still use them.
+
+Every top-level plugin facade delegates option decisions to Layer-3 service
+ownership:
+
+- `OpenCodeService.getSessionOptions` runs the existing service operations
+  concurrently and preserves synthetic `compact` behavior.
+- Codex first moves raw `model/list` parsing into Freezed DTOs under
+  `api/models`, `CodexAppServerApi.listModels`, and `CodexModelRepository`.
+  `CodexSessionService` owns model fallback, collaboration-agent/provider
+  construction, project default selection, command fallback, completeness, and
+  one aggregate call that issues at most one `model/list`.
+- Add `AcpSessionConfigurationTracker` as the state owner for process defaults
+  and per-session provider/model overrides. `AcpEventMapper` consumes it for
+  translation and no longer acts as a tracker. `AcpSessionOptionsService`
+  consumes tracker snapshots plus `AcpCommandTracker` to build the process-level
+  aggregate.
+- Expand/replace `CursorCommandService` with
+  `CursorSessionOptionsService`, depending on `CursorCatalogService`,
+  `CursorCatalogTracker`, `AcpCommandTracker`, and launch directory. One catalog
+  ensure produces a coherent command/mode/model snapshot.
+
+An unexpected source error is never swallowed. Plugins that deliberately
+degrade to known fallback data return `partial`; the bridge service decides
+whether that observation may replace retained data.
+
+### Bridge persistence and ownership
+
+Add `session_options_cache` at the next Drift schema version. Each row contains:
+
+- plugin ID, declared scope, and non-empty owner ID;
+- nullable project-ID foreign key and nullable captured project path, present
+  together only for project scope;
+- non-null revision, capture timestamp, and completeness;
+- non-null JSON for agents, providers, and commands; and
+- primary key `(plugin_id, scope, owner_id)` plus a CHECK enforcing the two
+  valid scope shapes. No empty string represents missing project data.
+
+`SessionOptionsCacheKey` is a sealed Layer-2 model under
+`bridge/repositories/models`: `plugin(pluginId)` or
+`project(pluginId, projectId, projectPath)`. The Layer-3 service constructs it;
+the repository does not depend upward on service models.
+
+`SessionOptionsRepository` requires `PluginRuntime`, `ProjectsDao`, and
+`SessionOptionsCacheDao`. It owns only project/path lookup, typed JSON mapping,
+plugin aggregate capture, raw persistence calls, and generation-fenced CAS. It
+contains no expiry, completeness, or retention policy and no clock.
+
+Add `PluginRuntime.useWithGeneration`, mechanically mirroring `use` while
+returning the acquired generation. Activating capture uses it; active-only
+capture uses `useIfActive`. Both observations later commit through
+`commitCurrentGeneration`, so backend replacement cannot publish an obsolete
+snapshot.
+
+`SessionOptionsService` requires the repository, immutable descriptor scope map,
+`ServerClock`, and retention duration. It owns key resolution, cache-only read,
+path/expiry invalidation, per-key refresh coalescing, capture-mode choice,
+completeness comparison, last-good retention, CAS retry policy, and recovered
+failure observability.
+
+Completeness replacement is exact:
+
+```text
+complete -> may replace complete or partial
+partial  -> may seed an empty cache or replace partial
+partial  -> never downgrades retained complete
+```
+
+The service reads the expected revision, captures, applies policy, and asks the
+repository to commit. On a CAS conflict it re-reads and reapplies policy to the
+same observation, retries once when replacement is still valid, and otherwise
+returns the newest retained row. A second conflict retains the newest row and is
+logged; policy never moves into the DAO or repository.
+
+`PostSessionOptionsHandler` is the HTTP consumer. A separate
+`SessionOptionsRefreshListener` consumes `SessionBindingsCommitted`, handles
+only `sessionCreation`, and invokes active-only refresh for that event's project
+and plugin. Extend the existing event with required project ID; both publication
+sites already know it. The listener owns its subscription and disposal and does
+not emit SSE.
+
+### Client layers
+
+`SessionApi` adds the aggregate POST and query parameter. `SessionRepository`
+removes its provider-only cache, maps 200/404/503/other outcomes into a sealed
+repository result, and retains the three legacy methods solely for explicit
+old-bridge refresh.
+
+`NewSessionOptionsService({required SessionRepository sessionRepository,
+required DefaultModelSelector defaultModelSelector})` owns:
+
+- aggregate load and explicit old-bridge fallback;
+- visible-agent filtering (`!hidden` and not subagent);
+- selectable-model validation (`isAvailable`);
+- default agent/model precedence while preserving backend order;
+- model-specific variants in source order, excluding exact sentinel `none`;
+- restored agent/model/variant and staged-command revalidation; and
+- typed unsupported, unavailable, failure, and retained-refresh-failure results.
+
+`NewSessionCubit` receives the service and emits a composed sealed options-load
+state instead of coordinating loading booleans and empty-list sentinels. Explicit
+user selections alone are written to `NewSessionSelectionTracker`; computed
+defaults are not persisted as intent. Existing connection and plugin-switch
+generation fencing remains in the cubit.
+
+The mobile screen renders cached options, cache-unavailable Refresh, old-bridge
+guidance, and retained-data refresh errors. Backend plugin IDs, model names,
+agent names, commands, paths, and project identity never enter analytics or
+backend-neutral UI decisions.
+
+## Delivery Sequence
+
+| Step | Branch | Exact PR title | Estimate | Review boundary |
+|---|---|---|---:|---|
+| 1/6 | `multi-plugin-release-prep` | `[multi-plugin-release-prep] docs: plan multi-plugin release preparation [step 1/6]` | 350-550 | Final durable plan and tracker only. |
+| 2/6 | `multi-plugin-release-prep-codex-options` | `[multi-plugin-release-prep] refactor(codex): type session option discovery [step 2/6]` | 800-1,150 | Typed `model/list` API/repository, service-owned agent/provider/default/fallback behavior, and facade delegation without changing wire routes. |
+| 3/6 | `multi-plugin-release-prep-plugin-options` | `[multi-plugin-release-prep] feat(bridge): aggregate scoped plugin options [step 3/6]` | 950-1,350 | Internal aggregate/completeness/scope contract; OpenCode, Codex, ACP, and Cursor service ownership; ACP configuration tracker. |
+| 4/6 | `multi-plugin-release-prep-bridge-cache` | `[multi-plugin-release-prep] feat(bridge): cache scoped session options [step 4/6]` | 1,400-2,000 | Shared response, Drift cache/migration, runtime/repository/service fencing, query-driven route, and session-creation refresh listener. Generated schema/model output explains expected overage. |
+| 5/6 | `multi-plugin-release-prep-client-options` | `[multi-plugin-release-prep] feat(client): consume cached session options [step 5/6]` | 900-1,300 | Aggregate client layers, service-owned option resolution, explicit refresh/old-bridge degradation, cubit state, and New Session UI. |
+| 6/6 | `multi-plugin-release-prep-harness-settings` | `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]` | 850-1,200 | One Harnesses screen/cubit, capability/setup-aware visibility, route removal, and Prego timeout/force sheets. |
+
+## Per-Step Verification
+
+### Step 1/6
+
+- Validate plan/tracker consistency, fixed titles/totals, and Markdown with
+  `git diff --check`.
+- No Dart or Flutter suites for the documentation-only PR.
+
+### Step 2/6
+
+- Codex typed model-list decoding, hidden filtering, display fallback, reasoning
+  effort order, project default precedence, configured fallback, command
+  fallback, and exactly-one-`model/list` tests.
+- Codex package tests and `dart analyze --fatal-infos`.
+- Aristotle implementation review because API/repository/service ownership moves.
+
+### Step 3/6
+
+- Plugin-interface contract and descriptor-scope tests; every implementation
+  updated in lockstep.
+- Aggregate tests in OpenCode, Codex, ACP, and Cursor. Cursor proves one catalog
+  ensure and plugin-global output; ACP proves mapper/tracker separation.
+- Focused package tests and fatal analysis for every touched plugin package.
+- Aristotle implementation review for shared plugin boundaries and state ownership.
+
+### Step 4/6
+
+- Shared response JSON round trips and generated-source verification.
+- Drift migration, CHECK constraint, FK cascade, plugin-row survival, typed JSON
+  decode, project-path invalidation, retention, completeness, CAS conflict, and
+  generation-fence tests.
+- Handler tests for missing/false/true/invalid refresh, cache miss, project
+  absence, explicit failure retention, and shared debug/relay router wiring.
+- Runtime tests prove cache-only reads never start a dormant plugin and explicit
+  refresh starts only the selected plugin.
+- Listener tests prove only session creation triggers active-only refresh.
+- Shared and bridge-app fatal analysis plus Aristotle implementation review.
+
+### Step 5/6
+
+- API path/body/query and response parsing tests.
+- Repository status mapping for supported, unavailable, unsupported, and
+  failure, with no provider-only cache remaining.
+- Service tests for filtering, default precedence, unavailable models, variant
+  preservation/drop, command revalidation, cache miss, retained refresh failure,
+  and explicit old-bridge fallback.
+- Cubit tests preserve reconnect, bridge/plugin switch, stale-completion fencing,
+  user selection tracking, and default-backed session creation.
+- Mobile tests cover Refresh, unsupported guidance, cache-miss creation, and
+  retained options after refresh failure. Run module-core/mobile/desktop fatal
+  analysis and Aristotle implementation review.
+
+### Step 6/6
+
+- Route tests prove the management sub-route is removed and Harnesses navigation
+  remains intact.
+- Widget tests cover setup-not-ready, disabled, enabled, capability-limited,
+  loading/unsupported/failure, action/refresh error, and close navigation.
+- Timeout tests cover inheritance, no-timeout `0`, strictly positive custom
+  values, invalid/negative input, and clear override.
+- Force cancel/confirm sends zero/one force requests and uses Prego sheets rather
+  than `AlertDialog`.
+- Localization generation, focused mobile tests, and module-core/mobile/desktop
+  fatal analysis. This localized UI refactor does not require Aristotle unless
+  implementation changes routes, state ownership, or another architecture seam
+  beyond this plan.
+
+## Analytics Decision
+
+Do not add a product analytics event in this series. A Refresh tap is an
+implementation/recovery action rather than an approved activation or retention
+metric, and reporting plugin/model/agent/command identity is forbidden. Existing
+session-creation outcomes remain the authoritative product signal. Reconsider
+only if a concrete product decision requires bounded cache-availability or
+refresh-outcome reporting after the active user-analytics foundation lands.
+
+## Risks And Mitigations
+
+| Risk | Treatment |
+|---|---|
+| Dormant plugin starts during ordinary rendering | Cache-only route reaches no runtime acquisition. Add an explicit no-start runtime test. |
+| Project options served for a moved directory | Store captured path and invalidate on mismatch. |
+| Old generation overwrites current data | Capture runtime generation and fence every CAS commit with `commitCurrentGeneration`. |
+| Late concurrent refresh downgrades data | Service-owned completeness comparison plus expected-revision CAS and one policy retry. |
+| Codex duplicates its global model catalog per project | Accept the small duplication to preserve project defaults and skills without mixed-scope component caches. |
+| Cursor cache multiplies by project | Descriptor-declared plugin scope produces one durable Cursor row. |
+| ACP option code depends on mutable mapper state | Move provider/model state into `AcpSessionConfigurationTracker`; mapper and service consume the tracker. |
+| New client mistakes old-bridge absence for empty catalogs | Aggregate 404 is explicit unsupported; 503 is explicit uncached; neither is a successful empty response. |
+| Settings consolidation changes capability enforcement | Keep existing service/cubit command paths; only one thin screen consumes declared capabilities. |
+| Generated migration/model output obscures logic | Keep source and tests focused, name generated overage in Step 4 PR, and review source changes first. |
+
+## Review Record
+
+- The initial architecture review rejected facade-owned aggregation,
+  repository-owned retention policy, cubit-owned option transformations,
+  callback clocks, and Codex raw transport parsing. This plan moves each concern
+  to the service/repository/API boundary described above.
+- After the user selected query-driven refresh and scope-aware caching, the
+  specificity review was expanded with complete workspaces, files, constructors,
+  status mapping, runtime flow, trigger ownership, and compatibility behavior.
+- The resulting architecture review found two ownership violations. Both are
+  applied here without another approval-only review, as required by repository
+  workflow: `SessionOptionsCacheKey` lives in Layer 2 rather than service models,
+  and ACP provider/model state moves from `AcpEventMapper` into
+  `AcpSessionConfigurationTracker`.
+- This document does not claim that the corrected version was reviewer-approved.
+  Each architecture-bearing implementation PR still receives implementation
+  review against its concrete Git diff.
+
+## Completion
+
+The plan completes after all six PRs merge, New Session switching reads durable
+scope-correct options without starting dormant harnesses, explicit refresh and
+old-bridge degradation are verified, both cache scopes survive restart, and the
+single Harnesses settings page passes capability/setup-aware mobile verification.
