@@ -248,6 +248,13 @@ class ProductAnalyticsService {
   }
 
   Future<void> _applyAuthState(AuthState authState) {
+    final userId = switch (authState) {
+      AuthAuthenticated(:final user) => user.id,
+      AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => null,
+    };
+    if (userId != null && userId == _userId) {
+      return _localInitialization ?? Future<void>.value();
+    }
     _generation += 1;
     _reconciledGeneration = null;
     _schemaReadyGeneration = null;
@@ -261,10 +268,6 @@ class ProductAnalyticsService {
     _volatileDisable = null;
     _localReadFailed = false;
     _latestRequestedPreference = null;
-    final userId = switch (authState) {
-      AuthAuthenticated(:final user) => user.id,
-      AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => null,
-    };
     _userId = userId;
     if (userId == null) {
       final initialization = Future<void>.value();
@@ -413,13 +416,15 @@ class ProductAnalyticsService {
     required bool allowDuringLogout,
     required ProductAnalyticsPreference? pendingPreference,
   }) async {
-    _state.add(
-      ProductAnalyticsState(
-        preference: state.preference,
-        synchronization: const ProductAnalyticsSynchronizationInProgress(),
-        availability: const ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.preferenceUnknown),
-      ),
-    );
+    if (_logoutPreparation == null) {
+      _state.add(
+        ProductAnalyticsState(
+          preference: state.preference,
+          synchronization: const ProductAnalyticsSynchronizationInProgress(),
+          availability: const ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.preferenceUnknown),
+        ),
+      );
+    }
     final result = await _preferenceRepository.reconcile(userId: userId, local: _local);
     if (!_canApply(
       generation: generation,
