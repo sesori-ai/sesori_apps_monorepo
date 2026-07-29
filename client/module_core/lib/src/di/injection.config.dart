@@ -49,6 +49,7 @@ import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
 import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
     as _i330;
 import 'package:sesori_dart_core/src/platform/route_dispatcher.dart' as _i951;
+import 'package:sesori_dart_core/src/platform/route_source.dart' as _i366;
 import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
     as _i209;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
@@ -79,6 +80,8 @@ import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/repositories/session_view_repository.dart'
     as _i150;
+import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
+    as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
 import 'package:sesori_dart_core/src/services/draft_store.dart' as _i1002;
@@ -350,6 +353,13 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
       ),
+    );
+    gh.lazySingleton<_i888.AnalyticsRouteListener>(
+      () => _i888.AnalyticsRouteListener(
+        routeSource: gh<_i366.RouteSource>(),
+        analyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(

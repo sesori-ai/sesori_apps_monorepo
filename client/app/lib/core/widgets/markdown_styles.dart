@@ -15,7 +15,7 @@ void handleMarkdownLinkTap(String text, String? href, String title) {
   if (href == null) return;
   final uri = Uri.tryParse(href);
   if (uri == null) return;
-  unawaited(openExternalLink(url: uri));
+  unawaited(openExternalLink(url: uri).then<void>((_) {}));
 }
 
 // ignore: no_slop_linter/prefer_required_named_parameters, paragraphStyle is an optional override

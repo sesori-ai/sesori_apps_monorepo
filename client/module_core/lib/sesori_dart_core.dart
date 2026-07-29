@@ -125,6 +125,7 @@ export "src/repositories/project_repository.dart";
 export "src/repositories/registered_bridges_store.dart";
 export "src/repositories/session_repository.dart";
 // Routing
+export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
 // Services

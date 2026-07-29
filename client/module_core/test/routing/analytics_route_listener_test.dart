@@ -1,0 +1,232 @@
+import "dart:async";
+import "dart:collection";
+
+import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:test/test.dart";
+
+const _userKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+class _FakeRouteSource implements RouteSource {
+  final BehaviorSubject<AppRouteDef?> routes;
+
+  _FakeRouteSource({required AppRouteDef? initialRoute}) : routes = BehaviorSubject.seeded(initialRoute);
+
+  @override
+  ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;
+
+  void emit(AppRouteDef? route) => routes.add(route);
+
+  Future<void> dispose() => routes.close();
+}
+
+class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsService {
+  final BehaviorSubject<ProductAnalyticsState> states;
+  final events = <ProductAnalyticsEvent>[];
+  int readinessCalls = 0;
+  Queue<Future<void>> readinessResults = Queue<Future<void>>();
+  Completer<AnalyticsDeliveryResult>? deliveryCompleter;
+
+  _FakeProductAnalyticsService({required ProductAnalyticsState initialState})
+    : states = BehaviorSubject.seeded(initialState);
+
+  @override
+  ValueStream<ProductAnalyticsState> get stateStream => states.stream;
+
+  @override
+  ProductAnalyticsState get state => states.value;
+
+  @override
+  Future<void> markPostSplashReady() {
+    readinessCalls += 1;
+    return readinessResults.isEmpty ? Future.value() : readinessResults.removeFirst();
+  }
+
+  @override
+  Future<AnalyticsDeliveryResult> logEvent({
+    required ProductAnalyticsEvent event,
+    required DateTime occurredAtUtc,
+  }) async {
+    events.add(event);
+    final completer = deliveryCompleter;
+    if (completer != null) return completer.future;
+    return AnalyticsDeliveryResult.acceptedBySdk;
+  }
+
+  void emit(ProductAnalyticsState state) => states.add(state);
+
+  Future<void> disposeFake() => states.close();
+}
+
+ProductAnalyticsState _activeState() => const ProductAnalyticsState(
+  preference: ProductAnalyticsPreferenceUnknown(),
+  synchronization: ProductAnalyticsSynchronized(),
+  availability: ProductAnalyticsActive(userKey: _userKey),
+);
+
+ProductAnalyticsState _inactiveState() => const ProductAnalyticsState(
+  preference: ProductAnalyticsPreferenceUnknown(),
+  synchronization: ProductAnalyticsNotSynchronized(),
+  availability: ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.preferenceUnknown),
+);
+
+Future<void> _flush() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
+}
+
+void main() {
+  late _FakeRouteSource routeSource;
+  late _FakeProductAnalyticsService service;
+  late AnalyticsRouteListener listener;
+
+  tearDown(() async {
+    await listener.dispose();
+    await routeSource.dispose();
+    await service.disposeFake();
+  });
+
+  test("maps every non-splash route to a pinned screen and deduplicates unchanged screen groups", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _activeState());
+    listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
+    await listener.start();
+    await _flush();
+
+    expect(service.readinessCalls, 0);
+    expect(service.events, isEmpty);
+
+    const sequence = [
+      AppRouteDef.login,
+      AppRouteDef.projects,
+      AppRouteDef.settings,
+      AppRouteDef.settingsNotifications,
+      AppRouteDef.settingsHarnesses,
+      AppRouteDef.settingsHarnessManagement,
+      AppRouteDef.settingsProfile,
+      AppRouteDef.sessions,
+      AppRouteDef.newSession,
+      AppRouteDef.sessionDetail,
+      AppRouteDef.sessionDiffs,
+    ];
+    for (final route in sequence) {
+      routeSource.emit(route);
+      await _flush();
+    }
+
+    expect(service.readinessCalls, sequence.length);
+    expect(
+      service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen),
+      [
+        AnalyticsScreen.login,
+        AnalyticsScreen.projects,
+        AnalyticsScreen.settings,
+        AnalyticsScreen.settingsNotifications,
+        AnalyticsScreen.settings,
+        AnalyticsScreen.settingsProfile,
+        AnalyticsScreen.sessions,
+        AnalyticsScreen.newSession,
+        AnalyticsScreen.sessionDetail,
+        AnalyticsScreen.sessionDiffs,
+      ],
+    );
+    expect(AppRouteDef.values, hasLength(sequence.length + 1));
+  });
+
+  test("retains the latest inactive screen and reports it on each active transition", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _inactiveState());
+    listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
+    await listener.start();
+
+    routeSource
+      ..emit(AppRouteDef.projects)
+      ..emit(AppRouteDef.sessionDetail);
+    await _flush();
+    expect(service.events, isEmpty);
+
+    service.emit(_activeState());
+    await _flush();
+    expect(service.events.whereType<ProductScreenViewedEvent>().single.screen, AnalyticsScreen.sessionDetail);
+
+    service.emit(_activeState());
+    await _flush();
+    expect(service.events, hasLength(1));
+
+    service.emit(_inactiveState());
+    service.emit(_activeState());
+    await _flush();
+    expect(service.events, hasLength(2));
+  });
+
+  test("a delayed first readiness call cannot overwrite a newer route", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _activeState());
+    final firstReadiness = Completer<void>();
+    service.readinessResults
+      ..add(firstReadiness.future)
+      ..add(Future.value());
+    listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
+    await listener.start();
+
+    routeSource.emit(AppRouteDef.projects);
+    await Future<void>.delayed(Duration.zero);
+    routeSource.emit(AppRouteDef.sessionDetail);
+    await _flush();
+    firstReadiness.complete();
+    await _flush();
+
+    expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
+      AnalyticsScreen.sessionDetail,
+    ]);
+  });
+
+  test("activation and route completion racing for one screen emit only once", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _inactiveState());
+    final readiness = Completer<void>();
+    final delivery = Completer<AnalyticsDeliveryResult>();
+    service.readinessResults.add(readiness.future);
+    service.deliveryCompleter = delivery;
+    listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
+    await listener.start();
+
+    routeSource.emit(AppRouteDef.projects);
+    await Future<void>.delayed(Duration.zero);
+    service.emit(_activeState());
+    await Future<void>.delayed(Duration.zero);
+    readiness.complete();
+    await Future<void>.delayed(Duration.zero);
+    delivery.complete(AnalyticsDeliveryResult.acceptedBySdk);
+    await _flush();
+
+    expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
+      AnalyticsScreen.projects,
+    ]);
+  });
+
+  test("a timed-out screen delivery clears the in-flight guard for a later retry", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _activeState());
+    service.deliveryCompleter = Completer<AnalyticsDeliveryResult>();
+    listener = AnalyticsRouteListener.withDeliveryDeadline(
+      routeSource: routeSource,
+      analyticsService: service,
+      deliveryDeadline: const Duration(milliseconds: 1),
+    );
+    await listener.start();
+
+    routeSource.emit(AppRouteDef.projects);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    service.deliveryCompleter = null;
+    service.emit(_inactiveState());
+    service.emit(_activeState());
+    await _flush();
+
+    expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
+      AnalyticsScreen.projects,
+      AnalyticsScreen.projects,
+    ]);
+  });
+}

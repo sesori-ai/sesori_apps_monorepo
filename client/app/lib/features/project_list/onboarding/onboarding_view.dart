@@ -162,15 +162,11 @@ class _ConnectBridgeChecklist extends StatelessWidget {
                 centered: false,
               ),
               const SizedBox(height: PregoSpacing.md),
-              const _CommandBoxFrame(
+              _CommandBoxFrame(
                 child: _CommandActionRow(
                   command: BridgeInstall.runCommand,
-                  copiedEvent: AnalyticsEvent.runCommandCopied(
-                    surface: OnboardingSurface.connectSetup,
-                  ),
-                  sharedEvent: AnalyticsEvent.runCommandShared(
-                    surface: OnboardingSurface.connectSetup,
-                  ),
+                  reportCopied: (cubit) => cubit.reportRunCommandCopied(surface: OnboardingSurface.connectSetup),
+                  reportShared: (cubit) => cubit.reportRunCommandShared(surface: OnboardingSurface.connectSetup),
                 ),
               ),
             ],
@@ -207,16 +203,13 @@ class _WhyBridgeButton extends StatelessWidget {
         hierarchy: PregoButtonsSolidHierarchy.tertiary,
         size: PregoButtonsSolidSize.sm,
         onPressed: () {
-          unawaited(
-            getIt<AnalyticsReporter>().logEvent(
-              event: AnalyticsEvent.whyBridgeOpened(surface: surface),
-            ),
-          );
-          showPregoBottomSheet<void>(
+          final presentation = showPregoBottomSheet<void>(
             context: context,
             title: loc.projectsOnboardingPcStatusWhy,
             builder: (_) => const _WhyBridgeInfoSheet(),
           );
+          context.read<ProjectListCubit>().reportWhyBridgeOpened(surface: surface);
+          unawaited(presentation);
         },
       ),
     );
@@ -312,15 +305,16 @@ class _NeedHelpMenu extends StatelessWidget {
 
   /// Opens one of the "Need help?" contact links ([SupportLinks]) through the
   /// shared [openExternalLink] helper. Reports the tapped [channel] to
-  /// analytics before launching, so the tap is counted even when the launch
-  /// itself fails.
-  Future<void> _openSupportLink({required String url, required SupportChannel channel}) {
-    unawaited(
-      getIt<AnalyticsReporter>().logEvent(
-        event: AnalyticsEvent.supportLinkOpened(channel: channel, surface: surface),
-      ),
-    );
-    return openExternalLink(url: Uri.parse(url));
+  /// analytics only after the platform confirms the handoff.
+  Future<void> _openSupportLink({
+    required ProjectListCubit cubit,
+    required String url,
+    required SupportChannel channel,
+  }) async {
+    final launched = await openExternalLink(url: Uri.parse(url));
+    if (launched) {
+      cubit.reportSupportLinkOpened(channel: channel, surface: surface);
+    }
   }
 
   @override
@@ -337,12 +331,8 @@ class _NeedHelpMenu extends StatelessWidget {
         onPressed: () {
           // While the popup is up its barrier covers the trigger, so a pill
           // tap can only ever open the menu — safe to count as an open.
-          unawaited(
-            getIt<AnalyticsReporter>().logEvent(
-              event: AnalyticsEvent.needHelpMenuOpened(surface: surface),
-            ),
-          );
           toggle();
+          context.read<ProjectListCubit>().reportNeedHelpMenuOpened(surface: surface);
         },
       ),
       entriesBuilder: () => [
@@ -352,7 +342,11 @@ class _NeedHelpMenu extends StatelessWidget {
           subtitle: null,
           isSelected: false,
           onTap: () => unawaited(
-            _openSupportLink(url: SupportLinks.email, channel: SupportChannel.email),
+            _openSupportLink(
+              cubit: context.read<ProjectListCubit>(),
+              url: SupportLinks.email,
+              channel: SupportChannel.email,
+            ),
           ),
         ),
         PregoMenuItem(
@@ -361,7 +355,11 @@ class _NeedHelpMenu extends StatelessWidget {
           subtitle: null,
           isSelected: false,
           onTap: () => unawaited(
-            _openSupportLink(url: SupportLinks.discord, channel: SupportChannel.discord),
+            _openSupportLink(
+              cubit: context.read<ProjectListCubit>(),
+              url: SupportLinks.discord,
+              channel: SupportChannel.discord,
+            ),
           ),
         ),
         PregoMenuItem(
@@ -371,7 +369,11 @@ class _NeedHelpMenu extends StatelessWidget {
           subtitle: null,
           isSelected: false,
           onTap: () => unawaited(
-            _openSupportLink(url: SupportLinks.x, channel: SupportChannel.x),
+            _openSupportLink(
+              cubit: context.read<ProjectListCubit>(),
+              url: SupportLinks.x,
+              channel: SupportChannel.x,
+            ),
           ),
         ),
       ],
@@ -417,16 +419,9 @@ class _InstallCommandBoxesState extends State<_InstallCommandBoxes> {
     return _InstallMethod(
       label: label,
       command: command,
-      copiedEvent: AnalyticsEvent.installCommandCopied(
-        method: method,
-        os: os,
-        surface: widget.surface,
-      ),
-      sharedEvent: AnalyticsEvent.installCommandShared(
-        method: method,
-        os: os,
-        surface: widget.surface,
-      ),
+      method: method,
+      os: os,
+      surface: widget.surface,
     );
   }
 
@@ -617,13 +612,14 @@ class _OsSegmentedControl extends StatelessWidget {
 
 /// One selectable install method within an [_InstallCommandBox]: the tab
 /// [label] (e.g. "curl", "npm"), the one-line [command] it installs with, and
-/// the pre-built analytics events its copy/share actions report.
+/// the bounded dimensions its copy/share outcome intents report.
 class _InstallMethod {
   const _InstallMethod({
     required this.label,
     required this.command,
-    required this.copiedEvent,
-    required this.sharedEvent,
+    required this.method,
+    required this.os,
+    required this.surface,
   });
 
   /// Tab label (literal tool name — not translated).
@@ -632,12 +628,9 @@ class _InstallMethod {
   /// The one-line install command shown and copied when this tab is selected.
   final String command;
 
-  /// Logged when this method's command is copied, carrying the method/OS/
-  /// surface identity stamped by [_InstallCommandBoxesState].
-  final AnalyticsEvent copiedEvent;
-
-  /// Logged when this method's command is shared.
-  final AnalyticsEvent sharedEvent;
+  final BridgeInstallMethod method;
+  final BridgeInstallOs os;
+  final OnboardingSurface surface;
 }
 
 /// One platform's install instruction box: a row of method tabs (e.g.
@@ -682,8 +675,16 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
           ),
           _CommandActionRow(
             command: _selected.command,
-            copiedEvent: _selected.copiedEvent,
-            sharedEvent: _selected.sharedEvent,
+            reportCopied: (cubit) => cubit.reportInstallCommandCopied(
+              method: _selected.method,
+              os: _selected.os,
+              surface: _selected.surface,
+            ),
+            reportShared: (cubit) => cubit.reportInstallCommandShared(
+              method: _selected.method,
+              os: _selected.os,
+              surface: _selected.surface,
+            ),
             topDivider: true,
           ),
         ],
@@ -761,19 +762,19 @@ class _CommandBoxFrame extends StatelessWidget {
 class _CommandActionRow extends StatefulWidget {
   const _CommandActionRow({
     required this.command,
-    required this.copiedEvent,
-    required this.sharedEvent,
+    required this.reportCopied,
+    required this.reportShared,
     this.topDivider = false,
   });
 
   final String command;
 
-  /// Logged when the copy action is tapped. Pre-built by the host, which knows
-  /// the command's identity (install method/OS or run) and surface.
-  final AnalyticsEvent copiedEvent;
+  /// Dispatches the copy outcome through the owning Cubit after clipboard
+  /// success. The host supplies the command's bounded identity.
+  final void Function(ProjectListCubit cubit) reportCopied;
 
-  /// Logged when the share action is tapped.
-  final AnalyticsEvent sharedEvent;
+  /// Dispatches the share outcome after the native sheet confirms a handoff.
+  final void Function(ProjectListCubit cubit) reportShared;
 
   final bool topDivider;
 
@@ -783,11 +784,9 @@ class _CommandActionRow extends StatefulWidget {
 
 class _CommandActionRowState extends State<_CommandActionRow> {
   Future<void> _copyCommand() async {
-    // Reported before attempting the write, so the tap is counted even when
-    // the clipboard fails.
-    unawaited(getIt<AnalyticsReporter>().logEvent(event: widget.copiedEvent));
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
+    final cubit = context.read<ProjectListCubit>();
     // Clipboard can throw on restricted platforms/states; fail soft and skip
     // the success snackbar. Log so a broken copy button leaves a diagnostic
     // trail instead of failing silently.
@@ -797,6 +796,7 @@ class _CommandActionRowState extends State<_CommandActionRow> {
       logw("Failed to copy command", error, stackTrace);
       return;
     }
+    widget.reportCopied(cubit);
     messenger.showSnackBar(
       SnackBar(
         content: Text(loc.projectsOnboardingCommandCopied),
@@ -806,9 +806,7 @@ class _CommandActionRowState extends State<_CommandActionRow> {
   }
 
   Future<void> _shareCommand() async {
-    // Reported before raising the sheet, so the tap is counted even when the
-    // share itself fails.
-    unawaited(getIt<AnalyticsReporter>().logEvent(event: widget.sharedEvent));
+    final cubit = context.read<ProjectListCubit>();
     // iPad presents the share sheet as a popover anchored to a source rect;
     // derive it from this row so the popover points at the command instead of
     // floating (an unanchored sheet throws on iPad).
@@ -817,7 +815,12 @@ class _CommandActionRowState extends State<_CommandActionRow> {
         ? renderObject.localToGlobal(Offset.zero) & renderObject.size
         : null;
     try {
-      await SharePlus.instance.share(ShareParams(text: widget.command, sharePositionOrigin: origin));
+      final result = await SharePlus.instance.share(
+        ShareParams(text: widget.command, sharePositionOrigin: origin),
+      );
+      if (result.status == ShareResultStatus.success) {
+        widget.reportShared(cubit);
+      }
     } on Object catch (error, stackTrace) {
       // Dismissing the sheet is reported via ShareResultStatus, not a throw, so
       // reaching here is a real platform failure with nothing to recover — log

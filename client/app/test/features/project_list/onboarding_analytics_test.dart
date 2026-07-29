@@ -1,12 +1,10 @@
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart"
-    hide BridgeInstallMethod, BridgeInstallOs, OnboardingSurface, SupportChannel;
-import "package:sesori_mobile/core/analytics/analytics_event.dart";
-import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/core/support_links.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
@@ -18,7 +16,7 @@ import "../../helpers/test_helpers.dart";
 
 // ---------------------------------------------------------------------------
 // End-to-end analytics guard for the Projects onboarding/recovery surfaces:
-// every AnalyticsEvent union case is fired through a real widget tap, and the
+// every ProductAnalyticsEvent union case is fired through a real widget tap, and the
 // surface parameter tracks which body hosted it — the connect-your-computer
 // setup or the bridge-offline view. (The connected-but-empty state carries no
 // onboarding widgets anymore, so it fires no onboarding events.)
@@ -44,7 +42,7 @@ void main() {
   late MockConnectionService mockConnectionService;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late MockUrlLauncher mockUrlLauncher;
-  late MockAnalyticsReporter mockAnalyticsReporter;
+  late MockProductAnalyticsService mockProductAnalyticsService;
   late StubConnectionOverlayCubit overlayCubit;
   late BehaviorSubject<ConnectionStatus> statusController;
 
@@ -55,7 +53,7 @@ void main() {
     mockConnectionService = MockConnectionService();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     mockUrlLauncher = MockUrlLauncher();
-    mockAnalyticsReporter = MockAnalyticsReporter();
+    mockProductAnalyticsService = MockProductAnalyticsService();
     overlayCubit = StubConnectionOverlayCubit();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(_connectedStatus);
 
@@ -64,13 +62,20 @@ void main() {
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
     when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
-    when(
-      () => mockAnalyticsReporter.logEvent(event: any(named: "event")),
-    ).thenAnswer((_) async {});
+    stubProductAnalyticsService(service: mockProductAnalyticsService);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel("dev.fluttercommunity.plus/share"),
+      (_) async => "test-share-target",
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (_) async => null,
+    );
 
     getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
-    registerListServices(
+    registerListServicesWithProductAnalytics(
       projectRepository: mockProjectRepository,
+      productAnalyticsService: mockProductAnalyticsService,
     );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
@@ -79,12 +84,19 @@ void main() {
     getIt.registerLazySingleton<RegisteredBridgesService>(() => mockRegisteredBridgesService);
     getIt.registerLazySingleton<FailureReporter>(MockFailureReporter.new);
     getIt.registerLazySingleton<UrlLauncher>(() => mockUrlLauncher);
-    getIt.registerLazySingleton<AnalyticsReporter>(() => mockAnalyticsReporter);
   });
 
   tearDown(() async {
     await overlayCubit.close();
     await statusController.close();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel("dev.fluttercommunity.plus/share"),
+      null,
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    );
     await getIt.reset();
   });
 
@@ -137,8 +149,13 @@ void main() {
     expect(find.text("Disconnected"), findsOneWidget);
   }
 
-  void verifyLogged(AnalyticsEvent event) {
-    verify(() => mockAnalyticsReporter.logEvent(event: event)).called(1);
+  void verifyLogged(ProductAnalyticsEvent event) {
+    verify(
+      () => mockProductAnalyticsService.logEvent(
+        event: event,
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).called(1);
   }
 
   group("connect-your-computer setup onboarding", () {
@@ -149,7 +166,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
+        const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
       );
       // The popup actually opened alongside the event.
       expect(find.text("Email"), findsOneWidget);
@@ -165,13 +182,33 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.supportLinkOpened(
+        const ProductAnalyticsEvent.supportLinkOpened(
           channel: SupportChannel.email,
           surface: OnboardingSurface.connectSetup,
         ),
       );
       final launched = verify(() => mockUrlLauncher.launch(captureAny())).captured.single as Uri;
       expect(launched.toString(), SupportLinks.email);
+    });
+
+    testWidgets("an unavailable support link emits no outcome event", (tester) async {
+      when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.text("Need help?"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Email"));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.supportLinkOpened(
+            channel: SupportChannel.email,
+            surface: OnboardingSurface.connectSetup,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
     });
 
     testWidgets("each support channel reports its own analytics channel value", (tester) async {
@@ -188,7 +225,7 @@ void main() {
         await tester.pumpAndSettle();
 
         verifyLogged(
-          AnalyticsEvent.supportLinkOpened(
+          ProductAnalyticsEvent.supportLinkOpened(
             channel: entry.value,
             surface: OnboardingSurface.connectSetup,
           ),
@@ -203,7 +240,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.connectSetup),
+        const ProductAnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.connectSetup),
       );
       // The sheet actually opened alongside the event (button + sheet title).
       expect(find.text("Why is this needed?"), findsNWidgets(2));
@@ -218,10 +255,41 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.installCommandCopied(
+        const ProductAnalyticsEvent.installCommandCopied(
           method: BridgeInstallMethod.curl,
           os: BridgeInstallOs.unix,
           surface: OnboardingSurface.connectSetup,
+        ),
+      );
+    });
+
+    testWidgets("clipboard failure emits no copied outcome", (tester) async {
+      await pumpConnectSetup(tester);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == "Clipboard.setData") throw PlatformException(code: "clipboard-unavailable");
+          return null;
+        },
+      );
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      await tester.tap(find.bySemanticsLabel("Copy command").at(0));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.installCommandCopied(
+            method: BridgeInstallMethod.curl,
+            os: BridgeInstallOs.unix,
+            surface: OnboardingSurface.connectSetup,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       );
     });
@@ -235,7 +303,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.installCommandCopied(
+        const ProductAnalyticsEvent.installCommandCopied(
           method: BridgeInstallMethod.powershell,
           os: BridgeInstallOs.windows,
           surface: OnboardingSurface.connectSetup,
@@ -252,7 +320,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.installCommandCopied(
+        const ProductAnalyticsEvent.installCommandCopied(
           method: BridgeInstallMethod.npm,
           os: BridgeInstallOs.unix,
           surface: OnboardingSurface.connectSetup,
@@ -267,10 +335,54 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.installCommandShared(
+        const ProductAnalyticsEvent.installCommandShared(
           method: BridgeInstallMethod.curl,
           os: BridgeInstallOs.unix,
           surface: OnboardingSurface.connectSetup,
+        ),
+      );
+    });
+
+    testWidgets("an unavailable share result emits no shared outcome", (tester) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel("dev.fluttercommunity.plus/share"),
+        (_) async => "dev.fluttercommunity.plus/share/unavailable",
+      );
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.bySemanticsLabel("Share command").at(0));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.installCommandShared(
+            method: BridgeInstallMethod.curl,
+            os: BridgeInstallOs.unix,
+            surface: OnboardingSurface.connectSetup,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
+
+    testWidgets("a dismissed share sheet emits no shared outcome", (tester) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel("dev.fluttercommunity.plus/share"),
+        (_) async => "",
+      );
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.bySemanticsLabel("Share command").at(0));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.installCommandShared(
+            method: BridgeInstallMethod.curl,
+            os: BridgeInstallOs.unix,
+            surface: OnboardingSurface.connectSetup,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       );
     });
@@ -282,7 +394,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.runCommandCopied(surface: OnboardingSurface.connectSetup),
+        const ProductAnalyticsEvent.runCommandCopied(surface: OnboardingSurface.connectSetup),
       );
     });
   });
@@ -297,7 +409,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.runCommandCopied(surface: OnboardingSurface.bridgeOffline),
+        const ProductAnalyticsEvent.runCommandCopied(surface: OnboardingSurface.bridgeOffline),
       );
     });
 
@@ -308,7 +420,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.runCommandShared(surface: OnboardingSurface.bridgeOffline),
+        const ProductAnalyticsEvent.runCommandShared(surface: OnboardingSurface.bridgeOffline),
       );
     });
 
@@ -324,7 +436,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.installCommandCopied(
+        const ProductAnalyticsEvent.installCommandCopied(
           method: BridgeInstallMethod.curl,
           os: BridgeInstallOs.unix,
           surface: OnboardingSurface.bridgeOffline,
@@ -339,7 +451,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.bridgeOffline),
+        const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.bridgeOffline),
       );
       // The popup actually opened alongside the event.
       expect(find.text("Email"), findsOneWidget);
@@ -352,7 +464,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.bridgeOffline),
+        const ProductAnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.bridgeOffline),
       );
       // The sheet actually opened alongside the event (button + sheet title).
       expect(find.text("Why is this needed?"), findsNWidgets(2));
