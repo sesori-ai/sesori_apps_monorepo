@@ -758,11 +758,11 @@ class _CommandActionRow extends StatefulWidget {
 
   final String command;
 
-  /// Logged when the copy action is tapped. Pre-built by the host, which knows
+  /// Logged after the copy action succeeds. Pre-built by the host, which knows
   /// the command's identity (install method/OS or run) and surface.
   final ProductAnalyticsEvent copiedEvent;
 
-  /// Logged when the share action is tapped.
+  /// Logged after the native share sheet reports a successful handoff.
   final ProductAnalyticsEvent sharedEvent;
 
   final bool topDivider;
@@ -805,7 +805,7 @@ class _CommandActionRowState extends State<_CommandActionRow> {
       final result = await SharePlus.instance.share(
         ShareParams(text: widget.command, sharePositionOrigin: origin),
       );
-      if (result.status != ShareResultStatus.unavailable) {
+      if (result.status == ShareResultStatus.success) {
         _reportProductEvent(widget.sharedEvent);
       }
     } on Object catch (error, stackTrace) {

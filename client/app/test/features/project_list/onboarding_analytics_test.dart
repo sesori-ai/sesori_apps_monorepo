@@ -365,6 +365,28 @@ void main() {
       );
     });
 
+    testWidgets("a dismissed share sheet emits no shared outcome", (tester) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel("dev.fluttercommunity.plus/share"),
+        (_) async => "",
+      );
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.bySemanticsLabel("Share command").at(0));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.installCommandShared(
+            method: BridgeInstallMethod.curl,
+            os: BridgeInstallOs.unix,
+            surface: OnboardingSurface.connectSetup,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
+
     testWidgets("copying the step-2 run command logs the run event", (tester) async {
       await pumpConnectSetup(tester);
 
