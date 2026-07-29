@@ -62,6 +62,7 @@ class _RecordingPreferenceStorage implements ProductAnalyticsPreferenceStorage {
   final writes = <StoredProductAnalyticsPreference>[];
   StoredProductAnalyticsPreference? stored;
   Object? readError;
+  Object? deleteError;
   Set<int> failingWriteNumbers = {};
 
   _RecordingPreferenceStorage({required this.operations});
@@ -85,6 +86,8 @@ class _RecordingPreferenceStorage implements ProductAnalyticsPreferenceStorage {
   @override
   Future<void> delete({required String userId}) async {
     operations.add("storage:delete:$userId");
+    final error = deleteError;
+    if (error != null) throw error;
     stored = null;
   }
 }
@@ -131,6 +134,45 @@ void main() {
 
     expect(result, isNull);
     expect(operations, ["storage:read:user-a", "storage:delete:user-a"]);
+  });
+
+  test("malformed local storage remains absent when cleanup fails", () async {
+    storage
+      ..readError = const FormatException("invalid stored preference")
+      ..deleteError = StateError("storage unavailable");
+
+    final result = await repository.loadLocal(userId: "user-a");
+
+    expect(result, isNull);
+    expect(operations, ["storage:read:user-a", "storage:delete:user-a"]);
+  });
+
+  test("reconciliation rejects pending state owned by another account", () async {
+    const pending = LocalProductAnalyticsPendingDisable(
+      record: ProductAnalyticsPreferenceRecord(
+        userId: "user-a",
+        preference: ProductAnalyticsPreference.enabled,
+        revision: 1,
+        userKey: _userKey,
+      ),
+      operationId: _operationId,
+    );
+
+    final result = await repository.reconcile(userId: "user-b", local: pending);
+
+    expect(result, isA<ProductAnalyticsPreferenceFailed>());
+    expect(operations, isEmpty);
+  });
+
+  test("preference updates reject records owned by another account", () async {
+    final result = await repository.setPreference(
+      userId: "user-b",
+      current: _domainRecord(),
+      preference: ProductAnalyticsPreference.disabled,
+    );
+
+    expect(result, isA<ProductAnalyticsPreferenceFailed>());
+    expect(operations, isEmpty);
   });
 
   test("enable never calls the server when its write-ahead record fails", () async {

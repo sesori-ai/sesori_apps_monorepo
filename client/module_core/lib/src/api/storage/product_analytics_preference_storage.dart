@@ -65,7 +65,13 @@ class ProductAnalyticsPreferenceStorage {
   Future<StoredProductAnalyticsPreference?> read({required String userId}) async {
     final value = await _storage.read(key: _key(userId));
     if (value == null) return null;
-    final decoded = jsonDecode(value);
+    // ignore: no_slop_linter/prefer_specific_type, JSON boundary sanitized below
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(value);
+    } on FormatException {
+      throw const FormatException("Invalid stored product analytics preference");
+    }
     // ignore: no_slop_linter/prefer_specific_type, JSON boundary
     if (decoded is! Map<String, dynamic> || decoded["version"] != _storageVersion || decoded["userId"] != userId) {
       throw const FormatException("Invalid stored product analytics preference");

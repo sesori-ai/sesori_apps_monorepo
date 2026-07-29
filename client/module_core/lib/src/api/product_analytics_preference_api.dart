@@ -3,6 +3,7 @@ import "dart:convert";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/models/product_analytics/product_analytics_preference.dart";
 
@@ -55,7 +56,7 @@ class ProductAnalyticsPreferenceApi {
     try {
       final response = await _client
           .getForUser<ProductAnalyticsPreferenceApiRecord>(
-            _url,
+            url: _url,
             userId: userId,
             fromJson: _recordFromJson,
           )
@@ -80,14 +81,16 @@ class ProductAnalyticsPreferenceApi {
     try {
       final response = await _client
           .putForUser<ProductAnalyticsPreferenceApiRecord>(
-            _url,
+            url: _url,
             userId: userId,
             fromJson: _recordFromJson,
-            body: jsonEncode({
-              "preference": preference.wireValue,
-              "expectedRevision": expectedRevision,
-              "operationId": operationId,
-            }),
+            body: jsonEncode(
+              ProductAnalyticsPreferenceUpdateRequest(
+                preference: preference.wireValue,
+                expectedRevision: expectedRevision,
+                operationId: operationId,
+              ).toJson(),
+            ),
           )
           .timeout(_operationDeadline);
       return switch (response) {
