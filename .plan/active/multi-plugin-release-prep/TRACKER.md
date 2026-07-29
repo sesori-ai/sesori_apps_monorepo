@@ -31,9 +31,10 @@
 - Additive plugin discovery capability identifies an old bridge before the
   aggregate call; a capable bridge's typed project failure never triggers legacy
   fallback.
-- Typed session-options errors distinguish cache miss, project absence, and
-  refresh failure. Plugin/runtime failures normalize to 502 so transport-reserved
-  401 remains Sesori authentication only.
+- Typed session-options errors distinguish cache miss, project absence, refresh
+  failure with valid retained data, and refresh failure requiring option
+  clearing. Plugin/runtime failures normalize to 502 so transport-reserved 401
+  remains Sesori authentication only.
 - Legacy option routes stay unchanged. New-client/old-bridge live loading occurs
   only after explicit Refresh.
 - The bridge is the durable cache authority; no new client persistence/cache is
@@ -47,6 +48,8 @@
   queues and awaits one forced-discovery tail.
 - Partial observations seed only an empty cache; they never replace retained
   partial or complete data from independently successful sources.
+- Forced-discovery failure is a distinct plugin result and never collapses into
+  a successful partial observation.
 - ACP command advertisement emits a dedicated generation-attributed
   options-change event so Cursor's plugin-scoped cache is refreshed after the
   authoritative command snapshot arrives; both live and replay deferral paths

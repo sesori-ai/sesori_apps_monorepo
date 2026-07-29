@@ -111,15 +111,19 @@ POST /session/options?refresh=true
   503 with typed `SessionOptionsErrorCode.cacheUnavailable`. It is never encoded
   as three successful empty lists.
 - Add shared `SessionOptionsErrorResponse` with required forward-safe
-  `SessionOptionsErrorCode { cacheUnavailable, projectNotFound, refreshFailed,
-  unknown }`. Project absence returns 404/project-not-found. Every plugin or
-  runtime capture failure normalizes to 502/refresh-failed; plugin-provided 401
+  `SessionOptionsErrorCode { cacheUnavailable, projectNotFound,
+  refreshFailedRetained, refreshFailedUnavailable, unknown }`. Project absence
+  returns 404/project-not-found. Every plugin or runtime capture failure
+  normalizes to 502 and one of the two refresh-failure codes; plugin-provided 401
   is never forwarded because relay HTTP reserves 401 for Sesori authentication
   and rewrites that response before a repository can parse its body. The client
   maps the typed code and never infers domain outcome from status alone.
-- An explicit refresh failure retains any prior bridge snapshot but still
-  returns failure, allowing the app to preserve visible data while reporting
-  that refresh did not complete.
+- An explicit refresh failure returns `refreshFailedRetained` only while the
+  prior row still passes scope, project-path, and retention validation. The app
+  may preserve that snapshot while reporting failure. A missing, expired, or
+  path-invalidated row is deleted and produces `refreshFailedUnavailable`; the
+  app must clear any previously rendered options before showing unavailable
+  state.
 
 ### Compatibility matrix
 
@@ -228,9 +232,11 @@ clients without coupling legacy repositories to the new service.
 Add internal `PluginSessionOptions` with required agents, providers, commands,
 and `PluginSessionOptionsCompleteness { partial, complete }`. Add the independent
 internal enum `PluginSessionOptionsDiscoveryMode { reuse, refresh }` and
+sealed `PluginSessionOptionsDiscoveryResult` variants `observed({required
+PluginSessionOptions options})` and `failed()`. Add
 `BridgePluginApi.getSessionOptions({required String projectId, required
-PluginSessionOptionsDiscoveryMode discoveryMode})`. Existing individual methods
-remain because released routes still use them.
+PluginSessionOptionsDiscoveryMode discoveryMode})` returning that result.
+Existing individual methods remain because released routes still use them.
 
 Every top-level plugin facade delegates option decisions to Layer-3 service
 ownership:
@@ -261,12 +267,13 @@ ownership:
   existing bounded catalog state for automatic seeding. `refresh` invokes a new
   bounded forced-discovery operation that bypasses complete/exhausted/retried
   short-circuits, joins any forced probe already in flight, retains last-good
-  tracker data on failure, and reports that failure as an observable partial or
-  failed refresh rather than stamping the old snapshot as freshly discovered.
+  tracker data on failure, and returns the distinct `failed` result rather than
+  a successful `partial` observation or a newly timestamped stale snapshot.
 
 An unexpected source error is never swallowed. Plugins that deliberately
-degrade to known fallback data return `partial`; the bridge service decides
-whether that observation may replace retained data.
+degrade to known fallback data return `observed(partial)`; the bridge service
+decides whether that observation may replace retained data. A failed forced
+discovery returns `failed` and never enters completeness replacement policy.
 
 ### Bridge persistence and ownership
 
@@ -303,6 +310,13 @@ enums rather than one overloaded boolean.
 path/expiry invalidation, per-key refresh coalescing, capture-mode choice,
 completeness comparison, last-good retention, CAS retry policy, and recovered
 failure observability.
+
+Before any refresh, the service classifies and, when needed, deletes the stored
+row. Only a row that still matches scope/project path and remains inside
+retention is eligible for last-good replay. A repository/plugin `failed` result
+with that valid row becomes refresh-failed-retained; the same failure after
+absence or invalidation becomes refresh-failed-unavailable. Invalid data is
+never resurrected by a failed capture.
 
 The service permits only these production combinations:
 
@@ -366,13 +380,13 @@ maps the additive `supportsSessionOptions` discovery fact, defaulting false for
 older bridges, and `NewSessionPluginDiscovery` carries that bridge-level fact to
 the composer. `SessionRepository` removes its provider-only cache, maps aggregate
 200 to supported and parses every non-success
-`SessionOptionsErrorResponse`: cache-unavailable, project-not-found, and
-refresh-failed map to distinct repository variants regardless of HTTP status;
-unknown/malformed bodies map to ordinary failure. It retains the three legacy
-methods solely for explicit old-bridge refresh. `NewSessionOptionsService`
-receives the discovery capability: false returns unsupported without an
-aggregate call; true permits the aggregate call and never converts its typed
-project failure into legacy fallback.
+`SessionOptionsErrorResponse`: cache-unavailable, project-not-found,
+refresh-failed-retained, and refresh-failed-unavailable map to distinct
+repository variants regardless of HTTP status; unknown/malformed bodies map to
+ordinary failure. It retains the three legacy methods solely for explicit
+old-bridge refresh. `NewSessionOptionsService` receives the discovery capability:
+false returns unsupported without an aggregate call; true permits the aggregate
+call and never converts its typed project failure into legacy fallback.
 
 `NewSessionOptionsService({required SessionRepository sessionRepository,
 required DefaultModelSelector defaultModelSelector})` owns:
@@ -383,7 +397,8 @@ required DefaultModelSelector defaultModelSelector})` owns:
 - default agent/model precedence while preserving backend order;
 - model-specific variants in source order, excluding exact sentinel `none`;
 - restored agent/model/variant and staged-command revalidation; and
-- typed unsupported, unavailable, failure, and retained-refresh-failure results.
+- typed unsupported, unavailable, failure, retained-refresh-failure, and
+  refresh-failure-that-clears-options results.
 
 `NewSessionCubit` receives the service and emits a composed sealed options-load
 state instead of coordinating loading booleans and empty-list sentinels. Explicit
@@ -433,7 +448,8 @@ backend-neutral UI decisions.
   with backend session identity through both live and replay deferral paths.
 - Cursor tests prove `reuse` honors existing bounded discovery while `refresh`
   forces one joined bounded probe despite complete/exhausted/retried tracker
-  state and never reports retained data as newly discovered after probe failure.
+  state. Forced-probe failure returns the distinct failed result, never
+  `observed(partial)` or retained data labeled as newly discovered.
 - Focused package tests and fatal analysis for every touched plugin package.
 - Aristotle implementation review for shared plugin boundaries and state ownership.
 
@@ -446,10 +462,12 @@ backend-neutral UI decisions.
   correct modern/legacy values.
 - Drift migration, CHECK constraint, FK cascade, plugin-row survival, typed JSON
   decode, project-path invalidation, retention, partial-on-partial retention,
-  completeness, CAS conflict, and generation-fence tests.
+  completeness, CAS conflict, and generation-fence tests. Refresh failure after
+  expiry/path invalidation deletes the row and returns unavailable, while a
+  still-valid row returns retained.
 - Handler tests for missing/false/true/invalid refresh, typed cache miss, typed
-  project absence, plugin 401/404/503 normalized to 502/refresh-failed, explicit
-  failure retention, and shared debug/relay router wiring.
+  project absence, plugin 401/404/503 normalized to 502, retained versus
+  unavailable refresh-failure codes, and shared debug/relay router wiring.
 - Runtime tests prove cache-only reads never start a dormant plugin and explicit
   refresh starts only the selected plugin.
 - Service/repository tests prove explicit refresh passes may-activate plus forced
@@ -476,8 +494,9 @@ backend-neutral UI decisions.
 - Cubit tests preserve reconnect, bridge/plugin switch, stale-completion fencing,
   user selection tracking, and default-backed session creation.
 - Mobile tests cover Refresh, unsupported guidance, cache-miss creation, and
-  retained options after refresh failure. Run module-core/mobile/desktop fatal
-  analysis and Aristotle implementation review.
+  retained options after valid-cache refresh failure, plus immediate option
+  clearing after expired/path-invalid cache refresh failure. Run
+  module-core/mobile/desktop fatal analysis and Aristotle implementation review.
 
 ### Step 6/6
 
@@ -511,19 +530,21 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 |---|---|
 | Dormant plugin starts during ordinary rendering | Cache-only route reaches no runtime acquisition. Add an explicit no-start runtime test. |
 | Project options served for a moved directory | Store captured path and invalidate on mismatch. |
+| Refresh failure leaves expired/path-invalid options visible | Validate and delete before capture; unavailable failure clears client options, while retained failure is reserved for a still-valid row. |
 | Old generation overwrites current data | Capture runtime generation and fence every CAS commit with `commitCurrentGeneration`. |
 | A partial refresh regresses a different option source | Partial observations seed only an empty cache and never replace retained partial or complete data; only a complete aggregate advances an existing row. |
 | Late concurrent refresh downgrades data | Service-owned completeness comparison plus expected-revision CAS and one policy retry. |
 | Codex duplicates its global model catalog per project | Accept the small duplication to preserve project defaults and skills without mixed-scope component caches. |
 | Cursor cache multiplies by project | Descriptor-declared plugin scope produces one durable Cursor row. |
 | Explicit Cursor refresh reuses a complete/exhausted tracker | Internal discovery mode requires one bounded forced probe for user refresh; automatic captures retain bounded reuse semantics. |
+| Forced-probe failure is confused with successful partial fallback | The plugin returns a distinct failed discovery result; only successful known fallback is `observed(partial)`. |
 | Explicit refresh joins an in-flight automatic reuse | Intent-aware coalescing queues one forced tail and makes every overlapping explicit caller await it. |
 | Cursor session creation seeds before ACP commands arrive | The authoritative `available_commands_update` emits a dedicated generation-attributed options-change event and a separate listener refreshes the plugin-scoped row. |
 | ACP replay mutates commands without refreshing the cache | Replay deferral forwards the same dedicated options-change event as the live notification path. |
 | ACP event path is mistaken for stable project identity | The event carries backend session ID; the service resolves its persisted binding and never treats ACP's directory value as project ID. |
 | ACP option code depends on mutable mapper state | Move provider/model state into `AcpSessionConfigurationTracker`; mapper and service consume the tracker. |
 | New client confuses old-route 404 with project-not-found 404 | Additive discovery capability identifies old bridges before any aggregate call; the typed error body identifies project failure on a capable bridge. |
-| Plugin statuses collide with cache/project/Sesori-auth statuses | Plugin/runtime capture failures normalize to 502/refresh-failed, preserving the typed body and reserving 401 for Sesori authentication. Unknown or malformed errors fail explicitly. |
+| Plugin statuses collide with cache/project/Sesori-auth statuses | Plugin/runtime capture failures normalize to 502 with retained/unavailable refresh-failure codes, preserving the typed body and reserving 401 for Sesori authentication. Unknown or malformed errors fail explicitly. |
 | Settings consolidation changes capability enforcement | Keep existing service/cubit command paths; only one thin screen consumes declared capabilities. |
 | Generated migration/model output obscures logic | Keep source and tests focused, name generated overage in Step 4 PR, and review source changes first. |
 
