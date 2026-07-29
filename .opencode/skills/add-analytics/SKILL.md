@@ -32,8 +32,8 @@ The source of truth is the closed models under
 repository delivery/preference records under `repositories/models/` and service
 state under `services/models/`:
 
-- Consumers call `ProductAnalyticsService` for authenticated account-linked
-  events.
+- This dormant Step 3.A foundation has no account-linked consumer seam. Do not
+  add those consumers until Step 3.C introduces `ProductAnalyticsService`.
 - The three approved pre-auth login events call
   `InstallationAnalyticsService`; they are account-less and preference-exempt
   by explicit product decision.

@@ -17,21 +17,23 @@ class InstallationAnalyticsService {
        _repository = repository;
 
   Future<AnalyticsDeliveryResult> loginAttemptStarted({required AnalyticsLoginProvider provider}) {
-    return _log(InstallationAnalyticsEvent.loginAttemptStarted(provider: provider));
+    return _log(event: InstallationAnalyticsEvent.loginAttemptStarted(provider: provider));
   }
 
   Future<AnalyticsDeliveryResult> loginAttemptCompleted({required AnalyticsLoginProvider provider}) {
-    return _log(InstallationAnalyticsEvent.loginAttemptCompleted(provider: provider));
+    return _log(event: InstallationAnalyticsEvent.loginAttemptCompleted(provider: provider));
   }
 
   Future<AnalyticsDeliveryResult> loginAttemptFailed({
     required AnalyticsLoginProvider provider,
     required AnalyticsLoginFailureKind failureKind,
   }) {
-    return _log(InstallationAnalyticsEvent.loginAttemptFailed(provider: provider, failureKind: failureKind));
+    return _log(
+      event: InstallationAnalyticsEvent.loginAttemptFailed(provider: provider, failureKind: failureKind),
+    );
   }
 
-  Future<AnalyticsDeliveryResult> _log(InstallationAnalyticsEvent event) {
+  Future<AnalyticsDeliveryResult> _log({required InstallationAnalyticsEvent event}) {
     if (!_capability.isEnabled) {
       return Future.value(AnalyticsDeliveryResult.failed);
     }
