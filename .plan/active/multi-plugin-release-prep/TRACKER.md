@@ -28,7 +28,10 @@
   stays project-aware because defaults and skills depend on project context.
 - Cache-only miss is explicit unavailable, not an empty successful catalog.
 - Additive plugin discovery capability identifies an old bridge before the
-  aggregate call; a capable bridge's project 404 never triggers legacy fallback.
+  aggregate call; a capable bridge's typed project failure never triggers legacy
+  fallback.
+- Typed session-options errors distinguish cache miss, project absence, and
+  refresh failure even when a plugin forwards the same HTTP status.
 - Legacy option routes stay unchanged. New-client/old-bridge live loading occurs
   only after explicit Refresh.
 - The bridge is the durable cache authority; no new client persistence/cache is
@@ -40,6 +43,9 @@
   runtime generation fencing.
 - Partial observations seed only an empty cache; they never replace retained
   partial or complete data from independently successful sources.
+- ACP command advertisement emits a dedicated generation-attributed
+  options-change event so Cursor's plugin-scoped cache is refreshed after the
+  authoritative command snapshot arrives.
 - Harnesses settings ends as one screen and one screen-owned management cubit,
   using Prego sheets and setup/capability-aware visibility.
 - Harness consolidation preserves authoritative `bridgeId` snapshot fencing;

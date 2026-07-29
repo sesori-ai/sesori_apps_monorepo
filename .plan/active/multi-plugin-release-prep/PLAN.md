@@ -107,11 +107,14 @@ POST /session/options?refresh=true
   bridge publishes `true`; old bridge payloads and the existing discovery-404
   fallback decode `false`.
 - A cache-only miss, expired row, or invalidated project-path row returns HTTP
-  503. It is never encoded as three successful empty lists.
-- Project absence remains 404. The client calls the aggregate route only when
-  discovery declared support, so that 404 is project failure and never triggers
-  legacy fallback. Plugin/runtime failures retain their existing
-  `PluginOperationException` status mapping.
+  503 with typed `SessionOptionsErrorCode.cacheUnavailable`. It is never encoded
+  as three successful empty lists.
+- Add shared `SessionOptionsErrorResponse` with required forward-safe
+  `SessionOptionsErrorCode { cacheUnavailable, projectNotFound, refreshFailed,
+  unknown }`. Project absence returns 404/project-not-found. A recovered or
+  propagated plugin failure returns its appropriate non-success status with
+  refresh-failed, even when that status is also 404 or 503. The client maps the
+  typed code and never infers domain outcome from status alone.
 - An explicit refresh failure retains any prior bridge snapshot but still
   returns failure, allowing the app to preserve visible data while reporting
   that refresh did not complete.
@@ -144,9 +147,10 @@ clients without coupling legacy repositories to the new service.
   deletion.
 - Retention is 30 days, evaluated with injected `ServerClock`. Timestamps are
   never race tokens.
-- Refresh triggers are only explicit aggregate refresh and successful session
-  creation while that plugin generation is already active. There is no
-  all-project fanout, polling, or reinterpretation of generic backend events.
+- Refresh triggers are explicit aggregate refresh, successful session creation
+  while that plugin generation is already active, and a dedicated
+  generation-attributed `BridgeSseSessionOptionsChanged` plugin event. There is
+  no all-project fanout, polling, or reinterpretation of generic session events.
 
 ### Client behavior
 
@@ -198,8 +202,8 @@ clients without coupling legacy repositories to the new service.
 
 ### Touched workspaces
 
-- `shared/sesori_shared`: additive plugin-list capability and aggregate response
-  wire model.
+- `shared/sesori_shared`: additive plugin-list capability plus aggregate success
+  and typed error wire models.
 - `bridge/sesori_plugin_interface`: aggregate plugin model, completeness, and
   descriptor cache-scope contract.
 - `bridge/sesori_plugin_opencode`: project-scoped aggregate service operation.
@@ -238,7 +242,11 @@ ownership:
   and per-session provider/model overrides. `AcpEventMapper` consumes it for
   translation and no longer acts as a tracker. `AcpSessionOptionsService`
   consumes tracker snapshots plus `AcpCommandTracker` to build the process-level
-  aggregate.
+  aggregate. An ACP `available_commands_update` continues producing its existing
+  session-refresh event and additionally produces
+  `BridgeSseSessionOptionsChanged(projectID:)`, so durable seeding reruns after
+  the authoritative command advertisement rather than relying only on the
+  earlier session-creation return.
 - Expand/replace `CursorCommandService` with
   `CursorSessionOptionsService`, depending on `CursorCatalogService`,
   `CursorCatalogTracker`, `AcpCommandTracker`, and launch directory. One catalog
@@ -296,12 +304,21 @@ same observation, retries once when replacement is still valid, and otherwise
 returns the newest retained row. A second conflict retains the newest row and is
 logged; policy never moves into the DAO or repository.
 
-`PostSessionOptionsHandler` is the HTTP consumer. A separate
-`SessionOptionsRefreshListener` consumes `SessionBindingsCommitted`, handles
-only `sessionCreation`, and invokes active-only refresh for that event's project
-and plugin. Extend the existing event with required project ID; both publication
-sites already know it. The listener owns its subscription and disposal and does
-not emit SSE.
+`PostSessionOptionsHandler` is the HTTP consumer. Expected cache/project/refresh
+outcomes are mapped to the shared typed error body before the generic request
+handler can collapse them to status plus plain text.
+
+`SessionOptionsCreationRefreshListener` consumes `SessionBindingsCommitted`,
+handles only `sessionCreation`, and invokes active-only refresh for that event's
+project and plugin. Extend the existing event with required project ID; both
+publication sites already know it.
+
+`SessionOptionsChangedRefreshListener` independently consumes
+generation-attributed runtime events, accepts only current-generation
+`BridgeSseSessionOptionsChanged(projectID:)`, and invokes the same active-only
+service operation. The session-event pipeline explicitly consumes this internal
+event without mapping it to client SSE; Orchestrator remains the only client-SSE
+decision owner. Each listener owns one trigger subscription and its disposal.
 
 ### Client layers
 
@@ -309,12 +326,14 @@ not emit SSE.
 maps the additive `supportsSessionOptions` discovery fact, defaulting false for
 older bridges, and `NewSessionPluginDiscovery` carries that bridge-level fact to
 the composer. `SessionRepository` removes its provider-only cache, maps aggregate
-200 to supported, 503 to unavailable, 404 to project-not-found, and other
-non-success responses to failure, and retains the three legacy methods solely
-for explicit old-bridge refresh. `NewSessionOptionsService` receives the
-discovery capability: false returns unsupported without an aggregate call;
-true permits the aggregate call and never converts its project 404 into legacy
-fallback.
+200 to supported and parses every non-success
+`SessionOptionsErrorResponse`: cache-unavailable, project-not-found, and
+refresh-failed map to distinct repository variants regardless of HTTP status;
+unknown/malformed bodies map to ordinary failure. It retains the three legacy
+methods solely for explicit old-bridge refresh. `NewSessionOptionsService`
+receives the discovery capability: false returns unsupported without an
+aggregate call; true permits the aggregate call and never converts its typed
+project failure into legacy fallback.
 
 `NewSessionOptionsService({required SessionRepository sessionRepository,
 required DefaultModelSelector defaultModelSelector})` owns:
@@ -344,8 +363,8 @@ backend-neutral UI decisions.
 |---|---|---|---:|---|
 | 1/6 | `multi-plugin-release-prep` | `[multi-plugin-release-prep] docs: plan multi-plugin release preparation [step 1/6]` | 350-550 | Final durable plan and tracker only. |
 | 2/6 | `multi-plugin-release-prep-codex-options` | `[multi-plugin-release-prep] refactor(codex): type session option discovery [step 2/6]` | 800-1,150 | Typed `model/list` API/repository, service-owned agent/provider/default/fallback behavior, and facade delegation without changing wire routes. |
-| 3/6 | `multi-plugin-release-prep-plugin-options` | `[multi-plugin-release-prep] feat(bridge): aggregate scoped plugin options [step 3/6]` | 950-1,350 | Internal aggregate/completeness/scope contract; OpenCode, Codex, ACP, and Cursor service ownership; ACP configuration tracker. |
-| 4/6 | `multi-plugin-release-prep-bridge-cache` | `[multi-plugin-release-prep] feat(bridge): cache scoped session options [step 4/6]` | 1,400-2,000 | Shared discovery capability/response, Drift cache/migration, runtime/repository/service fencing, query-driven route, and session-creation refresh listener. Generated schema/model output explains expected overage. |
+| 3/6 | `multi-plugin-release-prep-plugin-options` | `[multi-plugin-release-prep] feat(bridge): aggregate scoped plugin options [step 3/6]` | 950-1,350 | Internal aggregate/completeness/scope contract; OpenCode, Codex, ACP, and Cursor service ownership; ACP configuration tracker and authoritative options-change event. |
+| 4/6 | `multi-plugin-release-prep-bridge-cache` | `[multi-plugin-release-prep] feat(bridge): cache scoped session options [step 4/6]` | 1,400-2,000 | Shared discovery/success/error contracts, Drift cache/migration, runtime/repository/service fencing, query-driven route, and creation/options-change refresh listeners. Generated schema/model output explains expected overage. |
 | 5/6 | `multi-plugin-release-prep-client-options` | `[multi-plugin-release-prep] feat(client): consume cached session options [step 5/6]` | 900-1,300 | Aggregate client layers, service-owned option resolution, explicit refresh/old-bridge degradation, cubit state, and New Session UI. |
 | 6/6 | `multi-plugin-release-prep-harness-settings` | `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]` | 850-1,200 | One Harnesses screen/cubit, capability/setup-aware visibility, route removal, and Prego timeout/force sheets. |
 
@@ -370,32 +389,38 @@ backend-neutral UI decisions.
 - Plugin-interface contract and descriptor-scope tests; every implementation
   updated in lockstep.
 - Aggregate tests in OpenCode, Codex, ACP, and Cursor. Cursor proves one catalog
-  ensure and plugin-global output; ACP proves mapper/tracker separation.
+  ensure and plugin-global output; ACP proves mapper/tracker separation and an
+  authoritative command advertisement emits the dedicated options-change event.
 - Focused package tests and fatal analysis for every touched plugin package.
 - Aristotle implementation review for shared plugin boundaries and state ownership.
 
 ### Step 4/6
 
-- Shared response JSON round trips and generated-source verification.
+- Shared success/error response JSON round trips, unknown error-code fallback,
+  and generated-source verification.
 - Plugin discovery compatibility tests cover omitted/false/true
   `supportsSessionOptions`; the bridge and discovery-404 fallback publish the
   correct modern/legacy values.
 - Drift migration, CHECK constraint, FK cascade, plugin-row survival, typed JSON
   decode, project-path invalidation, retention, partial-on-partial retention,
   completeness, CAS conflict, and generation-fence tests.
-- Handler tests for missing/false/true/invalid refresh, cache miss, project
-  absence, explicit failure retention, and shared debug/relay router wiring.
+- Handler tests for missing/false/true/invalid refresh, typed cache miss, typed
+  project absence, plugin 404/503 as typed refresh failure, explicit failure
+  retention, and shared debug/relay router wiring.
 - Runtime tests prove cache-only reads never start a dormant plugin and explicit
   refresh starts only the selected plugin.
-- Listener tests prove only session creation triggers active-only refresh.
+- Listener tests prove session creation and a current-generation dedicated
+  options-change event independently trigger active-only refresh, while stale
+  generations and generic session events do not.
 - Shared and bridge-app fatal analysis plus Aristotle implementation review.
 
 ### Step 5/6
 
 - API path/body/query and response parsing tests.
-- Repository status mapping for supported, unavailable, project-not-found, and
-  failure, with no provider-only cache remaining; service tests prove discovery
-  capability false returns unsupported without an aggregate call.
+- Repository mapping covers supported and every typed error code independently
+  of HTTP status, including upstream plugin 404/503 as refresh failure, with no
+  provider-only cache remaining. Service tests prove discovery capability false
+  returns unsupported without an aggregate call.
 - Service tests for filtering, default precedence, unavailable models, variant
   preservation/drop, command revalidation, cache miss, retained refresh failure,
   and explicit old-bridge fallback.
@@ -442,8 +467,10 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 | Late concurrent refresh downgrades data | Service-owned completeness comparison plus expected-revision CAS and one policy retry. |
 | Codex duplicates its global model catalog per project | Accept the small duplication to preserve project defaults and skills without mixed-scope component caches. |
 | Cursor cache multiplies by project | Descriptor-declared plugin scope produces one durable Cursor row. |
+| Cursor session creation seeds before ACP commands arrive | The authoritative `available_commands_update` emits a dedicated generation-attributed options-change event and a separate listener refreshes the plugin-scoped row. |
 | ACP option code depends on mutable mapper state | Move provider/model state into `AcpSessionConfigurationTracker`; mapper and service consume the tracker. |
-| New client confuses old-route 404 with project-not-found 404 | Additive discovery capability identifies old bridges before any aggregate call; a capable bridge's 404 remains project failure. |
+| New client confuses old-route 404 with project-not-found 404 | Additive discovery capability identifies old bridges before any aggregate call; the typed error body identifies project failure on a capable bridge. |
+| Plugin 404/503 collides with cache/project HTTP status | Typed `SessionOptionsErrorCode` identifies cache, project, and refresh outcomes independently from status. Unknown or malformed errors fail explicitly. |
 | Settings consolidation changes capability enforcement | Keep existing service/cubit command paths; only one thin screen consumes declared capabilities. |
 | Generated migration/model output obscures logic | Keep source and tests focused, name generated overage in Step 4 PR, and review source changes first. |
 
