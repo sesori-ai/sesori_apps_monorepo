@@ -29,7 +29,18 @@ ProductAnalyticsPreferenceRecord _record({
   required String userId,
   required String userKey,
   required ProductAnalyticsPreference preference,
-  int revision = 1,
+}) => ProductAnalyticsPreferenceRecord(
+  userId: userId,
+  preference: preference,
+  revision: 1,
+  userKey: userKey,
+);
+
+ProductAnalyticsPreferenceRecord _recordWithRevision({
+  required String userId,
+  required String userKey,
+  required ProductAnalyticsPreference preference,
+  required int revision,
 }) => ProductAnalyticsPreferenceRecord(
   userId: userId,
   preference: preference,
@@ -48,7 +59,7 @@ class _FakeAuthSession extends Mock implements AuthSession {
   @override
   AuthState get currentState => states.value;
 
-  void emit(AuthState state) => states.add(state);
+  void emit({required AuthState state}) => states.add(state);
 
   Future<void> dispose() => states.close();
 }
@@ -126,11 +137,20 @@ void main() {
   late _RecordingProductAnalyticsRepository analyticsRepository;
   late ProductAnalyticsService service;
 
-  void createService({
-    AnalyticsRuntimeCapability capability = const AnalyticsRuntimeCapability.enabled(),
-    AuthState initialAuthState = const AuthState.authenticated(user: _userA),
-  }) {
-    authSession = _FakeAuthSession(initialState: initialAuthState);
+  void createService() {
+    authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
+    preferenceRepository = _FakePreferenceRepository();
+    analyticsRepository = _RecordingProductAnalyticsRepository();
+    service = ProductAnalyticsService(
+      capability: const AnalyticsRuntimeCapability.enabled(),
+      authSession: authSession,
+      analyticsRepository: analyticsRepository,
+      preferenceRepository: preferenceRepository,
+    );
+  }
+
+  void createServiceWithCapability({required AnalyticsRuntimeCapability capability}) {
+    authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingProductAnalyticsRepository();
     service = ProductAnalyticsService(
@@ -169,7 +189,7 @@ void main() {
     }
     expect(preferenceRepository.loadCalls, [_userA.id]);
 
-    authSession.emit(const AuthState.authenticated(user: _userB));
+    authSession.emit(state: const AuthState.authenticated(user: _userB));
     for (var i = 0; i < 5 && preferenceRepository.loadCalls.length < 2; i++) {
       await Future<void>.delayed(Duration.zero);
     }
@@ -245,7 +265,7 @@ void main() {
   });
 
   test("disabled runtime retains preference truth but never emits custom events", () async {
-    createService(
+    createServiceWithCapability(
       capability: const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.debugOrProfile,
       ),
@@ -358,6 +378,134 @@ void main() {
     expect(service.state.isActive, isFalse);
   });
 
+  test("refresh waits for an in-flight disable before reconciling", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final disabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 2,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    var disableCompleted = false;
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers.add((_, _, _) => disableResult.future);
+    preferenceRepository.reconcileHandlers.add((_, _) async {
+      expect(disableCompleted, isTrue);
+      return ProductAnalyticsPreferenceSynchronized(record: disabled);
+    });
+
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    final refreshFuture = service.refreshPreference();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(preferenceRepository.reconcileCalls, hasLength(1));
+    disableCompleted = true;
+    disableResult.complete(ProductAnalyticsPreferenceSynchronized(record: disabled));
+    await Future.wait([disableFuture, refreshFuture]);
+
+    expect(preferenceRepository.reconcileCalls, hasLength(2));
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+    expect(service.state.isActive, isFalse);
+  });
+
+  test("rapid preference changes are applied in invocation order", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final disabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 2,
+    );
+    final reEnabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+      revision: 3,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers
+      ..add((_, _, _) => disableResult.future)
+      ..add((_, current, preference) async {
+        expect(current, same(disabled));
+        expect(preference, ProductAnalyticsPreference.enabled);
+        return ProductAnalyticsPreferenceSynchronized(record: reEnabled);
+      });
+
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    final enableFuture = service.setPreference(preference: ProductAnalyticsPreference.enabled);
+    await Future<void>.delayed(Duration.zero);
+    expect(preferenceRepository.setCalls, hasLength(1));
+
+    disableResult.complete(ProductAnalyticsPreferenceSynchronized(record: disabled));
+    await Future.wait([disableFuture, enableFuture]);
+
+    expect(preferenceRepository.setCalls, hasLength(2));
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.enabled);
+    expect(service.state.isActive, isTrue);
+  });
+
+  test("a preference request made during hydration is applied after reconciliation", () async {
+    createService();
+    final localLoad = Completer<LocalProductAnalyticsPreference?>();
+    preferenceRepository.loadHandlers[_userA.id] = () => localLoad.future;
+    final disabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+    );
+    final enabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+      revision: 2,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: disabled),
+    );
+    preferenceRepository.setHandlers.add(
+      (_, current, preference) async {
+        expect(current, same(disabled));
+        expect(preference, ProductAnalyticsPreference.enabled);
+        return ProductAnalyticsPreferenceSynchronized(record: enabled);
+      },
+    );
+
+    final startFuture = service.start();
+    while (preferenceRepository.loadCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final readyFuture = service.markPostSplashReady();
+    final preferenceFuture = service.setPreference(preference: ProductAnalyticsPreference.enabled);
+    localLoad.complete(null);
+    await Future.wait([startFuture, readyFuture, preferenceFuture]);
+
+    expect(preferenceRepository.setCalls, hasLength(1));
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.enabled);
+    expect(service.state.isActive, isTrue);
+  });
+
   test("failed enable finalization remains pending and inactive", () async {
     createService();
     final disabled = _record(
@@ -402,7 +550,7 @@ void main() {
       ..add((_, _, _) async => ProductAnalyticsPreferenceVolatileDisablePending(pending: volatile))
       ..add(
         (_, _, _) async => ProductAnalyticsPreferenceSynchronized(
-          record: _record(
+          record: _recordWithRevision(
             userId: _userA.id,
             userKey: _userKeyA,
             preference: ProductAnalyticsPreference.disabled,
@@ -444,7 +592,7 @@ void main() {
         expect(service.state.isActive, isFalse);
         expect(local, same(pending));
         return ProductAnalyticsPreferenceSynchronized(
-          record: _record(
+          record: _recordWithRevision(
             userId: _userA.id,
             userKey: _userKeyA,
             preference: ProductAnalyticsPreference.disabled,
@@ -487,7 +635,7 @@ void main() {
 
     disableResult.complete(
       ProductAnalyticsPreferenceSynchronized(
-        record: _record(
+        record: _recordWithRevision(
           userId: _userA.id,
           userKey: _userKeyA,
           preference: ProductAnalyticsPreference.disabled,
@@ -520,7 +668,7 @@ void main() {
     await service.resumeAfterFailedLogout();
 
     expect(service.state.isActive, isTrue);
-    expect((service.state.availability as ProductAnalyticsActive).userKey, _userKeyA);
+    expect(service.state.availability, isA<ProductAnalyticsActive>());
   });
 
   test("failed logout recovery restores an unknown preference with no local record", () async {
@@ -546,6 +694,37 @@ void main() {
     await service.resumeAfterFailedLogout();
 
     expect(service.state, same(stateBeforeLogout));
+  });
+
+  test("logout suppression survives an in-flight refresh and reconciles after recovery", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    final refreshResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.reconcileHandlers
+      ..add((_, _) => refreshResult.future)
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled));
+    final refreshFuture = service.refreshPreference();
+    await Future<void>.delayed(Duration.zero);
+    final preparationFuture = service.prepareForLogout();
+    expect(service.state.isActive, isFalse);
+
+    refreshResult.complete(ProductAnalyticsPreferenceSynchronized(record: enabled));
+    await Future.wait([refreshFuture, preparationFuture]);
+    expect(service.state.isActive, isFalse);
+
+    await service.resumeAfterFailedLogout();
+    expect(service.state.isActive, isTrue);
+    expect(preferenceRepository.reconcileCalls, hasLength(3));
   });
 
   test("prepareForLogout releases after ten seconds when a pending retry hangs", () async {
@@ -599,18 +778,7 @@ void main() {
     }
     expect(preferenceRepository.reconcileCalls.single.userId, _userA.id);
 
-    authSession.emit(const AuthState.authenticated(user: _userB));
-    await Future<void>.delayed(Duration.zero);
-    reconcileA.complete(
-      ProductAnalyticsPreferenceSynchronized(
-        record: _record(
-          userId: _userA.id,
-          userKey: _userKeyA,
-          preference: ProductAnalyticsPreference.enabled,
-        ),
-      ),
-    );
-
+    authSession.emit(state: const AuthState.authenticated(user: _userB));
     for (var i = 0; i < 5 && preferenceRepository.reconcileCalls.length < 2; i++) {
       await Future<void>.delayed(Duration.zero);
     }
@@ -622,6 +790,16 @@ void main() {
           userId: _userB.id,
           userKey: _userKeyB,
           preference: ProductAnalyticsPreference.disabled,
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    reconcileA.complete(
+      ProductAnalyticsPreferenceSynchronized(
+        record: _record(
+          userId: _userA.id,
+          userKey: _userKeyA,
+          preference: ProductAnalyticsPreference.enabled,
         ),
       ),
     );
@@ -659,7 +837,7 @@ void main() {
       ),
     );
 
-    authSession.emit(const AuthState.authenticated(user: _userB));
+    authSession.emit(state: const AuthState.authenticated(user: _userB));
     await Future<void>.delayed(Duration.zero);
 
     expect(service.state.isActive, isFalse);
@@ -698,7 +876,7 @@ void main() {
     await service.refreshPreference();
     expect(preferenceRepository.reconcileCalls, hasLength(2));
 
-    authSession.emit(const AuthState.authenticated(user: _userA));
+    authSession.emit(state: const AuthState.authenticated(user: _userA));
     for (var i = 0; i < 5 && preferenceRepository.reconcileCalls.length < 3; i++) {
       await Future<void>.delayed(Duration.zero);
     }

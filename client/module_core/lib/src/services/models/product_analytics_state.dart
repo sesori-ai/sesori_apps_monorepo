@@ -1,5 +1,4 @@
 import "../../foundation/models/product_analytics/product_analytics_preference.dart";
-import "../../repositories/models/product_analytics_preference_models.dart";
 
 sealed class ProductAnalyticsPreferenceStatus {
   const ProductAnalyticsPreferenceStatus();
@@ -10,10 +9,9 @@ final class ProductAnalyticsPreferenceUnknown extends ProductAnalyticsPreference
 }
 
 final class ProductAnalyticsPreferenceKnown extends ProductAnalyticsPreferenceStatus {
-  final ProductAnalyticsPreferenceRecord record;
   final ProductAnalyticsPreference preference;
 
-  const ProductAnalyticsPreferenceKnown({required this.record, required this.preference});
+  const ProductAnalyticsPreferenceKnown({required this.preference});
 }
 
 sealed class ProductAnalyticsSynchronizationStatus {
@@ -72,8 +70,7 @@ sealed class ProductAnalyticsAvailability {
 }
 
 final class ProductAnalyticsActive extends ProductAnalyticsAvailability {
-  final String userKey;
-  const ProductAnalyticsActive({required this.userKey});
+  const ProductAnalyticsActive();
 }
 
 final class ProductAnalyticsInactive extends ProductAnalyticsAvailability {
