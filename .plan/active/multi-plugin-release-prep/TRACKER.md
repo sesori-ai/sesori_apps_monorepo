@@ -3,17 +3,18 @@
 ## Current State
 
 - **Implementation base:** `origin/main` at `fb961d16`
-- **Series state:** Step 1/6 plan PR #605 is merged; Step 2/6 is implemented
-  and locally verified on `multi-plugin-release-prep-codex-options`
+- **Series state:** Step 1/6 plan PR #605 is merged; Step 2/6 PR #609 is open
+  from `multi-plugin-release-prep-codex-options`
 - **Current step:** Step 2/6 — typed Codex session-option discovery
-- **Next action:** commit and open the Step 2/6 PR for review
+- **Next action:** review and merge PR #609, then start Step 3/6 from updated
+  `origin/main`
 
 ## Delivery
 
 | Done | Step | Branch | PR state |
 |---|---|---|---|
 | [x] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 merged |
-| [ ] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | Implementation verified locally |
+| [ ] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | PR #609 open |
 | [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | Blocked on Step 2 merge |
 | [ ] | Step 4/6 — durable bridge cache and aggregate route | `multi-plugin-release-prep-bridge-cache` | Blocked on Step 3 merge |
 | [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4 merge |
@@ -80,4 +81,5 @@
   `CodexSessionService`, and reduced the plugin facade to route delegation.
   Generated Freezed/JSON sources, all 201 Codex package tests, focused fatal
   analysis, formatting, and `git diff --check` passed. Aristotle implementation
-  review approved the branch-local architecture with no findings.
+  review approved the branch-local architecture with no findings. Committed as
+  `4773ddde`, pushed, and opened as PR #609.
