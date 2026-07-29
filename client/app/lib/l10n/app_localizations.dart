@@ -895,6 +895,12 @@ abstract class AppLocalizations {
   /// **'Preference synchronized.'**
   String get settingsProductAnalyticsSynchronized;
 
+  /// No description provided for @settingsProductAnalyticsRuntimeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Your preference is enabled, but custom product usage is unavailable for this app run.'**
+  String get settingsProductAnalyticsRuntimeUnavailable;
+
   /// No description provided for @settingsProductAnalyticsRefresh.
   ///
   /// In en, this message translates to:

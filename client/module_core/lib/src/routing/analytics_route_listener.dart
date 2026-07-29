@@ -21,6 +21,7 @@ class AnalyticsRouteListener {
   StreamSubscription<AppRouteDef?>? _routeSubscription;
   StreamSubscription<ProductAnalyticsState>? _stateSubscription;
   AnalyticsScreen? _currentScreen;
+  DateTime? _currentScreenOccurredAtUtc;
   AnalyticsScreen? _reportedScreen;
   final Set<AnalyticsScreen> _inFlightScreens = {};
   final Set<AnalyticsScreen> _reportAgainScreens = {};
@@ -57,8 +58,6 @@ class AnalyticsRouteListener {
             logw("Failed to report analytics screen", error, stackTrace);
           }),
         );
-      } else {
-        _reportedScreen = null;
       }
     });
   }
@@ -66,17 +65,22 @@ class AnalyticsRouteListener {
   Future<void> _onRoute({required AppRouteDef? route}) async {
     if (route == null || route == AppRouteDef.splash) {
       _currentScreen = null;
+      _currentScreenOccurredAtUtc = null;
       _reportedScreen = null;
       return;
     }
     _currentScreen = _screenFor(route: route);
+    _currentScreenOccurredAtUtc = DateTime.now().toUtc();
     await _analyticsService.markPostSplashReady();
     await _reportCurrentScreen();
   }
 
   Future<void> _reportCurrentScreen() async {
     final screen = _currentScreen;
-    if (screen == null || screen == _reportedScreen || !_analyticsService.state.isActive) return;
+    final occurredAtUtc = _currentScreenOccurredAtUtc;
+    if (screen == null || occurredAtUtc == null || screen == _reportedScreen || !_analyticsService.state.isActive) {
+      return;
+    }
     if (_inFlightScreens.contains(screen)) {
       _reportAgainScreens.add(screen);
       return;
@@ -86,7 +90,7 @@ class AnalyticsRouteListener {
       final result = await _analyticsService
           .logEvent(
             event: ProductAnalyticsEvent.screenViewed(screen: screen),
-            occurredAtUtc: DateTime.now().toUtc(),
+            occurredAtUtc: occurredAtUtc,
           )
           .timeout(_deliveryDeadline, onTimeout: () => AnalyticsDeliveryResult.failed);
       if (result == AnalyticsDeliveryResult.acceptedBySdk &&

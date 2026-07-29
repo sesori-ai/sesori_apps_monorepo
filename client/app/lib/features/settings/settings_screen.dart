@@ -206,16 +206,23 @@ class _ProductAnalyticsPreferenceRows extends StatelessWidget {
         state.synchronization is ProductAnalyticsDisablePending ||
         state.synchronization is ProductAnalyticsEnablePending ||
         state.synchronization is ProductAnalyticsDisableRetryRequired;
-    final status = switch (state.synchronization) {
-      ProductAnalyticsSynchronizationInProgress() ||
-      ProductAnalyticsDisableRequestInProgress() ||
-      ProductAnalyticsEnableRequestInProgress() => loc.settingsProductAnalyticsLoading,
-      ProductAnalyticsDisablePending() => loc.settingsProductAnalyticsDisablePending,
-      ProductAnalyticsEnablePending() => loc.settingsProductAnalyticsEnablePending,
-      ProductAnalyticsDisableRetryRequired() => loc.settingsProductAnalyticsDisableRetryRequired,
-      ProductAnalyticsSynchronizationFailed() => loc.settingsProductAnalyticsSyncFailed,
-      ProductAnalyticsNotSynchronized() => loc.settingsProductAnalyticsNotSynchronized,
-      ProductAnalyticsSynchronized() => loc.settingsProductAnalyticsSynchronized,
+    final status = switch ((state.availability, state.synchronization)) {
+      (
+        ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.runtimeUnavailable),
+        ProductAnalyticsSynchronized(),
+      ) =>
+        loc.settingsProductAnalyticsRuntimeUnavailable,
+      (_, final synchronization) => switch (synchronization) {
+        ProductAnalyticsSynchronizationInProgress() ||
+        ProductAnalyticsDisableRequestInProgress() ||
+        ProductAnalyticsEnableRequestInProgress() => loc.settingsProductAnalyticsLoading,
+        ProductAnalyticsDisablePending() => loc.settingsProductAnalyticsDisablePending,
+        ProductAnalyticsEnablePending() => loc.settingsProductAnalyticsEnablePending,
+        ProductAnalyticsDisableRetryRequired() => loc.settingsProductAnalyticsDisableRetryRequired,
+        ProductAnalyticsSynchronizationFailed() => loc.settingsProductAnalyticsSyncFailed,
+        ProductAnalyticsNotSynchronized() => loc.settingsProductAnalyticsNotSynchronized,
+        ProductAnalyticsSynchronized() => loc.settingsProductAnalyticsSynchronized,
+      },
     };
     final description = [
       loc.settingsProductAnalyticsDescription,

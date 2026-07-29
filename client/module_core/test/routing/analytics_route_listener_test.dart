@@ -22,6 +22,7 @@ class _FakeRouteSource implements RouteSource {
 class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsService {
   final BehaviorSubject<ProductAnalyticsState> states;
   final events = <ProductAnalyticsEvent>[];
+  final occurredAtUtc = <DateTime>[];
   int readinessCalls = 0;
   Queue<Future<void>> readinessResults = Queue<Future<void>>();
   Completer<AnalyticsDeliveryResult>? deliveryCompleter;
@@ -47,6 +48,7 @@ class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsServi
     required DateTime occurredAtUtc,
   }) async {
     events.add(event);
+    this.occurredAtUtc.add(occurredAtUtc);
     final completer = deliveryCompleter;
     if (completer != null) return completer.future;
     return AnalyticsDeliveryResult.acceptedBySdk;
@@ -132,7 +134,7 @@ void main() {
     expect(AppRouteDef.values, hasLength(sequence.length + 1));
   });
 
-  test("retains the latest inactive screen and reports it on each active transition", () async {
+  test("retains the latest inactive screen without duplicating a reported route", () async {
     routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
     service = _FakeProductAnalyticsService(initialState: _inactiveState());
     listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
@@ -155,7 +157,25 @@ void main() {
     service.emit(state: _inactiveState());
     service.emit(state: _activeState());
     await _flush();
-    expect(service.events, hasLength(2));
+    expect(service.events, hasLength(1));
+  });
+
+  test("captures the screen occurrence time before readiness completes", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _activeState());
+    final readiness = Completer<void>();
+    service.readinessResults.add(readiness.future);
+    listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
+    await listener.start();
+
+    routeSource.emit(route: AppRouteDef.projects);
+    await Future<void>.delayed(Duration.zero);
+    final afterObservation = DateTime.now().toUtc();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    readiness.complete();
+    await _flush();
+
+    expect(service.occurredAtUtc.single.isAfter(afterObservation), isFalse);
   });
 
   test("a delayed first readiness call cannot overwrite a newer route", () async {

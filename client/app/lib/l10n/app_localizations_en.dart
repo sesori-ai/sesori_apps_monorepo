@@ -437,6 +437,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProductAnalyticsSynchronized => 'Preference synchronized.';
 
   @override
+  String get settingsProductAnalyticsRuntimeUnavailable =>
+      'Your preference is enabled, but custom product usage is unavailable for this app run.';
+
+  @override
   String get settingsProductAnalyticsRefresh => 'Refresh analytics preference';
 
   @override

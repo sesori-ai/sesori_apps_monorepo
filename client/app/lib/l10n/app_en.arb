@@ -250,6 +250,7 @@
   "settingsProductAnalyticsSyncFailed": "Could not synchronize. Product usage remains off on this device; refresh to retry.",
   "settingsProductAnalyticsNotSynchronized": "This device has not synchronized the account preference yet.",
   "settingsProductAnalyticsSynchronized": "Preference synchronized.",
+  "settingsProductAnalyticsRuntimeUnavailable": "Your preference is enabled, but custom product usage is unavailable for this app run.",
   "settingsProductAnalyticsRefresh": "Refresh analytics preference",
   "settingsProductAnalyticsRetry": "Retry analytics preference sync",
   "settingsAppearanceLight": "Light",

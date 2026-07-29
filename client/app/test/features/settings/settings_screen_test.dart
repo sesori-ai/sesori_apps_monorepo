@@ -319,4 +319,24 @@ void main() {
 
     verify(productAnalyticsService.refreshPreference).called(1);
   });
+
+  testWidgets("runtime unavailability is visible beside a synchronized enabled preference", (tester) async {
+    _useTallSurface(tester);
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(
+          preference: ProductAnalyticsPreference.enabled,
+        ),
+        synchronization: ProductAnalyticsSynchronized(),
+        availability: ProductAnalyticsInactive(
+          reason: ProductAnalyticsInactiveReason.runtimeUnavailable,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining("custom product usage is unavailable for this app run"), findsOneWidget);
+  });
 }

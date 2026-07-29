@@ -12,6 +12,7 @@ import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
+import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
@@ -176,7 +177,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
   void _reportProductEvent({required ProductAnalyticsEvent event}) {
     unawaited(
-      _productAnalyticsService.logEvent(event: event, occurredAtUtc: DateTime.now().toUtc()).then<void>((_) {}),
+      _productAnalyticsService.logEvent(event: event, occurredAtUtc: DateTime.now().toUtc()).then<void>((result) {
+        if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+          logw("Failed to deliver onboarding analytics event");
+        }
+      }),
     );
   }
 
