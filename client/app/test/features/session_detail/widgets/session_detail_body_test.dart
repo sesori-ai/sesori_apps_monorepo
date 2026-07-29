@@ -549,6 +549,36 @@ void main() {
     expect(find.byIcon(TablerSolid.player_stop), findsNothing);
   });
 
+  testWidgets("release during recorder startup still stops the recording", (tester) async {
+    final startCompleter = Completer<void>();
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Hold the hold-to-talk pill long enough for the long-press to fire (the
+    // recording start is now awaiting the recorder), then release before the
+    // recorder finishes starting up.
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.up();
+    await tester.pump();
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+
+    // The recorder finishes starting after the finger already lifted — the
+    // composer must stop immediately instead of recording open-endedly.
+    startCompleter.complete();
+    await tester.pump();
+    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+
+    stopCompleter.complete("transcript");
+    await tester.pumpAndSettle();
+    expect(find.text("transcript"), findsOneWidget);
+  });
+
   testWidgets("accordion reveals the slash-commands action and opens the picker", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();

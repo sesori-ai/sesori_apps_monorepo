@@ -1093,6 +1093,12 @@ abstract class AppLocalizations {
   /// **'More actions'**
   String get sessionDetailMoreActions;
 
+  /// Accessibility label of the chevron while the composer's advanced-options drawer is open and tapping it collapses the drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide actions'**
+  String get sessionDetailHideActions;
+
   /// Accessibility label of the button that opens the fullscreen message editor.
   ///
   /// In en, this message translates to:

@@ -88,6 +88,11 @@ class _PromptInputState extends State<PromptInput> {
   /// and never receive the release.
   _ComposerLayout? _pinnedVoiceLayout;
 
+  /// Set when the hold is released while [_startRecording] is still awaiting
+  /// the recorder, so the start path stops immediately once recording begins
+  /// instead of letting it outlive the gesture.
+  bool _releaseRequestedDuringStart = false;
+
   VoiceTranscriptionService get _voiceService => getIt<VoiceTranscriptionService>();
 
   @override
@@ -183,7 +188,11 @@ class _PromptInputState extends State<PromptInput> {
   /// voice interaction.
   _ComposerLayout get _restingLayout {
     if (_showsTypingLayout) return _ComposerLayout.typing;
-    return widget.hasMessages ? _ComposerLayout.compact : _ComposerLayout.holdToTalk;
+    // A busy session is past its fresh state even while the first message
+    // hasn't landed in the list yet (e.g. it was sent from another device) —
+    // resting compact keeps the stop control reachable.
+    if (widget.hasMessages || widget.isBusy) return _ComposerLayout.compact;
+    return _ComposerLayout.holdToTalk;
   }
 
   _ComposerLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
@@ -241,18 +250,41 @@ class _PromptInputState extends State<PromptInput> {
 
   Future<void> _handleRecordStart() async {
     if (_voiceState != _VoiceState.idle) return;
+    _releaseRequestedDuringStart = false;
     _pinnedVoiceLayout = _restingLayout;
     await _startRecording();
-    if (mounted && _voiceState == _VoiceState.idle) {
+    if (!mounted) return;
+    if (_voiceState == _VoiceState.idle) {
       // Recording never started (permission denied / recorder error), so no
       // later transition will release the pin.
       setState(() => _pinnedVoiceLayout = null);
+    } else if (_releaseRequestedDuringStart) {
+      // The hold ended while the recorder was still starting up — stop right
+      // away so recording never outlives the gesture.
+      await _stopAndTranscribe();
     }
   }
 
   Future<void> _handleRecordEnd() async {
+    if (_voiceState == _VoiceState.idle) {
+      // The release raced a recorder that is still starting up (or was a
+      // stray pointer event); [_handleRecordStart] consumes this after the
+      // start completes.
+      _releaseRequestedDuringStart = true;
+      return;
+    }
     if (_voiceState != _VoiceState.recording) return;
     await _stopAndTranscribe();
+  }
+
+  /// Assistive-technology activation: a semantic tap cannot express the
+  /// press-and-hold gesture, so activation toggles recording instead.
+  Future<void> _handleSemanticRecordToggle() async {
+    if (_voiceState == _VoiceState.recording) {
+      await _handleRecordEnd();
+    } else {
+      await _handleRecordStart();
+    }
   }
 
   Future<void> _startRecording() async {
@@ -487,20 +519,31 @@ class _PromptInputState extends State<PromptInput> {
           Expanded(
             // The detector wraps the voice-aware slot (not the other way
             // around) so it stays mounted when the recording indicator swaps
-            // in and still receives the release that ends the hold.
+            // in and still receives the release that ends the hold. Semantic
+            // taps toggle recording — assistive technologies cannot express
+            // the press-and-hold gesture.
             child: Semantics(
               button: true,
               label: loc.sessionDetailHoldToTalk,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onLongPressStart: (_) => _handleRecordStart(),
-                onLongPressEnd: (_) => _handleRecordEnd(),
-                child: _buildVoiceAwareSlot(
-                  height: _actionButtonSize,
-                  idle: Center(
-                    child: Text(
-                      loc.sessionDetailHoldToTalk,
-                      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+              excludeSemantics: true,
+              onTap: _handleSemanticRecordToggle,
+              child: Listener(
+                // A pointer cancel mid-hold (incoming call, system gesture)
+                // resets the accepted long-press silently — no onLongPressEnd
+                // — so the raw pointer stream is the only place to keep the
+                // recording bounded by the gesture.
+                onPointerCancel: (_) => _handleRecordEnd(),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onLongPressStart: (_) => _handleRecordStart(),
+                  onLongPressEnd: (_) => _handleRecordEnd(),
+                  child: _buildVoiceAwareSlot(
+                    height: _actionButtonSize,
+                    idle: Center(
+                      child: Text(
+                        loc.sessionDetailHoldToTalk,
+                        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                      ),
                     ),
                   ),
                 ),
@@ -708,18 +751,27 @@ class _PromptInputState extends State<PromptInput> {
     // No Tooltip here: its long-press trigger would race the recording hold.
     // The button keeps its enabled look and swallows plain taps via
     // [_ignoreTap]; holds outlast the tap recognizer, so the surrounding
-    // detector wins the arena and drives the recording.
+    // detector wins the arena and drives the recording. Semantic taps toggle
+    // recording — assistive technologies cannot express the hold.
     return Semantics(
       button: true,
       label: loc.voiceRecord,
-      child: GestureDetector(
-        onLongPressStart: (_) => _handleRecordStart(),
-        onLongPressEnd: (_) => _handleRecordEnd(),
-        child: const PregoButtonsSolid.iconOnly(
-          leadingIcon: TablerRegular.microphone,
-          hierarchy: PregoButtonsSolidHierarchy.secondary,
-          size: PregoButtonsSolidSize.lg,
-          onPressed: _ignoreTap,
+      excludeSemantics: true,
+      onTap: _handleSemanticRecordToggle,
+      child: Listener(
+        // A pointer cancel mid-hold resets the accepted long-press silently —
+        // no onLongPressEnd — so the raw pointer stream is the only place to
+        // keep the recording bounded by the gesture.
+        onPointerCancel: (_) => _handleRecordEnd(),
+        child: GestureDetector(
+          onLongPressStart: (_) => _handleRecordStart(),
+          onLongPressEnd: (_) => _handleRecordEnd(),
+          child: const PregoButtonsSolid.iconOnly(
+            leadingIcon: TablerRegular.microphone,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            onPressed: _ignoreTap,
+          ),
         ),
       ),
     );

@@ -337,6 +337,10 @@
   "@sessionDetailMoreActions": {
     "description": "Accessibility label of the chevron that expands the composer's advanced-options drawer."
   },
+  "sessionDetailHideActions": "Hide actions",
+  "@sessionDetailHideActions": {
+    "description": "Accessibility label of the chevron while the composer's advanced-options drawer is open and tapping it collapses the drawer."
+  },
   "sessionDetailExpandEditor": "Expand editor",
   "@sessionDetailExpandEditor": {
     "description": "Accessibility label of the button that opens the fullscreen message editor."

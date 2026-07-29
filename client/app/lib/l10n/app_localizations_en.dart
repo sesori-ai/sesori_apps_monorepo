@@ -535,6 +535,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailMoreActions => 'More actions';
 
   @override
+  String get sessionDetailHideActions => 'Hide actions';
+
+  @override
   String get sessionDetailExpandEditor => 'Expand editor';
 
   @override

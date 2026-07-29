@@ -70,7 +70,7 @@ class _ComposerOptionsAccordionState extends State<ComposerOptionsAccordion> {
                 ],
                 _AccordionIconButton(
                   icon: TablerRegular.chevron_right,
-                  tooltip: loc.sessionDetailMoreActions,
+                  tooltip: _isOpen ? loc.sessionDetailHideActions : loc.sessionDetailMoreActions,
                   rotated: _isOpen,
                   onTap: () => setState(() => _isOpen = !_isOpen),
                 ),
