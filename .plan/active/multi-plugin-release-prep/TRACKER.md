@@ -27,6 +27,8 @@
 - OpenCode and Codex cache per project. Cursor caches once per plugin. Codex
   stays project-aware because defaults and skills depend on project context.
 - Cache-only miss is explicit unavailable, not an empty successful catalog.
+- Additive plugin discovery capability identifies an old bridge before the
+  aggregate call; a capable bridge's project 404 never triggers legacy fallback.
 - Legacy option routes stay unchanged. New-client/old-bridge live loading occurs
   only after explicit Refresh.
 - The bridge is the durable cache authority; no new client persistence/cache is
@@ -36,6 +38,8 @@
 - `SessionOptionsService` owns scope, retention, completeness, coalescing, and
   CAS retry policy. The repository owns mechanical capture/persistence and
   runtime generation fencing.
+- Partial observations seed only an empty cache; they never replace retained
+  partial or complete data from independently successful sources.
 - Harnesses settings ends as one screen and one screen-owned management cubit,
   using Prego sheets and setup/capability-aware visibility.
 - Harness consolidation preserves authoritative `bridgeId` snapshot fencing;

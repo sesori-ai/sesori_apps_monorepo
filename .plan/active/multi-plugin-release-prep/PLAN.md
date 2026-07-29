@@ -102,9 +102,15 @@ POST /session/options?refresh=true
   distinguish duplicate query spellings.
 - A successful response is the new shared `SessionOptionsResponse`, containing
   required `Agents`, `ProviderListResponse`, and `CommandListResponse` values.
+- Add `@Default(false) bool supportsSessionOptions` to shared
+  `PluginListResponse`, with the required dated compatibility comment. A new
+  bridge publishes `true`; old bridge payloads and the existing discovery-404
+  fallback decode `false`.
 - A cache-only miss, expired row, or invalidated project-path row returns HTTP
   503. It is never encoded as three successful empty lists.
-- Project absence remains 404. Plugin/runtime failures retain their existing
+- Project absence remains 404. The client calls the aggregate route only when
+  discovery declared support, so that 404 is project failure and never triggers
+  legacy fallback. Plugin/runtime failures retain their existing
   `PluginOperationException` status mapping.
 - An explicit refresh failure retains any prior bridge snapshot but still
   returns failure, allowing the app to preserve visible data while reporting
@@ -116,7 +122,7 @@ POST /session/options?refresh=true
 |---|---|
 | New client / new bridge | Initial load is cache-only. Refresh may start exactly the selected harness. A cache miss leaves session creation available with backend defaults. |
 | Old client / new bridge | Existing `/agent`, `/provider`, and `/command` behavior is unchanged and can still start the requested harness. |
-| New client / old bridge | Aggregate 404 becomes an explicit unsupported state. Create remains available with null agent/model/variant/command. Explicit Refresh explains that legacy live requests may start the harness, then invokes the existing three routes. |
+| New client / old bridge | Missing/false discovery capability becomes an explicit unsupported state without calling the aggregate route. Create remains available with null agent/model/variant/command. Explicit Refresh explains that legacy live requests may start the harness, then invokes the existing three routes. |
 
 The legacy routes remain unchanged and do not write the new aggregate cache.
 Successful session creation provides the automatic cache-seeding path for old
@@ -145,6 +151,8 @@ clients without coupling legacy repositories to the new service.
 ### Client behavior
 
 - The client performs one aggregate request rather than three requests.
+- Plugin discovery carries bridge-level aggregate support. Route absence and
+  project absence are never inferred from the same HTTP 404.
 - No new persistent or process-wide client cache is added. The durable bridge
   is the cache authority; current cubit state may remain visible during a
   refresh failure.
@@ -190,7 +198,8 @@ clients without coupling legacy repositories to the new service.
 
 ### Touched workspaces
 
-- `shared/sesori_shared`: aggregate response wire model.
+- `shared/sesori_shared`: additive plugin-list capability and aggregate response
+  wire model.
 - `bridge/sesori_plugin_interface`: aggregate plugin model, completeness, and
   descriptor cache-scope contract.
 - `bridge/sesori_plugin_opencode`: project-scoped aggregate service operation.
@@ -277,8 +286,8 @@ Completeness replacement is exact:
 
 ```text
 complete -> may replace complete or partial
-partial  -> may seed an empty cache or replace partial
-partial  -> never downgrades retained complete
+partial  -> may seed an empty cache
+partial  -> never replaces retained partial or complete
 ```
 
 The service reads the expected revision, captures, applies policy, and asks the
@@ -296,15 +305,21 @@ not emit SSE.
 
 ### Client layers
 
-`SessionApi` adds the aggregate POST and query parameter. `SessionRepository`
-removes its provider-only cache, maps 200/404/503/other outcomes into a sealed
-repository result, and retains the three legacy methods solely for explicit
-old-bridge refresh.
+`SessionApi` adds the aggregate POST and query parameter. `PluginRepository`
+maps the additive `supportsSessionOptions` discovery fact, defaulting false for
+older bridges, and `NewSessionPluginDiscovery` carries that bridge-level fact to
+the composer. `SessionRepository` removes its provider-only cache, maps aggregate
+200 to supported, 503 to unavailable, 404 to project-not-found, and other
+non-success responses to failure, and retains the three legacy methods solely
+for explicit old-bridge refresh. `NewSessionOptionsService` receives the
+discovery capability: false returns unsupported without an aggregate call;
+true permits the aggregate call and never converts its project 404 into legacy
+fallback.
 
 `NewSessionOptionsService({required SessionRepository sessionRepository,
 required DefaultModelSelector defaultModelSelector})` owns:
 
-- aggregate load and explicit old-bridge fallback;
+- capability-gated aggregate load and explicit old-bridge fallback;
 - visible-agent filtering (`!hidden` and not subagent);
 - selectable-model validation (`isAvailable`);
 - default agent/model precedence while preserving backend order;
@@ -330,7 +345,7 @@ backend-neutral UI decisions.
 | 1/6 | `multi-plugin-release-prep` | `[multi-plugin-release-prep] docs: plan multi-plugin release preparation [step 1/6]` | 350-550 | Final durable plan and tracker only. |
 | 2/6 | `multi-plugin-release-prep-codex-options` | `[multi-plugin-release-prep] refactor(codex): type session option discovery [step 2/6]` | 800-1,150 | Typed `model/list` API/repository, service-owned agent/provider/default/fallback behavior, and facade delegation without changing wire routes. |
 | 3/6 | `multi-plugin-release-prep-plugin-options` | `[multi-plugin-release-prep] feat(bridge): aggregate scoped plugin options [step 3/6]` | 950-1,350 | Internal aggregate/completeness/scope contract; OpenCode, Codex, ACP, and Cursor service ownership; ACP configuration tracker. |
-| 4/6 | `multi-plugin-release-prep-bridge-cache` | `[multi-plugin-release-prep] feat(bridge): cache scoped session options [step 4/6]` | 1,400-2,000 | Shared response, Drift cache/migration, runtime/repository/service fencing, query-driven route, and session-creation refresh listener. Generated schema/model output explains expected overage. |
+| 4/6 | `multi-plugin-release-prep-bridge-cache` | `[multi-plugin-release-prep] feat(bridge): cache scoped session options [step 4/6]` | 1,400-2,000 | Shared discovery capability/response, Drift cache/migration, runtime/repository/service fencing, query-driven route, and session-creation refresh listener. Generated schema/model output explains expected overage. |
 | 5/6 | `multi-plugin-release-prep-client-options` | `[multi-plugin-release-prep] feat(client): consume cached session options [step 5/6]` | 900-1,300 | Aggregate client layers, service-owned option resolution, explicit refresh/old-bridge degradation, cubit state, and New Session UI. |
 | 6/6 | `multi-plugin-release-prep-harness-settings` | `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]` | 850-1,200 | One Harnesses screen/cubit, capability/setup-aware visibility, route removal, and Prego timeout/force sheets. |
 
@@ -362,9 +377,12 @@ backend-neutral UI decisions.
 ### Step 4/6
 
 - Shared response JSON round trips and generated-source verification.
+- Plugin discovery compatibility tests cover omitted/false/true
+  `supportsSessionOptions`; the bridge and discovery-404 fallback publish the
+  correct modern/legacy values.
 - Drift migration, CHECK constraint, FK cascade, plugin-row survival, typed JSON
-  decode, project-path invalidation, retention, completeness, CAS conflict, and
-  generation-fence tests.
+  decode, project-path invalidation, retention, partial-on-partial retention,
+  completeness, CAS conflict, and generation-fence tests.
 - Handler tests for missing/false/true/invalid refresh, cache miss, project
   absence, explicit failure retention, and shared debug/relay router wiring.
 - Runtime tests prove cache-only reads never start a dormant plugin and explicit
@@ -375,8 +393,9 @@ backend-neutral UI decisions.
 ### Step 5/6
 
 - API path/body/query and response parsing tests.
-- Repository status mapping for supported, unavailable, unsupported, and
-  failure, with no provider-only cache remaining.
+- Repository status mapping for supported, unavailable, project-not-found, and
+  failure, with no provider-only cache remaining; service tests prove discovery
+  capability false returns unsupported without an aggregate call.
 - Service tests for filtering, default precedence, unavailable models, variant
   preservation/drop, command revalidation, cache miss, retained refresh failure,
   and explicit old-bridge fallback.
@@ -419,11 +438,12 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 | Dormant plugin starts during ordinary rendering | Cache-only route reaches no runtime acquisition. Add an explicit no-start runtime test. |
 | Project options served for a moved directory | Store captured path and invalidate on mismatch. |
 | Old generation overwrites current data | Capture runtime generation and fence every CAS commit with `commitCurrentGeneration`. |
+| A partial refresh regresses a different option source | Partial observations seed only an empty cache and never replace retained partial or complete data; only a complete aggregate advances an existing row. |
 | Late concurrent refresh downgrades data | Service-owned completeness comparison plus expected-revision CAS and one policy retry. |
 | Codex duplicates its global model catalog per project | Accept the small duplication to preserve project defaults and skills without mixed-scope component caches. |
 | Cursor cache multiplies by project | Descriptor-declared plugin scope produces one durable Cursor row. |
 | ACP option code depends on mutable mapper state | Move provider/model state into `AcpSessionConfigurationTracker`; mapper and service consume the tracker. |
-| New client mistakes old-bridge absence for empty catalogs | Aggregate 404 is explicit unsupported; 503 is explicit uncached; neither is a successful empty response. |
+| New client confuses old-route 404 with project-not-found 404 | Additive discovery capability identifies old bridges before any aggregate call; a capable bridge's 404 remains project failure. |
 | Settings consolidation changes capability enforcement | Keep existing service/cubit command paths; only one thin screen consumes declared capabilities. |
 | Generated migration/model output obscures logic | Keep source and tests focused, name generated overage in Step 4 PR, and review source changes first. |
 
