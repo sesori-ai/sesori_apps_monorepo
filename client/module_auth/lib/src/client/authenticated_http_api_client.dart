@@ -223,11 +223,11 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
         return ApiResponse.error(ApiError.notAuthenticated());
       }
       final refreshedToken = await _authManager.getFreshAccessToken(forceRefresh: true);
-      if (refreshedToken == null) {
-        return response;
-      }
       if (!_matchesExpectedUser(expectedUserId)) {
         return ApiResponse.error(ApiError.notAuthenticated());
+      }
+      if (refreshedToken == null) {
+        return response;
       }
       final retryResponse = await makeRequest(refreshedToken);
       if (!_matchesExpectedUser(expectedUserId)) {
