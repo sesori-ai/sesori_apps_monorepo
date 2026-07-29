@@ -69,7 +69,6 @@ void main() {
     WidgetTester tester, {
     required bool hasRegisteredBridges,
     List<BridgeSummary> bridges = const [],
-    double viewportHeight = 500,
   }) async {
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => hasRegisteredBridges);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => bridges);
@@ -77,7 +76,7 @@ void main() {
     // Overflow is the precondition for the behaviour under test: a body that
     // fits leaves the page with no scroll extent, and a bar with nothing to
     // scroll against correctly stays put.
-    tester.view.physicalSize = Size(393, viewportHeight);
+    tester.view.physicalSize = const Size(393, 500);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -124,11 +123,6 @@ void main() {
           lastSeenAt: DateTime.utc(2026, 7),
         ),
       ],
-      // Taller than the collapsed offline body, which is what makes expanding
-      // the disclosure — below — the thing that pushes it past the viewport. A
-      // shorter viewport would bury the disclosure button under the floating
-      // "Need help?" pill, leaving nothing to tap.
-      viewportHeight: 600,
     );
     // A single scroll view for the whole page — the body no longer nests one.
     expect(find.byType(CustomScrollView), findsOneWidget);
@@ -142,12 +136,7 @@ void main() {
     expect(find.byIcon(TablerRegular.device_laptop), findsNWidgets(2));
     expect(find.text("Macbook-Pro.local"), findsNWidgets(2));
 
-    // Expanding the install commands (the disclosure at the end of the body)
-    // grows the body past the viewport; the body then scrolls under a bar that
-    // stays put.
-    await tester.tap(find.text("Install commands"));
-    await tester.pumpAndSettle();
-
+    // The body scrolls under a bar that stays put.
     final barBefore = tester.getTopLeft(find.byType(PregoNavLeadingTitle));
     final bodyBefore = tester.getTopLeft(find.text("Make sure the Bridge is running")).dy;
     await scrollPageUp(tester);

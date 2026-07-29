@@ -17,8 +17,8 @@ part of "../project_list_screen.dart";
 ///
 /// A body, not a page: it is hosted in the project list's own page scroll (see
 /// [ProjectListScreen]) so the expanded install commands scroll under a fixed
-/// bar. Centred while it fits the viewport; the enclosing sliver grows past it
-/// once it doesn't.
+/// bar. Anchored to the top of that page at the design's offset; the enclosing
+/// sliver grows past the viewport once the body outgrows it.
 class _BridgeOfflineView extends StatefulWidget {
   const _BridgeOfflineView({required this.bridges});
 
@@ -46,9 +46,13 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Figma hangs the graphic 90px below the bar. Off the spacing scale,
+          // so it is written out. Anchored rather than centred: the composition
+          // reads from the top down, and centring would move the graphic as the
+          // install-commands disclosure grows the body beneath it.
+          const SizedBox(height: 90),
           const ExcludeSemantics(child: Center(child: ConnectionGraphic.connectionOff())),
           const SizedBox(height: PregoSpacing.lg),
           // The machine identity leads: the graphic already says "not
@@ -125,9 +129,8 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
                   SizedBox(height: PregoSpacing.lg),
                   _InstallCommandBoxes(surface: OnboardingSurface.bridgeOffline),
                   // Bottom breathing room so the last install box can be
-                  // scrolled clear of the "Need help?" button pinned in the
-                  // bottom-right corner. Inside the disclosure so the collapsed
-                  // body keeps its exact vertical centring.
+                  // scrolled clear of the "Need help?" button floating at the
+                  // bottom of the page.
                   SizedBox(height: PregoSpacing.x6l),
                 ],
               ),
