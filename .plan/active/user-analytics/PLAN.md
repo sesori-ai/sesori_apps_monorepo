@@ -227,10 +227,10 @@ honestly labeled setup trends.
 
 | Repository/workspace | Production paths and layer | Change | Downstream impact |
 | --- | --- | --- | --- |
-| `sesori_auth_server` | `src/types/product-analytics.ts` (domain enum), `src/models/{documents,api,product-analytics-export}.ts` (persisted/API/export/deletion-target contracts), `src/repositories/{user-repo,activation-state-repo,product-analytics-export-repo,product-analytics-control-repo,product-analytics-deletion-target-repo}.ts`, `src/services/{product-analytics-preference-service,product-analytics-export-service,product-analytics-deletion-service}.ts`, separate `src/clients/{bigquery-product-analytics-client,bigquery-product-analytics-deletion-target-client}.ts` and `src/api/{product-analytics-export-api,product-analytics-deletion-target-api}.ts`, `src/routes/product-analytics.ts`, `src/scripts/{backfill-product-analytics-preference,suppress-product-analytics-export,export-product-analytics,product-analytics-export-config}.ts` | Persist revisioned preference/privacy-suppression state behind dedicated services, expose GET/PUT endpoints, export privacy-safe data after source/internal exclusion, and hand tombstoned deletion targets to a separately permissioned privacy-private dataset. | Existing auth profile/token responses remain unchanged. The web process constructs only the preference service; export/deletion BigQuery classes and identities remain isolated from each other and exist only in command composition. |
+| `sesori_auth_server` | `src/types/product-analytics.ts` (domain enum), `src/models/{documents,api,product-analytics-export}.ts` (persisted/API/export/deletion-target contracts), `src/repositories/{user-repo,activation-state-repo,product-analytics-export-repo,product-analytics-control-repo,product-analytics-deletion-target-repo}.ts`, `src/services/{product-analytics-preference-service,product-analytics-export-service,product-analytics-deletion-service}.ts`, separate `src/clients/{bigquery-product-analytics-client,bigquery-product-analytics-deletion-target-client}.ts` and `src/api/{product-analytics-export-api,product-analytics-deletion-target-api}.ts`, `src/routes/product-analytics.ts`, `src/scripts/{backfill-product-analytics-preference,suppress-product-analytics-export,export-product-analytics,product-analytics-export-config}.ts` | Persist revisioned preference/privacy-suppression state behind dedicated services, expose GET/PUT replies with a server-derived HMAC user key, export privacy-safe data after source/internal exclusion, and hand tombstoned deletion targets to a separately permissioned privacy-private dataset. | Existing auth profile/token responses remain unchanged. The web process receives the pseudonymization secret and constructs only the preference service; export/deletion BigQuery classes and identities remain isolated from each other and exist only in command composition. |
 | `shared/sesori_shared` | No production change | Keep `AuthUser` authentication-only; do not add a product preference to the shared auth/persisted contract. | No bridge/shared migration or compatibility default is introduced. |
 | `client/module_auth` | Existing HTTP client interfaces/implementations/tests | Add named-parameter JSON `PUT` support to `SafeApiClient`, `HttpApiClient`, and `AuthenticatedHttpApiClient`; keep tokens, OAuth, and auth state otherwise unchanged. | `module_core` injects the authenticated client into its Layer-1 preference API; no wrong-verb workaround or compatibility path is introduced. |
-| `client/module_core` | `lib/src/foundation/{models/product_analytics/,platform/analytics_client.dart}`, `lib/src/api/{analytics_api,product_analytics_preference_api.dart,storage/product_analytics_preference_storage.dart}`, `lib/src/repositories/{models/,product_analytics,installation_analytics,product_analytics_preference}_repository.dart`, `lib/src/services/{models/,product_analytics,installation_analytics}_service.dart`, existing `services/draft_store.dart` plus typed composer-draft model, `lib/src/routing/{analytics_route,session_activity_analytics}_listener.dart`, `lib/src/cubits/{product_analytics_preference,settings}/`, existing login/project/session/diff cubits, DI/barrel/generated files | Mirror the declared layers explicitly; own preference HTTP/persistence, pseudonymous hashing, bounded account-less login telemetry, typed draft/input-origin restoration, route/visibility lifecycle, pre-logout orchestration, Settings state, and authoritative business-outcome emission. | Mobile supplies the Firebase client plus immutable runtime capability. Desktop supplies no-op/disabled Foundation adapters. Cubit constructor call sites/tests update in lockstep. |
+| `client/module_core` | `lib/src/foundation/{models/product_analytics/,platform/analytics_client.dart}`, `lib/src/api/{analytics_api,product_analytics_preference_api.dart,storage/product_analytics_preference_storage.dart}`, `lib/src/repositories/{models/,product_analytics,installation_analytics,product_analytics_preference}_repository.dart`, `lib/src/services/{models/,product_analytics,installation_analytics}_service.dart`, existing `services/draft_store.dart` plus typed composer-draft model, `lib/src/routing/{analytics_route,session_activity_analytics}_listener.dart`, `lib/src/cubits/{product_analytics_preference,settings}/`, existing login/project/session/diff cubits, DI/barrel/generated files | Mirror the declared layers explicitly; own preference HTTP/persistence, validated server-derived pseudonymous-key flow, bounded account-less login telemetry, typed draft/input-origin restoration, route/visibility lifecycle, pre-logout orchestration, Settings state, and authoritative business-outcome emission. | Mobile supplies the Firebase client plus immutable runtime capability. Desktop supplies no-op/disabled Foundation adapters. Cubit constructor call sites/tests update in lockstep. |
 | `client/app` | `lib/core/platform/{firebase_analytics_client,firebase_analytics_identity_migration}.dart`, `lib/core/di/`, `lib/features/{login,settings,project_list,new_session,session_detail,session_diffs}/`, composer widgets/callbacks, `lib/l10n/`, `lib/main.dart`, iOS/macOS/Android analytics defaults | Clear legacy global identity at earliest post-Firebase bootstrap, pass its immutable capability into phase-1 DI, implement the thin Firebase adapter, disable automatic screen reporting, mirror GoRouter-derived screens through `logScreenView`, begin Apple analytics before the native authorization sheet, report successful content-free transcription completion, start core services/listeners, render preference UI, and inject services into core consumers. | Existing app event sources move to core; `AnalyticsUserIdTracker` is removed. The only global Firebase `user_id` call sets null for migration; no account key or runtime collection override is added. Existing `DeepLinkService` remains unchanged because campaign work is deferred. |
 | `client/desktop` | `lib/core/platform/no_op_analytics_client.dart`, DI generated file | Satisfy the shared core platform capability without collecting desktop analytics. | No desktop product events or UI are added. Analyze/test verifies core DI remains resolvable. |
 | `client/module_desktop_core` | No planned production edit; tests/build are downstream validation | Continue unchanged. | Shared core DI/downstream validation only. |
@@ -246,8 +246,10 @@ boundaries, but do **not** add the preference to `AuthUser`, `AuthSession`, JWTs
 or auth login/refresh responses. It is product state, not authentication state.
 The auth server persists it on `User`, exposes dedicated authenticated GET/PUT
 product-analytics endpoints through a dedicated preference service, and writes
-`enabled` for every new account. Existing accounts are backfilled to the honest
-prior behavior before the server schema becomes non-null/enforced.
+`enabled` for every new account. Those endpoint replies also carry the
+server-derived pseudonymous `userKey`; auth profile/token contracts remain
+unchanged. Existing accounts are backfilled to the honest prior behavior before
+the server schema becomes non-null/enforced.
 
 In the client, a `module_core` Layer-1 preference API uses the already exported
 `AuthenticatedHttpApiClient`; its repository combines the server operation with
@@ -345,14 +347,26 @@ disclosures before release.
 
 ### Pseudonymous join key
 
-Continue using lowercase hex SHA-256 over the UTF-8 auth user ID. Implement the
-same algorithm in TypeScript and in the core `ProductAnalyticsRepository`, and
-pin both repositories to one documented golden test vector. The mobile Firebase
-adapter receives the resulting value only inside typed custom event envelopes;
-it never receives a raw account ID and never sets Firebase's global `user_id`.
+The auth server is the sole derivation authority: lowercase the canonical auth
+user ID, then derive lowercase hex HMAC-SHA-256 with one long-lived secret of at
+least 32 random bytes. The same secret is required by the web preference
+service, auth export job, and suppression command, but never enters a client,
+BigQuery, logs, or source control. The dedicated authenticated preference API
+returns the already-derived `userKey`; the client validates and carries that
+value rather than hashing the raw account ID. Pin the TypeScript derivation to
+one documented golden vector and test that different keys produce different
+outputs. The mobile Firebase adapter receives the resulting value only inside
+typed custom event envelopes; it never receives a raw account ID and never sets
+Firebase's global `user_id`.
 Raw user IDs are permitted only in auth/core process memory and
 the auth database/existing encrypted local auth or preference storage; they must
 not reach Firebase, BigQuery, logs, SQL assets, or dashboard URLs.
+
+Generate the secret once as canonical base64, store it in the web/export/
+suppression secret environments, and configure the exact same value everywhere
+before Step 2 deploys. Rotation requires a coordinated re-key migration across
+client state, auth snapshots, and deletion targets; an uncoordinated rotation
+would silently break joins and privacy deletion.
 
 The deterministic custom `user_key` allows cross-device and auth-to-GA4 joins but remains
 pseudonymous personal data. Documentation and access controls must call it that.
@@ -400,10 +414,10 @@ mixed `src/analytics/` bucket. The concrete dependency direction is:
 | `ProductAnalyticsEvent`, typed `ProductAnalyticsEnvelope(event, occurredAtUtc)`, `InstallationAnalyticsEvent`, `AnalyticsScreen`, `AnalyticsInputMode`, pinned event enums, and immutable `AnalyticsRuntimeCapability` under `module_core/lib/src/foundation/models/product_analytics/` | Foundation contracts; no SDK/Flutter dependencies | Separate closed account-linked and account-less sink contracts. Every product outcome captures occurrence time at its authoritative seam before analytics work; deferred candidates retain the envelope. `AnalyticsScreen` is independent of routing; `AnalyticsRouteListener` performs the exhaustive `AppRouteDef -> AnalyticsScreen` mapping. `AnalyticsLoginProvider` is independently pinned and exhaustively mapped from the sealed auth provider. Runtime capability is `enabled` or a closed disabled reason and is produced before phase-1 DI. |
 | `AnalyticsClient` in `module_core/lib/src/foundation/platform/analytics_client.dart` | Foundation external-sink capability | Typed `logProductEvent({required ProductAnalyticsEnvelope envelope, required String userKey})` and `logInstallationEvent({required InstallationAnalyticsEvent event})`. Product serialization adds `occurred_at_micros`; methods throw SDK failures and accept no arbitrary map/name or raw account ID. Only the product method can receive the already-pseudonymous key. |
 | `AnalyticsApi` in `module_core/lib/src/api/analytics_api.dart` | Layer 1; constructor requires `AnalyticsClient` | Thin typed API over both external-client operations. It is the only core class that invokes the platform sink. |
-| `ProductAnalyticsPreferenceApi` in `module_core/lib/src/api/product_analytics_preference_api.dart` | Layer 1; constructor requires `AuthenticatedHttpApiClient` | Calls authenticated GET/PUT `/product-analytics/preference` under a fixed 10-second operation deadline. GET parses `{preference, revision}`; PUT requires `{preference, expectedRevision, operationId}` and parses success/conflict. It serializes closed values, parses external strings at the boundary, and returns explicit success/conflict/timeout/failure. A timed-out transport may finish, but server compare-and-set prevents it from overwriting a newer committed revision. |
+| `ProductAnalyticsPreferenceApi` in `module_core/lib/src/api/product_analytics_preference_api.dart` | Layer 1; constructor requires `AuthenticatedHttpApiClient` | Calls authenticated GET/PUT `/product-analytics/preference` under a fixed 10-second operation deadline. GET parses `{preference, revision, userKey}`; PUT requires `{preference, expectedRevision, operationId}` and parses the same key on success/conflict. It validates the key as 64-character lowercase hex, serializes closed values, parses external strings at the boundary, and returns explicit success/conflict/timeout/failure. A timed-out transport may finish, but server compare-and-set prevents it from overwriting a newer committed revision. |
 | `ProductAnalyticsPreferenceStorage` in `module_core/lib/src/api/storage/` | Layer 1 data source; constructor requires `SecureStorage` | Reads/writes/deletes only closed preference synchronization records. It does not reconcile accounts, call APIs, hash IDs, or emit analytics. |
-| `AnalyticsDeliveryResult`, `ProductAnalyticsPreference`, versioned synchronized/pending preference records, and explicit repository results under `module_core/lib/src/repositories/models/` | Layer-2 contracts | Delivery is `acceptedBySdk`, `deferredUntilPreference`, or `failed`, never an untruthful “reported” boolean. Preference records carry the last server revision required for ordered compare-and-set updates. |
-| `ProductAnalyticsRepository` in `module_core/lib/src/repositories/product_analytics_repository.dart` | Layer 2; constructor requires `AnalyticsApi` | Converts raw authenticated user ID to lowercase SHA-256, passes only the pseudonymous key downward, and maps API exceptions to explicit `AnalyticsDeliveryResult` without redundant logging. It adds `schema_version=1` through the typed event serialization contract. |
+| `AnalyticsDeliveryResult`, `ProductAnalyticsPreference`, versioned synchronized/pending preference records, and explicit repository results under `module_core/lib/src/repositories/models/` | Layer-2 contracts | Delivery is `acceptedBySdk`, `deferredUntilPreference`, or `failed`, never an untruthful “reported” boolean. Preference records carry the last server revision and validated server-derived `userKey` required for ordered compare-and-set updates and event delivery. |
+| `ProductAnalyticsRepository` in `module_core/lib/src/repositories/product_analytics_repository.dart` | Layer 2; constructor requires `AnalyticsApi` | Accepts only the already-validated server-derived pseudonymous key, passes it downward, and maps API exceptions to explicit `AnalyticsDeliveryResult` without redundant logging. It never receives or hashes a raw account ID and adds `schema_version=1` through the typed event serialization contract. |
 | `InstallationAnalyticsRepository` in `module_core/lib/src/repositories/installation_analytics_repository.dart` | Layer 2; constructor requires `AnalyticsApi` | Sends only `InstallationAnalyticsEvent`, adds the installation schema version, and maps SDK failures to explicit delivery results. It has no auth/user/preference dependency and cannot receive a `user_key`. |
 | `ProductAnalyticsPreferenceRepository` in `module_core/lib/src/repositories/product_analytics_preference_repository.dart` | Layer 2; requires `ProductAnalyticsPreferenceApi` and `ProductAnalyticsPreferenceStorage` | Fetch/update server preference, scope local records to one account, and persist only versioned `synced`, `pendingDisable`, or `pendingEnable` records. Every PUT uses the last observed revision plus stable operation ID. Conflict on disable triggers one bounded GET/retry against the new revision; conflict on enable remains inactive and returns explicit refresh-required state so an older enable cannot automatically override a newer disable. `pendingEnable` is never permission to emit. |
 | `ProductAnalyticsState`, independent preference/synchronization variants, and closed fixed-capacity `DeferredProductAnalyticsCandidates` under `module_core/lib/src/services/models/` | Layer-3 service state | Represents active/inactive/pending/failure truth plus only activation/project-available/diff-adoption/current-date-session-activity deferred slots without nullable coordination fields or a generic queue; it is not part of the Foundation sink contract. |
@@ -505,8 +519,9 @@ one bounded GET/retry. `pendingEnable` also stays inactive: GET disabled returns
 to synchronized disabled; GET enabled must first finalize synchronized enabled
 storage before event acceptance. Otherwise the repository GETs the server
 preference once for each post-readiness auth generation; returned disabled stays
-off, while returned enabled in a capable release build allows
-`ProductAnalyticsRepository` to hash the account ID for each typed event.
+off, while returned enabled with a validated server-derived key in a capable
+release build allows `ProductAnalyticsRepository` to emit each typed event with
+that key.
 Disabled runtime capability/debug/profile/unsupported builds retain the desired
 preference but publish the matching inactive reason.
 
@@ -813,14 +828,14 @@ export work to request handlers or the long-running auth process.
 
 | Class/file | Constructor dependencies and layer | Responsibility |
 | --- | --- | --- |
-| `UserRepository` additions in `src/repositories/user-repo.ts` | Existing `MongoDbAccessor` | `findProductAnalyticsExportBatch({afterUserId, batchLimit, createdAtOrBefore})` returns string user ID, creation time, preference/update time, and optional export-suppression time in deterministic ObjectId order. `findPreferenceChanges({after, atOrBefore})` supports the final conservative exclusion pass; no Mongo `ObjectId` leaves the repository. |
+| `UserRepository` additions in `src/repositories/user-repo.ts` | Existing `MongoDbAccessor` | `findProductAnalyticsExportBatch({afterUserId, batchLimit, createdAtOrBefore})` returns string user ID, creation time, preference/update time, and optional export-suppression time in deterministic ObjectId order. `findProductAnalyticsPreferenceChangeBatch({afterUserId, batchLimit, changedAfter})` scans every current latest preference timestamp after the run cutoff for the final conservative exclusion pass; no Mongo `ObjectId` leaves the repository. |
 | `ActivationStateRepository.findByUserIds` in `src/repositories/activation-state-repo.ts` | Existing Mongo collection | Requires `runCutoff`, batch-loads only the four milestone fields for one user page, and projects each milestone to null when its timestamp is later than that cutoff. It returns a map keyed by string user ID and exposes no reminder fields. |
 | `ProductAnalyticsExportRow` / `ProductAnalyticsSetupCohortRow` in `src/models/product-analytics-export.ts` | Plain internal models | Make BigQuery row shapes closed and prevent external-sink calls with auth/OAuth/bridge documents. |
 | `BigQueryProductAnalyticsClient` in `src/clients/bigquery-product-analytics-client.ts` | Foundation external client; requires `@google-cloud/bigquery` `BigQuery`, project ID, auth-export dataset ID, one fully qualified authorized internal-exclusion view, and location | Thin SDK operations for creating/inserting/querying **inside the auth-export dataset only**, plus one typed read of active `user_key` values from the authorized view. It exposes no controls write/DDL method and never receives raw IDs/Mongo documents or export semantics. |
 | `ProductAnalyticsExportApi` in `src/api/product-analytics-export-api.ts` | Layer 1; requires `BigQueryProductAnalyticsClient` | Defines external auth-dataset operations and read-only active-exclusion retrieval, and maps SDK responses/errors; no pagination, aggregation, or publication policy. |
-| `ProductAnalyticsExportRepository` in `src/repositories/product-analytics-export-repo.ts` | Layer 2; requires `ProductAnalyticsExportApi` | Owns a run's staging-table lifecycle, safe-row batching, validation queries, and atomic two-target promotion. The service never calls the client/API directly. |
+| `ProductAnalyticsExportRepository` in `src/repositories/product-analytics-export-repo.ts` | Layer 2; requires `ProductAnalyticsExportApi` | Validates deployment-owned permanent schemas, owns the distributed run lease plus monotonic-cutoff guard, a run's expiring staging-table lifecycle, safe-row batching, validation queries, and atomic two-target promotion. The service never calls the client/API directly. |
 | `ProductAnalyticsControlRepository` in `src/repositories/product-analytics-control-repo.ts` | Layer 2; requires `ProductAnalyticsExportApi` | Loads and validates the bounded permanent internal/test-user key set from the one authorized view. It cannot write controls or auth export tables. |
-| `ProductAnalyticsExportService` in `src/services/product-analytics-export-service.ts` | Layer 3; requires `UserRepository`, `ActivationStateRepository`, `ProductAnalyticsControlRepository`, and `ProductAnalyticsExportRepository` | Owns cutoff pagination, SHA-256 transformation, suppression/internal filtering before all counters, enabled-user filtering, weekly external-account accumulation, reconciliation inputs, and repository promotion. `run({ runCutoff }: { runCutoff: Date })` receives one immutable cutoff. |
+| `ProductAnalyticsExportService` in `src/services/product-analytics-export-service.ts` | Layer 3; requires `UserRepository`, `ActivationStateRepository`, `ProductAnalyticsControlRepository`, `ProductAnalyticsExportRepository`, and the validated pseudonymization key | Owns cutoff pagination, HMAC-SHA-256 transformation, suppression/internal filtering before all counters, enabled-user filtering, weekly external-account accumulation, reconciliation inputs, and repository promotion. `run({ runCutoff }: { runCutoff: Date })` receives one immutable cutoff. |
 | `product-analytics-export-config.ts` in `src/scripts/` | Zod over process environment | Validates only job concerns: Mongo connection/database, GCP project, auth-export dataset, authorized exclusion-view name, location, and bounded batch/exclusion-set size. It cannot configure control writes or curated/reporting datasets, does not import the web server's full OAuth/FCM configuration, and accepts no service-account JSON key. |
 | `export-product-analytics.ts` in `src/scripts/` | Command composition root | Constructs Mongo repositories, ADC BigQuery client, export API/repository/service; invokes one run, awaits jobs, and closes Mongo in `finally`. It is compiled into the production image and run as `node dist/scripts/export-product-analytics.js`; `src/index.ts` does not import it. |
 
@@ -833,15 +848,23 @@ The job takes a fixed `runCutoff`, pages only users created by then, and
 batch-loads activation states with the same cutoff so later milestone writes
 are always null regardless of which page observes them. Preference updates are
 privacy-conservative: rows whose `productAnalyticsPreferenceUpdatedAt` is after
-`runCutoff` are never eligible in that run. Immediately before promotion the
-service captures `preferenceScanCutoff`, queries all preference changes in
-`(runCutoff, preferenceScanCutoff]`, removes those keys from staging/eligible
-coverage, and validates none remain. A preference update after that second
-cutoff belongs to the next run; a disable still disappears from reporting on
-that next successful export. This explicit rule avoids reconstructing unknown
-historical preference values while ensuring pagination timing cannot admit a
-post-cutoff enable/disable. The job writes two products through temporary tables
-before an atomic replace/merge:
+`runCutoff` are never eligible in that run. Immediately before the final
+preference pass the service captures `preferenceScanCutoff`, then scans every
+document whose **current latest** preference timestamp is after `runCutoff`,
+deliberately without an upper timestamp bound. Mongo stores only the latest
+preference timestamp, so a later write must not hide an earlier change inside
+`(runCutoff, preferenceScanCutoff]`. The service removes observed keys from
+staging/eligible coverage. A change after scan start may therefore be excluded
+conservatively when observed; if it lands after that document's scan, it belongs
+to the next run. Any observed source-suppression change aborts publication
+rather than leaving page-order-dependent aggregate contribution. Immediately
+before cohort write/promotion, the service reloads the internal-exclusion
+control and aborts if the observed version/set changed. A control update after
+that final snapshot belongs to the next run; do not add a cross-dataset lock for
+this operational exclusion list. This explicit rule avoids reconstructing
+unknown historical preference values while ensuring pagination timing cannot
+admit a known post-cutoff enable/disable. The job writes two products through
+temporary tables before an atomic replace/merge:
 
 1. `auth_private.auth_user_milestones`: only enabled accounts that are neither
    internally excluded nor source-suppressed; fields are `user_key`,
@@ -871,10 +894,17 @@ remaining account preference is enabled. This also excludes opted-out internal
 accounts before irreversible aggregation. It drops raw IDs/page hashes before
 requesting the next page. Run-scoped staging tables contain only hashed/
 aggregate rows, expire within 24 hours, and are invisible to reporting.
-After all pages and checks succeed, one BigQuery multi-statement transaction
-deletes/inserts both published targets from staging; a failure rolls back both,
-leaving the prior snapshot/cohorts visible. Cleanup is best-effort because table
-expiry is the final guard.
+Permanent target, successful-run metadata, and singleton export-state schemas
+are provisioned only by the deployment identity. Each runtime validates their
+exact schemas, acquires a distributed lease in the auth-private export-state
+table, and creates only expiring staging tables. After all pages and checks
+succeed, one BigQuery multi-statement transaction verifies lease ownership plus
+a strictly newer `runCutoff`, deletes/inserts both published targets from
+staging, appends aggregate run metadata, and advances the monotonic state. A
+concurrent, expired, equal-cutoff, or older run cannot overwrite a newer
+snapshot. A failure rolls back publication, leaving the prior snapshot/cohorts
+visible. Cleanup releases an owned lease best-effort; lease and staging expiry
+are the final guards after process loss.
 
 Job acceptance checks before promotion:
 
@@ -887,9 +917,12 @@ Job acceptance checks before promotion:
   aggregation, and neither class appears in keyed or aggregate outputs;
 - source and staging row counts are recorded without raw IDs;
 - a partial/failed run leaves the previous published tables intact.
-- milestones written after `runCutoff` and preferences changed before
+- milestones written after `runCutoff` and preferences known to have changed by
   `preferenceScanCutoff` remain excluded regardless of the page on which the
-  concurrent write occurs.
+  concurrent write occurs; later current preference timestamps cannot hide an
+  earlier in-window update.
+- overlapping runs cannot publish concurrently, and promotion rejects a cutoff
+  that is equal to or older than the last successful snapshot.
 
 Use Application Default Credentials, Secret Manager for Mongo access, and an
 export service account limited to BigQuery Job User plus Data Editor on
@@ -910,10 +943,10 @@ handler and never an informal sequence of console queries.
 
 | Class/file | Layer/dependencies | Responsibility |
 | --- | --- | --- |
-| `ProductAnalyticsDeletionTarget` in `src/models/product-analytics-export.ts` | Closed internal model | Contains only external privacy request ID, lowercase `user_key`, source tombstone time, and status; no raw account ID. |
+| `ProductAnalyticsDeletionTarget` in `src/models/product-analytics-export.ts` | Closed internal model | Contains only external privacy request ID, lowercase HMAC `user_key`, deletion-only `legacy_firebase_user_id` (the prior SHA-256 Firebase user ID), source tombstone time, and status; no raw account ID. The legacy value never enters analytics exports and exists only to delete data from releases that set the old global Firebase `user_id`. |
 | `BigQueryProductAnalyticsDeletionTargetClient` / `ProductAnalyticsDeletionTargetApi` | Foundation/Layer 1; scoped only to `privacy_private.product_analytics_deletion_targets` | Typed target upsert/read/status operations. It cannot access export-owned auth-private tables, controls, raw, curated, or reporting. |
 | `ProductAnalyticsDeletionTargetRepository` in `src/repositories/product-analytics-deletion-target-repo.ts` | Layer 2; requires `ProductAnalyticsDeletionTargetApi` | Idempotently upserts the restricted deletion target and reads status; it never reuses the export API/client. |
-| `ProductAnalyticsDeletionService` in `src/services/product-analytics-deletion-service.ts` | Layer 3; requires `ProductAnalyticsPreferenceService` and deletion-target repository | Receives raw account ID only in protected process memory, atomically source-tombstones/disables first, hashes with the pinned golden algorithm, writes the restricted target, drops raw ID/key locals, and returns only request ID/status. A target-write failure leaves the source tombstone intact and is safely retryable. |
+| `ProductAnalyticsDeletionService` in `src/services/product-analytics-deletion-service.ts` | Layer 3; requires `ProductAnalyticsPreferenceService` and deletion-target repository | Receives raw account ID only in protected process memory, rejects incomplete stored preference state before the irreversible write, atomically source-tombstones/disables, receives the HMAC-derived key from that preference operation, writes the restricted target, drops raw ID/key locals, and returns only request ID/status. A target-write failure leaves the source tombstone intact and is safely retryable. |
 | `src/scripts/suppress-product-analytics-export.ts` | Protected command composition root | Reads verified raw account ID from stdin and external request ID from a protected input channel, constructs Mongo plus the privacy-private target client/API/repository/service, invokes once, prints only request ID/status, and closes both clients in `finally`. |
 
 The script identity has Mongo suppression access plus append/update/read status
@@ -1182,8 +1215,10 @@ only three days.
   lock is required.
 - From the still-retained raw window, resolve only `user_pseudo_id` values whose
   installation emitted a matching keyed custom event and submit GA4 User
-  Deletion API requests as app-instance IDs. Also submit the hashed key as legacy
-  GA `USER_ID` for data produced before this design removed global `user_id`.
+  Deletion API requests as app-instance IDs. Also submit the restricted target's
+  deletion-only legacy SHA-256 value as GA `USER_ID` for data produced before
+  this design removed global `user_id`; never substitute the new HMAC because it
+  does not match those historical rows.
   An automatic-only installation that disabled before ever emitting a keyed
   event has no account link by design and cannot be targeted by an account-based
   deletion request; do not claim otherwise. Its unlinked GA4 data is governed by
@@ -1278,13 +1313,15 @@ directory name.
 - Publish the eligible pseudonymous snapshot and identifier-free weekly setup
   cohorts through staging/validation/transactional promotion, excluding source-
   suppressed and permanent internal keys before keyed rows or aggregate counters.
-- Test hashing golden vector, opt-out filtering, aggregate reconciliation,
+- Test the HMAC golden vector/key separation, opt-out filtering, aggregate reconciliation,
   pagination cutoff, milestones/preferences changing on already-read and future
   pages, conservative preference exclusion, staging cleanup, rerun idempotency,
   source/internal suppression before aggregation, tombstone non-repopulation,
   and failed-run safety.
-- Deploy web enforcement only after step-1 zero-missing evidence. Deploy the job
-  definition disabled; schedule it in PR 5 after private datasets/IAM exist.
+- Configure one identical pseudonymization secret on the web/export/suppression
+  runtimes, then deploy web enforcement only after step-1 zero-missing evidence.
+  Deploy the job definition disabled; schedule it in PR 5 after private
+  datasets/IAM exist.
 
 ### PR 3/5 — Client analytics foundation and preference
 
@@ -1294,10 +1331,14 @@ directory name.
 
 - Add JSON PUT to `SafeApiClient`, `HttpApiClient`, and
   `AuthenticatedHttpApiClient` in `module_auth`, including auth/header/error/
-  timeout tests; use it for the revisioned preference endpoint.
+  timeout tests; use it for the revisioned preference endpoint. Bind preference
+  GET/PUT token acquisition and any 401 refresh/retry to the initiating account
+  so a delayed operation can never continue with a later account's token.
 - Add the explicitly layered core models, Analytics Client/API/repository,
   product/installation repositories and services, preference API/Storage/
-  repository/service, route listener/readiness gate, and Settings cubit.
+  repository/service, route listener/readiness gate, and Settings cubit. Subscribe
+  to auth before startup storage work and keep post-splash reconciliation behind
+  the latest auth generation's completed local initialization.
   Shared `AuthUser` remains unchanged; `module_auth` changes only its internal
   JSON transport surface for PUT.
 - Move the existing seven-event contract into core models and route existing
@@ -1312,8 +1353,9 @@ directory name.
   in the same PR: remove their transitional current-shell note and make the new
   core models/services the sole source of truth.
 - Implement the thin `FirebaseAnalyticsClient`, pre-core legacy-identity cleanup,
-  and desktop no-op adapter in product shells; add pure-Dart `crypto` to
-  `module_core` and keep SHA-256, route mapping, state, and lifecycle in core.
+  and desktop no-op adapter in product shells; validate and carry the
+  server-derived HMAC user key while keeping route mapping, state, and lifecycle
+  in core.
 - Disable automatic Firebase screen reporting in Android and every Firebase-
   enabled Apple target. Drive screens only from
   `GoRouterRouteSource.currentRouteStream`, map exhaustively to pinned
@@ -1339,9 +1381,10 @@ directory name.
   whole-execution disclosure, logout
   sync failure/account-switch preservation, `SettingsCubit` pre-logout ordering,
   enable-after-server success, delayed
-  GET/PUT/storage completions across rapid login/logout/account switches,
+  GET/PUT/storage completions across rapid login/logout/account switches, 401
+  refresh/retry account binding, latest-generation startup/readiness ordering,
   one-read-per-auth-generation plus explicit Settings refresh, harness routes mapping only to
-  generic settings, debug suppression, core identity hash, route-to-screen
+  generic settings, debug suppression, server-derived key validation/propagation, route-to-screen
   mapping, disabled automatic screen reporting, one Firebase-native screen
   mirror per changed GoRouter route, product/installation event separation,
   event wire pins, and mobile/desktop DI.

@@ -6,16 +6,20 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/settings/settings_cubit.dart";
 import "package:sesori_dart_core/src/cubits/settings/settings_state.dart";
 import "package:sesori_dart_core/src/services/notification_registration_service.dart";
+import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:test/test.dart";
 
 class _MockAuthSession extends Mock implements AuthSession {}
 
 class _MockNotificationRegistrationService extends Mock implements NotificationRegistrationService {}
 
+class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+
 void main() {
   group("SettingsCubit", () {
     late _MockAuthSession authSession;
     late _MockNotificationRegistrationService notificationRegistrationService;
+    late _MockProductAnalyticsService productAnalyticsService;
     late BehaviorSubject<AuthState> authStates;
 
     const user = AuthUser(
@@ -28,6 +32,7 @@ void main() {
     setUp(() {
       authSession = _MockAuthSession();
       notificationRegistrationService = _MockNotificationRegistrationService();
+      productAnalyticsService = _MockProductAnalyticsService();
       authStates = BehaviorSubject<AuthState>.seeded(const AuthState.unauthenticated());
       when(() => authSession.currentState).thenAnswer((_) => authStates.value);
       when(() => authSession.authStateStream).thenAnswer((_) => authStates);
@@ -35,6 +40,7 @@ void main() {
       when(
         () => notificationRegistrationService.resumeRegistrationAfterFailedLogout(),
       ).thenAnswer((_) async {});
+      when(() => productAnalyticsService.prepareForLogout()).thenAnswer((_) async {});
     });
 
     tearDown(() => authStates.close());
@@ -45,6 +51,7 @@ void main() {
       final cubit = SettingsCubit(
         authSession: authSession,
         notificationRegistrationService: notificationRegistrationService,
+        productAnalyticsService: productAnalyticsService,
       );
       addTearDown(cubit.close);
 
@@ -56,6 +63,7 @@ void main() {
       final cubit = SettingsCubit(
         authSession: authSession,
         notificationRegistrationService: notificationRegistrationService,
+        productAnalyticsService: productAnalyticsService,
       );
       addTearDown(cubit.close);
 
@@ -73,6 +81,7 @@ void main() {
       final cubit = SettingsCubit(
         authSession: authSession,
         notificationRegistrationService: notificationRegistrationService,
+        productAnalyticsService: productAnalyticsService,
       );
       addTearDown(cubit.close);
 
@@ -81,6 +90,7 @@ void main() {
 
       expect(await futureStatuses, [SettingsLogoutStatus.inProgress, SettingsLogoutStatus.success]);
       verifyInOrder([
+        () => productAnalyticsService.prepareForLogout(),
         () => notificationRegistrationService.unregisterCurrentDevice(),
         () => authSession.logoutCurrentDevice(),
       ]);
@@ -95,6 +105,7 @@ void main() {
       final cubit = SettingsCubit(
         authSession: authSession,
         notificationRegistrationService: notificationRegistrationService,
+        productAnalyticsService: productAnalyticsService,
       );
       addTearDown(cubit.close);
 
@@ -106,12 +117,34 @@ void main() {
       verify(() => authSession.logoutCurrentDevice()).called(1);
     });
 
+    test("still unregisters notifications and logs out when analytics preparation fails", () async {
+      when(() => productAnalyticsService.prepareForLogout()).thenThrow(StateError("analytics unavailable"));
+      when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
+
+      final cubit = SettingsCubit(
+        authSession: authSession,
+        notificationRegistrationService: notificationRegistrationService,
+        productAnalyticsService: productAnalyticsService,
+      );
+      addTearDown(cubit.close);
+
+      await cubit.logout();
+
+      verifyInOrder([
+        () => productAnalyticsService.prepareForLogout(),
+        () => notificationRegistrationService.unregisterCurrentDevice(),
+        () => authSession.logoutCurrentDevice(),
+      ]);
+      expect(cubit.state.logoutStatus, SettingsLogoutStatus.success);
+    });
+
     test("emits inProgress then failure when logout throws", () async {
       when(() => authSession.logoutCurrentDevice()).thenThrow(StateError("boom"));
 
       final cubit = SettingsCubit(
         authSession: authSession,
         notificationRegistrationService: notificationRegistrationService,
+        productAnalyticsService: productAnalyticsService,
       );
       addTearDown(cubit.close);
 
@@ -120,6 +153,7 @@ void main() {
 
       expect(await futureStatuses, [SettingsLogoutStatus.inProgress, SettingsLogoutStatus.failure]);
       verifyInOrder([
+        () => productAnalyticsService.prepareForLogout(),
         () => notificationRegistrationService.unregisterCurrentDevice(),
         () => authSession.logoutCurrentDevice(),
         () => notificationRegistrationService.resumeRegistrationAfterFailedLogout(),
@@ -133,6 +167,7 @@ void main() {
       final cubit = SettingsCubit(
         authSession: authSession,
         notificationRegistrationService: notificationRegistrationService,
+        productAnalyticsService: productAnalyticsService,
       );
       addTearDown(cubit.close);
 

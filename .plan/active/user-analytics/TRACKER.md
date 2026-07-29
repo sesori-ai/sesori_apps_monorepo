@@ -82,12 +82,24 @@
   service-own already-observed deferred session activity; isolate deletion
   targets from auth-export access; and overlap deletion sweeps across mutable
   late-arrival partitions plus watermark gaps.
+- [x] Replace enumerable ObjectId SHA-256 join keys with server-derived
+  HMAC-SHA-256. The authenticated preference API carries the derived key to
+  clients; one shared secret serves web/export/suppression runtimes, while a
+  deletion-only legacy SHA-256 value remains restricted to privacy targets for
+  pre-migration Firebase `user_id` deletion.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
 
 ## Immediate Operational Action
 
+- [x] Before merging/deploying Step 2, generate one canonical-base64 32-byte
+  pseudonymization secret and configure it on the auth web runtime. The value was
+  configured as a managed DigitalOcean production secret on 2026-07-29 and its
+  SOPS-encrypted counterpart was added in auth commit `183604a`.
+- [ ] Reuse that exact pseudonymization secret when the disabled export and
+  suppression runtimes are created. Do not record the value or rotate it without
+  a coordinated re-key migration.
 - [ ] Establish restricted project IAM, then enable or verify Firebase **daily-
   only** BigQuery export; apply/verify raw dataset ACL and 90-day expiration
   before the first daily table and record exact UTC `raw_export_start_at`.
@@ -102,15 +114,46 @@ step count across both repositories.
 
 | Step | Repository | Required title | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| 1/5 | `sesori_auth_server` | `[user-analytics] Add write-first analytics preference [step 1/5]` | Not started | Deploy before backfill; Firebase export preflight is independent |
-| 2/5 | `sesori_auth_server` | `[user-analytics] Enforce analytics preference and add export [step 2/5]` | Not started | Step 1 deployed and repeated backfill validation at zero missing |
-| 3/5 | apps monorepo | `[user-analytics] Add client analytics foundation and opt-out [step 3/5]` | Not started | Steps 1-2 endpoints/schema deployed |
+| 1/5 | `sesori_auth_server` | `[user-analytics] Add write-first analytics preference [step 1/5]` | Deployed; 2026-07-29 backfilled 656/656 and two repeated validations reported zero missing | Deploy before backfill; Firebase export preflight is independent |
+| 2/5 | `sesori_auth_server` | `[user-analytics] Enforce analytics preference and add export [step 2/5]` | PR #49 merged as `043ee9f` and deployed 2026-07-29; production health is `ok`, required-field enforcement is live, and the web HMAC secret is configured; export/suppression jobs remain unprovisioned and disabled | Step 1 deployed and repeated backfill validation at zero missing |
+| 3/5 | apps monorepo | `[user-analytics] Add client analytics foundation and opt-out [step 3/5]` | Local implementation and verification complete; ready for publication/manual release checks | Steps 1-2 endpoints/schema deployed |
 | 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | Not started | Step 3 released |
 | 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
+## Step 3 Local Implementation Evidence (2026-07-29)
+
+- [x] Added the layered client analytics foundation, synchronized Settings
+  preference, release-only runtime capability, server-HMAC key propagation,
+  GoRouter-owned screen reporting, Firebase mobile adapter/legacy-ID clear, and
+  desktop no-op adapter. Migrated the existing onboarding catalog to confirmed
+  platform outcomes and removed the legacy shell-owned analytics stack.
+- [x] Bound preference GET/PUT token acquisition and 401 retry to the initiating
+  account. Analytics auth subscription now exists before startup storage work,
+  and startup/readiness wait for the latest generation's local initialization
+  before reconciliation. Regression tests cover account switches during token
+  refresh and while both old/new account storage reads are pending.
+- [x] Ran `dart pub get` from `client/`; regenerated Injectable outputs in
+  `module_core`, `app`, and `desktop`; regenerated app localizations.
+- [x] `dart analyze` reports no issues in `client/module_auth`,
+  `client/module_core`, `client/app`, `client/desktop`, and
+  `client/module_desktop_core`.
+- [x] Full suites pass: `module_auth` 86 tests, `module_core` 748 tests, mobile
+  app 764 tests, desktop shell 15 tests, and `module_desktop_core` 52 tests.
+  `git diff --check` also passes.
+- [x] Ran the two permitted architecture implementation-review passes. Pass 1
+  found startup subscription and cross-account 401-retry races; both were fixed.
+  Pass 2 confirmed the account-bound transport fix and found that stale startup
+  completion could release readiness before the latest local load; that finding
+  was fixed with a latest-generation initialization gate and regression test.
+  Per the two-pass cap, the final fix was not sent for a third verdict; do not
+  describe the implementation as reviewer-approved.
+- [ ] Complete the plan's release-build Firebase/GoRouter/upgrade smoke checks
+  with synthetic content. Public privacy notice, private store metadata, and
+  counsel approval remain release prerequisites.
+
 ## Release Evidence
 
-- [ ] Write-first auth preference endpoint deployed; backfill repeatedly reports
+- [x] Write-first auth preference endpoint deployed; backfill repeatedly reports
   zero missing; required-field enforcement deployed.
 - [ ] Auth export staging validation reconciled and daily schedule enabled.
 - [ ] Mobile analytics release available to production users.

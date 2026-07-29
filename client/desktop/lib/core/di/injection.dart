@@ -21,6 +21,9 @@ final GetIt getIt = GetIt.instance;
 // which must attach its WidgetsBinding observer at startup.
 @InjectableInit()
 void configureDesktopDependencies() {
+  getIt.registerSingleton<AnalyticsRuntimeCapability>(
+    const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.unsupportedPlatform),
+  );
   getIt.init();
   configureAuthDependencies(getIt);
   configureCoreDependencies(getIt);

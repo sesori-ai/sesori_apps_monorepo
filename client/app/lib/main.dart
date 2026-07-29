@@ -13,11 +13,11 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "core/analytics/analytics_user_id_tracker.dart";
 import "core/di/injection.dart";
 import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
+import "core/platform/firebase_analytics_identity_migration.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
@@ -26,6 +26,15 @@ import "l10n/app_localizations.dart";
 @pragma("vm:entry-point")
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  final capability =
+      await FirebaseAnalyticsIdentityMigration(
+        analytics: FirebaseAnalytics.instance,
+      ).clearLegacyIdentity(
+        disabledReasonAfterSuccess: kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile,
+      );
+  if (capability case AnalyticsRuntimeDisabled(reason: AnalyticsRuntimeDisabledReason.legacyIdentityClearFailed)) {
+    return;
+  }
 }
 
 void _configureFirebaseSdk({
@@ -82,17 +91,26 @@ void main() async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   }
 
-  await bootstrapSesoriApp(
+  final analyticsRuntimeCapability = await _createAnalyticsRuntimeCapability(
     shouldInitializeFirebase: shouldInitializeFirebase,
     supportsFirebaseAnalytics: supportsFirebaseAnalytics,
+  );
+
+  await bootstrapSesoriApp(
+    shouldInitializeFirebase: shouldInitializeFirebase,
     configureDependenciesFn: () {
-      configureDependencies(firebaseEnabled: shouldInitializeFirebase);
+      configureDependencies(
+        firebaseEnabled: shouldInitializeFirebase,
+        analyticsRuntimeCapability: analyticsRuntimeCapability,
+      );
       _configureFirebaseSdk(
         supportsAnalytics: supportsFirebaseAnalytics,
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
     },
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
+    startProductAnalyticsFn: () => getIt<ProductAnalyticsService>().start(),
+    startAnalyticsRouteListenerFn: () => getIt<AnalyticsRouteListener>().start(),
     startNotificationStartupFn: () => startNotificationStartup(
       localNotificationClient: getIt<LocalNotificationClient>(),
       pushMessagingSource: getIt<PushMessagingSource>(),
@@ -107,24 +125,19 @@ void main() async {
 
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
-  required bool supportsFirebaseAnalytics,
   required void Function() configureDependenciesFn,
   required void Function() initializeDeepLinks,
+  required Future<void> Function() startProductAnalyticsFn,
+  required Future<void> Function() startAnalyticsRouteListenerFn,
   required Future<void> Function() startNotificationStartupFn,
   required Future<AppearanceMode> Function() readAppearanceFn,
   required void Function(Widget app) runAppFn,
 }) async {
   configureDependenciesFn();
   initializeDeepLinks();
+  await startProductAnalyticsFn();
+  await startAnalyticsRouteListenerFn();
   if (shouldInitializeFirebase) {
-    if (supportsFirebaseAnalytics) {
-      // Side effect: the tracker auto-subscribes to auth state changes and
-      // syncs the hashed user ID with Firebase Analytics. Do not remove.
-      AnalyticsUserIdTracker(
-        authSession: getIt<AuthSession>(),
-        analytics: getIt<FirebaseAnalytics>(),
-      );
-    }
     unawaited(
       startNotificationStartupFn().catchError((Object error, StackTrace stackTrace) {
         loge("Error bootstrapping notification startup", error, stackTrace);
@@ -160,6 +173,20 @@ Future<void> bootstrapSesoriApp({
         },
       ),
     ),
+  );
+}
+
+Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
+  required bool shouldInitializeFirebase,
+  required bool supportsFirebaseAnalytics,
+}) {
+  if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
+    return Future.value(
+      const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.firebaseUnavailable),
+    );
+  }
+  return FirebaseAnalyticsIdentityMigration(analytics: FirebaseAnalytics.instance).clearLegacyIdentity(
+    disabledReasonAfterSuccess: kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile,
   );
 }
 

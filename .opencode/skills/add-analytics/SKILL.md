@@ -27,12 +27,7 @@ only honest signal for a defined funnel step.
 
 ## Current and planned seams
 
-Until `.plan/active/user-analytics/` step 3 lands, the existing event union is
-`client/app/lib/core/analytics/analytics_event.dart` and the mobile shell owns
-`AnalyticsReporter`. Do not pretend the planned core files already exist or
-partially introduce the new architecture outside the series.
-
-After step 3 lands, the source of truth is the closed models under
+The source of truth is the closed models under
 `client/module_core/lib/src/foundation/models/product_analytics/`, with
 repository delivery/preference records under `repositories/models/` and service
 state under `services/models/`:

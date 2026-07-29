@@ -31,12 +31,15 @@ export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
 export "package:sesori_shared/sesori_shared.dart" show AuthProvider;
 
 // API
+export "src/api/analytics_api.dart";
 export "src/api/client/relay_http_client.dart";
 export "src/api/filesystem_api.dart";
 export "src/api/notification_api.dart";
 export "src/api/notification_preferences_api.dart";
 export "src/api/plugin_preference_api.dart";
+export "src/api/product_analytics_preference_api.dart";
 export "src/api/project_api.dart";
+export "src/api/storage/product_analytics_preference_storage.dart";
 export "src/capabilities/notifications/register_token_request.dart";
 export "src/capabilities/relay/relay_client.dart";
 export "src/capabilities/relay/relay_config.dart";
@@ -63,6 +66,7 @@ export "src/cubits/notification_preferences/notification_preferences_cubit.dart"
 export "src/cubits/notification_preferences/notification_preferences_state.dart";
 export "src/cubits/plugin_management/plugin_management_cubit.dart";
 export "src/cubits/plugin_management/plugin_management_state.dart";
+export "src/cubits/product_analytics_preference/product_analytics_preference_cubit.dart";
 export "src/cubits/project_list/add_project_outcome.dart";
 export "src/cubits/project_list/project_list_cubit.dart";
 export "src/cubits/project_list/project_list_state.dart";
@@ -83,6 +87,12 @@ export "src/cubits/splash/splash_state.dart";
 export "src/di/injection.dart";
 // Errors
 export "src/errors/remote_failure_reason.dart";
+// Analytics foundation
+export "src/foundation/models/product_analytics/analytics_runtime_capability.dart";
+export "src/foundation/models/product_analytics/installation_analytics_event.dart";
+export "src/foundation/models/product_analytics/product_analytics_event.dart";
+export "src/foundation/models/product_analytics/product_analytics_preference.dart";
+export "src/foundation/platform/analytics_client.dart";
 // Logging
 export "src/logging/logging.dart";
 // Platform interfaces
@@ -98,28 +108,37 @@ export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
 export "src/repositories/appearance_store.dart";
 export "src/repositories/bridge_repository.dart";
+export "src/repositories/installation_analytics_repository.dart";
 export "src/repositories/legal_repository.dart";
+export "src/repositories/models/analytics_delivery_result.dart";
 export "src/repositories/models/plugin_management_result.dart";
+export "src/repositories/models/product_analytics_preference_models.dart";
 export "src/repositories/models/repo_provider.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
 export "src/repositories/plugin_preference_repository.dart";
 export "src/repositories/plugin_repository.dart";
+export "src/repositories/product_analytics_preference_repository.dart";
+export "src/repositories/product_analytics_repository.dart";
 export "src/repositories/project_repository.dart";
 export "src/repositories/registered_bridges_store.dart";
 export "src/repositories/session_repository.dart";
 // Routing
+export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
 // Services
 export "src/services/draft_store.dart";
 export "src/services/foreground_notification_dispatcher.dart";
+export "src/services/installation_analytics_service.dart";
+export "src/services/models/product_analytics_state.dart";
 export "src/services/models/session_activity_info.dart";
 export "src/services/new_session_plugin_service.dart";
 export "src/services/new_session_selection_tracker.dart";
 export "src/services/notification_registration_service.dart";
 export "src/services/plugin_management_service.dart";
+export "src/services/product_analytics_service.dart";
 export "src/services/project_list_service.dart";
 export "src/services/registered_bridges_service.dart";
 export "src/services/session_detail_load_service.dart";

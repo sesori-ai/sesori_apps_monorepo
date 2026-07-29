@@ -823,6 +823,90 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get settingsSectionAppearance;
 
+  /// No description provided for @settingsSectionProductAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Product Analytics'**
+  String get settingsSectionProductAnalytics;
+
+  /// No description provided for @settingsProductAnalyticsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share pseudonymous product usage from this device'**
+  String get settingsProductAnalyticsTitle;
+
+  /// No description provided for @settingsProductAnalyticsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares bounded feature and screen outcomes linked by a pseudonymous account key. Sesori never sends source code, prompts, responses, transcripts, paths, project or session names, or raw account identifiers.'**
+  String get settingsProductAnalyticsDescription;
+
+  /// No description provided for @settingsProductAnalyticsLimitations.
+  ///
+  /// In en, this message translates to:
+  /// **'This switch does not control Firebase automatic installation events or its pseudonymous installation/device and approximate-location processing, the bounded account-less sign-in funnel, operational account and bridge records, older app versions, or another supported device until it next synchronizes.'**
+  String get settingsProductAnalyticsLimitations;
+
+  /// No description provided for @settingsProductAnalyticsRetention.
+  ///
+  /// In en, this message translates to:
+  /// **'Google\'s upstream analytics retention is two months. Sesori\'s restricted exported raw copy expires after 90 days.'**
+  String get settingsProductAnalyticsRetention;
+
+  /// No description provided for @settingsProductAnalyticsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking your saved preference…'**
+  String get settingsProductAnalyticsLoading;
+
+  /// No description provided for @settingsProductAnalyticsDisablePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled on this device. Account sync is pending.'**
+  String get settingsProductAnalyticsDisablePending;
+
+  /// No description provided for @settingsProductAnalyticsEnablePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Account enablement or local finalization is pending. Product usage remains off here.'**
+  String get settingsProductAnalyticsEnablePending;
+
+  /// No description provided for @settingsProductAnalyticsDisableRetryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Product usage is off for this run, but the local preference and account sync could not be saved. Retry before leaving.'**
+  String get settingsProductAnalyticsDisableRetryRequired;
+
+  /// No description provided for @settingsProductAnalyticsSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not synchronize. Product usage remains off on this device; refresh to retry.'**
+  String get settingsProductAnalyticsSyncFailed;
+
+  /// No description provided for @settingsProductAnalyticsNotSynchronized.
+  ///
+  /// In en, this message translates to:
+  /// **'This device has not synchronized the account preference yet.'**
+  String get settingsProductAnalyticsNotSynchronized;
+
+  /// No description provided for @settingsProductAnalyticsSynchronized.
+  ///
+  /// In en, this message translates to:
+  /// **'Preference synchronized.'**
+  String get settingsProductAnalyticsSynchronized;
+
+  /// No description provided for @settingsProductAnalyticsRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh analytics preference'**
+  String get settingsProductAnalyticsRefresh;
+
+  /// No description provided for @settingsProductAnalyticsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry analytics preference sync'**
+  String get settingsProductAnalyticsRetry;
+
   /// Theme option that always renders the app in the light theme
   ///
   /// In en, this message translates to:

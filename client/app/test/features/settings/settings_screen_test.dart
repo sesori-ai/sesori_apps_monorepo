@@ -80,12 +80,15 @@ void main() {
   late AppearanceCubit appearance;
   late _MockUrlLauncher urlLauncher;
   late _MockLegalRepository legalRepository;
+  late MockProductAnalyticsService productAnalyticsService;
+  late BehaviorSubject<ProductAnalyticsState> productAnalyticsStates;
 
   setUpAll(() {
     registerFallbackValue(Uri());
     registerFallbackValue(UrlLaunchMode.externalApp);
     registerFallbackValue(AppearanceMode.system);
     registerFallbackValue(LegalDocument.terms);
+    registerFallbackValue(ProductAnalyticsPreference.disabled);
   });
 
   setUp(() async {
@@ -103,6 +106,35 @@ void main() {
       _MockNotificationRegistrationService(),
     );
 
+    const analyticsRecord = ProductAnalyticsPreferenceRecord(
+      userId: "user-a",
+      preference: ProductAnalyticsPreference.enabled,
+      revision: 1,
+      userKey: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    );
+    productAnalyticsStates = BehaviorSubject.seeded(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(
+          record: analyticsRecord,
+          preference: ProductAnalyticsPreference.enabled,
+        ),
+        synchronization: ProductAnalyticsSynchronized(),
+        availability: ProductAnalyticsActive(
+          userKey: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ),
+      ),
+    );
+    productAnalyticsService = MockProductAnalyticsService();
+    when(() => productAnalyticsService.state).thenAnswer((_) => productAnalyticsStates.value);
+    when(() => productAnalyticsService.stateStream).thenAnswer((_) => productAnalyticsStates.stream);
+    when(
+      () => productAnalyticsService.setPreference(preference: any(named: "preference")),
+    ).thenAnswer((_) async {});
+    when(productAnalyticsService.refreshPreference).thenAnswer((_) async {});
+    when(productAnalyticsService.retryPendingDisable).thenAnswer((_) async {});
+    when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
+
     final store = _MockAppearanceStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
     appearance = AppearanceCubit(store: store, initialMode: AppearanceMode.system);
@@ -117,6 +149,7 @@ void main() {
 
   tearDown(() async {
     await GetIt.instance.reset();
+    await productAnalyticsStates.close();
   });
 
   testWidgets("profile row stays reachable without a cached account", (tester) async {
@@ -249,5 +282,57 @@ void main() {
         mode: UrlLaunchMode.externalApp,
       ),
     ).called(1);
+  });
+
+  testWidgets("analytics setting discloses scope and delegates the opt-out", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Share pseudonymous product usage from this device"), findsOneWidget);
+    expect(find.textContaining("never sends source code, prompts, responses, transcripts"), findsOneWidget);
+    expect(find.textContaining("automatic installation events"), findsOneWidget);
+    expect(find.textContaining("approximate-location processing"), findsOneWidget);
+    expect(find.textContaining("upstream analytics retention is two months"), findsOneWidget);
+    expect(find.textContaining("expires after 90 days"), findsOneWidget);
+
+    await tester.tap(find.text("Share pseudonymous product usage from this device"));
+    await tester.pump();
+
+    verify(
+      () => productAnalyticsService.setPreference(preference: ProductAnalyticsPreference.disabled),
+    ).called(1);
+  });
+
+  testWidgets("pending disable exposes an explicit retry action", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    const record = ProductAnalyticsPreferenceRecord(
+      userId: "user-a",
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 1,
+      userKey: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    );
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(
+          record: record,
+          preference: ProductAnalyticsPreference.disabled,
+        ),
+        synchronization: ProductAnalyticsDisablePending(),
+        availability: ProductAnalyticsInactive(
+          reason: ProductAnalyticsInactiveReason.synchronizationPending,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining("Disabled on this device. Account sync is pending."), findsOneWidget);
+    await tester.tap(find.text("Retry analytics preference sync"));
+    await tester.pump();
+
+    verify(productAnalyticsService.refreshPreference).called(1);
   });
 }

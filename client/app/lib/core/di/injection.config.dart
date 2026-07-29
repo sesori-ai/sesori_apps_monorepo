@@ -30,9 +30,6 @@ import 'package:sesori_mobile/capabilities/voice/voice_transcription_service.dar
     as _i1038;
 import 'package:sesori_mobile/capabilities/voice/wake_lock_service.dart'
     as _i511;
-import 'package:sesori_mobile/core/analytics/analytics_reporter.dart' as _i199;
-import 'package:sesori_mobile/core/analytics/firebase_analytics_reporter.dart'
-    as _i330;
 import 'package:sesori_mobile/core/di/firebase_register_module.dart' as _i677;
 import 'package:sesori_mobile/core/di/register_module.dart' as _i124;
 import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
@@ -41,6 +38,8 @@ import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
     as _i178;
+import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
+    as _i326;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_local_notification_client.dart'
@@ -172,11 +171,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseDisabled},
     );
-    gh.lazySingleton<_i199.AnalyticsReporter>(
-      () => _i330.FirebaseAnalyticsReporter(
-        analytics: gh<_i398.FirebaseAnalytics>(),
-      ),
-    );
     gh.lazySingleton<_i901.DeepLinkService>(
       () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
@@ -185,6 +179,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1042.FirebasePushMessagingSource(
         messaging: gh<_i892.FirebaseMessaging>(),
         staticAdapter: gh<_i178.FirebaseMessagingStaticAdapter>(),
+      ),
+    );
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => _i326.FirebaseAnalyticsClient(
+        analytics: gh<_i398.FirebaseAnalytics>(),
+        capability: gh<_i948.AnalyticsRuntimeCapability>(),
       ),
     );
     gh.lazySingleton<_i553.FailureReporter>(

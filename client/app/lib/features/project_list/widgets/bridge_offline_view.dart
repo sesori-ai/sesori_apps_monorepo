@@ -86,10 +86,10 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
           const _CommandBoxFrame(
             child: _CommandActionRow(
               command: BridgeInstall.runCommand,
-              copiedEvent: AnalyticsEvent.runCommandCopied(
+              copiedEvent: ProductAnalyticsEvent.runCommandCopied(
                 surface: OnboardingSurface.bridgeOffline,
               ),
-              sharedEvent: AnalyticsEvent.runCommandShared(
+              sharedEvent: ProductAnalyticsEvent.runCommandShared(
                 surface: OnboardingSurface.bridgeOffline,
               ),
             ),

@@ -6,18 +6,22 @@ import "package:sesori_auth/sesori_auth.dart";
 
 import "../../logging/logging.dart";
 import "../../services/notification_registration_service.dart";
+import "../../services/product_analytics_service.dart";
 import "settings_state.dart";
 
 class SettingsCubit extends Cubit<SettingsState> {
   final AuthSession _authSession;
   final NotificationRegistrationService _notificationRegistrationService;
+  final ProductAnalyticsService _productAnalyticsService;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   SettingsCubit({
     required AuthSession authSession,
     required NotificationRegistrationService notificationRegistrationService,
+    required ProductAnalyticsService productAnalyticsService,
   }) : _authSession = authSession,
        _notificationRegistrationService = notificationRegistrationService,
+       _productAnalyticsService = productAnalyticsService,
        super(SettingsState(account: _accountFrom(authSession.currentState))) {
     // Keep the signed-in account in sync: the session is restored
     // asynchronously on launch, so the account may resolve after the cubit is
@@ -42,6 +46,11 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(logoutStatus: SettingsLogoutStatus.inProgress));
 
     try {
+      try {
+        await _productAnalyticsService.prepareForLogout();
+      } catch (error, stackTrace) {
+        logw("Failed to prepare product analytics for logout", error, stackTrace);
+      }
       try {
         await _notificationRegistrationService.unregisterCurrentDevice();
       } catch (error, stackTrace) {

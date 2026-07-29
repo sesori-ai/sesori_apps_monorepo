@@ -165,10 +165,10 @@ class _ConnectBridgeChecklist extends StatelessWidget {
               const _CommandBoxFrame(
                 child: _CommandActionRow(
                   command: BridgeInstall.runCommand,
-                  copiedEvent: AnalyticsEvent.runCommandCopied(
+                  copiedEvent: ProductAnalyticsEvent.runCommandCopied(
                     surface: OnboardingSurface.connectSetup,
                   ),
-                  sharedEvent: AnalyticsEvent.runCommandShared(
+                  sharedEvent: ProductAnalyticsEvent.runCommandShared(
                     surface: OnboardingSurface.connectSetup,
                   ),
                 ),
@@ -207,16 +207,13 @@ class _WhyBridgeButton extends StatelessWidget {
         hierarchy: PregoButtonsSolidHierarchy.tertiary,
         size: PregoButtonsSolidSize.sm,
         onPressed: () {
-          unawaited(
-            getIt<AnalyticsReporter>().logEvent(
-              event: AnalyticsEvent.whyBridgeOpened(surface: surface),
-            ),
-          );
-          showPregoBottomSheet<void>(
+          final presentation = showPregoBottomSheet<void>(
             context: context,
             title: loc.projectsOnboardingPcStatusWhy,
             builder: (_) => const _WhyBridgeInfoSheet(),
           );
+          _reportProductEvent(ProductAnalyticsEvent.whyBridgeOpened(surface: surface));
+          unawaited(presentation);
         },
       ),
     );
@@ -312,15 +309,12 @@ class _NeedHelpMenu extends StatelessWidget {
 
   /// Opens one of the "Need help?" contact links ([SupportLinks]) through the
   /// shared [openExternalLink] helper. Reports the tapped [channel] to
-  /// analytics before launching, so the tap is counted even when the launch
-  /// itself fails.
-  Future<void> _openSupportLink({required String url, required SupportChannel channel}) {
-    unawaited(
-      getIt<AnalyticsReporter>().logEvent(
-        event: AnalyticsEvent.supportLinkOpened(channel: channel, surface: surface),
-      ),
-    );
-    return openExternalLink(url: Uri.parse(url));
+  /// analytics only after the platform confirms the handoff.
+  Future<void> _openSupportLink({required String url, required SupportChannel channel}) async {
+    final launched = await openExternalLink(url: Uri.parse(url));
+    if (launched) {
+      _reportProductEvent(ProductAnalyticsEvent.supportLinkOpened(channel: channel, surface: surface));
+    }
   }
 
   @override
@@ -337,12 +331,8 @@ class _NeedHelpMenu extends StatelessWidget {
         onPressed: () {
           // While the popup is up its barrier covers the trigger, so a pill
           // tap can only ever open the menu — safe to count as an open.
-          unawaited(
-            getIt<AnalyticsReporter>().logEvent(
-              event: AnalyticsEvent.needHelpMenuOpened(surface: surface),
-            ),
-          );
           toggle();
+          _reportProductEvent(ProductAnalyticsEvent.needHelpMenuOpened(surface: surface));
         },
       ),
       entriesBuilder: () => [
@@ -417,12 +407,12 @@ class _InstallCommandBoxesState extends State<_InstallCommandBoxes> {
     return _InstallMethod(
       label: label,
       command: command,
-      copiedEvent: AnalyticsEvent.installCommandCopied(
+      copiedEvent: ProductAnalyticsEvent.installCommandCopied(
         method: method,
         os: os,
         surface: widget.surface,
       ),
-      sharedEvent: AnalyticsEvent.installCommandShared(
+      sharedEvent: ProductAnalyticsEvent.installCommandShared(
         method: method,
         os: os,
         surface: widget.surface,
@@ -634,10 +624,10 @@ class _InstallMethod {
 
   /// Logged when this method's command is copied, carrying the method/OS/
   /// surface identity stamped by [_InstallCommandBoxesState].
-  final AnalyticsEvent copiedEvent;
+  final ProductAnalyticsEvent copiedEvent;
 
   /// Logged when this method's command is shared.
-  final AnalyticsEvent sharedEvent;
+  final ProductAnalyticsEvent sharedEvent;
 }
 
 /// One platform's install instruction box: a row of method tabs (e.g.
@@ -770,10 +760,10 @@ class _CommandActionRow extends StatefulWidget {
 
   /// Logged when the copy action is tapped. Pre-built by the host, which knows
   /// the command's identity (install method/OS or run) and surface.
-  final AnalyticsEvent copiedEvent;
+  final ProductAnalyticsEvent copiedEvent;
 
   /// Logged when the share action is tapped.
-  final AnalyticsEvent sharedEvent;
+  final ProductAnalyticsEvent sharedEvent;
 
   final bool topDivider;
 
@@ -783,9 +773,6 @@ class _CommandActionRow extends StatefulWidget {
 
 class _CommandActionRowState extends State<_CommandActionRow> {
   Future<void> _copyCommand() async {
-    // Reported before attempting the write, so the tap is counted even when
-    // the clipboard fails.
-    unawaited(getIt<AnalyticsReporter>().logEvent(event: widget.copiedEvent));
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
     // Clipboard can throw on restricted platforms/states; fail soft and skip
@@ -797,6 +784,7 @@ class _CommandActionRowState extends State<_CommandActionRow> {
       logw("Failed to copy command", error, stackTrace);
       return;
     }
+    _reportProductEvent(widget.copiedEvent);
     messenger.showSnackBar(
       SnackBar(
         content: Text(loc.projectsOnboardingCommandCopied),
@@ -806,9 +794,6 @@ class _CommandActionRowState extends State<_CommandActionRow> {
   }
 
   Future<void> _shareCommand() async {
-    // Reported before raising the sheet, so the tap is counted even when the
-    // share itself fails.
-    unawaited(getIt<AnalyticsReporter>().logEvent(event: widget.sharedEvent));
     // iPad presents the share sheet as a popover anchored to a source rect;
     // derive it from this row so the popover points at the command instead of
     // floating (an unanchored sheet throws on iPad).
@@ -817,7 +802,12 @@ class _CommandActionRowState extends State<_CommandActionRow> {
         ? renderObject.localToGlobal(Offset.zero) & renderObject.size
         : null;
     try {
-      await SharePlus.instance.share(ShareParams(text: widget.command, sharePositionOrigin: origin));
+      final result = await SharePlus.instance.share(
+        ShareParams(text: widget.command, sharePositionOrigin: origin),
+      );
+      if (result.status != ShareResultStatus.unavailable) {
+        _reportProductEvent(widget.sharedEvent);
+      }
     } on Object catch (error, stackTrace) {
       // Dismissing the sheet is reported via ShareResultStatus, not a throw, so
       // reaching here is a real platform failure with nothing to recover — log
@@ -887,6 +877,12 @@ class _CommandActionRowState extends State<_CommandActionRow> {
       ),
     );
   }
+}
+
+void _reportProductEvent(ProductAnalyticsEvent event) {
+  unawaited(
+    getIt<ProductAnalyticsService>().logEvent(event: event, occurredAtUtc: DateTime.now().toUtc()).then<void>((_) {}),
+  );
 }
 
 /// A 40×44 tap target rendering [icon] over the command surface, used for the
