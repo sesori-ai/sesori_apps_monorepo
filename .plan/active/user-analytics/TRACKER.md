@@ -137,7 +137,7 @@ step count across both repositories.
 - [x] `dart analyze` reports no issues in `client/module_auth`,
   `client/module_core`, `client/app`, `client/desktop`, and
   `client/module_desktop_core`.
-- [x] Full suites pass: `module_auth` 86 tests, `module_core` 754 tests, mobile
+- [x] Full suites pass: `module_auth` 86 tests, `module_core` 755 tests, mobile
   app 769 tests, desktop shell 15 tests, and `module_desktop_core` 52 tests.
   `git diff --check` also passes.
 - [x] PR review follow-up preserves pending-enable operation intent after a

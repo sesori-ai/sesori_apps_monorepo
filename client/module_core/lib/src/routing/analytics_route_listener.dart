@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:injectable/injectable.dart";
+import "package:meta/meta.dart";
 
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../logging/logging.dart";
@@ -30,6 +31,7 @@ class AnalyticsRouteListener {
       _analyticsService = analyticsService,
       _deliveryDeadline = _screenDeliveryDeadline;
 
+  @visibleForTesting
   AnalyticsRouteListener.withDeliveryDeadline({
     required RouteSource routeSource,
     required ProductAnalyticsService analyticsService,

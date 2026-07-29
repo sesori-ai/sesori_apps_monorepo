@@ -61,6 +61,7 @@ class _RecordingPreferenceStorage implements ProductAnalyticsPreferenceStorage {
   final List<String> operations;
   final writes = <StoredProductAnalyticsPreference>[];
   StoredProductAnalyticsPreference? stored;
+  Object? readError;
   Set<int> failingWriteNumbers = {};
 
   _RecordingPreferenceStorage({required this.operations});
@@ -68,6 +69,8 @@ class _RecordingPreferenceStorage implements ProductAnalyticsPreferenceStorage {
   @override
   Future<StoredProductAnalyticsPreference?> read({required String userId}) async {
     operations.add("storage:read:$userId");
+    final error = readError;
+    if (error != null) throw error;
     return stored;
   }
 
@@ -119,6 +122,15 @@ void main() {
     expect(operations[1], "api:put:disabled:1");
     expect(api.updates.single.userId, "user-a");
     expect(api.updates.single.operationId, matches(RegExp(r"^[0-9a-f-]{36}$")));
+  });
+
+  test("malformed local storage is deleted and treated as absent", () async {
+    storage.readError = const FormatException("invalid stored preference");
+
+    final result = await repository.loadLocal(userId: "user-a");
+
+    expect(result, isNull);
+    expect(operations, ["storage:read:user-a", "storage:delete:user-a"]);
   });
 
   test("enable never calls the server when its write-ahead record fails", () async {

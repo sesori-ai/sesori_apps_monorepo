@@ -5,6 +5,7 @@ import "package:injectable/injectable.dart";
 import "../api/product_analytics_preference_api.dart";
 import "../api/storage/product_analytics_preference_storage.dart";
 import "../foundation/models/product_analytics/product_analytics_preference.dart";
+import "../logging/logging.dart";
 import "models/product_analytics_preference_models.dart";
 
 @lazySingleton
@@ -19,7 +20,14 @@ class ProductAnalyticsPreferenceRepository {
        _storage = storage;
 
   Future<LocalProductAnalyticsPreference?> loadLocal({required String userId}) async {
-    final stored = await _storage.read(userId: userId);
+    final StoredProductAnalyticsPreference? stored;
+    try {
+      stored = await _storage.read(userId: userId);
+    } on FormatException catch (error, stackTrace) {
+      logw("Found malformed local analytics preference; deleting it", error, stackTrace);
+      await _storage.delete(userId: userId);
+      return null;
+    }
     if (stored == null) return null;
     final record = _recordFromStored(stored);
     return switch (stored) {
