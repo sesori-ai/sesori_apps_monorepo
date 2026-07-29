@@ -311,7 +311,7 @@ class _NeedHelpMenu extends StatelessWidget {
     required String url,
     required SupportChannel channel,
   }) async {
-    final launched = await openExternalLink(url: Uri.parse(url));
+    final launched = await openExternalLink(url: Uri.parse(url), mode: UrlLaunchMode.externalApp);
     if (launched) {
       cubit.reportSupportLinkOpened(channel: channel, surface: surface);
     }
@@ -656,6 +656,7 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
+    final selected = _selected;
 
     return _CommandBoxFrame(
       child: Column(
@@ -674,16 +675,16 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
             ),
           ),
           _CommandActionRow(
-            command: _selected.command,
+            command: selected.command,
             reportCopied: (cubit) => cubit.reportInstallCommandCopied(
-              method: _selected.method,
-              os: _selected.os,
-              surface: _selected.surface,
+              method: selected.method,
+              os: selected.os,
+              surface: selected.surface,
             ),
             reportShared: (cubit) => cubit.reportInstallCommandShared(
-              method: _selected.method,
-              os: _selected.os,
-              surface: _selected.surface,
+              method: selected.method,
+              os: selected.os,
+              surface: selected.surface,
             ),
             topDivider: true,
           ),
@@ -787,16 +788,18 @@ class _CommandActionRowState extends State<_CommandActionRow> {
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
     final cubit = context.read<ProjectListCubit>();
+    final command = widget.command;
+    final reportCopied = widget.reportCopied;
     // Clipboard can throw on restricted platforms/states; fail soft and skip
     // the success snackbar. Log so a broken copy button leaves a diagnostic
     // trail instead of failing silently.
     try {
-      await Clipboard.setData(ClipboardData(text: widget.command));
+      await Clipboard.setData(ClipboardData(text: command));
     } on Object catch (error, stackTrace) {
       logw("Failed to copy command", error, stackTrace);
       return;
     }
-    widget.reportCopied(cubit);
+    reportCopied(cubit);
     messenger.showSnackBar(
       SnackBar(
         content: Text(loc.projectsOnboardingCommandCopied),
@@ -807,6 +810,8 @@ class _CommandActionRowState extends State<_CommandActionRow> {
 
   Future<void> _shareCommand() async {
     final cubit = context.read<ProjectListCubit>();
+    final command = widget.command;
+    final reportShared = widget.reportShared;
     // iPad presents the share sheet as a popover anchored to a source rect;
     // derive it from this row so the popover points at the command instead of
     // floating (an unanchored sheet throws on iPad).
@@ -816,10 +821,10 @@ class _CommandActionRowState extends State<_CommandActionRow> {
         : null;
     try {
       final result = await SharePlus.instance.share(
-        ShareParams(text: widget.command, sharePositionOrigin: origin),
+        ShareParams(text: command, sharePositionOrigin: origin),
       );
       if (result.status == ShareResultStatus.success) {
-        widget.reportShared(cubit);
+        reportShared(cubit);
       }
     } on Object catch (error, stackTrace) {
       // Dismissing the sheet is reported via ShareResultStatus, not a throw, so

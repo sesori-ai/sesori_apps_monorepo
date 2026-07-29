@@ -15,7 +15,7 @@ import "di/injection.dart";
 /// browser.
 Future<bool> openExternalLink({
   required Uri url,
-  UrlLaunchMode mode = UrlLaunchMode.externalApp,
+  required UrlLaunchMode mode,
 }) async {
   try {
     final launched = await getIt<UrlLauncher>().launch(url, mode: mode);

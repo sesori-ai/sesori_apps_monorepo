@@ -45,7 +45,7 @@ class AnalyticsRouteListener {
     _started = true;
     _routeSubscription = _routeSource.currentRouteStream.listen((route) {
       unawaited(
-        _onRoute(route).catchError((Object error, StackTrace stackTrace) {
+        _onRoute(route: route).catchError((Object error, StackTrace stackTrace) {
           logw("Failed to process analytics route", error, stackTrace);
         }),
       );
@@ -63,10 +63,13 @@ class AnalyticsRouteListener {
     });
   }
 
-  Future<void> _onRoute(AppRouteDef? route) async {
-    if (route == null) return;
-    if (route == AppRouteDef.splash) return;
-    _currentScreen = _screenFor(route);
+  Future<void> _onRoute({required AppRouteDef? route}) async {
+    if (route == null || route == AppRouteDef.splash) {
+      _currentScreen = null;
+      _reportedScreen = null;
+      return;
+    }
+    _currentScreen = _screenFor(route: route);
     await _analyticsService.markPostSplashReady();
     await _reportCurrentScreen();
   }
@@ -99,7 +102,7 @@ class AnalyticsRouteListener {
     }
   }
 
-  AnalyticsScreen _screenFor(AppRouteDef route) => switch (route) {
+  AnalyticsScreen _screenFor({required AppRouteDef route}) => switch (route) {
     AppRouteDef.splash => throw StateError("Splash is a readiness route, not an analytics screen"),
     AppRouteDef.login => AnalyticsScreen.login,
     AppRouteDef.projects => AnalyticsScreen.projects,

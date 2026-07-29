@@ -106,22 +106,13 @@ void main() {
       _MockNotificationRegistrationService(),
     );
 
-    const analyticsRecord = ProductAnalyticsPreferenceRecord(
-      userId: "user-a",
-      preference: ProductAnalyticsPreference.enabled,
-      revision: 1,
-      userKey: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    );
     productAnalyticsStates = BehaviorSubject.seeded(
       const ProductAnalyticsState(
         preference: ProductAnalyticsPreferenceKnown(
-          record: analyticsRecord,
           preference: ProductAnalyticsPreference.enabled,
         ),
         synchronization: ProductAnalyticsSynchronized(),
-        availability: ProductAnalyticsActive(
-          userKey: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        ),
+        availability: ProductAnalyticsActive(),
       ),
     );
     productAnalyticsService = MockProductAnalyticsService();
@@ -309,16 +300,9 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    const record = ProductAnalyticsPreferenceRecord(
-      userId: "user-a",
-      preference: ProductAnalyticsPreference.disabled,
-      revision: 1,
-      userKey: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    );
     productAnalyticsStates.add(
       const ProductAnalyticsState(
         preference: ProductAnalyticsPreferenceKnown(
-          record: record,
           preference: ProductAnalyticsPreference.disabled,
         ),
         synchronization: ProductAnalyticsDisablePending(),

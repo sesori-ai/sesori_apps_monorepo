@@ -6,8 +6,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-const _userKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
 class _FakeRouteSource implements RouteSource {
   final BehaviorSubject<AppRouteDef?> routes;
 
@@ -16,7 +14,7 @@ class _FakeRouteSource implements RouteSource {
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;
 
-  void emit(AppRouteDef? route) => routes.add(route);
+  void emit({required AppRouteDef? route}) => routes.add(route);
 
   Future<void> dispose() => routes.close();
 }
@@ -54,7 +52,7 @@ class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsServi
     return AnalyticsDeliveryResult.acceptedBySdk;
   }
 
-  void emit(ProductAnalyticsState state) => states.add(state);
+  void emit({required ProductAnalyticsState state}) => states.add(state);
 
   Future<void> disposeFake() => states.close();
 }
@@ -62,7 +60,7 @@ class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsServi
 ProductAnalyticsState _activeState() => const ProductAnalyticsState(
   preference: ProductAnalyticsPreferenceUnknown(),
   synchronization: ProductAnalyticsSynchronized(),
-  availability: ProductAnalyticsActive(userKey: _userKey),
+  availability: ProductAnalyticsActive(),
 );
 
 ProductAnalyticsState _inactiveState() => const ProductAnalyticsState(
@@ -111,7 +109,7 @@ void main() {
       AppRouteDef.sessionDiffs,
     ];
     for (final route in sequence) {
-      routeSource.emit(route);
+      routeSource.emit(route: route);
       await _flush();
     }
 
@@ -141,21 +139,21 @@ void main() {
     await listener.start();
 
     routeSource
-      ..emit(AppRouteDef.projects)
-      ..emit(AppRouteDef.sessionDetail);
+      ..emit(route: AppRouteDef.projects)
+      ..emit(route: AppRouteDef.sessionDetail);
     await _flush();
     expect(service.events, isEmpty);
 
-    service.emit(_activeState());
+    service.emit(state: _activeState());
     await _flush();
     expect(service.events.whereType<ProductScreenViewedEvent>().single.screen, AnalyticsScreen.sessionDetail);
 
-    service.emit(_activeState());
+    service.emit(state: _activeState());
     await _flush();
     expect(service.events, hasLength(1));
 
-    service.emit(_inactiveState());
-    service.emit(_activeState());
+    service.emit(state: _inactiveState());
+    service.emit(state: _activeState());
     await _flush();
     expect(service.events, hasLength(2));
   });
@@ -170,9 +168,9 @@ void main() {
     listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
     await listener.start();
 
-    routeSource.emit(AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.projects);
     await Future<void>.delayed(Duration.zero);
-    routeSource.emit(AppRouteDef.sessionDetail);
+    routeSource.emit(route: AppRouteDef.sessionDetail);
     await _flush();
     firstReadiness.complete();
     await _flush();
@@ -192,9 +190,9 @@ void main() {
     listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
     await listener.start();
 
-    routeSource.emit(AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.projects);
     await Future<void>.delayed(Duration.zero);
-    service.emit(_activeState());
+    service.emit(state: _activeState());
     await Future<void>.delayed(Duration.zero);
     readiness.complete();
     await Future<void>.delayed(Duration.zero);
@@ -217,16 +215,38 @@ void main() {
     );
     await listener.start();
 
-    routeSource.emit(AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.projects);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     service.deliveryCompleter = null;
-    service.emit(_inactiveState());
-    service.emit(_activeState());
+    service.emit(state: _inactiveState());
+    service.emit(state: _activeState());
     await _flush();
 
     expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
       AnalyticsScreen.projects,
       AnalyticsScreen.projects,
     ]);
+  });
+
+  test("null and splash routes clear the current screen before later activation", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _inactiveState());
+    listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
+    await listener.start();
+
+    routeSource.emit(route: AppRouteDef.projects);
+    await _flush();
+    routeSource.emit(route: null);
+    service.emit(state: _activeState());
+    await _flush();
+    expect(service.events, isEmpty);
+
+    service.emit(state: _inactiveState());
+    routeSource.emit(route: AppRouteDef.settings);
+    await _flush();
+    routeSource.emit(route: AppRouteDef.splash);
+    service.emit(state: _activeState());
+    await _flush();
+    expect(service.events, isEmpty);
   });
 }

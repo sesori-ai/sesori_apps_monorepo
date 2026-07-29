@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../extensions/text_style_x.dart";
@@ -15,7 +16,7 @@ void handleMarkdownLinkTap(String text, String? href, String title) {
   if (href == null) return;
   final uri = Uri.tryParse(href);
   if (uri == null) return;
-  unawaited(openExternalLink(url: uri).then<void>((_) {}));
+  unawaited(openExternalLink(url: uri, mode: UrlLaunchMode.externalApp).then<void>((_) {}));
 }
 
 // ignore: no_slop_linter/prefer_required_named_parameters, paragraphStyle is an optional override

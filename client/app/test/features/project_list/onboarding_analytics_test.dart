@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -324,6 +326,43 @@ void main() {
           method: BridgeInstallMethod.npm,
           os: BridgeInstallOs.unix,
           surface: OnboardingSurface.connectSetup,
+        ),
+      );
+    });
+
+    testWidgets("a delayed copy reports the method whose command was copied", (tester) async {
+      final clipboardCompletion = Completer<void>();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == "Clipboard.setData") await clipboardCompletion.future;
+          return null;
+        },
+      );
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.bySemanticsLabel("Copy command").at(0));
+      await tester.pump();
+      await tester.tap(find.text("npm"));
+      await tester.pump();
+      clipboardCompletion.complete();
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const ProductAnalyticsEvent.installCommandCopied(
+          method: BridgeInstallMethod.curl,
+          os: BridgeInstallOs.unix,
+          surface: OnboardingSurface.connectSetup,
+        ),
+      );
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.installCommandCopied(
+            method: BridgeInstallMethod.npm,
+            os: BridgeInstallOs.unix,
+            surface: OnboardingSurface.connectSetup,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       );
     });
