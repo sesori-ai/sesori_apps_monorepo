@@ -348,7 +348,10 @@ void main() {
         expect(result.ref, equals("main"));
         expect(result.commit, equals("abc123"));
         expect(processRunner.invocations, hasLength(1));
-        expect(processRunner.invocations.single.arguments, equals(["rev-parse", "origin/main"]));
+        expect(
+          processRunner.invocations.single.arguments,
+          equals(["rev-parse", "refs/remotes/origin/main"]),
+        );
         expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
       });
 
@@ -364,7 +367,10 @@ void main() {
         expect(result.ref, equals("main"));
         expect(result.commit, equals("abc123"));
         expect(processRunner.invocations, hasLength(1));
-        expect(processRunner.invocations.single.arguments, equals(["rev-parse", "origin/main"]));
+        expect(
+          processRunner.invocations.single.arguments,
+          equals(["rev-parse", "refs/remotes/origin/main"]),
+        );
       });
 
       test("returns local when local is strictly ahead", () async {
@@ -381,7 +387,7 @@ void main() {
         expect(result.ref, equals("main"));
         expect(result.commit, equals("abc123"));
         expect(processRunner.invocations, hasLength(2));
-        expect(processRunner.invocations[0].arguments, equals(["rev-parse", "origin/main"]));
+        expect(processRunner.invocations[0].arguments, equals(["rev-parse", "refs/remotes/origin/main"]));
         expect(
           processRunner.invocations[1].arguments,
           equals(["merge-base", "--is-ancestor", "def456", "abc123"]),
@@ -399,10 +405,10 @@ void main() {
           localCommit: "abc123",
         );
 
-        expect(result.ref, equals("origin/main"));
+        expect(result.ref, equals("refs/remotes/origin/main"));
         expect(result.commit, equals("def456"));
         expect(processRunner.invocations, hasLength(2));
-        expect(processRunner.invocations[0].arguments, equals(["rev-parse", "origin/main"]));
+        expect(processRunner.invocations[0].arguments, equals(["rev-parse", "refs/remotes/origin/main"]));
         expect(
           processRunner.invocations[1].arguments,
           equals(["merge-base", "--is-ancestor", "def456", "abc123"]),
@@ -420,7 +426,7 @@ void main() {
           localCommit: "diverged-local",
         );
 
-        expect(result.ref, equals("origin/main"));
+        expect(result.ref, equals("refs/remotes/origin/main"));
         expect(result.commit, equals("diverged-origin"));
         expect(processRunner.invocations, hasLength(2));
       });
@@ -436,7 +442,7 @@ void main() {
           localCommit: "abc123",
         );
 
-        expect(result.ref, equals("origin/main"));
+        expect(result.ref, equals("refs/remotes/origin/main"));
         expect(result.commit, equals("def456"));
         expect(processRunner.invocations, hasLength(2));
       });

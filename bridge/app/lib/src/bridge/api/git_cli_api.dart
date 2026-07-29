@@ -329,7 +329,7 @@ class GitCliApi {
     required String baseBranch,
     required String localCommit,
   }) async {
-    final originRef = "origin/$baseBranch";
+    final originRef = "refs/remotes/origin/$baseBranch";
     final originResult = await runGit(
       projectPath: projectPath,
       arguments: ["rev-parse", originRef],

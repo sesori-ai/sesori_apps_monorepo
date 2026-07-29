@@ -696,9 +696,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   void _onSessionUpdated(Session session) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
+    final sessionTime = session.time;
 
     if (isClosed) return;
-    emit(current.copyWith(sessionTitle: session.title));
+    emit(
+      current.copyWith(
+        sessionTitle: session.title,
+        isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
+      ),
+    );
   }
 
   void _onPromptDefaultsChanged(SessionPromptDefaults promptDefaults) {

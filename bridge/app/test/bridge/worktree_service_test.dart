@@ -566,7 +566,7 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.baseBranch, equals("origin/main"));
+      expect(success.baseBranch, equals("refs/remotes/origin/main"));
       expect(success.baseCommit, equals("origin222"));
 
       expect(
@@ -583,7 +583,7 @@ void main() {
 
       // Verify worktree add used "origin/main" as start point
       final worktreeAddArgs = processRunner.invocations.last.arguments;
-      expect(worktreeAddArgs.last, equals("origin/main"));
+      expect(worktreeAddArgs.last, equals("refs/remotes/origin/main"));
     });
 
     test("local ahead: worktree starts from local branch", () async {
@@ -677,7 +677,7 @@ void main() {
       expect(success.baseCommit, equals("diverged-origin"));
 
       final worktreeAddArgs = processRunner.invocations.last.arguments;
-      expect(worktreeAddArgs.last, equals("origin/main"));
+      expect(worktreeAddArgs.last, equals("refs/remotes/origin/main"));
     });
 
     test("no origin ref: worktree starts from local branch", () async {
@@ -757,7 +757,7 @@ void main() {
       expect(success.baseCommit, equals("origin222"));
 
       final worktreeAddArgs = processRunner.invocations.last.arguments;
-      expect(worktreeAddArgs.last, equals("origin/main"));
+      expect(worktreeAddArgs.last, equals("refs/remotes/origin/main"));
     });
   });
 
