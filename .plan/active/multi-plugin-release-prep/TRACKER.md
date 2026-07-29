@@ -23,7 +23,8 @@
 ## Locked Decisions
 
 - One endpoint: `POST /session/options`; `refresh=true` is the only activating
-  aggregate read.
+  aggregate read and also forces backend catalog discovery instead of reusing a
+  plugin's tracker snapshot.
 - OpenCode and Codex cache per project. Cursor caches once per plugin. Codex
   stays project-aware because defaults and skills depend on project context.
 - Cache-only miss is explicit unavailable, not an empty successful catalog.
@@ -31,7 +32,8 @@
   aggregate call; a capable bridge's typed project failure never triggers legacy
   fallback.
 - Typed session-options errors distinguish cache miss, project absence, and
-  refresh failure even when a plugin forwards the same HTTP status.
+  refresh failure. Plugin/runtime failures normalize to 502 so transport-reserved
+  401 remains Sesori authentication only.
 - Legacy option routes stay unchanged. New-client/old-bridge live loading occurs
   only after explicit Refresh.
 - The bridge is the durable cache authority; no new client persistence/cache is
@@ -45,7 +47,8 @@
   partial or complete data from independently successful sources.
 - ACP command advertisement emits a dedicated generation-attributed
   options-change event so Cursor's plugin-scoped cache is refreshed after the
-  authoritative command snapshot arrives.
+  authoritative command snapshot arrives; both live and replay deferral paths
+  forward it.
 - Harnesses settings ends as one screen and one screen-owned management cubit,
   using Prego sheets and setup/capability-aware visibility.
 - Harness consolidation preserves authoritative `bridgeId` snapshot fencing;

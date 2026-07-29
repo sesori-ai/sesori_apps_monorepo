@@ -96,7 +96,8 @@ POST /session/options?refresh=true
 - Missing `refresh` and exact `refresh=false` are cache-only and must never
   acquire or start a dormant plugin.
 - Exact `refresh=true` is an explicit user refresh and may start only the
-  requested plugin.
+  requested plugin. It also passes an internal force-discovery mode so a live
+  plugin cannot satisfy user refresh from its own stale catalog tracker.
 - Any other parsed value returns HTTP 400. The existing router canonicalizes
   query parameters; this work does not broaden `RequestHandlerBase` solely to
   distinguish duplicate query spellings.
@@ -111,10 +112,11 @@ POST /session/options?refresh=true
   as three successful empty lists.
 - Add shared `SessionOptionsErrorResponse` with required forward-safe
   `SessionOptionsErrorCode { cacheUnavailable, projectNotFound, refreshFailed,
-  unknown }`. Project absence returns 404/project-not-found. A recovered or
-  propagated plugin failure returns its appropriate non-success status with
-  refresh-failed, even when that status is also 404 or 503. The client maps the
-  typed code and never infers domain outcome from status alone.
+  unknown }`. Project absence returns 404/project-not-found. Every plugin or
+  runtime capture failure normalizes to 502/refresh-failed; plugin-provided 401
+  is never forwarded because relay HTTP reserves 401 for Sesori authentication
+  and rewrites that response before a repository can parse its body. The client
+  maps the typed code and never infers domain outcome from status alone.
 - An explicit refresh failure retains any prior bridge snapshot but still
   returns failure, allowing the app to preserve visible data while reporting
   that refresh did not complete.
@@ -224,9 +226,11 @@ clients without coupling legacy repositories to the new service.
 ### Plugin option boundary
 
 Add internal `PluginSessionOptions` with required agents, providers, commands,
-and `PluginSessionOptionsCompleteness { partial, complete }`. Add
-`BridgePluginApi.getSessionOptions({required String projectId})`. Existing
-individual methods remain because released routes still use them.
+and `PluginSessionOptionsCompleteness { partial, complete }`. Add the independent
+internal enum `PluginSessionOptionsDiscoveryMode { reuse, refresh }` and
+`BridgePluginApi.getSessionOptions({required String projectId, required
+PluginSessionOptionsDiscoveryMode discoveryMode})`. Existing individual methods
+remain because released routes still use them.
 
 Every top-level plugin facade delegates option decisions to Layer-3 service
 ownership:
@@ -246,11 +250,18 @@ ownership:
   session-refresh event and additionally produces
   `BridgeSseSessionOptionsChanged(projectID:)`, so durable seeding reruns after
   the authoritative command advertisement rather than relying only on the
-  earlier session-creation return.
+  earlier session-creation return. The live-notification path and the replay
+  deferral path both forward the dedicated event; replay must not retain the
+  current `whereType<BridgeSseSessionsUpdated>()`-only filter.
 - Expand/replace `CursorCommandService` with
   `CursorSessionOptionsService`, depending on `CursorCatalogService`,
   `CursorCatalogTracker`, `AcpCommandTracker`, and launch directory. One catalog
-  ensure produces a coherent command/mode/model snapshot.
+  ensure produces a coherent command/mode/model snapshot. `reuse` joins/uses the
+  existing bounded catalog state for automatic seeding. `refresh` invokes a new
+  bounded forced-discovery operation that bypasses complete/exhausted/retried
+  short-circuits, joins any forced probe already in flight, retains last-good
+  tracker data on failure, and reports that failure as an observable partial or
+  failed refresh rather than stamping the old snapshot as freshly discovered.
 
 An unexpected source error is never swallowed. Plugins that deliberately
 degrade to known fallback data return `partial`; the bridge service decides
@@ -282,13 +293,23 @@ Add `PluginRuntime.useWithGeneration`, mechanically mirroring `use` while
 returning the acquired generation. Activating capture uses it; active-only
 capture uses `useIfActive`. Both observations later commit through
 `commitCurrentGeneration`, so backend replacement cannot publish an obsolete
-snapshot.
+snapshot. Runtime activation and plugin discovery freshness remain independent
+enums rather than one overloaded boolean.
 
 `SessionOptionsService` requires the repository, immutable descriptor scope map,
 `ServerClock`, and retention duration. It owns key resolution, cache-only read,
 path/expiry invalidation, per-key refresh coalescing, capture-mode choice,
 completeness comparison, last-good retention, CAS retry policy, and recovered
 failure observability.
+
+The service permits only these production combinations:
+
+```text
+explicit refresh        -> may activate + PluginSessionOptionsDiscoveryMode.refresh
+session-created trigger -> active only  + PluginSessionOptionsDiscoveryMode.reuse
+options-changed trigger -> active only  + PluginSessionOptionsDiscoveryMode.reuse
+cache-only read         -> no plugin capture
+```
 
 Completeness replacement is exact:
 
@@ -390,7 +411,11 @@ backend-neutral UI decisions.
   updated in lockstep.
 - Aggregate tests in OpenCode, Codex, ACP, and Cursor. Cursor proves one catalog
   ensure and plugin-global output; ACP proves mapper/tracker separation and an
-  authoritative command advertisement emits the dedicated options-change event.
+  authoritative command advertisement emits the dedicated options-change event
+  through both live and replay deferral paths.
+- Cursor tests prove `reuse` honors existing bounded discovery while `refresh`
+  forces one joined bounded probe despite complete/exhausted/retried tracker
+  state and never reports retained data as newly discovered after probe failure.
 - Focused package tests and fatal analysis for every touched plugin package.
 - Aristotle implementation review for shared plugin boundaries and state ownership.
 
@@ -405,10 +430,12 @@ backend-neutral UI decisions.
   decode, project-path invalidation, retention, partial-on-partial retention,
   completeness, CAS conflict, and generation-fence tests.
 - Handler tests for missing/false/true/invalid refresh, typed cache miss, typed
-  project absence, plugin 404/503 as typed refresh failure, explicit failure
-  retention, and shared debug/relay router wiring.
+  project absence, plugin 401/404/503 normalized to 502/refresh-failed, explicit
+  failure retention, and shared debug/relay router wiring.
 - Runtime tests prove cache-only reads never start a dormant plugin and explicit
   refresh starts only the selected plugin.
+- Service/repository tests prove explicit refresh passes may-activate plus forced
+  discovery, while both automatic triggers pass active-only plus reuse.
 - Listener tests prove session creation and a current-generation dedicated
   options-change event independently trigger active-only refresh, while stale
   generations and generic session events do not.
@@ -418,9 +445,10 @@ backend-neutral UI decisions.
 
 - API path/body/query and response parsing tests.
 - Repository mapping covers supported and every typed error code independently
-  of HTTP status, including upstream plugin 404/503 as refresh failure, with no
-  provider-only cache remaining. Service tests prove discovery capability false
-  returns unsupported without an aggregate call.
+  of HTTP status, including normalized plugin-auth failure without
+  `ApiError.notAuthenticated`, with no provider-only cache remaining. Service
+  tests prove discovery capability false returns unsupported without an
+  aggregate call.
 - Service tests for filtering, default precedence, unavailable models, variant
   preservation/drop, command revalidation, cache miss, retained refresh failure,
   and explicit old-bridge fallback.
@@ -467,10 +495,12 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 | Late concurrent refresh downgrades data | Service-owned completeness comparison plus expected-revision CAS and one policy retry. |
 | Codex duplicates its global model catalog per project | Accept the small duplication to preserve project defaults and skills without mixed-scope component caches. |
 | Cursor cache multiplies by project | Descriptor-declared plugin scope produces one durable Cursor row. |
+| Explicit Cursor refresh reuses a complete/exhausted tracker | Internal discovery mode requires one bounded forced probe for user refresh; automatic captures retain bounded reuse semantics. |
 | Cursor session creation seeds before ACP commands arrive | The authoritative `available_commands_update` emits a dedicated generation-attributed options-change event and a separate listener refreshes the plugin-scoped row. |
+| ACP replay mutates commands without refreshing the cache | Replay deferral forwards the same dedicated options-change event as the live notification path. |
 | ACP option code depends on mutable mapper state | Move provider/model state into `AcpSessionConfigurationTracker`; mapper and service consume the tracker. |
 | New client confuses old-route 404 with project-not-found 404 | Additive discovery capability identifies old bridges before any aggregate call; the typed error body identifies project failure on a capable bridge. |
-| Plugin 404/503 collides with cache/project HTTP status | Typed `SessionOptionsErrorCode` identifies cache, project, and refresh outcomes independently from status. Unknown or malformed errors fail explicitly. |
+| Plugin statuses collide with cache/project/Sesori-auth statuses | Plugin/runtime capture failures normalize to 502/refresh-failed, preserving the typed body and reserving 401 for Sesori authentication. Unknown or malformed errors fail explicitly. |
 | Settings consolidation changes capability enforcement | Keep existing service/cubit command paths; only one thin screen consumes declared capabilities. |
 | Generated migration/model output obscures logic | Keep source and tests focused, name generated overage in Step 4 PR, and review source changes first. |
 
