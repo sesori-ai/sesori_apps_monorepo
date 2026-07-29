@@ -127,24 +127,13 @@ void main() {
     expect(api.updates.single.operationId, matches(RegExp(r"^[0-9a-f-]{36}$")));
   });
 
-  test("malformed local storage is deleted and fails closed", () async {
+  test("malformed local storage remains unreadable and fails closed", () async {
     storage.readError = const FormatException("invalid stored preference");
 
     final result = repository.loadLocal(userId: "user-a");
 
     await expectLater(result, throwsA(isA<FormatException>()));
-    expect(operations, ["storage:read:user-a", "storage:delete:user-a"]);
-  });
-
-  test("malformed local storage fails closed when cleanup also fails", () async {
-    storage
-      ..readError = const FormatException("invalid stored preference")
-      ..deleteError = StateError("storage unavailable");
-
-    final result = repository.loadLocal(userId: "user-a");
-
-    await expectLater(result, throwsA(isA<FormatException>()));
-    expect(operations, ["storage:read:user-a", "storage:delete:user-a"]);
+    expect(operations, ["storage:read:user-a"]);
   });
 
   test("reconciliation rejects pending state owned by another account", () async {
@@ -241,7 +230,7 @@ void main() {
     expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.enabled);
   });
 
-  test("pending enable refreshes a newer disabled revision before retrying", () async {
+  test("pending enable yields to a newer disabled revision", () async {
     final pending = LocalProductAnalyticsPendingEnable(
       record: _domainRecord(preference: ProductAnalyticsPreference.disabled, revision: 7),
       operationId: _operationId,
@@ -251,24 +240,12 @@ void main() {
         record: _apiRecord(preference: ProductAnalyticsPreference.disabled, revision: 9),
       ),
     );
-    api.updateResults.add(
-      ProductAnalyticsPreferenceApiSuccess(
-        record: _apiRecord(preference: ProductAnalyticsPreference.enabled, revision: 10),
-      ),
-    );
-
     final result = await repository.reconcile(userId: "user-a", local: pending);
 
     expect(result, isA<ProductAnalyticsPreferenceSynchronized>());
-    expect(api.updates.single, (
-      userId: "user-a",
-      preference: ProductAnalyticsPreference.enabled,
-      revision: 9,
-      operationId: _operationId,
-    ));
-    expect(storage.writes.first, isA<StoredProductAnalyticsPendingEnable>());
-    expect((storage.writes.first as StoredProductAnalyticsPendingEnable).revision, 9);
-    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.enabled);
+    expect(api.updates, isEmpty);
+    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.disabled);
+    expect((storage.stored! as StoredProductAnalyticsSynced).revision, 9);
   });
 
   test("a pending disable survives restart and reuses its stable operation id", () async {
