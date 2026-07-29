@@ -358,6 +358,10 @@
   "sessionDetailThinking": "Thinking...",
   "sessionDetailThought": "Thought",
   "sessionDetailToolUnknown": "Tool",
+  "sessionDetailFileUnknown": "Unknown file",
+  "@sessionDetailFileUnknown": {
+    "description": "Fallback label shown for a file attachment when the filename cannot be determined."
+  },
   "sessionDetailToolPending": "Pending",
   "sessionDetailToolRunning": "Running",
   "sessionDetailToolCompleted": "Done",
