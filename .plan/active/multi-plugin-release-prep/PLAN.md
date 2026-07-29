@@ -248,11 +248,12 @@ ownership:
   consumes tracker snapshots plus `AcpCommandTracker` to build the process-level
   aggregate. An ACP `available_commands_update` continues producing its existing
   session-refresh event and additionally produces
-  `BridgeSseSessionOptionsChanged(projectID:)`, so durable seeding reruns after
-  the authoritative command advertisement rather than relying only on the
-  earlier session-creation return. The live-notification path and the replay
-  deferral path both forward the dedicated event; replay must not retain the
-  current `whereType<BridgeSseSessionsUpdated>()`-only filter.
+  `BridgeSseSessionOptionsChanged(sessionID:)`, carrying the backend session
+  identity rather than ACP's directory-shaped project value. Durable seeding
+  therefore reruns after the authoritative command advertisement without
+  treating a path as a stable bridge project ID. The live-notification path and
+  the replay deferral path both forward the dedicated event; replay must not
+  retain the current `whereType<BridgeSseSessionsUpdated>()`-only filter.
 - Expand/replace `CursorCommandService` with
   `CursorSessionOptionsService`, depending on `CursorCatalogService`,
   `CursorCatalogTracker`, `AcpCommandTracker`, and launch directory. One catalog
@@ -284,10 +285,11 @@ Add `session_options_cache` at the next Drift schema version. Each row contains:
 `project(pluginId, projectId, projectPath)`. The Layer-3 service constructs it;
 the repository does not depend upward on service models.
 
-`SessionOptionsRepository` requires `PluginRuntime`, `ProjectsDao`, and
-`SessionOptionsCacheDao`. It owns only project/path lookup, typed JSON mapping,
-plugin aggregate capture, raw persistence calls, and generation-fenced CAS. It
-contains no expiry, completeness, or retention policy and no clock.
+`SessionOptionsRepository` requires `PluginRuntime`, `ProjectsDao`, `SessionDao`,
+and `SessionOptionsCacheDao`. It owns only project/path lookup, backend-session
+binding lookup, typed JSON mapping, plugin aggregate capture, raw persistence
+calls, and generation-fenced CAS. It contains no expiry, completeness, or
+retention policy and no clock.
 
 Add `PluginRuntime.useWithGeneration`, mechanically mirroring `use` while
 returning the acquired generation. Activating capture uses it; active-only
@@ -310,6 +312,17 @@ session-created trigger -> active only  + PluginSessionOptionsDiscoveryMode.reus
 options-changed trigger -> active only  + PluginSessionOptionsDiscoveryMode.reuse
 cache-only read         -> no plugin capture
 ```
+
+Coalescing is intent-aware per cache key:
+
+- reuse joins an in-flight reuse or forced refresh;
+- explicit refresh joins an in-flight forced refresh;
+- explicit refresh arriving during reuse queues exactly one forced operation
+  after reuse and awaits that forced result; and
+- additional explicit refreshes join the same forced tail.
+
+Therefore a user Refresh can never complete from the automatic reuse future
+without executing forced discovery.
 
 Completeness replacement is exact:
 
@@ -336,10 +349,15 @@ publication sites already know it.
 
 `SessionOptionsChangedRefreshListener` independently consumes
 generation-attributed runtime events, accepts only current-generation
-`BridgeSseSessionOptionsChanged(projectID:)`, and invokes the same active-only
-service operation. The session-event pipeline explicitly consumes this internal
-event without mapping it to client SSE; Orchestrator remains the only client-SSE
-decision owner. Each listener owns one trigger subscription and its disposal.
+`BridgeSseSessionOptionsChanged(sessionID:)`, and calls
+`SessionOptionsService.refreshActiveOnlyForBackendSession`. The service asks its
+repository to resolve backend session plus plugin ID through `SessionDao` to the
+stable stored project ID before refreshing. If no binding exists yet, it does
+not infer identity from the ACP directory; the later session-creation commit is
+the seed trigger. The session-event pipeline
+explicitly consumes this internal event without mapping it to client SSE;
+Orchestrator remains the only client-SSE decision owner. Each listener owns one
+trigger subscription and its disposal.
 
 ### Client layers
 
@@ -412,7 +430,7 @@ backend-neutral UI decisions.
 - Aggregate tests in OpenCode, Codex, ACP, and Cursor. Cursor proves one catalog
   ensure and plugin-global output; ACP proves mapper/tracker separation and an
   authoritative command advertisement emits the dedicated options-change event
-  through both live and replay deferral paths.
+  with backend session identity through both live and replay deferral paths.
 - Cursor tests prove `reuse` honors existing bounded discovery while `refresh`
   forces one joined bounded probe despite complete/exhausted/retried tracker
   state and never reports retained data as newly discovered after probe failure.
@@ -435,10 +453,13 @@ backend-neutral UI decisions.
 - Runtime tests prove cache-only reads never start a dormant plugin and explicit
   refresh starts only the selected plugin.
 - Service/repository tests prove explicit refresh passes may-activate plus forced
-  discovery, while both automatic triggers pass active-only plus reuse.
+  discovery, while both automatic triggers pass active-only plus reuse. An
+  explicit refresh overlapping reuse queues and awaits exactly one forced tail.
 - Listener tests prove session creation and a current-generation dedicated
   options-change event independently trigger active-only refresh, while stale
-  generations and generic session events do not.
+  generations and generic session events do not. Moved-project coverage resolves
+  backend session identity to the stable stored project ID; a pre-binding event
+  is skipped and the later creation commit seeds the cache.
 - Shared and bridge-app fatal analysis plus Aristotle implementation review.
 
 ### Step 5/6
@@ -496,8 +517,10 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 | Codex duplicates its global model catalog per project | Accept the small duplication to preserve project defaults and skills without mixed-scope component caches. |
 | Cursor cache multiplies by project | Descriptor-declared plugin scope produces one durable Cursor row. |
 | Explicit Cursor refresh reuses a complete/exhausted tracker | Internal discovery mode requires one bounded forced probe for user refresh; automatic captures retain bounded reuse semantics. |
+| Explicit refresh joins an in-flight automatic reuse | Intent-aware coalescing queues one forced tail and makes every overlapping explicit caller await it. |
 | Cursor session creation seeds before ACP commands arrive | The authoritative `available_commands_update` emits a dedicated generation-attributed options-change event and a separate listener refreshes the plugin-scoped row. |
 | ACP replay mutates commands without refreshing the cache | Replay deferral forwards the same dedicated options-change event as the live notification path. |
+| ACP event path is mistaken for stable project identity | The event carries backend session ID; the service resolves its persisted binding and never treats ACP's directory value as project ID. |
 | ACP option code depends on mutable mapper state | Move provider/model state into `AcpSessionConfigurationTracker`; mapper and service consume the tracker. |
 | New client confuses old-route 404 with project-not-found 404 | Additive discovery capability identifies old bridges before any aggregate call; the typed error body identifies project failure on a capable bridge. |
 | Plugin statuses collide with cache/project/Sesori-auth statuses | Plugin/runtime capture failures normalize to 502/refresh-failed, preserving the typed body and reserving 401 for Sesori authentication. Unknown or malformed errors fail explicitly. |

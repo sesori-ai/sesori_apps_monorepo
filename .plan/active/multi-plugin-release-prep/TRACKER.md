@@ -43,12 +43,15 @@
 - `SessionOptionsService` owns scope, retention, completeness, coalescing, and
   CAS retry policy. The repository owns mechanical capture/persistence and
   runtime generation fencing.
+- Coalescing is intent-aware: explicit refresh overlapping automatic reuse
+  queues and awaits one forced-discovery tail.
 - Partial observations seed only an empty cache; they never replace retained
   partial or complete data from independently successful sources.
 - ACP command advertisement emits a dedicated generation-attributed
   options-change event so Cursor's plugin-scoped cache is refreshed after the
   authoritative command snapshot arrives; both live and replay deferral paths
-  forward it.
+  forward backend session identity, which the service resolves to the stable
+  persisted project binding.
 - Harnesses settings ends as one screen and one screen-owned management cubit,
   using Prego sheets and setup/capability-aware visibility.
 - Harness consolidation preserves authoritative `bridgeId` snapshot fencing;
