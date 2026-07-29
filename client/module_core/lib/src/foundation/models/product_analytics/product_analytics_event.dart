@@ -1,62 +1,62 @@
 import "package:meta/meta.dart";
 
 enum SupportChannel {
-  email("email"),
-  discord("discord"),
-  x("x");
+  email(wireValue: "email"),
+  discord(wireValue: "discord"),
+  x(wireValue: "x");
 
   final String wireValue;
-  const SupportChannel(this.wireValue);
+  const SupportChannel({required this.wireValue});
 }
 
 enum OnboardingSurface {
-  connectSetup("connect_setup"),
-  connectedEmpty("connected_empty"),
-  bridgeOffline("bridge_offline");
+  connectSetup(wireValue: "connect_setup"),
+  connectedEmpty(wireValue: "connected_empty"),
+  bridgeOffline(wireValue: "bridge_offline");
 
   final String wireValue;
-  const OnboardingSurface(this.wireValue);
+  const OnboardingSurface({required this.wireValue});
 }
 
 enum BridgeInstallMethod {
-  curl("curl"),
-  powershell("powershell"),
-  npm("npm"),
-  bun("bun");
+  curl(wireValue: "curl"),
+  powershell(wireValue: "powershell"),
+  npm(wireValue: "npm"),
+  bun(wireValue: "bun");
 
   final String wireValue;
-  const BridgeInstallMethod(this.wireValue);
+  const BridgeInstallMethod({required this.wireValue});
 }
 
 enum BridgeInstallOs {
-  unix("unix"),
-  windows("windows");
+  unix(wireValue: "unix"),
+  windows(wireValue: "windows");
 
   final String wireValue;
-  const BridgeInstallOs(this.wireValue);
+  const BridgeInstallOs({required this.wireValue});
 }
 
 enum AnalyticsScreen {
-  login("login"),
-  projects("projects"),
-  settings("settings"),
-  settingsNotifications("settings_notifications"),
-  settingsProfile("settings_profile"),
-  sessions("sessions"),
-  newSession("new_session"),
-  sessionDetail("session_detail"),
-  sessionDiffs("session_diffs");
+  login(wireValue: "login"),
+  projects(wireValue: "projects"),
+  settings(wireValue: "settings"),
+  settingsNotifications(wireValue: "settings_notifications"),
+  settingsProfile(wireValue: "settings_profile"),
+  sessions(wireValue: "sessions"),
+  newSession(wireValue: "new_session"),
+  sessionDetail(wireValue: "session_detail"),
+  sessionDiffs(wireValue: "session_diffs");
 
   final String wireValue;
-  const AnalyticsScreen(this.wireValue);
+  const AnalyticsScreen({required this.wireValue});
 }
 
 enum AnalyticsInputMode {
-  typed("typed"),
-  voiceAssisted("voice_assisted");
+  typed(wireValue: "typed"),
+  voiceAssisted(wireValue: "voice_assisted");
 
   final String wireValue;
-  const AnalyticsInputMode(this.wireValue);
+  const AnalyticsInputMode({required this.wireValue});
 }
 
 @immutable

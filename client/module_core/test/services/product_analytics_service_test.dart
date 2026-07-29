@@ -267,6 +267,32 @@ void main() {
     expect(analyticsRepository.calls, isEmpty);
   });
 
+  test("schema readiness retries after SDK rejection in the same auth generation", () async {
+    createService();
+    final record = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: record))
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: record));
+    analyticsRepository.result = AnalyticsDeliveryResult.failed;
+
+    await service.start();
+    await service.markPostSplashReady();
+    expect(analyticsRepository.calls, hasLength(1));
+
+    analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
+    await service.refreshPreference();
+
+    expect(analyticsRepository.calls, hasLength(2));
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      everyElement(isA<AnalyticsSchemaReadyEvent>()),
+    );
+  });
+
   test("local read failure blocks automatic activation until an explicit successful retry", () async {
     createService();
     preferenceRepository.throwOnLoad = true;
@@ -433,6 +459,28 @@ void main() {
     expect(preferenceRepository.reconcileCalls, hasLength(2));
     expect(service.state.isActive, isFalse);
     expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+  });
+
+  test("failed logout recovery restores an active synchronized account", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    await service.prepareForLogout();
+    expect(service.state.isActive, isFalse);
+
+    await service.resumeAfterFailedLogout();
+
+    expect(service.state.isActive, isTrue);
+    expect((service.state.availability as ProductAnalyticsActive).userKey, _userKeyA);
   });
 
   test("prepareForLogout releases after ten seconds when a pending retry hangs", () async {

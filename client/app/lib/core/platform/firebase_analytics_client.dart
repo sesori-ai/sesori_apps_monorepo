@@ -4,8 +4,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 @LazySingleton(as: AnalyticsClient)
 class FirebaseAnalyticsClient implements AnalyticsClient {
-  static final _userKeyPattern = RegExp(r"^[a-f0-9]{64}$");
-
   final FirebaseAnalytics _analytics;
   final AnalyticsRuntimeCapability _capability;
 
@@ -18,7 +16,7 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   @override
   Future<void> logProductEvent({required ProductAnalyticsEnvelope envelope, required String userKey}) async {
     if (!_capability.isEnabled) throw StateError("Product analytics runtime is disabled");
-    if (!_userKeyPattern.hasMatch(userKey)) throw ArgumentError.value(userKey, "userKey");
+    if (!isValidProductAnalyticsUserKey(value: userKey)) throw ArgumentError.value(userKey, "userKey");
     final event = envelope.event;
     await _analytics.logEvent(
       name: event.wireName,

@@ -43,9 +43,6 @@ state under `services/models/`:
 - Mobile implements `AnalyticsClient` with Firebase; desktop uses a no-op
   adapter until desktop analytics has its own approved scope.
 
-Remove this transitional “until step 3” paragraph in the step-3 implementation
-PR after updating all in-repository consumers in lockstep.
-
 ## Choose the authoritative hook
 
 | Event meaning | Correct seam | Example |

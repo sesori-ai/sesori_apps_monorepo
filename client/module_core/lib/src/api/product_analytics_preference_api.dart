@@ -7,7 +7,6 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../foundation/models/product_analytics/product_analytics_preference.dart";
 
 const _operationDeadline = Duration(seconds: 10);
-final _userKeyPattern = RegExp(r"^[a-f0-9]{64}$");
 
 final class ProductAnalyticsPreferenceApiRecord {
   final ProductAnalyticsPreference preference;
@@ -129,12 +128,14 @@ ProductAnalyticsPreferenceApiRecord _recordFromJson(dynamic value) {
   final preferenceValue = value["preference"];
   final revision = value["revision"];
   final userKey = value["userKey"];
-  final preference = preferenceValue is String ? ProductAnalyticsPreference.fromWireValue(preferenceValue) : null;
+  final preference = preferenceValue is String
+      ? ProductAnalyticsPreference.fromWireValue(value: preferenceValue)
+      : null;
   if (preference == null ||
       revision is! int ||
       revision < 1 ||
       userKey is! String ||
-      !_userKeyPattern.hasMatch(userKey)) {
+      !isValidProductAnalyticsUserKey(value: userKey)) {
     throw const FormatException("Invalid product analytics preference response");
   }
   return ProductAnalyticsPreferenceApiRecord(preference: preference, revision: revision, userKey: userKey);

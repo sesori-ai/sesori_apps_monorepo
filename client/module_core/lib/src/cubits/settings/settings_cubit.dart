@@ -61,6 +61,11 @@ class SettingsCubit extends Cubit<SettingsState> {
       emit(state.copyWith(logoutStatus: SettingsLogoutStatus.success));
     } catch (_) {
       try {
+        await _productAnalyticsService.resumeAfterFailedLogout();
+      } catch (error, stackTrace) {
+        logw("Failed to restore product analytics after logout failed", error, stackTrace);
+      }
+      try {
         await _notificationRegistrationService.resumeRegistrationAfterFailedLogout();
       } catch (error, stackTrace) {
         logw("Failed to restore push notifications after logout failed", error, stackTrace);

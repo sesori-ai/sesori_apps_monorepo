@@ -205,4 +205,28 @@ void main() {
       AnalyticsScreen.projects,
     ]);
   });
+
+  test("a timed-out screen delivery clears the in-flight guard for a later retry", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _activeState());
+    service.deliveryCompleter = Completer<AnalyticsDeliveryResult>();
+    listener = AnalyticsRouteListener.withDeliveryDeadline(
+      routeSource: routeSource,
+      analyticsService: service,
+      deliveryDeadline: const Duration(milliseconds: 1),
+    );
+    await listener.start();
+
+    routeSource.emit(AppRouteDef.projects);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    service.deliveryCompleter = null;
+    service.emit(_inactiveState());
+    service.emit(_activeState());
+    await _flush();
+
+    expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
+      AnalyticsScreen.projects,
+      AnalyticsScreen.projects,
+    ]);
+  });
 }

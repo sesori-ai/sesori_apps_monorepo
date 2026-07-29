@@ -41,6 +41,7 @@ void main() {
         () => notificationRegistrationService.resumeRegistrationAfterFailedLogout(),
       ).thenAnswer((_) async {});
       when(() => productAnalyticsService.prepareForLogout()).thenAnswer((_) async {});
+      when(() => productAnalyticsService.resumeAfterFailedLogout()).thenAnswer((_) async {});
     });
 
     tearDown(() => authStates.close());
@@ -156,6 +157,7 @@ void main() {
         () => productAnalyticsService.prepareForLogout(),
         () => notificationRegistrationService.unregisterCurrentDevice(),
         () => authSession.logoutCurrentDevice(),
+        () => productAnalyticsService.resumeAfterFailedLogout(),
         () => notificationRegistrationService.resumeRegistrationAfterFailedLogout(),
       ]);
     });

@@ -137,9 +137,14 @@ step count across both repositories.
 - [x] `dart analyze` reports no issues in `client/module_auth`,
   `client/module_core`, `client/app`, `client/desktop`, and
   `client/module_desktop_core`.
-- [x] Full suites pass: `module_auth` 86 tests, `module_core` 748 tests, mobile
+- [x] Full suites pass: `module_auth` 86 tests, `module_core` 753 tests, mobile
   app 769 tests, desktop shell 15 tests, and `module_desktop_core` 52 tests.
   `git diff --check` also passes.
+- [x] PR review follow-up preserves pending-enable operation intent after a
+  restart, restores analytics when logout fails, bounds hung route delivery,
+  retries schema readiness after SDK rejection, centralizes `userKey`
+  validation, and adds focused regressions. The focused follow-up architecture
+  review approved the changed boundaries.
 - [x] Ran the two permitted architecture implementation-review passes. Pass 1
   found startup subscription and cross-account 401-retry races; both were fixed.
   Pass 2 confirmed the account-bound transport fix and found that stale startup

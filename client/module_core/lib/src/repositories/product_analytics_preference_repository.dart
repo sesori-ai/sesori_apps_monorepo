@@ -95,6 +95,9 @@ class ProductAnalyticsPreferenceRepository {
   }) async {
     final result = await _api.getPreference(userId: userId);
     return switch (result) {
+      ProductAnalyticsPreferenceApiSuccess(:final record)
+          when record.preference == ProductAnalyticsPreference.disabled && record.revision == pending.record.revision =>
+        _putPending(userId: userId, pending: pending),
       ProductAnalyticsPreferenceApiSuccess(:final record) => _persistPendingRecord(
         userId: userId,
         apiRecord: record,

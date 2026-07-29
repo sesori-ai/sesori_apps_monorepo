@@ -212,7 +212,7 @@ class _WhyBridgeButton extends StatelessWidget {
             title: loc.projectsOnboardingPcStatusWhy,
             builder: (_) => const _WhyBridgeInfoSheet(),
           );
-          _reportProductEvent(ProductAnalyticsEvent.whyBridgeOpened(surface: surface));
+          _reportProductEvent(event: ProductAnalyticsEvent.whyBridgeOpened(surface: surface));
           unawaited(presentation);
         },
       ),
@@ -313,7 +313,9 @@ class _NeedHelpMenu extends StatelessWidget {
   Future<void> _openSupportLink({required String url, required SupportChannel channel}) async {
     final launched = await openExternalLink(url: Uri.parse(url));
     if (launched) {
-      _reportProductEvent(ProductAnalyticsEvent.supportLinkOpened(channel: channel, surface: surface));
+      _reportProductEvent(
+        event: ProductAnalyticsEvent.supportLinkOpened(channel: channel, surface: surface),
+      );
     }
   }
 
@@ -332,7 +334,7 @@ class _NeedHelpMenu extends StatelessWidget {
           // While the popup is up its barrier covers the trigger, so a pill
           // tap can only ever open the menu — safe to count as an open.
           toggle();
-          _reportProductEvent(ProductAnalyticsEvent.needHelpMenuOpened(surface: surface));
+          _reportProductEvent(event: ProductAnalyticsEvent.needHelpMenuOpened(surface: surface));
         },
       ),
       entriesBuilder: () => [
@@ -784,7 +786,7 @@ class _CommandActionRowState extends State<_CommandActionRow> {
       logw("Failed to copy command", error, stackTrace);
       return;
     }
-    _reportProductEvent(widget.copiedEvent);
+    _reportProductEvent(event: widget.copiedEvent);
     messenger.showSnackBar(
       SnackBar(
         content: Text(loc.projectsOnboardingCommandCopied),
@@ -806,7 +808,7 @@ class _CommandActionRowState extends State<_CommandActionRow> {
         ShareParams(text: widget.command, sharePositionOrigin: origin),
       );
       if (result.status == ShareResultStatus.success) {
-        _reportProductEvent(widget.sharedEvent);
+        _reportProductEvent(event: widget.sharedEvent);
       }
     } on Object catch (error, stackTrace) {
       // Dismissing the sheet is reported via ShareResultStatus, not a throw, so
@@ -879,7 +881,7 @@ class _CommandActionRowState extends State<_CommandActionRow> {
   }
 }
 
-void _reportProductEvent(ProductAnalyticsEvent event) {
+void _reportProductEvent({required ProductAnalyticsEvent event}) {
   unawaited(
     getIt<ProductAnalyticsService>().logEvent(event: event, occurredAtUtc: DateTime.now().toUtc()).then<void>((_) {}),
   );

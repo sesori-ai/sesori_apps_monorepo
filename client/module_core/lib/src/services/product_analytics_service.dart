@@ -34,6 +34,8 @@ class ProductAnalyticsService {
   int _generation = 0;
   int? _reconciledGeneration;
   int? _schemaReadyGeneration;
+  int? _schemaReportGeneration;
+  Future<void>? _schemaReport;
   bool _postSplashReady = false;
   bool _localReadFailed = false;
   Future<void>? _startFuture;
@@ -141,6 +143,22 @@ class ProductAnalyticsService {
     }
   }
 
+  Future<void> resumeAfterFailedLogout() async {
+    if (_userId == null) return;
+    final local = _local;
+    switch (local) {
+      case LocalProductAnalyticsSynced(:final record):
+        await _applyRepositoryResult(ProductAnalyticsPreferenceSynchronized(record: record));
+      case LocalProductAnalyticsPendingDisable() || LocalProductAnalyticsPendingEnable():
+        _applyLocalState(local);
+      case null:
+        final volatileDisable = _volatileDisable;
+        if (volatileDisable != null) {
+          await _applyRepositoryResult(ProductAnalyticsPreferenceVolatileDisablePending(pending: volatileDisable));
+        }
+    }
+  }
+
   Future<AnalyticsDeliveryResult> logEvent({
     required ProductAnalyticsEvent event,
     required DateTime occurredAtUtc,
@@ -162,6 +180,8 @@ class ProductAnalyticsService {
     _generation += 1;
     _reconciledGeneration = null;
     _schemaReadyGeneration = null;
+    _schemaReportGeneration = null;
+    _schemaReport = null;
     _currentRecord = null;
     _local = null;
     _volatileDisable = null;
@@ -443,9 +463,34 @@ class ProductAnalyticsService {
   }
 
   Future<void> _reportSchemaReadyIfNeeded() async {
-    if (_schemaReadyGeneration == _generation) return;
-    _schemaReadyGeneration = _generation;
-    await logEvent(event: const ProductAnalyticsEvent.analyticsSchemaReady(), occurredAtUtc: DateTime.now().toUtc());
+    final generation = _generation;
+    if (_schemaReadyGeneration == generation) return;
+    final activeReport = _schemaReport;
+    if (_schemaReportGeneration == generation && activeReport != null) {
+      await activeReport;
+      return;
+    }
+    final report = _deliverSchemaReady(generation: generation);
+    _schemaReportGeneration = generation;
+    _schemaReport = report;
+    try {
+      await report;
+    } finally {
+      if (identical(_schemaReport, report)) {
+        _schemaReport = null;
+        _schemaReportGeneration = null;
+      }
+    }
+  }
+
+  Future<void> _deliverSchemaReady({required int generation}) async {
+    final result = await logEvent(
+      event: const ProductAnalyticsEvent.analyticsSchemaReady(),
+      occurredAtUtc: DateTime.now().toUtc(),
+    );
+    if (generation == _generation && result == AnalyticsDeliveryResult.acceptedBySdk) {
+      _schemaReadyGeneration = generation;
+    }
   }
 
   bool _matches({required int generation, required String userId}) => generation == _generation && userId == _userId;

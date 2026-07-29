@@ -62,7 +62,7 @@ void main() {
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
     when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
-    stubProductAnalyticsService(mockProductAnalyticsService);
+    stubProductAnalyticsService(service: mockProductAnalyticsService);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       const MethodChannel("dev.fluttercommunity.plus/share"),
       (_) async => "test-share-target",

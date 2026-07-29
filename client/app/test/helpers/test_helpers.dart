@@ -144,7 +144,7 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
 
-void stubProductAnalyticsService(MockProductAnalyticsService service) {
+void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
   when(
     () => service.logEvent(
       event: any(named: "event"),

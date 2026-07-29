@@ -10,10 +10,13 @@ import "../services/models/product_analytics_state.dart";
 import "../services/product_analytics_service.dart";
 import "app_routes.dart";
 
+const _screenDeliveryDeadline = Duration(seconds: 10);
+
 @lazySingleton
 class AnalyticsRouteListener {
   final RouteSource _routeSource;
   final ProductAnalyticsService _analyticsService;
+  final Duration _deliveryDeadline;
   StreamSubscription<AppRouteDef?>? _routeSubscription;
   StreamSubscription<ProductAnalyticsState>? _stateSubscription;
   AnalyticsScreen? _currentScreen;
@@ -24,7 +27,16 @@ class AnalyticsRouteListener {
 
   AnalyticsRouteListener({required RouteSource routeSource, required ProductAnalyticsService analyticsService})
     : _routeSource = routeSource,
-      _analyticsService = analyticsService;
+      _analyticsService = analyticsService,
+      _deliveryDeadline = _screenDeliveryDeadline;
+
+  AnalyticsRouteListener.withDeliveryDeadline({
+    required RouteSource routeSource,
+    required ProductAnalyticsService analyticsService,
+    required Duration deliveryDeadline,
+  }) : _routeSource = routeSource,
+       _analyticsService = analyticsService,
+       _deliveryDeadline = deliveryDeadline;
 
   Future<void> start() async {
     if (_started) return;
@@ -66,10 +78,12 @@ class AnalyticsRouteListener {
     }
     _inFlightScreens.add(screen);
     try {
-      final result = await _analyticsService.logEvent(
-        event: ProductAnalyticsEvent.screenViewed(screen: screen),
-        occurredAtUtc: DateTime.now().toUtc(),
-      );
+      final result = await _analyticsService
+          .logEvent(
+            event: ProductAnalyticsEvent.screenViewed(screen: screen),
+            occurredAtUtc: DateTime.now().toUtc(),
+          )
+          .timeout(_deliveryDeadline, onTimeout: () => AnalyticsDeliveryResult.failed);
       if (result == AnalyticsDeliveryResult.acceptedBySdk &&
           screen == _currentScreen &&
           _analyticsService.state.isActive) {

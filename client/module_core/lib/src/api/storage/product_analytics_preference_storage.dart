@@ -76,7 +76,7 @@ class ProductAnalyticsPreferenceStorage {
     if (revision is! int ||
         revision < 1 ||
         userKey is! String ||
-        !_userKeyPattern.hasMatch(userKey) ||
+        !isValidProductAnalyticsUserKey(value: userKey) ||
         kind is! String) {
       throw const FormatException("Invalid stored product analytics preference");
     }
@@ -127,7 +127,9 @@ StoredProductAnalyticsSynced _syncedFromJson({
   required String userKey,
 }) {
   final preferenceValue = decoded["preference"];
-  final preference = preferenceValue is String ? ProductAnalyticsPreference.fromWireValue(preferenceValue) : null;
+  final preference = preferenceValue is String
+      ? ProductAnalyticsPreference.fromWireValue(value: preferenceValue)
+      : null;
   if (preference == null) throw const FormatException("Invalid stored product analytics preference");
   return StoredProductAnalyticsSynced(
     userId: userId,
@@ -158,7 +160,6 @@ String _operationIdFrom(
   return operationId;
 }
 
-final _userKeyPattern = RegExp(r"^[a-f0-9]{64}$");
 final _operationIdPattern = RegExp(
   r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
 );

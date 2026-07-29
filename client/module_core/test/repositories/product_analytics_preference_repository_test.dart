@@ -159,6 +159,34 @@ void main() {
     expect(storage.writes, isEmpty);
   });
 
+  test("pending enable retries its stable operation when the server revision is unchanged", () async {
+    final pending = LocalProductAnalyticsPendingEnable(
+      record: _domainRecord(preference: ProductAnalyticsPreference.disabled, revision: 7),
+      operationId: _operationId,
+    );
+    api.getResults.add(
+      ProductAnalyticsPreferenceApiSuccess(
+        record: _apiRecord(preference: ProductAnalyticsPreference.disabled, revision: 7),
+      ),
+    );
+    api.updateResults.add(
+      ProductAnalyticsPreferenceApiSuccess(
+        record: _apiRecord(preference: ProductAnalyticsPreference.enabled, revision: 8),
+      ),
+    );
+
+    final result = await repository.reconcile(userId: "user-a", local: pending);
+
+    expect(result, isA<ProductAnalyticsPreferenceSynchronized>());
+    expect(api.updates.single, (
+      userId: "user-a",
+      preference: ProductAnalyticsPreference.enabled,
+      revision: 7,
+      operationId: _operationId,
+    ));
+    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.enabled);
+  });
+
   test("a pending disable survives restart and reuses its stable operation id", () async {
     storage.stored = const StoredProductAnalyticsPendingDisable(
       userId: "user-a",

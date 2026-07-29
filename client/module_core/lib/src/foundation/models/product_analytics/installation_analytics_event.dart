@@ -1,24 +1,24 @@
 import "package:meta/meta.dart";
 
 enum AnalyticsLoginProvider {
-  github("github"),
-  google("google"),
-  apple("apple"),
-  email("email");
+  github(wireValue: "github"),
+  google(wireValue: "google"),
+  apple(wireValue: "apple"),
+  email(wireValue: "email");
 
   final String wireValue;
-  const AnalyticsLoginProvider(this.wireValue);
+  const AnalyticsLoginProvider({required this.wireValue});
 }
 
 enum AnalyticsLoginFailureKind {
-  authentication("authentication"),
-  launch("launch"),
-  cancelled("cancelled"),
-  timeout("timeout"),
-  unknown("unknown");
+  authentication(wireValue: "authentication"),
+  launch(wireValue: "launch"),
+  cancelled(wireValue: "cancelled"),
+  timeout(wireValue: "timeout"),
+  unknown(wireValue: "unknown");
 
   final String wireValue;
-  const AnalyticsLoginFailureKind(this.wireValue);
+  const AnalyticsLoginFailureKind({required this.wireValue});
 }
 
 @immutable
