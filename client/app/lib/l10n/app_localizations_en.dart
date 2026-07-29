@@ -62,13 +62,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListNewActivity => 'New activity';
 
   @override
-  String get projectsEmptyConnected => 'Connected';
-
-  @override
   String get projectsEmptyMessage => 'You don\'t have any projects created or opened yet.';
 
   @override
-  String get projectsEmptyAddProject => 'Add a new project to get started';
+  String get projectsEmptyAddProject => 'Open new project';
 
   @override
   String get projectsOnboardingPcStatusWhy => 'Why is this needed?';

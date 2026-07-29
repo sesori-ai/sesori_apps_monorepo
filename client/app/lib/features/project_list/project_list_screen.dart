@@ -83,8 +83,8 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   /// placement that action is designed for: the add-project FAB in the
   /// trailing corner once projects exist, the onboarding "Need help?" support
   /// menu centred on the disconnected surfaces, and nothing otherwise — the
-  /// connected-but-empty state anchors its own add-project call to action at
-  /// the bottom ([_ConnectedEmptyView]), so a floating pill would collide.
+  /// connected-but-empty state carries its own add-project call to action
+  /// ([_ConnectedEmptyView]), which a floating pill would only duplicate.
   ({Widget? action, PregoFloatingActionAlignment alignment}) _floatingAction({
     required BuildContext context,
     required ProjectListState state,
@@ -233,7 +233,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
           ),
         ),
       ],
-      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId, :final bridges) => [
+      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         // Keep the list mounted at zero items so its final row can finish the
         // closing transition before the connected-empty view takes over.
@@ -250,11 +250,11 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         if (projects.isEmpty)
           // Same shape as the disconnected bodies above: the empty state joins
           // the page scroll rather than nesting one of its own.
-          SliverFillRemaining(
+          const SliverFillRemaining(
             hasScrollBody: false,
             child: SafeArea(
               top: false,
-              child: _ConnectedEmptyView(bridges: bridges),
+              child: _ConnectedEmptyView(),
             ),
           )
         else ...[

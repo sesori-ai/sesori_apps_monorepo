@@ -132,6 +132,9 @@ flutter:
     - assets/images/projects_onboarding/connection_graphic/
     - assets/images/projects_onboarding/connection_graphic/2.0x/
     - assets/images/projects_onboarding/connection_graphic/3.0x/
+    - assets/images/projects_onboarding/empty_projects_graphic/
+    - assets/images/projects_onboarding/empty_projects_graphic/2.0x/
+    - assets/images/projects_onboarding/empty_projects_graphic/3.0x/
     - assets/images/projects_onboarding/info_graphic/
     - assets/images/projects_onboarding/info_graphic/2.0x/
     - assets/images/projects_onboarding/info_graphic/3.0x/

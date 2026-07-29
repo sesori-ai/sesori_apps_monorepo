@@ -6,7 +6,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
 import "package:sesori_mobile/core/di/injection.dart";
-import "package:sesori_mobile/core/widgets/connection_graphic.dart";
 import "package:sesori_mobile/features/project_list/add_project_dialog.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -16,11 +15,11 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 
 // ---------------------------------------------------------------------------
-// Guards the connected-but-empty Projects body: the "on" connection graphic
-// with its "Connected" caption up top, and the bottom-anchored no-projects
+// Guards the connected-but-empty Projects body: the centred no-projects
 // message with the add-project call to action that opens the Add Project
-// sheet. Pumps the real [ProjectListScreen] driven into the loaded-empty
-// state through getIt-registered mocks.
+// sheet, and the connection reporting this surface deliberately leaves to the
+// top navigation. Pumps the real [ProjectListScreen] driven into the
+// loaded-empty state through getIt-registered mocks.
 // ---------------------------------------------------------------------------
 
 const _connectionConfig = ServerConnectionConfig(
@@ -111,15 +110,20 @@ void main() {
     addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
   }
 
-  testWidgets("shows the on-graphic, Connected caption, message and add-project CTA", (tester) async {
+  testWidgets("shows the folders graphic, message and add-project CTA", (tester) async {
     await pumpConnectedEmpty(tester);
 
-    expect(find.byType(ConnectionGraphic), findsOneWidget);
-    // Text.rich caption ("Connected" + inline check icon), so match by
-    // substring rather than the exact plain text.
-    expect(find.textContaining("Connected"), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName.contains("empty_projects"),
+      ),
+      findsOneWidget,
+    );
     expect(find.text("You don't have any projects created or opened yet."), findsOneWidget);
-    expect(find.text("Add a new project to get started"), findsOneWidget);
+    expect(find.text("Open new project"), findsOneWidget);
   });
 
   testWidgets("hosts no Need-help pill or install commands on this surface", (tester) async {
@@ -130,26 +134,16 @@ void main() {
     expect(find.text("Why is this needed?"), findsNothing);
   });
 
-  group("machine-name row", () {
-    testWidgets("names the most recently seen registered bridge under the caption", (tester) async {
-      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
-        (_) async => [_bridge(name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1))],
-      );
+  testWidgets("leaves the connection status and machine name to the top navigation", (tester) async {
+    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
+      (_) async => [_bridge(name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1))],
+    );
 
-      await pumpConnectedEmpty(tester);
+    await pumpConnectedEmpty(tester);
 
-      expect(find.text("Macbook-Pro.local"), findsOneWidget);
-      expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
-    });
-
-    testWidgets("is hidden when the registered bridges could not be fetched", (tester) async {
-      await pumpConnectedEmpty(tester);
-
-      expect(find.byIcon(TablerRegular.device_laptop), findsNothing);
-      // The empty state itself still renders in full.
-      expect(find.textContaining("Connected"), findsOneWidget);
-      expect(find.text("Add a new project to get started"), findsOneWidget);
-    });
+    expect(find.textContaining("Connected"), findsNothing);
+    expect(find.text("Macbook-Pro.local"), findsNothing);
+    expect(find.byIcon(TablerRegular.device_laptop), findsNothing);
   });
 
   testWidgets("tapping the CTA opens the Add Project sheet", (tester) async {
@@ -158,7 +152,7 @@ void main() {
     );
     await pumpConnectedEmpty(tester);
 
-    await tester.tap(find.text("Add a new project to get started"));
+    await tester.tap(find.text("Open new project"));
     await tester.pumpAndSettle();
 
     expect(find.byType(AddProjectDialog), findsOneWidget);

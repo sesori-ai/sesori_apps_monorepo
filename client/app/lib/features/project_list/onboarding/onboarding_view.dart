@@ -6,95 +6,97 @@ part of "../project_list_screen.dart";
 // The two empty Projects states have their own bodies now that they diverge:
 // * disconnected — the connect-your-computer onboarding (connection graphic in
 //   its "off" state): install + start the bridge. See [_ConnectBridgeChecklist].
-// * connected, no projects — the graphic in its "on" state with a "Connected"
-//   caption and an add-project call to action. See [_ConnectedEmptyView].
+// * connected, no projects — the stacked-folders graphic over an add-project
+//   call to action. See [_ConnectedEmptyView].
 //
 // Both are bodies, not pages: [ProjectListScreen] hosts them in its own page
 // scroll — with the pull-to-refresh and the collapsing large title that come
 // with it — rather than each nesting a scroll view of its own.
 // ===========================================================================
 
-/// The "connected, no projects" empty state: the connection graphic in its
-/// "on" state with a success-colored "Connected" caption and the machine name
-/// of the connected bridge sitting high in the body, and — anchored to the
-/// bottom — the no-projects message with the add-project call to action,
-/// which opens the existing Add Project sheet.
+/// The "connected, no projects" empty state: the stacked-folders graphic, the
+/// no-projects message and the call to action that opens the existing Add
+/// Project sheet, as one block centred in the body.
+///
+/// The connection itself is not restated here — the design puts the machine
+/// identity in the top navigation, and this screen only reports it when the
+/// bridge is *not* connected ([_BridgeOfflineView]).
 class _ConnectedEmptyView extends StatelessWidget {
-  const _ConnectedEmptyView({required this.bridges});
-
-  /// The account's registered bridges, most recently seen first. The first
-  /// entry names the machine the app is connected to; empty while the lookup
-  /// is in flight or when it failed, which hides the machine row.
-  final List<BridgeSummary> bridges;
+  const _ConnectedEmptyView();
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 64px gap from the title area keeps the graphic in the upper portion
-        // of the screen (Figma gap-7xl), clear of the bottom CTA group.
-        const SizedBox(height: PregoSpacing.x7l),
-        const Center(
-          child: ExcludeSemantics(child: ConnectionGraphic.connectionOn()),
-        ),
-        const SizedBox(height: PregoSpacing.lg),
-        Text.rich(
-          TextSpan(
-            children: [
-              // "Connected" + check icon read as a single success-colored unit
-              // confirming the connection.
-              TextSpan(text: loc.projectsEmptyConnected),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                  child: Icon(
-                    TablerRegular.circle_check,
-                    size: 14,
-                    color: prego.colors.textSuccessPrimary,
-                  ),
+    // Centred in the body rather than at the design's exact screen centre: the
+    // collapsing large title takes the space above, so the group sits in the
+    // middle of what is left of the page.
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ExcludeSemantics(child: _EmptyProjectsGraphic()),
+          const SizedBox(height: PregoSpacing.x6l),
+          SizedBox(
+            // Figma caps the block at 224px so the message wraps into a compact
+            // two-line paragraph and the button matches its width.
+            width: 224,
+            child: Column(
+              children: [
+                Text(
+                  loc.projectsEmptyMessage,
+                  textAlign: TextAlign.center,
+                  style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
                 ),
-              ),
-            ],
-          ),
-          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSuccessPrimary),
-          textAlign: TextAlign.center,
-        ),
-        if (bridges.isNotEmpty) ...[
-          const SizedBox(height: PregoSpacing.xxs),
-          Center(child: _MachineNameRow(name: bridges.first.name)),
-        ],
-        const Spacer(),
-        Center(
-          child: ConstrainedBox(
-            // Figma caps the message at 224px so it wraps into a compact
-            // two-line block instead of a full-width single line.
-            constraints: const BoxConstraints(maxWidth: 224),
-            child: Text(
-              loc.projectsEmptyMessage,
-              textAlign: TextAlign.center,
-              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+                const SizedBox(height: PregoSpacing.xl),
+                PregoButtonsSolid(
+                  fullWidth: true,
+                  leadingIcon: TablerRegular.folder_plus,
+                  label: loc.projectsEmptyAddProject,
+                  hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                  size: PregoButtonsSolidSize.xl,
+                  onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: PregoSpacing.xl),
-        Center(
-          child: PregoButtonsSolid(
-            fullWidth: false,
-            leadingIcon: TablerRegular.folder_plus,
-            label: loc.projectsEmptyAddProject,
-            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-            size: PregoButtonsSolidSize.xl,
-            onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
-          ),
-        ),
-        // 24px above the home-indicator inset the hosting SafeArea applies.
-        const SizedBox(height: PregoSpacing.x3l),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The stacked-folders illustration of the connected-but-empty Projects
+/// screen, exported as PNGs from the Figma "Mask group" node (`3756:7644`):
+/// two overlapping folder outlines carrying a "+" glyph, fading out towards
+/// the bottom. Light and dark artwork (plus @2x/@3x variants) ship separately —
+/// the folders are drawn near-white on the light surface and near-black on the
+/// dark one, so both stay a subtle tone above the background.
+///
+/// Rendered at the 241×150 Figma frame size, pinned rather than taken from the
+/// decoded asset: an unsized [Image] reports a *max intrinsic* height of
+/// `crossAxisExtent / aspectRatio`, and the hosting
+/// `SliverFillRemaining(hasScrollBody: false)` sizes itself from that — an
+/// unsized graphic would inflate the page's scroll extent with empty space.
+class _EmptyProjectsGraphic extends StatelessWidget {
+  const _EmptyProjectsGraphic();
+
+  static const double _width = 241;
+  static const double _height = 150;
+
+  static const String _dir = "assets/images/projects_onboarding/empty_projects_graphic";
+  static const String _light = "$_dir/empty_projects-light.png";
+  static const String _dark = "$_dir/empty_projects-dark.png";
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      context.isDarkMode ? _dark : _light,
+      width: _width,
+      height: _height,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
     );
   }
 }

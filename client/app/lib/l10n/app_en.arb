@@ -26,15 +26,11 @@
   "@projectListNewActivity": {
     "description": "Status shown beside a static sparkle on a project row with unseen agent activity the user hasn't opened yet."
   },
-  "projectsEmptyConnected": "Connected",
-  "@projectsEmptyConnected": {
-    "description": "Status caption under the connection graphic on the connected-but-empty Projects screen, rendered in the success color with a check icon."
-  },
   "projectsEmptyMessage": "You don't have any projects created or opened yet.",
   "@projectsEmptyMessage": {
-    "description": "Message above the add-project button on the connected-but-empty Projects screen."
+    "description": "Message under the folders graphic on the connected-but-empty Projects screen."
   },
-  "projectsEmptyAddProject": "Add a new project to get started",
+  "projectsEmptyAddProject": "Open new project",
   "@projectsEmptyAddProject": {
     "description": "Label of the button on the connected-but-empty Projects screen that opens the Add Project sheet."
   },

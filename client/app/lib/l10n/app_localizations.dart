@@ -181,13 +181,7 @@ abstract class AppLocalizations {
   /// **'New activity'**
   String get projectListNewActivity;
 
-  /// Status caption under the connection graphic on the connected-but-empty Projects screen, rendered in the success color with a check icon.
-  ///
-  /// In en, this message translates to:
-  /// **'Connected'**
-  String get projectsEmptyConnected;
-
-  /// Message above the add-project button on the connected-but-empty Projects screen.
+  /// Message under the folders graphic on the connected-but-empty Projects screen.
   ///
   /// In en, this message translates to:
   /// **'You don\'t have any projects created or opened yet.'**
@@ -196,7 +190,7 @@ abstract class AppLocalizations {
   /// Label of the button on the connected-but-empty Projects screen that opens the Add Project sheet.
   ///
   /// In en, this message translates to:
-  /// **'Add a new project to get started'**
+  /// **'Open new project'**
   String get projectsEmptyAddProject;
 
   /// Label for the button below the PC status line that opens the bridge explainer bottom sheet; also used as that sheet's title.
