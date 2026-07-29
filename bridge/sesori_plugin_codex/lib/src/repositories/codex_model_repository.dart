@@ -20,14 +20,14 @@ class CodexModelRepository {
     final models = <PluginModel>[];
     for (final model in response.data) {
       if (model.hidden == true) continue;
-      final id = _usefulText(model.id);
+      final id = _usefulText(value: model.id);
       if (id == null) continue;
       if (model.isDefault == true) defaultModelID = id;
       models.add(
         PluginModel(
           id: id,
-          name: _usefulText(model.displayName) ?? id,
-          variants: _reasoningEffortVariants(model),
+          name: _usefulText(value: model.displayName) ?? id,
+          variants: _reasoningEffortVariants(model: model),
           family: null,
           isAvailable: true,
           releaseDate: null,
@@ -37,20 +37,20 @@ class CodexModelRepository {
     return (defaultModelID: defaultModelID, models: models);
   }
 
-  List<String> _reasoningEffortVariants(CodexModelDto model) {
+  List<String> _reasoningEffortVariants({required CodexModelDto model}) {
     final efforts = <String>[];
     for (final option in model.supportedReasoningEfforts ?? const <CodexReasoningEffortOptionDto>[]) {
-      final effort = _usefulText(option.reasoningEffort);
+      final effort = _usefulText(value: option.reasoningEffort);
       if (effort != null && !efforts.contains(effort)) efforts.add(effort);
     }
-    final defaultEffort = _usefulText(model.defaultReasoningEffort);
+    final defaultEffort = _usefulText(value: model.defaultReasoningEffort);
     if (defaultEffort != null && efforts.remove(defaultEffort)) {
       efforts.insert(0, defaultEffort);
     }
     return efforts;
   }
 
-  String? _usefulText(String? value) {
+  String? _usefulText({required String? value}) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }

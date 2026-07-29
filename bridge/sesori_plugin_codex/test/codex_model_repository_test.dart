@@ -45,6 +45,44 @@ void main() {
 
       await expectLater(api.listModels(), throwsStateError);
     });
+
+    test("preserves supported effort shapes while skipping unknown list entries", () async {
+      final api = CodexAppServerApi(
+        client: _StubClient(
+          response: const {
+            "data": [
+              false,
+              {
+                "id": "gpt-5.5",
+                "supportedReasoningEfforts": [
+                  "low",
+                  {"reasoningEffort": "high", "description": "Deep"},
+                  7,
+                ],
+              },
+            ],
+          },
+        ),
+      );
+
+      final response = await api.listModels();
+
+      expect(response.data, hasLength(1));
+      expect(
+        response.data.single.supportedReasoningEfforts?.map(
+          (option) => option.reasoningEffort,
+        ),
+        ["low", "high"],
+      );
+    });
+
+    test("rejects a model/list response whose data field is not a list", () async {
+      final api = CodexAppServerApi(
+        client: _StubClient(response: const {"data": "invalid"}),
+      );
+
+      await expectLater(api.listModels(), throwsFormatException);
+    });
   });
 
   group("CodexModelRepository", () {

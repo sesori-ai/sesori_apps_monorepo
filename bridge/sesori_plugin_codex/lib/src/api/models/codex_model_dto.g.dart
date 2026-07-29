@@ -8,11 +8,7 @@ part of 'codex_model_dto.dart';
 
 _CodexModelListResponseDto _$CodexModelListResponseDtoFromJson(Map json) =>
     _CodexModelListResponseDto(
-      data: (json['data'] as List<dynamic>)
-          .map(
-            (e) => CodexModelDto.fromJson(Map<String, dynamic>.from(e as Map)),
-          )
-          .toList(),
+      data: const CodexModelListConverter().fromJson(json['data']),
       nextCursor: json['nextCursor'] as String?,
     );
 
@@ -20,14 +16,9 @@ _CodexModelDto _$CodexModelDtoFromJson(Map json) => _CodexModelDto(
   id: json['id'] as String?,
   displayName: json['displayName'] as String?,
   hidden: json['hidden'] as bool?,
-  supportedReasoningEfforts:
-      (json['supportedReasoningEfforts'] as List<dynamic>?)
-          ?.map(
-            (e) => CodexReasoningEffortOptionDto.fromJson(
-              Map<String, dynamic>.from(e as Map),
-            ),
-          )
-          .toList(),
+  supportedReasoningEfforts: const CodexReasoningEffortListConverter().fromJson(
+    json['supportedReasoningEfforts'],
+  ),
   defaultReasoningEffort: json['defaultReasoningEffort'] as String?,
   isDefault: json['isDefault'] as bool?,
 );

@@ -6,7 +6,7 @@ part "codex_model_dto.g.dart";
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexModelListResponseDto with _$CodexModelListResponseDto {
   const factory CodexModelListResponseDto({
-    required List<CodexModelDto> data,
+    @CodexModelListConverter() required List<CodexModelDto> data,
     required String? nextCursor,
   }) = _CodexModelListResponseDto;
 
@@ -19,7 +19,7 @@ sealed class CodexModelDto with _$CodexModelDto {
     required String? id,
     required String? displayName,
     required bool? hidden,
-    required List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts,
+    @CodexReasoningEffortListConverter() required List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts,
     required String? defaultReasoningEffort,
     required bool? isDefault,
   }) = _CodexModelDto;
@@ -37,4 +37,51 @@ sealed class CodexReasoningEffortOptionDto with _$CodexReasoningEffortOptionDto 
   factory CodexReasoningEffortOptionDto.fromJson(
     Map<String, dynamic> json,
   ) => _$CodexReasoningEffortOptionDtoFromJson(json);
+}
+
+class CodexModelListConverter implements JsonConverter<List<CodexModelDto>, Object?> {
+  const CodexModelListConverter();
+
+  @override
+  List<CodexModelDto> fromJson(Object? json) {
+    if (json is! List) {
+      throw const FormatException("expected Codex model data to be a list");
+    }
+    return [
+      for (final entry in json)
+        if (entry is Map) CodexModelDto.fromJson(Map<String, dynamic>.from(entry)),
+    ];
+  }
+
+  @override
+  Object? toJson(List<CodexModelDto> object) {
+    throw UnsupportedError("Codex model DTOs are decode-only");
+  }
+}
+
+class CodexReasoningEffortListConverter implements JsonConverter<List<CodexReasoningEffortOptionDto>?, Object?> {
+  const CodexReasoningEffortListConverter();
+
+  @override
+  List<CodexReasoningEffortOptionDto>? fromJson(Object? json) {
+    if (json == null) return null;
+    if (json is! List) return const [];
+    return [
+      for (final entry in json)
+        if (entry is String)
+          CodexReasoningEffortOptionDto(
+            reasoningEffort: entry,
+            description: null,
+          )
+        else if (entry is Map)
+          CodexReasoningEffortOptionDto.fromJson(
+            Map<String, dynamic>.from(entry),
+          ),
+    ];
+  }
+
+  @override
+  Object? toJson(List<CodexReasoningEffortOptionDto>? object) {
+    throw UnsupportedError("Codex reasoning-effort DTOs are decode-only");
+  }
 }

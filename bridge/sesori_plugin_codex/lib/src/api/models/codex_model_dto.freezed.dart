@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CodexModelListResponseDto {
 
- List<CodexModelDto> get data; String? get nextCursor;
+@CodexModelListConverter() List<CodexModelDto> get data; String? get nextCursor;
 /// Create a copy of CodexModelListResponseDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -46,7 +46,7 @@ abstract mixin class $CodexModelListResponseDtoCopyWith<$Res>  {
   factory $CodexModelListResponseDtoCopyWith(CodexModelListResponseDto value, $Res Function(CodexModelListResponseDto) _then) = _$CodexModelListResponseDtoCopyWithImpl;
 @useResult
 $Res call({
- List<CodexModelDto> data, String? nextCursor
+@CodexModelListConverter() List<CodexModelDto> data, String? nextCursor
 });
 
 
@@ -79,11 +79,11 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _CodexModelListResponseDto implements CodexModelListResponseDto {
-  const _CodexModelListResponseDto({required final  List<CodexModelDto> data, required this.nextCursor}): _data = data;
+  const _CodexModelListResponseDto({@CodexModelListConverter() required final  List<CodexModelDto> data, required this.nextCursor}): _data = data;
   factory _CodexModelListResponseDto.fromJson(Map<String, dynamic> json) => _$CodexModelListResponseDtoFromJson(json);
 
  final  List<CodexModelDto> _data;
-@override List<CodexModelDto> get data {
+@override@CodexModelListConverter() List<CodexModelDto> get data {
   if (_data is EqualUnmodifiableListView) return _data;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_data);
@@ -121,7 +121,7 @@ abstract mixin class _$CodexModelListResponseDtoCopyWith<$Res> implements $Codex
   factory _$CodexModelListResponseDtoCopyWith(_CodexModelListResponseDto value, $Res Function(_CodexModelListResponseDto) _then) = __$CodexModelListResponseDtoCopyWithImpl;
 @override @useResult
 $Res call({
- List<CodexModelDto> data, String? nextCursor
+@CodexModelListConverter() List<CodexModelDto> data, String? nextCursor
 });
 
 
@@ -153,7 +153,7 @@ as String?,
 /// @nodoc
 mixin _$CodexModelDto {
 
- String? get id; String? get displayName; bool? get hidden; List<CodexReasoningEffortOptionDto>? get supportedReasoningEfforts; String? get defaultReasoningEffort; bool? get isDefault;
+ String? get id; String? get displayName; bool? get hidden;@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? get supportedReasoningEfforts; String? get defaultReasoningEffort; bool? get isDefault;
 /// Create a copy of CodexModelDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -184,7 +184,7 @@ abstract mixin class $CodexModelDtoCopyWith<$Res>  {
   factory $CodexModelDtoCopyWith(CodexModelDto value, $Res Function(CodexModelDto) _then) = _$CodexModelDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id, String? displayName, bool? hidden, List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, String? defaultReasoningEffort, bool? isDefault
+ String? id, String? displayName, bool? hidden,@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, String? defaultReasoningEffort, bool? isDefault
 });
 
 
@@ -221,14 +221,14 @@ as bool?,
 @JsonSerializable(createToJson: false)
 
 class _CodexModelDto implements CodexModelDto {
-  const _CodexModelDto({required this.id, required this.displayName, required this.hidden, required final  List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, required this.defaultReasoningEffort, required this.isDefault}): _supportedReasoningEfforts = supportedReasoningEfforts;
+  const _CodexModelDto({required this.id, required this.displayName, required this.hidden, @CodexReasoningEffortListConverter() required final  List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, required this.defaultReasoningEffort, required this.isDefault}): _supportedReasoningEfforts = supportedReasoningEfforts;
   factory _CodexModelDto.fromJson(Map<String, dynamic> json) => _$CodexModelDtoFromJson(json);
 
 @override final  String? id;
 @override final  String? displayName;
 @override final  bool? hidden;
  final  List<CodexReasoningEffortOptionDto>? _supportedReasoningEfforts;
-@override List<CodexReasoningEffortOptionDto>? get supportedReasoningEfforts {
+@override@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? get supportedReasoningEfforts {
   final value = _supportedReasoningEfforts;
   if (value == null) return null;
   if (_supportedReasoningEfforts is EqualUnmodifiableListView) return _supportedReasoningEfforts;
@@ -269,7 +269,7 @@ abstract mixin class _$CodexModelDtoCopyWith<$Res> implements $CodexModelDtoCopy
   factory _$CodexModelDtoCopyWith(_CodexModelDto value, $Res Function(_CodexModelDto) _then) = __$CodexModelDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? displayName, bool? hidden, List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, String? defaultReasoningEffort, bool? isDefault
+ String? id, String? displayName, bool? hidden,@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, String? defaultReasoningEffort, bool? isDefault
 });
 
 

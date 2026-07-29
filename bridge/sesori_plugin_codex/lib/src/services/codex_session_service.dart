@@ -463,7 +463,7 @@ class CodexSessionService {
             : [
                 PluginProvider.custom(
                   id: providerID,
-                  name: _providerDisplayName(providerID),
+                  name: _providerDisplayName(providerID: providerID),
                   authType: PluginProviderAuthType.unknown,
                   models: models,
                   defaultModelID: selectedModelID,
@@ -490,7 +490,7 @@ class CodexSessionService {
     }
   }
 
-  String _providerDisplayName(String providerID) {
+  String _providerDisplayName({required String providerID}) {
     return switch (providerID.toLowerCase()) {
       "openai" => "OpenAI",
       "anthropic" => "Anthropic",
