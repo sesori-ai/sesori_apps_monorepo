@@ -24,9 +24,13 @@ import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i231;
 import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
 import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i957;
+import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
+    as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
+import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
+    as _i197;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
     as _i895;
 import 'package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart'
@@ -63,6 +67,8 @@ import 'package:sesori_dart_core/src/repositories/plugin_preference_repository.d
     as _i594;
 import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
     as _i337;
+import 'package:sesori_dart_core/src/repositories/product_analytics_preference_repository.dart'
+    as _i804;
 import 'package:sesori_dart_core/src/repositories/product_analytics_repository.dart'
     as _i67;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
@@ -133,6 +139,11 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i400.NotificationApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
     );
+    gh.lazySingleton<_i560.ProductAnalyticsPreferenceApi>(
+      () => _i560.ProductAnalyticsPreferenceApi(
+        client: gh<_i442.AuthenticatedHttpApiClient>(),
+      ),
+    );
     gh.lazySingleton<_i727.AnalyticsApi>(
       () => _i727.AnalyticsApi(client: gh<_i791.AnalyticsClient>()),
     );
@@ -172,6 +183,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i957.PluginPreferenceApi>(
       () => _i957.PluginPreferenceApi(storage: gh<_i442.SecureStorage>()),
+    );
+    gh.lazySingleton<_i197.ProductAnalyticsPreferenceStorage>(
+      () => _i197.ProductAnalyticsPreferenceStorage(
+        storage: gh<_i442.SecureStorage>(),
+      ),
     );
     gh.lazySingleton<_i205.BridgeRepository>(
       () => _i205.BridgeRepository(api: gh<_i384.BridgeApi>()),
@@ -236,6 +252,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i594.PluginPreferenceRepository>(
       () => _i594.PluginPreferenceRepository(
         api: gh<_i957.PluginPreferenceApi>(),
+      ),
+    );
+    gh.lazySingleton<_i804.ProductAnalyticsPreferenceRepository>(
+      () => _i804.ProductAnalyticsPreferenceRepository(
+        api: gh<_i560.ProductAnalyticsPreferenceApi>(),
+        storage: gh<_i197.ProductAnalyticsPreferenceStorage>(),
       ),
     );
     gh.lazySingleton<_i157.SessionViewApi>(
