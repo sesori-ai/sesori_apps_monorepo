@@ -97,6 +97,10 @@ class AnalyticsRouteListener {
           screen == _currentScreen &&
           _analyticsService.state.isActive) {
         _reportedScreen = screen;
+      } else if (result == AnalyticsDeliveryResult.failed &&
+          screen == _currentScreen &&
+          _analyticsService.state.isActive) {
+        logw("Failed to deliver analytics screen event");
       }
     } finally {
       _inFlightScreens.remove(screen);
