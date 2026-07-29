@@ -145,6 +145,7 @@ class _ConnectBridgeChecklist extends StatelessWidget {
             stepHeader: _InfoLabel(
               title: "1. ${loc.projectsOnboardingInstallStepTitle}",
               info: loc.projectsOnboardingInstallStepInfo,
+              centered: false,
             ),
           ),
         ),
@@ -158,6 +159,7 @@ class _ConnectBridgeChecklist extends StatelessWidget {
               _InfoLabel(
                 title: "2. ${loc.projectsOnboardingStartStepTitle}",
                 info: loc.projectsOnboardingStartStepInfo,
+                centered: false,
               ),
               const SizedBox(height: PregoSpacing.md),
               const _CommandBoxFrame(
@@ -226,7 +228,7 @@ class _WhyBridgeButton extends StatelessWidget {
 /// on the bridge-offline view. Tapping the icon opens a [PregoInfoPopover]
 /// (glass on iOS, flat/`cue` on Android) anchored to it, showing [info].
 class _InfoLabel extends StatelessWidget {
-  const _InfoLabel({required this.title, required this.info, this.centered = false});
+  const _InfoLabel({required this.title, required this.info, required this.centered});
 
   final String title;
   final String info;
@@ -246,11 +248,18 @@ class _InfoLabel extends StatelessWidget {
       children: [
         // The info icon's 40px tap target holds its 12px glyph against its
         // start, leaving 24px of dead space at the end. An equal gap in front
-        // centres what the user actually sees rather than the hit box.
+        // centres what the user actually sees rather than the hit box — and
+        // keeps it centred once the title grows wide enough to claim the whole
+        // row, where the spacer becomes the leading margin matching the glyph's
+        // trailing one.
         if (centered) const SizedBox(width: 24),
         Flexible(
           child: Text(
             title,
+            // A title too long for one line (long locale, large text scale)
+            // wraps; centre those lines so the block still reads as centred
+            // rather than ragged against the leading edge.
+            textAlign: centered ? TextAlign.center : TextAlign.start,
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
           ),
         ),

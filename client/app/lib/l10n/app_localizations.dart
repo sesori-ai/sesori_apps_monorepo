@@ -325,7 +325,7 @@ abstract class AppLocalizations {
   /// **'Disconnected'**
   String get projectsBridgeOfflineDisconnected;
 
-  /// Status caption under the machine name on the bridge-offline Projects screen, pairing the disconnected state with how long ago the bridge was last seen, e.g. 'Disconnected · 5 hours ago'.
+  /// Status caption under the machine name on the bridge-offline Projects screen, pairing the disconnected state with when the bridge was last seen, e.g. 'Disconnected · 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
   ///
   /// In en, this message translates to:
   /// **'Disconnected · {lastSeen}'**
