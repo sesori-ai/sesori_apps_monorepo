@@ -588,6 +588,39 @@ void main() {
     expect(service.state.isActive, isTrue);
   });
 
+  test("a repeated authenticated emission preserves a queued disable for the same account", () async {
+    createService();
+    final localLoad = Completer<LocalProductAnalyticsPreference?>();
+    preferenceRepository.loadHandlers[_userA.id] = () => localLoad.future;
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final disabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 2,
+    );
+    preferenceRepository.setHandlers.add(
+      (_, _, _) async => ProductAnalyticsPreferenceSynchronized(record: disabled),
+    );
+
+    final startFuture = service.start();
+    while (preferenceRepository.loadCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    authSession.emit(state: const AuthState.authenticated(user: _userA));
+    localLoad.complete(LocalProductAnalyticsSynced(record: enabled));
+    await Future.wait([startFuture, disableFuture]);
+
+    expect(preferenceRepository.loadCalls, [_userA.id]);
+    expect(preferenceRepository.setCalls, hasLength(1));
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+  });
+
   test("disable stays suppressed while obtaining a missing current record", () async {
     createService();
     final enabled = _record(
@@ -903,12 +936,28 @@ void main() {
     fakeAsync((async) {
       var completed = false;
       service.prepareForLogout().then((_) => completed = true);
+      async.flushMicrotasks();
+
+      expect(
+        (service.state.availability as ProductAnalyticsInactive).reason,
+        ProductAnalyticsInactiveReason.unauthenticated,
+      );
 
       async.elapse(const Duration(seconds: 10));
       async.flushMicrotasks();
 
       expect(completed, isTrue);
       expect(service.state.isActive, isFalse);
+      expect(
+        (service.state.availability as ProductAnalyticsInactive).reason,
+        ProductAnalyticsInactiveReason.unauthenticated,
+      );
+
+      var resumed = false;
+      service.resumeAfterFailedLogout().then((_) => resumed = true);
+      async.flushMicrotasks();
+      expect(resumed, isTrue);
+      expect(service.state.synchronization, isA<ProductAnalyticsDisablePending>());
     });
 
     hangingRetry.complete(ProductAnalyticsPreferencePendingSync(pending: pending));
@@ -1007,7 +1056,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
   });
 
-  test("one automatic read occurs per auth generation while explicit refresh reads again", () async {
+  test("same-account auth emissions do not reload while explicit refresh still reads again", () async {
     createService();
     final record = _record(
       userId: _userA.id,
@@ -1029,9 +1078,7 @@ void main() {
     expect(preferenceRepository.reconcileCalls, hasLength(2));
 
     authSession.emit(state: const AuthState.authenticated(user: _userA));
-    for (var i = 0; i < 5 && preferenceRepository.reconcileCalls.length < 3; i++) {
-      await Future<void>.delayed(Duration.zero);
-    }
-    expect(preferenceRepository.reconcileCalls, hasLength(3));
+    await Future<void>.delayed(Duration.zero);
+    expect(preferenceRepository.reconcileCalls, hasLength(2));
   });
 }
