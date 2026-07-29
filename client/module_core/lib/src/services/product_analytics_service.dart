@@ -116,6 +116,7 @@ class ProductAnalyticsService {
             generation: generation,
             userId: userId,
             allowDuringLogout: allowDuringLogout,
+            pendingPreference: preference,
           );
           if (!_canApply(
             generation: generation,
@@ -129,7 +130,6 @@ class ProductAnalyticsService {
           }
           operationRecord = _currentRecord;
           if (operationRecord == null) return;
-          _emitPreferenceRequestInProgress(preference: preference);
         }
         final result = await _preferenceRepository.setPreference(
           userId: userId,
@@ -147,7 +147,7 @@ class ProductAnalyticsService {
           return;
         }
         if (_logoutPreparation != null) _reconcileAfterFailedLogout = true;
-        await _applyRepositoryResult(result);
+        await _applyRepositoryResult(result: result, pendingPreference: null);
       },
     );
   }
@@ -208,7 +208,13 @@ class ProductAnalyticsService {
         availability.reason == ProductAnalyticsInactiveReason.unauthenticated) {
       _state.add(preparation.state);
     }
-    if (shouldReconcile) await _reconcileIfNeeded(force: true, allowDuringLogout: false);
+    if (shouldReconcile) {
+      if (_localReadFailed) {
+        await _retryLocalReadAndReconcile();
+      } else {
+        await _reconcileIfNeeded(force: true, allowDuringLogout: false);
+      }
+    }
   }
 
   Future<AnalyticsDeliveryResult> logEvent({
@@ -270,13 +276,22 @@ class ProductAnalyticsService {
   Future<void> _loadAndApplyLocalPreference({required int generation, required String userId}) async {
     try {
       final local = await _preferenceRepository.loadLocal(userId: userId);
-      if (!_matches(generation: generation, userId: userId)) return;
+      if (!_matchesAccount(generation: generation, userId: userId)) return;
       _local = local;
+      if (_logoutPreparation != null) {
+        _currentRecord = local?.record;
+        _reconcileAfterFailedLogout = true;
+        return;
+      }
       _applyLocalState(local);
     } on Object catch (error, stackTrace) {
       logw("Failed to read local analytics preference", error, stackTrace);
-      if (!_matches(generation: generation, userId: userId)) return;
+      if (!_matchesAccount(generation: generation, userId: userId)) return;
       _localReadFailed = true;
+      if (_logoutPreparation != null) {
+        _reconcileAfterFailedLogout = true;
+        return;
+      }
       _state.add(
         const ProductAnalyticsState(
           preference: ProductAnalyticsPreferenceUnknown(),
@@ -356,6 +371,7 @@ class ProductAnalyticsService {
           generation: generation,
           userId: userId,
           allowDuringLogout: allowDuringLogout,
+          pendingPreference: null,
         );
       },
     );
@@ -382,6 +398,7 @@ class ProductAnalyticsService {
     required int generation,
     required String userId,
     required bool allowDuringLogout,
+    required ProductAnalyticsPreference? pendingPreference,
   }) async {
     _state.add(
       ProductAnalyticsState(
@@ -403,16 +420,21 @@ class ProductAnalyticsService {
     }
     if (_logoutPreparation != null) _reconcileAfterFailedLogout = true;
     _reconciledGeneration = generation;
-    await _applyRepositoryResult(result);
+    await _applyRepositoryResult(result: result, pendingPreference: pendingPreference);
   }
 
-  Future<void> _applyRepositoryResult(ProductAnalyticsPreferenceRepositoryResult result) async {
+  Future<void> _applyRepositoryResult({
+    required ProductAnalyticsPreferenceRepositoryResult result,
+    required ProductAnalyticsPreference? pendingPreference,
+  }) async {
     switch (result) {
       case ProductAnalyticsPreferenceSynchronized(:final record):
         _volatileDisable = null;
         _currentRecord = record;
         _local = LocalProductAnalyticsSynced(record: record);
-        if (record.preference == ProductAnalyticsPreference.enabled && _capability.isEnabled) {
+        if (pendingPreference != null) {
+          _emitPreferenceRequestInProgress(preference: pendingPreference);
+        } else if (record.preference == ProductAnalyticsPreference.enabled && _capability.isEnabled) {
           _state.add(
             ProductAnalyticsState(
               preference: ProductAnalyticsPreferenceKnown(preference: record.preference),

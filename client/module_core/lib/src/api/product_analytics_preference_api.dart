@@ -86,7 +86,10 @@ class ProductAnalyticsPreferenceApi {
             fromJson: _recordFromJson,
             body: jsonEncode(
               ProductAnalyticsPreferenceUpdateRequest(
-                preference: preference.wireValue,
+                preference: switch (preference) {
+                  ProductAnalyticsPreference.enabled => ProductAnalyticsPreferenceUpdateValue.enabled,
+                  ProductAnalyticsPreference.disabled => ProductAnalyticsPreferenceUpdateValue.disabled,
+                },
                 expectedRevision: expectedRevision,
                 operationId: operationId,
               ).toJson(),

@@ -127,23 +127,23 @@ void main() {
     expect(api.updates.single.operationId, matches(RegExp(r"^[0-9a-f-]{36}$")));
   });
 
-  test("malformed local storage is deleted and treated as absent", () async {
+  test("malformed local storage is deleted and fails closed", () async {
     storage.readError = const FormatException("invalid stored preference");
 
-    final result = await repository.loadLocal(userId: "user-a");
+    final result = repository.loadLocal(userId: "user-a");
 
-    expect(result, isNull);
+    await expectLater(result, throwsA(isA<FormatException>()));
     expect(operations, ["storage:read:user-a", "storage:delete:user-a"]);
   });
 
-  test("malformed local storage remains absent when cleanup fails", () async {
+  test("malformed local storage fails closed when cleanup also fails", () async {
     storage
       ..readError = const FormatException("invalid stored preference")
       ..deleteError = StateError("storage unavailable");
 
-    final result = await repository.loadLocal(userId: "user-a");
+    final result = repository.loadLocal(userId: "user-a");
 
-    expect(result, isNull);
+    await expectLater(result, throwsA(isA<FormatException>()));
     expect(operations, ["storage:read:user-a", "storage:delete:user-a"]);
   });
 
@@ -238,6 +238,36 @@ void main() {
       revision: 7,
       operationId: _operationId,
     ));
+    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.enabled);
+  });
+
+  test("pending enable refreshes a newer disabled revision before retrying", () async {
+    final pending = LocalProductAnalyticsPendingEnable(
+      record: _domainRecord(preference: ProductAnalyticsPreference.disabled, revision: 7),
+      operationId: _operationId,
+    );
+    api.getResults.add(
+      ProductAnalyticsPreferenceApiSuccess(
+        record: _apiRecord(preference: ProductAnalyticsPreference.disabled, revision: 9),
+      ),
+    );
+    api.updateResults.add(
+      ProductAnalyticsPreferenceApiSuccess(
+        record: _apiRecord(preference: ProductAnalyticsPreference.enabled, revision: 10),
+      ),
+    );
+
+    final result = await repository.reconcile(userId: "user-a", local: pending);
+
+    expect(result, isA<ProductAnalyticsPreferenceSynchronized>());
+    expect(api.updates.single, (
+      userId: "user-a",
+      preference: ProductAnalyticsPreference.enabled,
+      revision: 9,
+      operationId: _operationId,
+    ));
+    expect(storage.writes.first, isA<StoredProductAnalyticsPendingEnable>());
+    expect((storage.writes.first as StoredProductAnalyticsPendingEnable).revision, 9);
     expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.enabled);
   });
 

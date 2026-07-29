@@ -506,6 +506,39 @@ void main() {
     expect(service.state.isActive, isTrue);
   });
 
+  test("disable stays suppressed while obtaining a missing current record", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final disabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 2,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers.add((_, _, _) => disableResult.future);
+    await service.start();
+
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    while (preferenceRepository.setCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(service.state.isActive, isFalse);
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+    expect(analyticsRepository.calls, isEmpty);
+
+    disableResult.complete(ProductAnalyticsPreferenceSynchronized(record: disabled));
+    await disableFuture;
+  });
+
   test("failed enable finalization remains pending and inactive", () async {
     createService();
     final disabled = _record(
@@ -694,6 +727,43 @@ void main() {
     await service.resumeAfterFailedLogout();
 
     expect(service.state, same(stateBeforeLogout));
+  });
+
+  test("failed logout reconciles local hydration that completed while suppressed", () async {
+    createService();
+    final localLoad = Completer<LocalProductAnalyticsPreference?>();
+    preferenceRepository.loadHandlers[_userA.id] = () => localLoad.future;
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, local) async {
+        expect(local, isA<LocalProductAnalyticsSynced>());
+        return ProductAnalyticsPreferenceSynchronized(record: enabled);
+      },
+    );
+
+    final startFuture = service.start();
+    while (preferenceRepository.loadCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final readyFuture = service.markPostSplashReady();
+    await service.prepareForLogout();
+    localLoad.complete(LocalProductAnalyticsSynced(record: enabled));
+    await Future.wait([startFuture, readyFuture]);
+
+    expect(service.state.isActive, isFalse);
+    expect(
+      (service.state.availability as ProductAnalyticsInactive).reason,
+      ProductAnalyticsInactiveReason.unauthenticated,
+    );
+
+    await service.resumeAfterFailedLogout();
+
+    expect(service.state.isActive, isTrue);
+    expect(preferenceRepository.reconcileCalls, hasLength(1));
   });
 
   test("logout suppression survives an in-flight refresh and reconciles after recovery", () async {
