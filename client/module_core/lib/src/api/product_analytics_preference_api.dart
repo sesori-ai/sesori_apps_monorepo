@@ -84,11 +84,11 @@ class ProductAnalyticsPreferenceApi {
             _url,
             userId: userId,
             fromJson: _recordFromJson,
-            body: {
+            body: jsonEncode({
               "preference": preference.wireValue,
               "expectedRevision": expectedRevision,
               "operationId": operationId,
-            },
+            }),
           )
           .timeout(_operationDeadline);
       return switch (response) {

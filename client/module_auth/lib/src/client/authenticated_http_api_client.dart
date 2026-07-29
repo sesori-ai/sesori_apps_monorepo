@@ -45,24 +45,18 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
 
   /// Makes an authenticated GET only while [userId] remains the current
   /// account, including across a forced token refresh and 401 retry.
-  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> getForUser<T>(
     Uri url, {
     required String userId,
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
-    Map<String, String>? headers,
-    ContentType? contentType,
-    bool logBody = false,
   }) {
     return _withAuth(
       expectedUserId: userId,
       makeRequest: (token) => _client.get(
         url,
         fromJson: fromJson,
-        headers: _withAuthHeader(headers, token: token),
-        contentType: contentType,
-        logBody: logBody,
+        headers: _withAuthHeader(null, token: token),
       ),
     );
   }
@@ -115,27 +109,20 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
 
   /// Makes an authenticated PUT only while [userId] remains the current
   /// account, including across a forced token refresh and 401 retry.
-  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> putForUser<T>(
     Uri url, {
     required String userId,
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
-    Map<String, String>? headers,
-    // ignore: no_slop_linter/prefer_specific_type, JSON request body
-    required Object? body,
-    ContentType? contentType,
-    bool logBody = false,
+    required String body,
   }) {
     return _withAuth(
       expectedUserId: userId,
       makeRequest: (token) => _client.put(
         url,
         fromJson: fromJson,
-        headers: _withAuthHeader(headers, token: token),
+        headers: _withAuthHeader(null, token: token),
         body: body,
-        contentType: contentType,
-        logBody: logBody,
       ),
     );
   }

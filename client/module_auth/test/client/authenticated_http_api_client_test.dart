@@ -280,7 +280,7 @@ void main() {
         testUrl,
         userId: _userA.id,
         fromJson: _parseString,
-        body: const {"enabled": false},
+        body: '{"enabled":false}',
       );
 
       expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());

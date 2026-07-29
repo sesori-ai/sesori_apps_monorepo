@@ -1,5 +1,5 @@
 import "dart:async";
-import "dart:io";
+import "dart:convert";
 
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
@@ -19,7 +19,7 @@ class _RecordingAuthenticatedClient extends Mock implements AuthenticatedHttpApi
   bool hangPut = false;
   Uri? lastUrl;
   String? lastUserId;
-  Object? lastBody;
+  String? lastBody;
 
   @override
   // ignore: no_slop_linter/prefer_specific_type, inherited JSON callback
@@ -27,9 +27,6 @@ class _RecordingAuthenticatedClient extends Mock implements AuthenticatedHttpApi
     Uri url, {
     required String userId,
     required T Function(dynamic json) fromJson,
-    Map<String, String>? headers,
-    ContentType? contentType,
-    bool logBody = false,
   }) async {
     lastUrl = url;
     lastUserId = userId;
@@ -45,10 +42,7 @@ class _RecordingAuthenticatedClient extends Mock implements AuthenticatedHttpApi
     Uri url, {
     required String userId,
     required T Function(dynamic json) fromJson,
-    Map<String, String>? headers,
-    required Object? body,
-    ContentType? contentType,
-    bool logBody = false,
+    required String body,
   }) async {
     lastUrl = url;
     lastUserId = userId;
@@ -105,7 +99,7 @@ void main() {
     );
 
     expect(client.lastUrl?.path, "/product-analytics/preference");
-    expect(client.lastBody, {
+    expect(jsonDecode(client.lastBody!), {
       "preference": "disabled",
       "expectedRevision": 2,
       "operationId": "123e4567-e89b-42d3-a456-426614174000",
