@@ -27,6 +27,7 @@ class ProductAnalyticsService {
   StreamSubscription<AuthState>? _authSubscription;
   Future<void>? _reconciliation;
   Future<void>? _localInitialization;
+  Future<void>? _activeDisableUpdate;
   LocalProductAnalyticsPreference? _local;
   LocalProductAnalyticsPendingDisable? _volatileDisable;
   ProductAnalyticsPreferenceRecord? _currentRecord;
@@ -101,13 +102,23 @@ class ProductAnalyticsService {
           : const ProductAnalyticsEnableRequestInProgress(),
       reason: null,
     );
-    final result = await _preferenceRepository.setPreference(
-      userId: userId,
-      current: current,
-      preference: preference,
-    );
-    if (!_matches(generation: generation, userId: userId)) return;
-    await _applyRepositoryResult(result);
+    final disableCompletion = preference == ProductAnalyticsPreference.disabled ? Completer<void>() : null;
+    final disableUpdate = disableCompletion?.future;
+    if (disableUpdate != null) _activeDisableUpdate = disableUpdate;
+    try {
+      final result = await _preferenceRepository.setPreference(
+        userId: userId,
+        current: current,
+        preference: preference,
+      );
+      if (!_matches(generation: generation, userId: userId)) return;
+      await _applyRepositoryResult(result);
+    } finally {
+      disableCompletion?.complete();
+      if (disableUpdate != null && identical(_activeDisableUpdate, disableUpdate)) {
+        _activeDisableUpdate = null;
+      }
+    }
   }
 
   Future<void> retryPendingDisable() async {
@@ -134,14 +145,19 @@ class ProductAnalyticsService {
       ),
     );
     try {
-      final retry = _volatileDisable != null
-          ? retryPendingDisable()
-          : _local is LocalProductAnalyticsPendingDisable
-          ? _reconcileIfNeeded(force: true)
-          : Future<void>.value();
-      await retry.timeout(_logoutPreparationDeadline);
+      await _synchronizeBeforeLogout().timeout(_logoutPreparationDeadline);
     } on Object catch (error, stackTrace) {
       logw("Failed to synchronize product analytics before logout", error, stackTrace);
+    }
+  }
+
+  Future<void> _synchronizeBeforeLogout() async {
+    final activeDisableUpdate = _activeDisableUpdate;
+    if (activeDisableUpdate != null) await activeDisableUpdate;
+    if (_volatileDisable != null) {
+      await retryPendingDisable();
+    } else if (_local is LocalProductAnalyticsPendingDisable) {
+      await _reconcileIfNeeded(force: true);
     }
   }
 
@@ -182,6 +198,7 @@ class ProductAnalyticsService {
     _logoutPreparation = null;
     _currentRecord = null;
     _local = null;
+    _activeDisableUpdate = null;
     _volatileDisable = null;
     _localReadFailed = false;
     final userId = switch (authState) {
@@ -195,6 +212,8 @@ class ProductAnalyticsService {
       _state.add(ProductAnalyticsState.initial);
       return initialization;
     }
+
+    _applyLocalState(null);
 
     final generation = _generation;
     final initialization = _loadAndApplyLocalPreference(generation: generation, userId: userId);

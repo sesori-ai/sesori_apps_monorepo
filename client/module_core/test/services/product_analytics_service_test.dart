@@ -461,6 +461,46 @@ void main() {
     expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
   });
 
+  test("prepareForLogout awaits an active disable before releasing logout", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers.add((_, _, _) => disableResult.future);
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    await Future<void>.delayed(Duration.zero);
+
+    var preparationCompleted = false;
+    final preparationFuture = service.prepareForLogout().then((_) => preparationCompleted = true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(preparationCompleted, isFalse);
+
+    disableResult.complete(
+      ProductAnalyticsPreferenceSynchronized(
+        record: _record(
+          userId: _userA.id,
+          userKey: _userKeyA,
+          preference: ProductAnalyticsPreference.disabled,
+          revision: 2,
+        ),
+      ),
+    );
+    await Future.wait([disableFuture, preparationFuture]);
+
+    expect(preparationCompleted, isTrue);
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+  });
+
   test("failed logout recovery restores an active synchronized account", () async {
     createService();
     final enabled = _record(
@@ -591,6 +631,50 @@ void main() {
     expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
     expect(service.state.isActive, isFalse);
     expect(analyticsRepository.calls, isEmpty);
+  });
+
+  test("account switch suppresses the previous user key before the new local read completes", () async {
+    createService();
+    final enabledA = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabledA),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+    analyticsRepository.calls.clear();
+
+    final loadB = Completer<LocalProductAnalyticsPreference?>();
+    preferenceRepository.loadHandlers[_userB.id] = () => loadB.future;
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(
+        record: _record(
+          userId: _userB.id,
+          userKey: _userKeyB,
+          preference: ProductAnalyticsPreference.disabled,
+        ),
+      ),
+    );
+
+    authSession.emit(const AuthState.authenticated(user: _userB));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(service.state.isActive, isFalse);
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.connectSetup),
+        occurredAtUtc: DateTime.utc(2026, 7, 29),
+      ),
+      AnalyticsDeliveryResult.failed,
+    );
+    expect(analyticsRepository.calls, isEmpty);
+
+    loadB.complete(null);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
   });
 
   test("one automatic read occurs per auth generation while explicit refresh reads again", () async {

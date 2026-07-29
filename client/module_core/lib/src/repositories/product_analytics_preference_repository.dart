@@ -88,10 +88,11 @@ class ProductAnalyticsPreferenceRepository {
     try {
       await _writePending(pending);
       pendingPersisted = true;
-    } on Object {
+    } on Object catch (error, stackTrace) {
       if (preference == ProductAnalyticsPreference.enabled) {
         return const ProductAnalyticsPreferenceStorageFailed();
       }
+      logw("Failed to persist analytics disable intent; continuing with server suppression", error, stackTrace);
     }
 
     return _putPending(userId: userId, pending: pending, pendingPersisted: pendingPersisted);
