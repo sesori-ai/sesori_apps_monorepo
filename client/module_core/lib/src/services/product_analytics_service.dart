@@ -237,7 +237,10 @@ class ProductAnalyticsService {
     final userId = _userId;
     final generation = _generation;
     final current = _currentRecord;
-    if (availability is! ProductAnalyticsActive || userId == null || current == null) {
+    if (availability is! ProductAnalyticsActive ||
+        userId == null ||
+        current == null ||
+        !_authSessionMatches(userId: userId)) {
       return AnalyticsDeliveryResult.failed;
     }
     final result = await _analyticsRepository.logEvent(
@@ -651,7 +654,12 @@ class ProductAnalyticsService {
   }
 
   bool _matchesAccount({required int generation, required String userId}) =>
-      generation == _generation && userId == _userId;
+      generation == _generation && userId == _userId && _authSessionMatches(userId: userId);
+
+  bool _authSessionMatches({required String userId}) => switch (_authSession.currentState) {
+    AuthAuthenticated(:final user) => user.id == userId,
+    AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => false,
+  };
 
   bool _canApply({required int generation, required String userId, required bool allowDuringLogout}) =>
       _matchesAccount(generation: generation, userId: userId) && (allowDuringLogout || _logoutPreparation == null);
