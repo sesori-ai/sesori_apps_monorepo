@@ -85,7 +85,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       ].join(" · "),
       SessionDetailLoading() || SessionDetailFailed() => "",
     };
-    final canShowDiffs = state is SessionDetailLoaded && state.isRootSession == true && state.supportsSessionDiffs;
+    final canShowDiffs = state is SessionDetailLoaded && state.isRootSession == true && !state.isArchived;
 
     final actions = <Widget>[
       if (canShowDiffs)

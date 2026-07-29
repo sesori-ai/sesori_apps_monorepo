@@ -348,6 +348,6 @@ SessionDetailSnapshot _buildDetailSnapshot({
     canonicalSessionTitle: matchingSession?.title ?? "Session",
     promptDefaults: null,
     isRootSession: true,
-    supportsSessionDiffs: true,
+    isArchived: false,
   );
 }

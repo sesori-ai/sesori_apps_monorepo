@@ -89,21 +89,7 @@ void main() {
     expect(session.promptDefaults?.agent, "build");
     expect(session.branchName, "feature");
     expect(session.hasWorktree, isTrue);
-    expect(session.supportsSessionDiffs, isTrue);
     expect(session.unseen, isTrue);
-
-    final nonGitSession = mapper.map(
-      row: row.copyWith(
-        worktreePath: null,
-        branchName: null,
-        isDedicated: false,
-        baseBranch: null,
-        baseCommit: null,
-      ),
-      pullRequest: null,
-      unseen: false,
-    );
-    expect(nonGitSession.supportsSessionDiffs, isFalse);
   });
 
   test("StoredSessionMapper projects the fields repository consumers need", () {

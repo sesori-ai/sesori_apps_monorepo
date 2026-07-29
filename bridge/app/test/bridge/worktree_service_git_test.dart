@@ -173,47 +173,6 @@ void main() {
       expect(processRunner.invocations, hasLength(3));
     });
 
-    test("resolveStableDefaultBranch skips a dangling origin HEAD", () async {
-      processRunner
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"))
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "refs/remotes/origin/main\n"))
-        ..enqueue(result: _processResult(exitCode: 0))
-        ..enqueue(result: _processResult(exitCode: 1))
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "trunk\n"))
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "  trunk\n"));
-
-      final defaultBranch = await service.resolveStableDefaultBranch(
-        projectPath: "/repo/project",
-      );
-
-      expect(defaultBranch, "refs/heads/trunk");
-      expect(
-        processRunner.invocations[3].arguments,
-        ["rev-parse", "--verify", "--quiet", "--end-of-options", "refs/remotes/origin/main^{commit}"],
-      );
-    });
-
-    test("resolveStableDefaultBranch uses an updated origin branch over stale local", () async {
-      processRunner
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"))
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "refs/remotes/origin/main\n"))
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "  main\n"))
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "local-main\n"))
-        ..enqueue(result: _processResult(exitCode: 0, stdout: "remote-main\n"))
-        ..enqueue(result: _processResult(exitCode: 1));
-
-      final defaultBranch = await service.resolveStableDefaultBranch(
-        projectPath: "/repo/project",
-      );
-
-      expect(defaultBranch, "refs/remotes/origin/main");
-      expect(processRunner.invocations[3].arguments, ["rev-parse", "refs/heads/main"]);
-      expect(
-        processRunner.invocations.last.arguments,
-        ["merge-base", "--is-ancestor", "remote-main", "local-main"],
-      );
-    });
-
     test("branchExists returns true for non-empty git branch --list output", () async {
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "  main\n"));
 
@@ -383,17 +342,13 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
-          remoteName: "origin",
           localCommit: "abc123",
         );
 
         expect(result.ref, equals("main"));
         expect(result.commit, equals("abc123"));
         expect(processRunner.invocations, hasLength(1));
-        expect(
-          processRunner.invocations.single.arguments,
-          equals(["rev-parse", "refs/remotes/origin/main"]),
-        );
+        expect(processRunner.invocations.single.arguments, equals(["rev-parse", "origin/main"]));
         expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
       });
 
@@ -403,17 +358,13 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
-          remoteName: "origin",
           localCommit: "abc123",
         );
 
         expect(result.ref, equals("main"));
         expect(result.commit, equals("abc123"));
         expect(processRunner.invocations, hasLength(1));
-        expect(
-          processRunner.invocations.single.arguments,
-          equals(["rev-parse", "refs/remotes/origin/main"]),
-        );
+        expect(processRunner.invocations.single.arguments, equals(["rev-parse", "origin/main"]));
       });
 
       test("returns local when local is strictly ahead", () async {
@@ -424,17 +375,13 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
-          remoteName: "origin",
           localCommit: "abc123",
         );
 
         expect(result.ref, equals("main"));
         expect(result.commit, equals("abc123"));
         expect(processRunner.invocations, hasLength(2));
-        expect(
-          processRunner.invocations[0].arguments,
-          equals(["rev-parse", "refs/remotes/origin/main"]),
-        );
+        expect(processRunner.invocations[0].arguments, equals(["rev-parse", "origin/main"]));
         expect(
           processRunner.invocations[1].arguments,
           equals(["merge-base", "--is-ancestor", "def456", "abc123"]),
@@ -449,17 +396,13 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
-          remoteName: "origin",
           localCommit: "abc123",
         );
 
         expect(result.ref, equals("origin/main"));
         expect(result.commit, equals("def456"));
         expect(processRunner.invocations, hasLength(2));
-        expect(
-          processRunner.invocations[0].arguments,
-          equals(["rev-parse", "refs/remotes/origin/main"]),
-        );
+        expect(processRunner.invocations[0].arguments, equals(["rev-parse", "origin/main"]));
         expect(
           processRunner.invocations[1].arguments,
           equals(["merge-base", "--is-ancestor", "def456", "abc123"]),
@@ -474,7 +417,6 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
-          remoteName: "origin",
           localCommit: "diverged-local",
         );
 
@@ -491,7 +433,6 @@ void main() {
         final result = await service.resolveStartPointForBranch(
           projectPath: "/repo/project",
           baseBranch: "main",
-          remoteName: "origin",
           localCommit: "abc123",
         );
 

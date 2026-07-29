@@ -25,28 +25,7 @@ class SessionDiffQueryFailure extends SessionDiffQueryResult {
   SessionDiffQueryFailure({required this.message});
 }
 
-class SessionDiffRepositoryException implements Exception {
-  final String message;
-
-  const SessionDiffRepositoryException({required this.message});
-
-  @override
-  String toString() => message;
-}
-
-sealed class SessionDiffComparisonBase {
-  final String revision;
-
-  const SessionDiffComparisonBase({required this.revision});
-}
-
-class SessionDiffExactRevision extends SessionDiffComparisonBase {
-  const SessionDiffExactRevision({required super.revision});
-}
-
-class SessionDiffMergeBaseRevision extends SessionDiffComparisonBase {
-  const SessionDiffMergeBaseRevision({required super.revision});
-}
+enum SessionDiffComparisonMode { exactRevision, mergeBase }
 
 sealed class SessionDiffRevisionFileReadResult {}
 
@@ -72,91 +51,11 @@ class SessionDiffRepository {
   }) : _gitCliApi = gitCliApi,
        _outputMapper = outputMapper;
 
-  Future<String?> getCurrentBranch({
-    required String projectPath,
-  }) async {
-    final result = await _gitCliApi.readCurrentBranch(projectPath: projectPath);
-    if (result.exitCode == 1) {
-      return null;
-    }
-    if (result.exitCode != 0) {
-      throw SessionDiffRepositoryException(
-        message: "git symbolic-ref failed (exit ${result.exitCode})",
-      );
-    }
-    const localBranchPrefix = "refs/heads/";
-    final branchRef = result.stdout.toString().trim();
-    if (!branchRef.startsWith(localBranchPrefix) || branchRef.length == localBranchPrefix.length) {
-      throw const SessionDiffRepositoryException(
-        message: "git symbolic-ref returned an invalid local branch",
-      );
-    }
-    return branchRef.substring(localBranchPrefix.length);
-  }
-
-  Future<bool> revisionExists({
-    required String projectPath,
-    required String revision,
-  }) async {
-    final result = await _gitCliApi.checkRevisionExists(
-      projectPath: projectPath,
-      revision: revision,
-    );
-    if (result.exitCode == 0) return true;
-    if (result.exitCode == 1) return false;
-    throw SessionDiffRepositoryException(
-      message: "git rev-parse --verify failed (exit ${result.exitCode})",
-    );
-  }
-
-  Future<bool> isAncestor({
-    required String projectPath,
-    required String revision,
-  }) async {
-    final result = await _gitCliApi.isAncestor(
-      projectPath: projectPath,
-      revision: revision,
-    );
-    if (result.exitCode == 0) {
-      return true;
-    }
-    if (result.exitCode == 1) {
-      return false;
-    }
-    throw SessionDiffRepositoryException(
-      message: "git merge-base --is-ancestor failed (exit ${result.exitCode})",
-    );
-  }
-
-  Future<bool> hasCommonAncestor({
-    required String projectPath,
-    required String revision,
-  }) async {
-    final result = await _gitCliApi.findMergeBase(
-      projectPath: projectPath,
-      baseRevision: revision,
-    );
-    if (result.exitCode == 0) {
-      if (_outputMapper.parseSingleSha(output: result.stdout) == null) {
-        throw const SessionDiffRepositoryException(
-          message: "git merge-base returned unexpected output",
-        );
-      }
-      return true;
-    }
-    if (result.exitCode == 1) {
-      return false;
-    }
-    throw SessionDiffRepositoryException(
-      message: "git merge-base failed (exit ${result.exitCode})",
-    );
-  }
-
   Future<SessionDiffQueryResult> query({
     required String worktreePath,
-    required SessionDiffComparisonBase comparisonBase,
+    required String revision,
+    required SessionDiffComparisonMode comparisonMode,
   }) async {
-    final revision = comparisonBase.revision;
     final verifyResult = await _gitCliApi.verifyRevision(
       projectPath: worktreePath,
       revision: revision,
@@ -166,10 +65,10 @@ class SessionDiffRepository {
     }
 
     late final String baseRevision;
-    switch (comparisonBase) {
-      case SessionDiffExactRevision():
+    switch (comparisonMode) {
+      case SessionDiffComparisonMode.exactRevision:
         baseRevision = revision;
-      case SessionDiffMergeBaseRevision():
+      case SessionDiffComparisonMode.mergeBase:
         final mergeBaseResult = await _gitCliApi.findMergeBase(
           projectPath: worktreePath,
           baseRevision: revision,

@@ -153,7 +153,6 @@ class WorktreeRepository {
       final startPointResult = await _gitApi.resolveStartPointForBranch(
         projectPath: projectPath,
         baseBranch: baseBranch,
-        remoteName: "origin",
         localCommit: localCommit,
       );
 
@@ -168,7 +167,7 @@ class WorktreeRepository {
     }
   }
 
-  Future<({String? branch, String commit})?> resolveCurrentBranchAndCommit({
+  Future<String?> resolveCleanHeadCommit({
     required String projectPath,
   }) async {
     try {
@@ -195,49 +194,11 @@ class WorktreeRepository {
         throw StateError("git rev-parse HEAD returned an empty commit");
       }
 
-      final branchResult = await _gitApi.readCurrentBranch(projectPath: projectPath);
-      if (branchResult.exitCode == 1) {
-        return (branch: null, commit: commit);
-      }
-      if (branchResult.exitCode != 0) {
-        throw StateError("git symbolic-ref failed with exit ${branchResult.exitCode}");
-      }
-      const localBranchPrefix = "refs/heads/";
-      final branchRef = branchResult.stdout.toString().trim();
-      if (!branchRef.startsWith(localBranchPrefix) || branchRef.length == localBranchPrefix.length) {
-        throw StateError("git symbolic-ref returned an invalid local branch");
-      }
-      final branch = branchRef.substring(localBranchPrefix.length);
-      return (branch: branch, commit: commit);
+      return commit;
     } on Object catch (error, stackTrace) {
       Log.w("[WorktreeRepository] failed to capture Git snapshot for $projectPath", error, stackTrace);
       return null;
     }
-  }
-
-  /// Resolves a stable project base after the checkout may have changed.
-  Future<String?> resolveProjectBaseBranch({
-    required String projectId,
-    required String projectPath,
-  }) async {
-    final storedBranch = await _projectsDao.getBaseBranch(projectId: projectId);
-    if (storedBranch != null && await _gitApi.branchExists(projectPath: projectPath, branchName: storedBranch)) {
-      final localBranchRevision = "refs/heads/$storedBranch";
-      final localCommit = await _gitApi.resolveCommit(
-        projectPath: projectPath,
-        ref: localBranchRevision,
-      );
-      if (localCommit != null) {
-        final startPoint = await _gitApi.resolveStartPointForBranch(
-          projectPath: projectPath,
-          baseBranch: storedBranch,
-          remoteName: "origin",
-          localCommit: localCommit,
-        );
-        return startPoint.ref == storedBranch ? localBranchRevision : "refs/remotes/origin/$storedBranch";
-      }
-    }
-    return _gitApi.resolveStableDefaultBranch(projectPath: projectPath);
   }
 
   Future<WorktreeSafetyResult> checkWorktreeSafety({

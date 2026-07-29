@@ -27,7 +27,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Whether this session is a root (main) session. `true` = root,
     // `false` = child, `null` = unknown (metadata lookup failed).
     required bool? isRootSession,
-    required bool supportsSessionDiffs,
+    required bool isArchived,
     // Queued messages (waiting to be sent when connection is restored).
     required List<QueuedSessionSubmission> queuedMessages,
     // Available agents and providers for selection.

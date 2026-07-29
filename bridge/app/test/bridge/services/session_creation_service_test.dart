@@ -159,8 +159,8 @@ void main() {
       expect((plugin.lastCreateParts!.first as PluginPromptPartText).text, contains("SYSTEM CONTEXT"));
     });
 
-    test("stores the checked-out branch and HEAD for an in-place session", () async {
-      worktreeService.currentBranchAndCommit = (branch: "feature/stack-base", commit: "abc123");
+    test("stores a clean HEAD snapshot for an in-place session", () async {
+      worktreeService.cleanHeadCommit = "abc123";
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
@@ -178,7 +178,7 @@ void main() {
       final stored = await db.sessionDao.getSession(sessionId: created.id);
       expect(stored?.worktreePath, isNull);
       expect(stored?.branchName, isNull);
-      expect(stored?.baseBranch, "feature/stack-base");
+      expect(stored?.baseBranch, isNull);
       expect(stored?.baseCommit, "abc123");
       expect(worktreeService.resolveCalls, 1);
     });
@@ -259,7 +259,7 @@ class _FakeWorktreeService extends WorktreeService {
   int prepareCalls = 0;
   int resolveCalls = 0;
   WorktreeResult prepareResult = WorktreeFallback(originalPath: "/repo", reason: "fallback");
-  ({String? branch, String commit})? currentBranchAndCommit;
+  String? cleanHeadCommit;
 
   _FakeWorktreeService({required super.worktreeRepository});
 
@@ -274,11 +274,11 @@ class _FakeWorktreeService extends WorktreeService {
   }
 
   @override
-  Future<({String? branch, String commit})?> resolveCurrentBranchAndCommit({
+  Future<String?> resolveCleanHeadCommit({
     required String projectId,
   }) async {
     resolveCalls++;
-    return currentBranchAndCommit;
+    return cleanHeadCommit;
   }
 }
 

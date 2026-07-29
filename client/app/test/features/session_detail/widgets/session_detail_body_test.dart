@@ -74,7 +74,7 @@ SessionDetailLoaded _loadedState({
     children: const [],
     childStatuses: const {},
     isRootSession: true,
-    supportsSessionDiffs: true,
+    isArchived: false,
     queuedMessages: const [],
     availableAgents: [testAgentInfo()],
     availableProviders: [provider],
@@ -176,7 +176,7 @@ void main() {
       children: const [],
       childStatuses: const {},
       isRootSession: true,
-      supportsSessionDiffs: true,
+      isArchived: false,
       queuedMessages: const [],
       availableAgents: [testAgentInfo()],
       availableProviders: testProviderListResponse().items,
@@ -234,11 +234,11 @@ void main() {
     expect(find.text("Diffs"), findsOneWidget);
   });
 
-  testWidgets("hides the diff button when the bridge cannot compute session diffs", (tester) async {
+  testWidgets("hides the diff button for archived sessions", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
-    ).copyWith(supportsSessionDiffs: false);
+    ).copyWith(isArchived: true);
     when(() => cubit.state).thenReturn(state);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));

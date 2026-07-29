@@ -56,7 +56,7 @@ SessionDetailLoadResult _loadedResult() {
       canonicalSessionTitle: null,
       promptDefaults: null,
       isRootSession: true,
-      supportsSessionDiffs: true,
+      isArchived: false,
     ),
     isBridgeConnected: true,
   );
@@ -77,7 +77,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       canonicalSessionTitle: title,
       promptDefaults: null,
       isRootSession: true,
-      supportsSessionDiffs: true,
+      isArchived: false,
     ),
     isBridgeConnected: true,
   );

@@ -166,7 +166,7 @@ void main() {
           canonicalSessionTitle: null,
           promptDefaults: null,
           isRootSession: true,
-          supportsSessionDiffs: true,
+          isArchived: false,
         ),
         isBridgeConnected: true,
       ),
@@ -238,7 +238,7 @@ void main() {
         canonicalSessionTitle: null,
         promptDefaults: null,
         isRootSession: true,
-        supportsSessionDiffs: true,
+        isArchived: false,
       ),
       isBridgeConnected: true,
     );

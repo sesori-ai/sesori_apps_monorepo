@@ -6,7 +6,6 @@ import "../repositories/filesystem_repository.dart";
 import "../repositories/mappers/git_diff_output_mapper.dart";
 import "../repositories/session_diff_repository.dart";
 import "../repositories/session_repository.dart";
-import "../repositories/worktree_repository.dart";
 
 class SessionDiffSessionNotFoundException implements Exception {}
 
@@ -48,26 +47,25 @@ class SessionDiffService {
   final SessionRepository _sessionRepository;
   final SessionDiffRepository _sessionDiffRepository;
   final FilesystemRepository _filesystemRepository;
-  final WorktreeRepository _worktreeRepository;
 
   SessionDiffService({
     required SessionRepository sessionRepository,
     required SessionDiffRepository sessionDiffRepository,
     required FilesystemRepository filesystemRepository,
-    required WorktreeRepository worktreeRepository,
   }) : _sessionRepository = sessionRepository,
        _sessionDiffRepository = sessionDiffRepository,
-       _filesystemRepository = filesystemRepository,
-       _worktreeRepository = worktreeRepository;
+       _filesystemRepository = filesystemRepository;
 
   Future<List<FileDiff>> getDiffs({required String sessionId}) async {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
     if (session == null) {
       throw SessionDiffSessionNotFoundException();
     }
+    if (session.archivedAt != null) return const [];
 
     final String worktreePath;
-    final SessionDiffComparisonBase comparisonBase;
+    final String revision;
+    final SessionDiffComparisonMode comparisonMode;
     if (session.isDedicated) {
       final dedicatedWorktreePath = session.worktreePath;
       final baseBranch = session.baseBranch;
@@ -77,32 +75,31 @@ class SessionDiffService {
       }
       if (!_filesystemRepository.directoryExists(path: dedicatedWorktreePath)) return const [];
       worktreePath = dedicatedWorktreePath;
-      comparisonBase = SessionDiffMergeBaseRevision(revision: baseBranch);
+      revision = baseBranch;
+      comparisonMode = SessionDiffComparisonMode.mergeBase;
     } else {
-      final startCommit = session.baseCommit;
-      if (startCommit == null) return const [];
+      // Only the new null-branch shape is an exact session-start snapshot.
+      final startCommit = session.baseBranch == null ? session.baseCommit?.trim() : null;
+      if (startCommit == null || startCommit.isEmpty) return const [];
       final projectPath = await _sessionRepository.getProjectPath(projectId: session.projectId);
       if (projectPath == null) return const [];
       if (!_filesystemRepository.directoryExists(path: projectPath)) return const [];
       worktreePath = projectPath;
-      comparisonBase = await _resolveInPlaceComparisonBase(
-        projectId: session.projectId,
-        projectPath: projectPath,
-        startingBranch: session.baseBranch,
-        startCommit: startCommit,
-      );
+      revision = startCommit;
+      comparisonMode = SessionDiffComparisonMode.exactRevision;
     }
     final queryResult = await _sessionDiffRepository.query(
       worktreePath: worktreePath,
-      comparisonBase: comparisonBase,
+      revision: revision,
+      comparisonMode: comparisonMode,
     );
     final snapshot = switch (queryResult) {
       SessionDiffQuerySuccess() => queryResult,
       SessionDiffBaseUnreachable() => throw BaseBranchUnreachableException(
-        message: "diff base '${comparisonBase.revision}' is not reachable",
+        message: "diff base '$revision' is not reachable",
       ),
       SessionDiffNoCommonAncestor() => throw BaseBranchUnreachableException(
-        message: "no common ancestor between '${comparisonBase.revision}' and HEAD",
+        message: "no common ancestor between '$revision' and HEAD",
       ),
       SessionDiffQueryFailure(:final message) => throw GitDiffQueryException(message: message),
     };
@@ -174,121 +171,6 @@ class SessionDiffService {
       );
     }
     return diffs;
-  }
-
-  Future<SessionDiffComparisonBase> _resolveInPlaceComparisonBase({
-    required String projectId,
-    required String projectPath,
-    required String? startingBranch,
-    required String startCommit,
-  }) async {
-    try {
-      final startCommitExists = await _sessionDiffRepository.revisionExists(
-        projectPath: projectPath,
-        revision: startCommit,
-      );
-      final currentBranch = await _sessionDiffRepository.getCurrentBranch(
-        projectPath: projectPath,
-      );
-      if (startingBranch != null && currentBranch == startingBranch) {
-        if (startCommitExists &&
-            await _sessionDiffRepository.isAncestor(
-              projectPath: projectPath,
-              revision: startCommit,
-            )) {
-          return SessionDiffExactRevision(revision: startCommit);
-        }
-        return _resolveProjectBase(
-          projectId: projectId,
-          projectPath: projectPath,
-          fallbackRevision: null,
-        );
-      }
-
-      if (startingBranch == null) {
-        if (startCommitExists &&
-            await _sessionDiffRepository.isAncestor(
-              projectPath: projectPath,
-              revision: startCommit,
-            )) {
-          return SessionDiffExactRevision(revision: startCommit);
-        }
-        return _resolveProjectBase(
-          projectId: projectId,
-          projectPath: projectPath,
-          fallbackRevision: startCommitExists ? startCommit : null,
-        );
-      }
-
-      final startingBranchRevision = "refs/heads/$startingBranch";
-      if (!await _sessionDiffRepository.revisionExists(
-        projectPath: projectPath,
-        revision: startingBranchRevision,
-      )) {
-        if (startCommitExists &&
-            await _sessionDiffRepository.isAncestor(
-              projectPath: projectPath,
-              revision: startCommit,
-            )) {
-          return SessionDiffExactRevision(revision: startCommit);
-        }
-        return _resolveProjectBase(
-          projectId: projectId,
-          projectPath: projectPath,
-          fallbackRevision: startCommitExists ? startCommit : null,
-        );
-      }
-
-      final startingBranchIsAncestor = await _sessionDiffRepository.isAncestor(
-        projectPath: projectPath,
-        revision: startingBranchRevision,
-      );
-      if (startingBranchIsAncestor) {
-        return SessionDiffMergeBaseRevision(revision: startingBranchRevision);
-      }
-      if (startCommitExists &&
-          await _sessionDiffRepository.isAncestor(
-            projectPath: projectPath,
-            revision: startCommit,
-          )) {
-        return SessionDiffExactRevision(revision: startCommit);
-      }
-      return _resolveProjectBase(
-        projectId: projectId,
-        projectPath: projectPath,
-        fallbackRevision: startingBranchRevision,
-      );
-    } on SessionDiffRepositoryException catch (error) {
-      throw GitDiffQueryException(message: error.message);
-    }
-  }
-
-  Future<SessionDiffComparisonBase> _resolveProjectBase({
-    required String projectId,
-    required String projectPath,
-    required String? fallbackRevision,
-  }) async {
-    final projectBase = await _worktreeRepository.resolveProjectBaseBranch(
-      projectId: projectId,
-      projectPath: projectPath,
-    );
-    if (projectBase != null &&
-        await _sessionDiffRepository.hasCommonAncestor(
-          projectPath: projectPath,
-          revision: projectBase,
-        )) {
-      return SessionDiffMergeBaseRevision(revision: projectBase);
-    }
-    if (fallbackRevision != null &&
-        await _sessionDiffRepository.hasCommonAncestor(
-          projectPath: projectPath,
-          revision: fallbackRevision,
-        )) {
-      return SessionDiffMergeBaseRevision(revision: fallbackRevision);
-    }
-    throw const BaseBranchUnreachableException(
-      message: "project base branch is not reachable",
-    );
   }
 
   Future<_DiffFileReadResult> _readBefore({
