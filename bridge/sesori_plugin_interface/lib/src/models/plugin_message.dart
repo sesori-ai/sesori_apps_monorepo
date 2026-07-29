@@ -71,11 +71,11 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     required int? attempt,
     required String? retryError,
     // file
-    required String? mime,
-    required String? url,
-    required String? path,
-    required String? base64,
-    required String? filename,
+    String? mime,
+    String? url,
+    String? path,
+    String? base64,
+    String? filename,
   }) = _PluginMessagePart;
 }
 

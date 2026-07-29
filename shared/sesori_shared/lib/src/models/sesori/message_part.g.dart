@@ -22,6 +22,11 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   agentName: json['agentName'] as String?,
   attempt: (json['attempt'] as num?)?.toInt(),
   retryError: json['retryError'] as String?,
+  mime: json['mime'] as String?,
+  url: json['url'] as String?,
+  path: json['path'] as String?,
+  base64: json['base64'] as String?,
+  filename: json['filename'] as String?,
 );
 
 Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
@@ -39,6 +44,11 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'agentName': ?instance.agentName,
       'attempt': ?instance.attempt,
       'retryError': ?instance.retryError,
+      'mime': ?instance.mime,
+      'url': ?instance.url,
+      'path': ?instance.path,
+      'base64': ?instance.base64,
+      'filename': ?instance.filename,
     };
 
 const _$MessagePartTypeEnumMap = {

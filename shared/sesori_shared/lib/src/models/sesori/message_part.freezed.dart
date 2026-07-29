@@ -109,7 +109,7 @@ $ToolStateCopyWith<$Res>? get state {
 @JsonSerializable()
 
 class _MessagePart implements MessagePart {
-  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, required this.mime, required this.url, required this.path, required this.base64, required this.filename});
+  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, this.mime, this.url, this.path, this.base64, this.filename});
   factory _MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 
 @override final  String id;
@@ -125,6 +125,12 @@ class _MessagePart implements MessagePart {
 @override final  String? agentName;
 @override final  int? attempt;
 @override final  String? retryError;
+// file
+@override final  String? mime;
+@override final  String? url;
+@override final  String? path;
+@override final  String? base64;
+@override final  String? filename;
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
@@ -159,7 +165,7 @@ abstract mixin class _$MessagePartCopyWith<$Res> implements $MessagePartCopyWith
   factory _$MessagePartCopyWith(_MessagePart value, $Res Function(_MessagePart) _then) = __$MessagePartCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError
+ String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, String? mime, String? url, String? path, String? base64, String? filename
 });
 
 

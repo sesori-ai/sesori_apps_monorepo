@@ -458,6 +458,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailToolUnknown => 'Tool';
 
   @override
+  String get sessionDetailFileUnknown => 'Unknown file';
+
+  @override
   String get sessionDetailToolPending => 'Pending';
 
   @override

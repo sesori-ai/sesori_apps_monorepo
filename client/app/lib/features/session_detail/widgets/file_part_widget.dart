@@ -5,7 +5,9 @@ import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+import "../../../core/extensions/build_context_x.dart";
 import "../../../core/external_link.dart";
+import "../../../l10n/app_localizations.dart";
 
 class FilePartWidget extends StatelessWidget {
   final MessagePart part;
@@ -18,16 +20,50 @@ class FilePartWidget extends StatelessWidget {
     final mime = part.mime ?? "";
     final url = part.url;
     final base64 = part.base64;
-    final filename = part.filename ?? (url != null ? url.split("/").last : "file");
+    final filename = part.filename ?? _deriveFilename(url, part.path, context);
     final isImage = mime.startsWith("image/");
 
     if (isImage) {
-      return _buildImage(context, prego, url, base64, filename);
+      return _buildImage(
+        context: context,
+        prego: prego,
+        url: url,
+        base64: base64,
+        filename: filename,
+      );
     }
-    return _buildFileLink(context, prego, filename, url, mime);
+    return _buildFileLink(
+      context: context,
+      prego: prego,
+      filename: filename,
+      url: url,
+      mime: mime,
+    );
   }
 
-  Widget _buildImage(BuildContext context, IPregoTheme prego, String? url, String? base64, String filename) {
+  static String _deriveFilename(String? url, String? path, BuildContext context) {
+    if (url != null) {
+      final segments = Uri.tryParse(url)?.pathSegments;
+      if (segments != null && segments.isNotEmpty && segments.last.isNotEmpty) {
+        return segments.last;
+      }
+    }
+    if (path != null && path.isNotEmpty) {
+      final segments = path.split(RegExp(r"[/\\]"));
+      if (segments.isNotEmpty && segments.last.isNotEmpty) {
+        return segments.last;
+      }
+    }
+    return context.loc.sessionDetailFileUnknown;
+  }
+
+  Widget _buildImage({
+    required BuildContext context,
+    required IPregoTheme prego,
+    String? url,
+    String? base64,
+    required String filename,
+  }) {
     if (base64 != null) {
       Uint8List? bytes;
       try {
@@ -37,9 +73,9 @@ class FilePartWidget extends StatelessWidget {
       }
       if (bytes != null) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: EdgeInsets.symmetric(vertical: prego.spacing.md),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(prego.radius.xl),
             child: Image.memory(
               bytes,
               fit: BoxFit.contain,
@@ -51,9 +87,9 @@ class FilePartWidget extends StatelessWidget {
     }
     if (url != null) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: EdgeInsets.symmetric(vertical: prego.spacing.md),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(prego.radius.xl),
           child: Image.network(
             url,
             fit: BoxFit.contain,
@@ -65,21 +101,27 @@ class FilePartWidget extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
-  Widget _buildFileLink(BuildContext context, IPregoTheme prego, String filename, String? url, String mime) {
+  Widget _buildFileLink({
+    required BuildContext context,
+    required IPregoTheme prego,
+    required String filename,
+    String? url,
+    required String mime,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: prego.spacing.xs),
       child: GestureDetector(
         onTap: url != null ? () => unawaited(openExternalLink(url: Uri.parse(url))) : null,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg, vertical: prego.spacing.md),
           decoration: BoxDecoration(
             color: prego.colors.bgSurfaceSecondary,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(prego.radius.md),
           ),
           child: Row(
             children: [
               Icon(Icons.insert_drive_file, size: 20, color: prego.colors.textSecondary),
-              const SizedBox(width: 8),
+              SizedBox(width: prego.spacing.md),
               Expanded(
                 child: Text(filename, style: prego.textTheme.textSm.regular, overflow: TextOverflow.ellipsis),
               ),
