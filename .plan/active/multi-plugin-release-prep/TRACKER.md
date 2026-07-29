@@ -79,7 +79,7 @@
 - Step 2/6 (2026-07-29): added typed Codex `model/list` DTO/API/repository
   ownership, moved model and collaboration-option construction into
   `CodexSessionService`, and reduced the plugin facade to route delegation.
-  Generated Freezed/JSON sources, all 203 Codex package tests, focused fatal
+  Generated Freezed/JSON sources, all 204 Codex package tests, focused fatal
   analysis, formatting, and `git diff --check` passed. Aristotle implementation
   review approved the branch-local architecture with no findings. Committed as
   `4773ddde`, pushed, and opened as PR #609.

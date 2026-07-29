@@ -65,7 +65,11 @@ class CodexReasoningEffortListConverter implements JsonConverter<List<CodexReaso
   @override
   List<CodexReasoningEffortOptionDto>? fromJson(Object? json) {
     if (json == null) return null;
-    if (json is! List) return const [];
+    if (json is! List) {
+      throw const FormatException(
+        "expected Codex reasoning efforts to be a list",
+      );
+    }
     return [
       for (final entry in json)
         if (entry is String)

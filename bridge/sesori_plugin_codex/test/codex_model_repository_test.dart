@@ -83,6 +83,23 @@ void main() {
 
       await expectLater(api.listModels(), throwsFormatException);
     });
+
+    test("rejects a non-list supported reasoning-effort field", () async {
+      final api = CodexAppServerApi(
+        client: _StubClient(
+          response: const {
+            "data": [
+              {
+                "id": "gpt-5.5",
+                "supportedReasoningEfforts": "invalid",
+              },
+            ],
+          },
+        ),
+      );
+
+      await expectLater(api.listModels(), throwsFormatException);
+    });
   });
 
   group("CodexModelRepository", () {
