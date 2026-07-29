@@ -93,6 +93,12 @@ class _PromptInputState extends State<PromptInput> {
   /// instead of letting it outlive the gesture.
   bool _releaseRequestedDuringStart = false;
 
+  /// True while [_startRecording] is awaiting the recorder ([_voiceState] is
+  /// still idle then). Guards against a second start — a concurrent hold on
+  /// the other surface or a repeated assistive-tech activation — and routes
+  /// those to the release path instead.
+  bool _isRecordStartInFlight = false;
+
   VoiceTranscriptionService get _voiceService => getIt<VoiceTranscriptionService>();
 
   @override
@@ -249,10 +255,12 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   Future<void> _handleRecordStart() async {
-    if (_voiceState != _VoiceState.idle) return;
+    if (_voiceState != _VoiceState.idle || _isRecordStartInFlight) return;
+    _isRecordStartInFlight = true;
     _releaseRequestedDuringStart = false;
     _pinnedVoiceLayout = _restingLayout;
     await _startRecording();
+    _isRecordStartInFlight = false;
     if (!mounted) return;
     if (_voiceState == _VoiceState.idle) {
       // Recording never started (permission denied / recorder error), so no
@@ -278,9 +286,11 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   /// Assistive-technology activation: a semantic tap cannot express the
-  /// press-and-hold gesture, so activation toggles recording instead.
+  /// press-and-hold gesture, so activation toggles recording instead. An
+  /// activation while the recorder is still starting up counts as the stop
+  /// half of the toggle, not another start.
   Future<void> _handleSemanticRecordToggle() async {
-    if (_voiceState == _VoiceState.recording) {
+    if (_voiceState == _VoiceState.recording || _isRecordStartInFlight) {
       await _handleRecordEnd();
     } else {
       await _handleRecordStart();

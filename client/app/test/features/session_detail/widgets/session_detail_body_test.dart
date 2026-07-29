@@ -579,6 +579,47 @@ void main() {
     expect(find.text("transcript"), findsOneWidget);
   });
 
+  testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {
+    final startCompleter = Completer<void>();
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      messages: [testMessageWithParts()],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // First hold on the mic reaches the recorder; a second long-press (e.g. a
+    // second finger on the same surface after a stray release) while the
+    // recorder is still starting must not start again.
+    final first = await tester.startGesture(tester.getCenter(find.byIcon(TablerRegular.microphone)));
+    await tester.pump(const Duration(milliseconds: 600));
+    await first.up();
+    await tester.pump();
+    final second = await tester.startGesture(tester.getCenter(find.byIcon(TablerRegular.microphone)));
+    await tester.pump(const Duration(milliseconds: 600));
+    await second.up();
+    await tester.pump();
+    verify(() => voiceTranscriptionService.startRecording()).called(1);
+
+    // Both holds released before startup finished — the pending release stops
+    // the recording as soon as it begins.
+    startCompleter.complete();
+    await tester.pump();
+    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+
+    stopCompleter.complete("transcript");
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("accordion reveals the slash-commands action and opens the picker", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
