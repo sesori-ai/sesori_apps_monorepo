@@ -3,7 +3,7 @@
 ## Current State
 
 - **Implementation base:** `origin/main` at `9da014e2`
-- **Series state:** Step 1/6 plan PR is being raised from
+- **Series state:** Step 1/6 plan PR #605 is open from
   `multi-plugin-release-prep`
 - **Current step:** Step 1/6 — durable plan and tracker
 - **Next action:** review and merge the plan PR, then start Step 2/6 from updated
@@ -13,7 +13,7 @@
 
 | Done | Step | Branch | PR state |
 |---|---|---|---|
-| [ ] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | Plan PR pending |
+| [ ] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 open |
 | [ ] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | Blocked on Step 1 merge |
 | [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | Blocked on Step 2 merge |
 | [ ] | Step 4/6 — durable bridge cache and aggregate route | `multi-plugin-release-prep-bridge-cache` | Blocked on Step 3 merge |
@@ -50,4 +50,7 @@
 
 ## Verification Log
 
-- Step 1/6: pending documentation validation and PR creation.
+- Step 1/6 (2026-07-29): finalized the scope-aware aggregate session-options
+  and single-screen Harnesses settings plan. `git diff --check` passed; no
+  Dart/Flutter suites were run for this documentation-only slice. Committed as
+  `3c46773c`, pushed, and opened PR #605.
