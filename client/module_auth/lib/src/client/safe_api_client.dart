@@ -41,15 +41,15 @@ abstract class SafeApiClient {
   });
 
   /// If [contentType] is null, [ContentType.json] will be used.
-  Future<ApiResponse<T>> put<T>(
-    final Uri url, {
+  Future<ApiResponse<T>> put<T>({
+    required final Uri url,
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
+    required final Map<String, String>? headers,
     // ignore: no_slop_linter/prefer_specific_type
     required final Object? body,
-    final ContentType? contentType,
-    final bool logBody,
+    required final ContentType? contentType,
+    required final bool logBody,
   });
 
   /// If [contentType] is null, [ContentType.json] will be used.

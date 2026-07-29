@@ -100,13 +100,13 @@ class HttpApiClient implements SafeApiClient {
 
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function
-  Future<ApiResponse<T>> put<T>(
-    final Uri url, {
+  Future<ApiResponse<T>> put<T>({
+    required final Uri url,
     required final T Function(dynamic json) fromJson,
-    final Map<String, String>? headers,
+    required final Map<String, String>? headers,
     required final Object? body,
-    final ContentType? contentType,
-    final bool logBody = false,
+    required final ContentType? contentType,
+    required final bool logBody,
   }) {
     return _execute(
       method: HttpMethod.put,
