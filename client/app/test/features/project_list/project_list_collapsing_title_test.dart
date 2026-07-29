@@ -14,10 +14,14 @@ import "../../helpers/test_helpers.dart";
 
 /// The two disconnected Projects states — the connect-your-computer onboarding
 /// and the bridge-offline view — used to own an inner scroll view, which forced
-/// the page scroll off and left the large title pinned while the body moved
-/// underneath it. They are bodies now, hosted in the scaffold's page scroll, so
-/// the title scrolls away with the content and collapses into the top nav bar
-/// exactly as it does on the loaded project list.
+/// the page scroll off and left the bar's title pinned while the body moved
+/// underneath it. They are bodies now, hosted in the scaffold's page scroll.
+///
+/// Both trade the loaded list's collapsing large title for the compact
+/// back-leading block, whose subtitle reports the connection the body is about:
+/// what the setup checklist is waiting for, or the machine the offline view is
+/// trying to reach. So neither page has a large title to scroll away, and the
+/// bar stays put while its body scrolls.
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
   const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
@@ -61,14 +65,19 @@ void main() {
     await getIt.reset();
   });
 
-  Future<void> pumpScreen(WidgetTester tester, {required bool hasRegisteredBridges}) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    required bool hasRegisteredBridges,
+    List<BridgeSummary> bridges = const [],
+    double viewportHeight = 500,
+  }) async {
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => hasRegisteredBridges);
-    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
-    // A phone-width viewport, deliberately short so both bodies overflow it.
+    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => bridges);
+    // A phone-width viewport, deliberately short so the body overflows it.
     // Overflow is the precondition for the behaviour under test: a body that
-    // fits leaves the page with no scroll extent, and a large title with
-    // nothing to scroll against correctly stays put.
-    tester.view.physicalSize = const Size(393, 500);
+    // fits leaves the page with no scroll extent, and a bar with nothing to
+    // scroll against correctly stays put.
+    tester.view.physicalSize = Size(393, viewportHeight);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -96,40 +105,54 @@ void main() {
     skipOffstage: false,
   );
 
-  /// The alpha the large title is painted with: 1 while fully shown, 0 once it
-  /// has collapsed into the bar.
-  double largeTitleAlpha(WidgetTester tester, String title) => tester.widget<Text>(largeTitle(title)).style!.color!.a;
-
   /// Drags the page up past [PregoTopNavigation.collapseDistance].
   Future<void> scrollPageUp(WidgetTester tester) async {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -180), warnIfMissed: false);
     await tester.pumpAndSettle();
   }
 
-  testWidgets("the bridge-offline body scrolls the page, collapsing the large title", (tester) async {
-    await pumpScreen(tester, hasRegisteredBridges: true);
-    expect(find.text("Disconnected"), findsOneWidget);
+  testWidgets("the bridge-offline body scrolls under a back-leading bar naming the machine", (tester) async {
+    await pumpScreen(
+      tester,
+      hasRegisteredBridges: true,
+      bridges: [
+        BridgeSummary(
+          id: "a",
+          name: "Macbook-Pro.local",
+          platform: "macos",
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: DateTime.utc(2026, 7),
+        ),
+      ],
+      // Taller than the collapsed offline body, which is what makes expanding
+      // the disclosure — below — the thing that pushes it past the viewport. A
+      // shorter viewport would bury the disclosure button under the floating
+      // "Need help?" pill, leaving nothing to tap.
+      viewportHeight: 600,
+    );
     // A single scroll view for the whole page — the body no longer nests one.
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
 
+    // The bar carries the page title over the machine the body is trying to
+    // reach, so there is no large title in the scroll view to collapse.
+    expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
+    expect(largeTitle("Projects"), findsNothing);
+    expect(find.text("Projects"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.device_laptop), findsNWidgets(2));
+    expect(find.text("Macbook-Pro.local"), findsNWidgets(2));
+
     // Expanding the install commands (the disclosure at the end of the body)
-    // grows the body past the viewport, which is when the title must travel
-    // with the content. The button may itself sit below the short viewport, so
-    // scroll it into view first, then return to the top for a clean baseline.
-    await tester.scrollUntilVisible(find.text("Install commands", skipOffstage: false), 100);
+    // grows the body past the viewport; the body then scrolls under a bar that
+    // stays put.
     await tester.tap(find.text("Install commands"));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, 600), warnIfMissed: false);
-    await tester.pumpAndSettle();
 
-    final titleBefore = tester.getTopLeft(largeTitle("Projects")).dy;
-    expect(largeTitleAlpha(tester, "Projects"), closeTo(1, 0.001));
-
+    final barBefore = tester.getTopLeft(find.byType(PregoNavLeadingTitle));
+    final bodyBefore = tester.getTopLeft(find.text("Make sure the Bridge is running")).dy;
     await scrollPageUp(tester);
-
-    expect(tester.getTopLeft(largeTitle("Projects")).dy, lessThan(titleBefore));
-    expect(largeTitleAlpha(tester, "Projects"), closeTo(0, 0.001));
+    expect(tester.getTopLeft(find.text("Make sure the Bridge is running")).dy, lessThan(bodyBefore));
+    expect(tester.getTopLeft(find.byType(PregoNavLeadingTitle)), barBefore);
   });
 
   testWidgets("the connect onboarding hosts a back-leading bar instead of a large title", (tester) async {

@@ -134,13 +134,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineDisconnected => 'Disconnected';
 
   @override
-  String get projectsBridgeOfflineReconnect => 'Reconnect';
+  String projectsBridgeOfflineDisconnectedSince(String lastSeen) {
+    return 'Disconnected · $lastSeen';
+  }
 
   @override
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override
-  String get projectsBridgeOfflineStartBridge => 'Start your bridge';
+  String get projectsBridgeOfflineStartBridge => 'Make sure the Bridge is running';
 
   @override
   String get projectsBridgeOfflineStartBridgeInfo => 'Leave it running while you use Sesori from your phone.';

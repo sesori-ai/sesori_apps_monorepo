@@ -114,20 +114,29 @@
   },
   "projectsBridgeOfflineDisconnected": "Disconnected",
   "@projectsBridgeOfflineDisconnected": {
-    "description": "Status caption under the connection graphic on the bridge-offline Projects screen, rendered with a trailing crossed-circle icon."
+    "description": "Status caption under the machine name on the bridge-offline Projects screen, used when the bridge has never reported a last-seen time."
   },
-  "projectsBridgeOfflineReconnect": "Reconnect",
+  "projectsBridgeOfflineDisconnectedSince": "Disconnected · {lastSeen}",
+  "@projectsBridgeOfflineDisconnectedSince": {
+    "description": "Status caption under the machine name on the bridge-offline Projects screen, pairing the disconnected state with how long ago the bridge was last seen, e.g. 'Disconnected · 5 hours ago'.",
+    "placeholders": {
+      "lastSeen": {
+        "type": "String",
+        "example": "5 hours ago"
+      }
+    }
+  },
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
     "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."
   },
-  "projectsBridgeOfflineStartBridge": "Start your bridge",
+  "projectsBridgeOfflineStartBridge": "Make sure the Bridge is running",
   "@projectsBridgeOfflineStartBridge": {
     "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon."
   },
   "projectsBridgeOfflineStartBridgeInfo": "Leave it running while you use Sesori from your phone.",
   "@projectsBridgeOfflineStartBridgeInfo": {
-    "description": "Popover text explaining the 'Start your bridge' command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers."
+    "description": "Popover text explaining the start-the-bridge command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers."
   },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",

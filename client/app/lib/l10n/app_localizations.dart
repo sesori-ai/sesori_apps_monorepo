@@ -319,17 +319,17 @@ abstract class AppLocalizations {
   /// **'More information'**
   String get projectsOnboardingStepInfoSemantics;
 
-  /// Status caption under the connection graphic on the bridge-offline Projects screen, rendered with a trailing crossed-circle icon.
+  /// Status caption under the machine name on the bridge-offline Projects screen, used when the bridge has never reported a last-seen time.
   ///
   /// In en, this message translates to:
   /// **'Disconnected'**
   String get projectsBridgeOfflineDisconnected;
 
-  /// No description provided for @projectsBridgeOfflineReconnect.
+  /// Status caption under the machine name on the bridge-offline Projects screen, pairing the disconnected state with how long ago the bridge was last seen, e.g. 'Disconnected · 5 hours ago'.
   ///
   /// In en, this message translates to:
-  /// **'Reconnect'**
-  String get projectsBridgeOfflineReconnect;
+  /// **'Disconnected · {lastSeen}'**
+  String projectsBridgeOfflineDisconnectedSince(String lastSeen);
 
   /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
   ///
@@ -340,10 +340,10 @@ abstract class AppLocalizations {
   /// Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon.
   ///
   /// In en, this message translates to:
-  /// **'Start your bridge'**
+  /// **'Make sure the Bridge is running'**
   String get projectsBridgeOfflineStartBridge;
 
-  /// Popover text explaining the 'Start your bridge' command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers.
+  /// Popover text explaining the start-the-bridge command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers.
   ///
   /// In en, this message translates to:
   /// **'Leave it running while you use Sesori from your phone.'**

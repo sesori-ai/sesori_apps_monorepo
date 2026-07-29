@@ -222,21 +222,32 @@ class _WhyBridgeButton extends StatelessWidget {
 }
 
 /// A command-box label with a trailing "ⓘ" info popover — e.g. "1. Install the
-/// bridge ⓘ" on the connect onboarding or "Start your bridge ⓘ" on the
-/// bridge-offline view. Tapping the icon opens a [PregoInfoPopover] (glass on
-/// iOS, flat/`cue` on Android) anchored to it, showing [info].
+/// bridge ⓘ" on the connect onboarding or "Make sure the Bridge is running ⓘ"
+/// on the bridge-offline view. Tapping the icon opens a [PregoInfoPopover]
+/// (glass on iOS, flat/`cue` on Android) anchored to it, showing [info].
 class _InfoLabel extends StatelessWidget {
-  const _InfoLabel({required this.title, required this.info});
+  const _InfoLabel({required this.title, required this.info, this.centered = false});
 
   final String title;
   final String info;
+
+  /// Centres the label + icon pair instead of aligning it to the start. The
+  /// numbered onboarding steps sit above a full-width box and read as a list,
+  /// so they stay start-aligned; the bridge-offline label heads a centred
+  /// composition.
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
     return Row(
+      mainAxisAlignment: centered ? MainAxisAlignment.center : MainAxisAlignment.start,
       children: [
+        // The info icon's 40px tap target holds its 12px glyph against its
+        // start, leaving 24px of dead space at the end. An equal gap in front
+        // centres what the user actually sees rather than the hit box.
+        if (centered) const SizedBox(width: 24),
         Flexible(
           child: Text(
             title,

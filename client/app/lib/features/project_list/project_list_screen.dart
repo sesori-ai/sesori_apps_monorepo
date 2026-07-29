@@ -120,31 +120,25 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final loc = context.loc;
     final state = context.watch<ProjectListCubit>().state;
     final isRefreshing = state is ProjectListLoaded && state.isRefreshing;
-    // The connect-your-computer onboarding (no bridge ever registered, none
-    // connected) trades the collapsing large title for the compact
-    // back-leading block, whose subtitle row reports the connection the body
-    // is waiting on. Its body is a fixed setup checklist with nothing to
-    // scroll a large title away against, and the design gives the waiting
-    // status the bar's second line. Every other state keeps the large title.
-    final isConnectOnboarding = state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges;
+    // Both disconnected surfaces — the connect-your-computer onboarding and the
+    // bridge-offline recovery view — trade the collapsing large title for the
+    // compact back-leading block, whose subtitle row reports the connection the
+    // body is about. Their bodies are fixed setup flows with nothing to scroll a
+    // large title away against, and the design gives that connection status the
+    // bar's second line. Every other state keeps the large title.
+    final disconnected = state is ProjectListBridgeDisconnected ? state : null;
     final floatingAction = _floatingAction(context: context, state: state);
 
     return PregoGlassScaffold(
       title: loc.projectListTitle,
-      titleMode: isConnectOnboarding
+      titleMode: disconnected != null
           ? PregoTopNavigationTitleMode.backLeading
           : PregoTopNavigationTitleMode.collapsing,
       // With no back button leading it, the block is the page's own title, so
       // it takes the design's prominent weight rather than the muted one the
       // sessions bar uses beside its back button.
       leadingTitleEmphasis: PregoNavLeadingTitleEmphasis.prominent,
-      subtitle: isConnectOnboarding
-          ? PregoNavSubtitle(
-              text: loc.projectsOnboardingWaitingForBridge,
-              icon: TablerRegular.broadcast_off,
-              status: PregoNavStatus.error,
-            )
-          : null,
+      subtitle: disconnected == null ? null : _disconnectedSubtitle(context: context, state: disconnected),
       // A loaded list hosts the top-nav connection banner; the loading and
       // bridge-disconnected states own their messaging full-screen (setup
       // onboarding or the "turn on your bridge" design), so they suppress it.
@@ -163,6 +157,33 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       floatingActionAlignment: floatingAction.alignment,
       onRefresh: _refreshFor(context: context, state: state),
       slivers: _buildContentSlivers(context: context, state: state, isRefreshing: isRefreshing),
+    );
+  }
+
+  /// The bar's subtitle row on a disconnected Projects screen, naming what the
+  /// body is about in a single `text-xs` line under the title. Both variants
+  /// carry the error dot: on these screens, not being connected *is* the page.
+  ///
+  /// Before any bridge is registered there is no machine to name, so the row
+  /// reports what the setup checklist is waiting for. Once one is registered
+  /// the row names the machine the app is trying to reach — the body's own
+  /// status line says how long it has been gone. Null while that lookup has no
+  /// answer: the body already carries the disconnected caption, and repeating
+  /// it in the bar would name nothing the page doesn't already say.
+  Widget? _disconnectedSubtitle({required BuildContext context, required ProjectListBridgeDisconnected state}) {
+    if (!state.hasRegisteredBridges) {
+      return PregoNavSubtitle(
+        text: context.loc.projectsOnboardingWaitingForBridge,
+        icon: TablerRegular.broadcast_off,
+        status: PregoNavStatus.error,
+      );
+    }
+    final bridge = state.bridges.firstOrNull;
+    if (bridge == null) return null;
+    return PregoNavSubtitle(
+      text: bridge.name,
+      icon: TablerRegular.device_laptop,
+      status: PregoNavStatus.error,
     );
   }
 
