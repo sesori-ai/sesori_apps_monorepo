@@ -244,6 +244,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             // leaving and returning to the new-session screen before
                             // a session exists; cleared once the session is created.
                             draftKey: "new-session:${widget.projectId}",
+                            hasMessages: false,
                             isBusy: state is NewSessionSending,
                             onSend: (String text, String? command) {
                               context.read<NewSessionCubit>().createSession(

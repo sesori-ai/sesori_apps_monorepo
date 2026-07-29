@@ -523,6 +523,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailPromptHint => 'Ask anything...';
 
   @override
+  String get sessionDetailHoldToTalk => 'Hold to talk';
+
+  @override
+  String get sessionDetailFollowUpHint => 'Follow up...';
+
+  @override
+  String get sessionDetailTypeMessage => 'Type a message';
+
+  @override
+  String get sessionDetailMoreActions => 'More actions';
+
+  @override
+  String get sessionDetailExpandEditor => 'Expand editor';
+
+  @override
+  String get sessionDetailEditorTitle => 'Message';
+
+  @override
   String get sessionDetailCommandArgumentsHint => 'Optional arguments';
 
   @override

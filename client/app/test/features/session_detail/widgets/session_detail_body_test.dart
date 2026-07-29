@@ -11,6 +11,7 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
+import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -60,12 +61,14 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
 SessionDetailLoaded _loadedState({
   required List<SesoriQuestionAsked> pendingQuestions,
   required List<SesoriPermissionAsked> pendingPermissions,
+  List<MessageWithParts> messages = const [],
+  SessionStatus sessionStatus = const SessionStatus.idle(),
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
-    messages: const [],
+    messages: messages,
     streamingText: const {},
-    sessionStatus: const SessionStatus.idle(),
+    sessionStatus: sessionStatus,
     pendingQuestions: pendingQuestions,
     pendingPermissions: pendingPermissions,
     sessionTitle: "Session",
@@ -405,27 +408,35 @@ void main() {
     expect(find.text("Choose a release channel"), findsOneWidget);
   });
 
-  // Only the input row is grouped with the text field via a TextFieldTapRegion,
-  // so tapping the send button does not fire the field's default `onTapOutside`
-  // (which unfocuses and dismisses the keyboard) — without the region, send
-  // flickered the keyboard (hide then re-show). The agent/model/variant pills
-  // live in the composer header, outside the region, so tapping them is a tap
-  // "outside" the field and dismisses the keyboard by design.
+  // Only the input container is grouped with the text field via a
+  // TextFieldTapRegion, so tapping the send button does not fire the field's
+  // default `onTapOutside` (which unfocuses and dismisses the keyboard) —
+  // without the region, send flickered the keyboard (hide then re-show). The
+  // agent/model/variant pills live in the composer header, outside the region,
+  // so tapping them is a tap "outside" the field and dismisses the keyboard by
+  // design.
   FocusNode composerFocus(WidgetTester tester) => tester.widget<EditableText>(find.byType(EditableText)).focusNode;
+
+  // A fresh session rests in the hold-to-talk pill, which hosts no text field;
+  // the keyboard button switches the composer to its typing layout and focuses
+  // the field (focus lands post-frame).
+  Future<void> enterTypingMode(WidgetTester tester) async {
+    await tester.tap(find.byIcon(TablerRegular.keyboard));
+    await tester.pumpAndSettle();
+  }
 
   testWidgets("pressing send keeps the composer field focused", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
     // Focus the field — the keyboard would rise.
-    await tester.tap(find.byType(EditableText));
-    await tester.pump();
+    await enterTypingMode(tester);
     expect(composerFocus(tester).hasFocus, isTrue);
 
     // Send with an empty field: `_handleSend` is a no-op that does not
     // re-request focus, so focus retention here proves the tap itself didn't
     // unfocus the field (which is what produced the hide/re-show flicker).
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
     await tester.pump();
     expect(composerFocus(tester).hasFocus, isTrue, reason: "send must not dismiss the keyboard");
   });
@@ -445,18 +456,133 @@ void main() {
       await tester.pumpWidget(_buildApp(cubit: cubit));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(EditableText));
-      await tester.pump();
+      await enterTypingMode(tester);
       expect(composerFocus(tester).hasFocus, isTrue);
 
       // Tapping the variant pill opens its glass popup and, because the pill is
-      // outside the field's tap region, dismisses the keyboard.
+      // outside the field's tap region, dismisses the keyboard. The unfocused,
+      // empty composer then collapses back to its resting pill, unmounting the
+      // field — which is the proof the focus was dropped.
       await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(GlassMenuItem, "xhigh"), findsOneWidget);
-      expect(composerFocus(tester).hasFocus, isFalse, reason: "opening a composer menu must dismiss the keyboard");
+      expect(
+        find.byType(EditableText),
+        findsNothing,
+        reason: "opening a composer menu must dismiss the keyboard and collapse the composer",
+      );
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  testWidgets("fresh session rests in hold-to-talk and the keyboard button enters typing", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Hold-to-talk pill: no text field, no mic/send circles — the pill itself
+    // records and the keyboard button switches to typing.
+    expect(find.byType(EditableText), findsNothing);
+    expect(find.text("Hold to talk"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
+
+    await enterTypingMode(tester);
+
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(composerFocus(tester).hasFocus, isTrue);
+    expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
+    expect(find.byIcon(TablerRegular.microphone), findsOneWidget);
+  });
+
+  testWidgets("session with messages rests as a follow-up field that expands on tap", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      messages: [testMessageWithParts()],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Hold to talk"), findsNothing);
+    expect(find.text("Follow up..."), findsOneWidget);
+
+    await tester.tap(find.text("Follow up..."));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(composerFocus(tester).hasFocus, isTrue);
+  });
+
+  testWidgets("busy composer shows stop instead of send and forwards abort", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      messages: [testMessageWithParts()],
+      sessionStatus: const SessionStatus.busy(),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    when(() => cubit.abort()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    // Bounded pumps throughout: the busy status keeps an activity indicator
+    // animating in the message area, so pumpAndSettle would never settle.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Nothing to send yet, so the dark action button is the stop control.
+    expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
+    await tester.tap(find.byIcon(TablerSolid.player_stop));
+    verify(() => cubit.abort()).called(1);
+
+    // Typed text flips the same button back to send: sending queues while the
+    // agent works, so it must stay reachable.
+    await tester.tap(find.text("Follow up..."));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.enterText(find.byType(EditableText), "follow-up");
+    await tester.pump();
+    expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
+    expect(find.byIcon(TablerSolid.player_stop), findsNothing);
+  });
+
+  testWidgets("accordion reveals the slash-commands action and opens the picker", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(TablerRegular.slash), findsNothing);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(TablerRegular.slash), findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.slash));
+    // Bounded pumps: the picker sheet shows a loading shimmer while its
+    // entries are prepared, which never settles.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text("Slash commands"), findsOneWidget);
+  });
+
+  testWidgets("expand button opens the fullscreen editor sharing the composer text", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "long prompt");
+    await tester.pump();
+
+    await tester.tap(find.byIcon(TablerRegular.maximize));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PromptEditorSheet), findsOneWidget);
+    // The sheet edits the same controller, so it shows the composer's text.
+    expect(
+      find.descendant(of: find.byType(PromptEditorSheet), matching: find.text("long prompt")),
+      findsOneWidget,
+    );
   });
 }

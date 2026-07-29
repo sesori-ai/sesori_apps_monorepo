@@ -1069,6 +1069,42 @@ abstract class AppLocalizations {
   /// **'Ask anything...'**
   String get sessionDetailPromptHint;
 
+  /// Label centered in the fresh-session composer pill; holding it records a voice message that is transcribed into the field.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to talk'**
+  String get sessionDetailHoldToTalk;
+
+  /// Composer placeholder once the session already has messages.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow up...'**
+  String get sessionDetailFollowUpHint;
+
+  /// Accessibility label of the keyboard button that switches the composer from hold-to-talk to typing.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a message'**
+  String get sessionDetailTypeMessage;
+
+  /// Accessibility label of the chevron that expands the composer's advanced-options drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get sessionDetailMoreActions;
+
+  /// Accessibility label of the button that opens the fullscreen message editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand editor'**
+  String get sessionDetailExpandEditor;
+
+  /// Title of the fullscreen message editor sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get sessionDetailEditorTitle;
+
   /// No description provided for @sessionDetailCommandArgumentsHint.
   ///
   /// In en, this message translates to:
