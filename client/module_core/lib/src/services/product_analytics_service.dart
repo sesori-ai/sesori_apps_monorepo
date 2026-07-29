@@ -40,6 +40,8 @@ class ProductAnalyticsService {
   bool _reconcileAfterFailedLogout = false;
   bool _postSplashReady = false;
   bool _localReadFailed = false;
+  int _preferenceRequestSequence = 0;
+  ProductAnalyticsPreference? _latestRequestedPreference;
   Future<void>? _startFuture;
 
   ProductAnalyticsService({
@@ -89,34 +91,53 @@ class ProductAnalyticsService {
     final userId = _userId;
     if (userId == null) return;
     final generation = _generation;
+    final requestSequence = ++_preferenceRequestSequence;
+    _latestRequestedPreference = preference;
     _volatileDisable = null;
-    final current = _currentRecord;
-    if (current != null) {
-      _emitPreferenceRequestInProgress(preference: preference);
-    }
-    await _runAccountOperation(
-      generation: generation,
-      userId: userId,
-      operation: () async {
-        await _awaitLatestLocalInitialization();
-        final allowDuringLogout = preference == ProductAnalyticsPreference.disabled;
-        if (!_canApply(
-          generation: generation,
-          userId: userId,
-          allowDuringLogout: allowDuringLogout,
-        )) {
-          if (_matchesAccount(generation: generation, userId: userId)) {
-            _reconcileAfterFailedLogout = true;
-          }
-          return;
-        }
-        var operationRecord = _currentRecord;
-        if (operationRecord == null) {
-          await _performReconciliation(
+    _emitPreferenceRequestInProgress(preference: preference);
+    try {
+      await _runAccountOperation(
+        generation: generation,
+        userId: userId,
+        operation: () async {
+          await _awaitLatestLocalInitialization();
+          final allowDuringLogout = preference == ProductAnalyticsPreference.disabled;
+          if (!_canApply(
             generation: generation,
             userId: userId,
             allowDuringLogout: allowDuringLogout,
-            pendingPreference: preference,
+          )) {
+            if (_matchesAccount(generation: generation, userId: userId)) {
+              _reconcileAfterFailedLogout = true;
+            }
+            return;
+          }
+          _emitPreferenceRequestInProgress(preference: preference);
+          var operationRecord = _currentRecord;
+          if (operationRecord == null) {
+            await _performReconciliation(
+              generation: generation,
+              userId: userId,
+              allowDuringLogout: allowDuringLogout,
+              pendingPreference: preference,
+            );
+            if (!_canApply(
+              generation: generation,
+              userId: userId,
+              allowDuringLogout: allowDuringLogout,
+            )) {
+              if (_matchesAccount(generation: generation, userId: userId)) {
+                _reconcileAfterFailedLogout = true;
+              }
+              return;
+            }
+            operationRecord = _currentRecord;
+            if (operationRecord == null) return;
+          }
+          final result = await _preferenceRepository.setPreference(
+            userId: userId,
+            current: operationRecord,
+            preference: preference,
           );
           if (!_canApply(
             generation: generation,
@@ -128,28 +149,19 @@ class ProductAnalyticsService {
             }
             return;
           }
-          operationRecord = _currentRecord;
-          if (operationRecord == null) return;
-        }
-        final result = await _preferenceRepository.setPreference(
-          userId: userId,
-          current: operationRecord,
-          preference: preference,
-        );
-        if (!_canApply(
-          generation: generation,
-          userId: userId,
-          allowDuringLogout: allowDuringLogout,
-        )) {
-          if (_matchesAccount(generation: generation, userId: userId)) {
-            _reconcileAfterFailedLogout = true;
+          if (_logoutPreparation != null) _reconcileAfterFailedLogout = true;
+          final newerPreference = requestSequence == _preferenceRequestSequence ? null : _latestRequestedPreference;
+          await _applyRepositoryResult(result: result, pendingPreference: newerPreference);
+          if (newerPreference != null) {
+            _emitPreferenceRequestInProgress(preference: newerPreference);
           }
-          return;
-        }
-        if (_logoutPreparation != null) _reconcileAfterFailedLogout = true;
-        await _applyRepositoryResult(result: result, pendingPreference: null);
-      },
-    );
+        },
+      );
+    } finally {
+      if (requestSequence == _preferenceRequestSequence) {
+        _latestRequestedPreference = null;
+      }
+    }
   }
 
   Future<void> retryPendingDisable() async {
@@ -248,6 +260,7 @@ class ProductAnalyticsService {
     _local = null;
     _volatileDisable = null;
     _localReadFailed = false;
+    _latestRequestedPreference = null;
     final userId = switch (authState) {
       AuthAuthenticated(:final user) => user.id,
       AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => null,
@@ -420,7 +433,10 @@ class ProductAnalyticsService {
     }
     if (_logoutPreparation != null) _reconcileAfterFailedLogout = true;
     _reconciledGeneration = generation;
-    await _applyRepositoryResult(result: result, pendingPreference: pendingPreference);
+    await _applyRepositoryResult(
+      result: result,
+      pendingPreference: pendingPreference ?? _latestRequestedPreference,
+    );
   }
 
   Future<void> _applyRepositoryResult({
@@ -442,7 +458,11 @@ class ProductAnalyticsService {
               availability: const ProductAnalyticsActive(),
             ),
           );
-          await _reportSchemaReadyIfNeeded();
+          unawaited(
+            _reportSchemaReadyIfNeeded().catchError((Object error, StackTrace stackTrace) {
+              logw("Failed to report analytics schema readiness", error, stackTrace);
+            }),
+          );
         } else {
           _emitInactiveForPreference(
             preference: record.preference,

@@ -120,6 +120,7 @@ class _FakePreferenceRepository extends Mock implements ProductAnalyticsPreferen
 class _RecordingProductAnalyticsRepository extends Mock implements ProductAnalyticsRepository {
   final calls = <({ProductAnalyticsEnvelope envelope, String userKey})>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
+  Completer<AnalyticsDeliveryResult>? deliveryCompleter;
 
   @override
   Future<AnalyticsDeliveryResult> logEvent({
@@ -127,6 +128,8 @@ class _RecordingProductAnalyticsRepository extends Mock implements ProductAnalyt
     required String userKey,
   }) async {
     calls.add((envelope: envelope, userKey: userKey));
+    final completer = deliveryCompleter;
+    if (completer != null) return completer.future;
     return result;
   }
 }
@@ -464,6 +467,85 @@ void main() {
     expect(preferenceRepository.setCalls, hasLength(2));
     expect(service.state.displayedPreference, ProductAnalyticsPreference.enabled);
     expect(service.state.isActive, isTrue);
+  });
+
+  test("a queued disable reasserts suppression after an earlier refresh completes", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final disabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 2,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    final refreshResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.reconcileHandlers.add((_, _) => refreshResult.future);
+    preferenceRepository.setHandlers.add((_, _, _) => disableResult.future);
+
+    final refreshFuture = service.refreshPreference();
+    while (preferenceRepository.reconcileCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    refreshResult.complete(ProductAnalyticsPreferenceSynchronized(record: enabled));
+    while (preferenceRepository.setCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(service.state.isActive, isFalse);
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+
+    disableResult.complete(ProductAnalyticsPreferenceSynchronized(record: disabled));
+    await Future.wait([refreshFuture, disableFuture]);
+  });
+
+  test("a hanging schema report does not hold the preference operation queue", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final disabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 2,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    preferenceRepository.setHandlers.add(
+      (_, _, _) async => ProductAnalyticsPreferenceSynchronized(record: disabled),
+    );
+    final schemaDelivery = Completer<AnalyticsDeliveryResult>();
+    analyticsRepository.deliveryCompleter = schemaDelivery;
+    await service.start();
+
+    final readyFuture = service.markPostSplashReady();
+    while (analyticsRepository.calls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    await Future<void>.delayed(Duration.zero);
+
+    try {
+      expect(preferenceRepository.setCalls, hasLength(1));
+    } finally {
+      schemaDelivery.complete(AnalyticsDeliveryResult.acceptedBySdk);
+      await Future.wait([readyFuture, disableFuture]);
+    }
   });
 
   test("a preference request made during hydration is applied after reconciliation", () async {
