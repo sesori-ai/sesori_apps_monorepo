@@ -94,6 +94,8 @@ import 'package:sesori_dart_core/src/services/notification_registration_service.
     as _i659;
 import 'package:sesori_dart_core/src/services/plugin_management_service.dart'
     as _i110;
+import 'package:sesori_dart_core/src/services/product_analytics_service.dart'
+    as _i204;
 import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
@@ -299,6 +301,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
+    );
+    gh.lazySingleton<_i204.ProductAnalyticsService>(
+      () => _i204.ProductAnalyticsService(
+        capability: gh<_i684.AnalyticsRuntimeCapability>(),
+        authSession: gh<_i442.AuthSession>(),
+        analyticsRepository: gh<_i67.ProductAnalyticsRepository>(),
+        preferenceRepository: gh<_i804.ProductAnalyticsPreferenceRepository>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i110.PluginManagementService>(
       () => _i110.PluginManagementService(
