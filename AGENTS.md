@@ -105,11 +105,11 @@ eagerly "just in case."
 - Instrument the authoritative outcome rather than a UI proxy, use closed
   bounded parameters, and never report source code, prompts, transcripts,
   paths, names, raw error text, or raw/hashed entity identifiers.
-- Until `.plan/active/user-analytics/` step 3 lands, the existing event union is
-  `client/app/lib/core/analytics/analytics_event.dart`. The step-3 PR moves the
-  source of truth to core product-analytics models and must remove this
-  transitional sentence while updating every consumer in lockstep; do not point
-  contributors at files that do not yet exist.
+- The closed event source of truth lives under
+  `client/module_core/lib/src/foundation/models/product_analytics/`. Consumers
+  use `ProductAnalyticsService` for account-linked events and
+  `InstallationAnalyticsService` only for the approved account-less login
+  funnel; product shells never send arbitrary names or parameter maps.
 
 ## Verification And Review
 

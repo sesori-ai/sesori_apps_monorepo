@@ -12,6 +12,7 @@
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_auth/sesori_auth.dart' as _i442;
+import 'package:sesori_dart_core/src/api/analytics_api.dart' as _i727;
 import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i384;
 import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
@@ -34,6 +35,10 @@ import 'package:sesori_dart_core/src/capabilities/session/session_service.dart'
     as _i12;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
+import 'package:sesori_dart_core/src/foundation/models/product_analytics/analytics_runtime_capability.dart'
+    as _i684;
+import 'package:sesori_dart_core/src/foundation/platform/analytics_client.dart'
+    as _i791;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
 import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
     as _i1037;
@@ -44,6 +49,8 @@ import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
     as _i209;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
+import 'package:sesori_dart_core/src/repositories/installation_analytics_repository.dart'
+    as _i723;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
@@ -56,6 +63,8 @@ import 'package:sesori_dart_core/src/repositories/plugin_preference_repository.d
     as _i594;
 import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
     as _i337;
+import 'package:sesori_dart_core/src/repositories/product_analytics_repository.dart'
+    as _i67;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
@@ -69,6 +78,8 @@ import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
 import 'package:sesori_dart_core/src/services/draft_store.dart' as _i1002;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
+import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
+    as _i285;
 import 'package:sesori_dart_core/src/services/new_session_plugin_service.dart'
     as _i177;
 import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart'
@@ -122,6 +133,9 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i400.NotificationApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
     );
+    gh.lazySingleton<_i727.AnalyticsApi>(
+      () => _i727.AnalyticsApi(client: gh<_i791.AnalyticsClient>()),
+    );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
     );
@@ -138,6 +152,19 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i835.LegalApi>(
       () => _i835.LegalApi(client: gh<_i442.HttpApiClient>()),
+    );
+    gh.lazySingleton<_i723.InstallationAnalyticsRepository>(
+      () =>
+          _i723.InstallationAnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
+    );
+    gh.lazySingleton<_i67.ProductAnalyticsRepository>(
+      () => _i67.ProductAnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
+    );
+    gh.lazySingleton<_i285.InstallationAnalyticsService>(
+      () => _i285.InstallationAnalyticsService(
+        capability: gh<_i684.AnalyticsRuntimeCapability>(),
+        repository: gh<_i723.InstallationAnalyticsRepository>(),
+      ),
     );
     gh.lazySingleton<_i396.NotificationPreferencesApi>(
       () =>

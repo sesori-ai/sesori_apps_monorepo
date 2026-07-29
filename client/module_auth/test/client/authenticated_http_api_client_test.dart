@@ -7,11 +7,26 @@ import "package:sesori_auth/src/client/api_error.dart";
 import "package:sesori_auth/src/client/api_response.dart";
 import "package:sesori_auth/src/client/authenticated_http_api_client.dart";
 import "package:sesori_auth/src/client/http_api_client.dart";
+import "package:sesori_auth/src/models/auth_state.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class MockHttpApiClient extends Mock implements HttpApiClient {}
 
 class MockAuthManager extends Mock implements AuthManager {}
+
+const _userA = AuthUser(
+  id: "user-a",
+  provider: AuthProvider.github,
+  providerUserId: "github-a",
+  providerUsername: "alpha",
+);
+const _userB = AuthUser(
+  id: "user-b",
+  provider: AuthProvider.google,
+  providerUserId: "google-b",
+  providerUsername: "beta",
+);
 
 void main() {
   setUpAll(() {
@@ -119,6 +134,167 @@ void main() {
           logBody: any(named: "logBody"),
         ),
       ).called(2);
+    });
+  });
+
+  group("put", () {
+    test("injects bearer auth and delegates the PUT arguments", () async {
+      const body = {"enabled": true};
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(
+        () => mockHttpApiClient.put<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success("ok"));
+
+      final response = await client.put<String>(
+        testUrl,
+        fromJson: _parseString,
+        headers: {
+          "Authorization": "Bearer stale-token",
+          "X-Test": "1",
+        },
+        body: body,
+        contentType: ContentType.text,
+        logBody: true,
+      );
+
+      expect((response as SuccessResponse<String>).data, "ok");
+      final captured = verify(
+        () => mockHttpApiClient.put<String>(
+          testUrl,
+          fromJson: _parseString,
+          headers: captureAny(named: "headers"),
+          body: body,
+          contentType: ContentType.text,
+          logBody: true,
+        ),
+      );
+      expect(captured.captured.single, {
+        "Authorization": "Bearer $accessToken",
+        "X-Test": "1",
+      });
+    });
+
+    test("refreshes and retries only once after 401", () async {
+      const body = {"enabled": true};
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(() => mockAuth.getFreshAccessToken(forceRefresh: true)).thenAnswer((_) async => refreshedToken);
+      when(
+        () => mockHttpApiClient.put<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 401, rawErrorString: "unauthorized"),
+        ),
+      );
+
+      final response = await client.put<String>(
+        testUrl,
+        fromJson: _parseString,
+        body: body,
+      );
+
+      expect(
+        (response as ErrorResponse<String>).error,
+        isA<NonSuccessCodeError>(),
+      );
+      verify(() => mockAuth.getFreshAccessToken()).called(1);
+      verify(() => mockAuth.getFreshAccessToken(forceRefresh: true)).called(1);
+      final captured = verify(
+        () => mockHttpApiClient.put<String>(
+          testUrl,
+          fromJson: _parseString,
+          headers: captureAny(named: "headers"),
+          body: body,
+          contentType: null,
+          logBody: false,
+        ),
+      );
+      expect(captured.callCount, 2);
+      expect(captured.captured, [
+        {"Authorization": "Bearer $accessToken"},
+        {"Authorization": "Bearer $refreshedToken"},
+      ]);
+    });
+  });
+
+  group("account-bound requests", () {
+    test("refuses a request when its initiating account is no longer current", () async {
+      when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userB));
+
+      final response = await client.getForUser<String>(
+        testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+      );
+
+      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+      verifyNever(() => mockAuth.getFreshAccessToken());
+      verifyNever(
+        () => mockHttpApiClient.get<String>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      );
+    });
+
+    test("does not retry a 401 with a token refreshed after an account switch", () async {
+      AuthState currentState = const AuthState.authenticated(user: _userA);
+      when(() => mockAuth.currentState).thenAnswer((_) => currentState);
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(() => mockAuth.getFreshAccessToken(forceRefresh: true)).thenAnswer((_) async {
+        currentState = const AuthState.authenticated(user: _userB);
+        return refreshedToken;
+      });
+      when(
+        () => mockHttpApiClient.put<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 401, rawErrorString: "unauthorized"),
+        ),
+      );
+
+      final response = await client.putForUser<String>(
+        testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: '{"enabled":false}',
+      );
+
+      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+      verify(() => mockAuth.getFreshAccessToken(forceRefresh: true)).called(1);
+      verify(
+        () => mockHttpApiClient.put<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).called(1);
     });
   });
 

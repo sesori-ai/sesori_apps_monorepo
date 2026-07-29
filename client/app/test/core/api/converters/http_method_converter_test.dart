@@ -17,6 +17,11 @@ void main() {
         expect(result, equals(HttpMethod.post));
       });
 
+      test("converts PUT string to HttpMethod.put", () {
+        final result = converter.fromJson("PUT");
+        expect(result, equals(HttpMethod.put));
+      });
+
       test("converts PATCH string to HttpMethod.patch", () {
         final result = converter.fromJson("PATCH");
         expect(result, equals(HttpMethod.patch));
@@ -29,7 +34,7 @@ void main() {
 
       test("throws ArgumentError for unknown method", () {
         expect(
-          () => converter.fromJson("PUT"),
+          () => converter.fromJson("OPTIONS"),
           throwsA(isA<ArgumentError>()),
         );
       });
@@ -60,6 +65,11 @@ void main() {
         expect(result, equals("POST"));
       });
 
+      test("converts HttpMethod.put to PUT string", () {
+        final result = converter.toJson(HttpMethod.put);
+        expect(result, equals("PUT"));
+      });
+
       test("converts HttpMethod.patch to PATCH string", () {
         final result = converter.toJson(HttpMethod.patch);
         expect(result, equals("PATCH"));
@@ -82,6 +92,14 @@ void main() {
 
       test("POST round-trips correctly", () {
         const original = HttpMethod.post;
+        final json = converter.toJson(original);
+        final restored = converter.fromJson(json);
+
+        expect(restored, equals(original));
+      });
+
+      test("PUT round-trips correctly", () {
+        const original = HttpMethod.put;
         final json = converter.toJson(original);
         final restored = converter.fromJson(json);
 

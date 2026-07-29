@@ -100,6 +100,26 @@ class HttpApiClient implements SafeApiClient {
 
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function
+  Future<ApiResponse<T>> put<T>(
+    final Uri url, {
+    required final T Function(dynamic json) fromJson,
+    final Map<String, String>? headers,
+    required final Object? body,
+    final ContentType? contentType,
+    final bool logBody = false,
+  }) {
+    return _execute(
+      method: HttpMethod.put,
+      url: url,
+      fromJson: fromJson,
+      headers: headers,
+      body: body,
+      contentType: contentType,
+    );
+  }
+
+  @override
+  // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> patch<T>(
     final Uri url, {
     required final T Function(dynamic json) fromJson,
@@ -207,6 +227,12 @@ class HttpApiClient implements SafeApiClient {
           response = await _client.get(url, headers: allHeaders);
         case HttpMethod.post:
           response = await _client.post(
+            url,
+            headers: allHeaders,
+            body: body is String ? body : jsonEncode(body),
+          );
+        case HttpMethod.put:
+          response = await _client.put(
             url,
             headers: allHeaders,
             body: body is String ? body : jsonEncode(body),

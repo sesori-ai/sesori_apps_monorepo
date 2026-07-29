@@ -41,6 +41,8 @@ import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
     as _i178;
+import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
+    as _i326;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_local_notification_client.dart'
@@ -185,6 +187,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1042.FirebasePushMessagingSource(
         messaging: gh<_i892.FirebaseMessaging>(),
         staticAdapter: gh<_i178.FirebaseMessagingStaticAdapter>(),
+      ),
+    );
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => _i326.FirebaseAnalyticsClient(
+        analytics: gh<_i398.FirebaseAnalytics>(),
+        capability: gh<_i948.AnalyticsRuntimeCapability>(),
       ),
     );
     gh.lazySingleton<_i553.FailureReporter>(

@@ -31,6 +31,7 @@ export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
 export "package:sesori_shared/sesori_shared.dart" show AuthProvider;
 
 // API
+export "src/api/analytics_api.dart";
 export "src/api/client/relay_http_client.dart";
 export "src/api/filesystem_api.dart";
 export "src/api/notification_api.dart";
@@ -83,6 +84,12 @@ export "src/cubits/splash/splash_state.dart";
 export "src/di/injection.dart";
 // Errors
 export "src/errors/remote_failure_reason.dart";
+// Analytics foundation
+export "src/foundation/models/product_analytics/analytics_runtime_capability.dart";
+export "src/foundation/models/product_analytics/installation_analytics_event.dart";
+export "src/foundation/models/product_analytics/product_analytics_event.dart";
+export "src/foundation/models/product_analytics/product_analytics_preference.dart";
+export "src/foundation/platform/analytics_client.dart";
 // Logging
 export "src/logging/logging.dart";
 // Platform interfaces
@@ -98,7 +105,9 @@ export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
 export "src/repositories/appearance_store.dart";
 export "src/repositories/bridge_repository.dart";
+export "src/repositories/installation_analytics_repository.dart";
 export "src/repositories/legal_repository.dart";
+export "src/repositories/models/analytics_delivery_result.dart";
 export "src/repositories/models/plugin_management_result.dart";
 export "src/repositories/models/repo_provider.dart";
 export "src/repositories/notification_preferences_repository.dart";
@@ -106,6 +115,7 @@ export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
 export "src/repositories/plugin_preference_repository.dart";
 export "src/repositories/plugin_repository.dart";
+export "src/repositories/product_analytics_repository.dart";
 export "src/repositories/project_repository.dart";
 export "src/repositories/registered_bridges_store.dart";
 export "src/repositories/session_repository.dart";
@@ -115,6 +125,7 @@ export "src/routing/notification_open_dispatcher.dart";
 // Services
 export "src/services/draft_store.dart";
 export "src/services/foreground_notification_dispatcher.dart";
+export "src/services/installation_analytics_service.dart";
 export "src/services/models/session_activity_info.dart";
 export "src/services/new_session_plugin_service.dart";
 export "src/services/new_session_selection_tracker.dart";
