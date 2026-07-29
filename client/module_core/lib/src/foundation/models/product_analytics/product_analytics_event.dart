@@ -99,7 +99,7 @@ sealed class ProductAnalyticsEvent {
   @override
   int get hashCode => Object.hash(
     wireName,
-    Object.hashAll(parameters.entries.map((entry) => Object.hash(entry.key, entry.value))),
+    Object.hashAllUnordered(parameters.entries.map((entry) => Object.hash(entry.key, entry.value))),
   );
 }
 
