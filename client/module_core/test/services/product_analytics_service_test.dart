@@ -343,6 +343,47 @@ void main() {
     expect(analyticsRepository.calls.single.envelope.event, isA<AnalyticsSchemaReadyEvent>());
   });
 
+  test("a retried local read cannot overwrite a newer preference request", () async {
+    createService();
+    preferenceRepository.throwOnLoad = true;
+    await service.start();
+    await service.markPostSplashReady();
+
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final disabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 2,
+    );
+    final staleLocal = LocalProductAnalyticsPendingEnable(record: enabled, operationId: _operationId);
+    final retryLoad = Completer<LocalProductAnalyticsPreference?>();
+    preferenceRepository.throwOnLoad = false;
+    preferenceRepository.loadHandlers[_userA.id] = () => retryLoad.future;
+    preferenceRepository.reconcileHandlers
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled))
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled));
+    preferenceRepository.setHandlers.add(
+      (_, _, _) async => ProductAnalyticsPreferenceSynchronized(record: disabled),
+    );
+
+    final refreshFuture = service.refreshPreference();
+    while (preferenceRepository.loadCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    await service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    retryLoad.complete(staleLocal);
+    await refreshFuture;
+
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+    expect(service.state.isActive, isFalse);
+    expect(preferenceRepository.reconcileCalls, hasLength(1));
+  });
+
   test("disable suppresses synchronously and remains pending after server failure", () async {
     createService();
     final enabled = _record(
@@ -463,6 +504,45 @@ void main() {
 
     disableResult.complete(ProductAnalyticsPreferenceSynchronized(record: disabled));
     await Future.wait([disableFuture, enableFuture]);
+
+    expect(preferenceRepository.setCalls, hasLength(2));
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.enabled);
+    expect(service.state.isActive, isTrue);
+  });
+
+  test("an obsolete volatile disable cannot override a queued enable during refresh", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    final enableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    final volatileDisable = LocalProductAnalyticsPendingDisable(record: enabled, operationId: _operationId);
+    preferenceRepository.setHandlers
+      ..add((_, _, _) => disableResult.future)
+      ..add((_, _, _) => enableResult.future)
+      ..add((_, _, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled));
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    final enableFuture = service.setPreference(preference: ProductAnalyticsPreference.enabled);
+    disableResult.complete(ProductAnalyticsPreferenceVolatileDisablePending(pending: volatileDisable));
+    while (preferenceRepository.setCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final refreshFuture = service.refreshPreference();
+    enableResult.complete(ProductAnalyticsPreferenceSynchronized(record: enabled));
+    await Future.wait([disableFuture, enableFuture, refreshFuture]);
 
     expect(preferenceRepository.setCalls, hasLength(2));
     expect(service.state.displayedPreference, ProductAnalyticsPreference.enabled);

@@ -397,9 +397,11 @@ class ProductAnalyticsService {
     final userId = _userId;
     if (!_postSplashReady || userId == null) return;
     final generation = _generation;
+    final preferenceRequestSequence = _preferenceRequestSequence;
     try {
       final local = await _preferenceRepository.loadLocal(userId: userId);
       if (!_matches(generation: generation, userId: userId)) return;
+      if (preferenceRequestSequence != _preferenceRequestSequence) return;
       _localReadFailed = false;
       _local = local;
       _applyLocalState(local);
@@ -489,14 +491,18 @@ class ProductAnalyticsService {
           reason: null,
         );
       case ProductAnalyticsPreferenceVolatileDisablePending(:final pending):
-        _volatileDisable = pending;
+        _volatileDisable = pendingPreference == ProductAnalyticsPreference.enabled ? null : pending;
         _local = null;
         _currentRecord = pending.record;
-        _emitInactiveForPreference(
-          preference: ProductAnalyticsPreference.disabled,
-          synchronization: const ProductAnalyticsDisableRetryRequired(),
-          reason: ProductAnalyticsInactiveReason.storageFailure,
-        );
+        if (pendingPreference == ProductAnalyticsPreference.enabled) {
+          _emitPreferenceRequestInProgress(preference: ProductAnalyticsPreference.enabled);
+        } else {
+          _emitInactiveForPreference(
+            preference: ProductAnalyticsPreference.disabled,
+            synchronization: const ProductAnalyticsDisableRetryRequired(),
+            reason: ProductAnalyticsInactiveReason.storageFailure,
+          );
+        }
       case ProductAnalyticsPreferenceRefreshRequired(:final record):
         _volatileDisable = null;
         _currentRecord = record;
