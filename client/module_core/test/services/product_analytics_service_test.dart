@@ -483,6 +483,31 @@ void main() {
     expect((service.state.availability as ProductAnalyticsActive).userKey, _userKeyA);
   });
 
+  test("failed logout recovery restores an unknown preference with no local record", () async {
+    createService();
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => const ProductAnalyticsPreferenceFailed(),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+    final stateBeforeLogout = service.state;
+    expect(stateBeforeLogout.availability, isA<ProductAnalyticsInactive>());
+    expect(
+      (stateBeforeLogout.availability as ProductAnalyticsInactive).reason,
+      ProductAnalyticsInactiveReason.requestFailure,
+    );
+
+    await service.prepareForLogout();
+    expect(
+      (service.state.availability as ProductAnalyticsInactive).reason,
+      ProductAnalyticsInactiveReason.unauthenticated,
+    );
+
+    await service.resumeAfterFailedLogout();
+
+    expect(service.state, same(stateBeforeLogout));
+  });
+
   test("prepareForLogout releases after ten seconds when a pending retry hangs", () async {
     createService();
     final enabled = _record(

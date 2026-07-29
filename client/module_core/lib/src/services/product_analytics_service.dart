@@ -36,6 +36,7 @@ class ProductAnalyticsService {
   int? _schemaReadyGeneration;
   int? _schemaReportGeneration;
   Future<void>? _schemaReport;
+  ({int generation, ProductAnalyticsState state})? _logoutPreparation;
   bool _postSplashReady = false;
   bool _localReadFailed = false;
   Future<void>? _startFuture;
@@ -124,6 +125,7 @@ class ProductAnalyticsService {
   Future<void> prepareForLogout() async {
     final userId = _userId;
     if (userId == null) return;
+    _logoutPreparation ??= (generation: _generation, state: state);
     _state.add(
       ProductAnalyticsState(
         preference: state.preference,
@@ -144,18 +146,13 @@ class ProductAnalyticsService {
   }
 
   Future<void> resumeAfterFailedLogout() async {
-    if (_userId == null) return;
-    final local = _local;
-    switch (local) {
-      case LocalProductAnalyticsSynced(:final record):
-        await _applyRepositoryResult(ProductAnalyticsPreferenceSynchronized(record: record));
-      case LocalProductAnalyticsPendingDisable() || LocalProductAnalyticsPendingEnable():
-        _applyLocalState(local);
-      case null:
-        final volatileDisable = _volatileDisable;
-        if (volatileDisable != null) {
-          await _applyRepositoryResult(ProductAnalyticsPreferenceVolatileDisablePending(pending: volatileDisable));
-        }
+    final preparation = _logoutPreparation;
+    _logoutPreparation = null;
+    if (preparation == null || preparation.generation != _generation || _userId == null) return;
+    final availability = state.availability;
+    if (availability is ProductAnalyticsInactive &&
+        availability.reason == ProductAnalyticsInactiveReason.unauthenticated) {
+      _state.add(preparation.state);
     }
   }
 
@@ -182,6 +179,7 @@ class ProductAnalyticsService {
     _schemaReadyGeneration = null;
     _schemaReportGeneration = null;
     _schemaReport = null;
+    _logoutPreparation = null;
     _currentRecord = null;
     _local = null;
     _volatileDisable = null;
