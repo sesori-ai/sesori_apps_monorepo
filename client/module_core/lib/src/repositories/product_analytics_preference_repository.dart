@@ -24,15 +24,8 @@ class ProductAnalyticsPreferenceRepository {
     try {
       stored = await _storage.read(userId: userId);
     } on FormatException {
-      try {
-        await _storage.delete(userId: userId);
-      } on Object catch (_, deleteStackTrace) {
-        logw(
-          "Failed to delete malformed local analytics preference",
-          const _ProductAnalyticsPreferenceCleanupException(),
-          deleteStackTrace,
-        );
-      }
+      // Keep the unreadable value in place so every automatic read remains
+      // fail-closed across retries and process restarts.
       throw const FormatException("Invalid stored product analytics preference");
     }
     if (stored == null) return null;
@@ -116,8 +109,8 @@ class ProductAnalyticsPreferenceRepository {
     final result = await _api.getPreference(userId: userId);
     return switch (result) {
       ProductAnalyticsPreferenceApiSuccess(:final record)
-          when record.preference == ProductAnalyticsPreference.disabled =>
-        _refreshPendingEnableAndRetry(userId: userId, pending: pending, apiRecord: record),
+          when record.preference == ProductAnalyticsPreference.disabled && record.revision == pending.record.revision =>
+        _putPending(userId: userId, pending: pending),
       ProductAnalyticsPreferenceApiSuccess(:final record) => _persistPendingRecord(
         userId: userId,
         apiRecord: record,
@@ -127,25 +120,6 @@ class ProductAnalyticsPreferenceRepository {
       ProductAnalyticsPreferenceApiConflict() ||
       ProductAnalyticsPreferenceApiFailure() => ProductAnalyticsPreferencePendingSync(pending: pending),
     };
-  }
-
-  Future<ProductAnalyticsPreferenceRepositoryResult> _refreshPendingEnableAndRetry({
-    required String userId,
-    required LocalProductAnalyticsPendingEnable pending,
-    required ProductAnalyticsPreferenceApiRecord apiRecord,
-  }) async {
-    final refreshedPending = LocalProductAnalyticsPendingEnable(
-      record: _recordFromApi(userId: userId, record: apiRecord),
-      operationId: pending.operationId,
-    );
-    if (apiRecord.revision != pending.record.revision) {
-      try {
-        await _writePending(refreshedPending);
-      } on Object {
-        return const ProductAnalyticsPreferenceStorageFailed();
-      }
-    }
-    return _putPending(userId: userId, pending: refreshedPending);
   }
 
   Future<ProductAnalyticsPreferenceRepositoryResult> _putPending({
@@ -217,7 +191,7 @@ class ProductAnalyticsPreferenceRepository {
     } on Object catch (_, stackTrace) {
       logw(
         "Failed to persist refreshed analytics disable intent",
-        const _ProductAnalyticsPreferenceCleanupException(),
+        const _ProductAnalyticsPreferenceStorageException(),
         stackTrace,
       );
       // Source suppression is already active in memory. Continue the bounded
@@ -359,11 +333,11 @@ class ProductAnalyticsPreferenceRepository {
   }
 }
 
-final class _ProductAnalyticsPreferenceCleanupException implements Exception {
-  const _ProductAnalyticsPreferenceCleanupException();
+final class _ProductAnalyticsPreferenceStorageException implements Exception {
+  const _ProductAnalyticsPreferenceStorageException();
 
   @override
-  String toString() => "Product analytics preference cleanup failed";
+  String toString() => "Product analytics preference storage operation failed";
 }
 
 ProductAnalyticsPreferenceRecord _recordFromStored(StoredProductAnalyticsPreference stored) =>
