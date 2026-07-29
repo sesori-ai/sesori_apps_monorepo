@@ -8,6 +8,7 @@ import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
+import "session_archived_empty_state.dart";
 import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
@@ -100,7 +101,7 @@ class SessionListContent extends StatelessWidget {
             SliverFillRemaining(
               hasScrollBody: false,
               child: loaded.showArchived
-                  ? Center(child: Text(loc.sessionListEmptyArchived))
+                  ? const SessionArchivedEmptyState()
                   : SessionEmptyState(projectName: projectName),
             ),
         ],
