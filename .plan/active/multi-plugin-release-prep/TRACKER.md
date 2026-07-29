@@ -38,6 +38,9 @@
   runtime generation fencing.
 - Harnesses settings ends as one screen and one screen-owned management cubit,
   using Prego sheets and setup/capability-aware visibility.
+- Harness consolidation preserves authoritative `bridgeId` snapshot fencing;
+  retained management state from bridge A never renders while actions target
+  bridge B.
 
 ## Exact PR Titles
 

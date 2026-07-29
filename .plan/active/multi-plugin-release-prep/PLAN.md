@@ -163,6 +163,10 @@ clients without coupling legacy repositories to the new service.
   navigation row.
 - Keep one screen-owned `PluginManagementCubit`; do not merge plugin-management
   state with new-session option state.
+- Preserve `PluginManagementService`'s authoritative `bridgeId` fencing. A
+  bridge-identity change clears retained management presentation before the new
+  bridge can receive actions or refreshes; bridge A's snapshot must never replay
+  while commands route to bridge B.
 - Setup not ready: show setup status/guidance and only capability-supported
   setup or eligibility actions that remain meaningful; hide runtime, work,
   restart, and timeout facts.
@@ -388,6 +392,8 @@ backend-neutral UI decisions.
   remains intact.
 - Widget tests cover setup-not-ready, disabled, enabled, capability-limited,
   loading/unsupported/failure, action/refresh error, and close navigation.
+- Existing service/cubit tests continue proving an authoritative `bridgeId`
+  change clears retained management state before actions target the new bridge.
 - Timeout tests cover inheritance, no-timeout `0`, strictly positive custom
   values, invalid/negative input, and clear override.
 - Force cancel/confirm sends zero/one force requests and uses Prego sheets rather
