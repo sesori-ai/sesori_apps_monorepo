@@ -9,7 +9,10 @@ part of 'product_analytics_preference_update_request.dart';
 _ProductAnalyticsPreferenceUpdateRequest
 _$ProductAnalyticsPreferenceUpdateRequestFromJson(Map json) =>
     _ProductAnalyticsPreferenceUpdateRequest(
-      preference: json['preference'] as String,
+      preference: $enumDecode(
+        _$ProductAnalyticsPreferenceUpdateValueEnumMap,
+        json['preference'],
+      ),
       expectedRevision: (json['expectedRevision'] as num).toInt(),
       operationId: json['operationId'] as String,
     );
@@ -17,7 +20,13 @@ _$ProductAnalyticsPreferenceUpdateRequestFromJson(Map json) =>
 Map<String, dynamic> _$ProductAnalyticsPreferenceUpdateRequestToJson(
   _ProductAnalyticsPreferenceUpdateRequest instance,
 ) => <String, dynamic>{
-  'preference': instance.preference,
+  'preference':
+      _$ProductAnalyticsPreferenceUpdateValueEnumMap[instance.preference]!,
   'expectedRevision': instance.expectedRevision,
   'operationId': instance.operationId,
+};
+
+const _$ProductAnalyticsPreferenceUpdateValueEnumMap = {
+  ProductAnalyticsPreferenceUpdateValue.enabled: 'enabled',
+  ProductAnalyticsPreferenceUpdateValue.disabled: 'disabled',
 };
