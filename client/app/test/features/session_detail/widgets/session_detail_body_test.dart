@@ -620,6 +620,40 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets("an unexpected recorder-start failure does not block later recordings", (tester) async {
+    var startCalls = 0;
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {
+      startCalls++;
+      if (startCalls == 1) throw StateError("recorder unavailable");
+    });
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // First hold fails with an error outside the typed voice errors — it must
+    // be handled (error snackbar) rather than escaping and leaving the start
+    // guards stuck.
+    final first = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await first.up();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    // Let the error snackbar time out — it floats over the composer pill and
+    // would swallow the next hold.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    // A later hold reaches the recorder again.
+    final second = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(startCalls, 2);
+    await second.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("accordion reveals the slash-commands action and opens the picker", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();

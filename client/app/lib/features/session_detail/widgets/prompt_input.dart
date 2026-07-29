@@ -305,7 +305,11 @@ class _PromptInputState extends State<PromptInput> {
     } on MicrophonePermissionDeniedError {
       if (!mounted) return;
       _showVoiceError(context.loc.voiceErrorPermission);
-    } on VoiceTranscriptionError catch (error) {
+    } catch (error) {
+      // Typed voice errors and anything else the recorder throws (platform /
+      // filesystem failures) both land here: an error escaping this method
+      // would leave the in-flight guard and pinned layout stuck, silently
+      // killing voice input for the rest of the session.
       loge("Failed to start recording", error);
       if (!mounted) return;
       _showVoiceError(context.loc.voiceErrorRecording);
