@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:flutter_svg/flutter_svg.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
@@ -40,28 +39,41 @@ class SessionArchivedEmptyState extends StatelessWidget {
   }
 }
 
-/// A stack of empty archive boxes seen edge-on, drawn from bundled artwork and
-/// faded out towards its base.
+/// A stack of empty archive boxes seen edge-on, exported as PNGs from the Figma
+/// "Group 12" node (`4429:7085`) and faded out towards its base.
 ///
-/// The fade is Figma's: the artwork sits under a 150pt top-to-bottom alpha ramp
-/// that starts 57.83pt above it, which over the artwork's own box leaves the
-/// two stops below. The illustration is meant to read as a faint suggestion,
-/// not a picture, so the fade is not decoration that can be dropped.
+/// Each theme ships its own artwork (plus @2x/@3x variants); the image matching
+/// the active light/dark mode is chosen at build time, the way
+/// `ConnectionGraphic` already does.
+///
+/// The exports are of the artwork alone, so the fade is applied here: Figma
+/// hangs it under a 150pt top-to-bottom alpha ramp starting 57.83pt above the
+/// artwork, which over the artwork's own box leaves the two stops below. The
+/// illustration is meant to read as a faint suggestion, not a picture, so the
+/// fade is not decoration that can be dropped.
 class _ArchiveStackGlyph extends StatelessWidget {
   const _ArchiveStackGlyph({super.key});
 
-  /// The artwork's intrinsic size. Its drawn content stops just short of the
-  /// bottom edge, where the export left room for a shadow.
+  /// The Figma frame the artwork is drawn at, pinned explicitly rather than
+  /// taken from the decoded asset — an unsized [Image] reports a *max
+  /// intrinsic* height, which the hosting `SliverFillRemaining` would take for
+  /// the real one and inflate the page's scroll extent with.
+  ///
+  /// The dark export is a few points shorter than the light one, which carries
+  /// a drop shadow below its base. `BoxFit.contain` against the taller of the
+  /// two, pinned to the top, lands both stacks in the same place.
   static const double _width = 210;
   static const double _height = 75;
 
   static const double _fadeTopOpacity = 0.61;
   static const double _fadeBottomOpacity = 0.11;
 
+  static const String _dir = "assets/images/archived_sessions_empty";
+  static const String _light = "$_dir/archive_stack-light.png";
+  static const String _dark = "$_dir/archive_stack-dark.png";
+
   @override
   Widget build(BuildContext context) {
-    final colors = context.prego.colors;
-
     return ShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (bounds) => LinearGradient(
@@ -72,58 +84,14 @@ class _ArchiveStackGlyph extends StatelessWidget {
           Colors.white.withValues(alpha: _fadeBottomOpacity),
         ],
       ).createShader(bounds),
-      child: SvgPicture.asset(
-        "assets/images/archived_sessions_empty.svg",
+      child: Image.asset(
+        context.isDarkMode ? _dark : _light,
         width: _width,
         height: _height,
-        colorMapper: _ArchiveStackColorMapper(
-          surface: colors.bgSurface4,
-          background: colors.bgSurface1,
-          icon: colors.textPrimary,
-        ),
+        fit: BoxFit.contain,
+        alignment: Alignment.topCenter,
+        filterQuality: FilterQuality.medium,
       ),
     );
   }
-}
-
-/// Carries the artwork's surfaces and glyph across to the current theme.
-///
-/// The export resolves its tokens to the light theme — white boxes shading
-/// towards the page background, with a near-black archive glyph — which on a
-/// dark surface would leave a white slab and an invisible glyph. Substituting
-/// at parse time keeps light mode exactly as drawn and flips both with the
-/// theme.
-///
-/// Must be `@immutable` because `flutter_svg` uses it as part of a cache key.
-@immutable
-class _ArchiveStackColorMapper extends ColorMapper {
-  const _ArchiveStackColorMapper({required this.surface, required this.background, required this.icon});
-
-  /// The light-theme token values baked into the exported artwork.
-  static const Color _drawnSurface = Color(0xFFFFFFFF);
-  static const Color _drawnBackground = Color(0xFFF0F0F0);
-  static const Color _drawnIcon = Color(0xFF141414);
-
-  final Color surface;
-  final Color background;
-  final Color icon;
-
-  @override
-  Color substitute(String? id, String elementName, String attributeName, Color color) {
-    if (color == _drawnSurface) return surface;
-    if (color == _drawnBackground) return background;
-    if (color == _drawnIcon) return icon;
-    return color;
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is _ArchiveStackColorMapper &&
-          other.surface == surface &&
-          other.background == background &&
-          other.icon == icon;
-
-  @override
-  int get hashCode => Object.hash(surface, background, icon);
 }

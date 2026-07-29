@@ -126,6 +126,9 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+    - assets/images/archived_sessions_empty/
+    - assets/images/archived_sessions_empty/2.0x/
+    - assets/images/archived_sessions_empty/3.0x/
     - assets/images/bkg_png/
     - assets/images/bkg_webp/
     - assets/images/projects_onboarding/

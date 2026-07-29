@@ -1,11 +1,12 @@
 import "package:flutter/material.dart";
-import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/features/session_list/session_archived_empty_state.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
+  const base = "assets/images/archived_sessions_empty";
+
   // Mirrors production hosting: the empty state renders inside a
   // SliverFillRemaining(hasScrollBody: false) in the sessions scroll view.
   Future<void> pumpEmptyState(
@@ -17,6 +18,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(
+          // ThemeData reads brightness off the colour scheme, which is what
+          // context.isDarkMode — and so the artwork choice — goes by.
           colorScheme: (isDark ? PregoColors.dark : PregoColors.light).toFlutterColorScheme(),
           textTheme: (isDark ? PregoTextTheme.dark : PregoTextTheme.light).asFlutterTextTheme(),
           extensions: [isDark ? PregoDesignSystem.dark : PregoDesignSystem.light],
@@ -42,16 +45,13 @@ void main() {
   String emptyLabel(WidgetTester tester) =>
       AppLocalizations.of(tester.element(find.byType(SessionArchivedEmptyState)))!.sessionListEmptyArchived;
 
-  SvgAssetLoader loaderOf(WidgetTester tester) =>
-      tester.widget<SvgPicture>(find.byType(SvgPicture)).bytesLoader as SvgAssetLoader;
+  String artworkOf(WidgetTester tester) => (tester.widget<Image>(find.byType(Image)).image as AssetImage).assetName;
 
   testWidgets("renders the archive artwork above the label", (tester) async {
     await pumpEmptyState(tester);
 
     expect(find.byKey(const Key("session-empty-archive")), findsOneWidget);
     expect(find.text(emptyLabel(tester)), findsOneWidget);
-    expect(loaderOf(tester).assetName, "assets/images/archived_sessions_empty.svg");
-    expect(tester.takeException(), isNull);
   });
 
   testWidgets("keeps the artwork a fixed size under system text scaling", (tester) async {
@@ -61,31 +61,20 @@ void main() {
     await pumpEmptyState(tester, textScaler: const TextScaler.linear(3));
 
     expect(tester.getSize(find.byKey(const Key("session-empty-archive"))), unscaled);
-    expect(tester.takeException(), isNull);
   });
 
-  group("the colours the artwork is drawn in", () {
-    testWidgets("stay as exported under the light theme", (tester) async {
+  group("the artwork it draws", () {
+    // Left to one export, the boxes would be a white slab on a dark surface.
+    testWidgets("uses the light stack in light mode", (tester) async {
       await pumpEmptyState(tester);
 
-      // A no-op in light mode: the export already carries these values.
-      final mapper = loaderOf(tester).colorMapper!;
-      final colors = PregoDesignSystem.light.colors;
-      expect(mapper.substitute(null, "path", "fill", const Color(0xFFFFFFFF)), colors.bgSurface4);
-      expect(mapper.substitute(null, "stop", "stop-color", const Color(0xFFF0F0F0)), colors.bgSurface1);
-      expect(mapper.substitute(null, "path", "fill", const Color(0xFF141414)), colors.textPrimary);
+      expect(artworkOf(tester), "$base/archive_stack-light.png");
     });
 
-    testWidgets("flip with the dark theme", (tester) async {
+    testWidgets("uses the dark stack in dark mode", (tester) async {
       await pumpEmptyState(tester, brightness: Brightness.dark);
 
-      // Left alone, the boxes would be a white slab and the glyph invisible.
-      final mapper = loaderOf(tester).colorMapper!;
-      final colors = PregoDesignSystem.dark.colors;
-      expect(mapper.substitute(null, "path", "fill", const Color(0xFFFFFFFF)), colors.bgSurface4);
-      expect(mapper.substitute(null, "stop", "stop-color", const Color(0xFFF0F0F0)), colors.bgSurface1);
-      expect(mapper.substitute(null, "path", "fill", const Color(0xFF141414)), colors.textPrimary);
-      expect(tester.takeException(), isNull);
+      expect(artworkOf(tester), "$base/archive_stack-dark.png");
     });
   });
 }
