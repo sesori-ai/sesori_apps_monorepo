@@ -36,10 +36,12 @@ void main() {
       final client = HttpApiClient(transport);
 
       final response = await client.put<String>(
-        _url,
+        url: _url,
         fromJson: (json) => (json as Map<String, dynamic>)["status"] as String,
         headers: {"X-Request-Source": "settings"},
         body: {"enabled": true},
+        contentType: null,
+        logBody: false,
       );
 
       expect(transport.request?.method, "PUT");
@@ -63,9 +65,12 @@ void main() {
       );
 
       final response = await client.put<String>(
-        _url,
+        url: _url,
         fromJson: (_) => throw StateError("non-success body must not be parsed"),
+        headers: null,
         body: {"enabled": true},
+        contentType: null,
+        logBody: false,
       );
 
       final error = (response as ErrorResponse<String>).error as NonSuccessCodeError;
@@ -79,9 +84,12 @@ void main() {
       );
 
       final response = await client.put<String>(
-        _url,
+        url: _url,
         fromJson: (json) => json as String,
+        headers: null,
         body: {"enabled": true},
+        contentType: null,
+        logBody: false,
       );
 
       final error = (response as ErrorResponse<String>).error as JsonParsingError;

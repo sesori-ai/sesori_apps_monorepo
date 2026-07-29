@@ -815,8 +815,9 @@ export work to request handlers or the long-running auth process.
   `PUT /product-analytics/preference`; PUT body is
   `{ "preference": "enabled" | "disabled", "expectedRevision": number,
   "operationId": uuid }`; success replies with `{ "preference": ...,
-  "revision": number }` and stale revision returns an explicit conflict with
-  current versioned state. The existing auth middleware supplies the user; the
+  "revision": number, "userKey": string }` and stale revision returns an
+  explicit conflict with the same current versioned state. The existing auth
+  middleware supplies the user; the
   route validates and delegates to the dedicated service. `src/server.ts` and
   `src/index.ts` register/construct this service without changing `AuthService`.
 - The Dart client owns this contract in core

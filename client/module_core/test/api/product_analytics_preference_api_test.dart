@@ -23,8 +23,8 @@ class _RecordingAuthenticatedClient extends Mock implements AuthenticatedHttpApi
 
   @override
   // ignore: no_slop_linter/prefer_specific_type, inherited JSON callback
-  Future<ApiResponse<T>> getForUser<T>(
-    Uri url, {
+  Future<ApiResponse<T>> getForUser<T>({
+    required Uri url,
     required String userId,
     required T Function(dynamic json) fromJson,
   }) async {
@@ -38,8 +38,8 @@ class _RecordingAuthenticatedClient extends Mock implements AuthenticatedHttpApi
 
   @override
   // ignore: no_slop_linter/prefer_specific_type, inherited JSON callback
-  Future<ApiResponse<T>> putForUser<T>(
-    Uri url, {
+  Future<ApiResponse<T>> putForUser<T>({
+    required Uri url,
     required String userId,
     required T Function(dynamic json) fromJson,
     required String body,

@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:http/http.dart" as http;
@@ -143,7 +144,7 @@ void main() {
       when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
       when(
         () => mockHttpApiClient.put<String>(
-          testUrl,
+          url: testUrl,
           fromJson: any(named: "fromJson"),
           headers: any(named: "headers"),
           body: any(named: "body"),
@@ -153,7 +154,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success("ok"));
 
       final response = await client.put<String>(
-        testUrl,
+        url: testUrl,
         fromJson: _parseString,
         headers: {
           "Authorization": "Bearer stale-token",
@@ -167,7 +168,7 @@ void main() {
       expect((response as SuccessResponse<String>).data, "ok");
       final captured = verify(
         () => mockHttpApiClient.put<String>(
-          testUrl,
+          url: testUrl,
           fromJson: _parseString,
           headers: captureAny(named: "headers"),
           body: body,
@@ -187,7 +188,7 @@ void main() {
       when(() => mockAuth.getFreshAccessToken(forceRefresh: true)).thenAnswer((_) async => refreshedToken);
       when(
         () => mockHttpApiClient.put<String>(
-          testUrl,
+          url: testUrl,
           fromJson: any(named: "fromJson"),
           headers: any(named: "headers"),
           body: any(named: "body"),
@@ -201,9 +202,12 @@ void main() {
       );
 
       final response = await client.put<String>(
-        testUrl,
+        url: testUrl,
         fromJson: _parseString,
+        headers: null,
         body: body,
+        contentType: null,
+        logBody: false,
       );
 
       expect(
@@ -214,7 +218,7 @@ void main() {
       verify(() => mockAuth.getFreshAccessToken(forceRefresh: true)).called(1);
       final captured = verify(
         () => mockHttpApiClient.put<String>(
-          testUrl,
+          url: testUrl,
           fromJson: _parseString,
           headers: captureAny(named: "headers"),
           body: body,
@@ -235,7 +239,7 @@ void main() {
       when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userB));
 
       final response = await client.getForUser<String>(
-        testUrl,
+        url: testUrl,
         userId: _userA.id,
         fromJson: _parseString,
       );
@@ -263,7 +267,7 @@ void main() {
       });
       when(
         () => mockHttpApiClient.put<String>(
-          testUrl,
+          url: testUrl,
           fromJson: any(named: "fromJson"),
           headers: any(named: "headers"),
           body: any(named: "body"),
@@ -277,7 +281,7 @@ void main() {
       );
 
       final response = await client.putForUser<String>(
-        testUrl,
+        url: testUrl,
         userId: _userA.id,
         fromJson: _parseString,
         body: '{"enabled":false}',
@@ -287,7 +291,7 @@ void main() {
       verify(() => mockAuth.getFreshAccessToken(forceRefresh: true)).called(1);
       verify(
         () => mockHttpApiClient.put<String>(
-          testUrl,
+          url: testUrl,
           fromJson: any(named: "fromJson"),
           headers: any(named: "headers"),
           body: any(named: "body"),
@@ -295,6 +299,71 @@ void main() {
           logBody: any(named: "logBody"),
         ),
       ).called(1);
+    });
+
+    test("rejects a successful response completed after an account switch", () async {
+      var currentState = const AuthState.authenticated(user: _userA);
+      final responseCompleter = Completer<ApiResponse<String>>();
+      when(() => mockAuth.currentState).thenAnswer((_) => currentState);
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(
+        () => mockHttpApiClient.get<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((_) => responseCompleter.future);
+
+      final responseFuture = client.getForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+      );
+      await Future<void>.delayed(Duration.zero);
+      currentState = const AuthState.authenticated(user: _userB);
+      responseCompleter.complete(ApiResponse.success("stale"));
+
+      final response = await responseFuture;
+      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+    });
+
+    test("rejects a retry response completed after an account switch", () async {
+      var currentState = const AuthState.authenticated(user: _userA);
+      final retryCompleter = Completer<ApiResponse<String>>();
+      when(() => mockAuth.currentState).thenAnswer((_) => currentState);
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(() => mockAuth.getFreshAccessToken(forceRefresh: true)).thenAnswer((_) async => refreshedToken);
+      when(
+        () => mockHttpApiClient.get<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((invocation) {
+        final headers = invocation.namedArguments[#headers] as Map<String, String>?;
+        if (headers?["Authorization"] == "Bearer $accessToken") {
+          return Future.value(
+            ApiResponse.error(ApiError.nonSuccessCode(errorCode: 401, rawErrorString: "unauthorized")),
+          );
+        }
+        return retryCompleter.future;
+      });
+
+      final responseFuture = client.getForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+      );
+      await Future<void>.delayed(Duration.zero);
+      currentState = const AuthState.authenticated(user: _userB);
+      retryCompleter.complete(ApiResponse.success("stale retry"));
+
+      final response = await responseFuture;
+      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
     });
   });
 

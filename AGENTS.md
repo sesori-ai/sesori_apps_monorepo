@@ -109,7 +109,7 @@ eagerly "just in case."
   `client/module_core/lib/src/foundation/models/product_analytics/`. Consumers
   use `ProductAnalyticsService` for account-linked events and
   `InstallationAnalyticsService` only for the approved account-less login
-  funnel; product shells never send arbitrary names or parameter maps.
+  funnel. Product shells never send arbitrary names or parameter maps.
 
 ## Verification And Review
 

@@ -113,4 +113,18 @@ void main() {
       await expectLater(storage.read(userId: "user-a"), throwsFormatException);
     }
   });
+
+  test("malformed JSON errors never retain the stored source", () async {
+    const malformed = '{"userId":"raw-user","userKey":"secret-key"';
+    secureStorage.values["product_analytics_preference_v1:user-a"] = malformed;
+
+    try {
+      await storage.read(userId: "user-a");
+      fail("Expected malformed storage to fail closed");
+    } on FormatException catch (error) {
+      expect(error.toString(), isNot(contains("raw-user")));
+      expect(error.toString(), isNot(contains("secret-key")));
+      expect(error.source, isNull);
+    }
+  });
 }

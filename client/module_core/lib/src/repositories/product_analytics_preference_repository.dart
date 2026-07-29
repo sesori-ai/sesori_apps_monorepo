@@ -25,7 +25,15 @@ class ProductAnalyticsPreferenceRepository {
       stored = await _storage.read(userId: userId);
     } on FormatException catch (error, stackTrace) {
       logw("Found malformed local analytics preference; deleting it", error, stackTrace);
-      await _storage.delete(userId: userId);
+      try {
+        await _storage.delete(userId: userId);
+      } on Object catch (_, deleteStackTrace) {
+        logw(
+          "Failed to delete malformed local analytics preference",
+          const _ProductAnalyticsPreferenceCleanupException(),
+          deleteStackTrace,
+        );
+      }
       return null;
     }
     if (stored == null) return null;
@@ -60,6 +68,9 @@ class ProductAnalyticsPreferenceRepository {
     required String userId,
     required LocalProductAnalyticsPreference? local,
   }) {
+    if (local != null && local.record.userId != userId) {
+      return Future.value(const ProductAnalyticsPreferenceFailed());
+    }
     return switch (local) {
       LocalProductAnalyticsPendingDisable() => _putPending(userId: userId, pending: local),
       LocalProductAnalyticsPendingEnable() => _reconcilePendingEnable(userId: userId, pending: local),
@@ -72,6 +83,7 @@ class ProductAnalyticsPreferenceRepository {
     required ProductAnalyticsPreferenceRecord current,
     required ProductAnalyticsPreference preference,
   }) async {
+    if (current.userId != userId) return const ProductAnalyticsPreferenceFailed();
     final operationId = _newOperationId();
     final pending = switch (preference) {
       ProductAnalyticsPreference.disabled => LocalProductAnalyticsPendingDisable(
@@ -123,6 +135,7 @@ class ProductAnalyticsPreferenceRepository {
     required LocalProductAnalyticsPending pending,
     bool pendingPersisted = true,
   }) async {
+    if (pending.record.userId != userId) return const ProductAnalyticsPreferenceFailed();
     final desired = pending is LocalProductAnalyticsPendingDisable
         ? ProductAnalyticsPreference.disabled
         : ProductAnalyticsPreference.enabled;
@@ -321,6 +334,13 @@ class ProductAnalyticsPreferenceRepository {
     };
     return _storage.write(record: stored);
   }
+}
+
+final class _ProductAnalyticsPreferenceCleanupException implements Exception {
+  const _ProductAnalyticsPreferenceCleanupException();
+
+  @override
+  String toString() => "Product analytics preference cleanup failed";
 }
 
 ProductAnalyticsPreferenceRecord _recordFromStored(StoredProductAnalyticsPreference stored) =>

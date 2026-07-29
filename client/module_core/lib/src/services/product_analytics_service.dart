@@ -25,9 +25,8 @@ class ProductAnalyticsService {
   final BehaviorSubject<ProductAnalyticsState> _state = BehaviorSubject.seeded(ProductAnalyticsState.initial);
 
   StreamSubscription<AuthState>? _authSubscription;
-  Future<void>? _reconciliation;
+  ({int generation, Future<void> future})? _accountOperation;
   Future<void>? _localInitialization;
-  Future<void>? _activeDisableUpdate;
   LocalProductAnalyticsPreference? _local;
   LocalProductAnalyticsPendingDisable? _volatileDisable;
   ProductAnalyticsPreferenceRecord? _currentRecord;
@@ -38,6 +37,7 @@ class ProductAnalyticsService {
   int? _schemaReportGeneration;
   Future<void>? _schemaReport;
   ({int generation, ProductAnalyticsState state})? _logoutPreparation;
+  bool _reconcileAfterFailedLogout = false;
   bool _postSplashReady = false;
   bool _localReadFailed = false;
   Future<void>? _startFuture;
@@ -76,49 +76,80 @@ class ProductAnalyticsService {
     if (_postSplashReady) return;
     _postSplashReady = true;
     await _awaitLatestLocalInitialization();
-    await _reconcileIfNeeded(force: false);
+    await _reconcileIfNeeded(force: false, allowDuringLogout: false);
   }
 
   Future<void> refreshPreference() {
     if (_volatileDisable != null) return retryPendingDisable();
     if (_localReadFailed) return _retryLocalReadAndReconcile();
-    return _reconcileIfNeeded(force: true);
+    return _reconcileIfNeeded(force: true, allowDuringLogout: false);
   }
 
   Future<void> setPreference({required ProductAnalyticsPreference preference}) async {
     final userId = _userId;
-    final current = _currentRecord;
-    if (userId == null || current == null) {
-      await _reconcileIfNeeded(force: true);
-      return;
-    }
+    if (userId == null) return;
     final generation = _generation;
     _volatileDisable = null;
-    _emitInactiveForPreference(
-      record: current,
-      preference: preference,
-      synchronization: preference == ProductAnalyticsPreference.disabled
-          ? const ProductAnalyticsDisableRequestInProgress()
-          : const ProductAnalyticsEnableRequestInProgress(),
-      reason: null,
-    );
-    final disableCompletion = preference == ProductAnalyticsPreference.disabled ? Completer<void>() : null;
-    final disableUpdate = disableCompletion?.future;
-    if (disableUpdate != null) _activeDisableUpdate = disableUpdate;
-    try {
-      final result = await _preferenceRepository.setPreference(
-        userId: userId,
-        current: current,
-        preference: preference,
-      );
-      if (!_matches(generation: generation, userId: userId)) return;
-      await _applyRepositoryResult(result);
-    } finally {
-      disableCompletion?.complete();
-      if (disableUpdate != null && identical(_activeDisableUpdate, disableUpdate)) {
-        _activeDisableUpdate = null;
-      }
+    final current = _currentRecord;
+    if (current != null) {
+      _emitPreferenceRequestInProgress(preference: preference);
     }
+    await _runAccountOperation(
+      generation: generation,
+      userId: userId,
+      operation: () async {
+        await _awaitLatestLocalInitialization();
+        final allowDuringLogout = preference == ProductAnalyticsPreference.disabled;
+        if (!_canApply(
+          generation: generation,
+          userId: userId,
+          allowDuringLogout: allowDuringLogout,
+        )) {
+          if (_matchesAccount(generation: generation, userId: userId)) {
+            _reconcileAfterFailedLogout = true;
+          }
+          return;
+        }
+        var operationRecord = _currentRecord;
+        if (operationRecord == null) {
+          await _performReconciliation(
+            generation: generation,
+            userId: userId,
+            allowDuringLogout: allowDuringLogout,
+          );
+          if (!_canApply(
+            generation: generation,
+            userId: userId,
+            allowDuringLogout: allowDuringLogout,
+          )) {
+            if (_matchesAccount(generation: generation, userId: userId)) {
+              _reconcileAfterFailedLogout = true;
+            }
+            return;
+          }
+          operationRecord = _currentRecord;
+          if (operationRecord == null) return;
+          _emitPreferenceRequestInProgress(preference: preference);
+        }
+        final result = await _preferenceRepository.setPreference(
+          userId: userId,
+          current: operationRecord,
+          preference: preference,
+        );
+        if (!_canApply(
+          generation: generation,
+          userId: userId,
+          allowDuringLogout: allowDuringLogout,
+        )) {
+          if (_matchesAccount(generation: generation, userId: userId)) {
+            _reconcileAfterFailedLogout = true;
+          }
+          return;
+        }
+        if (_logoutPreparation != null) _reconcileAfterFailedLogout = true;
+        await _applyRepositoryResult(result);
+      },
+    );
   }
 
   Future<void> retryPendingDisable() async {
@@ -130,7 +161,7 @@ class ProductAnalyticsService {
       return;
     }
     if (_local is! LocalProductAnalyticsPendingDisable) return;
-    await _reconcileIfNeeded(force: true);
+    await _reconcileIfNeeded(force: true, allowDuringLogout: false);
   }
 
   Future<void> prepareForLogout() async {
@@ -152,12 +183,17 @@ class ProductAnalyticsService {
   }
 
   Future<void> _synchronizeBeforeLogout() async {
-    final activeDisableUpdate = _activeDisableUpdate;
-    if (activeDisableUpdate != null) await activeDisableUpdate;
+    final activeOperation = _accountOperation;
+    if (activeOperation != null && activeOperation.generation == _generation) {
+      await activeOperation.future;
+    }
     if (_volatileDisable != null) {
-      await retryPendingDisable();
+      final current = _currentRecord;
+      if (current != null) {
+        await setPreference(preference: ProductAnalyticsPreference.disabled);
+      }
     } else if (_local is LocalProductAnalyticsPendingDisable) {
-      await _reconcileIfNeeded(force: true);
+      await _reconcileIfNeeded(force: true, allowDuringLogout: true);
     }
   }
 
@@ -165,11 +201,14 @@ class ProductAnalyticsService {
     final preparation = _logoutPreparation;
     _logoutPreparation = null;
     if (preparation == null || preparation.generation != _generation || _userId == null) return;
+    final shouldReconcile = _reconcileAfterFailedLogout;
+    _reconcileAfterFailedLogout = false;
     final availability = state.availability;
     if (availability is ProductAnalyticsInactive &&
         availability.reason == ProductAnalyticsInactiveReason.unauthenticated) {
       _state.add(preparation.state);
     }
+    if (shouldReconcile) await _reconcileIfNeeded(force: true, allowDuringLogout: false);
   }
 
   Future<AnalyticsDeliveryResult> logEvent({
@@ -179,12 +218,13 @@ class ProductAnalyticsService {
     final availability = state.availability;
     final userId = _userId;
     final generation = _generation;
-    if (availability is! ProductAnalyticsActive || userId == null) {
+    final current = _currentRecord;
+    if (availability is! ProductAnalyticsActive || userId == null || current == null) {
       return AnalyticsDeliveryResult.failed;
     }
     final result = await _analyticsRepository.logEvent(
       envelope: ProductAnalyticsEnvelope(event: event, occurredAtUtc: occurredAtUtc),
-      userKey: availability.userKey,
+      userKey: current.userKey,
     );
     return _matches(generation: generation, userId: userId) ? result : AnalyticsDeliveryResult.failed;
   }
@@ -196,9 +236,10 @@ class ProductAnalyticsService {
     _schemaReportGeneration = null;
     _schemaReport = null;
     _logoutPreparation = null;
+    _reconcileAfterFailedLogout = false;
+    _accountOperation = null;
     _currentRecord = null;
     _local = null;
-    _activeDisableUpdate = null;
     _volatileDisable = null;
     _localReadFailed = false;
     final userId = switch (authState) {
@@ -220,7 +261,9 @@ class ProductAnalyticsService {
     _localInitialization = initialization;
     return initialization.then<void>((_) async {
       if (!_matches(generation: generation, userId: userId)) return;
-      if (_postSplashReady && !_localReadFailed) await _reconcileIfNeeded(force: false);
+      if (_postSplashReady && !_localReadFailed) {
+        await _reconcileIfNeeded(force: false, allowDuringLogout: false);
+      }
     });
   }
 
@@ -263,21 +306,18 @@ class ProductAnalyticsService {
     switch (local) {
       case LocalProductAnalyticsSynced(:final record):
         _emitInactiveForPreference(
-          record: record,
           preference: record.preference,
           synchronization: const ProductAnalyticsSynchronized(),
           reason: null,
         );
-      case LocalProductAnalyticsPendingDisable(:final record):
+      case LocalProductAnalyticsPendingDisable():
         _emitInactiveForPreference(
-          record: record,
           preference: ProductAnalyticsPreference.disabled,
           synchronization: const ProductAnalyticsDisablePending(),
           reason: null,
         );
-      case LocalProductAnalyticsPendingEnable(:final record):
+      case LocalProductAnalyticsPendingEnable():
         _emitInactiveForPreference(
-          record: record,
           preference: ProductAnalyticsPreference.enabled,
           synchronization: const ProductAnalyticsEnablePending(),
           reason: null,
@@ -294,26 +334,31 @@ class ProductAnalyticsService {
     }
   }
 
-  Future<void> _reconcileIfNeeded({required bool force}) async {
+  Future<void> _reconcileIfNeeded({required bool force, required bool allowDuringLogout}) async {
     await _awaitLatestLocalInitialization();
     final userId = _userId;
     if (!_postSplashReady || userId == null || _localReadFailed) return;
     if (!force && _reconciledGeneration == _generation) return;
-    final active = _reconciliation;
-    if (active != null) {
-      await active.whenComplete(() {
-        if (_postSplashReady && _userId != null && _reconciledGeneration != _generation) {
-          return _reconcileIfNeeded(force: false);
-        }
-      });
-      return;
-    }
     final generation = _generation;
-    final future = _performReconciliation(generation: generation, userId: userId);
-    _reconciliation = future;
-    await future.whenComplete(() {
-      if (identical(_reconciliation, future)) _reconciliation = null;
-    });
+    await _runAccountOperation(
+      generation: generation,
+      userId: userId,
+      operation: () async {
+        if (!force && _reconciledGeneration == generation) return;
+        if (!_canApply(
+          generation: generation,
+          userId: userId,
+          allowDuringLogout: allowDuringLogout,
+        )) {
+          return;
+        }
+        await _performReconciliation(
+          generation: generation,
+          userId: userId,
+          allowDuringLogout: allowDuringLogout,
+        );
+      },
+    );
   }
 
   Future<void> _retryLocalReadAndReconcile() async {
@@ -330,10 +375,14 @@ class ProductAnalyticsService {
       logw("Failed to retry local analytics preference read", error, stackTrace);
       return;
     }
-    await _reconcileIfNeeded(force: true);
+    await _reconcileIfNeeded(force: true, allowDuringLogout: false);
   }
 
-  Future<void> _performReconciliation({required int generation, required String userId}) async {
+  Future<void> _performReconciliation({
+    required int generation,
+    required String userId,
+    required bool allowDuringLogout,
+  }) async {
     _state.add(
       ProductAnalyticsState(
         preference: state.preference,
@@ -342,7 +391,17 @@ class ProductAnalyticsService {
       ),
     );
     final result = await _preferenceRepository.reconcile(userId: userId, local: _local);
-    if (!_matches(generation: generation, userId: userId)) return;
+    if (!_canApply(
+      generation: generation,
+      userId: userId,
+      allowDuringLogout: allowDuringLogout,
+    )) {
+      if (_matchesAccount(generation: generation, userId: userId) && _logoutPreparation != null) {
+        _reconcileAfterFailedLogout = true;
+      }
+      return;
+    }
+    if (_logoutPreparation != null) _reconcileAfterFailedLogout = true;
     _reconciledGeneration = generation;
     await _applyRepositoryResult(result);
   }
@@ -356,15 +415,14 @@ class ProductAnalyticsService {
         if (record.preference == ProductAnalyticsPreference.enabled && _capability.isEnabled) {
           _state.add(
             ProductAnalyticsState(
-              preference: ProductAnalyticsPreferenceKnown(record: record, preference: record.preference),
+              preference: ProductAnalyticsPreferenceKnown(preference: record.preference),
               synchronization: const ProductAnalyticsSynchronized(),
-              availability: ProductAnalyticsActive(userKey: record.userKey),
+              availability: const ProductAnalyticsActive(),
             ),
           );
           await _reportSchemaReadyIfNeeded();
         } else {
           _emitInactiveForPreference(
-            record: record,
             preference: record.preference,
             synchronization: const ProductAnalyticsSynchronized(),
             reason: null,
@@ -375,7 +433,6 @@ class ProductAnalyticsService {
         _local = pending;
         _currentRecord = pending.record;
         _emitInactiveForPreference(
-          record: pending.record,
           preference: pending is LocalProductAnalyticsPendingDisable
               ? ProductAnalyticsPreference.disabled
               : ProductAnalyticsPreference.enabled,
@@ -389,7 +446,6 @@ class ProductAnalyticsService {
         _local = null;
         _currentRecord = pending.record;
         _emitInactiveForPreference(
-          record: pending.record,
           preference: ProductAnalyticsPreference.disabled,
           synchronization: const ProductAnalyticsDisableRetryRequired(),
           reason: ProductAnalyticsInactiveReason.storageFailure,
@@ -399,7 +455,6 @@ class ProductAnalyticsService {
         _currentRecord = record;
         _local = LocalProductAnalyticsSynced(record: record);
         _emitInactiveForPreference(
-          record: record,
           preference: record.preference,
           synchronization: const ProductAnalyticsSynchronizationFailed(),
           reason: null,
@@ -408,7 +463,6 @@ class ProductAnalyticsService {
         _volatileDisable = null;
         _currentRecord = record;
         _emitInactiveForPreference(
-          record: record,
           preference: record.preference,
           synchronization: const ProductAnalyticsSynchronizationFailed(),
           reason: ProductAnalyticsInactiveReason.storageFailure,
@@ -433,7 +487,6 @@ class ProductAnalyticsService {
           );
         } else {
           _emitInactiveForPreference(
-            record: current,
             preference: current.preference,
             synchronization: const ProductAnalyticsSynchronizationFailed(),
             reason: ProductAnalyticsInactiveReason.storageFailure,
@@ -443,7 +496,6 @@ class ProductAnalyticsService {
   }
 
   void _emitInactiveForPreference({
-    required ProductAnalyticsPreferenceRecord record,
     required ProductAnalyticsPreference preference,
     required ProductAnalyticsSynchronizationStatus synchronization,
     required ProductAnalyticsInactiveReason? reason,
@@ -472,7 +524,7 @@ class ProductAnalyticsService {
             : ProductAnalyticsInactiveReason.postSplashNotReady);
     _state.add(
       ProductAnalyticsState(
-        preference: ProductAnalyticsPreferenceKnown(record: record, preference: preference),
+        preference: ProductAnalyticsPreferenceKnown(preference: preference),
         synchronization: synchronization,
         availability: ProductAnalyticsInactive(reason: effectiveReason),
       ),
@@ -510,7 +562,49 @@ class ProductAnalyticsService {
     }
   }
 
-  bool _matches({required int generation, required String userId}) => generation == _generation && userId == _userId;
+  Future<void> _runAccountOperation({
+    required int generation,
+    required String userId,
+    required Future<void> Function() operation,
+  }) {
+    final active = _accountOperation;
+    final previous = active != null && active.generation == generation ? active.future : null;
+    final future = () async {
+      if (previous != null) {
+        try {
+          await previous;
+        } on Object {
+          // The prior caller owns its surfaced failure. A later explicit action
+          // must still be allowed to recover this account generation.
+        }
+      }
+      if (!_matchesAccount(generation: generation, userId: userId)) return;
+      await operation();
+    }();
+    _accountOperation = (generation: generation, future: future);
+    return future.whenComplete(() {
+      if (identical(_accountOperation?.future, future)) _accountOperation = null;
+    });
+  }
+
+  void _emitPreferenceRequestInProgress({required ProductAnalyticsPreference preference}) {
+    _emitInactiveForPreference(
+      preference: preference,
+      synchronization: preference == ProductAnalyticsPreference.disabled
+          ? const ProductAnalyticsDisableRequestInProgress()
+          : const ProductAnalyticsEnableRequestInProgress(),
+      reason: null,
+    );
+  }
+
+  bool _matchesAccount({required int generation, required String userId}) =>
+      generation == _generation && userId == _userId;
+
+  bool _canApply({required int generation, required String userId, required bool allowDuringLogout}) =>
+      _matchesAccount(generation: generation, userId: userId) && (allowDuringLogout || _logoutPreparation == null);
+
+  bool _matches({required int generation, required String userId}) =>
+      _canApply(generation: generation, userId: userId, allowDuringLogout: false);
 
   @disposeMethod
   Future<void> dispose() async {
