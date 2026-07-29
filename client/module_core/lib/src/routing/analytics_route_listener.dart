@@ -69,7 +69,9 @@ class AnalyticsRouteListener {
       _reportedScreen = null;
       return;
     }
-    _currentScreen = _screenFor(route: route);
+    final screen = _screenFor(route: route);
+    if (screen != _currentScreen) _reportedScreen = null;
+    _currentScreen = screen;
     _currentScreenOccurredAtUtc = DateTime.now().toUtc();
     await _analyticsService.markPostSplashReady();
     await _reportCurrentScreen();
@@ -93,9 +95,7 @@ class AnalyticsRouteListener {
             occurredAtUtc: occurredAtUtc,
           )
           .timeout(_deliveryDeadline, onTimeout: () => AnalyticsDeliveryResult.failed);
-      if (result == AnalyticsDeliveryResult.acceptedBySdk &&
-          screen == _currentScreen &&
-          _analyticsService.state.isActive) {
+      if (result == AnalyticsDeliveryResult.acceptedBySdk && screen == _currentScreen) {
         _reportedScreen = screen;
       } else if (result == AnalyticsDeliveryResult.failed &&
           screen == _currentScreen &&

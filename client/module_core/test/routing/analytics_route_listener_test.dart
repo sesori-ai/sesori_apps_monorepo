@@ -26,6 +26,7 @@ class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsServi
   int readinessCalls = 0;
   Queue<Future<void>> readinessResults = Queue<Future<void>>();
   Completer<AnalyticsDeliveryResult>? deliveryCompleter;
+  AnalyticsDeliveryResult deliveryResult = AnalyticsDeliveryResult.acceptedBySdk;
 
   _FakeProductAnalyticsService({required ProductAnalyticsState initialState})
     : states = BehaviorSubject.seeded(initialState);
@@ -51,7 +52,7 @@ class _FakeProductAnalyticsService extends Mock implements ProductAnalyticsServi
     this.occurredAtUtc.add(occurredAtUtc);
     final completer = deliveryCompleter;
     if (completer != null) return completer.future;
-    return AnalyticsDeliveryResult.acceptedBySdk;
+    return deliveryResult;
   }
 
   void emit({required ProductAnalyticsState state}) => states.add(state);
@@ -178,6 +179,28 @@ void main() {
     expect(service.occurredAtUtc.single.isAfter(afterObservation), isFalse);
   });
 
+  test("a failed intervening screen does not suppress a later return", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _activeState());
+    listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
+    await listener.start();
+
+    routeSource.emit(route: AppRouteDef.settings);
+    await _flush();
+    service.deliveryResult = AnalyticsDeliveryResult.failed;
+    routeSource.emit(route: AppRouteDef.settingsNotifications);
+    await _flush();
+    service.deliveryResult = AnalyticsDeliveryResult.acceptedBySdk;
+    routeSource.emit(route: AppRouteDef.settings);
+    await _flush();
+
+    expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
+      AnalyticsScreen.settings,
+      AnalyticsScreen.settingsNotifications,
+      AnalyticsScreen.settings,
+    ]);
+  });
+
   test("a delayed first readiness call cannot overwrite a newer route", () async {
     routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
     service = _FakeProductAnalyticsService(initialState: _activeState());
@@ -222,6 +245,26 @@ void main() {
     expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
       AnalyticsScreen.projects,
     ]);
+  });
+
+  test("an accepted in-flight delivery remains deduplicated after temporary inactivity", () async {
+    routeSource = _FakeRouteSource(initialRoute: AppRouteDef.splash);
+    service = _FakeProductAnalyticsService(initialState: _activeState());
+    final delivery = Completer<AnalyticsDeliveryResult>();
+    service.deliveryCompleter = delivery;
+    listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
+    await listener.start();
+
+    routeSource.emit(route: AppRouteDef.projects);
+    await Future<void>.delayed(Duration.zero);
+    service.emit(state: _inactiveState());
+    delivery.complete(AnalyticsDeliveryResult.acceptedBySdk);
+    await _flush();
+    service.deliveryCompleter = null;
+    service.emit(state: _activeState());
+    await _flush();
+
+    expect(service.events.whereType<ProductScreenViewedEvent>(), hasLength(1));
   });
 
   test("a timed-out screen delivery clears the in-flight guard for a later retry", () async {
