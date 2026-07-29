@@ -301,6 +301,37 @@ void main() {
       ).called(1);
     });
 
+    test("rejects a failed refresh completed after an account switch", () async {
+      var currentState = const AuthState.authenticated(user: _userA);
+      when(() => mockAuth.currentState).thenAnswer((_) => currentState);
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(() => mockAuth.getFreshAccessToken(forceRefresh: true)).thenAnswer((_) async {
+        currentState = const AuthState.authenticated(user: _userB);
+        return null;
+      });
+      when(
+        () => mockHttpApiClient.get<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 401, rawErrorString: "unauthorized"),
+        ),
+      );
+
+      final response = await client.getForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+      );
+
+      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+    });
+
     test("rejects a successful response completed after an account switch", () async {
       var currentState = const AuthState.authenticated(user: _userA);
       final responseCompleter = Completer<ApiResponse<String>>();

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ProductAnalyticsPreferenceUpdateRequest {
 
- String get preference; int get expectedRevision; String get operationId;
+ ProductAnalyticsPreferenceUpdateValue get preference; int get expectedRevision; String get operationId;
 /// Create a copy of ProductAnalyticsPreferenceUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $ProductAnalyticsPreferenceUpdateRequestCopyWith<$Res>  {
   factory $ProductAnalyticsPreferenceUpdateRequestCopyWith(ProductAnalyticsPreferenceUpdateRequest value, $Res Function(ProductAnalyticsPreferenceUpdateRequest) _then) = _$ProductAnalyticsPreferenceUpdateRequestCopyWithImpl;
 @useResult
 $Res call({
- String preference, int expectedRevision, String operationId
+ ProductAnalyticsPreferenceUpdateValue preference, int expectedRevision, String operationId
 });
 
 
@@ -68,7 +68,7 @@ class _$ProductAnalyticsPreferenceUpdateRequestCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? preference = null,Object? expectedRevision = null,Object? operationId = null,}) {
   return _then(_self.copyWith(
 preference: null == preference ? _self.preference : preference // ignore: cast_nullable_to_non_nullable
-as String,expectedRevision: null == expectedRevision ? _self.expectedRevision : expectedRevision // ignore: cast_nullable_to_non_nullable
+as ProductAnalyticsPreferenceUpdateValue,expectedRevision: null == expectedRevision ? _self.expectedRevision : expectedRevision // ignore: cast_nullable_to_non_nullable
 as int,operationId: null == operationId ? _self.operationId : operationId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -85,7 +85,7 @@ class _ProductAnalyticsPreferenceUpdateRequest implements ProductAnalyticsPrefer
   const _ProductAnalyticsPreferenceUpdateRequest({required this.preference, required this.expectedRevision, required this.operationId});
   factory _ProductAnalyticsPreferenceUpdateRequest.fromJson(Map<String, dynamic> json) => _$ProductAnalyticsPreferenceUpdateRequestFromJson(json);
 
-@override final  String preference;
+@override final  ProductAnalyticsPreferenceUpdateValue preference;
 @override final  int expectedRevision;
 @override final  String operationId;
 
@@ -122,7 +122,7 @@ abstract mixin class _$ProductAnalyticsPreferenceUpdateRequestCopyWith<$Res> imp
   factory _$ProductAnalyticsPreferenceUpdateRequestCopyWith(_ProductAnalyticsPreferenceUpdateRequest value, $Res Function(_ProductAnalyticsPreferenceUpdateRequest) _then) = __$ProductAnalyticsPreferenceUpdateRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String preference, int expectedRevision, String operationId
+ ProductAnalyticsPreferenceUpdateValue preference, int expectedRevision, String operationId
 });
 
 
@@ -142,7 +142,7 @@ class __$ProductAnalyticsPreferenceUpdateRequestCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? preference = null,Object? expectedRevision = null,Object? operationId = null,}) {
   return _then(_ProductAnalyticsPreferenceUpdateRequest(
 preference: null == preference ? _self.preference : preference // ignore: cast_nullable_to_non_nullable
-as String,expectedRevision: null == expectedRevision ? _self.expectedRevision : expectedRevision // ignore: cast_nullable_to_non_nullable
+as ProductAnalyticsPreferenceUpdateValue,expectedRevision: null == expectedRevision ? _self.expectedRevision : expectedRevision // ignore: cast_nullable_to_non_nullable
 as int,operationId: null == operationId ? _self.operationId : operationId // ignore: cast_nullable_to_non_nullable
 as String,
   ));

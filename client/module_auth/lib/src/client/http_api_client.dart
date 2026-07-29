@@ -186,8 +186,14 @@ class HttpApiClient implements SafeApiClient {
           // ignore: no_slop_linter/prefer_specific_type, json decoding
           final json = jsonDecode(response.body);
           return ApiResponse.success(fromJson(json));
-        } catch (e) {
-          developer.log("Failed to parse multipart response JSON", name: "sesori_auth", error: e, level: 1000);
+        } on Object catch (_, stackTrace) {
+          developer.log(
+            "Failed to parse multipart response JSON",
+            name: "sesori_auth",
+            error: const FormatException("Invalid multipart response JSON"),
+            stackTrace: stackTrace,
+            level: 1000,
+          );
           return ApiResponse.error(ApiError.jsonParsing(response.body));
         }
       } else {
@@ -256,8 +262,14 @@ class HttpApiClient implements SafeApiClient {
           // ignore: no_slop_linter/prefer_specific_type, json decoding
           final json = jsonDecode(response.body);
           return ApiResponse.success(fromJson(json));
-        } catch (e) {
-          developer.log("Failed to parse response JSON", name: "sesori_auth", error: e, level: 1000);
+        } on Object catch (_, stackTrace) {
+          developer.log(
+            "Failed to parse response JSON",
+            name: "sesori_auth",
+            error: const FormatException("Invalid response JSON"),
+            stackTrace: stackTrace,
+            level: 1000,
+          );
           return ApiResponse.error(ApiError.jsonParsing(response.body));
         }
       } else {
