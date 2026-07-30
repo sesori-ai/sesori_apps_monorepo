@@ -617,6 +617,40 @@ void main() {
     ).called(1);
   });
 
+  testWidgets("replacing the entire voice-assisted draft resets its input mode", (tester) async {
+    GetIt.instance<DraftStore>().write(
+      key: "session-1",
+      draft: const ComposerDraft(text: "restored transcript", inputMode: AnalyticsInputMode.voiceAssisted),
+    );
+    when(
+      () => cubit.sendMessage(
+        text: "typed replacement",
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final editable = tester.widget<EditableText>(find.byType(EditableText));
+    editable.controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: editable.controller.text.length,
+    );
+    await tester.enterText(find.byType(EditableText), "typed replacement");
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "typed replacement",
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      ),
+    ).called(1);
+  });
+
   testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {
     final startCompleter = Completer<void>();
     final stopCompleter = Completer<String>();

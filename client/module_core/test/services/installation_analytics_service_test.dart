@@ -1,14 +1,17 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
 class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository {
   final events = <InstallationAnalyticsEvent>[];
+  AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
 
   @override
   Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) async {
     events.add(event);
-    return AnalyticsDeliveryResult.acceptedBySdk;
+    return result;
   }
 }
 
@@ -75,5 +78,23 @@ void main() {
       repository.events.map((event) => event.parameters["provider"]),
       ["github", "google", "apple", "email"],
     );
+  });
+
+  test("enabled runtime makes rejected SDK delivery observable", () async {
+    final repository = _RecordingAnalyticsRepository()..result = AnalyticsDeliveryResult.failed;
+    final service = InstallationAnalyticsService(
+      capability: const AnalyticsRuntimeCapability.enabled(),
+      repository: repository,
+    );
+    final logLines = <String>[];
+
+    await runZoned(
+      () => service.loginAttemptStarted(provider: AuthProvider.github),
+      zoneSpecification: ZoneSpecification(
+        print: (_, _, _, line) => logLines.add(line),
+      ),
+    );
+
+    expect(logLines, contains("Failed to report installation analytics event"));
   });
 }

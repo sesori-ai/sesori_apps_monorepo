@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/models/product_analytics/analytics_runtime_capability.dart";
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
+import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 
@@ -54,10 +55,14 @@ class InstallationAnalyticsService {
     LoginAttemptFailureCause.unknown => AnalyticsLoginFailureKind.unknown,
   };
 
-  Future<AnalyticsDeliveryResult> _log({required InstallationAnalyticsEvent event}) {
+  Future<AnalyticsDeliveryResult> _log({required InstallationAnalyticsEvent event}) async {
     if (!_capability.isEnabled) {
-      return Future.value(AnalyticsDeliveryResult.failed);
+      return AnalyticsDeliveryResult.failed;
     }
-    return _repository.logInstallationEvent(event: event);
+    final result = await _repository.logInstallationEvent(event: event);
+    if (result == AnalyticsDeliveryResult.failed) {
+      logw("Failed to report installation analytics event");
+    }
+    return result;
   }
 }

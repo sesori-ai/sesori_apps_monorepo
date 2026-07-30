@@ -11,6 +11,7 @@ import "../../platform/lifecycle_source.dart";
 import "../../platform/route_source.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../routing/app_routes.dart";
+import "../../services/models/product_analytics_state.dart";
 import "../../services/product_analytics_service.dart";
 
 /// Reports bounded session activity only while its detail screen is actually
@@ -24,6 +25,8 @@ final class SessionActivityAnalyticsConsumer {
   late final StreamSubscription<SessionDetailState> _sessionStateSubscription;
   late final StreamSubscription<AppRouteDef?> _routeSubscription;
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
+  late final StreamSubscription<ProductAnalyticsState> _analyticsStateSubscription;
+  bool _routeVisible;
   bool _emptyConsumed = false;
   DateTime? _lastNonEmptyUtcDate;
   bool _evaluationInFlight = false;
@@ -35,10 +38,12 @@ final class SessionActivityAnalyticsConsumer {
     required RouteSource routeSource,
     required LifecycleSource lifecycleSource,
     required ProductAnalyticsService productAnalyticsService,
+    required bool routeVisible,
   }) : _sessionDetailCubit = sessionDetailCubit,
        _routeSource = routeSource,
        _lifecycleSource = lifecycleSource,
        _productAnalyticsService = productAnalyticsService,
+       _routeVisible = routeVisible,
        _now = DateTime.now {
     _start();
   }
@@ -49,11 +54,13 @@ final class SessionActivityAnalyticsConsumer {
     required RouteSource routeSource,
     required LifecycleSource lifecycleSource,
     required ProductAnalyticsService productAnalyticsService,
+    required bool routeVisible,
     required DateTime Function() now,
   }) : _sessionDetailCubit = sessionDetailCubit,
        _routeSource = routeSource,
        _lifecycleSource = lifecycleSource,
        _productAnalyticsService = productAnalyticsService,
+       _routeVisible = routeVisible,
        _now = now {
     _start();
   }
@@ -62,6 +69,13 @@ final class SessionActivityAnalyticsConsumer {
     _sessionStateSubscription = _sessionDetailCubit.stream.listen((_) => _scheduleEvaluation());
     _routeSubscription = _routeSource.currentRouteStream.listen((_) => _scheduleEvaluation());
     _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen((_) => _scheduleEvaluation());
+    _analyticsStateSubscription = _productAnalyticsService.stateStream.listen((_) => _scheduleEvaluation());
+    _scheduleEvaluation();
+  }
+
+  void setRouteVisible({required bool isVisible}) {
+    if (_routeVisible == isVisible) return;
+    _routeVisible = isVisible;
     _scheduleEvaluation();
   }
 
@@ -90,7 +104,8 @@ final class SessionActivityAnalyticsConsumer {
   }
 
   Future<void> _evaluate() async {
-    if (_routeSource.currentRoute != AppRouteDef.sessionDetail ||
+    if (!_routeVisible ||
+        _routeSource.currentRoute != AppRouteDef.sessionDetail ||
         _lifecycleSource.lifecycleState != LifecycleState.resumed) {
       return;
     }
@@ -144,6 +159,7 @@ final class SessionActivityAnalyticsConsumer {
       _sessionStateSubscription.cancel(),
       _routeSubscription.cancel(),
       _lifecycleSubscription.cancel(),
+      _analyticsStateSubscription.cancel(),
     ]);
   }
 }

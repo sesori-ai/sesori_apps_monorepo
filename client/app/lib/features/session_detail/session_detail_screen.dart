@@ -63,22 +63,30 @@ class _SessionActivityAnalyticsScope extends StatefulWidget {
 }
 
 class _SessionActivityAnalyticsScopeState extends State<_SessionActivityAnalyticsScope> {
-  late final SessionActivityAnalyticsConsumer _consumer;
+  SessionActivityAnalyticsConsumer? _consumer;
 
   @override
-  void initState() {
-    super.initState();
-    _consumer = SessionActivityAnalyticsConsumer(
-      sessionDetailCubit: context.read<SessionDetailCubit>(),
-      routeSource: getIt<RouteSource>(),
-      lifecycleSource: getIt<LifecycleSource>(),
-      productAnalyticsService: getIt<ProductAnalyticsService>(),
-    );
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final routeVisible = ModalRoute.of(context)?.isCurrent == true;
+    final consumer = _consumer;
+    if (consumer == null) {
+      _consumer = SessionActivityAnalyticsConsumer(
+        sessionDetailCubit: context.read<SessionDetailCubit>(),
+        routeSource: getIt<RouteSource>(),
+        lifecycleSource: getIt<LifecycleSource>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
+        routeVisible: routeVisible,
+      );
+    } else {
+      consumer.setRouteVisible(isVisible: routeVisible);
+    }
   }
 
   @override
   void dispose() {
-    unawaited(_consumer.dispose());
+    final consumer = _consumer;
+    if (consumer != null) unawaited(consumer.dispose());
     super.dispose();
   }
 

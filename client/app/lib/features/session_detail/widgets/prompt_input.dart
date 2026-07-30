@@ -87,6 +87,7 @@ class _PromptInputState extends State<PromptInput> {
   /// not on every keystroke.
   bool _hasText = false;
   AnalyticsInputMode _inputMode = AnalyticsInputMode.typed;
+  TextEditingValue _previousEditingValue = TextEditingValue.empty;
 
   /// Layout pinned for the duration of a voice interaction. Swapping the
   /// field slot for the recording/transcribing indicators must not relayout
@@ -112,6 +113,7 @@ class _PromptInputState extends State<PromptInput> {
     super.initState();
     _restoreDraft();
     _hasText = _controller.text.trim().isNotEmpty;
+    _previousEditingValue = _controller.value;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
     _maxDurationSub = _voiceService.onMaxDurationReached.listen((_) {
@@ -181,8 +183,15 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   void _handleTextChanged() {
-    final hasText = _controller.text.trim().isNotEmpty;
-    if (!hasText) _inputMode = AnalyticsInputMode.typed;
+    final currentValue = _controller.value;
+    final previousValue = _previousEditingValue;
+    final hasText = currentValue.text.trim().isNotEmpty;
+    final replacedEntireText = previousValue.text.isNotEmpty &&
+        previousValue.selection.start == 0 &&
+        previousValue.selection.end == previousValue.text.length &&
+        !currentValue.text.startsWith(previousValue.text);
+    if (!hasText || replacedEntireText) _inputMode = AnalyticsInputMode.typed;
+    _previousEditingValue = currentValue;
     if (hasText != _hasText && mounted) {
       setState(() => _hasText = hasText);
     }

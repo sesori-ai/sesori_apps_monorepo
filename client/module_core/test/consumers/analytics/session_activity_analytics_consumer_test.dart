@@ -6,9 +6,11 @@ import "package:sesori_dart_core/src/consumers/analytics/session_activity_analyt
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
+import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -29,6 +31,7 @@ void main() {
   late MockRouteSource routeSource;
   late FakeLifecycleSource lifecycleSource;
   late _MockProductAnalyticsService analyticsService;
+  late BehaviorSubject<ProductAnalyticsState> analyticsStates;
   late List<ProductAnalyticsEvent> events;
   late List<DateTime> occurrenceTimes;
   late List<AnalyticsDeliveryResult> results;
@@ -41,6 +44,7 @@ void main() {
     routeSource = MockRouteSource(initialRoute: AppRouteDef.sessionDetail);
     lifecycleSource = FakeLifecycleSource();
     analyticsService = _MockProductAnalyticsService();
+    analyticsStates = BehaviorSubject.seeded(_inactiveAnalyticsState);
     events = [];
     occurrenceTimes = [];
     results = [AnalyticsDeliveryResult.acceptedBySdk];
@@ -48,6 +52,7 @@ void main() {
 
     when(() => cubit.state).thenAnswer((_) => states.value);
     when(() => cubit.stream).thenAnswer((_) => states.stream);
+    when(() => analyticsService.stateStream).thenAnswer((_) => analyticsStates.stream);
     when(
       () => analyticsService.logEvent(
         event: any(named: "event"),
@@ -63,6 +68,7 @@ void main() {
   tearDown(() async {
     await consumer.dispose();
     await states.close();
+    await analyticsStates.close();
     lifecycleSource.close();
   });
 
@@ -72,6 +78,7 @@ void main() {
       routeSource: routeSource,
       lifecycleSource: lifecycleSource,
       productAnalyticsService: analyticsService,
+      routeVisible: true,
       now: () => now,
     );
   }
@@ -171,6 +178,37 @@ void main() {
     expect(events, hasLength(2));
   });
 
+  test("retries an empty snapshot when analytics becomes active", () async {
+    results = [AnalyticsDeliveryResult.failed, AnalyticsDeliveryResult.acceptedBySdk];
+    states.add(_loaded());
+    createConsumer();
+    await _settle();
+
+    analyticsStates.add(_activeAnalyticsState);
+    await _settle();
+
+    expect(events, hasLength(2));
+  });
+
+  test("waits until the owning route instance is visible", () async {
+    states.add(_loaded(status: const SessionStatus.busy()));
+    consumer = SessionActivityAnalyticsConsumer.withClock(
+      sessionDetailCubit: cubit,
+      routeSource: routeSource,
+      lifecycleSource: lifecycleSource,
+      productAnalyticsService: analyticsService,
+      routeVisible: false,
+      now: () => now,
+    );
+    await _settle();
+    expect(events, isEmpty);
+
+    consumer.setRouteVisible(isVisible: true);
+    await _settle();
+
+    expect(events, hasLength(1));
+  });
+
   test("pending questions are classified as non-empty activity", () async {
     states.add(_loaded(pendingQuestions: [_question]));
     createConsumer();
@@ -247,3 +285,15 @@ Future<void> _settle() async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
 }
+
+const _inactiveAnalyticsState = ProductAnalyticsState(
+  preference: ProductAnalyticsPreferenceUnknown(),
+  synchronization: ProductAnalyticsNotSynchronized(),
+  availability: ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.preferenceUnknown),
+);
+
+const _activeAnalyticsState = ProductAnalyticsState(
+  preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+  synchronization: ProductAnalyticsSynchronized(),
+  availability: ProductAnalyticsActive(),
+);
