@@ -342,6 +342,10 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   _LoginAttempt _beginAttempt({required AuthProvider provider}) {
+    _reportFailedAttempt(
+      attempt: _loginAttempt,
+      cause: LoginAttemptFailureCause.unknown,
+    );
     final attempt = _LoginAttempt(provider: provider);
     _loginAttempt = attempt;
     _report(
