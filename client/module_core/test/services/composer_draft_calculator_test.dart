@@ -112,6 +112,17 @@ void main() {
     expect(result.voiceSpans, [VoiceOriginSpan(start: 0, end: 1)]);
   });
 
+  test("an edit to whitespace-only text resets voice attribution", () {
+    final result = calculator.applyTypedEdit(
+      draft: voiceDraft("voice ", 0, 6),
+      newText: " ",
+      previousSelection: (start: 0, end: 5),
+      currentSelection: (start: 0, end: 0),
+    );
+
+    expect(result, ComposerDraft.typed(text: " "));
+  });
+
   test("trim removes voice attribution that exists only in omitted whitespace", () {
     final result = calculator.trim(
       draft: voiceDraft(" typed", 0, 1),

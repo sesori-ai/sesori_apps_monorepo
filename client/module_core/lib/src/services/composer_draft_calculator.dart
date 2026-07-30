@@ -11,6 +11,7 @@ final class ComposerDraftCalculator {
     required ({int start, int end})? currentSelection,
   }) {
     if (draft.text == newText) return draft;
+    if (newText.trim().isEmpty) return ComposerDraft.typed(text: newText);
 
     final selection = previousSelection;
     if (selection != null &&
