@@ -6,6 +6,7 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/services/product_analytics_preference_service.dart";
 import "package:test/test.dart";
 
 const _userKeyA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -145,10 +146,12 @@ void main() {
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingAnalyticsRepository();
     service = ProductAnalyticsService(
-      capability: const AnalyticsRuntimeCapability.enabled(),
-      authSession: authSession,
       analyticsRepository: analyticsRepository,
-      preferenceRepository: preferenceRepository,
+      preferenceService: ProductAnalyticsPreferenceService(
+        capability: const AnalyticsRuntimeCapability.enabled(),
+        authSession: authSession,
+        preferenceRepository: preferenceRepository,
+      ),
     );
   }
 
@@ -157,10 +160,12 @@ void main() {
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingAnalyticsRepository();
     service = ProductAnalyticsService(
-      capability: capability,
-      authSession: authSession,
       analyticsRepository: analyticsRepository,
-      preferenceRepository: preferenceRepository,
+      preferenceService: ProductAnalyticsPreferenceService(
+        capability: capability,
+        authSession: authSession,
+        preferenceRepository: preferenceRepository,
+      ),
     );
   }
 
@@ -238,9 +243,8 @@ void main() {
       preference: ProductAnalyticsPreference.enabled,
     );
     preferenceRepository.localByUser[_userA.id] = LocalProductAnalyticsSynced(record: record);
-    preferenceRepository.reconcileHandlers.add(
-      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: record),
-    );
+    final reconciliation = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.reconcileHandlers.add((_, _) => reconciliation.future);
 
     await service.start();
 
@@ -255,7 +259,16 @@ void main() {
     );
     expect(analyticsRepository.calls, isEmpty);
 
-    await service.markPostSplashReady();
+    final readinessFuture = service.markPostSplashReady();
+    while (preferenceRepository.reconcileCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(service.state.isActive, isFalse);
+    expect(analyticsRepository.calls, isEmpty);
+
+    reconciliation.complete(ProductAnalyticsPreferenceSynchronized(record: record));
+    await readinessFuture;
 
     expect(preferenceRepository.reconcileCalls, hasLength(1));
     expect(service.state.isActive, isTrue);
@@ -624,6 +637,41 @@ void main() {
 
     expect(preferenceRepository.setCalls, hasLength(2));
     expect(service.state.displayedPreference, ProductAnalyticsPreference.enabled);
+    expect(service.state.isActive, isTrue);
+  });
+
+  test("a failed enable does not restore an obsolete volatile disable retry", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final volatileDisable = LocalProductAnalyticsPendingDisable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
+    preferenceRepository.reconcileHandlers
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled))
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled));
+    preferenceRepository.setHandlers
+      ..add((_, _, _) async => ProductAnalyticsPreferenceVolatileDisablePending(pending: volatileDisable))
+      ..add((_, _, _) async => const ProductAnalyticsPreferenceTimedOut())
+      ..add((_, _, _) async => ProductAnalyticsPreferenceSynchronized(record: volatileDisable.record));
+    await service.start();
+    await service.markPostSplashReady();
+    await service.setPreference(preference: ProductAnalyticsPreference.disabled);
+
+    await service.setPreference(preference: ProductAnalyticsPreference.enabled);
+    await service.refreshPreference();
+
+    expect(
+      preferenceRepository.setCalls.map((call) => call.preference),
+      [ProductAnalyticsPreference.disabled, ProductAnalyticsPreference.enabled],
+    );
+    expect(preferenceRepository.reconcileCalls, hasLength(2));
     expect(service.state.isActive, isTrue);
   });
 
