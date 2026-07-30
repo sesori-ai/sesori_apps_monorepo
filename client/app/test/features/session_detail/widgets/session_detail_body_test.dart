@@ -754,6 +754,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(VoiceCancelButton), findsOneWidget);
+    // The cancel target must keep the full 44pt footprint (a CustomPaint with
+    // a child would otherwise shrink to its icon).
+    expect(tester.getSize(find.byType(VoiceCancelButton)), const Size(44, 44));
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
     // The keyboard button leaves the pill while the waveform needs its width.
@@ -791,6 +794,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Hold to talk"), findsOneWidget);
     expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("a hold during an in-flight cancel does not present a phantom recording", (tester) async {
+    final cancelCompleter = Completer<void>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) => cancelCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Record, then discard by releasing on the cancel target.
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+    verify(() => voiceTranscriptionService.startRecording()).called(1);
+
+    // The platform cancel is still in flight: the service would silently
+    // ignore a start, so the composer must not enter a recording that never
+    // began.
+    final second = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await second.up();
+    await tester.pump();
+    verifyNever(() => voiceTranscriptionService.startRecording());
+
+    // Once the cancel settles, recording works again.
+    cancelCompleter.complete();
+    await tester.pumpAndSettle();
+    final third = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    await third.up();
+    await tester.pumpAndSettle();
   });
 
   testWidgets("transcribing shows the shimmer and its X discards the transcription", (tester) async {

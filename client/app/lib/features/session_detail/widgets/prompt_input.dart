@@ -101,6 +101,12 @@ class _PromptInputState extends State<PromptInput> {
   /// those to the release path instead.
   bool _isRecordStartInFlight = false;
 
+  /// True while [_cancelVoiceInteraction] is awaiting the platform cancel.
+  /// The composer already reads idle then, but the service is still busy and
+  /// would silently ignore a new start — so starts hold off until the cancel
+  /// settles rather than presenting a recording that never began.
+  bool _isCancelInFlight = false;
+
   /// How far the recording hold has dragged toward the cancel target:
   /// 0 at rest, 1 with the finger on the target — releasing there discards
   /// the recording. A notifier rather than state: the drag scrubs at
@@ -284,7 +290,7 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   Future<void> _handleRecordStart() async {
-    if (_voiceState != _VoiceState.idle || _isRecordStartInFlight) return;
+    if (_voiceState != _VoiceState.idle || _isRecordStartInFlight || _isCancelInFlight) return;
     _isRecordStartInFlight = true;
     _releaseRequestedDuringStart = false;
     _cancelDragProgress.value = 0;
@@ -310,9 +316,9 @@ class _PromptInputState extends State<PromptInput> {
 
   /// Tracks the hold as it moves, scrubbing the drag-to-cancel presentation
   /// toward the cancel target.
-  void _handleRecordDragUpdate(Offset globalPosition) {
+  void _handleRecordDragUpdate({required Offset globalPosition}) {
     if (_voiceState != _VoiceState.recording) return;
-    _cancelDragProgress.value = _cancelProgressFor(globalPosition);
+    _cancelDragProgress.value = _cancelProgressFor(globalPosition: globalPosition);
   }
 
   /// The finger starts engaging the cancel affordance within this distance of
@@ -321,7 +327,7 @@ class _PromptInputState extends State<PromptInput> {
   static const double _cancelReachRadius = 170;
   static const double _cancelCommitRadius = 44;
 
-  double _cancelProgressFor(Offset globalPosition) {
+  double _cancelProgressFor({required Offset globalPosition}) {
     final target = _cancelTargetKey.currentContext?.findRenderObject();
     if (target is! RenderBox || !target.hasSize || !target.attached) return 0;
     final center = target.localToGlobal(target.size.center(Offset.zero));
@@ -439,10 +445,13 @@ class _PromptInputState extends State<PromptInput> {
       _pinnedVoiceLayout = null;
       _cancelDragProgress.value = 0;
     });
+    _isCancelInFlight = true;
     try {
       await _voiceService.cancelRecording();
     } catch (error) {
       loge("Failed to cancel the voice interaction", error);
+    } finally {
+      _isCancelInFlight = false;
     }
   }
 
@@ -1076,7 +1085,7 @@ class _PromptInputState extends State<PromptInput> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onLongPressStart: (_) => _handleRecordStart(),
-          onLongPressMoveUpdate: (details) => _handleRecordDragUpdate(details.globalPosition),
+          onLongPressMoveUpdate: (details) => _handleRecordDragUpdate(globalPosition: details.globalPosition),
           onLongPressEnd: (_) => _handleRecordEnd(),
           child: child,
         ),
@@ -1175,7 +1184,7 @@ class _PromptInputState extends State<PromptInput> {
         onPointerCancel: (_) => _handleRecordEnd(),
         child: GestureDetector(
           onLongPressStart: (_) => _handleRecordStart(),
-          onLongPressMoveUpdate: (details) => _handleRecordDragUpdate(details.globalPosition),
+          onLongPressMoveUpdate: (details) => _handleRecordDragUpdate(globalPosition: details.globalPosition),
           onLongPressEnd: (_) => _handleRecordEnd(),
           child: const PregoButtonsSolid.iconOnly(
             leadingIcon: TablerRegular.microphone,

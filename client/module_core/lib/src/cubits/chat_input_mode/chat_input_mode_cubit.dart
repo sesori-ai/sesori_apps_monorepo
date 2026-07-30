@@ -11,14 +11,20 @@ import "../../repositories/chat_input_mode_store.dart";
 class ChatInputModeCubit extends Cubit<ChatInputMode> {
   final ChatInputModeStore _store;
 
+  /// Tail of the persistence chain. Writes append here so rapid re-selection
+  /// cannot interleave them and leave an older choice persisted last.
+  Future<void> _lastWrite = Future<void>.value();
+
   ChatInputModeCubit({required ChatInputModeStore store, required ChatInputMode initialMode})
     : _store = store,
       super(initialMode);
 
-  /// Switches to [mode] and persists it.
+  /// Switches to [mode] and persists it. The app follows the emit
+  /// immediately; persistence queues behind any write still in flight.
   Future<void> select({required ChatInputMode mode}) async {
     if (mode == state) return;
     emit(mode);
-    await _store.write(mode: mode);
+    _lastWrite = _lastWrite.then((_) => _store.write(mode: mode));
+    await _lastWrite;
   }
 }
