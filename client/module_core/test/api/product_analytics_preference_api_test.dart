@@ -81,6 +81,7 @@ void main() {
     for (final json in [
       {"preference": "unknown", "revision": 1, "userKey": _userKey},
       {"preference": "enabled", "revision": 0, "userKey": _userKey},
+      {"preference": "enabled", "revision": 1.9, "userKey": _userKey},
       {"preference": "enabled", "revision": 1, "userKey": List.filled(64, "A").join()},
     ]) {
       client.getJson = json;
