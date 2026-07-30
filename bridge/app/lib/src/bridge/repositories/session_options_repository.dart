@@ -108,11 +108,19 @@ class SessionOptionsRepository {
   }
 
   Future<SessionOptionsCacheEntry?> read({required SessionOptionsCacheKey key}) async {
-    final row = await _cacheDao.getRow(
-      pluginId: key.pluginId,
-      scope: key.scope,
-      ownerId: key.ownerId,
-    );
+    final SessionOptionsCacheTableData? row;
+    try {
+      row = await _cacheDao.getRow(
+        pluginId: key.pluginId,
+        scope: key.scope,
+        ownerId: key.ownerId,
+      );
+    } on Object catch (error, stackTrace) {
+      if (error is ArgumentError) {
+        throw SessionOptionsCacheDecodingException(cause: error, causeStackTrace: stackTrace);
+      }
+      rethrow;
+    }
     if (row == null) return null;
 
     try {
@@ -138,7 +146,7 @@ class SessionOptionsRepository {
     required int? expectedGeneration,
   }) async {
     if (key is ProjectSessionOptionsCacheKey && key.projectPath != projectPath) {
-      throw ArgumentError.value(projectPath, "projectPath", "must match the project cache key path");
+      throw StateError("session options project path mismatch");
     }
     switch (activation) {
       case SessionOptionsCaptureActivation.mayActivate:

@@ -117,7 +117,13 @@ void main() {
           discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
           expectedGeneration: null,
         ),
-        throwsArgumentError,
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.toString(),
+            "privacy-safe presentation",
+            "Bad state: session options project path mismatch",
+          ),
+        ),
       );
       expect(plugin.callCount, 0);
     });
@@ -264,6 +270,40 @@ void main() {
                 "privacy-safe presentation",
                 "SessionOptionsCacheDecodingException: invalid persisted session options cache",
               ),
+        ),
+      );
+    });
+
+    test("read wraps an unknown persisted completeness value", () async {
+      await cacheDao.compareAndSet(
+        row: SessionOptionsCacheTableData(
+          pluginId: "plugin-1",
+          scope: PluginSessionOptionsScope.plugin,
+          ownerId: "plugin-1",
+          projectId: null,
+          capturedProjectPath: null,
+          revision: 1,
+          capturedAt: 1,
+          completeness: PluginSessionOptionsCompleteness.complete,
+          agentsJson: jsonEncode(const Agents(agents: []).toJson()),
+          providersJson: jsonEncode(const ProviderListResponse(items: [], connectedOnly: true).toJson()),
+          commandsJson: jsonEncode(const CommandListResponse(items: []).toJson()),
+        ),
+        expectedRevision: null,
+      );
+      await database.customStatement(
+        "UPDATE session_options_cache_table SET completeness = 'unknown' "
+        "WHERE plugin_id = 'plugin-1' AND scope = 'plugin' AND owner_id = 'plugin-1'",
+      );
+
+      await expectLater(
+        repository.read(key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1")),
+        throwsA(
+          isA<SessionOptionsCacheDecodingException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<ArgumentError>(),
+          ),
         ),
       );
     });
