@@ -78,26 +78,14 @@ class SessionDiffService {
       revision = baseBranch;
       comparisonMode = SessionDiffComparisonMode.mergeBase;
     } else {
+      // Only the new null-branch shape is an exact session-start snapshot.
+      final startCommit = session.baseBranch == null ? session.baseCommit?.trim() : null;
+      if (startCommit == null || startCommit.isEmpty) return const [];
       final projectPath = await _sessionRepository.getProjectPath(projectId: session.projectId);
       if (projectPath == null) return const [];
       if (!_filesystemRepository.directoryExists(path: projectPath)) return const [];
       worktreePath = projectPath;
-      final storedBaseCommit = session.baseCommit?.trim();
-      if (storedBaseCommit != null && storedBaseCommit.isNotEmpty) {
-        revision = storedBaseCommit;
-      } else {
-        final currentHead = await _sessionDiffRepository.resolveCommit(
-          worktreePath: worktreePath,
-          revision: "HEAD",
-        );
-        if (currentHead == null) return const [];
-        final initializedBaseCommit = await _sessionRepository.initializeInPlaceDiffBase(
-          sessionId: sessionId,
-          baseCommit: currentHead,
-        );
-        if (initializedBaseCommit == null || initializedBaseCommit.isEmpty) return const [];
-        revision = initializedBaseCommit;
-      }
+      revision = startCommit;
       comparisonMode = SessionDiffComparisonMode.exactRevision;
     }
     final queryResult = await _sessionDiffRepository.query(
