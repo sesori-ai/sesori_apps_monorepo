@@ -275,7 +275,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
                 children: [
                   child,
                   if (showSkeuomorphicOverlay)
-                    _SkeuomorphicInnerOverlay(
+                    PregoSkeuomorphicOverlay(
                       innerBorderColor: colors.skeuomorphicInnerBorder,
                       bottomShadowColor: skeuomorphicBottomColor,
                     ),
@@ -788,19 +788,25 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
 }
 
 // ---------------------------------------------------------------------------
-// Private helper widgets
+// Helper widgets
 // ---------------------------------------------------------------------------
 
-/// Paints the skeuomorphic inner border used on Primary and Secondary hierarchy.
+/// Paints the skeuomorphic inner border used on Primary and Secondary hierarchy,
+/// and on solid-button-like surfaces built outside this file (e.g. joined
+/// button groups that share one pill background).
 ///
 /// Uses [CustomPainter] to approximate the two Figma inner shadow layers:
 /// - A 1px inset stroke around the entire pill (inner border highlight).
 /// - A 2px inset stroke along the bottom edge only (depth shadow).
 ///
+/// Positioned to fill, so it must be placed inside a [Stack] that is sized by
+/// the surface it decorates.
+///
 /// In the Secondary focused state, [bottomShadowColor] is set to
-/// [skeuomorphicInnerBorder] so both layers use the same token.
-class _SkeuomorphicInnerOverlay extends StatelessWidget {
-  const _SkeuomorphicInnerOverlay({
+/// `skeuomorphicInnerBorder` so both layers use the same token.
+class PregoSkeuomorphicOverlay extends StatelessWidget {
+  const PregoSkeuomorphicOverlay({
+    super.key,
     required this.innerBorderColor,
     required this.bottomShadowColor,
   });

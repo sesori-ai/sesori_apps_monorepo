@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -8,6 +9,10 @@ import "../../../core/extensions/build_context_x.dart";
 /// and expands accordion-style to reveal the actions that don't warrant a
 /// permanent spot in the composer — today just the slash-commands picker,
 /// later things like attaching files or images.
+///
+/// Styled after the Figma `View options actions left` component: closed it
+/// reads as a single round `pregoButtonsSolid` (44pt, skeuomorphic surface);
+/// opened, each option is an icon button sharing that one joined background.
 class ComposerOptionsAccordion extends StatefulWidget {
   /// Disables the revealed actions (not the toggle) while the composer is
   /// recording or transcribing, mirroring the old always-visible slash button.
@@ -41,42 +46,52 @@ class _ComposerOptionsAccordionState extends State<ComposerOptionsAccordion> {
           BoxShadow(color: prego.colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
         ],
       ),
-      child: Padding(
-        // Chevron hugs the trailing edge (Figma: 3/2/6/2) so the pill reads as
-        // opening toward the field; revealed actions slide out on the leading
-        // side.
-        padding: const EdgeInsetsDirectional.fromSTEB(3, 2, 6, 2),
-        child: AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          alignment: AlignmentDirectional.centerEnd,
-          child: SizedBox(
-            height: 40,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_isOpen) ...[
-                  _AccordionIconButton(
-                    icon: TablerRegular.slash,
-                    tooltip: loc.sessionDetailCommandPickerTitle,
-                    onTap: widget.actionsEnabled
-                        ? () {
-                            setState(() => _isOpen = false);
-                            widget.onSlashCommandsTap();
-                          }
-                        : null,
-                  ),
-                  const SizedBox(width: 2),
-                ],
-                _AccordionIconButton(
-                  icon: TablerRegular.chevron_right,
-                  tooltip: _isOpen ? loc.sessionDetailHideActions : loc.sessionDetailMoreActions,
-                  rotated: _isOpen,
-                  onTap: () => setState(() => _isOpen = !_isOpen),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(PregoRadius.full),
+        child: Stack(
+          children: [
+            Padding(
+              // 6pt insets centre the 32pt buttons in a 44pt-tall pill, so the
+              // closed state is exactly the 44pt circle of the solid-button
+              // neighbours. The chevron anchors at the trailing edge; revealed
+              // actions slide out on the leading side, toward the field's
+              // leading edge.
+              padding: const EdgeInsets.all(PregoSpacing.sm),
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                alignment: AlignmentDirectional.centerEnd,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isOpen) ...[
+                      _AccordionIconButton(
+                        icon: TablerRegular.slash,
+                        tooltip: loc.sessionDetailCommandPickerTitle,
+                        onTap: widget.actionsEnabled
+                            ? () {
+                                setState(() => _isOpen = false);
+                                widget.onSlashCommandsTap();
+                              }
+                            : null,
+                      ),
+                      const SizedBox(width: PregoSpacing.md),
+                    ],
+                    _AccordionIconButton(
+                      icon: TablerRegular.chevron_right,
+                      tooltip: _isOpen ? loc.sessionDetailHideActions : loc.sessionDetailMoreActions,
+                      rotated: _isOpen,
+                      onTap: () => setState(() => _isOpen = !_isOpen),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            PregoSkeuomorphicOverlay(
+              innerBorderColor: prego.colors.skeuomorphicInnerBorder,
+              bottomShadowColor: prego.colors.skeuomorphicShadow,
+            ),
+          ],
         ),
       ),
     );
