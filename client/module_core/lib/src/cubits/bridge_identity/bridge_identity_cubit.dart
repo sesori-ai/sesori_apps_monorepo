@@ -31,13 +31,28 @@ class BridgeIdentityCubit extends Cubit<BridgeIdentityState> {
     // surfaces name the machine they are trying to reach, and they are exactly
     // the ones no connect event ever arrives for.
     unawaited(_resolve());
-    // Then again on every reconnect. The service drops its cached bridge list
-    // when a bridge connects, so this picks the fresh record up — and retries a
-    // lookup that answered with nothing because the phone itself was offline.
-    // skip(1) drops the replayed current status, which the resolve above covers.
+    // Then again whenever the relay becomes reachable. skip(1) drops the
+    // replayed current status, which the resolve above covers.
     _statusSubscription = connectionService.status.skip(1).listen((status) {
-      if (status is! ConnectionConnected) return;
-      unawaited(_resolve());
+      switch (status) {
+        // Both of these say the relay can be reached — the bridge is up, or it
+        // is off with the relay connection alive — which is the precondition a
+        // lookup that answered with nothing (the phone was offline) was
+        // missing. Retrying on the park matters most: the bridge-offline
+        // recovery view is the surface whose whole job is naming the machine to
+        // start, and it is reached without any connect event. Connecting also
+        // drops the service's cached bridge list, so that case picks up the
+        // fresh record.
+        case ConnectionConnected():
+        case ConnectionBridgeOffline():
+          unawaited(_resolve());
+        // Nothing to ask over: a lookup would fail from these states anyway, and
+        // the resolve above already covers a launch that starts in one.
+        case ConnectionDisconnected():
+        case ConnectionReconnecting():
+        case ConnectionLost():
+          break;
+      }
     });
   }
 

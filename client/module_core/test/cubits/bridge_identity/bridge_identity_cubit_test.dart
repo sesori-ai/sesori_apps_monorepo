@@ -112,6 +112,26 @@ void main() {
   );
 
   blocTest<BridgeIdentityCubit, BridgeIdentityState>(
+    "parking offline retries a lookup that came back empty",
+    build: buildCubit,
+    act: (cubit) async {
+      await Future<void>.delayed(Duration.zero); // the first lookup lands unnamed
+      // The phone had no network for the first attempt. It is back now, but the
+      // bridge is still off — so the relay parks instead of connecting, and this
+      // is exactly the surface that has to name the machine to start.
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
+        (_) async => [testBridgeSummary(name: "Macbook-Pro.local")],
+      );
+      statusController.add(_bridgeOfflineStatus);
+      await Future<void>.delayed(Duration.zero);
+    },
+    expect: () => [
+      const BridgeIdentityState.unnamed(),
+      isA<BridgeIdentityNamed>().having((s) => s.bridge.name, "named machine", "Macbook-Pro.local"),
+    ],
+  );
+
+  blocTest<BridgeIdentityCubit, BridgeIdentityState>(
     "a bridge going offline keeps the machine it named",
     build: () {
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
@@ -121,8 +141,8 @@ void main() {
     },
     act: (cubit) async {
       await Future<void>.delayed(Duration.zero);
-      // Losing the bridge doesn't change which machine is registered, so the
-      // recovery view keeps naming it.
+      // The park re-resolves, but which machine is registered hasn't changed, so
+      // the recovery view keeps naming the same one without a second emit.
       statusController.add(_bridgeOfflineStatus);
       await Future<void>.delayed(Duration.zero);
     },
