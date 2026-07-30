@@ -5,8 +5,8 @@
 - **Implementation base:** `origin/main` at `5eabfd0d`
 - **Series state:** Steps 1/6 through 3/6 are merged; oversized PR #620 is frozen
   as a draft and replaced by the stacked Step 4.A/6 through 4.F/6 sequence
-- **Current step:** Step 4.D/6 — scoped capture/persistence repository
-- **Next action:** verify and open the stacked Step 4.D/6 PR
+- **Current step:** Step 4.E/6 — cache policy and intent-aware coalescing
+- **Next action:** verify and open the stacked Step 4.E/6 PR
 
 ## Delivery
 
@@ -18,8 +18,8 @@
 | [ ] | Step 4.A/6 — wire contracts and runtime seams | `multi-plugin-release-prep-bridge-contracts` | PR #623 open |
 | [ ] | Step 4.B/6 — scoped cache schema/runtime database | `multi-plugin-release-prep-cache-schema` | PR #624 open |
 | [ ] | Step 4.C/6 — migration and DAO verification | `multi-plugin-release-prep-cache-verification` | PR #625 open |
-| [ ] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | In progress |
-| [ ] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | Blocked on 4.D |
+| [ ] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | PR #626 open |
+| [ ] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | In progress |
 | [ ] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | Blocked on 4.E |
 | [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4 merge |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5 merge |
@@ -155,3 +155,8 @@
   persistence, and generation-fenced CAS. All 60 repository/runtime tests and
   bridge-app fatal analysis passed with `git diff --check`. Aristotle approved
   the implementation architecture without findings.
+- Step 4.E/6 preparation (2026-07-30): added Layer-3 scope resolution,
+  path/retention invalidation, completeness replacement, last-good failure
+  handling, one-retry revision CAS, stale-generation no-op, and intent-aware
+  forced-tail coalescing. All 23 service/repository tests and bridge-app fatal
+  analysis passed with `git diff --check`.
