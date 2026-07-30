@@ -10,7 +10,9 @@ import "package:sesori_dart_core/src/cubits/login/login_failed_reason.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
+import "package:sesori_dart_core/src/services/installation_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -21,6 +23,8 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 class MockAuthSession extends Mock implements AuthSession {}
 
 class MockLifecycleSource extends Mock implements LifecycleSource {}
+
+class MockInstallationAnalyticsService extends Mock implements InstallationAnalyticsService {}
 
 const testAuthInitResponse = AuthInitResponse(
   authUrl: "https://accounts.google.com/o/oauth2/auth",
@@ -38,6 +42,7 @@ const testAuthUser = AuthUser(
 void main() {
   setUpAll(() {
     registerFallbackValue(AuthProvider.google);
+    registerFallbackValue(LoginAttemptFailureCause.unknown);
     registerFallbackValue(Uri.parse(redirectUri));
     registerFallbackValue(testAuthUser);
   });
@@ -47,12 +52,14 @@ void main() {
     late MockUrlLauncher mockUrlLauncher;
     late MockAuthSession mockAuthSession;
     late MockLifecycleSource mockLifecycleSource;
+    late MockInstallationAnalyticsService mockInstallationAnalyticsService;
 
     setUp(() {
       mockOAuthFlowProvider = MockOAuthFlowProvider();
       mockUrlLauncher = MockUrlLauncher();
       mockAuthSession = MockAuthSession();
       mockLifecycleSource = MockLifecycleSource();
+      mockInstallationAnalyticsService = MockInstallationAnalyticsService();
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
       when(
         () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
@@ -60,16 +67,29 @@ void main() {
       when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthUser);
       when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
       when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptStarted(provider: any(named: "provider")),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: any(named: "provider")),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptFailed(
+          provider: any(named: "provider"),
+          cause: any(named: "cause"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
       when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer(
         (_) => BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed).stream,
       );
     });
 
     LoginCubit buildCubit() => LoginCubit(
-      mockOAuthFlowProvider,
-      mockUrlLauncher,
-      mockAuthSession,
-      mockLifecycleSource,
+      oAuthFlowProvider: mockOAuthFlowProvider,
+      urlLauncher: mockUrlLauncher,
+      authSession: mockAuthSession,
+      lifecycleSource: mockLifecycleSource,
+      installationAnalyticsService: mockInstallationAnalyticsService,
     );
 
     test("initial state is LoginState.idle", () {
@@ -78,6 +98,65 @@ void main() {
     });
 
     group("Google OAuth", () {
+      test("reports one started and one completed installation outcome", () async {
+        final cubit = buildCubit();
+
+        await cubit.loginWithProvider(AuthProvider.google);
+
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
+        ).called(1);
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.google),
+        ).called(1);
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: any(named: "provider"),
+            cause: any(named: "cause"),
+          ),
+        );
+        await cubit.close();
+      });
+
+      test("reports timeout once as the terminal installation outcome", () async {
+        when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
+        final cubit = buildCubit();
+
+        await cubit.loginWithProvider(AuthProvider.google);
+
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
+        ).called(1);
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: AuthProvider.google,
+            cause: LoginAttemptFailureCause.timeout,
+          ),
+        ).called(1);
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: any(named: "provider")),
+        );
+        await cubit.close();
+      });
+
+      test("Apple native cancellation terminates its already-started attempt", () async {
+        final cubit = buildCubit();
+
+        cubit.beginAppleLoginAttempt();
+        cubit.onAppleSignInCancelled();
+
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.apple),
+        ).called(1);
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: AuthProvider.apple,
+            cause: LoginAttemptFailureCause.cancelled,
+          ),
+        ).called(1);
+        await cubit.close();
+      });
+
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) starts OAuth flow with AuthProvider.google",
         build: buildCubit,
@@ -319,6 +398,18 @@ void main() {
           expect(cubit.state, isA<LoginSuccess>());
           expect(states, contains(isA<LoginSuccess>()));
           verify(() => mockOAuthFlowProvider.resumeOAuthFlow()).called(1);
+          verify(
+            () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
+          ).called(1);
+          verify(
+            () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.google),
+          ).called(1);
+          verifyNever(
+            () => mockInstallationAnalyticsService.loginAttemptFailed(
+              provider: any(named: "provider"),
+              cause: any(named: "cause"),
+            ),
+          );
         });
 
         blocTest<LoginCubit, LoginState>(
@@ -547,6 +638,9 @@ void main() {
               email: any(named: "email"),
               password: any(named: "password"),
             ),
+          );
+          verifyNever(
+            () => mockInstallationAnalyticsService.loginAttemptStarted(provider: any(named: "provider")),
           );
         },
       );

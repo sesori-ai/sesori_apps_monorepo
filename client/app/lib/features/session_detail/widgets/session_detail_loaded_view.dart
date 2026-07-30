@@ -172,10 +172,15 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                         sessionStatus: state.sessionStatus,
                         childStatuses: state.childStatuses,
                       ),
-                      onSend: (text, command) => context.read<SessionDetailCubit>().sendMessage(
-                        text: text,
-                        command: command,
-                      ),
+                      onSend: ({required text, required command, required inputMode}) =>
+                          context.read<SessionDetailCubit>().sendMessage(
+                            text: text,
+                            command: command,
+                            inputMode: inputMode,
+                          ),
+                      onVoiceTranscriptionCompleted: context
+                          .read<SessionDetailCubit>()
+                          .reportVoiceTranscriptionCompleted,
                       onAbort: () => context.read<SessionDetailCubit>().abort(),
                       header: null,
                       composerHeader: AgentModelButtons(

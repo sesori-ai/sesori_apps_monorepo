@@ -31,10 +31,11 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => LoginCubit(
-        getIt<OAuthFlowProvider>(),
-        getIt<UrlLauncher>(),
-        getIt<AuthSession>(),
-        getIt<LifecycleSource>(),
+        oAuthFlowProvider: getIt<OAuthFlowProvider>(),
+        urlLauncher: getIt<UrlLauncher>(),
+        authSession: getIt<AuthSession>(),
+        lifecycleSource: getIt<LifecycleSource>(),
+        installationAnalyticsService: getIt<InstallationAnalyticsService>(),
       ),
       child: const _LoginScreenBody(),
     );
@@ -76,6 +77,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     });
     final rawNonce = _generateNonce();
     final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+    context.read<LoginCubit>().beginAppleLoginAttempt();
 
     try {
       final credential = await SignInWithApple.getAppleIDCredential(
@@ -103,6 +105,9 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) {
         logd("Apple Sign-In cancelled by user");
+        if (mounted) {
+          context.read<LoginCubit>().onAppleSignInCancelled();
+        }
         // Cancelling the native sheet emits no cubit state, so the pending
         // marker must be cleared here.
         if (mounted) {
@@ -113,14 +118,25 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
         return;
       }
       if (mounted) {
-        context.read<LoginCubit>().onAppleSignInError();
+        context.read<LoginCubit>().onAppleSignInError(cause: _appleFailureCause(e.code));
       }
     } on Exception catch (_) {
       if (mounted) {
-        context.read<LoginCubit>().onAppleSignInError();
+        context.read<LoginCubit>().onAppleSignInError(cause: LoginAttemptFailureCause.unknown);
       }
     }
   }
+
+  LoginAttemptFailureCause _appleFailureCause(AuthorizationErrorCode code) => switch (code) {
+    AuthorizationErrorCode.canceled => LoginAttemptFailureCause.cancelled,
+    AuthorizationErrorCode.notHandled || AuthorizationErrorCode.notInteractive => LoginAttemptFailureCause.launch,
+    AuthorizationErrorCode.failed ||
+    AuthorizationErrorCode.invalidResponse ||
+    AuthorizationErrorCode.credentialExport ||
+    AuthorizationErrorCode.credentialImport ||
+    AuthorizationErrorCode.matchedExcludedCredential => LoginAttemptFailureCause.authentication,
+    AuthorizationErrorCode.unknown => LoginAttemptFailureCause.unknown,
+  };
 
   String _generateNonce({int length = 32}) {
     const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
@@ -318,9 +334,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
               top: 0,
               start: 0,
               end: 0,
-              child: _isEmailSheetOpen
-                  ? const SizedBox.shrink()
-                  : _LoginErrorBanner(state: state),
+              child: _isEmailSheetOpen ? const SizedBox.shrink() : _LoginErrorBanner(state: state),
             ),
           ],
         ),

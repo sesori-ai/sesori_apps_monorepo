@@ -577,6 +577,44 @@ void main() {
     stopCompleter.complete("transcript");
     await tester.pumpAndSettle();
     expect(find.text("transcript"), findsOneWidget);
+    verify(() => cubit.reportVoiceTranscriptionCompleted()).called(1);
+
+    final draftStore = GetIt.instance<DraftStore>();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(
+      draftStore.read(key: "session-1"),
+      const ComposerDraft(text: "transcript", inputMode: AnalyticsInputMode.voiceAssisted),
+    );
+  });
+
+  testWidgets("restored voice-assisted draft preserves its input mode when sent", (tester) async {
+    GetIt.instance<DraftStore>().write(
+      key: "session-1",
+      draft: const ComposerDraft(text: "restored transcript", inputMode: AnalyticsInputMode.voiceAssisted),
+    );
+    when(
+      () => cubit.sendMessage(
+        text: "restored transcript",
+        command: null,
+        inputMode: AnalyticsInputMode.voiceAssisted,
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.text("restored transcript"), findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "restored transcript",
+        command: null,
+        inputMode: AnalyticsInputMode.voiceAssisted,
+      ),
+    ).called(1);
   });
 
   testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {

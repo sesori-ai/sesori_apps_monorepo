@@ -24,6 +24,9 @@ enum _VoiceState { idle, recording, transcribing }
 /// the compact follow-up pill, and the expanded typing container.
 enum _ComposerLayout { holdToTalk, compact, typing }
 
+typedef PromptSubmitCallback =
+    void Function({required String text, required String? command, required AnalyticsInputMode inputMode});
+
 class PromptInput extends StatefulWidget {
   final bool isBusy;
 
@@ -31,7 +34,8 @@ class PromptInput extends StatefulWidget {
   /// session opens with the hold-to-talk pill; once messages exist the
   /// composer rests as a compact "Follow up" field instead.
   final bool hasMessages;
-  final void Function(String text, String? command) onSend;
+  final PromptSubmitCallback onSend;
+  final VoidCallback onVoiceTranscriptionCompleted;
   final VoidCallback onAbort;
   final Widget? composerHeader;
   final List<CommandInfo> availableCommands;
@@ -52,6 +56,7 @@ class PromptInput extends StatefulWidget {
     required this.isBusy,
     required this.hasMessages,
     required this.onSend,
+    required this.onVoiceTranscriptionCompleted,
     required this.onAbort,
     required this.composerHeader,
     required this.availableCommands,
@@ -81,6 +86,7 @@ class _PromptInputState extends State<PromptInput> {
   /// composer only rebuilds when emptiness flips (layout + send/stop swap),
   /// not on every keystroke.
   bool _hasText = false;
+  AnalyticsInputMode _inputMode = AnalyticsInputMode.typed;
 
   /// Layout pinned for the duration of a voice interaction. Swapping the
   /// field slot for the recording/transcribing indicators must not relayout
@@ -147,11 +153,13 @@ class _PromptInputState extends State<PromptInput> {
     final store = _draftStore;
     if (key == null || store == null) {
       _controller.clear();
+      _inputMode = AnalyticsInputMode.typed;
       return;
     }
-    final draft = store.read(key);
-    _controller.text = draft;
-    _controller.selection = TextSelection.collapsed(offset: draft.length);
+    final draft = store.read(key: key);
+    _controller.text = draft?.text ?? "";
+    _inputMode = draft?.inputMode ?? AnalyticsInputMode.typed;
+    _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
   }
 
   void _saveDraft() => _saveDraftFor(widget.draftKey);
@@ -159,18 +167,22 @@ class _PromptInputState extends State<PromptInput> {
   void _saveDraftFor(String? key) {
     final store = _draftStore;
     if (key == null || store == null) return;
-    store.write(key, text: _controller.text);
+    store.write(
+      key: key,
+      draft: ComposerDraft(text: _controller.text, inputMode: _inputMode),
+    );
   }
 
   void _clearDraft() {
     final key = widget.draftKey;
     final store = _draftStore;
     if (key == null || store == null) return;
-    store.clear(key);
+    store.clear(key: key);
   }
 
   void _handleTextChanged() {
     final hasText = _controller.text.trim().isNotEmpty;
+    if (!hasText) _inputMode = AnalyticsInputMode.typed;
     if (hasText != _hasText && mounted) {
       setState(() => _hasText = hasText);
     }
@@ -225,12 +237,16 @@ class _PromptInputState extends State<PromptInput> {
   void _handleSend() {
     final stagedCommand = widget.stagedCommand;
     if (stagedCommand != null) {
-      widget.onSend(_controller.text, stagedCommand.name);
+      widget.onSend(
+        text: _controller.text,
+        command: stagedCommand.name,
+        inputMode: AnalyticsInputMode.typed,
+      );
       widget.onCommandCleared();
     } else {
       final text = _controller.text.trim();
       if (text.isEmpty) return;
-      widget.onSend(text, null);
+      widget.onSend(text: text, command: null, inputMode: _inputMode);
     }
 
     _controller.clear();
@@ -322,8 +338,10 @@ class _PromptInputState extends State<PromptInput> {
     try {
       final transcript = await _voiceService.stopAndTranscribe();
       if (!mounted) return;
+      if (transcript.trim().isEmpty) return;
 
       // Append transcript to the text field, preserving any existing text.
+      _inputMode = AnalyticsInputMode.voiceAssisted;
       final currentText = _controller.text;
       if (currentText.isNotEmpty && !currentText.endsWith(" ")) {
         _controller.text = "$currentText $transcript";
@@ -332,6 +350,7 @@ class _PromptInputState extends State<PromptInput> {
       }
       // Move cursor to end.
       _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      widget.onVoiceTranscriptionCompleted();
       // The transcript lands in the typing layout, whose field may only mount
       // with this rebuild — focus once it exists.
       _focusComposerField();

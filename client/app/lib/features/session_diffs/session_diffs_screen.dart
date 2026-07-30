@@ -21,6 +21,7 @@ class SessionDiffsScreen extends StatelessWidget {
       create: (_) => DiffCubit(
         sessionRepository: getIt<SessionRepository>(),
         connectionService: getIt<ConnectionService>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
         sessionId: sessionId,
       ),
       // SessionDiffsBody owns the PregoGlassScaffold so its bar subtitle can

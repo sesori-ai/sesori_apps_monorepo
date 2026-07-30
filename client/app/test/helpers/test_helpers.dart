@@ -14,10 +14,12 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
     show
         AnalyticsDeliveryResult,
+        AnalyticsSchemaReadyEvent,
         AppRouteDef,
         OnboardingSurface,
         ProductAnalyticsEvent,
         ProductAnalyticsService,
+        ProductAnalyticsState,
         RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
@@ -145,12 +147,20 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 class MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
 
 void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
+  registerFallbackValue(const AnalyticsSchemaReadyEvent());
   when(
     () => service.logEvent(
       event: any(named: "event"),
       occurredAtUtc: any(named: "occurredAtUtc"),
     ),
   ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+  when(() => service.state).thenReturn(ProductAnalyticsState.initial);
+}
+
+MockProductAnalyticsService createStubbedProductAnalyticsService() {
+  final service = MockProductAnalyticsService();
+  stubProductAnalyticsService(service: service);
+  return service;
 }
 
 void registerListServices({
@@ -183,9 +193,7 @@ void _registerListServices({
     getIt.unregister<ProductAnalyticsService>();
   }
   final analyticsService = productAnalyticsService ?? MockProductAnalyticsService();
-  if (productAnalyticsService != null) {
-    stubProductAnalyticsService(service: analyticsService);
-  }
+  stubProductAnalyticsService(service: analyticsService);
   getIt.registerSingleton<ProjectListService>(
     ProjectListService(
       repository: projectRepository,

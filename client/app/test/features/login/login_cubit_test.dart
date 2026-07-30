@@ -8,6 +8,8 @@ import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/installation_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart" show AuthInitResponse, AuthProvider;
 
 import "../../helpers/test_helpers.dart";
@@ -16,10 +18,13 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class MockLifecycleSource extends Mock implements LifecycleSource {}
 
+class MockInstallationAnalyticsService extends Mock implements InstallationAnalyticsService {}
+
 void main() {
   setUpAll(() {
     registerAllFallbackValues();
     registerFallbackValue(AuthProvider.github);
+    registerFallbackValue(LoginAttemptFailureCause.unknown);
   });
 
   group("LoginCubit", () {
@@ -27,12 +32,14 @@ void main() {
     late MockUrlLauncher mockUrlLauncher;
     late MockAuthSession mockAuthSession;
     late MockLifecycleSource mockLifecycleSource;
+    late MockInstallationAnalyticsService mockInstallationAnalyticsService;
 
     setUp(() {
       mockOAuthFlowProvider = MockOAuthFlowProvider();
       mockUrlLauncher = MockUrlLauncher();
       mockAuthSession = MockAuthSession();
       mockLifecycleSource = MockLifecycleSource();
+      mockInstallationAnalyticsService = MockInstallationAnalyticsService();
 
       // Default mock behaviors
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
@@ -46,19 +53,39 @@ void main() {
         ),
       );
       when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthUser());
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptStarted(provider: any(named: "provider")),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: any(named: "provider")),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptFailed(
+          provider: any(named: "provider"),
+          cause: any(named: "cause"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
       when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer(
         (_) => BehaviorSubject.seeded(LifecycleState.resumed),
       );
     });
 
+    LoginCubit buildCubit() => LoginCubit(
+      oAuthFlowProvider: mockOAuthFlowProvider,
+      urlLauncher: mockUrlLauncher,
+      authSession: mockAuthSession,
+      lifecycleSource: mockLifecycleSource,
+      installationAnalyticsService: mockInstallationAnalyticsService,
+    );
+
     test("initial state is LoginState.idle()", () {
-      final cubit = LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource);
+      final cubit = buildCubit();
       expect(cubit.state, isA<LoginIdle>());
     });
 
     blocTest<LoginCubit, LoginState>(
       "loginWithProvider emits authenticating → polling → success",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         await cubit.loginWithProvider(AuthProvider.github);
       },
@@ -71,7 +98,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "loginWithProvider emits authenticating then failed when startOAuthFlow throws",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         when(
           () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
@@ -87,7 +114,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "calls startOAuthFlow with correct provider",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         await cubit.loginWithProvider(AuthProvider.github);
       },
@@ -100,7 +127,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "calls startOAuthFlow for Google provider",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         await cubit.loginWithProvider(AuthProvider.google);
       },
@@ -113,7 +140,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "loginWithProvider emits failed when browser launch fails",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
 
@@ -128,7 +155,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "loginWithProvider emits timeout when pollForResult throws TimeoutException",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         when(
           () => mockOAuthFlowProvider.pollForResult(),
@@ -145,7 +172,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "calls pollForResult after browser launch",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         await cubit.loginWithProvider(AuthProvider.github);
       },
@@ -156,10 +183,13 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "loginWithApple emits authenticating then success on success",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         when(
-          () => mockAuthSession.loginWithApple(idToken: any(named: "idToken"), nonce: any(named: "nonce")),
+          () => mockAuthSession.loginWithApple(
+            idToken: any(named: "idToken"),
+            nonce: any(named: "nonce"),
+          ),
         ).thenAnswer((_) async => testAuthUser());
 
         await cubit.loginWithApple(idToken: "apple-id-token", nonce: "nonce");
@@ -172,10 +202,13 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "loginWithApple emits authenticating then failed on error",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         when(
-          () => mockAuthSession.loginWithApple(idToken: any(named: "idToken"), nonce: any(named: "nonce")),
+          () => mockAuthSession.loginWithApple(
+            idToken: any(named: "idToken"),
+            nonce: any(named: "nonce"),
+          ),
         ).thenThrow(Exception("Apple auth failed"));
 
         await cubit.loginWithApple(idToken: "apple-id-token", nonce: "nonce");
@@ -188,10 +221,13 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "loginWithApple calls authSession with correct params",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
+      build: buildCubit,
       act: (cubit) async {
         when(
-          () => mockAuthSession.loginWithApple(idToken: any(named: "idToken"), nonce: any(named: "nonce")),
+          () => mockAuthSession.loginWithApple(
+            idToken: any(named: "idToken"),
+            nonce: any(named: "nonce"),
+          ),
         ).thenAnswer((_) async => testAuthUser());
 
         await cubit.loginWithApple(idToken: "apple-id-token", nonce: "raw-nonce");

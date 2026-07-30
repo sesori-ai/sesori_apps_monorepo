@@ -100,6 +100,8 @@ void _registerDependencies({
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
   getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
   getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
+  getIt.registerSingleton<RouteSource>(MockRouteSource(initialRoute: AppRouteDef.sessionDetail));
+  getIt.registerSingleton<ProductAnalyticsService>(createStubbedProductAnalyticsService());
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);

@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/errors/remote_failure_reason.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -35,6 +36,8 @@ const connectedStatus = ConnectionStatus.connected(
 );
 
 void main() {
+  setUpAll(registerAllFallbackValues);
+
   group("NewSessionCubit plugin selection", () {
     late MockSessionService sessionService;
     late MockPluginRepository pluginRepository;
@@ -43,6 +46,7 @@ void main() {
     late MockConnectionService connectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late NewSessionSelectionTracker selectionTracker;
+    late MockProductAnalyticsService productAnalyticsService;
 
     setUp(() {
       sessionService = MockSessionService();
@@ -52,6 +56,7 @@ void main() {
       connectionService = MockConnectionService();
       connectionStatus = BehaviorSubject.seeded(connectedStatus);
       selectionTracker = NewSessionSelectionTracker();
+      productAnalyticsService = stubbedProductAnalyticsService();
       when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
       when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
       when(
@@ -90,6 +95,7 @@ void main() {
       ),
       projectRepository: projectRepository,
       selectionTracker: selectionTracker,
+      productAnalyticsService: productAnalyticsService,
       projectId: "project-1",
       initialSupportsDedicatedWorktrees: true,
     );
@@ -295,7 +301,9 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) {
         discoveryCalls++;
         if (discoveryCalls == 1) {
-          return Future.value(ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])));
+          return Future.value(
+            ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+          );
         }
         return reconnectDiscovery.future;
       });
@@ -703,7 +711,12 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
 
       verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "degraded")).called(1);
       verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "degraded")).called(1);
@@ -751,7 +764,12 @@ void main() {
       expect(state.selectedPlugin, unavailable);
       cubit.selectPlugin(pluginId: "failed");
       cubit.selectPlugin(pluginId: "unknown");
-      await cubit.createSession(text: "blocked", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "blocked",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
 
       expect((cubit.state as NewSessionIdle).selectedPlugin, unavailable);
       _verifyNoComposerCalls(sessionService);
@@ -779,7 +797,12 @@ void main() {
       await _waitUntil(() => cubit.state.agentModelData?.isLoading == false);
 
       expect(cubit.state.agentModelData?.plugin, isNull);
-      await cubit.createSession(text: "blocked", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "blocked",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
       _verifyNoComposerCalls(sessionService);
 
       cubit.selectPlugin(pluginId: "plugin-b");
@@ -930,7 +953,12 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
 
       expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
       expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-b")?.agent, "agent-b");
@@ -967,7 +995,12 @@ void main() {
         ),
       );
 
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
 
       verify(
         () => pluginPreferenceRepository.writePluginId(bridgeId: "br_test", pluginId: "plugin-b"),
@@ -1051,7 +1084,12 @@ void main() {
         return cubit.state is NewSessionError && !(data?.isLoading ?? true);
       });
 
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
 
       verifyNever(
         () => pluginPreferenceRepository.writePluginId(
@@ -1082,7 +1120,12 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
 
       verifyNever(
         () => pluginPreferenceRepository.writePluginId(

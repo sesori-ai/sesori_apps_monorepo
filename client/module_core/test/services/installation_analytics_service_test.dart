@@ -21,8 +21,8 @@ void main() {
     );
 
     final result = await service.loginAttemptFailed(
-      provider: AnalyticsLoginProvider.google,
-      failureKind: AnalyticsLoginFailureKind.timeout,
+      provider: AuthProvider.google,
+      cause: LoginAttemptFailureCause.timeout,
     );
 
     expect(result, AnalyticsDeliveryResult.acceptedBySdk);
@@ -48,10 +48,32 @@ void main() {
       );
 
       expect(
-        await service.loginAttemptStarted(provider: AnalyticsLoginProvider.email),
+        await service.loginAttemptStarted(provider: AuthProvider.email),
         AnalyticsDeliveryResult.failed,
       );
       expect(repository.events, isEmpty);
     }
+  });
+
+  test("sealed auth providers map exhaustively to pinned analytics providers", () async {
+    final repository = _RecordingAnalyticsRepository();
+    final service = InstallationAnalyticsService(
+      capability: const AnalyticsRuntimeCapability.enabled(),
+      repository: repository,
+    );
+
+    for (final provider in [
+      AuthProvider.github,
+      AuthProvider.google,
+      AuthProvider.apple,
+      AuthProvider.email,
+    ]) {
+      await service.loginAttemptStarted(provider: provider);
+    }
+
+    expect(
+      repository.events.map((event) => event.parameters["provider"]),
+      ["github", "google", "apple", "email"],
+    );
   });
 }

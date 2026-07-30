@@ -1,4 +1,22 @@
 import "package:injectable/injectable.dart";
+import "package:meta/meta.dart";
+
+import "../foundation/models/product_analytics/product_analytics_event.dart";
+
+@immutable
+final class ComposerDraft {
+  final String text;
+  final AnalyticsInputMode inputMode;
+
+  const ComposerDraft({required this.text, required this.inputMode});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ComposerDraft && text == other.text && inputMode == other.inputMode;
+
+  @override
+  int get hashCode => Object.hash(text, inputMode);
+}
 
 /// In-memory store for unsent composer drafts, keyed by a stable key — the
 /// session id for an existing session, or `"new-session:<projectId>"` for the
@@ -13,21 +31,21 @@ import "package:injectable/injectable.dart";
 /// are not persisted across an app kill.
 @lazySingleton
 class DraftStore {
-  final Map<String, String> _drafts = <String, String>{};
+  final Map<String, ComposerDraft> _drafts = <String, ComposerDraft>{};
 
-  /// The saved draft for [key], or the empty string if none.
-  String read(String key) => _drafts[key] ?? "";
+  /// The saved draft for [key], or null when none exists.
+  ComposerDraft? read({required String key}) => _drafts[key];
 
-  /// Saves [text] as the draft for [key]. Whitespace-only (or empty) text
+  /// Saves [draft] for [key]. Whitespace-only (or empty) text
   /// clears the entry, so a blank composer never restores a useless draft.
-  void write(String key, {required String text}) {
-    if (text.trim().isEmpty) {
+  void write({required String key, required ComposerDraft draft}) {
+    if (draft.text.trim().isEmpty) {
       _drafts.remove(key);
     } else {
-      _drafts[key] = text;
+      _drafts[key] = draft;
     }
   }
 
   /// Drops any saved draft for [key] (e.g. after the message is sent).
-  void clear(String key) => _drafts.remove(key);
+  void clear({required String key}) => _drafts.remove(key);
 }

@@ -210,6 +210,7 @@ void main() {
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
+    GetIt.instance.registerSingleton<ProductAnalyticsService>(createStubbedProductAnalyticsService());
   });
 
   tearDown(() async {
@@ -1152,7 +1153,10 @@ void main() {
     // session — PromptInput.dispose() should persist the unsent prompt.
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
-    expect(draftStore.read("new-session:project-1"), "half-written idea");
+    expect(
+      draftStore.read(key: "new-session:project-1"),
+      const ComposerDraft(text: "half-written idea", inputMode: AnalyticsInputMode.typed),
+    );
 
     // Re-open the new-session screen — the per-project draft is restored.
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));

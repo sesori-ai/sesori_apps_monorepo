@@ -32,6 +32,8 @@ const refreshThrottleDuration = Duration(seconds: 30);
 @visibleForTesting
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
+enum _InventoryAnalyticsGuard { ready, inFlight, consumed }
+
 class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectRepository _projectRepository;
   final ProjectListService _projectListService;
@@ -42,6 +44,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProductAnalyticsService _productAnalyticsService;
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  _InventoryAnalyticsGuard _emptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
+  _InventoryAnalyticsGuard _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   ProjectListCubit(
@@ -182,6 +186,48 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           logw("Failed to deliver onboarding analytics event");
         }
       }),
+    );
+  }
+
+  void _reportInventoryLoaded({required bool isEmpty}) {
+    final guard = isEmpty ? _emptyInventoryAnalytics : _nonEmptyInventoryAnalytics;
+    if (guard != _InventoryAnalyticsGuard.ready) return;
+    if (isEmpty) {
+      _emptyInventoryAnalytics = _InventoryAnalyticsGuard.inFlight;
+    } else {
+      _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.inFlight;
+    }
+
+    unawaited(
+      _productAnalyticsService
+          .logEvent(
+            event: ProductAnalyticsEvent.projectInventoryLoaded(
+              inventoryState: isEmpty ? AnalyticsInventoryState.empty : AnalyticsInventoryState.nonEmpty,
+            ),
+            occurredAtUtc: DateTime.now().toUtc(),
+          )
+          .then<void>((result) {
+            final consumed =
+                result == AnalyticsDeliveryResult.acceptedBySdk ||
+                (!isEmpty && result == AnalyticsDeliveryResult.deferredUntilPreference);
+            final next = consumed ? _InventoryAnalyticsGuard.consumed : _InventoryAnalyticsGuard.ready;
+            if (isEmpty) {
+              _emptyInventoryAnalytics = next;
+            } else {
+              _nonEmptyInventoryAnalytics = next;
+            }
+            if (!consumed && _productAnalyticsService.state.isActive) {
+              logw("Failed to deliver project inventory analytics event");
+            }
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            if (isEmpty) {
+              _emptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
+            } else {
+              _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
+            }
+            logw("Failed to report project inventory analytics event", error, stackTrace);
+          }),
     );
   }
 
@@ -738,6 +784,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           projects: mergedProjects,
           activityByProjectId: _sseEventTracker.currentSessionActivity,
         );
+        _reportInventoryLoaded(isEmpty: sortedProjects.isEmpty);
         // The REST aggregate is authoritative at fetch time — seed the tracker
         // so a stale live `true` can't keep a project bold after its last
         // unseen session was archived/deleted while an echo was missed.

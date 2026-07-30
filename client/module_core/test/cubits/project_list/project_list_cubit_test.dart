@@ -184,6 +184,68 @@ void main() {
       ]);
     });
 
+    test("successful inventory transitions report empty and non-empty once each", () async {
+      var fetchCount = 0;
+      when(() => mockProjectRepository.listProjects()).thenAnswer((_) async {
+        fetchCount++;
+        return ApiResponse.success(
+          Projects(data: fetchCount == 1 ? const [] : [testProject()]),
+        );
+      });
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await cubit.stream.firstWhere((state) => state is ProjectListLoaded);
+
+      await cubit.refreshProjects();
+      await cubit.refreshProjects();
+      await Future<void>.delayed(Duration.zero);
+
+      final events = verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: captureAny(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).captured.whereType<ProjectInventoryLoadedEvent>().toList();
+      expect(events, [
+        const ProductAnalyticsEvent.projectInventoryLoaded(
+          inventoryState: AnalyticsInventoryState.empty,
+        ),
+        const ProductAnalyticsEvent.projectInventoryLoaded(
+          inventoryState: AnalyticsInventoryState.nonEmpty,
+        ),
+      ]);
+    });
+
+    test("a deferred non-empty inventory consumes its cubit lifetime guard", () async {
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.deferredUntilPreference);
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await cubit.stream.firstWhere((state) => state is ProjectListLoaded);
+
+      await cubit.refreshProjects();
+      await Future<void>.delayed(Duration.zero);
+
+      final events = verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: captureAny(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).captured.whereType<ProjectInventoryLoadedEvent>().toList();
+      expect(events, [
+        const ProductAnalyticsEvent.projectInventoryLoaded(
+          inventoryState: AnalyticsInventoryState.nonEmpty,
+        ),
+      ]);
+    });
+
     // -------------------------------------------------------------------------
     // Test 1: constructor triggers load — success with projects
     // -------------------------------------------------------------------------

@@ -35,6 +35,7 @@ class NewSessionScreen extends StatelessWidget {
         newSessionPluginService: getIt<NewSessionPluginService>(),
         projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
         projectId: projectId,
         initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
       ),
@@ -246,13 +247,17 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             draftKey: "new-session:${widget.projectId}",
                             hasMessages: false,
                             isBusy: state is NewSessionSending,
-                            onSend: (String text, String? command) {
+                            onSend: ({required text, required command, required inputMode}) {
                               context.read<NewSessionCubit>().createSession(
                                 text: text,
                                 command: command,
+                                inputMode: inputMode,
                                 dedicatedWorktree: _dedicatedWorktree,
                               );
                             },
+                            onVoiceTranscriptionCompleted: context
+                                .read<NewSessionCubit>()
+                                .reportVoiceTranscriptionCompleted,
                             onAbort: _dismissScreen,
                             header: _buildErrorBanner(state),
                             composerHeader: _buildComposerHeader(state),

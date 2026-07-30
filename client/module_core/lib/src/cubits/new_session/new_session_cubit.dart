@@ -9,10 +9,13 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
+import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
+import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
+import "../../services/product_analytics_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
@@ -22,6 +25,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   final NewSessionPluginService _newSessionPluginService;
   final ProjectRepository _projectRepository;
   final NewSessionSelectionTracker _selectionTracker;
+  final ProductAnalyticsService _productAnalyticsService;
   final String _projectId;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late bool _wasConnected;
@@ -37,6 +41,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required NewSessionPluginService newSessionPluginService,
     required ProjectRepository projectRepository,
     required NewSessionSelectionTracker selectionTracker,
+    required ProductAnalyticsService productAnalyticsService,
     required String projectId,
     required bool? initialSupportsDedicatedWorktrees,
   }) : _connectionService = connectionService,
@@ -44,6 +49,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
        _newSessionPluginService = newSessionPluginService,
        _projectRepository = projectRepository,
        _selectionTracker = selectionTracker,
+       _productAnalyticsService = productAnalyticsService,
        _projectId = projectId,
        super(
          NewSessionState.idle(
@@ -620,6 +626,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String text,
     required bool dedicatedWorktree,
     required String? command,
+    required AnalyticsInputMode inputMode,
   }) async {
     final current = state;
     if (current is NewSessionSending || current is NewSessionCreated) return;
@@ -631,6 +638,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
     final trimmed = text.trim();
     if (trimmed.isEmpty && !hasCommand) return;
+    final analyticsSubmission = hasCommand
+        ? const AnalyticsSubmission.command()
+        : AnalyticsSubmission.text(inputMode: inputMode);
+    final usesDedicatedWorktree = dedicatedWorktree && config.supportsDedicatedWorktrees;
+    final workspaceKind = usesDedicatedWorktree
+        ? AnalyticsWorkspaceKind.dedicatedWorktree
+        : AnalyticsWorkspaceKind.project;
 
     final pluginId = selectedPlugin.id;
     final selectionRevisionAtSend = _selectionTracker.currentRevision(
@@ -667,15 +681,29 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       modelID: config.agentModel?.modelID,
       variant: variantId == null ? null : SessionVariant(id: variantId),
       command: normalizedCommand,
-      dedicatedWorktree: dedicatedWorktree && config.supportsDedicatedWorktrees,
+      dedicatedWorktree: usesDedicatedWorktree,
     );
 
-    if (response case SuccessResponse()) {
-      _selectionTracker.clearIfRevision(
-        projectId: _projectId,
-        pluginId: pluginId,
-        revision: selectionRevisionAtSend,
-      );
+    switch (response) {
+      case SuccessResponse():
+        _selectionTracker.clearIfRevision(
+          projectId: _projectId,
+          pluginId: pluginId,
+          revision: selectionRevisionAtSend,
+        );
+        _reportProductEvent(
+          event: ProductAnalyticsEvent.sessionCreatedWithMessage(
+            submission: analyticsSubmission,
+            workspaceKind: workspaceKind,
+          ),
+        );
+      case ErrorResponse(:final error):
+        _reportProductEvent(
+          event: ProductAnalyticsEvent.sessionCreationFailed(
+            failureReason: _analyticsFailureReason(error.remoteFailureReason),
+            workspaceKind: workspaceKind,
+          ),
+        );
     }
 
     if (isClosed) return;
@@ -703,6 +731,33 @@ class NewSessionCubit extends Cubit<NewSessionState> {
           ),
         );
     }
+  }
+
+  void reportVoiceTranscriptionCompleted() {
+    _reportProductEvent(event: const ProductAnalyticsEvent.voiceTranscriptionCompleted());
+  }
+
+  AnalyticsSessionCreationFailureReason _analyticsFailureReason(RemoteFailureReason reason) => switch (reason) {
+    RemoteFailureReason.notAuthenticated => AnalyticsSessionCreationFailureReason.notAuthenticated,
+    RemoteFailureReason.serverRejected => AnalyticsSessionCreationFailureReason.serverRejected,
+    RemoteFailureReason.networkDown => AnalyticsSessionCreationFailureReason.networkDown,
+    RemoteFailureReason.badResponse => AnalyticsSessionCreationFailureReason.badResponse,
+    RemoteFailureReason.unknown => AnalyticsSessionCreationFailureReason.unknown,
+  };
+
+  void _reportProductEvent({required ProductAnalyticsEvent event}) {
+    unawaited(
+      _productAnalyticsService
+          .logEvent(event: event, occurredAtUtc: DateTime.now().toUtc())
+          .then<void>((result) {
+            if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+              logw("Failed to deliver new-session analytics event");
+            }
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            logw("Failed to report new-session analytics event", error, stackTrace);
+          }),
+    );
   }
 
   @override

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -32,18 +34,54 @@ class SessionDetailScreen extends StatelessWidget {
         permissionRepository: getIt<PermissionRepository>(),
         sessionViewingService: getIt<SessionViewingService>(),
         lifecycleSource: getIt<LifecycleSource>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
         sessionId: sessionId,
         projectId: projectId,
         notificationCanceller: getIt<NotificationCanceller>(),
         failureReporter: getIt<FailureReporter>(),
       ),
-      child: SessionDetailBody(
-        projectId: projectId,
-        projectName: projectName,
-        sessionId: sessionId,
-        sessionTitle: sessionTitle,
-        readOnly: readOnly,
+      child: _SessionActivityAnalyticsScope(
+        child: SessionDetailBody(
+          projectId: projectId,
+          projectName: projectName,
+          sessionId: sessionId,
+          sessionTitle: sessionTitle,
+          readOnly: readOnly,
+        ),
       ),
     );
   }
+}
+
+class _SessionActivityAnalyticsScope extends StatefulWidget {
+  final Widget child;
+
+  const _SessionActivityAnalyticsScope({required this.child});
+
+  @override
+  State<_SessionActivityAnalyticsScope> createState() => _SessionActivityAnalyticsScopeState();
+}
+
+class _SessionActivityAnalyticsScopeState extends State<_SessionActivityAnalyticsScope> {
+  late final SessionActivityAnalyticsConsumer _consumer;
+
+  @override
+  void initState() {
+    super.initState();
+    _consumer = SessionActivityAnalyticsConsumer(
+      sessionDetailCubit: context.read<SessionDetailCubit>(),
+      routeSource: getIt<RouteSource>(),
+      lifecycleSource: getIt<LifecycleSource>(),
+      productAnalyticsService: getIt<ProductAnalyticsService>(),
+    );
+  }
+
+  @override
+  void dispose() {
+    unawaited(_consumer.dispose());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

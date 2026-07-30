@@ -1,18 +1,22 @@
 import "package:sesori_dart_core/src/cubits/session_detail/prompt_send_queue.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:test/test.dart";
 
-const _first = QueuedSessionSubmission(text: "first");
-const _second = QueuedSessionSubmission(text: "second");
-const _same = QueuedSessionSubmission(text: "same");
-const _other = QueuedSessionSubmission(text: "other");
-const _a = QueuedSessionSubmission(text: "a");
-const _b = QueuedSessionSubmission(text: "b");
-const _c = QueuedSessionSubmission(text: "c");
-const _existing = QueuedSessionSubmission(text: "existing");
-const _retried = QueuedSessionSubmission(text: "retried");
-const _msg1 = QueuedSessionSubmission(text: "msg1");
-const _msg2 = QueuedSessionSubmission(text: "msg2");
+final _first = QueuedSessionSubmission.text(text: "first", inputMode: AnalyticsInputMode.typed);
+final _second = QueuedSessionSubmission.text(
+  text: "second",
+  inputMode: AnalyticsInputMode.voiceAssisted,
+);
+final _same = QueuedSessionSubmission.text(text: "same", inputMode: AnalyticsInputMode.typed);
+final _other = QueuedSessionSubmission.text(text: "other", inputMode: AnalyticsInputMode.typed);
+final _a = QueuedSessionSubmission.text(text: "a", inputMode: AnalyticsInputMode.typed);
+final _b = QueuedSessionSubmission.text(text: "b", inputMode: AnalyticsInputMode.typed);
+final _c = QueuedSessionSubmission.text(text: "c", inputMode: AnalyticsInputMode.typed);
+final _existing = QueuedSessionSubmission.text(text: "existing", inputMode: AnalyticsInputMode.typed);
+final _retried = QueuedSessionSubmission.text(text: "retried", inputMode: AnalyticsInputMode.typed);
+final _msg1 = QueuedSessionSubmission.text(text: "msg1", inputMode: AnalyticsInputMode.typed);
+final _msg2 = QueuedSessionSubmission.text(text: "msg2", inputMode: AnalyticsInputMode.typed);
 
 void main() {
   group("PromptSendQueue", () {

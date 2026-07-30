@@ -5,25 +5,42 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/session_diffs/diff_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_diffs/diff_state.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
+class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+
 void main() {
-  setUpAll(registerAllFallbackValues);
+  setUpAll(() {
+    registerAllFallbackValues();
+    registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+    registerFallbackValue(DateTime.utc(2026));
+  });
 
   group("DiffCubit", () {
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
+    late _MockProductAnalyticsService mockProductAnalyticsService;
     late StreamController<SesoriSessionEvent> sessionEvents;
     const sessionId = "session-1";
 
     setUp(() {
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
+      mockProductAnalyticsService = _MockProductAnalyticsService();
       sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
       when(() => mockConnectionService.sessionEvents(sessionId)).thenAnswer((_) => sessionEvents.stream);
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
     });
 
     tearDown(() async {
@@ -33,6 +50,7 @@ void main() {
     DiffCubit buildCubit() => DiffCubit(
       sessionRepository: mockSessionRepository,
       connectionService: mockConnectionService,
+      productAnalyticsService: mockProductAnalyticsService,
       sessionId: sessionId,
     );
 
@@ -44,6 +62,38 @@ void main() {
       deletions: 0,
       status: FileDiffStatus.modified,
     );
+
+    test("successful diff transitions report empty and non-empty once each", () async {
+      var fetchCount = 0;
+      when(() => mockSessionRepository.getSessionDiffs(sessionId: sessionId)).thenAnswer((_) async {
+        fetchCount++;
+        return ApiResponse.success(
+          SessionDiffsResponse(diffs: fetchCount == 1 ? const [] : [testFileDiff()]),
+        );
+      });
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await cubit.stream.firstWhere((state) => state is DiffStateLoaded);
+
+      await cubit.refresh();
+      await cubit.refresh();
+      await Future<void>.delayed(Duration.zero);
+
+      final events = verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: captureAny(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).captured.whereType<SessionDiffViewedEvent>().toList();
+      expect(events, [
+        const ProductAnalyticsEvent.sessionDiffViewed(
+          changeState: AnalyticsChangeState.empty,
+        ),
+        const ProductAnalyticsEvent.sessionDiffViewed(
+          changeState: AnalyticsChangeState.nonEmpty,
+        ),
+      ]);
+    });
 
     // -------------------------------------------------------------------------
     // 1. init → loading → loaded

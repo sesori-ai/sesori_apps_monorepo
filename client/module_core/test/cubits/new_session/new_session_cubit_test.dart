@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -16,6 +17,8 @@ import "package:test/test.dart";
 import "../../helpers/test_helpers.dart";
 
 void main() {
+  setUpAll(registerAllFallbackValues);
+
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
     late MockPluginRepository mockPluginRepository;
@@ -24,6 +27,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late MockProjectRepository mockProjectRepository;
     late NewSessionSelectionTracker selectionTracker;
+    late MockProductAnalyticsService mockProductAnalyticsService;
 
     const defaultPlugin = PluginMetadata(
       id: "plugin-1",
@@ -46,6 +50,7 @@ void main() {
       );
       mockProjectRepository = MockProjectRepository();
       selectionTracker = NewSessionSelectionTracker();
+      mockProductAnalyticsService = stubbedProductAnalyticsService();
 
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
@@ -113,6 +118,7 @@ void main() {
       ),
       projectRepository: mockProjectRepository,
       selectionTracker: selectionTracker,
+      productAnalyticsService: mockProductAnalyticsService,
       projectId: "project-1",
       initialSupportsDedicatedWorktrees: true,
     );
@@ -143,6 +149,7 @@ void main() {
         ),
         projectRepository: mockProjectRepository,
         selectionTracker: selectionTracker,
+        productAnalyticsService: mockProductAnalyticsService,
         projectId: "project-1",
         initialSupportsDedicatedWorktrees: false,
       );
@@ -220,6 +227,7 @@ void main() {
           text: "hello",
           dedicatedWorktree: false,
           command: null,
+          inputMode: AnalyticsInputMode.typed,
         );
       },
       expect: () => [
@@ -239,6 +247,15 @@ void main() {
             variant: null,
             command: null,
             dedicatedWorktree: false,
+          ),
+        ).called(1);
+        verify(
+          () => mockProductAnalyticsService.logEvent(
+            event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+              submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+              workspaceKind: AnalyticsWorkspaceKind.project,
+            ),
+            occurredAtUtc: any(named: "occurredAtUtc"),
           ),
         ).called(1);
       },
@@ -270,6 +287,7 @@ void main() {
           ),
           projectRepository: mockProjectRepository,
           selectionTracker: selectionTracker,
+          productAnalyticsService: mockProductAnalyticsService,
           projectId: "project-1",
           initialSupportsDedicatedWorktrees: true,
         );
@@ -280,6 +298,7 @@ void main() {
           text: "",
           command: "review",
           dedicatedWorktree: true,
+          inputMode: AnalyticsInputMode.voiceAssisted,
         );
       },
       expect: () => [
@@ -301,8 +320,73 @@ void main() {
             dedicatedWorktree: true,
           ),
         ).called(1);
+        verify(
+          () => mockProductAnalyticsService.logEvent(
+            event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+              submission: AnalyticsSubmission.command(),
+              workspaceKind: AnalyticsWorkspaceKind.dedicatedWorktree,
+            ),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        ).called(1);
       },
     );
+
+    test("a failed creation reports only its bounded failure reason and workspace kind", () async {
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.dartHttpClient(Exception("private transport detail"))));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      await cubit.createSession(
+        text: "sensitive prompt",
+        dedicatedWorktree: false,
+        command: null,
+        inputMode: AnalyticsInputMode.voiceAssisted,
+      );
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionCreationFailed(
+            failureReason: AnalyticsSessionCreationFailureReason.networkDown,
+            workspaceKind: AnalyticsWorkspaceKind.project,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event", that: isA<SessionCreatedWithMessageEvent>()),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
+
+    test("voice transcription completion reports a content-free outcome", () async {
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      cubit.reportVoiceTranscriptionCompleted();
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.voiceTranscriptionCompleted(),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+    });
 
     test("send-owned command clear survives an error and retry", () async {
       final firstCreate = Completer<ApiResponse<Session>>();
@@ -341,6 +425,7 @@ void main() {
         text: "",
         command: command.name,
         dedicatedWorktree: true,
+        inputMode: AnalyticsInputMode.typed,
       );
       expect(cubit.state, isA<NewSessionSending>());
 
@@ -361,6 +446,7 @@ void main() {
         text: "retry",
         command: cubit.state.agentModelData?.stagedCommand?.name,
         dedicatedWorktree: true,
+        inputMode: AnalyticsInputMode.typed,
       );
 
       verify(
@@ -417,6 +503,7 @@ void main() {
         text: "hello",
         dedicatedWorktree: true,
         command: null,
+        inputMode: AnalyticsInputMode.typed,
       );
 
       verify(
@@ -481,6 +568,7 @@ void main() {
         text: "hello",
         dedicatedWorktree: true,
         command: null,
+        inputMode: AnalyticsInputMode.typed,
       );
 
       verify(
@@ -549,6 +637,7 @@ void main() {
           text: "hello",
           dedicatedWorktree: true,
           command: null,
+          inputMode: AnalyticsInputMode.typed,
         );
       },
       expect: () => [
@@ -1394,7 +1483,12 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+        await cubit.createSession(
+          text: "hello",
+          dedicatedWorktree: true,
+          command: null,
+          inputMode: AnalyticsInputMode.typed,
+        );
       },
       verify: (_) {
         expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
@@ -1426,7 +1520,12 @@ void main() {
       final cubit = buildCubit();
       await waitForComposer(cubit);
       // Kick off creation but don't await — the request is now in flight.
-      final pending = cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      final pending = cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
       // The user backs out while sending; the screen disposes the cubit.
       await cubit.close();
       // The launch still succeeds in the background after the cubit is gone.
@@ -1461,7 +1560,12 @@ void main() {
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
-      final pending = cubit.createSession(text: "hi", dedicatedWorktree: true, command: null);
+      final pending = cubit.createSession(
+        text: "hi",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
       // User backs out; the screen disposes this cubit.
       await cubit.close();
       // A reopened composer writes a newer selection V2 for the same project
@@ -1508,7 +1612,12 @@ void main() {
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
-      final pending = cubit.createSession(text: "hi", dedicatedWorktree: true, command: null);
+      final pending = cubit.createSession(
+        text: "hi",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      );
       await cubit.close();
 
       selectionTracker.write(
