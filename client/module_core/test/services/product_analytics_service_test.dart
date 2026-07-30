@@ -984,6 +984,56 @@ void main() {
     expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
   });
 
+  test("prepareForLogout awaits a disable queued while its local-read retry fails", () async {
+    createService();
+    preferenceRepository.throwOnLoad = true;
+    await service.start();
+    await service.markPostSplashReady();
+    final retryLoad = Completer<LocalProductAnalyticsPreference?>();
+    preferenceRepository
+      ..throwOnLoad = false
+      ..loadHandlers[_userA.id] = () => retryLoad.future;
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers.add((_, _, _) => disableResult.future);
+
+    var preparationCompleted = false;
+    final preparationFuture = service.prepareForLogout().then((_) => preparationCompleted = true);
+    while (preferenceRepository.loadCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    while (preferenceRepository.setCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    retryLoad.completeError(StateError("storage unavailable"), StackTrace.empty);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(preparationCompleted, isFalse);
+
+    disableResult.complete(
+      ProductAnalyticsPreferenceSynchronized(
+        record: _recordWithRevision(
+          userId: _userA.id,
+          userKey: _userKeyA,
+          preference: ProductAnalyticsPreference.disabled,
+          revision: 2,
+        ),
+      ),
+    );
+    await Future.wait([preparationFuture, disableFuture]);
+
+    expect(preparationCompleted, isTrue);
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+  });
+
   test("prepareForLogout awaits a disable queued behind the captured operation", () async {
     createService();
     final enabled = _record(
