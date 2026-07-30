@@ -823,95 +823,53 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get settingsSectionAppearance;
 
-  /// No description provided for @settingsSectionProductAnalytics.
+  /// No description provided for @settingsSectionAnalytics.
   ///
   /// In en, this message translates to:
-  /// **'Product Analytics'**
-  String get settingsSectionProductAnalytics;
+  /// **'Analytics'**
+  String get settingsSectionAnalytics;
 
-  /// No description provided for @settingsProductAnalyticsTitle.
+  /// No description provided for @settingsBasicUsageAnalyticsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Share pseudonymous product usage from this device'**
-  String get settingsProductAnalyticsTitle;
+  /// **'Basic Usage Analytics'**
+  String get settingsBasicUsageAnalyticsTitle;
 
-  /// No description provided for @settingsProductAnalyticsDescription.
+  /// No description provided for @settingsBasicUsageAnalyticsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Shares bounded feature and screen outcomes linked by a pseudonymous account key. Sesori never sends source code, prompts, responses, transcripts, paths, project or session names, or raw account identifiers.'**
-  String get settingsProductAnalyticsDescription;
+  /// **'Help improve Sesori by sharing basic feature usage. Sesori will never look at your code or messages.'**
+  String get settingsBasicUsageAnalyticsDescription;
 
-  /// No description provided for @settingsProductAnalyticsLimitations.
+  /// No description provided for @settingsBasicUsageAnalyticsLoading.
   ///
   /// In en, this message translates to:
-  /// **'This switch does not control Firebase automatic installation events or its pseudonymous installation/device and approximate-location processing, the bounded account-less sign-in funnel, operational account and bridge records, older app versions, or another supported device until it next synchronizes.'**
-  String get settingsProductAnalyticsLimitations;
+  /// **'Loading preference…'**
+  String get settingsBasicUsageAnalyticsLoading;
 
-  /// No description provided for @settingsProductAnalyticsRetention.
+  /// No description provided for @settingsBasicUsageAnalyticsSaving.
   ///
   /// In en, this message translates to:
-  /// **'Google\'s upstream analytics retention is two months. Sesori\'s restricted exported raw copy expires after 90 days. Minimized pseudonymous curated event facts are retained for 14 months.'**
-  String get settingsProductAnalyticsRetention;
+  /// **'Saving preference…'**
+  String get settingsBasicUsageAnalyticsSaving;
 
-  /// No description provided for @settingsProductAnalyticsLoading.
+  /// No description provided for @settingsBasicUsageAnalyticsLoadFailed.
   ///
   /// In en, this message translates to:
-  /// **'Checking your saved preference…'**
-  String get settingsProductAnalyticsLoading;
+  /// **'Analytics preference failed to load.'**
+  String get settingsBasicUsageAnalyticsLoadFailed;
 
-  /// No description provided for @settingsProductAnalyticsDisablePending.
+  /// No description provided for @settingsBasicUsageAnalyticsSaveFailed.
   ///
   /// In en, this message translates to:
-  /// **'Disabled on this device. Account sync is pending.'**
-  String get settingsProductAnalyticsDisablePending;
+  /// **'Analytics preference failed to save.'**
+  String get settingsBasicUsageAnalyticsSaveFailed;
 
-  /// No description provided for @settingsProductAnalyticsEnablePending.
+  /// No description provided for @settingsBasicUsageAnalyticsRetry.
   ///
   /// In en, this message translates to:
-  /// **'Account enablement or local finalization is pending. Product usage remains off here.'**
-  String get settingsProductAnalyticsEnablePending;
-
-  /// No description provided for @settingsProductAnalyticsDisableRetryRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Product usage is off for this run, but the local preference and account sync could not be saved. Retry before leaving.'**
-  String get settingsProductAnalyticsDisableRetryRequired;
-
-  /// No description provided for @settingsProductAnalyticsSyncFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not synchronize. Product usage remains off on this device; refresh to retry.'**
-  String get settingsProductAnalyticsSyncFailed;
-
-  /// No description provided for @settingsProductAnalyticsNotSynchronized.
-  ///
-  /// In en, this message translates to:
-  /// **'This device has not synchronized the account preference yet.'**
-  String get settingsProductAnalyticsNotSynchronized;
-
-  /// No description provided for @settingsProductAnalyticsSynchronized.
-  ///
-  /// In en, this message translates to:
-  /// **'Preference synchronized.'**
-  String get settingsProductAnalyticsSynchronized;
-
-  /// No description provided for @settingsProductAnalyticsRuntimeUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Your preference is enabled, but custom product usage is unavailable for this app run.'**
-  String get settingsProductAnalyticsRuntimeUnavailable;
-
-  /// No description provided for @settingsProductAnalyticsRefresh.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh analytics preference'**
-  String get settingsProductAnalyticsRefresh;
-
-  /// No description provided for @settingsProductAnalyticsRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry analytics preference sync'**
-  String get settingsProductAnalyticsRetry;
+  /// **'Retry'**
+  String get settingsBasicUsageAnalyticsRetry;
 
   /// Theme option that always renders the app in the light theme
   ///

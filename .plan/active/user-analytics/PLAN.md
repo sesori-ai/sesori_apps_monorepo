@@ -1416,9 +1416,10 @@ directory name.
   to post-splash authenticated enabled release builds, while allowing only the separately
   typed, release-only, account-less login catalog; add schema-ready and stable
   GoRouter-backed screen reporting.
-- Add the Settings toggle, explanatory/localized copy, pending/error behavior,
-  explicit installation/login-funnel/automatic-event limitations, and privacy/
-  legal/store-disclosure updates.
+- Add a concise `Basic Usage Analytics` toggle to the account/profile page with
+  inline pending/error state and a failure-only retry action. Keep detailed
+  installation/login-funnel/automatic-event and retention limitations in the
+  privacy/legal/store disclosures rather than dense control copy.
 - Move the existing seven-event onboarding contract to confirmed platform
   outcomes through explicit `ProjectListCubit` intents backed by
   `ProductAnalyticsService`: widgets dispatch links after successful launch,

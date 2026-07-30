@@ -21,7 +21,6 @@ import "widgets/settings_section.dart";
 
 /// Vertical inset between the nav bar and the first settings section.
 const double _contentTopPadding = 10.0;
-const String _lineBreak = "\n";
 
 /// The settings landing screen, presented as a full-screen modal.
 ///
@@ -33,19 +32,12 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) => SettingsCubit(
-            authSession: getIt<AuthSession>(),
-            notificationRegistrationService: getIt<NotificationRegistrationService>(),
-            productAnalyticsService: getIt<ProductAnalyticsService>(),
-          ),
-        ),
-        BlocProvider(
-          create: (_) => ProductAnalyticsPreferenceCubit(service: getIt<ProductAnalyticsService>()),
-        ),
-      ],
+    return BlocProvider(
+      create: (_) => SettingsCubit(
+        authSession: getIt<AuthSession>(),
+        notificationRegistrationService: getIt<NotificationRegistrationService>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
+      ),
       child: const _SettingsBody(),
     );
   }
@@ -128,11 +120,6 @@ class _SettingsBody extends StatelessWidget {
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
-                  title: loc.settingsSectionProductAnalytics,
-                  child: const _ProductAnalyticsPreferenceRows(),
-                ),
-                const SizedBox(height: PregoSpacing.xl),
-                SettingsSection(
                   title: loc.settingsSectionSupport,
                   child: PregoGroupedRows(
                     children: [
@@ -184,83 +171,6 @@ class _SettingsBody extends StatelessWidget {
         ),
         SliverToBoxAdapter(
           child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProductAnalyticsPreferenceRows extends StatelessWidget {
-  const _ProductAnalyticsPreferenceRows();
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    final state = context.watch<ProductAnalyticsPreferenceCubit>().state;
-    final preference = state.displayedPreference;
-    final isBusy =
-        state.synchronization is ProductAnalyticsSynchronizationInProgress ||
-        state.synchronization is ProductAnalyticsDisableRequestInProgress ||
-        state.synchronization is ProductAnalyticsEnableRequestInProgress;
-    final hasPendingSynchronization =
-        state.synchronization is ProductAnalyticsDisablePending ||
-        state.synchronization is ProductAnalyticsEnablePending ||
-        state.synchronization is ProductAnalyticsDisableRetryRequired;
-    final status = switch ((state.availability, state.synchronization)) {
-      (
-        ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.runtimeUnavailable),
-        ProductAnalyticsSynchronized(),
-      ) =>
-        loc.settingsProductAnalyticsRuntimeUnavailable,
-      (_, final synchronization) => switch (synchronization) {
-        ProductAnalyticsSynchronizationInProgress() ||
-        ProductAnalyticsDisableRequestInProgress() ||
-        ProductAnalyticsEnableRequestInProgress() => loc.settingsProductAnalyticsLoading,
-        ProductAnalyticsDisablePending() => loc.settingsProductAnalyticsDisablePending,
-        ProductAnalyticsEnablePending() => loc.settingsProductAnalyticsEnablePending,
-        ProductAnalyticsDisableRetryRequired() => loc.settingsProductAnalyticsDisableRetryRequired,
-        ProductAnalyticsSynchronizationFailed() => loc.settingsProductAnalyticsSyncFailed,
-        ProductAnalyticsNotSynchronized() => loc.settingsProductAnalyticsNotSynchronized,
-        ProductAnalyticsSynchronized() => loc.settingsProductAnalyticsSynchronized,
-      },
-    };
-    final description = [
-      loc.settingsProductAnalyticsDescription,
-      loc.settingsProductAnalyticsLimitations,
-      loc.settingsProductAnalyticsRetention,
-      status,
-    ].join(_lineBreak);
-
-    void toggle({required bool enabled}) {
-      unawaited(context.read<ProductAnalyticsPreferenceCubit>().setEnabled(enabled: enabled));
-    }
-
-    return PregoGroupedRows(
-      children: [
-        MergeSemantics(
-          child: PregoGroupedRow(
-            icon: TablerRegular.chart_bar,
-            title: Text(loc.settingsProductAnalyticsTitle),
-            subtitle: Text(description),
-            trailing: PregoSwitch(
-              value: preference == ProductAnalyticsPreference.enabled,
-              onChanged: preference == null || isBusy ? null : (enabled) => toggle(enabled: enabled),
-            ),
-            onTap: preference == null || isBusy
-                ? null
-                : () => toggle(enabled: preference != ProductAnalyticsPreference.enabled),
-          ),
-        ),
-        PregoGroupedRow(
-          icon: TablerRegular.refresh,
-          title: Text(
-            hasPendingSynchronization ? loc.settingsProductAnalyticsRetry : loc.settingsProductAnalyticsRefresh,
-          ),
-          trailing: isBusy
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : null,
-          onTap: isBusy ? null : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
-          isLast: true,
         ),
       ],
     );

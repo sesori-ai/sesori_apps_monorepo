@@ -96,6 +96,12 @@
   storage-read failure, split lifecycle ownership, and pass-through DI; all
   findings were applied directly. Per the two-pass cap, do not describe the
   final correction as reviewer-approved.
+- [x] Apply the post-Step-3.D analytics preference UX decision: move the
+  `Basic Usage Analytics` switch to the account/profile page, replace dense
+  control disclosure with a short code/messages privacy hint, hide runtime
+  implementation status, remove the permanent refresh row, and show one inline
+  retry action only when preference loading or saving fails. Detailed limits
+  remain in the privacy/legal/store disclosures.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
@@ -130,7 +136,7 @@ PRs #611-#614 so each review stays near 1,500 added lines.
 | 3.A/5 | apps monorepo | `[user-analytics] Add client analytics contracts and delivery [step 3.A/5]` | PR #611 merged as `3a181ee3` on 2026-07-30; frozen PR #610 remains superseded | Step 2 deployed |
 | 3.B/5 | apps monorepo | `[user-analytics] Add durable analytics preference sync [step 3.B/5]` | PR #612 merged as `a792481b` on 2026-07-30 | Step 3.A |
 | 3.C/5 | apps monorepo | `[user-analytics] Add account-linked analytics lifecycle [step 3.C/5]` | PR #613 merged as `53e9453f` on 2026-07-30, including supplemental lifecycle decomposition PR #619 | Step 3.B |
-| 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 open and approved; latest `main` merged after Step 3.C with propagated core/app/desktop verification passing | Step 3.C |
+| 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 merged as `fb8cd0e8` on 2026-07-30; focused account-page UX follow-up prepared on `user-analytics-settings-ux` | Step 3.C |
 | 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | Not started | Step 3.D released |
 | 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/privacy-private/control IAM |
 

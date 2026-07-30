@@ -9,6 +9,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/support_links.dart";
+import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:theme_prego/module_prego.dart";
@@ -48,7 +49,10 @@ Widget _app({required AppearanceCubit appearance}) {
       ),
       GoRoute(
         path: "/settings/profile",
-        builder: (context, state) => const Scaffold(body: Text("profile-route")),
+        builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
+          value: StubConnectionOverlayCubit(),
+          child: const ProfileScreen(),
+        ),
       ),
       GoRoute(
         path: "/settings/harnesses",
@@ -152,7 +156,7 @@ void main() {
     await tester.tap(find.text("Profile"));
     await tester.pumpAndSettle();
 
-    expect(find.text("profile-route"), findsOneWidget);
+    expect(find.text("Basic Usage Analytics"), findsOneWidget);
   });
 
   testWidgets("Harnesses follows Notifications and navigates without changing other sections", (tester) async {
@@ -275,20 +279,27 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("analytics setting discloses scope and delegates the opt-out", (tester) async {
+  testWidgets("basic usage analytics lives on Profile with concise copy", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Share pseudonymous product usage from this device"), findsOneWidget);
-    expect(find.textContaining("never sends source code, prompts, responses, transcripts"), findsOneWidget);
-    expect(find.textContaining("automatic installation events"), findsOneWidget);
-    expect(find.textContaining("approximate-location processing"), findsOneWidget);
-    expect(find.textContaining("upstream analytics retention is two months"), findsOneWidget);
-    expect(find.textContaining("expires after 90 days"), findsOneWidget);
-    expect(find.textContaining("retained for 14 months"), findsOneWidget);
+    expect(find.text("Basic Usage Analytics"), findsNothing);
 
-    await tester.tap(find.text("Share pseudonymous product usage from this device"));
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(
+      find.text(
+        "Help improve Sesori by sharing basic feature usage. Sesori will never look at your code or messages.",
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining("automatic installation events"), findsNothing);
+    expect(find.textContaining("retention"), findsNothing);
+
+    await tester.tap(find.text("Basic Usage Analytics"));
     await tester.pump();
 
     verify(
@@ -296,32 +307,34 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("pending disable exposes an explicit retry action", (tester) async {
+  testWidgets("a failed analytics preference shows one inline retry action", (tester) async {
     _useTallSurface(tester);
-    await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-
     productAnalyticsStates.add(
       const ProductAnalyticsState(
-        preference: ProductAnalyticsPreferenceKnown(
-          preference: ProductAnalyticsPreference.disabled,
-        ),
-        synchronization: ProductAnalyticsDisablePending(),
+        preference: ProductAnalyticsPreferenceUnknown(),
+        synchronization: ProductAnalyticsSynchronizationFailed(),
         availability: ProductAnalyticsInactive(
-          reason: ProductAnalyticsInactiveReason.synchronizationPending,
+          reason: ProductAnalyticsInactiveReason.storageFailure,
         ),
       ),
     );
+    await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining("Disabled on this device. Account sync is pending."), findsOneWidget);
-    await tester.tap(find.text("Retry analytics preference sync"));
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Analytics preference failed to load."), findsOneWidget);
+    expect(find.byKey(const Key("analytics_preference_retry")), findsOneWidget);
+    expect(find.text("Refresh analytics preference"), findsNothing);
+
+    await tester.tap(find.byKey(const Key("analytics_preference_retry")));
     await tester.pump();
 
     verify(productAnalyticsService.refreshPreference).called(1);
   });
 
-  testWidgets("runtime unavailability is visible beside a synchronized enabled preference", (tester) async {
+  testWidgets("runtime unavailability does not add alarming session copy", (tester) async {
     _useTallSurface(tester);
     productAnalyticsStates.add(
       const ProductAnalyticsState(
@@ -338,6 +351,10 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining("custom product usage is unavailable for this app run"), findsOneWidget);
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(find.textContaining("unavailable for this app run"), findsNothing);
   });
 }
