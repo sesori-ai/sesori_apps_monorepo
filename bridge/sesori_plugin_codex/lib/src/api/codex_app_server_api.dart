@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
 import "models/codex_collaboration_mode_dto.dart";
+import "models/codex_model_dto.dart";
 import "models/codex_skill_dto.dart";
 import "models/codex_thread_dto.dart";
 import "models/codex_turn_dto.dart";
@@ -51,6 +52,21 @@ class CodexAppServerApi {
       );
     }
     return CodexSkillsListResponseDto.fromJson(
+      result.cast<String, dynamic>(),
+    );
+  }
+
+  Future<CodexModelListResponseDto> listModels() async {
+    final result = await _client.request(
+      method: "model/list",
+      params: const <String, dynamic>{},
+    );
+    if (result is! Map) {
+      throw StateError(
+        "expected a Codex model response object, got ${result.runtimeType}",
+      );
+    }
+    return CodexModelListResponseDto.fromJson(
       result.cast<String, dynamic>(),
     );
   }

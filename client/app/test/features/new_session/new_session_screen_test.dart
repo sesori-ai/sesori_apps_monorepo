@@ -85,6 +85,13 @@ Widget _buildApp({
   );
 }
 
+/// The composer rests in its hold-to-talk pill (no text field) until the
+/// keyboard button switches it to the typing layout and focuses the field.
+Future<void> enterTypingMode(WidgetTester tester) async {
+  await tester.tap(find.byIcon(TablerRegular.keyboard));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late MockSessionService sessionService;
   late MockPluginRepository pluginRepository;
@@ -425,6 +432,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "one\ntwo\nthree\nfour\nfive");
     await tester.pumpAndSettle();
 
@@ -689,8 +697,13 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.enterText(find.byType(EditableText), "must not send");
-    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    // The disabled composer ignores pointers entirely: the keyboard affordance
+    // cannot even enter the typing layout, so no field or send control exists
+    // to submit through.
+    await tester.tap(find.byIcon(TablerRegular.keyboard), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.byType(EditableText), findsNothing);
+    expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
     await tester.pump();
     verifyNever(
       () => sessionService.createSessionWithMessage(
@@ -852,8 +865,9 @@ void main() {
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -881,18 +895,20 @@ void main() {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
     await tester.pump();
 
     final absorbingFinder = find.byWidgetPredicate(
       (widget) => widget is AbsorbPointer && widget.absorbing,
     );
     expect(absorbingFinder, findsOneWidget);
-    expect(find.byIcon(Icons.stop_circle), findsOneWidget);
-
-    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
-    await tester.pump();
+    // With the message sent (field cleared) and creation in flight, the dark
+    // action button turns into the stop control — there is no send affordance
+    // left to double-submit through.
+    expect(find.byIcon(TablerSolid.player_stop), findsOneWidget);
+    expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
 
     verify(
       () => sessionService.createSessionWithMessage(
@@ -930,8 +946,9 @@ void main() {
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -973,8 +990,9 @@ void main() {
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1019,8 +1037,9 @@ void main() {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1058,8 +1077,9 @@ void main() {
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1091,8 +1111,9 @@ void main() {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1103,8 +1124,12 @@ void main() {
     expect(find.byKey(const Key("new_session_loading_overlay")), findsNothing);
     // Error text now comes from the shared, localized ApiError mapping.
     expect(find.text("An unknown error occurred"), findsOneWidget);
+
+    // Sending excluded focus from the composer, so it collapsed back to its
+    // resting pill; it must be usable again for the retry.
+    await enterTypingMode(tester);
     expect(find.byType(EditableText), findsOneWidget);
-    expect(find.byIcon(Icons.send), findsOneWidget);
+    expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
 
     await tester.enterText(find.byType(EditableText), "retry message");
     await tester.pump();
@@ -1119,6 +1144,7 @@ void main() {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
+    await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "half-written idea");
     await tester.pump();
 
