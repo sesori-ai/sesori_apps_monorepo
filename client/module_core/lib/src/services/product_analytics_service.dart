@@ -8,10 +8,10 @@ import "../foundation/models/product_analytics/analytics_runtime_capability.dart
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/product_analytics/product_analytics_preference.dart";
 import "../logging/logging.dart";
+import "../repositories/analytics_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/models/product_analytics_preference_models.dart";
 import "../repositories/product_analytics_preference_repository.dart";
-import "../repositories/product_analytics_repository.dart";
 import "models/product_analytics_state.dart";
 
 const _logoutPreparationDeadline = Duration(seconds: 10);
@@ -20,7 +20,7 @@ const _logoutPreparationDeadline = Duration(seconds: 10);
 class ProductAnalyticsService {
   final AnalyticsRuntimeCapability _capability;
   final AuthSession _authSession;
-  final ProductAnalyticsRepository _analyticsRepository;
+  final AnalyticsRepository _analyticsRepository;
   final ProductAnalyticsPreferenceRepository _preferenceRepository;
   final BehaviorSubject<ProductAnalyticsState> _state = BehaviorSubject.seeded(ProductAnalyticsState.initial);
 
@@ -47,7 +47,7 @@ class ProductAnalyticsService {
   ProductAnalyticsService({
     required AnalyticsRuntimeCapability capability,
     required AuthSession authSession,
-    required ProductAnalyticsRepository analyticsRepository,
+    required AnalyticsRepository analyticsRepository,
     required ProductAnalyticsPreferenceRepository preferenceRepository,
   }) : _capability = capability,
        _authSession = authSession,
@@ -195,10 +195,7 @@ class ProductAnalyticsService {
   }
 
   Future<void> _synchronizeBeforeLogout() async {
-    final activeOperation = _accountOperation;
-    if (activeOperation != null && activeOperation.generation == _generation) {
-      await activeOperation.future;
-    }
+    await _awaitLatestAccountOperation();
     if (_volatileDisable != null) {
       final current = _currentRecord;
       if (current != null) {
@@ -243,7 +240,7 @@ class ProductAnalyticsService {
         !_authSessionMatches(userId: userId)) {
       return AnalyticsDeliveryResult.failed;
     }
-    final result = await _analyticsRepository.logEvent(
+    final result = await _analyticsRepository.logProductEvent(
       envelope: ProductAnalyticsEnvelope(event: event, occurredAtUtc: occurredAtUtc),
       userKey: current.userKey,
     );
@@ -365,6 +362,20 @@ class ProductAnalyticsService {
       if (initialization == null) return;
       await initialization;
       if (identical(initialization, _localInitialization)) return;
+    }
+  }
+
+  Future<void> _awaitLatestAccountOperation() async {
+    while (true) {
+      final active = _accountOperation;
+      if (active == null || active.generation != _generation) return;
+      try {
+        await active.future;
+      } on Object {
+        // The operation's caller owns its surfaced failure. Logout preparation
+        // still needs to inspect any newer disable queued behind that failure.
+      }
+      if (identical(active.future, _accountOperation?.future)) return;
     }
   }
 

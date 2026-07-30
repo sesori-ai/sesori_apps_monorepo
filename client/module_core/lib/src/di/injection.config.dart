@@ -300,7 +300,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i204.ProductAnalyticsService(
         capability: gh<_i684.AnalyticsRuntimeCapability>(),
         authSession: gh<_i442.AuthSession>(),
-        analyticsRepository: gh<_i67.ProductAnalyticsRepository>(),
+        analyticsRepository: gh<_i274.AnalyticsRepository>(),
         preferenceRepository: gh<_i804.ProductAnalyticsPreferenceRepository>(),
       ),
       dispose: (i) => i.dispose(),

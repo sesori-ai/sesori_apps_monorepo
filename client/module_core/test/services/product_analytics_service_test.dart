@@ -117,13 +117,13 @@ class _FakePreferenceRepository extends Mock implements ProductAnalyticsPreferen
   }
 }
 
-class _RecordingProductAnalyticsRepository extends Mock implements ProductAnalyticsRepository {
+class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository {
   final calls = <({ProductAnalyticsEnvelope envelope, String userKey})>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
   Completer<AnalyticsDeliveryResult>? deliveryCompleter;
 
   @override
-  Future<AnalyticsDeliveryResult> logEvent({
+  Future<AnalyticsDeliveryResult> logProductEvent({
     required ProductAnalyticsEnvelope envelope,
     required String userKey,
   }) async {
@@ -137,13 +137,13 @@ class _RecordingProductAnalyticsRepository extends Mock implements ProductAnalyt
 void main() {
   late _FakeAuthSession authSession;
   late _FakePreferenceRepository preferenceRepository;
-  late _RecordingProductAnalyticsRepository analyticsRepository;
+  late _RecordingAnalyticsRepository analyticsRepository;
   late ProductAnalyticsService service;
 
   void createService() {
     authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
-    analyticsRepository = _RecordingProductAnalyticsRepository();
+    analyticsRepository = _RecordingAnalyticsRepository();
     service = ProductAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       authSession: authSession,
@@ -155,7 +155,7 @@ void main() {
   void createServiceWithCapability({required AnalyticsRuntimeCapability capability}) {
     authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
-    analyticsRepository = _RecordingProductAnalyticsRepository();
+    analyticsRepository = _RecordingAnalyticsRepository();
     service = ProductAnalyticsService(
       capability: capability,
       authSession: authSession,
@@ -858,6 +858,56 @@ void main() {
     var preparationCompleted = false;
     final preparationFuture = service.prepareForLogout().then((_) => preparationCompleted = true);
     await Future<void>.delayed(Duration.zero);
+
+    expect(preparationCompleted, isFalse);
+
+    disableResult.complete(
+      ProductAnalyticsPreferenceSynchronized(
+        record: _recordWithRevision(
+          userId: _userA.id,
+          userKey: _userKeyA,
+          preference: ProductAnalyticsPreference.disabled,
+          revision: 2,
+        ),
+      ),
+    );
+    await Future.wait([disableFuture, preparationFuture]);
+
+    expect(preparationCompleted, isTrue);
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+  });
+
+  test("prepareForLogout awaits a disable queued behind the captured operation", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    final refreshResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.reconcileHandlers.add((_, _) => refreshResult.future);
+    final refreshFuture = service.refreshPreference();
+    await Future<void>.delayed(Duration.zero);
+
+    var preparationCompleted = false;
+    final preparationFuture = service.prepareForLogout().then((_) => preparationCompleted = true);
+    await Future<void>.delayed(Duration.zero);
+
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers.add((_, _, _) => disableResult.future);
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+
+    refreshResult.complete(ProductAnalyticsPreferenceSynchronized(record: enabled));
+    await refreshFuture;
+    while (preferenceRepository.setCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
 
     expect(preparationCompleted, isFalse);
 
