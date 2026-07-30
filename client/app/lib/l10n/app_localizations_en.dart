@@ -413,10 +413,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBasicUsageAnalyticsLoadFailed => 'Analytics preference failed to load.';
 
   @override
-  String get settingsBasicUsageAnalyticsSaveFailed => 'Analytics preference failed to save.';
+  String get settingsBasicUsageAnalyticsSyncFailed => 'Couldn\'t sync preference.';
 
   @override
-  String get settingsBasicUsageAnalyticsRetry => 'Retry';
+  String get settingsBasicUsageAnalyticsRetry => 'Retry preference sync';
 
   @override
   String get settingsAppearanceLight => 'Light';

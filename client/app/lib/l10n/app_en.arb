@@ -244,8 +244,8 @@
   "settingsBasicUsageAnalyticsLoading": "Loading preference…",
   "settingsBasicUsageAnalyticsSaving": "Saving preference…",
   "settingsBasicUsageAnalyticsLoadFailed": "Analytics preference failed to load.",
-  "settingsBasicUsageAnalyticsSaveFailed": "Analytics preference failed to save.",
-  "settingsBasicUsageAnalyticsRetry": "Retry",
+  "settingsBasicUsageAnalyticsSyncFailed": "Couldn't sync preference.",
+  "settingsBasicUsageAnalyticsRetry": "Retry preference sync",
   "settingsAppearanceLight": "Light",
   "@settingsAppearanceLight": {
     "description": "Theme option that always renders the app in the light theme"

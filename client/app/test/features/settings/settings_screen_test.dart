@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -82,6 +84,8 @@ void _useTallSurface(WidgetTester tester) {
 
 void main() {
   late AppearanceCubit appearance;
+  late _StubAuthSession authSession;
+  late _MockNotificationRegistrationService notificationRegistrationService;
   late _MockUrlLauncher urlLauncher;
   late _MockLegalRepository legalRepository;
   late MockProductAnalyticsService productAnalyticsService;
@@ -105,10 +109,14 @@ void main() {
     );
 
     await GetIt.instance.reset();
-    GetIt.instance.registerSingleton<AuthSession>(_StubAuthSession());
-    GetIt.instance.registerSingleton<NotificationRegistrationService>(
-      _MockNotificationRegistrationService(),
-    );
+    authSession = _StubAuthSession();
+    when(authSession.logoutCurrentDevice).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<AuthSession>(authSession);
+
+    notificationRegistrationService = _MockNotificationRegistrationService();
+    when(notificationRegistrationService.unregisterCurrentDevice).thenAnswer((_) async {});
+    when(notificationRegistrationService.resumeRegistrationAfterFailedLogout).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<NotificationRegistrationService>(notificationRegistrationService);
 
     productAnalyticsStates = BehaviorSubject.seeded(
       const ProductAnalyticsState(
@@ -128,6 +136,7 @@ void main() {
     when(productAnalyticsService.refreshPreference).thenAnswer((_) async {});
     when(productAnalyticsService.retryPendingDisable).thenAnswer((_) async {});
     when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
+    when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
 
     final store = _MockAppearanceStore();
@@ -324,12 +333,72 @@ void main() {
 
     expect(find.text("Analytics preference failed to load."), findsOneWidget);
     expect(find.byKey(const Key("analytics_preference_retry")), findsOneWidget);
+    expect(find.bySemanticsLabel("Retry preference sync"), findsOneWidget);
     expect(find.text("Refresh analytics preference"), findsNothing);
 
     await tester.tap(find.byKey(const Key("analytics_preference_retry")));
     await tester.pump();
 
     verify(productAnalyticsService.refreshPreference).called(1);
+  });
+
+  testWidgets("a known preference remains editable when synchronization fails", (tester) async {
+    _useTallSurface(tester);
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(
+          preference: ProductAnalyticsPreference.enabled,
+        ),
+        synchronization: ProductAnalyticsSynchronizationFailed(),
+        availability: ProductAnalyticsInactive(
+          reason: ProductAnalyticsInactiveReason.requestFailure,
+        ),
+      ),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't sync preference."), findsOneWidget);
+    expect(find.byType(PregoSwitch), findsOneWidget);
+    expect(find.byKey(const Key("analytics_preference_retry")), findsOneWidget);
+
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+
+    verify(
+      () => productAnalyticsService.setPreference(preference: ProductAnalyticsPreference.disabled),
+    ).called(1);
+
+    await tester.tap(find.byKey(const Key("analytics_preference_retry")));
+    await tester.pump();
+
+    verify(productAnalyticsService.refreshPreference).called(1);
+  });
+
+  testWidgets("analytics actions are blocked while logout is in progress", (tester) async {
+    _useTallSurface(tester);
+    final logoutPreparation = Completer<void>();
+    when(productAnalyticsService.prepareForLogout).thenAnswer((_) => logoutPreparation.future);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Log Out"));
+    await tester.pump();
+
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
+    await tester.tap(find.text("Basic Usage Analytics"));
+    await tester.pump();
+    verifyNever(
+      () => productAnalyticsService.setPreference(preference: any(named: "preference")),
+    );
+
+    logoutPreparation.complete();
+    await tester.pumpAndSettle();
   });
 
   testWidgets("runtime unavailability does not add alarming session copy", (tester) async {

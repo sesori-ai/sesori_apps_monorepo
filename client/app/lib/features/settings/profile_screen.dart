@@ -100,7 +100,7 @@ class _ProfileBody extends StatelessWidget {
                   ],
                   SettingsSection(
                     title: loc.settingsSectionAnalytics,
-                    child: const _ProductAnalyticsPreferenceRow(),
+                    child: _ProductAnalyticsPreferenceRow(blocked: isLoggingOut),
                   ),
                   const SizedBox(height: PregoSpacing.xl),
                   PregoGroupedRows(
@@ -134,7 +134,9 @@ class _ProfileBody extends StatelessWidget {
 }
 
 class _ProductAnalyticsPreferenceRow extends StatelessWidget {
-  const _ProductAnalyticsPreferenceRow();
+  const _ProductAnalyticsPreferenceRow({required this.blocked});
+
+  final bool blocked;
 
   @override
   Widget build(BuildContext context) {
@@ -155,22 +157,49 @@ class _ProductAnalyticsPreferenceRow extends StatelessWidget {
         isFailure: false,
       ),
       ProductAnalyticsDisablePending() || ProductAnalyticsEnablePending() || ProductAnalyticsDisableRetryRequired() => (
-        text: loc.settingsBasicUsageAnalyticsSaveFailed,
+        text: loc.settingsBasicUsageAnalyticsSyncFailed,
         isFailure: true,
       ),
       ProductAnalyticsSynchronizationFailed() => (
         text: preference == null
             ? loc.settingsBasicUsageAnalyticsLoadFailed
-            : loc.settingsBasicUsageAnalyticsSaveFailed,
+            : loc.settingsBasicUsageAnalyticsSyncFailed,
         isFailure: true,
       ),
       ProductAnalyticsSynchronized() => null,
     };
     final hasFailure = status?.isFailure ?? false;
-    final canToggle = preference != null && !isBusy && !hasFailure;
+    final canToggle = preference != null && !isBusy && !blocked;
 
     void toggle({required bool enabled}) {
       unawaited(context.read<ProductAnalyticsPreferenceCubit>().setEnabled(enabled: enabled));
+    }
+
+    final preferenceSwitch = PregoSwitch(
+      value: preference == ProductAnalyticsPreference.enabled,
+      onChanged: canToggle ? (enabled) => toggle(enabled: enabled) : null,
+    );
+    final retryButton = Semantics(
+      label: loc.settingsBasicUsageAnalyticsRetry,
+      child: PregoButtonsSolid.iconOnly(
+        key: const Key("analytics_preference_retry"),
+        hierarchy: PregoButtonsSolidHierarchy.link,
+        size: PregoButtonsSolidSize.sm,
+        leadingIcon: TablerRegular.refresh,
+        onPressed: blocked ? null : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
+      ),
+    );
+    final Widget trailing;
+    if (!hasFailure) {
+      trailing = preferenceSwitch;
+    } else if (preference == null) {
+      trailing = retryButton;
+    } else {
+      trailing = Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: PregoSpacing.xs,
+        children: [retryButton, preferenceSwitch],
+      );
     }
 
     final row = PregoGroupedRow(
@@ -180,19 +209,7 @@ class _ProductAnalyticsPreferenceRow extends StatelessWidget {
         status: status?.text,
         statusIsFailure: hasFailure,
       ),
-      trailing: hasFailure
-          ? PregoButtonsSolid(
-              key: const Key("analytics_preference_retry"),
-              label: loc.settingsBasicUsageAnalyticsRetry,
-              hierarchy: PregoButtonsSolidHierarchy.link,
-              size: PregoButtonsSolidSize.sm,
-              leadingIcon: TablerRegular.refresh,
-              onPressed: () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
-            )
-          : PregoSwitch(
-              value: preference == ProductAnalyticsPreference.enabled,
-              onChanged: canToggle ? (enabled) => toggle(enabled: enabled) : null,
-            ),
+      trailing: trailing,
       onTap: canToggle ? () => toggle(enabled: preference != ProductAnalyticsPreference.enabled) : null,
       isLast: true,
     );

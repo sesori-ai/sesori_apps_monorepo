@@ -859,16 +859,16 @@ abstract class AppLocalizations {
   /// **'Analytics preference failed to load.'**
   String get settingsBasicUsageAnalyticsLoadFailed;
 
-  /// No description provided for @settingsBasicUsageAnalyticsSaveFailed.
+  /// No description provided for @settingsBasicUsageAnalyticsSyncFailed.
   ///
   /// In en, this message translates to:
-  /// **'Analytics preference failed to save.'**
-  String get settingsBasicUsageAnalyticsSaveFailed;
+  /// **'Couldn\'t sync preference.'**
+  String get settingsBasicUsageAnalyticsSyncFailed;
 
   /// No description provided for @settingsBasicUsageAnalyticsRetry.
   ///
   /// In en, this message translates to:
-  /// **'Retry'**
+  /// **'Retry preference sync'**
   String get settingsBasicUsageAnalyticsRetry;
 
   /// Theme option that always renders the app in the light theme
