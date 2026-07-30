@@ -5,8 +5,8 @@
 - **Implementation base:** `origin/main` at `5eabfd0d`
 - **Series state:** Steps 1/6 through 3/6 are merged; oversized PR #620 is frozen
   as a draft and replaced by the stacked Step 4.A/6 through 4.F/6 sequence
-- **Current step:** Step 4.A/6 — wire contracts and runtime scope/generation seams
-- **Next action:** verify and open the Step 4.A/6 replacement PR
+- **Current step:** Step 4.B/6 — scoped cache schema and runtime database
+- **Next action:** verify and open the stacked Step 4.B/6 PR
 
 ## Delivery
 
@@ -15,8 +15,8 @@
 | [x] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 merged |
 | [x] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | PR #609 merged |
 | [x] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | PR #616 merged |
-| [ ] | Step 4.A/6 — wire contracts and runtime seams | `multi-plugin-release-prep-bridge-contracts` | In progress |
-| [ ] | Step 4.B/6 — scoped cache schema/runtime database | `multi-plugin-release-prep-cache-schema` | Blocked on 4.A |
+| [ ] | Step 4.A/6 — wire contracts and runtime seams | `multi-plugin-release-prep-bridge-contracts` | PR #623 open |
+| [ ] | Step 4.B/6 — scoped cache schema/runtime database | `multi-plugin-release-prep-cache-schema` | In progress |
 | [ ] | Step 4.C/6 — migration and DAO verification | `multi-plugin-release-prep-cache-verification` | Blocked on 4.B |
 | [ ] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | Blocked on 4.C |
 | [ ] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | Blocked on 4.D |
@@ -140,3 +140,7 @@
   bridge focused tests passed with fatal analysis in both owning packages and
   `git diff --check`. Aristotle approved the revised six-substep delivery plan
   and the Step 4.A implementation architecture without findings.
+- Step 4.B/6 preparation (2026-07-30): added the Drift v12 cache table,
+  standalone DAO, generated runtime database, migration steps, and
+  current-schema cascade smoke coverage. The 2 focused persistence tests and
+  bridge-app fatal analysis passed with `git diff --check`.
