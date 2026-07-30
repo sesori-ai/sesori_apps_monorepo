@@ -90,7 +90,7 @@
   through live and replay paths. Cursor now owns one plugin-scoped service with
   bounded reuse and forced discovery that stages both catalog and command state,
   commits them together on success, and preserves the last-good aggregate on
-  failure. Generated the Freezed source. All 3,207 tests across plugin interface,
+  failure. Generated the Freezed source. All 3,208 tests across plugin interface,
   OpenCode, Codex, ACP, Cursor, and bridge app passed, as did
   `dart analyze --fatal-infos` in all six modules and `git diff --check`.
   Aristotle implementation review identified the command-staging and ACP peer
@@ -101,5 +101,7 @@
   commits so reconnects and concurrent live updates preserve coherent commands;
   a subsequent follow-up also preserved OpenCode's typed parallel-discovery
   errors and fenced both reuse and forced Cursor catalog replacement against
-  newer live model or mode state. The full owning-package suites plus fatal
-  analysis passed after each fix round.
+  newer live model or mode state. Forced refresh also invalidates a prior
+  command snapshot when the refresh observes no authoritative command update.
+  The full owning-package suites plus fatal analysis passed after each fix
+  round.

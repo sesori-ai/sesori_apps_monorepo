@@ -487,6 +487,37 @@ void main() {
       expect(commandTracker.commands.single.name, "live-command");
     });
 
+    test("forced discovery without commands invalidates the stale command snapshot", () async {
+      tracker.applySnapshot(
+        snapshot: _snapshot(includeThoughtLevel: true),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      commandTracker.consume(_commandUpdate("stale-command"));
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "fresh", name: "Fresh", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "agent", name: "Agent", description: null),
+        ],
+        defaultModeId: "agent",
+        thoughtLevelsByModel: {
+          "fresh": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+
+      expect(await service.refreshCatalog(scope: "/project"), isTrue);
+
+      expect(commandTracker.commands, isEmpty);
+      expect(commandTracker.hasSnapshot, isFalse);
+    });
+
     test("a live capture during forced discovery invalidates stale reuse decisions", () async {
       repository.candidates = CursorCatalogCandidateListResult(
         candidates: const [],

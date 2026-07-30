@@ -7,6 +7,8 @@ import "../models/cursor_catalog_models.dart";
 import "../repositories/cursor_catalog_repository.dart";
 import "../trackers/cursor_catalog_tracker.dart";
 
+enum _MissingCommandSnapshotPolicy { retain, invalidate }
+
 /// Coordinates bounded, isolated Cursor catalog discovery.
 class CursorCatalogService {
   CursorCatalogService({
@@ -140,7 +142,10 @@ class CursorCatalogService {
     if (_tracker.revision != expectedCatalogRevision) return outcome;
     _tracker.replaceReusedCatalog(discovered: discovered);
     if (outcome != CursorCatalogProbeOutcome.retryableFailure) {
-      _commitStagedCommands(expectedCommandRevision: expectedCommandRevision);
+      _commitStagedCommands(
+        expectedCommandRevision: expectedCommandRevision,
+        missingSnapshotPolicy: _MissingCommandSnapshotPolicy.retain,
+      );
     }
     return outcome;
   }
@@ -166,14 +171,26 @@ class CursorCatalogService {
       outcome: outcome,
     );
     _retriedScopes.clear();
-    _commitStagedCommands(expectedCommandRevision: expectedCommandRevision);
+    _commitStagedCommands(
+      expectedCommandRevision: expectedCommandRevision,
+      missingSnapshotPolicy: _MissingCommandSnapshotPolicy.invalidate,
+    );
     return outcome;
   }
 
-  void _commitStagedCommands({required int expectedCommandRevision}) {
+  void _commitStagedCommands({
+    required int expectedCommandRevision,
+    required _MissingCommandSnapshotPolicy missingSnapshotPolicy,
+  }) {
     if (_commandTracker.revision != expectedCommandRevision) return;
     if (!_stagedCommandTracker.hasSnapshot) {
-      _probedCommandRevision = expectedCommandRevision;
+      switch (missingSnapshotPolicy) {
+        case _MissingCommandSnapshotPolicy.retain:
+          _probedCommandRevision = expectedCommandRevision;
+        case _MissingCommandSnapshotPolicy.invalidate:
+          _commandTracker.clear();
+          _probedCommandRevision = _commandTracker.revision;
+      }
       return;
     }
     _commandTracker.replaceSnapshot(commands: _stagedCommandTracker.commands);
