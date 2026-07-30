@@ -242,7 +242,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                         child: IgnorePointer(
                           ignoring: !isComposerEnabled,
                           child: PromptInput(
-                            draftIdentity: "new-session:${widget.projectId}",
+                            draftIdentity: ComposerDraftRepository.newSessionIdentity(
+                              projectId: widget.projectId,
+                            ),
                             initialDraft: context.read<NewSessionCubit>().composerDraft,
                             hasMessages: false,
                             isBusy: state is NewSessionSending,

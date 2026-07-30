@@ -143,8 +143,10 @@ void main() {
         final cubit = buildCubit();
 
         final attempt = cubit.beginAppleLoginAttempt();
+        expect(cubit.state, isA<LoginAuthenticating>());
         cubit.onAppleSignInCancelled(attempt: attempt);
 
+        expect(cubit.state, isA<LoginIdle>());
         verify(
           () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.apple),
         ).called(1);
@@ -224,7 +226,7 @@ void main() {
         expect(cubit.state, isA<LoginTimeout>());
 
         cubit.beginAppleLoginAttempt();
-        expect(cubit.state, isA<LoginIdle>());
+        expect(cubit.state, isA<LoginAuthenticating>());
         lifecycleSubject
           ..add(LifecycleState.paused)
           ..add(LifecycleState.resumed);
@@ -257,7 +259,7 @@ void main() {
         activeSessionCheck.complete(true);
         await Future<void>.delayed(Duration.zero);
 
-        expect(cubit.state, isA<LoginIdle>());
+        expect(cubit.state, isA<LoginAuthenticating>());
         verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
         verifyNever(
           () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.apple),
@@ -666,6 +668,35 @@ void main() {
 
         expect(states, isEmpty);
         verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
+      });
+
+      test("a failed active-session precheck terminates the interrupted attempt", () async {
+        final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+        when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+        when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
+          lifecycleSubject.add(LifecycleState.paused);
+          await Future<void>.delayed(Duration.zero);
+          throw ClientException("Software caused connection abort");
+        });
+        when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenThrow(StateError("session read failed"));
+        final cubit = buildCubit();
+
+        await cubit.loginWithProvider(AuthProvider.google);
+        expect(cubit.state, isA<LoginPolling>());
+
+        lifecycleSubject.add(LifecycleState.resumed);
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.state, isA<LoginFailed>());
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: AuthProvider.google,
+            cause: LoginAttemptFailureCause.unknown,
+          ),
+        ).called(1);
+        await cubit.close();
+        await lifecycleSubject.close();
       });
     });
 
