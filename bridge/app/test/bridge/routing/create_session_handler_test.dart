@@ -238,7 +238,7 @@ void main() {
       expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
     });
 
-    test("dedicated=false skips worktree prep and stores a clean HEAD snapshot", () async {
+    test("dedicated=false skips worktree prep and stores the HEAD commit", () async {
       plugin.createSessionResult = const PluginSession(
         id: "simple-1",
         projectID: "p1",
@@ -247,7 +247,7 @@ void main() {
         title: "Simple",
         time: null,
       );
-      worktreeService.resolveCleanHeadCommitResult = "abc123def456";
+      worktreeService.resolveHeadCommitResult = "abc123def456";
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
@@ -268,8 +268,8 @@ void main() {
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "simple-1");
       expect(worktreeService.prepareCallCount, equals(0));
-      expect(worktreeService.resolveCleanHeadCommitCallCount, equals(1));
-      expect(worktreeService.lastResolveCleanHeadProjectId, equals("/repo"));
+      expect(worktreeService.resolveHeadCommitCallCount, equals(1));
+      expect(worktreeService.lastResolveHeadProjectId, equals("/repo"));
       expect(plugin.lastCreateSessionDirectory, equals("/repo"));
       expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
 
@@ -305,7 +305,7 @@ void main() {
         title: "Moved",
         time: null,
       );
-      worktreeService.resolveCleanHeadCommitResult = "abc123def456";
+      worktreeService.resolveHeadCommitResult = "abc123def456";
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
@@ -329,7 +329,7 @@ void main() {
       expect(plugin.lastCreateSessionDirectory, equals("/moved/repo"));
       // ...while the starting-commit lookup and the stored session→project
       // attribution stay keyed on the stable identifier.
-      expect(worktreeService.lastResolveCleanHeadProjectId, equals("/repo"));
+      expect(worktreeService.lastResolveHeadProjectId, equals("/repo"));
       final dbSession = await _expectStoredBinding(
         database: db,
         sessionId: result.id,
@@ -1184,14 +1184,14 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
   String? lastPreparePreferredBranchName;
-  String? lastResolveCleanHeadProjectId;
+  String? lastResolveHeadProjectId;
   int prepareCallCount = 0;
-  int resolveCleanHeadCommitCallCount = 0;
+  int resolveHeadCommitCallCount = 0;
   WorktreeResult prepareResult = WorktreeFallback(
     originalPath: "/repo",
     reason: "default",
   );
-  String? resolveCleanHeadCommitResult;
+  String? resolveHeadCommitResult;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -1220,12 +1220,12 @@ class _FakeWorktreeService extends WorktreeService {
   }
 
   @override
-  Future<String?> resolveCleanHeadCommit({
+  Future<String?> resolveHeadCommit({
     required String projectId,
   }) async {
-    resolveCleanHeadCommitCallCount++;
-    lastResolveCleanHeadProjectId = projectId;
-    return resolveCleanHeadCommitResult;
+    resolveHeadCommitCallCount++;
+    lastResolveHeadProjectId = projectId;
+    return resolveHeadCommitResult;
   }
 }
 

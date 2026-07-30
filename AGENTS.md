@@ -111,10 +111,9 @@ eagerly "just in case."
   paths, names, raw error text, or raw/hashed entity identifiers.
 - The closed event source of truth lives under
   `client/module_core/lib/src/foundation/models/product_analytics/`. Consumers
-  must not add account-linked reporting until Step 3.C introduces its lifecycle
-  service; `InstallationAnalyticsService` is available only for the approved
-  account-less login funnel. Product shells never send arbitrary names or
-  parameter maps.
+  use `ProductAnalyticsService` for account-linked events and
+  `InstallationAnalyticsService` only for the approved account-less login
+  funnel. Product shells never send arbitrary names or parameter maps.
 
 ## Verification And Review
 

@@ -13,14 +13,16 @@ import "di/injection.dart";
 /// [mode] picks the presentation: links that hand off to another app (mail,
 /// Discord) leave Sesori, while first-party pages can stay in an in-app
 /// browser.
-Future<void> openExternalLink({
+Future<bool> openExternalLink({
   required Uri url,
-  UrlLaunchMode mode = UrlLaunchMode.externalApp,
+  required UrlLaunchMode mode,
 }) async {
   try {
     final launched = await getIt<UrlLauncher>().launch(url, mode: mode);
     if (!launched) logw("Could not open external link: ${url.toString()}");
+    return launched;
   } on Object catch (error, stackTrace) {
     logw("Failed to open external link", error, stackTrace);
+    return false;
   }
 }

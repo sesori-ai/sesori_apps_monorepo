@@ -25,6 +25,10 @@ void main() {
 
     void initializeDeepLinks() => events.add("deepLinks");
 
+    Future<void> startProductAnalytics() async => events.add("productAnalytics");
+
+    Future<void> startAnalyticsRouteListener() async => events.add("analyticsRoutes");
+
     Future<void> startNotificationStartup() async {
       events.add("notificationStartup.start");
       startupStarted.complete();
@@ -41,9 +45,10 @@ void main() {
 
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
-      supportsFirebaseAnalytics: false,
       configureDependenciesFn: configureDependencies,
       initializeDeepLinks: initializeDeepLinks,
+      startProductAnalyticsFn: startProductAnalytics,
+      startAnalyticsRouteListenerFn: startAnalyticsRouteListener,
       startNotificationStartupFn: startNotificationStartup,
       readAppearanceFn: readAppearance,
       runAppFn: runAppFn,
@@ -54,6 +59,8 @@ void main() {
     expect(events, [
       "configureDependencies",
       "deepLinks",
+      "productAnalytics",
+      "analyticsRoutes",
       "notificationStartup.start",
       // The persisted theme is restored before the first frame, so the app
       // never launches in the wrong appearance.
@@ -69,6 +76,8 @@ void main() {
       [
         "configureDependencies",
         "deepLinks",
+        "productAnalytics",
+        "analyticsRoutes",
         "notificationStartup.start",
         "readAppearance",
         "runApp",

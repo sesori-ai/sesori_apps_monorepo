@@ -194,13 +194,6 @@ class GitCliApi {
     );
   }
 
-  Future<ProcessResult> readWorkingTreeStatus({required String projectPath}) {
-    return runGit(
-      projectPath: projectPath,
-      arguments: const ["status", "--porcelain", "--untracked-files=normal", "--", "."],
-    );
-  }
-
   Future<void> fetchOriginBranch({
     required String projectPath,
     required String branchName,

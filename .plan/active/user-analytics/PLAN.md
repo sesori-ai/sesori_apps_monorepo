@@ -1386,6 +1386,10 @@ directory name.
   state; coalesce schema readiness; retain pending disable through logout; await
   an active disable within the fixed deadline; and restore exact state when
   logout fails.
+- Replace Step 3.A's temporary root `AGENTS.md` prohibition on account-linked
+  reporting with the final `ProductAnalyticsService` consumer guidance in this
+  PR; no step-numbered or pre-lifecycle transitional instruction remains after
+  Step 3.C.
 - Test splash/readiness, one read per auth generation plus explicit refresh,
   pending/volatile disable, enable finalization, schema retry, logout timeout/
   recovery, rapid account switches, stale completions, and cross-account key
