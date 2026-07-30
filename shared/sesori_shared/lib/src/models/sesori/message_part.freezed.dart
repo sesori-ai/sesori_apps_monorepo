@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MessagePart {
 
- String get id; String get sessionID; String get messageID; MessagePartType get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent; String? get agentName; int? get attempt; String? get retryError; MessageAttachment? get attachment;
+ String get id; String get sessionID; String get messageID; MessagePartType get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent; String? get agentName; int? get attempt; String? get retryError;@JsonKey(fromJson: _messageAttachmentFromJson) MessageAttachment? get attachment;
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $MessagePartCopyWith<$Res>  {
   factory $MessagePartCopyWith(MessagePart value, $Res Function(MessagePart) _then) = _$MessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, MessageAttachment? attachment
+ String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError,@JsonKey(fromJson: _messageAttachmentFromJson) MessageAttachment? attachment
 });
 
 
@@ -117,7 +117,7 @@ $MessageAttachmentCopyWith<$Res>? get attachment {
 @JsonSerializable()
 
 class _MessagePart implements MessagePart {
-  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, required this.attachment});
+  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, @JsonKey(fromJson: _messageAttachmentFromJson) required this.attachment});
   factory _MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 
 @override final  String id;
@@ -133,7 +133,7 @@ class _MessagePart implements MessagePart {
 @override final  String? agentName;
 @override final  int? attempt;
 @override final  String? retryError;
-@override final  MessageAttachment? attachment;
+@override@JsonKey(fromJson: _messageAttachmentFromJson) final  MessageAttachment? attachment;
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
@@ -168,7 +168,7 @@ abstract mixin class _$MessagePartCopyWith<$Res> implements $MessagePartCopyWith
   factory _$MessagePartCopyWith(_MessagePart value, $Res Function(_MessagePart) _then) = __$MessagePartCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, MessageAttachment? attachment
+ String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError,@JsonKey(fromJson: _messageAttachmentFromJson) MessageAttachment? attachment
 });
 
 
@@ -543,7 +543,7 @@ int get hashCode => runtimeType.hashCode;
 mixin _$ToolState {
 
 @JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get output; String? get error;// COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
- List<MessageAttachment> get attachments;
+@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments;
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -576,7 +576,7 @@ abstract mixin class $ToolStateCopyWith<$Res>  {
   factory $ToolStateCopyWith(ToolState value, $Res Function(ToolState) _then) = _$ToolStateCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error, List<MessageAttachment> attachments
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
 });
 
 
@@ -612,7 +612,7 @@ as List<MessageAttachment>,
 @JsonSerializable()
 
 class _ToolState implements ToolState {
-  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error, final  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
+  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error, @JsonKey(fromJson: _messageAttachmentsFromJson) final  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
   factory _ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 
 @override@JsonKey(unknownEnumValue: ToolStatus.unknown) final  ToolStatus status;
@@ -622,7 +622,7 @@ class _ToolState implements ToolState {
 // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
  final  List<MessageAttachment> _attachments;
 // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
-@override@JsonKey() List<MessageAttachment> get attachments {
+@override@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments {
   if (_attachments is EqualUnmodifiableListView) return _attachments;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_attachments);
@@ -662,7 +662,7 @@ abstract mixin class _$ToolStateCopyWith<$Res> implements $ToolStateCopyWith<$Re
   factory _$ToolStateCopyWith(_ToolState value, $Res Function(_ToolState) _then) = __$ToolStateCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error, List<MessageAttachment> attachments
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
 });
 
 

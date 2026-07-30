@@ -40,31 +40,22 @@ extension PluginToolStatusMapping on PluginToolStatus {
 
 /// Maps a plugin-normalized attachment into the shared wire contract.
 extension PluginMessageAttachmentMapping on PluginMessageAttachment {
-  static const _maxFilenameCharacters = 255;
-
   MessageAttachment toShared() => switch (this) {
     PluginMessageAttachmentInlineImage(:final mime, :final base64, :final filename) => MessageAttachment.inlineImage(
       mime: mime,
       base64: base64,
-      filename: _safeFilename(filename: filename),
+      filename: normalizePluginMessageAttachmentFilename(filename: filename),
     ),
     PluginMessageAttachmentRemoteUrl(:final mime, :final url, :final filename) => _mapRemoteAttachment(
       mime: mime,
       url: url,
-      filename: _safeFilename(filename: filename),
+      filename: normalizePluginMessageAttachmentFilename(filename: filename),
     ),
     PluginMessageAttachmentMetadata(:final mime, :final filename) => MessageAttachment.metadata(
       mime: mime,
-      filename: _safeFilename(filename: filename),
+      filename: normalizePluginMessageAttachmentFilename(filename: filename),
     ),
   };
-
-  static String? _safeFilename({required String? filename}) {
-    final normalized = filename?.trim().replaceAll(r"\", "/");
-    if (normalized == null || normalized.isEmpty) return null;
-    final segments = normalized.split("/").where((segment) => segment.isNotEmpty);
-    return segments.isEmpty ? null : String.fromCharCodes(segments.last.runes.take(_maxFilenameCharacters));
-  }
 
   static MessageAttachment _mapRemoteAttachment({
     required String mime,
@@ -73,7 +64,8 @@ extension PluginMessageAttachmentMapping on PluginMessageAttachment {
   }) {
     final scheme = url.scheme.toLowerCase();
     if ((scheme != "http" && scheme != "https") || url.host.isEmpty || url.userInfo.isNotEmpty) {
-      throw StateError("Plugin remote attachments must use a host-qualified HTTP(S) URL");
+      Log.w("Plugin returned an invalid remote attachment URL; forwarding metadata only");
+      return MessageAttachment.metadata(mime: mime, filename: filename);
     }
     return MessageAttachment.remoteUrl(mime: mime, url: url.toString(), filename: filename);
   }

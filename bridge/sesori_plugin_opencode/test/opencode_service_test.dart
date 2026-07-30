@@ -5,7 +5,8 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:opencode_plugin/src/models/openapi/assistant_message.g.dart";
 import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
+import "package:sesori_shared/sesori_shared.dart"
+    show ActiveSession, ProjectActivitySummary, maxInlineMessageAttachmentBytes;
 import "package:test/test.dart";
 
 void main() {
@@ -2238,7 +2239,14 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
       sessionId: sessionId,
       directory: directory,
     );
-    return messages.map(const PluginModelMapper(messagePartMapper: MessagePartMapper()).mapMessageWithParts).toList();
+    return messages
+        .map(
+          const PluginModelMapper(
+            messagePartMapper: MessagePartMapper(),
+            maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes,
+          ).mapMessageWithParts,
+        )
+        .toList();
   }
 
   @override

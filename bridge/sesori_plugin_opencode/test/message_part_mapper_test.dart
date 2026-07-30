@@ -126,6 +126,14 @@ void main() {
         source: null,
       ),
     );
+    final svg = mapper.mapPart(
+      _filePart(
+        url: "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=",
+        mime: "image/svg+xml",
+        filename: "diagram.svg",
+        source: null,
+      ),
+    );
 
     expect(
       malformed.attachment,
@@ -134,6 +142,10 @@ void main() {
     expect(
       customScheme.attachment,
       equals(const PluginMessageAttachment.metadata(mime: "application/pdf", filename: "document.pdf")),
+    );
+    expect(
+      svg.attachment,
+      equals(const PluginMessageAttachment.metadata(mime: "image/svg+xml", filename: "diagram.svg")),
     );
   });
 

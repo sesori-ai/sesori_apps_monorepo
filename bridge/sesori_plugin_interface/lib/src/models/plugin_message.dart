@@ -8,6 +8,15 @@ part "plugin_message.g.dart";
 /// Mobile truncates to this length anyway, so we truncate at the source.
 const maxToolOutputLength = 500;
 
+/// Normalizes untrusted attachment metadata to a display-safe basename.
+String? normalizePluginMessageAttachmentFilename({required String? filename}) {
+  const maxCharacters = 255;
+  final normalized = filename?.trim().replaceAll(r"\", "/");
+  if (normalized == null || normalized.isEmpty) return null;
+  final segments = normalized.split("/").where((segment) => segment.isNotEmpty);
+  return segments.isEmpty ? null : String.fromCharCodes(segments.last.runes.take(maxCharacters));
+}
+
 @JsonEnum()
 enum PluginMessagePartType {
   @JsonValue("text")

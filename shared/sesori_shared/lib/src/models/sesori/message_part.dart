@@ -1,3 +1,5 @@
+import "dart:developer" as developer;
+
 import "package:freezed_annotation/freezed_annotation.dart";
 
 part "message_part.freezed.dart";
@@ -12,8 +14,59 @@ const maxInlineMessageAttachmentBytes = 5 * 1024 * 1024;
 
 /// Whether [base64Length] can decode within [maxInlineMessageAttachmentBytes].
 bool isInlineMessageAttachmentWithinSizeLimit({required int base64Length}) {
-  const maxEncodedLength = ((maxInlineMessageAttachmentBytes + 2) ~/ 3) * 4;
-  return base64Length <= maxEncodedLength;
+  return conservativeDecodedBase64Length(base64Length: base64Length) <= maxInlineMessageAttachmentBytes;
+}
+
+/// Conservative decoded size for a base64 payload when padding is unknown.
+int conservativeDecodedBase64Length({required int base64Length}) => (base64Length * 3 + 3) ~/ 4;
+
+/// Exact decoded size for normalized base64 data, accounting for padding.
+int decodedBase64Length({required String base64Data}) {
+  if (base64Data.isEmpty) return 0;
+  final padding = base64Data.endsWith("==")
+      ? 2
+      : base64Data.endsWith("=")
+      ? 1
+      : 0;
+  return (base64Data.length * 3 ~/ 4) - padding;
+}
+
+final class _MalformedMessageAttachmentError implements Exception {
+  final Object innerError;
+
+  const _MalformedMessageAttachmentError({required this.innerError});
+
+  @override
+  String toString() => "Malformed message attachment payload";
+}
+
+// ignore: no_slop_linter/prefer_specific_type, JSON converter input
+MessageAttachment? _messageAttachmentFromJson(Object? json) {
+  if (json == null) return null;
+  if (json is! Map) {
+    developer.log("Ignoring malformed message attachment payload", name: "sesori_shared");
+    return null;
+  }
+  try {
+    // ignore: no_slop_linter/prefer_specific_type, generated fromJson signature
+    return MessageAttachment.fromJson(Map<String, dynamic>.from(json));
+  } on Object catch (error, stackTrace) {
+    developer.log(
+      "Ignoring malformed message attachment payload",
+      name: "sesori_shared",
+      error: _MalformedMessageAttachmentError(innerError: error),
+      stackTrace: stackTrace,
+    );
+    return null;
+  }
+}
+
+// ignore: no_slop_linter/prefer_specific_type, JSON converter input
+List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
+  if (json is! List) return const [];
+  return [
+    for (final item in json) ?_messageAttachmentFromJson(item),
+  ];
 }
 
 @JsonEnum()
@@ -60,7 +113,7 @@ sealed class MessagePart with _$MessagePart {
     required String? agentName,
     required int? attempt,
     required String? retryError,
-    required MessageAttachment? attachment,
+    @JsonKey(fromJson: _messageAttachmentFromJson) required MessageAttachment? attachment,
   }) = _MessagePart;
 
   factory MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
@@ -144,7 +197,7 @@ sealed class ToolState with _$ToolState {
     required String? output,
     required String? error,
     // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
-    @Default(<MessageAttachment>[]) List<MessageAttachment> attachments,
+    @JsonKey(fromJson: _messageAttachmentsFromJson) @Default(<MessageAttachment>[]) List<MessageAttachment> attachments,
   }) = _ToolState;
 
   factory ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);

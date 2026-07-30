@@ -22,11 +22,7 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   agentName: json['agentName'] as String?,
   attempt: (json['attempt'] as num?)?.toInt(),
   retryError: json['retryError'] as String?,
-  attachment: json['attachment'] == null
-      ? null
-      : MessageAttachment.fromJson(
-          Map<String, dynamic>.from(json['attachment'] as Map),
-        ),
+  attachment: _messageAttachmentFromJson(json['attachment']),
 );
 
 Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
@@ -127,14 +123,9 @@ _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   title: json['title'] as String?,
   output: json['output'] as String?,
   error: json['error'] as String?,
-  attachments:
-      (json['attachments'] as List<dynamic>?)
-          ?.map(
-            (e) =>
-                MessageAttachment.fromJson(Map<String, dynamic>.from(e as Map)),
-          )
-          .toList() ??
-      const <MessageAttachment>[],
+  attachments: json['attachments'] == null
+      ? const <MessageAttachment>[]
+      : _messageAttachmentsFromJson(json['attachments']),
 );
 
 Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>

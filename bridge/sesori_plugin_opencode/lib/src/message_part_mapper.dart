@@ -30,9 +30,15 @@ class MessagePartMapper {
   static const String _compactionCommandText = "/compact";
   static const int _maxDataUrlHeaderCharacters = 256;
   static const int _maxRemoteUrlCharacters = 4096;
-  static const int _maxFilenameCharacters = 255;
   static const int _maxMimeCharacters = 255;
   static const int _maxToolAttachmentCount = 4;
+  static const Set<String> _supportedInlineRasterMimes = {
+    "image/bmp",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  };
 
   /// Maps a generated [Part] union to the plugin-facing [PluginMessagePart].
   ///
@@ -183,7 +189,7 @@ class MessagePartMapper {
       Log.w("OpenCode attachment URL exceeds the transport limit; forwarding metadata only");
     }
     final uri = canParseUri ? Uri.tryParse(raw.url) : null;
-    final filename = _normalizedFilename(filename: raw.filename) ?? _filenameFromUri(uri: uri);
+    final filename = normalizePluginMessageAttachmentFilename(filename: raw.filename) ?? _filenameFromUri(uri: uri);
     if (isDataUrl) {
       return _mapDataAttachment(raw: raw, filename: filename);
     }
@@ -214,7 +220,7 @@ class MessagePartMapper {
         ? null
         : _normalizedValue(value: headerParts.first, maxCharacters: _maxMimeCharacters);
     final mime = _normalizedMime(mime: raw.mime, fallback: headerMime);
-    if (!mime.startsWith("image/")) {
+    if (!_supportedInlineRasterMimes.contains(mime.split(";").first.trim())) {
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
 
@@ -264,17 +270,9 @@ class MessagePartMapper {
     return String.fromCharCodes(normalized.runes.take(maxCharacters));
   }
 
-  String? _normalizedFilename({required String? filename}) {
-    final normalized = filename?.trim().replaceAll(r"\", "/");
-    if (normalized == null || normalized.isEmpty) return null;
-    final segments = normalized.split("/").where((segment) => segment.isNotEmpty);
-    if (segments.isEmpty) return null;
-    return _normalizedValue(value: segments.last, maxCharacters: _maxFilenameCharacters);
-  }
-
   String? _filenameFromUri({required Uri? uri}) {
     if (uri == null || uri.pathSegments.isEmpty) return null;
-    return _normalizedValue(value: uri.pathSegments.last, maxCharacters: _maxFilenameCharacters);
+    return normalizePluginMessageAttachmentFilename(filename: uri.pathSegments.last);
   }
 
   /// An unrecognized part shape. Every OpenCode part carries `id`,

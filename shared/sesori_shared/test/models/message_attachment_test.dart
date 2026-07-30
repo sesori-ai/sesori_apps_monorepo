@@ -17,6 +17,30 @@ void main() {
       expect(state.attachments, isEmpty);
     });
 
+    test("malformed attachment values do not reject their enclosing models", () {
+      final part = MessagePart.fromJson(const {
+        "id": "part-1",
+        "sessionID": "session-1",
+        "messageID": "message-1",
+        "type": "file",
+        "attachment": "not-an-object",
+      });
+      final state = ToolState.fromJson(const {
+        "status": "completed",
+        "attachments": [
+          "not-an-object",
+          {"source": "metadata", "mime": "image/png", "filename": "valid.png"},
+          {"source": "inline_image", "mime": 42, "base64": false},
+        ],
+      });
+
+      expect(part.attachment, isNull);
+      expect(
+        state.attachments,
+        equals([const MessageAttachment.metadata(mime: "image/png", filename: "valid.png")]),
+      );
+    });
+
     test("unknown future sources degrade without rejecting the message", () {
       final attachment = MessageAttachment.fromJson(const {
         "source": "future_source",
@@ -57,11 +81,14 @@ void main() {
         base64: "sensitive-file-content",
         filename: "image.png",
       );
-      const maxEncodedLength = ((maxInlineMessageAttachmentBytes + 2) ~/ 3) * 4;
+      const roundedUpEncodedLength = ((maxInlineMessageAttachmentBytes + 2) ~/ 3) * 4;
 
       expect(attachment.toString(), isNot(contains("sensitive-file-content")));
-      expect(isInlineMessageAttachmentWithinSizeLimit(base64Length: maxEncodedLength), isTrue);
-      expect(isInlineMessageAttachmentWithinSizeLimit(base64Length: maxEncodedLength + 1), isFalse);
+      expect(isInlineMessageAttachmentWithinSizeLimit(base64Length: roundedUpEncodedLength), isFalse);
+      expect(
+        conservativeDecodedBase64Length(base64Length: roundedUpEncodedLength),
+        greaterThan(maxInlineMessageAttachmentBytes),
+      );
     });
 
     test("inline attachments round-trip through the wire shape", () {

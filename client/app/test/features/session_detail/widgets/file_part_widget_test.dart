@@ -92,6 +92,18 @@ void main() {
     verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
   });
 
+  testWidgets("does not render a hardcoded MIME fallback", (tester) async {
+    const attachment = MessageAttachment.metadata(
+      mime: " ",
+      filename: "unknown.bin",
+    );
+
+    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+
+    expect(find.text("unknown.bin"), findsOneWidget);
+    expect(find.text("application/octet-stream"), findsNothing);
+  });
+
   testWidgets("degrades malformed inline data to a metadata tile", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",

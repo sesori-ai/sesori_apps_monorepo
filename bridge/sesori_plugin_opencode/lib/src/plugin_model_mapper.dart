@@ -1,4 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show decodedBase64Length;
 
 import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
@@ -16,13 +17,17 @@ import "question_info_mapper.dart";
 class PluginModelMapper {
   const PluginModelMapper({
     required MessagePartMapper messagePartMapper,
+    required int maxInlineAttachmentBytes,
     QuestionInfoMapper questionInfoMapper = const QuestionInfoMapper(),
     AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper(),
   }) : _messagePartMapper = messagePartMapper,
+       _maxInlineAttachmentBytes = maxInlineAttachmentBytes,
        _questionInfoMapper = questionInfoMapper,
-       _assistantMessageMapper = assistantMessageMapper;
+       _assistantMessageMapper = assistantMessageMapper,
+       assert(maxInlineAttachmentBytes >= 0);
 
   final MessagePartMapper _messagePartMapper;
+  final int _maxInlineAttachmentBytes;
   final QuestionInfoMapper _questionInfoMapper;
   final AssistantMessageMapper _assistantMessageMapper;
 
@@ -128,10 +133,49 @@ class PluginModelMapper {
       MessageUnknown(:final raw) => throw FormatException("Unknown message role: $raw"),
       _ => throw FormatException("Unknown message role: $info"),
     };
+    final parts = raw.parts.map(_messagePartMapper.mapPart).where((part) => part.type.isVisible).toList();
     return PluginMessageWithParts(
       info: pluginInfo,
-      parts: raw.parts.map(_messagePartMapper.mapPart).where((part) => part.type.isVisible).toList(),
+      parts: _applyAttachmentBudget(parts: parts),
     );
+  }
+
+  List<PluginMessagePart> _applyAttachmentBudget({required List<PluginMessagePart> parts}) {
+    var remainingBytes = _maxInlineAttachmentBytes;
+    var didLogOverflow = false;
+
+    PluginMessageAttachment bound({required PluginMessageAttachment attachment}) {
+      if (attachment case PluginMessageAttachmentInlineImage(:final mime, :final base64, :final filename)) {
+        final decodedBytes = decodedBase64Length(base64Data: base64);
+        if (decodedBytes <= remainingBytes) {
+          remainingBytes -= decodedBytes;
+          return attachment;
+        }
+        if (!didLogOverflow) {
+          Log.w("OpenCode message attachments exceed the aggregate transport limit; forwarding metadata only");
+          didLogOverflow = true;
+        }
+        return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+      }
+      return attachment;
+    }
+
+    PluginMessagePart boundPart({required PluginMessagePart part}) {
+      final attachment = part.attachment;
+      final state = part.state;
+      return part.copyWith(
+        attachment: attachment == null ? null : bound(attachment: attachment),
+        state: state == null
+            ? null
+            : state.copyWith(
+                attachments: state.attachments
+                    .map((attachment) => bound(attachment: attachment))
+                    .toList(growable: false),
+              ),
+      );
+    }
+
+    return parts.map((part) => boundPart(part: part)).toList(growable: false);
   }
 
   PluginMessageTime _mapUserMessageTime(UserMessageTime time) {

@@ -101,15 +101,15 @@ class _FilePartWidgetState extends State<FilePartWidget> {
     return String.fromCharCodes(normalized.runes.take(_maxMetadataCharacters));
   }
 
-  String _displayMime({required String mime}) {
+  String? _displayMime({required String mime}) {
     final normalized = mime.trim();
-    if (normalized.isEmpty) return "application/octet-stream";
+    if (normalized.isEmpty) return null;
     return String.fromCharCodes(normalized.runes.take(_maxMetadataCharacters));
   }
 
   Widget _buildInlineImage({
     required PregoDesignSystem prego,
-    required String mime,
+    required String? mime,
     required String filename,
   }) {
     final imageBytes = _imageBytes;
@@ -177,7 +177,7 @@ class _FilePartWidgetState extends State<FilePartWidget> {
   Widget _buildFileTile({
     required PregoDesignSystem prego,
     required String filename,
-    required String mime,
+    required String? mime,
     required Uri? uri,
     required IconData icon,
   }) {
@@ -203,11 +203,12 @@ class _FilePartWidgetState extends State<FilePartWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(filename, style: prego.textTheme.textSm.regular, overflow: TextOverflow.ellipsis),
-                      Text(
-                        mime,
-                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      if (mime != null)
+                        Text(
+                          mime,
+                          style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     ],
                   ),
                 ),

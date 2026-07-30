@@ -156,7 +156,7 @@ void main() {
       );
     });
 
-    test("rejects a plugin remote attachment outside HTTP(S)", () {
+    test("degrades a plugin remote attachment outside HTTP(S) to metadata", () {
       final part = PluginMessagePart(
         id: "p1",
         sessionID: "s1",
@@ -178,7 +178,10 @@ void main() {
         ),
       );
 
-      expect(() => part.toShared(sessionId: "s1"), throwsStateError);
+      expect(
+        part.toShared(sessionId: "s1").attachment,
+        equals(const MessageAttachment.metadata(mime: "text/plain", filename: "secret.txt")),
+      );
     });
 
     test("strips path components from plugin-provided filenames", () {

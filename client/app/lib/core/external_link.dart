@@ -2,6 +2,15 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "di/injection.dart";
 
+final class _PrivacySafeExternalLinkError implements Exception {
+  final Object innerError;
+
+  const _PrivacySafeExternalLinkError({required this.innerError});
+
+  @override
+  String toString() => "External link launcher failed";
+}
+
 /// Opens an external [url] (web page, mailto, etc.) via the DI-registered
 /// [UrlLauncher], logging (rather than crashing) when the platform reports the
 /// URL could not be handled.
@@ -21,6 +30,6 @@ Future<void> openExternalLink({
     final launched = await getIt<UrlLauncher>().launch(url, mode: mode);
     if (!launched) logw("Could not open external link");
   } on Object catch (error, stackTrace) {
-    logw("Failed to open external link", error, stackTrace);
+    logw("Failed to open external link", _PrivacySafeExternalLinkError(innerError: error), stackTrace);
   }
 }
