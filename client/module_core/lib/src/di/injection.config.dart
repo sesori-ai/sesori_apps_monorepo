@@ -29,6 +29,8 @@ import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
+import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
+    as _i64;
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
     as _i197;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
@@ -56,6 +58,8 @@ import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
     as _i209;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
+import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart'
+    as _i198;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
@@ -82,7 +86,6 @@ import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
-import 'package:sesori_dart_core/src/services/draft_store.dart' as _i1002;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -123,11 +126,13 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
+    gh.lazySingleton<_i64.ComposerDraftStorage>(
+      () => _i64.ComposerDraftStorage(),
+    );
     gh.lazySingleton<_i369.ClockProvider>(() => const _i369.ClockProvider());
     gh.lazySingleton<_i369.RelayClientFactory>(
       () => const _i369.RelayClientFactory(),
     );
-    gh.lazySingleton<_i1002.DraftStore>(() => _i1002.DraftStore());
     gh.lazySingleton<_i913.NewSessionSelectionTracker>(
       () => _i913.NewSessionSelectionTracker(),
     );
@@ -161,6 +166,11 @@ extension GetItInjectableX on _i174.GetIt {
         pushMessagingSource: gh<_i330.PushMessagingSource>(),
         localNotificationClient: gh<_i1037.LocalNotificationClient>(),
         routeDispatcher: gh<_i951.RouteDispatcher>(),
+      ),
+    );
+    gh.lazySingleton<_i198.ComposerDraftRepository>(
+      () => _i198.ComposerDraftRepository(
+        storage: gh<_i64.ComposerDraftStorage>(),
       ),
     );
     gh.lazySingleton<_i209.AppearanceStore>(

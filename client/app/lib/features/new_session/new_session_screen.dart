@@ -35,6 +35,8 @@ class NewSessionScreen extends StatelessWidget {
         newSessionPluginService: getIt<NewSessionPluginService>(),
         projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
+        composerDraftRepository: getIt<ComposerDraftRepository>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
         projectId: projectId,
         initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
       ),
@@ -240,19 +242,25 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                         child: IgnorePointer(
                           ignoring: !isComposerEnabled,
                           child: PromptInput(
-                            // Persist the unsent prompt per project so it survives
-                            // leaving and returning to the new-session screen before
-                            // a session exists; cleared once the session is created.
-                            draftKey: "new-session:${widget.projectId}",
+                            draftIdentity: "new-session:${widget.projectId}",
+                            initialDraft: context.read<NewSessionCubit>().composerDraft,
                             hasMessages: false,
                             isBusy: state is NewSessionSending,
-                            onSend: (String text, String? command) {
+                            onSend: ({required text, required command, required inputMode}) {
                               context.read<NewSessionCubit>().createSession(
                                 text: text,
                                 command: command,
+                                inputMode: inputMode,
                                 dedicatedWorktree: _dedicatedWorktree,
                               );
                             },
+                            onVoiceTranscriptionCompleted: context
+                                .read<NewSessionCubit>()
+                                .reportVoiceTranscriptionCompleted,
+                            onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
+                              draft: draft,
+                            ),
+                            onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
                             onAbort: _dismissScreen,
                             header: _buildErrorBanner(state),
                             composerHeader: _buildComposerHeader(state),

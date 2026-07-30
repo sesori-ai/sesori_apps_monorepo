@@ -103,7 +103,10 @@ void _registerDependencies({
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
-  getIt.registerLazySingleton<DraftStore>(DraftStore.new);
+  getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
+  final productAnalyticsService = MockProductAnalyticsService();
+  stubProductAnalyticsService(service: productAnalyticsService);
+  getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
 }
 
 void main() {

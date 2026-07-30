@@ -120,6 +120,10 @@ void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
 
+  setUpAll(() {
+    registerFallbackValue(ComposerDraft.typed(text: ""));
+  });
+
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
   // renders its flat (cue) menu here — the menu rows are Material InkWells, not
   // GlassMenuItems. Finders below target those InkWells.
@@ -133,13 +137,18 @@ void main() {
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
+    when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(
+      () => cubit.saveComposerDraft(draft: any(named: "draft")),
+    ).thenReturn(null);
+    when(cubit.clearComposerDraft).thenReturn(null);
+    when(cubit.reportVoiceTranscriptionCompleted).thenReturn(null);
 
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
-    GetIt.instance.registerLazySingleton<DraftStore>(DraftStore.new);
   });
 
   tearDown(() async {
@@ -577,6 +586,79 @@ void main() {
     stopCompleter.complete("transcript");
     await tester.pumpAndSettle();
     expect(find.text("transcript"), findsOneWidget);
+    verify(cubit.reportVoiceTranscriptionCompleted).called(1);
+    final savedDrafts = verify(
+      () => cubit.saveComposerDraft(draft: captureAny(named: "draft")),
+    ).captured.cast<ComposerDraft>();
+    expect(savedDrafts.last.text, "transcript");
+    expect(savedDrafts.last.voiceSpans, [VoiceOriginSpan(start: 0, end: 10)]);
+  });
+
+  testWidgets("restored mixed draft keeps voice-assisted input mode when sent", (tester) async {
+    when(() => cubit.composerDraft).thenReturn(
+      ComposerDraft(
+        text: "typed transcript",
+        voiceSpans: [VoiceOriginSpan(start: 6, end: 16)],
+      ),
+    );
+    when(
+      () => cubit.sendMessage(
+        text: "typed transcript",
+        command: null,
+        inputMode: ComposerInputMode.voiceAssisted,
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.text("typed transcript"), findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "typed transcript",
+        command: null,
+        inputMode: ComposerInputMode.voiceAssisted,
+      ),
+    ).called(1);
+  });
+
+  testWidgets("replacing a restored voice draft resets input mode", (tester) async {
+    when(() => cubit.composerDraft).thenReturn(
+      ComposerDraft(
+        text: "transcript",
+        voiceSpans: [VoiceOriginSpan(start: 0, end: 10)],
+      ),
+    );
+    when(
+      () => cubit.sendMessage(
+        text: "typed replacement",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final editable = tester.widget<EditableText>(find.byType(EditableText));
+    editable.controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: editable.controller.text.length,
+    );
+    await tester.enterText(find.byType(EditableText), "typed replacement");
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "typed replacement",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      ),
+    ).called(1);
   });
 
   testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {

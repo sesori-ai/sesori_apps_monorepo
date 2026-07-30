@@ -100,6 +100,10 @@ void main() {
   late BehaviorSubject<ConnectionStatus> connectionStatus;
   late MockProjectRepository projectRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
+  late ComposerDraftRepository composerDraftRepository;
+  late MockProductAnalyticsService productAnalyticsService;
+
+  setUpAll(registerAllFallbackValues);
 
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
   // renders its flat (cue) menu here — the menu rows are Material InkWells, not
@@ -118,6 +122,9 @@ void main() {
     );
     projectRepository = MockProjectRepository();
     voiceTranscriptionService = MockVoiceTranscriptionService();
+    composerDraftRepository = inMemoryComposerDraftRepository();
+    productAnalyticsService = MockProductAnalyticsService();
+    stubProductAnalyticsService(service: productAnalyticsService);
 
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
@@ -210,6 +217,8 @@ void main() {
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
+    GetIt.instance.registerSingleton<ComposerDraftRepository>(composerDraftRepository);
+    GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
   });
 
   tearDown(() async {
@@ -1138,9 +1147,6 @@ void main() {
   });
 
   testWidgets("persists and restores the per-project new-session draft", (tester) async {
-    final draftStore = DraftStore();
-    GetIt.instance.registerSingleton<DraftStore>(draftStore);
-
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
@@ -1149,10 +1155,13 @@ void main() {
     await tester.pump();
 
     // Tear the screen down (e.g. the user navigates away) before creating a
-    // session — PromptInput.dispose() should persist the unsent prompt.
+    // session. The owning Cubit has already persisted the immutable draft.
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
-    expect(draftStore.read("new-session:project-1"), "half-written idea");
+    expect(
+      composerDraftRepository.readForNewSession(projectId: "project-1"),
+      ComposerDraft.typed(text: "half-written idea"),
+    );
 
     // Re-open the new-session screen — the per-project draft is restored.
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));

@@ -219,8 +219,10 @@ class AdaptiveSessionRouterTestHarness {
         pluginPreferenceRepository: pluginPreferenceRepository,
       ),
     );
-    registerListServices(
+    final productAnalyticsService = MockProductAnalyticsService();
+    registerListServicesWithProductAnalytics(
       projectRepository: projectRepository,
+      productAnalyticsService: productAnalyticsService,
     );
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
@@ -237,7 +239,7 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<SessionDetailLoadService>(sessionDetailLoadService);
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
-    getIt.registerLazySingleton<DraftStore>(DraftStore.new);
+    getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
     getIt.registerLazySingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker.new);
     getIt.registerSingleton<AuthSession>(authSession);
 

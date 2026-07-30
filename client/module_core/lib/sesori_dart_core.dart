@@ -39,6 +39,7 @@ export "src/api/notification_preferences_api.dart";
 export "src/api/plugin_preference_api.dart";
 export "src/api/product_analytics_preference_api.dart";
 export "src/api/project_api.dart";
+export "src/api/storage/composer_draft_storage.dart";
 export "src/api/storage/product_analytics_preference_storage.dart";
 export "src/capabilities/notifications/register_token_request.dart";
 export "src/capabilities/relay/relay_client.dart";
@@ -88,6 +89,7 @@ export "src/di/injection.dart";
 // Errors
 export "src/errors/remote_failure_reason.dart";
 // Analytics foundation
+export "src/foundation/models/composer/composer_draft.dart";
 export "src/foundation/models/product_analytics/analytics_runtime_capability.dart";
 export "src/foundation/models/product_analytics/installation_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_event.dart";
@@ -109,6 +111,7 @@ export "src/platform/url_launcher.dart";
 export "src/repositories/analytics_repository.dart";
 export "src/repositories/appearance_store.dart";
 export "src/repositories/bridge_repository.dart";
+export "src/repositories/composer_draft_repository.dart";
 export "src/repositories/legal_repository.dart";
 export "src/repositories/models/analytics_delivery_result.dart";
 export "src/repositories/models/plugin_management_result.dart";
@@ -128,7 +131,7 @@ export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
 // Services
-export "src/services/draft_store.dart";
+export "src/services/composer_draft_calculator.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";
 export "src/services/models/product_analytics_state.dart";

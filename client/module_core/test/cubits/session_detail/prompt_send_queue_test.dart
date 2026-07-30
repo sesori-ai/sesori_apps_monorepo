@@ -1,18 +1,19 @@
 import "package:sesori_dart_core/src/cubits/session_detail/prompt_send_queue.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:test/test.dart";
 
-const _first = QueuedSessionSubmission(text: "first");
-const _second = QueuedSessionSubmission(text: "second");
-const _same = QueuedSessionSubmission(text: "same");
-const _other = QueuedSessionSubmission(text: "other");
-const _a = QueuedSessionSubmission(text: "a");
-const _b = QueuedSessionSubmission(text: "b");
-const _c = QueuedSessionSubmission(text: "c");
-const _existing = QueuedSessionSubmission(text: "existing");
-const _retried = QueuedSessionSubmission(text: "retried");
-const _msg1 = QueuedSessionSubmission(text: "msg1");
-const _msg2 = QueuedSessionSubmission(text: "msg2");
+const _first = QueuedSessionSubmission.text(text: "first", inputMode: ComposerInputMode.typed);
+const _second = QueuedSessionSubmission.text(text: "second", inputMode: ComposerInputMode.typed);
+const _same = QueuedSessionSubmission.text(text: "same", inputMode: ComposerInputMode.typed);
+const _other = QueuedSessionSubmission.text(text: "other", inputMode: ComposerInputMode.typed);
+const _a = QueuedSessionSubmission.text(text: "a", inputMode: ComposerInputMode.typed);
+const _b = QueuedSessionSubmission.text(text: "b", inputMode: ComposerInputMode.typed);
+const _c = QueuedSessionSubmission.text(text: "c", inputMode: ComposerInputMode.typed);
+const _existing = QueuedSessionSubmission.text(text: "existing", inputMode: ComposerInputMode.typed);
+const _retried = QueuedSessionSubmission.text(text: "retried", inputMode: ComposerInputMode.typed);
+const _msg1 = QueuedSessionSubmission.text(text: "msg1", inputMode: ComposerInputMode.typed);
+const _msg2 = QueuedSessionSubmission.text(text: "msg2", inputMode: ComposerInputMode.typed);
 
 void main() {
   group("PromptSendQueue", () {

@@ -503,6 +503,8 @@ SessionDetailCubit _buildCubit({
     permissionRepository: permissionRepository,
     sessionViewingService: stubbedSessionViewingService(),
     lifecycleSource: FakeLifecycleSource(),
+    composerDraftRepository: inMemoryComposerDraftRepository(),
+    productAnalyticsService: stubbedProductAnalyticsService(),
     sessionId: sessionId,
     projectId: projectId,
     notificationCanceller: notificationCanceller,
