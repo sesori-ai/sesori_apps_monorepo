@@ -94,6 +94,10 @@ eagerly "just in case."
   internal contracts; update every in-repository consumer in lockstep instead.
 - A recovered failure that continues must remain observable. Do not add a
   redundant log when the error is rethrown or returned as an explicit failure.
+- When translating a caught error into another error, retain the original in a
+  typed `innerError` or `cause` field instead of discarding it. Keep the
+  wrapper's presentation privacy-safe when the original may contain sensitive
+  payload data.
 
 ## Analytics
 

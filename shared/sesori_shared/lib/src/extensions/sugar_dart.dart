@@ -10,17 +10,15 @@ import "package:rxdart/rxdart.dart";
 
 final _random = Random.secure();
 
+// ignore: no_slop_linter/prefer_specific_type, centralized decoded JSON boundary
+Map<String, dynamic> jsonCastMap(dynamic value) {
+  if (value is Map) return value.cast();
+  throw const FormatException("Invalid JSON Object (not a Map)");
+}
+
 // ignore: no_slop_linter/prefer_specific_type, JSON decoding
 Map<String, dynamic> jsonDecodeMap(String source) {
-  final result = jsonDecode(source);
-
-  if (result is Map) {
-    return result.cast();
-  } else {
-    throw FormatException(
-      "Invalid JSON Object (not a Map) in jsonDecodeMap: $source",
-    );
-  }
+  return jsonCastMap(jsonDecode(source));
 }
 
 // ignore: no_slop_linter/prefer_specific_type, JSON decoding
