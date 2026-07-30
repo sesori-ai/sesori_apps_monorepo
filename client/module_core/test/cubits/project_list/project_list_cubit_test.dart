@@ -526,9 +526,6 @@ void main() {
             isFalse,
           ),
         ],
-        // The setup onboarding has no machine row, so the bridge list is never
-        // fetched for a bridge-less account.
-        verify: (_) => verifyNever(() => mockRegisteredBridgesService.getRegisteredBridges()),
       );
 
       blocTest<ProjectListCubit, ProjectListState>(
@@ -539,67 +536,12 @@ void main() {
           when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
           return buildCubit();
         },
-        // The bridge fetch failed (empty list) while the boolean latch still
-        // answers positively — the turn-on view must be picked regardless, just
-        // without a machine name (no enrichment emit for an empty list).
         expect: () => [
-          isA<ProjectListBridgeDisconnected>()
-              .having((s) => s.hasRegisteredBridges, "hasRegisteredBridges", isTrue)
-              .having((s) => s.bridges, "bridges", isEmpty),
+          isA<ProjectListBridgeDisconnected>().having((s) => s.hasRegisteredBridges, "hasRegisteredBridges", isTrue),
         ],
-      );
-
-      blocTest<ProjectListCubit, ProjectListState>(
-        "the fetched machine identity enriches the disconnected state in a follow-up emit",
-        build: () {
-          statusController.add(const ConnectionStatus.disconnected());
-          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
-          when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
-          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
-            (_) async => [testBridgeSummary(name: "Macbook-Pro.local")],
-          );
-          return buildCubit();
-        },
-        // The recovery view shows immediately off the latch; the machine names
-        // land as a second emit once the fetch resolves.
-        expect: () => [
-          isA<ProjectListBridgeDisconnected>()
-              .having((s) => s.hasRegisteredBridges, "hasRegisteredBridges", isTrue)
-              .having((s) => s.bridges, "bridges", isEmpty),
-          isA<ProjectListBridgeDisconnected>()
-              .having((s) => s.hasRegisteredBridges, "hasRegisteredBridges", isTrue)
-              .having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
-        ],
-      );
-
-      blocTest<ProjectListCubit, ProjectListState>(
-        "connection recovery during the bridge fetch suppresses the stale enrichment emit",
-        build: () {
-          statusController.add(const ConnectionStatus.disconnected());
-          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
-          when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
-          pendingLookupGate = Completer<bool>();
-          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
-            (_) => pendingLookupGate.future.then((_) => [testBridgeSummary(name: "Macbook-Pro.local")]),
-          );
-          addTearDown(() {
-            if (!pendingLookupGate.isCompleted) pendingLookupGate.complete(true);
-          });
-          return buildCubit();
-        },
-        act: (cubit) async {
-          await Future<void>.delayed(Duration.zero); // bridge fetch now in flight
-          // The bridge connects while the fetch is pending. Mutate currentStatus
-          // directly (no stream event) so only the post-fetch guard is exercised.
-          when(() => mockConnectionService.currentStatus).thenReturn(_connectedStatus);
-          pendingLookupGate.complete(true);
-          await Future<void>.delayed(Duration.zero);
-        },
-        // Only the immediate name-less state; no enrichment over the recovered
-        // connection — the connected transition owns the next state.
-        expect: () => [
-          isA<ProjectListBridgeDisconnected>().having((s) => s.bridges, "bridges", isEmpty),
-        ],
+        // Naming the machine that bridge is belongs to BridgeIdentityCubit, so
+        // this cubit only ever asks for the boolean latch.
+        verify: (_) => verifyNever(() => mockRegisteredBridgesService.getRegisteredBridges()),
       );
 
       blocTest<ProjectListCubit, ProjectListState>(
@@ -625,165 +567,6 @@ void main() {
         // No bridgeDisconnected over the recovered connection — the loading
         // state stays until the connected transition drives the next fetch.
         expect: () => <ProjectListState>[],
-      );
-    });
-
-    // -------------------------------------------------------------------------
-    // Connected-but-empty machine identity enrichment
-    // -------------------------------------------------------------------------
-
-    group("connected-empty machine identity", () {
-      late Completer<bool> pendingFetchGate;
-
-      blocTest<ProjectListCubit, ProjectListState>(
-        "an empty loaded list is enriched with the machine identity in a follow-up emit",
-        build: () {
-          when(() => mockProjectRepository.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success(const Projects(data: [])),
-          );
-          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
-            (_) async => [testBridgeSummary(name: "Macbook-Pro.local")],
-          );
-          return buildCubit();
-        },
-        // The empty body shows immediately; the machine name lands as a second
-        // emit once the fetch resolves.
-        expect: () => [
-          isA<ProjectListLoaded>()
-              .having((s) => s.projects, "projects", isEmpty)
-              .having((s) => s.bridges, "bridges", isEmpty),
-          isA<ProjectListLoaded>().having((s) => s.projects, "projects", isEmpty).having(
-            (s) => s.bridges.map((b) => b.name),
-            "bridge names",
-            ["Macbook-Pro.local"],
-          ),
-        ],
-      );
-
-      blocTest<ProjectListCubit, ProjectListState>(
-        "a failed bridge fetch leaves the empty loaded state without a follow-up emit",
-        build: () {
-          when(() => mockProjectRepository.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success(const Projects(data: [])),
-          );
-          // The setUp default getRegisteredBridges stub resolves empty — the
-          // service's fail-soft error shape.
-          return buildCubit();
-        },
-        expect: () => [
-          isA<ProjectListLoaded>().having((s) => s.bridges, "bridges", isEmpty),
-        ],
-      );
-
-      blocTest<ProjectListCubit, ProjectListState>(
-        "a non-empty loaded list never fetches the machine identity",
-        build: () {
-          when(() => mockProjectRepository.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success(Projects(data: [testProject()])),
-          );
-          return buildCubit();
-        },
-        expect: () => [
-          isA<ProjectListLoaded>()
-              .having((s) => s.projects, "projects", isNotEmpty)
-              .having((s) => s.bridges, "bridges", isEmpty),
-        ],
-        verify: (_) => verifyNever(() => mockRegisteredBridgesService.getRegisteredBridges()),
-      );
-
-      blocTest<ProjectListCubit, ProjectListState>(
-        "projects arriving during the bridge fetch suppress the stale enrichment emit",
-        build: () {
-          when(() => mockProjectRepository.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success(const Projects(data: [])),
-          );
-          pendingFetchGate = Completer<bool>();
-          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
-            (_) => pendingFetchGate.future.then((_) => [testBridgeSummary(name: "Macbook-Pro.local")]),
-          );
-          addTearDown(() {
-            if (!pendingFetchGate.isCompleted) pendingFetchGate.complete(true);
-          });
-          return buildCubit();
-        },
-        act: (cubit) async {
-          await Future<void>.delayed(Duration.zero); // bridge fetch now in flight
-          // Projects arrive while the fetch is pending; that state owns the
-          // screen and has no machine row to enrich.
-          when(() => mockProjectRepository.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success(Projects(data: [testProject()])),
-          );
-          await cubit.refreshProjects();
-          pendingFetchGate.complete(true);
-          await Future<void>.delayed(Duration.zero);
-        },
-        expect: () => [
-          isA<ProjectListLoaded>().having((s) => s.projects, "projects", isEmpty),
-          isA<ProjectListLoaded>()
-              .having((s) => s.projects, "projects", isNotEmpty)
-              .having((s) => s.bridges, "bridges", isEmpty),
-        ],
-      );
-
-      blocTest<ProjectListCubit, ProjectListState>(
-        "a refresh of a still-empty list carries the machine identity over without a flicker",
-        build: () {
-          when(() => mockProjectRepository.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success(const Projects(data: [])),
-          );
-          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
-            (_) async => [testBridgeSummary(name: "Macbook-Pro.local")],
-          );
-          return buildCubit();
-        },
-        act: (cubit) async {
-          // Let the initial empty load and its enrichment land first.
-          await Future<void>.delayed(Duration.zero);
-          await Future<void>.delayed(Duration.zero);
-          await cubit.refreshProjects();
-          await Future<void>.delayed(Duration.zero);
-        },
-        // Exactly the two initial emits: the refresh re-emits an identical
-        // enriched state (bridges carried over), which bloc dedupes — the row
-        // never blinks out.
-        expect: () => [
-          isA<ProjectListLoaded>().having((s) => s.bridges, "bridges", isEmpty),
-          isA<ProjectListLoaded>().having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
-        ],
-      );
-
-      blocTest<ProjectListCubit, ProjectListState>(
-        "hiding the last project enriches the now-empty list with the machine identity",
-        build: () {
-          when(() => mockProjectRepository.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success(Projects(data: [testProject(id: "only")])),
-          );
-          when(
-            () => mockProjectRepository.hideProject(projectId: any(named: "projectId")),
-          ).thenAnswer((_) async => ApiResponse.success(null));
-          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
-            (_) async => [testBridgeSummary(name: "Macbook-Pro.local")],
-          );
-          return buildCubit();
-        },
-        act: (cubit) async {
-          await Future<void>.delayed(Duration.zero); // non-empty initial load
-          await cubit.hideProject("only");
-          await Future<void>.delayed(Duration.zero); // enrichment lands
-        },
-        skip: 1, // the non-empty initial load
-        // The local hide reaches the connected-empty body just like an empty
-        // fetch does, so it gets the same follow-up machine-identity emit.
-        expect: () => [
-          isA<ProjectListLoaded>()
-              .having((s) => s.projects, "projects", isEmpty)
-              .having((s) => s.bridges, "bridges", isEmpty),
-          isA<ProjectListLoaded>().having((s) => s.projects, "projects", isEmpty).having(
-            (s) => s.bridges.map((b) => b.name),
-            "bridge names",
-            ["Macbook-Pro.local"],
-          ),
-        ],
       );
     });
 

@@ -41,6 +41,9 @@ void main() {
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
+    // The bar's machine row is not what these tests are about; an empty lookup
+    // (the service's fail-soft shape) leaves it out of the tree.
+    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
     registerListServices(

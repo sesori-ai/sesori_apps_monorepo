@@ -18,14 +18,6 @@ sealed class ProjectListState with _$ProjectListState {
     /// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
     @Default({}) Map<String, bool> unseenByProjectId,
     @Default(false) bool isRefreshing,
-
-    /// The account's registered bridges (most recently seen first), so the
-    /// connected-but-empty body can name the machine it is connected to.
-    /// Populated only while [projects] is empty — the only surface that shows
-    /// the machine identity. Emitted empty first and enriched by a follow-up
-    /// emit once the fetch resolves; stays empty when the fetch fails, which
-    /// hides the machine-name row.
-    @Default(<BridgeSummary>[]) List<BridgeSummary> bridges,
   }) = ProjectListLoaded;
 
   const factory ProjectListState.failed({required RemoteFailureReason reason}) = ProjectListFailed;
@@ -43,14 +35,11 @@ sealed class ProjectListState with _$ProjectListState {
   ///   onboarding.
   /// * `true` — a bridge is registered but not running → "turn on your
   ///   bridge" view.
+  ///
+  /// Which machine that bridge is — the name the recovery view and the top
+  /// navigation show — is not part of this state: `BridgeIdentityCubit` owns it,
+  /// because it resolves per connection rather than per project-list state.
   const factory ProjectListState.bridgeDisconnected({
     required bool hasRegisteredBridges,
-
-    /// The account's registered bridges (most recently seen first), so the UI
-    /// can name the machine it is trying to reach. Emitted empty first and
-    /// enriched by a follow-up emit once the fetch resolves; stays empty when
-    /// the fetch fails (e.g. the phone itself is offline) — the UI hides the
-    /// machine identity in that case.
-    @Default(<BridgeSummary>[]) List<BridgeSummary> bridges,
   }) = ProjectListBridgeDisconnected;
 }

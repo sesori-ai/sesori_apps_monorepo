@@ -20,13 +20,12 @@ part of "../project_list_screen.dart";
 /// bar. Anchored to the top of that page at the design's offset; the enclosing
 /// sliver grows past the viewport once the body outgrows it.
 class _BridgeOfflineView extends StatefulWidget {
-  const _BridgeOfflineView({required this.bridges});
+  const _BridgeOfflineView({required this.bridge});
 
-  /// The account's registered bridges, most recently seen first. The first
-  /// entry names the machine the app is trying to reach; empty when the
-  /// lookup failed (e.g. the phone itself is offline), which hides the
-  /// machine row.
-  final List<BridgeSummary> bridges;
+  /// The machine the app is trying to reach — the account's most recently seen
+  /// registered bridge. Null while the lookup has no answer, or when it failed
+  /// (e.g. the phone itself is offline); the machine row is hidden then.
+  final BridgeSummary? bridge;
 
   @override
   State<_BridgeOfflineView> createState() => _BridgeOfflineViewState();
@@ -40,7 +39,7 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final bridge = widget.bridges.firstOrNull;
+    final bridge = widget.bridge;
     final lastSeenAt = bridge?.lastSeenAt;
 
     return Padding(

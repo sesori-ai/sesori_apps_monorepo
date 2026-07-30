@@ -284,31 +284,14 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// flight — in that case the connected transition owns the next state and
   /// this emit is skipped. Re-emitting an unchanged state is harmless (bloc
   /// dedupes equal states).
+  ///
+  /// Which machine the recovery view is trying to reach is resolved separately
+  /// by `BridgeIdentityCubit`, so this state is never held back by that fetch.
   Future<void> _emitBridgeDisconnected() async {
     final hasRegisteredBridges = await _registeredBridgesService.hasRegisteredBridges();
     if (isClosed) return;
     if (!_isBridgeUnavailable) return;
     emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
-    // The machine identity arrives as an enrichment of the already-shown state:
-    // the latch above resolves without the network in the common (latched)
-    // case, so the recovery view is never held back by this fetch — and a
-    // failed fetch (e.g. the phone itself is offline) simply leaves the
-    // machine-name row hidden. The setup onboarding has no machine row, so a
-    // bridge-less account skips the fetch entirely.
-    if (!hasRegisteredBridges) return;
-    final bridges = await _registeredBridgesService.getRegisteredBridges();
-    if (isClosed || bridges.isEmpty) return;
-    // The bridge may have come back while the fetch was in flight — the
-    // connected transition owns the next state then.
-    if (!_isBridgeUnavailable) return;
-    if (state case ProjectListBridgeDisconnected(:final hasRegisteredBridges)) {
-      emit(
-        ProjectListState.bridgeDisconnected(
-          hasRegisteredBridges: hasRegisteredBridges,
-          bridges: bridges,
-        ),
-      );
-    }
   }
 
   void _onStaleReconnect() {
@@ -503,9 +486,6 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           unseenByProjectId: _unseenByProjectId(remaining),
         ),
       );
-      // Hiding the last project lands on the connected-empty body, which
-      // names the machine — same follow-up enrichment as an empty fetch.
-      if (remaining.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
     }
     return true;
   }
@@ -637,30 +617,6 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     return error is NonSuccessCodeError && error.errorCode == 403;
   }
 
-  /// The current loaded state's registered bridges, or empty outside a loaded
-  /// state.
-  List<BridgeSummary> get _loadedBridges => switch (state) {
-    ProjectListLoaded(:final bridges) => bridges,
-    ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const [],
-  };
-
-  /// Enriches an empty loaded list with the account's registered bridges so
-  /// the connected-but-empty body can name the machine it is connected to.
-  /// Mirrors the bridge-disconnected enrichment: the empty state shows
-  /// immediately and the machine row lands in a follow-up emit once the fetch
-  /// resolves; a failed fetch (empty list) leaves the row hidden. No
-  /// registered-bridges gate is needed here — a loaded state means a bridge is
-  /// connected, so the account has one by definition.
-  Future<void> _enrichLoadedEmptyWithBridges() async {
-    final bridges = await _registeredBridgesService.getRegisteredBridges();
-    if (isClosed || bridges.isEmpty) return;
-    // Projects may have arrived while the fetch was in flight — that state
-    // owns the screen and has no machine row to enrich.
-    if (state case final ProjectListLoaded loaded when loaded.projects.isEmpty) {
-      emit(loaded.copyWith(bridges: bridges));
-    }
-  }
-
   Future<bool> _fetchProjects({bool silent = false}) async {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the request is in flight.
@@ -692,12 +648,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
             projects: sortedProjects,
             activityById: _sseEventTracker.currentProjectActivity,
             unseenByProjectId: _unseenByProjectId(sortedProjects),
-            // Carrying the previous machine identity over keeps the row from
-            // flickering out and back across a refresh of a still-empty list.
-            bridges: sortedProjects.isEmpty ? _loadedBridges : const [],
           ),
         );
-        if (sortedProjects.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
         return true;
 
       case ErrorResponse(:final error):

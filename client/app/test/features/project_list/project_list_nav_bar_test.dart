@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -12,20 +14,21 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-/// The two disconnected Projects states — the connect-your-computer onboarding
-/// and the bridge-offline view — used to own an inner scroll view, which forced
-/// the page scroll off and left the bar's title pinned while the body moved
-/// underneath it. They are bodies now, hosted in the scaffold's page scroll.
+/// The Projects top navigation, which is the same compact back-leading block on
+/// every state: the page title over a subtitle row naming the machine this
+/// account is paired with. No state hosts a collapsing large title, so the bar
+/// never changes size or place as the page moves between them — and the bodies,
+/// which join the scaffold's page scroll rather than nesting one of their own,
+/// scroll underneath a bar that stays put.
 ///
-/// Both trade the loaded list's collapsing large title for the compact
-/// back-leading block, whose subtitle reports the connection the body is about:
-/// what the setup checklist is waiting for, or the machine the offline view is
-/// trying to reach. So neither page has a large title to scroll away, and the
-/// bar stays put while its body scrolls.
+/// The two disconnected surfaces are the exception in what that subtitle says:
+/// the connect-your-computer onboarding has no machine to name yet, so its row
+/// reports what the setup checklist is waiting for.
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
   const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
   const bridgeOffline = ConnectionStatus.bridgeOffline(config: config, health: health);
+  const connected = ConnectionStatus.connected(config: config, health: health);
 
   late BehaviorSubject<ConnectionStatus> statusController;
   late MockConnectionService mockConnectionService;
@@ -65,6 +68,16 @@ void main() {
     await getIt.reset();
   });
 
+  Widget buildApp() => BlocProvider<ConnectionOverlayCubit>.value(
+    value: overlayCubit,
+    child: MaterialApp(
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const ProjectListScreen(),
+    ),
+  );
+
   Future<void> pumpScreen(
     WidgetTester tester, {
     required bool hasRegisteredBridges,
@@ -80,17 +93,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>.value(
-        value: overlayCubit,
-        child: MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const ProjectListScreen(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
   }
 
@@ -175,5 +178,135 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => mockConnectionService.reconnect()).called(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // The connected surfaces: the loading page and the loaded list wear the same
+  // bar as the disconnected ones, with the machine name as its second line.
+  //
+  // The list fetch and the machine lookup are handed in as futures so a test can
+  // hold either open and observe the state it asserts — a list still loading, a
+  // machine not yet named — instead of racing through it. They are created
+  // inside the test body on purpose: a Completer made in `setUp` belongs to the
+  // enclosing zone, and completing it would never resume the awaits running in
+  // the test's own fake-async zone.
+  // -------------------------------------------------------------------------
+
+  group("connected to a bridge", () {
+    final macbook = BridgeSummary(
+      id: "a",
+      name: "Macbook-Pro.local",
+      platform: "macos",
+      addedAt: DateTime.utc(2026),
+      lastSeenAt: DateTime.utc(2026, 7),
+    );
+
+    /// A one-project list, the payload the loaded-bar tests use.
+    ApiResponse<Projects> oneProject() {
+      final projects = Projects(
+        data: [testProject(id: "p1", name: "app")],
+      );
+      return ApiResponse.success(projects);
+    }
+
+    setUp(() {
+      statusController.add(connected);
+      when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
+    });
+
+    /// Frames enough to carry both cubits' await chains — the connection check,
+    /// the list fetch, the registered-bridge latch and the bridge lookup —
+    /// through to a rebuilt bar. Deliberately not [WidgetTester.pumpAndSettle]:
+    /// the subtitle skeleton's sheen sweeps forever, so a settle would never
+    /// return while the row is still waiting for its name.
+    Future<void> drainFrames(WidgetTester tester) async {
+      for (var i = 0; i < 6; i++) {
+        await tester.pump();
+      }
+    }
+
+    /// Pumps the screen on a phone viewport, answering the list fetch with
+    /// [list] and the machine lookup with [lookup], then drains the initial
+    /// async work.
+    Future<void> pumpConnected(
+      WidgetTester tester, {
+      required Future<ApiResponse<Projects>> list,
+      required Future<List<BridgeSummary>> lookup,
+    }) async {
+      when(() => mockProjectRepository.listProjects()).thenAnswer((_) => list);
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) => lookup);
+      tester.view.physicalSize = const Size(393, 852);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(buildApp());
+      await drainFrames(tester);
+      // Unmount before the test ends so the shimmer's ticker and appear timer —
+      // and the screen's own minute ticker — are disposed rather than left
+      // pending.
+      addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
+    }
+
+    testWidgets("the loaded list carries the page title over the machine name, with no large title", (tester) async {
+      await pumpConnected(tester, list: Future.value(oneProject()), lookup: Future.value([macbook]));
+
+      expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
+      // The only "Projects" on the page is the bar's own title: the list no
+      // longer hosts a large one to scroll away.
+      expect(largeTitle("Projects"), findsNothing);
+      expect(find.text("Projects"), findsOneWidget);
+      expect(find.text("Macbook-Pro.local"), findsOneWidget);
+      expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
+      // Reachable, so the row's dot reads as online rather than carrying the
+      // disconnected surfaces' error dot.
+      expect(
+        tester.widget<PregoNavSubtitle>(find.byType(PregoNavSubtitle)).status,
+        PregoNavStatus.online,
+      );
+    });
+
+    testWidgets("the loading page wears the same bar, shimmering the machine it cannot name yet", (tester) async {
+      // Neither answer arrives: the page stays on its first load with nothing to
+      // name yet.
+      await pumpConnected(
+        tester,
+        list: Completer<ApiResponse<Projects>>().future,
+        lookup: Completer<List<BridgeSummary>>().future,
+      );
+
+      expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
+      expect(find.text("Projects"), findsOneWidget);
+      expect(largeTitle("Projects"), findsNothing);
+      // The row is held by its skeleton rather than left out, so the block keeps
+      // the height it will have once the name lands.
+      expect(find.byType(PregoNavSubtitleSkeleton), findsOneWidget);
+      expect(find.byType(PregoNavSubtitle), findsNothing);
+    });
+
+    testWidgets("the machine name lands in the space its skeleton was holding", (tester) async {
+      final lookupGate = Completer<List<BridgeSummary>>();
+
+      await pumpConnected(tester, list: Future.value(oneProject()), lookup: lookupGate.future);
+      expect(find.byType(PregoNavSubtitleSkeleton), findsOneWidget);
+      final titleWhileShimmering = tester.getTopLeft(find.text("Projects"));
+
+      lookupGate.complete([macbook]);
+      await drainFrames(tester);
+
+      expect(find.byType(PregoNavSubtitleSkeleton), findsNothing);
+      expect(find.text("Macbook-Pro.local"), findsOneWidget);
+      // The point of the skeleton: the title above it does not move when the
+      // real row replaces it.
+      expect(tester.getTopLeft(find.text("Projects")), titleWhileShimmering);
+    });
+
+    testWidgets("a lookup with no machine to name drops the row for good", (tester) async {
+      // An empty answer is the service's fail-soft shape, not an error.
+      await pumpConnected(tester, list: Future.value(oneProject()), lookup: Future.value(const []));
+
+      expect(find.byType(PregoNavSubtitleSkeleton), findsNothing);
+      expect(find.byType(PregoNavSubtitle), findsNothing);
+      expect(find.text("Projects"), findsOneWidget);
+    });
   });
 }

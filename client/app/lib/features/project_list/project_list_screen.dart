@@ -39,17 +39,30 @@ class ProjectListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => ProjectListCubit(
-        getIt<ProjectRepository>(),
-        getIt<ConnectionService>(),
-        getIt<SseEventTracker>(),
-        getIt<RouteSource>(),
-        projectListService: getIt<ProjectListService>(),
-        sessionUnseenTracker: getIt<SessionUnseenTracker>(),
-        registeredBridgesService: getIt<RegisteredBridgesService>(),
-        failureReporter: getIt<FailureReporter>(),
-      ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => ProjectListCubit(
+            getIt<ProjectRepository>(),
+            getIt<ConnectionService>(),
+            getIt<SseEventTracker>(),
+            getIt<RouteSource>(),
+            projectListService: getIt<ProjectListService>(),
+            sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            failureReporter: getIt<FailureReporter>(),
+          ),
+        ),
+        // The machine this account is paired with, resolved independently of the
+        // project list: the bar names it in every state, and the bridge-offline
+        // body says it is the machine it is trying to reach.
+        BlocProvider(
+          create: (_) => BridgeIdentityCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+          ),
+        ),
+      ],
       child: const _ProjectListBody(),
     );
   }
@@ -121,25 +134,35 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final loc = context.loc;
     final state = context.watch<ProjectListCubit>().state;
     final isRefreshing = state is ProjectListLoaded && state.isRefreshing;
-    // Both disconnected surfaces — the connect-your-computer onboarding and the
-    // bridge-offline recovery view — trade the collapsing large title for the
-    // compact back-leading block, whose subtitle row reports the connection the
-    // body is about. Their bodies are fixed setup flows with nothing to scroll a
-    // large title away against, and the design gives that connection status the
-    // bar's second line. Every other state keeps the large title.
-    final disconnected = state is ProjectListBridgeDisconnected ? state : null;
+    // The machine this account is paired with, resolved independently of the
+    // list (see [BridgeIdentityCubit]): the bar's subtitle row names it and the
+    // bridge-offline body reports it as the machine it is trying to reach.
+    final identity = context.watch<BridgeIdentityCubit>().state;
+    final namedBridge = switch (identity) {
+      BridgeIdentityNamed(:final bridge) => bridge,
+      BridgeIdentityPending() || BridgeIdentityUnnamed() => null,
+    };
+    // Green only while the relay↔bridge chain is fully connected — a hidden
+    // banner alone is not enough, since the disconnected and unregistered
+    // bridge-offline parks are bannerless too. Watching here re-runs this build
+    // on connection changes; [_bannerFor] watches the same cubit below.
+    final overlay = context.watch<ConnectionOverlayCubit>().state;
+    final online = overlay is ConnectionOverlayHidden && overlay.connected;
     final floatingAction = _floatingAction(context: context, state: state);
 
     return PregoGlassScaffold(
       title: loc.projectListTitle,
-      titleMode: disconnected != null
-          ? PregoTopNavigationTitleMode.backLeading
-          : PregoTopNavigationTitleMode.collapsing,
+      // The page wears the compact back-leading block in every state rather than
+      // a collapsing large title: the design gives the bar's second line to the
+      // machine this account is paired with, and keeping one bar shape across
+      // loading, the list, and the two disconnected setup flows means the title
+      // never changes size or place as the page moves between them.
+      titleMode: PregoTopNavigationTitleMode.backLeading,
       // With no back button leading it, the block is the page's own title, so
       // it takes the design's prominent weight rather than the muted one the
       // sessions bar uses beside its back button.
       leadingTitleEmphasis: PregoNavLeadingTitleEmphasis.prominent,
-      subtitle: disconnected == null ? null : _disconnectedSubtitle(context: context, state: disconnected),
+      subtitle: _subtitle(context: context, state: state, identity: identity, online: online),
       // A loaded list hosts the top-nav connection banner; the loading and
       // bridge-disconnected states own their messaging full-screen (setup
       // onboarding or the "turn on your bridge" design), so they suppress it.
@@ -157,35 +180,57 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       floatingActionButton: floatingAction.action,
       floatingActionAlignment: floatingAction.alignment,
       onRefresh: _refreshFor(context: context, state: state),
-      slivers: _buildContentSlivers(context: context, state: state, isRefreshing: isRefreshing),
+      slivers: _buildContentSlivers(
+        context: context,
+        state: state,
+        isRefreshing: isRefreshing,
+        bridge: namedBridge,
+      ),
     );
   }
 
-  /// The bar's subtitle row on a disconnected Projects screen, naming what the
-  /// body is about in a single `text-xs` line under the title. Both variants
-  /// carry the error dot: on these screens, not being connected *is* the page.
+  /// The bar's subtitle row: the machine this account is paired with, in a
+  /// single `text-xs` line under the page title.
   ///
-  /// Before any bridge is registered there is no machine to name, so the row
-  /// reports what the setup checklist is waiting for. Once one is registered
-  /// the row names the machine the app is trying to reach — the body's own
-  /// status line says how long it has been gone. Null while that lookup has no
-  /// answer: the body already carries the disconnected caption, and repeating
-  /// it in the bar would name nothing the page doesn't already say.
-  Widget? _disconnectedSubtitle({required BuildContext context, required ProjectListBridgeDisconnected state}) {
-    if (!state.hasRegisteredBridges) {
+  /// The same row on every state — only the status dot changes. The disconnected
+  /// surfaces carry the error dot, because there not being connected *is* the
+  /// page; every other state reports plain reachability, green while the
+  /// relay↔bridge chain is up. Before any bridge is registered there is no
+  /// machine to name at all, so that one surface reports what its setup
+  /// checklist is waiting for instead.
+  ///
+  /// While the machine lookup has no answer yet the row holds its place with a
+  /// shimmering skeleton rather than being left out: the title block would
+  /// otherwise re-lay-out around the name as it lands. A lookup that answered
+  /// with nothing to name drops the row for good.
+  Widget? _subtitle({
+    required BuildContext context,
+    required ProjectListState state,
+    required BridgeIdentityState identity,
+    required bool online,
+  }) {
+    if (state case ProjectListBridgeDisconnected(hasRegisteredBridges: false)) {
       return PregoNavSubtitle(
         text: context.loc.projectsOnboardingWaitingForBridge,
         icon: TablerRegular.broadcast_off,
         status: PregoNavStatus.error,
       );
     }
-    final bridge = state.bridges.firstOrNull;
-    if (bridge == null) return null;
-    return PregoNavSubtitle(
-      text: bridge.name,
-      icon: TablerRegular.device_laptop,
-      status: PregoNavStatus.error,
-    );
+    final status = switch (state) {
+      ProjectListBridgeDisconnected() => PregoNavStatus.error,
+      ProjectListLoading() ||
+      ProjectListLoaded() ||
+      ProjectListFailed() => online ? PregoNavStatus.online : PregoNavStatus.offline,
+    };
+    return switch (identity) {
+      BridgeIdentityPending() => const PregoNavSubtitleSkeleton(),
+      BridgeIdentityNamed(:final bridge) => PregoNavSubtitle(
+        text: bridge.name,
+        icon: TablerRegular.device_laptop,
+        status: status,
+      ),
+      BridgeIdentityUnnamed() => null,
+    };
   }
 
   /// The scaffold's pull-to-refresh action for [state], or `null` when there is
@@ -225,6 +270,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     required BuildContext context,
     required ProjectListState state,
     required bool isRefreshing,
+    required BridgeSummary? bridge,
   }) {
     return switch (state) {
       ProjectListLoading() => [
@@ -241,17 +287,17 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       ],
       // No bridge has ever been registered → setup onboarding; a bridge exists
       // but isn't running → ask to turn it on. Both join the page scroll rather
-      // than nesting one of their own, so the large title scrolls away and
-      // collapses into the bar with them. hasScrollBody: false lets a body
-      // shorter than the viewport sit still while a taller one — the offline
-      // view with its install commands expanded — scrolls the page.
-      // SafeArea(top: false) keeps the last box clear of the home indicator.
-      ProjectListBridgeDisconnected(:final hasRegisteredBridges, :final bridges) => [
+      // than nesting one of their own, so they scroll under the fixed bar.
+      // hasScrollBody: false lets a body shorter than the viewport sit still
+      // while a taller one — the offline view with its install commands
+      // expanded — scrolls the page. SafeArea(top: false) keeps the last box
+      // clear of the home indicator.
+      ProjectListBridgeDisconnected(:final hasRegisteredBridges) => [
         SliverFillRemaining(
           hasScrollBody: false,
           child: SafeArea(
             top: false,
-            child: hasRegisteredBridges ? _BridgeOfflineView(bridges: bridges) : const _ConnectBridgeChecklist(),
+            child: hasRegisteredBridges ? _BridgeOfflineView(bridge: bridge) : const _ConnectBridgeChecklist(),
           ),
         ),
       ],
