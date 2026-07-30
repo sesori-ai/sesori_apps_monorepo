@@ -3,11 +3,11 @@
 ## Current State
 
 - **Implementation base:** `origin/main` at `57e0fffb`
-- **Series state:** Steps 1/6 and 2/6 are merged; Step 3/6 is implemented and
-  verified locally on `multi-plugin-release-prep-plugin-options` with no PR open
+- **Series state:** Steps 1/6 and 2/6 are merged; Step 3/6 PR #616 is open from
+  `multi-plugin-release-prep-plugin-options`
 - **Current step:** Step 3/6 — aggregate scoped plugin options
-- **Next action:** commit, push, and open the Step 3/6 PR when the local changes
-  are ready for delivery
+- **Next action:** review and merge PR #616, then start Step 4/6 from updated
+  `origin/main`
 
 ## Delivery
 
@@ -15,7 +15,7 @@
 |---|---|---|---|
 | [x] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 merged |
 | [x] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | PR #609 merged |
-| [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | Implemented and verified locally; PR not opened |
+| [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | PR #616 open |
 | [ ] | Step 4/6 — durable bridge cache and aggregate route | `multi-plugin-release-prep-bridge-cache` | Blocked on Step 3 merge |
 | [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4 merge |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5 merge |
@@ -95,5 +95,5 @@
   `dart analyze --fatal-infos` in all six modules and `git diff --check`.
   Aristotle implementation review identified the command-staging and ACP peer
   composition gaps; both were addressed, and the second/final implementation
-  review approved the corrected architecture. Verified locally with no commit,
-  push, or PR.
+  review approved the corrected architecture. Committed as `81ce51e5`, pushed,
+  and opened as PR #616.
