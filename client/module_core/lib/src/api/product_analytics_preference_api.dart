@@ -134,9 +134,8 @@ class ProductAnalyticsPreferenceApi {
           )
           .timeout(_operationDeadline);
       return switch (response) {
-        SuccessResponse(:final data) when data.preference == preference => ProductAnalyticsPreferenceApiResult.success(
-          record: data,
-        ),
+        SuccessResponse(:final data) when data.preference == preference && data.revision > expectedRevision =>
+          ProductAnalyticsPreferenceApiResult.success(record: data),
         SuccessResponse() => const ProductAnalyticsPreferenceApiResult.failure(),
         ErrorResponse(error: NonSuccessCodeError(errorCode: 409, :final rawErrorString)) => _conflictFromRawJson(
           rawErrorString,
