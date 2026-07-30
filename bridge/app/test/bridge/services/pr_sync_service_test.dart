@@ -602,6 +602,12 @@ class _FakeSessionRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
+  Future<String?> initializeInPlaceDiffBase({
+    required String sessionId,
+    required String baseCommit,
+  }) async => baseCommit;
+
+  @override
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,

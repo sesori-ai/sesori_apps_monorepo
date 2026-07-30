@@ -1019,6 +1019,16 @@ class SessionRepository {
     return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
   }
 
+  Future<String?> initializeInPlaceDiffBase({
+    required String sessionId,
+    required String baseCommit,
+  }) {
+    return _sessionDao.initializeInPlaceDiffBase(
+      sessionId: sessionId,
+      baseCommit: baseCommit,
+    );
+  }
+
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,

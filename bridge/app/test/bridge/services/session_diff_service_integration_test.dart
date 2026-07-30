@@ -154,7 +154,12 @@ void main() {
       expect((byFile["tracked.txt"]! as FileDiffContent).after, "local in-place\n");
     });
 
-    test("in-place session without a start snapshot shows current changes from HEAD", () async {
+    test("in-place session without a start snapshot persists HEAD once", () async {
+      final initialHead = (await _runGit(
+        runner: processRunner,
+        cwd: repoDir.path,
+        args: ["rev-parse", "HEAD"],
+      )).stdout.toString().trim();
       await _insertInPlaceStoredSession(
         db: db,
         sessionId: "in-place-without-snapshot",
@@ -174,6 +179,40 @@ void main() {
       expect((byFile["tracked.txt"]! as FileDiffContent).after, "local in-place\n");
       expect((byFile["new.txt"]! as FileDiffContent).before, isEmpty);
       expect((byFile["new.txt"]! as FileDiffContent).after, "untracked\n");
+
+      final stored = await db.sessionDao.getSession(sessionId: "in-place-without-snapshot");
+      expect(stored?.baseCommit, initialHead);
+
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "."]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "session work"]);
+      File("${repoDir.path}/tracked.txt").writeAsStringSync("more local work\n");
+
+      final afterCommit = await service.getDiffs(sessionId: "in-place-without-snapshot");
+      final afterCommitByFile = {for (final diff in afterCommit) diff.file: diff};
+
+      expect(afterCommitByFile.keys, containsAll(["tracked.txt", "new.txt"]));
+      expect((afterCommitByFile["tracked.txt"]! as FileDiffContent).before, "base tracked\n");
+      expect((afterCommitByFile["tracked.txt"]! as FileDiffContent).after, "more local work\n");
+    });
+
+    test("in-place session without a reachable HEAD returns no diffs", () async {
+      final unbornRepo = await Directory.systemTemp.createTemp("compute_session_diffs_unborn_");
+      addTearDown(() async {
+        if (unbornRepo.existsSync()) {
+          await unbornRepo.delete(recursive: true);
+        }
+      });
+      await _runGit(runner: processRunner, cwd: unbornRepo.path, args: ["init"]);
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-unborn",
+        projectId: unbornRepo.path,
+        baseBranch: null,
+        baseCommit: null,
+      );
+
+      expect(await service.getDiffs(sessionId: "in-place-unborn"), isEmpty);
+      expect((await db.sessionDao.getSession(sessionId: "in-place-unborn"))?.baseCommit, isNull);
     });
 
     test("in-place session keeps its exact start tree after a branch switch", () async {
@@ -200,7 +239,7 @@ void main() {
       expect(diffs.map((diff) => diff.file), contains("switched.txt"));
     });
 
-    test("legacy in-place project baselines fall back to current changes from HEAD", () async {
+    test("legacy in-place project baselines use their persisted commit", () async {
       final projectBase = (await _runGit(
         runner: processRunner,
         cwd: repoDir.path,
@@ -214,6 +253,8 @@ void main() {
         baseCommit: projectBase,
       );
       File("${repoDir.path}/tracked.txt").writeAsStringSync("changed\n");
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["add", "tracked.txt"]);
+      await _runGit(runner: processRunner, cwd: repoDir.path, args: ["commit", "-m", "legacy session work"]);
 
       final diffs = await service.getDiffs(sessionId: "legacy-in-place");
 

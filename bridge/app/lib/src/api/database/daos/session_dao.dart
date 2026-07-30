@@ -191,6 +191,19 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
   }
 
+  Future<String?> initializeInPlaceDiffBase({
+    required String sessionId,
+    required String baseCommit,
+  }) async {
+    await (update(sessionTable)..where(
+          (table) => table.sessionId.equals(sessionId) & table.isDedicated.equals(false) & table.baseCommit.isNull(),
+        ))
+        .write(
+          SessionTableCompanion(baseCommit: Value(baseCommit)),
+        );
+    return (await getSession(sessionId: sessionId))?.baseCommit;
+  }
+
   /// Upserts the supplied rows without applying merge or import policy.
   Future<void> upsertSessionRows({required List<SessionDto> rows}) async {
     if (rows.isEmpty) return;

@@ -51,6 +51,18 @@ class SessionDiffRepository {
   }) : _gitCliApi = gitCliApi,
        _outputMapper = outputMapper;
 
+  Future<String?> resolveCommit({
+    required String worktreePath,
+    required String revision,
+  }) async {
+    final result = await _gitCliApi.verifyRevision(
+      projectPath: worktreePath,
+      revision: revision,
+    );
+    if (result.exitCode != 0) return null;
+    return _outputMapper.parseSingleSha(output: result.stdout);
+  }
+
   Future<SessionDiffQueryResult> query({
     required String worktreePath,
     required String revision,

@@ -78,15 +78,26 @@ class SessionDiffService {
       revision = baseBranch;
       comparisonMode = SessionDiffComparisonMode.mergeBase;
     } else {
-      // Imported sessions and sessions created from an already-dirty tree have
-      // no exact start snapshot. They still expose the current working-tree
-      // changes by falling back to HEAD.
-      final startCommit = session.baseBranch == null ? session.baseCommit?.trim() : null;
       final projectPath = await _sessionRepository.getProjectPath(projectId: session.projectId);
       if (projectPath == null) return const [];
       if (!_filesystemRepository.directoryExists(path: projectPath)) return const [];
       worktreePath = projectPath;
-      revision = startCommit == null || startCommit.isEmpty ? "HEAD" : startCommit;
+      final storedBaseCommit = session.baseCommit?.trim();
+      if (storedBaseCommit != null && storedBaseCommit.isNotEmpty) {
+        revision = storedBaseCommit;
+      } else {
+        final currentHead = await _sessionDiffRepository.resolveCommit(
+          worktreePath: worktreePath,
+          revision: "HEAD",
+        );
+        if (currentHead == null) return const [];
+        final initializedBaseCommit = await _sessionRepository.initializeInPlaceDiffBase(
+          sessionId: sessionId,
+          baseCommit: currentHead,
+        );
+        if (initializedBaseCommit == null || initializedBaseCommit.isEmpty) return const [];
+        revision = initializedBaseCommit;
+      }
       comparisonMode = SessionDiffComparisonMode.exactRevision;
     }
     final queryResult = await _sessionDiffRepository.query(
