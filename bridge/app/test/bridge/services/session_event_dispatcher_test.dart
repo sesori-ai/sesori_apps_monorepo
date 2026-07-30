@@ -148,6 +148,7 @@ void main() {
     await dispatcher.dispatchBindingsCommitted(
       commit: (
         pluginId: "plugin",
+        projectId: "project",
         generation: 2,
         kind: SessionBindingCommitKind.catalogSync,
         backendSessionIds: const ["session"],

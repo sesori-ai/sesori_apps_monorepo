@@ -2316,6 +2316,538 @@ class CatalogHydrationsTableCompanion
   }
 }
 
+mixin $SessionOptionsCacheTableTableToColumns
+    implements Insertable<SessionOptionsCacheDto> {
+  String get pluginId;
+  PluginSessionOptionsScope get scope;
+  String get ownerId;
+  String? get projectId;
+  String? get capturedProjectPath;
+  int get revision;
+  int get capturedAt;
+  PluginSessionOptionsCompleteness get completeness;
+  String get agentsJson;
+  String get providersJson;
+  String get commandsJson;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['plugin_id'] = Variable<String>(pluginId);
+    {
+      map['scope'] = Variable<String>(
+        $SessionOptionsCacheTableTable.$converterscope.toSql(scope),
+      );
+    }
+    map['owner_id'] = Variable<String>(ownerId);
+    if (!nullToAbsent || projectId != null) {
+      map['project_id'] = Variable<String>(projectId);
+    }
+    if (!nullToAbsent || capturedProjectPath != null) {
+      map['captured_project_path'] = Variable<String>(capturedProjectPath);
+    }
+    map['revision'] = Variable<int>(revision);
+    map['captured_at'] = Variable<int>(capturedAt);
+    {
+      map['completeness'] = Variable<String>(
+        $SessionOptionsCacheTableTable.$convertercompleteness.toSql(
+          completeness,
+        ),
+      );
+    }
+    map['agents_json'] = Variable<String>(agentsJson);
+    map['providers_json'] = Variable<String>(providersJson);
+    map['commands_json'] = Variable<String>(commandsJson);
+    return map;
+  }
+}
+
+class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
+    with TableInfo<$SessionOptionsCacheTableTable, SessionOptionsCacheDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionOptionsCacheTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _pluginIdMeta = const VerificationMeta(
+    'pluginId',
+  );
+  @override
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<PluginSessionOptionsScope, String>
+  scope =
+      GeneratedColumn<String>(
+        'scope',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PluginSessionOptionsScope>(
+        $SessionOptionsCacheTableTable.$converterscope,
+      );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _projectIdMeta = const VerificationMeta(
+    'projectId',
+  );
+  @override
+  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
+    'project_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES projects_table (project_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _capturedProjectPathMeta =
+      const VerificationMeta('capturedProjectPath');
+  @override
+  late final GeneratedColumn<String> capturedProjectPath =
+      GeneratedColumn<String>(
+        'captured_project_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _capturedAtMeta = const VerificationMeta(
+    'capturedAt',
+  );
+  @override
+  late final GeneratedColumn<int> capturedAt = GeneratedColumn<int>(
+    'captured_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<
+    PluginSessionOptionsCompleteness,
+    String
+  >
+  completeness =
+      GeneratedColumn<String>(
+        'completeness',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PluginSessionOptionsCompleteness>(
+        $SessionOptionsCacheTableTable.$convertercompleteness,
+      );
+  static const VerificationMeta _agentsJsonMeta = const VerificationMeta(
+    'agentsJson',
+  );
+  @override
+  late final GeneratedColumn<String> agentsJson = GeneratedColumn<String>(
+    'agents_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _providersJsonMeta = const VerificationMeta(
+    'providersJson',
+  );
+  @override
+  late final GeneratedColumn<String> providersJson = GeneratedColumn<String>(
+    'providers_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _commandsJsonMeta = const VerificationMeta(
+    'commandsJson',
+  );
+  @override
+  late final GeneratedColumn<String> commandsJson = GeneratedColumn<String>(
+    'commands_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    pluginId,
+    scope,
+    ownerId,
+    projectId,
+    capturedProjectPath,
+    revision,
+    capturedAt,
+    completeness,
+    agentsJson,
+    providersJson,
+    commandsJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_options_cache_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionOptionsCacheDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('plugin_id')) {
+      context.handle(
+        _pluginIdMeta,
+        pluginId.isAcceptableOrUnknown(data['plugin_id']!, _pluginIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pluginIdMeta);
+    }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ownerIdMeta);
+    }
+    if (data.containsKey('project_id')) {
+      context.handle(
+        _projectIdMeta,
+        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
+      );
+    }
+    if (data.containsKey('captured_project_path')) {
+      context.handle(
+        _capturedProjectPathMeta,
+        capturedProjectPath.isAcceptableOrUnknown(
+          data['captured_project_path']!,
+          _capturedProjectPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_revisionMeta);
+    }
+    if (data.containsKey('captured_at')) {
+      context.handle(
+        _capturedAtMeta,
+        capturedAt.isAcceptableOrUnknown(data['captured_at']!, _capturedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_capturedAtMeta);
+    }
+    if (data.containsKey('agents_json')) {
+      context.handle(
+        _agentsJsonMeta,
+        agentsJson.isAcceptableOrUnknown(data['agents_json']!, _agentsJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_agentsJsonMeta);
+    }
+    if (data.containsKey('providers_json')) {
+      context.handle(
+        _providersJsonMeta,
+        providersJson.isAcceptableOrUnknown(
+          data['providers_json']!,
+          _providersJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_providersJsonMeta);
+    }
+    if (data.containsKey('commands_json')) {
+      context.handle(
+        _commandsJsonMeta,
+        commandsJson.isAcceptableOrUnknown(
+          data['commands_json']!,
+          _commandsJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_commandsJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {pluginId, scope, ownerId};
+  @override
+  SessionOptionsCacheDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionOptionsCacheDto(
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
+      scope: $SessionOptionsCacheTableTable.$converterscope.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}scope'],
+        )!,
+      ),
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      ),
+      capturedProjectPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}captured_project_path'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      capturedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}captured_at'],
+      )!,
+      completeness: $SessionOptionsCacheTableTable.$convertercompleteness
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}completeness'],
+            )!,
+          ),
+      agentsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agents_json'],
+      )!,
+      providersJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}providers_json'],
+      )!,
+      commandsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}commands_json'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionOptionsCacheTableTable createAlias(String alias) {
+    return $SessionOptionsCacheTableTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<PluginSessionOptionsScope, String, String>
+  $converterscope = const EnumNameConverter<PluginSessionOptionsScope>(
+    PluginSessionOptionsScope.values,
+  );
+  static JsonTypeConverter2<PluginSessionOptionsCompleteness, String, String>
+  $convertercompleteness =
+      const EnumNameConverter<PluginSessionOptionsCompleteness>(
+        PluginSessionOptionsCompleteness.values,
+      );
+  @override
+  bool get withoutRowId => true;
+}
+
+class SessionOptionsCacheTableCompanion
+    extends UpdateCompanion<SessionOptionsCacheDto> {
+  final Value<String> pluginId;
+  final Value<PluginSessionOptionsScope> scope;
+  final Value<String> ownerId;
+  final Value<String?> projectId;
+  final Value<String?> capturedProjectPath;
+  final Value<int> revision;
+  final Value<int> capturedAt;
+  final Value<PluginSessionOptionsCompleteness> completeness;
+  final Value<String> agentsJson;
+  final Value<String> providersJson;
+  final Value<String> commandsJson;
+  const SessionOptionsCacheTableCompanion({
+    this.pluginId = const Value.absent(),
+    this.scope = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.projectId = const Value.absent(),
+    this.capturedProjectPath = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.capturedAt = const Value.absent(),
+    this.completeness = const Value.absent(),
+    this.agentsJson = const Value.absent(),
+    this.providersJson = const Value.absent(),
+    this.commandsJson = const Value.absent(),
+  });
+  SessionOptionsCacheTableCompanion.insert({
+    required String pluginId,
+    required PluginSessionOptionsScope scope,
+    required String ownerId,
+    this.projectId = const Value.absent(),
+    this.capturedProjectPath = const Value.absent(),
+    required int revision,
+    required int capturedAt,
+    required PluginSessionOptionsCompleteness completeness,
+    required String agentsJson,
+    required String providersJson,
+    required String commandsJson,
+  }) : pluginId = Value(pluginId),
+       scope = Value(scope),
+       ownerId = Value(ownerId),
+       revision = Value(revision),
+       capturedAt = Value(capturedAt),
+       completeness = Value(completeness),
+       agentsJson = Value(agentsJson),
+       providersJson = Value(providersJson),
+       commandsJson = Value(commandsJson);
+  static Insertable<SessionOptionsCacheDto> custom({
+    Expression<String>? pluginId,
+    Expression<String>? scope,
+    Expression<String>? ownerId,
+    Expression<String>? projectId,
+    Expression<String>? capturedProjectPath,
+    Expression<int>? revision,
+    Expression<int>? capturedAt,
+    Expression<String>? completeness,
+    Expression<String>? agentsJson,
+    Expression<String>? providersJson,
+    Expression<String>? commandsJson,
+  }) {
+    return RawValuesInsertable({
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (scope != null) 'scope': scope,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (projectId != null) 'project_id': projectId,
+      if (capturedProjectPath != null)
+        'captured_project_path': capturedProjectPath,
+      if (revision != null) 'revision': revision,
+      if (capturedAt != null) 'captured_at': capturedAt,
+      if (completeness != null) 'completeness': completeness,
+      if (agentsJson != null) 'agents_json': agentsJson,
+      if (providersJson != null) 'providers_json': providersJson,
+      if (commandsJson != null) 'commands_json': commandsJson,
+    });
+  }
+
+  SessionOptionsCacheTableCompanion copyWith({
+    Value<String>? pluginId,
+    Value<PluginSessionOptionsScope>? scope,
+    Value<String>? ownerId,
+    Value<String?>? projectId,
+    Value<String?>? capturedProjectPath,
+    Value<int>? revision,
+    Value<int>? capturedAt,
+    Value<PluginSessionOptionsCompleteness>? completeness,
+    Value<String>? agentsJson,
+    Value<String>? providersJson,
+    Value<String>? commandsJson,
+  }) {
+    return SessionOptionsCacheTableCompanion(
+      pluginId: pluginId ?? this.pluginId,
+      scope: scope ?? this.scope,
+      ownerId: ownerId ?? this.ownerId,
+      projectId: projectId ?? this.projectId,
+      capturedProjectPath: capturedProjectPath ?? this.capturedProjectPath,
+      revision: revision ?? this.revision,
+      capturedAt: capturedAt ?? this.capturedAt,
+      completeness: completeness ?? this.completeness,
+      agentsJson: agentsJson ?? this.agentsJson,
+      providersJson: providersJson ?? this.providersJson,
+      commandsJson: commandsJson ?? this.commandsJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
+    if (scope.present) {
+      map['scope'] = Variable<String>(
+        $SessionOptionsCacheTableTable.$converterscope.toSql(scope.value),
+      );
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (capturedProjectPath.present) {
+      map['captured_project_path'] = Variable<String>(
+        capturedProjectPath.value,
+      );
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (capturedAt.present) {
+      map['captured_at'] = Variable<int>(capturedAt.value);
+    }
+    if (completeness.present) {
+      map['completeness'] = Variable<String>(
+        $SessionOptionsCacheTableTable.$convertercompleteness.toSql(
+          completeness.value,
+        ),
+      );
+    }
+    if (agentsJson.present) {
+      map['agents_json'] = Variable<String>(agentsJson.value);
+    }
+    if (providersJson.present) {
+      map['providers_json'] = Variable<String>(providersJson.value);
+    }
+    if (commandsJson.present) {
+      map['commands_json'] = Variable<String>(commandsJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionOptionsCacheTableCompanion(')
+          ..write('pluginId: $pluginId, ')
+          ..write('scope: $scope, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('projectId: $projectId, ')
+          ..write('capturedProjectPath: $capturedProjectPath, ')
+          ..write('revision: $revision, ')
+          ..write('capturedAt: $capturedAt, ')
+          ..write('completeness: $completeness, ')
+          ..write('agentsJson: $agentsJson, ')
+          ..write('providersJson: $providersJson, ')
+          ..write('commandsJson: $commandsJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2327,6 +2859,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PullRequestsTableTable(this);
   late final $CatalogHydrationsTableTable catalogHydrationsTable =
       $CatalogHydrationsTableTable(this);
+  late final $SessionOptionsCacheTableTable sessionOptionsCacheTable =
+      $SessionOptionsCacheTableTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -2359,6 +2893,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
     this as AppDatabase,
   );
+  late final SessionOptionsCacheDao sessionOptionsCacheDao =
+      SessionOptionsCacheDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2369,6 +2905,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     deletedSessionsTable,
     pullRequestsTable,
     catalogHydrationsTable,
+    sessionOptionsCacheTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
@@ -2398,6 +2935,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'projects_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('session_options_cache_table', kind: UpdateKind.delete),
+      ],
     ),
   ]);
 }
@@ -2474,6 +3020,38 @@ final class $$ProjectsTableTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _pullRequestsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SessionOptionsCacheTableTable,
+    List<SessionOptionsCacheDto>
+  >
+  _sessionOptionsCacheTableRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.sessionOptionsCacheTable,
+    aliasName:
+        'projects_table__project_id__session_options_cache_table__project_id',
+  );
+
+  $$SessionOptionsCacheTableTableProcessedTableManager
+  get sessionOptionsCacheTableRefs {
+    final manager =
+        $$SessionOptionsCacheTableTableTableManager(
+          $_db,
+          $_db.sessionOptionsCacheTable,
+        ).filter(
+          (f) => f.projectId.projectId.sqlEquals(
+            $_itemColumn<String>('project_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _sessionOptionsCacheTableRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -2577,6 +3155,33 @@ class $$ProjectsTableTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> sessionOptionsCacheTableRefs(
+    Expression<bool> Function($$SessionOptionsCacheTableTableFilterComposer f)
+    f,
+  ) {
+    final $$SessionOptionsCacheTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.projectId,
+          referencedTable: $db.sessionOptionsCacheTable,
+          getReferencedColumn: (t) => t.projectId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionOptionsCacheTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sessionOptionsCacheTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -2720,6 +3325,33 @@ class $$ProjectsTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> sessionOptionsCacheTableRefs<T extends Object>(
+    Expression<T> Function($$SessionOptionsCacheTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$SessionOptionsCacheTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.projectId,
+          referencedTable: $db.sessionOptionsCacheTable,
+          getReferencedColumn: (t) => t.projectId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionOptionsCacheTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionOptionsCacheTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ProjectsTableTableTableManager
@@ -2738,6 +3370,7 @@ class $$ProjectsTableTableTableManager
           PrefetchHooks Function({
             bool sessionTableRefs,
             bool pullRequestsTableRefs,
+            bool sessionOptionsCacheTableRefs,
           })
         > {
   $$ProjectsTableTableTableManager(_$AppDatabase db, $ProjectsTableTable table)
@@ -2800,12 +3433,18 @@ class $$ProjectsTableTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({sessionTableRefs = false, pullRequestsTableRefs = false}) {
+              ({
+                sessionTableRefs = false,
+                pullRequestsTableRefs = false,
+                sessionOptionsCacheTableRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (sessionTableRefs) db.sessionTable,
                     if (pullRequestsTableRefs) db.pullRequestsTable,
+                    if (sessionOptionsCacheTableRefs)
+                      db.sessionOptionsCacheTable,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -2852,6 +3491,27 @@ class $$ProjectsTableTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (sessionOptionsCacheTableRefs)
+                        await $_getPrefetchedData<
+                          ProjectDto,
+                          $ProjectsTableTable,
+                          SessionOptionsCacheDto
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProjectsTableTableReferences
+                              ._sessionOptionsCacheTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProjectsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionOptionsCacheTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.projectId == item.projectId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -2875,6 +3535,7 @@ typedef $$ProjectsTableTableProcessedTableManager =
       PrefetchHooks Function({
         bool sessionTableRefs,
         bool pullRequestsTableRefs,
+        bool sessionOptionsCacheTableRefs,
       })
     >;
 typedef $$SessionTableTableCreateCompanionBuilder =
@@ -4463,6 +5124,480 @@ typedef $$CatalogHydrationsTableTableProcessedTableManager =
       CatalogHydrationDto,
       PrefetchHooks Function()
     >;
+typedef $$SessionOptionsCacheTableTableCreateCompanionBuilder =
+    SessionOptionsCacheTableCompanion Function({
+      required String pluginId,
+      required PluginSessionOptionsScope scope,
+      required String ownerId,
+      Value<String?> projectId,
+      Value<String?> capturedProjectPath,
+      required int revision,
+      required int capturedAt,
+      required PluginSessionOptionsCompleteness completeness,
+      required String agentsJson,
+      required String providersJson,
+      required String commandsJson,
+    });
+typedef $$SessionOptionsCacheTableTableUpdateCompanionBuilder =
+    SessionOptionsCacheTableCompanion Function({
+      Value<String> pluginId,
+      Value<PluginSessionOptionsScope> scope,
+      Value<String> ownerId,
+      Value<String?> projectId,
+      Value<String?> capturedProjectPath,
+      Value<int> revision,
+      Value<int> capturedAt,
+      Value<PluginSessionOptionsCompleteness> completeness,
+      Value<String> agentsJson,
+      Value<String> providersJson,
+      Value<String> commandsJson,
+    });
+
+final class $$SessionOptionsCacheTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionOptionsCacheTableTable,
+          SessionOptionsCacheDto
+        > {
+  $$SessionOptionsCacheTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
+      db.projectsTable.createAlias(
+        'session_options_cache_table__project_id__projects_table__project_id',
+      );
+
+  $$ProjectsTableTableProcessedTableManager? get projectId {
+    final $_column = $_itemColumn<String>('project_id');
+    if ($_column == null) return null;
+    final manager = $$ProjectsTableTableTableManager(
+      $_db,
+      $_db.projectsTable,
+    ).filter((f) => f.projectId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_projectIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SessionOptionsCacheTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionOptionsCacheTableTable> {
+  $$SessionOptionsCacheTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    PluginSessionOptionsScope,
+    PluginSessionOptionsScope,
+    String
+  >
+  get scope => $composableBuilder(
+    column: $table.scope,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get capturedProjectPath => $composableBuilder(
+    column: $table.capturedProjectPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    PluginSessionOptionsCompleteness,
+    PluginSessionOptionsCompleteness,
+    String
+  >
+  get completeness => $composableBuilder(
+    column: $table.completeness,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get agentsJson => $composableBuilder(
+    column: $table.agentsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get providersJson => $composableBuilder(
+    column: $table.providersJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get commandsJson => $composableBuilder(
+    column: $table.commandsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ProjectsTableTableFilterComposer get projectId {
+    final $$ProjectsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionOptionsCacheTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionOptionsCacheTableTable> {
+  $$SessionOptionsCacheTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scope => $composableBuilder(
+    column: $table.scope,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get capturedProjectPath => $composableBuilder(
+    column: $table.capturedProjectPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get completeness => $composableBuilder(
+    column: $table.completeness,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get agentsJson => $composableBuilder(
+    column: $table.agentsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get providersJson => $composableBuilder(
+    column: $table.providersJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get commandsJson => $composableBuilder(
+    column: $table.commandsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ProjectsTableTableOrderingComposer get projectId {
+    final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionOptionsCacheTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionOptionsCacheTableTable> {
+  $$SessionOptionsCacheTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<PluginSessionOptionsScope, String>
+  get scope =>
+      $composableBuilder(column: $table.scope, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get capturedProjectPath => $composableBuilder(
+    column: $table.capturedProjectPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<PluginSessionOptionsCompleteness, String>
+  get completeness => $composableBuilder(
+    column: $table.completeness,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get agentsJson => $composableBuilder(
+    column: $table.agentsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get providersJson => $composableBuilder(
+    column: $table.providersJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get commandsJson => $composableBuilder(
+    column: $table.commandsJson,
+    builder: (column) => column,
+  );
+
+  $$ProjectsTableTableAnnotationComposer get projectId {
+    final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionOptionsCacheTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionOptionsCacheTableTable,
+          SessionOptionsCacheDto,
+          $$SessionOptionsCacheTableTableFilterComposer,
+          $$SessionOptionsCacheTableTableOrderingComposer,
+          $$SessionOptionsCacheTableTableAnnotationComposer,
+          $$SessionOptionsCacheTableTableCreateCompanionBuilder,
+          $$SessionOptionsCacheTableTableUpdateCompanionBuilder,
+          (SessionOptionsCacheDto, $$SessionOptionsCacheTableTableReferences),
+          SessionOptionsCacheDto,
+          PrefetchHooks Function({bool projectId})
+        > {
+  $$SessionOptionsCacheTableTableTableManager(
+    _$AppDatabase db,
+    $SessionOptionsCacheTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionOptionsCacheTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionOptionsCacheTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionOptionsCacheTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> pluginId = const Value.absent(),
+                Value<PluginSessionOptionsScope> scope = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
+                Value<String?> projectId = const Value.absent(),
+                Value<String?> capturedProjectPath = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<int> capturedAt = const Value.absent(),
+                Value<PluginSessionOptionsCompleteness> completeness =
+                    const Value.absent(),
+                Value<String> agentsJson = const Value.absent(),
+                Value<String> providersJson = const Value.absent(),
+                Value<String> commandsJson = const Value.absent(),
+              }) => SessionOptionsCacheTableCompanion(
+                pluginId: pluginId,
+                scope: scope,
+                ownerId: ownerId,
+                projectId: projectId,
+                capturedProjectPath: capturedProjectPath,
+                revision: revision,
+                capturedAt: capturedAt,
+                completeness: completeness,
+                agentsJson: agentsJson,
+                providersJson: providersJson,
+                commandsJson: commandsJson,
+              ),
+          createCompanionCallback:
+              ({
+                required String pluginId,
+                required PluginSessionOptionsScope scope,
+                required String ownerId,
+                Value<String?> projectId = const Value.absent(),
+                Value<String?> capturedProjectPath = const Value.absent(),
+                required int revision,
+                required int capturedAt,
+                required PluginSessionOptionsCompleteness completeness,
+                required String agentsJson,
+                required String providersJson,
+                required String commandsJson,
+              }) => SessionOptionsCacheTableCompanion.insert(
+                pluginId: pluginId,
+                scope: scope,
+                ownerId: ownerId,
+                projectId: projectId,
+                capturedProjectPath: capturedProjectPath,
+                revision: revision,
+                capturedAt: capturedAt,
+                completeness: completeness,
+                agentsJson: agentsJson,
+                providersJson: providersJson,
+                commandsJson: commandsJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SessionOptionsCacheTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({projectId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (projectId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.projectId,
+                                referencedTable:
+                                    $$SessionOptionsCacheTableTableReferences
+                                        ._projectIdTable(db),
+                                referencedColumn:
+                                    $$SessionOptionsCacheTableTableReferences
+                                        ._projectIdTable(db)
+                                        .projectId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SessionOptionsCacheTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionOptionsCacheTableTable,
+      SessionOptionsCacheDto,
+      $$SessionOptionsCacheTableTableFilterComposer,
+      $$SessionOptionsCacheTableTableOrderingComposer,
+      $$SessionOptionsCacheTableTableAnnotationComposer,
+      $$SessionOptionsCacheTableTableCreateCompanionBuilder,
+      $$SessionOptionsCacheTableTableUpdateCompanionBuilder,
+      (SessionOptionsCacheDto, $$SessionOptionsCacheTableTableReferences),
+      SessionOptionsCacheDto,
+      PrefetchHooks Function({bool projectId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4479,5 +5614,10 @@ class $AppDatabaseManager {
       $$CatalogHydrationsTableTableTableManager(
         _db,
         _db.catalogHydrationsTable,
+      );
+  $$SessionOptionsCacheTableTableTableManager get sessionOptionsCacheTable =>
+      $$SessionOptionsCacheTableTableTableManager(
+        _db,
+        _db.sessionOptionsCacheTable,
       );
 }

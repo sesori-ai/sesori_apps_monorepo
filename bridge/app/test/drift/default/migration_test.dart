@@ -2,6 +2,7 @@
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:sesori_bridge/src/api/database/database.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
@@ -1244,6 +1245,194 @@ void main() {
       );
     },
   );
+
+  test('migration v11 → v12 structural validation', () async {
+    final connection = await verifier.startAt(11);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(
+      db,
+      12,
+      options: const ValidationOptions(validateDropped: true),
+    );
+    await db.close();
+  });
+
+  test('v12 session options cache accepts only valid scope shapes', () async {
+    final db = await _migrateFromV11(verifier: verifier);
+    addTearDown(db.close);
+    await db
+        .into(db.projectsTable)
+        .insert(
+          ProjectsTableCompanion.insert(
+            projectId: 'p1',
+            path: '/projects/one',
+            projectionUpdatedAt: 1,
+          ),
+        );
+
+    Future<void> insertCacheRow({
+      required String pluginId,
+      required PluginSessionOptionsScope scope,
+      required String ownerId,
+      required String? projectId,
+      required String? capturedProjectPath,
+    }) async {
+      await db
+          .into(db.sessionOptionsCacheTable)
+          .insert(
+            SessionOptionsCacheTableCompanion.insert(
+              pluginId: pluginId,
+              scope: scope,
+              ownerId: ownerId,
+              projectId: Value(projectId),
+              capturedProjectPath: Value(capturedProjectPath),
+              revision: 1,
+              capturedAt: 100,
+              completeness: PluginSessionOptionsCompleteness.complete,
+              agentsJson: '[]',
+              providersJson: '{}',
+              commandsJson: '[]',
+            ),
+          );
+    }
+
+    await insertCacheRow(
+      pluginId: 'cursor',
+      scope: PluginSessionOptionsScope.plugin,
+      ownerId: 'cursor',
+      projectId: null,
+      capturedProjectPath: null,
+    );
+    await insertCacheRow(
+      pluginId: 'opencode',
+      scope: PluginSessionOptionsScope.project,
+      ownerId: 'p1',
+      projectId: 'p1',
+      capturedProjectPath: '/projects/one',
+    );
+
+    await expectLater(
+      insertCacheRow(
+        pluginId: 'empty-owner',
+        scope: PluginSessionOptionsScope.plugin,
+        ownerId: '',
+        projectId: null,
+        capturedProjectPath: null,
+      ),
+      throwsA(_isCheckViolation),
+    );
+    await expectLater(
+      insertCacheRow(
+        pluginId: 'plugin-with-project',
+        scope: PluginSessionOptionsScope.plugin,
+        ownerId: 'plugin-with-project',
+        projectId: 'p1',
+        capturedProjectPath: '/projects/one',
+      ),
+      throwsA(_isCheckViolation),
+    );
+    await expectLater(
+      insertCacheRow(
+        pluginId: 'mismatched-owner',
+        scope: PluginSessionOptionsScope.project,
+        ownerId: 'other',
+        projectId: 'p1',
+        capturedProjectPath: '/projects/one',
+      ),
+      throwsA(_isCheckViolation),
+    );
+    await expectLater(
+      insertCacheRow(
+        pluginId: 'missing-path',
+        scope: PluginSessionOptionsScope.project,
+        ownerId: 'p1',
+        projectId: 'p1',
+        capturedProjectPath: null,
+      ),
+      throwsA(_isCheckViolation),
+    );
+    await expectLater(
+      insertCacheRow(
+        pluginId: 'missing-project',
+        scope: PluginSessionOptionsScope.project,
+        ownerId: 'p1',
+        projectId: null,
+        capturedProjectPath: '/projects/one',
+      ),
+      throwsA(_isCheckViolation),
+    );
+    await expectLater(
+      insertCacheRow(
+        pluginId: 'empty-path',
+        scope: PluginSessionOptionsScope.project,
+        ownerId: 'p1',
+        projectId: 'p1',
+        capturedProjectPath: '',
+      ),
+      throwsA(_isCheckViolation),
+    );
+
+    expect(await db.select(db.sessionOptionsCacheTable).get(), hasLength(2));
+  });
+
+  test(
+    'v12 project deletion cascades project cache and preserves plugin cache',
+    () async {
+      final db = await _migrateFromV11(verifier: verifier);
+      addTearDown(db.close);
+      await db
+          .into(db.projectsTable)
+          .insert(
+            ProjectsTableCompanion.insert(
+              projectId: 'p1',
+              path: '/projects/one',
+              projectionUpdatedAt: 1,
+            ),
+          );
+      await db.batch((batch) {
+        batch.insertAll(db.sessionOptionsCacheTable, [
+          SessionOptionsCacheTableCompanion.insert(
+            pluginId: 'cursor',
+            scope: PluginSessionOptionsScope.plugin,
+            ownerId: 'cursor',
+            revision: 1,
+            capturedAt: 100,
+            completeness: PluginSessionOptionsCompleteness.complete,
+            agentsJson: '[]',
+            providersJson: '{}',
+            commandsJson: '[]',
+          ),
+          SessionOptionsCacheTableCompanion.insert(
+            pluginId: 'opencode',
+            scope: PluginSessionOptionsScope.project,
+            ownerId: 'p1',
+            projectId: const Value('p1'),
+            capturedProjectPath: const Value('/projects/one'),
+            revision: 1,
+            capturedAt: 100,
+            completeness: PluginSessionOptionsCompleteness.complete,
+            agentsJson: '[]',
+            providersJson: '{}',
+            commandsJson: '[]',
+          ),
+        ]);
+      });
+
+      await (db.delete(
+        db.projectsTable,
+      )..where((table) => table.projectId.equals('p1'))).go();
+
+      final cacheRows = await db.select(db.sessionOptionsCacheTable).get();
+      expect(cacheRows, hasLength(1));
+      expect(cacheRows.single.pluginId, 'cursor');
+      expect(cacheRows.single.scope, PluginSessionOptionsScope.plugin);
+      expect(
+        await db.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
+    },
+  );
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -1254,7 +1443,18 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    11,
+    12,
+    options: const ValidationOptions(validateDropped: true),
+  );
+  return db;
+}
+
+Future<AppDatabase> _migrateFromV11({required SchemaVerifier verifier}) async {
+  final connection = await verifier.startAt(11);
+  final db = AppDatabase(connection);
+  await verifier.migrateAndValidate(
+    db,
+    12,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;
@@ -1264,4 +1464,10 @@ final Matcher _isForeignKeyViolation = isA<SqliteException>().having(
   (exception) => exception.toString().toUpperCase(),
   'message',
   contains('FOREIGN KEY'),
+);
+
+final Matcher _isCheckViolation = isA<SqliteException>().having(
+  (exception) => exception.toString().toUpperCase(),
+  'message',
+  contains('CHECK'),
 );

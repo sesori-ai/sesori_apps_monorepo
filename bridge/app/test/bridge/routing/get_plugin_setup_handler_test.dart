@@ -35,12 +35,14 @@ void main() {
                   id: "ready",
                   displayName: "Ready",
                   residencyPolicy: PluginResidencyPolicy.transient,
+                  sessionOptionsScope: PluginSessionOptionsScope.project,
                   managementCapabilities: defaultManagementCapabilities,
                 ),
                 (
                   id: "blocked",
                   displayName: "Blocked",
                   residencyPolicy: PluginResidencyPolicy.transient,
+                  sessionOptionsScope: PluginSessionOptionsScope.project,
                   managementCapabilities: defaultManagementCapabilities,
                 ),
               ],
@@ -100,6 +102,7 @@ void main() {
       expect(response.plugins.map((plugin) => plugin.id), ["ready"]);
       expect(response.plugins.single.isDefault, isTrue);
       expect(response.bridgeId, "br_test1234");
+      expect(response.supportsSessionOptions, isTrue);
     });
   });
 }

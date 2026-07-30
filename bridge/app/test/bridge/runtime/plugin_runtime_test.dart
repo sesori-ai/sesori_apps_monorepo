@@ -133,6 +133,14 @@ void main() {
       throwsA(unavailableFor("read")),
     );
     await expectLater(
+      runtime.useWithGeneration(
+        pluginId: "removed-plugin",
+        operation: _TestOperation.capture,
+        body: (_) async {},
+      ),
+      throwsA(unavailableFor("capture")),
+    );
+    await expectLater(
       runtime.useStream<int>(
         pluginId: "removed-plugin",
         operation: _TestOperation.watch,
@@ -160,6 +168,88 @@ void main() {
             .having((error) => error.statusCode, "statusCode", 503),
       ),
     );
+  });
+
+  test("useWithGeneration activates, returns the acquired generation, and releases its lease", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    expect(
+      await runtime.stop(pluginId: "one", intent: PluginStopIntent.safe),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+    BridgePluginApi? bodyApi;
+
+    final result = await runtime.useWithGeneration(
+      pluginId: "one",
+      operation: _TestOperation.capture,
+      body: (api) async {
+        bodyApi = api;
+        expect(runtime.snapshot.single.leaseCount, 1);
+        return "captured";
+      },
+    );
+
+    expect(factory.startCount, 2);
+    expect(bodyApi, same(factory.api));
+    expect(result, (value: "captured", generation: 2));
+    expect(runtime.snapshot.single.leaseCount, 0);
+  });
+
+  test("useWithGeneration handles authentication loss and releases its lease", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await expectLater(
+      runtime.useWithGeneration<void>(
+        pluginId: "one",
+        operation: _TestOperation.capture,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "test",
+          actionHint: "Authenticate locally.",
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+    await _waitUntil(
+      () => runtime.snapshot.single.state == PluginRuntimeState.blocked && factory.plugins.single.shutdownCount == 1,
+    );
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupAuthenticationRequired>());
+    expect(runtime.snapshot.single.leaseCount, 0);
+  });
+
+  test("useWithGeneration checks the acquired generation before returning and releases its lease", () async {
+    final operationGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final operation = runtime.useWithGeneration(
+      pluginId: "one",
+      operation: _TestOperation.capture,
+      body: (_) async {
+        await operationGate.future;
+        return "stale";
+      },
+    );
+    final operationExpectation = expectLater(
+      operation,
+      throwsA(
+        isA<PluginOperationException>().having((error) => error.operation, "operation", "capture"),
+      ),
+    );
+    await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
+
+    final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.force);
+    await _waitUntil(() => runtime.snapshot.single.transition == PluginRuntimeTransition.stopping);
+    operationGate.complete();
+
+    await operationExpectation;
+    expect(await stopping, isA<PluginRuntimeCommandApplied>());
+    expect(runtime.snapshot.single.leaseCount, 0);
   });
 
   test("concurrent acquisitions join one start and hold independent leases", () async {
@@ -1411,6 +1501,7 @@ void main() {
 
 enum _TestOperation {
   use,
+  capture,
   read,
   watch,
   activeRead,

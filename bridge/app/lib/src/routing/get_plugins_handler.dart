@@ -23,6 +23,7 @@ class GetPluginsHandler extends GetRequestHandler<PluginListResponse> {
     return PluginListResponse(
       bridgeId: _bridgeIdProvider.bridgeId,
       plugins: _lifecycleService.selectableMetadataSnapshot,
+      supportsSessionOptions: true,
     );
   }
 }

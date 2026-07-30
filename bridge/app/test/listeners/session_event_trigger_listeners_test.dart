@@ -19,12 +19,14 @@ void main() {
 
     source.add((
       pluginId: "other",
+      projectId: "other-project",
       generation: 1,
       kind: SessionBindingCommitKind.catalogSync,
       backendSessionIds: const ["ignored"],
     ));
     source.add((
       pluginId: "selected",
+      projectId: "selected-project",
       generation: 2,
       kind: SessionBindingCommitKind.sessionCreation,
       backendSessionIds: const ["root"],
@@ -34,12 +36,14 @@ void main() {
     expect(dispatcher.commits, [
       (
         pluginId: "other",
+        projectId: "other-project",
         generation: 1,
         kind: SessionBindingCommitKind.catalogSync,
         backendSessionIds: const ["ignored"],
       ),
       (
         pluginId: "selected",
+        projectId: "selected-project",
         generation: 2,
         kind: SessionBindingCommitKind.sessionCreation,
         backendSessionIds: const ["root"],

@@ -85,6 +85,19 @@ class BenchmarkPluginRuntime extends PluginRuntime {
   }
 
   @override
+  Future<({T value, int generation})> useWithGeneration<T>({
+    required String pluginId,
+    required Enum operation,
+    required Future<T> Function(BridgePluginApi api) body,
+  }) async {
+    final plugin = _plugins[pluginId];
+    if (plugin == null) {
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+    }
+    return (value: await body(plugin), generation: 1);
+  }
+
+  @override
   Future<R> useAndCommit<P, R>({
     required String pluginId,
     required Enum operation,

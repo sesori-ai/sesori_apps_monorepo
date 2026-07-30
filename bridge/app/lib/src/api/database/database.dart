@@ -3,18 +3,21 @@ import "dart:io";
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as path;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
+import "daos/session_options_cache_dao.dart";
 import "database.steps.dart";
 import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/projects_table.dart";
 import "tables/pull_requests_table.dart";
 import "tables/session_table.dart";
+import "tables/session_options_cache_table.dart";
 
 part "database.g.dart";
 
@@ -22,8 +25,15 @@ part "database.g.dart";
 ///
 /// New tables and DAOs should be registered here as the persistence layer grows.
 @DriftDatabase(
-  tables: [ProjectsTable, SessionTable, DeletedSessionsTable, PullRequestsTable, CatalogHydrationsTable],
-  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
+  tables: [
+    ProjectsTable,
+    SessionTable,
+    DeletedSessionsTable,
+    PullRequestsTable,
+    CatalogHydrationsTable,
+    SessionOptionsCacheTable,
+  ],
+  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao, SessionOptionsCacheDao],
 )
 class AppDatabase extends _$AppDatabase {
   static const _readPoolSize = 4;
@@ -31,7 +41,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -247,6 +257,9 @@ class AppDatabase extends _$AppDatabase {
         if (violations.isNotEmpty) {
           throw StateError("Migration v10->v11 left foreign key violations: ${violations.map((row) => row.data)}");
         }
+      },
+      from11To12: (m, schema) async {
+        await m.createTable(schema.sessionOptionsCacheTable);
       },
     ),
     beforeOpen: (details) async {

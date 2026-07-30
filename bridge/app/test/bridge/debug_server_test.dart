@@ -57,6 +57,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     legacyMissingPluginId: plugin.id,
     pluginLifecycleService: lifecycleService,
     pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+    clock: const ServerClock(),
     database: db,
     httpClient: httpClient,
     processRunner: ProcessRunner(),
@@ -218,7 +219,7 @@ void main() {
       );
     });
 
-    test("debug client disconnect does not tear down the shared plugin listener", () async {
+    test("debug client disconnect does not tear down the orchestrator plugin listeners", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
       final trackingHarness = await _createDebugServerHarness(
@@ -236,7 +237,7 @@ void main() {
       final second = await _SseTestClient.connect(trackingServer.boundPort!);
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(trackingPlugin.subscribeCount, equals(1));
+      expect(trackingPlugin.subscribeCount, equals(2));
 
       await second.close();
       await Future<void>.delayed(const Duration(milliseconds: 100));

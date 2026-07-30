@@ -40,6 +40,7 @@ void main() {
                 id: "opencode",
                 displayName: "OpenCode",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],
@@ -67,6 +68,7 @@ void main() {
       legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
       pluginRuntime: pluginRuntime,
+      clock: const ServerClock(),
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
@@ -139,6 +141,7 @@ void main() {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      clock: const ServerClock(),
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
@@ -189,6 +192,7 @@ void main() {
         legacyMissingPluginId: plugin.id,
         pluginLifecycleService: lifecycleService,
         pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+        clock: const ServerClock(),
         database: database,
         httpClient: httpClient,
         processRunner: ProcessRunner(),
@@ -254,7 +258,7 @@ void main() {
       harness.plugin.add(const BridgeSseVcsBranchUpdated());
 
       expect(await laterEvent.timeout(const Duration(seconds: 2)), isA<SesoriVcsBranchUpdated>());
-      expect(harness.plugin.subscribeCount, 1);
+      expect(harness.plugin.subscribeCount, 2);
     });
   });
 }
@@ -304,6 +308,7 @@ class _TestHarness {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      clock: const ServerClock(),
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),

@@ -20,6 +20,8 @@ import "../listeners/plugin_catalog_hydration_listener.dart";
 import "../listeners/plugin_event_listener.dart";
 import "../listeners/session_binding_commit_listener.dart";
 import "../listeners/session_deletion_listener.dart";
+import "../listeners/session_options_changed_refresh_listener.dart";
+import "../listeners/session_options_creation_refresh_listener.dart";
 import "../push/completion_notifier.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
@@ -65,6 +67,7 @@ import "repositories/provider_repository.dart";
 import "repositories/pull_request_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/session_diff_repository.dart";
+import "repositories/session_options_repository.dart";
 import "repositories/session_repository.dart";
 import "repositories/session_unseen_calculator.dart";
 import "repositories/session_unseen_repository.dart";
@@ -96,6 +99,7 @@ import "routing/health_check_handler.dart";
 import "routing/hide_project_handler.dart";
 import "routing/open_project_handler.dart";
 import "routing/post_agents_handler.dart";
+import "routing/post_session_options_handler.dart";
 import "routing/reject_question_handler.dart";
 import "routing/rename_project_handler.dart";
 import "routing/rename_session_handler.dart";
@@ -119,6 +123,7 @@ import "services/session_event_dispatcher.dart";
 import "services/session_event_service.dart";
 import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
+import "services/session_options_service.dart";
 import "services/session_prompt_service.dart";
 import "services/session_unseen_service.dart";
 import "services/session_view_tracker.dart";
@@ -144,6 +149,7 @@ class Orchestrator {
   final String _legacyMissingPluginId;
   final PluginLifecycleService _pluginLifecycleService;
   final PluginRuntime _pluginRuntime;
+  final ServerClock _clock;
   final AppDatabase _database;
   final http.Client _httpClient;
   final ProcessRunner _processRunner;
@@ -161,6 +167,7 @@ class Orchestrator {
     required String legacyMissingPluginId,
     required PluginLifecycleService pluginLifecycleService,
     required PluginRuntime pluginRuntime,
+    required ServerClock clock,
     required AppDatabase database,
     required http.Client httpClient,
     required ProcessRunner processRunner,
@@ -177,6 +184,7 @@ class Orchestrator {
        _legacyMissingPluginId = legacyMissingPluginId,
        _pluginLifecycleService = pluginLifecycleService,
        _pluginRuntime = pluginRuntime,
+       _clock = clock,
        _database = database,
        _httpClient = httpClient,
        _processRunner = processRunner,
@@ -207,6 +215,18 @@ class Orchestrator {
       unseenCalculator: unseenCalculator,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final sessionOptionsRepository = SessionOptionsRepository(
+      runtime: _pluginRuntime,
+      projectsDao: _database.projectsDao,
+      sessionDao: _database.sessionDao,
+      cacheDao: _database.sessionOptionsCacheDao,
+    );
+    final sessionOptionsService = SessionOptionsService(
+      repository: sessionOptionsRepository,
+      pluginScopes: pluginComposition.sessionOptionsScopeById,
+      clock: _clock,
+      retention: const Duration(days: 30),
     );
     final deletedSessionStorageCleanupService = DeletedSessionStorageCleanupService(
       sessionRepository: sessionRepository,
@@ -411,12 +431,22 @@ class Orchestrator {
       source: sessionMutationDispatcher.deletedSessions,
       dispatcher: sessionEventDispatcher,
     );
+    final sessionOptionsCreationRefreshListener = SessionOptionsCreationRefreshListener(
+      source: sessionRepository.bindingCommits,
+      service: sessionOptionsService,
+    );
+    final sessionOptionsChangedRefreshListener = SessionOptionsChangedRefreshListener(
+      runtime: _pluginRuntime,
+      service: sessionOptionsService,
+    );
     final normalizedPluginEvents = sessionEventDispatcher.events.doOnListen(() {
       for (final listener in pluginEventListeners) {
         listener.start();
       }
       sessionBindingCommitListener.start();
       sessionDeletionListener.start();
+      sessionOptionsCreationRefreshListener.start();
+      sessionOptionsChangedRefreshListener.start();
     });
     final router = RequestRouter(
       handlers: [
@@ -426,6 +456,7 @@ class Orchestrator {
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
+        PostSessionOptionsHandler(service: sessionOptionsService),
         RestartBridgeHandler(restartService: _restartService),
         GetCurrentProjectHandler(projectRepository: projectRepository),
         GetProjectsHandler(projectActivityService: projectActivityService),
@@ -491,6 +522,8 @@ class Orchestrator {
       pluginEventListeners: pluginEventListeners,
       sessionBindingCommitListener: sessionBindingCommitListener,
       sessionDeletionListener: sessionDeletionListener,
+      sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
+      sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
       sessionEventDispatcher: sessionEventDispatcher,
       pluginRuntime: _pluginRuntime,
       pushDispatcher: pushDispatcher,
@@ -556,6 +589,8 @@ class OrchestratorSession {
   final List<PluginEventListener> _pluginEventListeners;
   final SessionBindingCommitListener _sessionBindingCommitListener;
   final SessionDeletionListener _sessionDeletionListener;
+  final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener;
+  final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener;
   final SessionEventDispatcher _sessionEventDispatcher;
   final PluginRuntime _pluginRuntime;
   final List<int> _roomKey;
@@ -623,6 +658,8 @@ class OrchestratorSession {
     required List<PluginEventListener> pluginEventListeners,
     required SessionBindingCommitListener sessionBindingCommitListener,
     required SessionDeletionListener sessionDeletionListener,
+    required SessionOptionsCreationRefreshListener sessionOptionsCreationRefreshListener,
+    required SessionOptionsChangedRefreshListener sessionOptionsChangedRefreshListener,
     required SessionEventDispatcher sessionEventDispatcher,
     required PluginRuntime pluginRuntime,
     required PushDispatcher pushDispatcher,
@@ -656,6 +693,8 @@ class OrchestratorSession {
        _pluginEventListeners = pluginEventListeners,
        _sessionBindingCommitListener = sessionBindingCommitListener,
        _sessionDeletionListener = sessionDeletionListener,
+       _sessionOptionsCreationRefreshListener = sessionOptionsCreationRefreshListener,
+       _sessionOptionsChangedRefreshListener = sessionOptionsChangedRefreshListener,
        _sessionEventDispatcher = sessionEventDispatcher,
        _pluginRuntime = pluginRuntime,
        _pushDispatcher = pushDispatcher,
@@ -933,6 +972,8 @@ class OrchestratorSession {
       for (final listener in _pluginEventListeners) attempt(listener.dispose),
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_sessionDeletionListener.dispose),
+      attempt(_sessionOptionsCreationRefreshListener.dispose),
+      attempt(_sessionOptionsChangedRefreshListener.dispose),
     ]);
     await attempt(_sessionEventDispatcher.dispose);
     await attempt(_permissionAutoApprovalService.dispose);

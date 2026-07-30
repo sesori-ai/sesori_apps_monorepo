@@ -71,6 +71,8 @@ export "src/models/sesori/sesori_sse_event.dart";
 export "src/models/sesori/session.dart";
 export "src/models/sesori/session_cleanup_rejection.dart";
 export "src/models/sesori/session_diffs_response.dart";
+export "src/models/sesori/session_options_error_response.dart";
+export "src/models/sesori/session_options_response.dart";
 export "src/models/sesori/session_status.dart";
 export "src/models/sesori/session_variant.dart";
 export "src/models/sesori/set_base_branch_request.dart";
