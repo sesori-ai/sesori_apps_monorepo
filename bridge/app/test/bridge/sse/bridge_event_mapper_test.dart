@@ -132,7 +132,7 @@ void main() {
       expect(event.messageID, equals("m1"));
     });
 
-    test("filters file message part updates", () async {
+    test("passes file message part updates with normalized attachment data", () async {
       final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
@@ -149,11 +149,17 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: PluginMessageAttachment.metadata(mime: "text/plain", filename: "notes.txt"),
           ),
         ),
       );
 
-      expect(result, isNull);
+      expect(result, isA<SesoriMessagePartUpdated>());
+      final event = result! as SesoriMessagePartUpdated;
+      expect(
+        event.part.attachment,
+        equals(const MessageAttachment.metadata(mime: "text/plain", filename: "notes.txt")),
+      );
     });
 
     test("filters snapshot message part updates", () async {
@@ -173,6 +179,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -197,6 +204,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -221,6 +229,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -245,6 +254,7 @@ void main() {
             agentName: "test-agent",
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -270,6 +280,7 @@ void main() {
             agentName: null,
             attempt: 2,
             retryError: "timeout",
+            attachment: null,
           ),
         ),
       );
@@ -294,6 +305,7 @@ void main() {
               title: null,
               output: longOutput,
               error: null,
+              attachments: const [],
             ),
             prompt: null,
             description: null,
@@ -301,6 +313,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -328,6 +341,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -353,6 +367,7 @@ void main() {
               title: null,
               output: "short",
               error: null,
+              attachments: [],
             ),
             prompt: null,
             description: null,
@@ -360,6 +375,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );

@@ -122,6 +122,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -160,6 +161,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -179,6 +181,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -474,6 +477,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -564,6 +568,7 @@ void main() {
               agentName: null,
               attempt: null,
               retryError: null,
+              attachment: null,
             ),
           ),
         );
@@ -701,6 +706,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -720,6 +726,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -760,6 +767,7 @@ void main() {
               agentName: null,
               attempt: null,
               retryError: null,
+              attachment: null,
             ),
           ),
         );
@@ -797,6 +805,7 @@ void main() {
               agentName: null,
               attempt: null,
               retryError: null,
+              attachment: null,
             ),
           ),
         );
@@ -1101,6 +1110,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -1198,6 +1208,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -1217,6 +1228,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -1319,6 +1331,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -1368,6 +1381,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -1411,6 +1425,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -1432,6 +1447,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -1472,6 +1488,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );
@@ -1494,6 +1511,7 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            attachment: null,
           ),
         ),
       );

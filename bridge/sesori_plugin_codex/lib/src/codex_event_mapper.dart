@@ -493,6 +493,7 @@ class CodexEventMapper {
             title: title,
             output: output,
             error: error ?? (status == PluginToolStatus.error ? output : null),
+            attachments: const [],
           ),
           prompt: null,
           description: null,
@@ -500,6 +501,7 @@ class CodexEventMapper {
           agentName: null,
           attempt: null,
           retryError: null,
+          attachment: null,
         ),
       ),
     ];
@@ -654,6 +656,7 @@ class CodexEventMapper {
           agentName: null,
           attempt: null,
           retryError: null,
+          attachment: null,
         ),
       ),
     ];

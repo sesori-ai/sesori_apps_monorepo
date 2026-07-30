@@ -90,7 +90,10 @@ class AssistantMessageCard extends StatelessWidget {
       ),
       MessagePartType.stepStart => const SizedBox.shrink(),
       MessagePartType.stepFinish => const SizedBox.shrink(),
-      MessagePartType.file => FilePartWidget(key: ValueKey(part.id), part: part),
+      MessagePartType.file => switch (part.attachment) {
+        final attachment? => FilePartWidget(key: ValueKey(part.id), attachment: attachment),
+        null => const SizedBox.shrink(),
+      },
       MessagePartType.snapshot => const SizedBox.shrink(),
       MessagePartType.patch => const SizedBox.shrink(),
       MessagePartType.compaction => const SizedBox.shrink(),

@@ -5,6 +5,7 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
 import "../../../l10n/app_localizations.dart";
+import "file_part_widget.dart";
 
 class ToolPartWidget extends StatelessWidget {
   final MessagePart part;
@@ -72,6 +73,20 @@ class ToolPartWidget extends StatelessWidget {
                   ),
                   maxLines: 4,
                   overflow: .ellipsis,
+                ),
+              ),
+            if (state != null && state.attachments.isNotEmpty)
+              Padding(
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  prego.spacing.lg,
+                  0,
+                  prego.spacing.lg,
+                  prego.spacing.md,
+                ),
+                child: Column(
+                  children: [
+                    for (final attachment in state.attachments) FilePartWidget(attachment: attachment),
+                  ],
                 ),
               ),
           ],

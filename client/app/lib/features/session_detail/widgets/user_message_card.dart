@@ -15,7 +15,11 @@ class UserMessageCard extends StatelessWidget {
         .where((part) => part.type == MessagePartType.text)
         .map((part) => part.text ?? "")
         .join("\n");
-    final fileParts = message.parts.where((part) => part.type == MessagePartType.file).toList();
+    final attachments = message.parts
+        .where((part) => part.type == MessagePartType.file)
+        .map((part) => part.attachment)
+        .whereType<MessageAttachment>()
+        .toList();
 
     return Align(
       alignment: .centerRight,
@@ -33,8 +37,7 @@ class UserMessageCard extends StatelessWidget {
           crossAxisAlignment: .end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (fileParts.isNotEmpty)
-              ...fileParts.map((part) => FilePartWidget(key: ValueKey(part.id), part: part)),
+            if (attachments.isNotEmpty) ...attachments.map((attachment) => FilePartWidget(attachment: attachment)),
             if (text.isNotEmpty)
               SelectionArea(
                 child: Text(

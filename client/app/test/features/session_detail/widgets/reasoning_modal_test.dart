@@ -84,6 +84,7 @@ MessageWithParts _messageWithPart({
         agentName: null,
         attempt: null,
         retryError: null,
+        attachment: null,
       ),
     ],
   );

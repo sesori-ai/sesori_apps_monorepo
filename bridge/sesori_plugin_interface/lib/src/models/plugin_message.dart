@@ -71,12 +71,31 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     required int? attempt,
     required String? retryError,
     // file
-    String? mime,
-    String? url,
-    String? path,
-    String? base64,
-    String? filename,
+    required PluginMessageAttachment? attachment,
   }) = _PluginMessagePart;
+}
+
+/// A backend-normalized attachment that is safe to expose outside the plugin.
+@Freezed(unionKey: "source", toStringOverride: false)
+sealed class PluginMessageAttachment with _$PluginMessageAttachment {
+  @FreezedUnionValue("inline_image")
+  const factory PluginMessageAttachment.inlineImage({
+    required String mime,
+    required String base64,
+    required String? filename,
+  }) = PluginMessageAttachmentInlineImage;
+
+  @FreezedUnionValue("remote_url")
+  const factory PluginMessageAttachment.remoteUrl({
+    required String mime,
+    required Uri url,
+    required String? filename,
+  }) = PluginMessageAttachmentRemoteUrl;
+
+  const factory PluginMessageAttachment.metadata({
+    required String mime,
+    required String? filename,
+  }) = PluginMessageAttachmentMetadata;
 }
 
 /// Lifecycle status of a tool invocation. Mirrors the OpenCode `ToolState`
@@ -104,6 +123,7 @@ sealed class PluginToolState with _$PluginToolState {
     required String? title,
     required String? output,
     required String? error,
+    required List<PluginMessageAttachment> attachments,
   }) = _PluginToolState;
 }
 

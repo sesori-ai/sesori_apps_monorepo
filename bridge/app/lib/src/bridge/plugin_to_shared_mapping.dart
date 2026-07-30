@@ -38,6 +38,47 @@ extension PluginToolStatusMapping on PluginToolStatus {
   };
 }
 
+/// Maps a plugin-normalized attachment into the shared wire contract.
+extension PluginMessageAttachmentMapping on PluginMessageAttachment {
+  static const _maxFilenameCharacters = 255;
+
+  MessageAttachment toShared() => switch (this) {
+    PluginMessageAttachmentInlineImage(:final mime, :final base64, :final filename) => MessageAttachment.inlineImage(
+      mime: mime,
+      base64: base64,
+      filename: _safeFilename(filename: filename),
+    ),
+    PluginMessageAttachmentRemoteUrl(:final mime, :final url, :final filename) => _mapRemoteAttachment(
+      mime: mime,
+      url: url,
+      filename: _safeFilename(filename: filename),
+    ),
+    PluginMessageAttachmentMetadata(:final mime, :final filename) => MessageAttachment.metadata(
+      mime: mime,
+      filename: _safeFilename(filename: filename),
+    ),
+  };
+
+  static String? _safeFilename({required String? filename}) {
+    final normalized = filename?.trim().replaceAll(r"\", "/");
+    if (normalized == null || normalized.isEmpty) return null;
+    final segments = normalized.split("/").where((segment) => segment.isNotEmpty);
+    return segments.isEmpty ? null : String.fromCharCodes(segments.last.runes.take(_maxFilenameCharacters));
+  }
+
+  static MessageAttachment _mapRemoteAttachment({
+    required String mime,
+    required Uri url,
+    required String? filename,
+  }) {
+    final scheme = url.scheme.toLowerCase();
+    if ((scheme != "http" && scheme != "https") || url.host.isEmpty || url.userInfo.isNotEmpty) {
+      throw StateError("Plugin remote attachments must use a host-qualified HTTP(S) URL");
+    }
+    return MessageAttachment.remoteUrl(mime: mime, url: url.toString(), filename: filename);
+  }
+}
+
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
   ToolState toShared() => ToolState(
@@ -45,6 +86,7 @@ extension PluginToolStateMapping on PluginToolState {
     title: title,
     output: output,
     error: error,
+    attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
   );
 }
 
@@ -77,10 +119,6 @@ extension PluginMessagePartMapping on PluginMessagePart {
     agentName: agentName,
     attempt: attempt,
     retryError: retryError,
-    mime: mime,
-    url: url,
-    path: null, // Never send internal filesystem paths to mobile
-    base64: base64,
-    filename: filename,
+    attachment: attachment?.toShared(),
   );
 }

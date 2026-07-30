@@ -631,6 +631,7 @@ class AcpEventMapper {
           title: state.title,
           output: state.output,
           error: state.status == PluginToolStatus.error ? state.output : null,
+          attachments: const [],
         ),
       ),
     );
@@ -716,6 +717,7 @@ class AcpEventMapper {
       agentName: null,
       attempt: null,
       retryError: null,
+      attachment: null,
     );
   }
 
@@ -740,6 +742,7 @@ class AcpEventMapper {
       agentName: null,
       attempt: null,
       retryError: null,
+      attachment: null,
     );
   }
 

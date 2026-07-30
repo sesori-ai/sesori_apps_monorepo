@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MessagePart {
 
- String get id; String get sessionID; String get messageID; MessagePartType get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent; String? get agentName; int? get attempt; String? get retryError; String? get mime; String? get url; String? get path; String? get base64; String? get filename;
+ String get id; String get sessionID; String get messageID; MessagePartType get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent; String? get agentName; int? get attempt; String? get retryError; MessageAttachment? get attachment;
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $MessagePartCopyWith<MessagePart> get copyWith => _$MessagePartCopyWithImpl<Mess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.path, path) || other.path == path)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.attachment, attachment) || other.attachment == attachment));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,mime,url,path,base64,filename);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,attachment);
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, mime: $mime, url: $url, path: $path, base64: $base64, filename: $filename)';
+  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, attachment: $attachment)';
 }
 
 
@@ -48,11 +48,11 @@ abstract mixin class $MessagePartCopyWith<$Res>  {
   factory $MessagePartCopyWith(MessagePart value, $Res Function(MessagePart) _then) = _$MessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, String? mime, String? url, String? path, String? base64, String? filename
+ String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, MessageAttachment? attachment
 });
 
 
-$ToolStateCopyWith<$Res>? get state;
+$ToolStateCopyWith<$Res>? get state;$MessageAttachmentCopyWith<$Res>? get attachment;
 
 }
 /// @nodoc
@@ -65,7 +65,7 @@ class _$MessagePartCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? mime = freezed,Object? url = freezed,Object? path = freezed,Object? base64 = freezed,Object? filename = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -80,12 +80,8 @@ as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullabl
 as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
 as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
 as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
-as String?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
-as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
-as String?,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String?,base64: freezed == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
-as String?,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
+as MessageAttachment?,
   ));
 }
 /// Create a copy of MessagePart
@@ -100,6 +96,18 @@ $ToolStateCopyWith<$Res>? get state {
   return $ToolStateCopyWith<$Res>(_self.state!, (value) {
     return _then(_self.copyWith(state: value));
   });
+}/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MessageAttachmentCopyWith<$Res>? get attachment {
+    if (_self.attachment == null) {
+    return null;
+  }
+
+  return $MessageAttachmentCopyWith<$Res>(_self.attachment!, (value) {
+    return _then(_self.copyWith(attachment: value));
+  });
 }
 }
 
@@ -109,7 +117,7 @@ $ToolStateCopyWith<$Res>? get state {
 @JsonSerializable()
 
 class _MessagePart implements MessagePart {
-  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, this.mime, this.url, this.path, this.base64, this.filename});
+  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, required this.attachment});
   factory _MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 
 @override final  String id;
@@ -125,12 +133,7 @@ class _MessagePart implements MessagePart {
 @override final  String? agentName;
 @override final  int? attempt;
 @override final  String? retryError;
-// file
-@override final  String? mime;
-@override final  String? url;
-@override final  String? path;
-@override final  String? base64;
-@override final  String? filename;
+@override final  MessageAttachment? attachment;
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
@@ -145,16 +148,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.path, path) || other.path == path)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.attachment, attachment) || other.attachment == attachment));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,mime,url,path,base64,filename);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,attachment);
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, mime: $mime, url: $url, path: $path, base64: $base64, filename: $filename)';
+  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, attachment: $attachment)';
 }
 
 
@@ -165,11 +168,11 @@ abstract mixin class _$MessagePartCopyWith<$Res> implements $MessagePartCopyWith
   factory _$MessagePartCopyWith(_MessagePart value, $Res Function(_MessagePart) _then) = __$MessagePartCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, String? mime, String? url, String? path, String? base64, String? filename
+ String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, MessageAttachment? attachment
 });
 
 
-@override $ToolStateCopyWith<$Res>? get state;
+@override $ToolStateCopyWith<$Res>? get state;@override $MessageAttachmentCopyWith<$Res>? get attachment;
 
 }
 /// @nodoc
@@ -182,7 +185,7 @@ class __$MessagePartCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? mime = freezed,Object? url = freezed,Object? path = freezed,Object? base64 = freezed,Object? filename = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
   return _then(_MessagePart(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -197,12 +200,8 @@ as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullabl
 as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
 as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
 as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
-as String?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
-as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
-as String?,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String?,base64: freezed == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
-as String?,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
+as MessageAttachment?,
   ));
 }
 
@@ -218,14 +217,333 @@ $ToolStateCopyWith<$Res>? get state {
   return $ToolStateCopyWith<$Res>(_self.state!, (value) {
     return _then(_self.copyWith(state: value));
   });
+}/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MessageAttachmentCopyWith<$Res>? get attachment {
+    if (_self.attachment == null) {
+    return null;
+  }
+
+  return $MessageAttachmentCopyWith<$Res>(_self.attachment!, (value) {
+    return _then(_self.copyWith(attachment: value));
+  });
 }
 }
+
+MessageAttachment _$MessageAttachmentFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['source']) {
+                  case 'inline_image':
+          return MessageAttachmentInlineImage.fromJson(
+            json
+          );
+                case 'remote_url':
+          return MessageAttachmentRemoteUrl.fromJson(
+            json
+          );
+                case 'metadata':
+          return MessageAttachmentMetadata.fromJson(
+            json
+          );
+        
+          default:
+            return MessageAttachmentUnknown.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$MessageAttachment {
+
+
+
+  /// Serializes this MessageAttachment to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachment);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+
+
+}
+
+/// @nodoc
+class $MessageAttachmentCopyWith<$Res>  {
+$MessageAttachmentCopyWith(MessageAttachment _, $Res Function(MessageAttachment) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class MessageAttachmentInlineImage implements MessageAttachment {
+  const MessageAttachmentInlineImage({required this.mime, required this.base64, required this.filename, final  String? $type}): $type = $type ?? 'inline_image';
+  factory MessageAttachmentInlineImage.fromJson(Map<String, dynamic> json) => _$MessageAttachmentInlineImageFromJson(json);
+
+ final  String mime;
+ final  String base64;
+ final  String? filename;
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageAttachmentInlineImageCopyWith<MessageAttachmentInlineImage> get copyWith => _$MessageAttachmentInlineImageCopyWithImpl<MessageAttachmentInlineImage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageAttachmentInlineImageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentInlineImage&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mime,base64,filename);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageAttachmentInlineImageCopyWith<$Res> implements $MessageAttachmentCopyWith<$Res> {
+  factory $MessageAttachmentInlineImageCopyWith(MessageAttachmentInlineImage value, $Res Function(MessageAttachmentInlineImage) _then) = _$MessageAttachmentInlineImageCopyWithImpl;
+@useResult
+$Res call({
+ String mime, String base64, String? filename
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageAttachmentInlineImageCopyWithImpl<$Res>
+    implements $MessageAttachmentInlineImageCopyWith<$Res> {
+  _$MessageAttachmentInlineImageCopyWithImpl(this._self, this._then);
+
+  final MessageAttachmentInlineImage _self;
+  final $Res Function(MessageAttachmentInlineImage) _then;
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? mime = null,Object? base64 = null,Object? filename = freezed,}) {
+  return _then(MessageAttachmentInlineImage(
+mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,base64: null == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
+as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessageAttachmentRemoteUrl implements MessageAttachment {
+  const MessageAttachmentRemoteUrl({required this.mime, required this.url, required this.filename, final  String? $type}): $type = $type ?? 'remote_url';
+  factory MessageAttachmentRemoteUrl.fromJson(Map<String, dynamic> json) => _$MessageAttachmentRemoteUrlFromJson(json);
+
+ final  String mime;
+ final  String url;
+ final  String? filename;
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageAttachmentRemoteUrlCopyWith<MessageAttachmentRemoteUrl> get copyWith => _$MessageAttachmentRemoteUrlCopyWithImpl<MessageAttachmentRemoteUrl>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageAttachmentRemoteUrlToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentRemoteUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mime,url,filename);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageAttachmentRemoteUrlCopyWith<$Res> implements $MessageAttachmentCopyWith<$Res> {
+  factory $MessageAttachmentRemoteUrlCopyWith(MessageAttachmentRemoteUrl value, $Res Function(MessageAttachmentRemoteUrl) _then) = _$MessageAttachmentRemoteUrlCopyWithImpl;
+@useResult
+$Res call({
+ String mime, String url, String? filename
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageAttachmentRemoteUrlCopyWithImpl<$Res>
+    implements $MessageAttachmentRemoteUrlCopyWith<$Res> {
+  _$MessageAttachmentRemoteUrlCopyWithImpl(this._self, this._then);
+
+  final MessageAttachmentRemoteUrl _self;
+  final $Res Function(MessageAttachmentRemoteUrl) _then;
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? mime = null,Object? url = null,Object? filename = freezed,}) {
+  return _then(MessageAttachmentRemoteUrl(
+mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessageAttachmentMetadata implements MessageAttachment {
+  const MessageAttachmentMetadata({required this.mime, required this.filename, final  String? $type}): $type = $type ?? 'metadata';
+  factory MessageAttachmentMetadata.fromJson(Map<String, dynamic> json) => _$MessageAttachmentMetadataFromJson(json);
+
+ final  String mime;
+ final  String? filename;
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageAttachmentMetadataCopyWith<MessageAttachmentMetadata> get copyWith => _$MessageAttachmentMetadataCopyWithImpl<MessageAttachmentMetadata>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageAttachmentMetadataToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentMetadata&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mime,filename);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageAttachmentMetadataCopyWith<$Res> implements $MessageAttachmentCopyWith<$Res> {
+  factory $MessageAttachmentMetadataCopyWith(MessageAttachmentMetadata value, $Res Function(MessageAttachmentMetadata) _then) = _$MessageAttachmentMetadataCopyWithImpl;
+@useResult
+$Res call({
+ String mime, String? filename
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageAttachmentMetadataCopyWithImpl<$Res>
+    implements $MessageAttachmentMetadataCopyWith<$Res> {
+  _$MessageAttachmentMetadataCopyWithImpl(this._self, this._then);
+
+  final MessageAttachmentMetadata _self;
+  final $Res Function(MessageAttachmentMetadata) _then;
+
+/// Create a copy of MessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? mime = null,Object? filename = freezed,}) {
+  return _then(MessageAttachmentMetadata(
+mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessageAttachmentUnknown implements MessageAttachment {
+  const MessageAttachmentUnknown({final  String? $type}): $type = $type ?? 'unknown';
+  factory MessageAttachmentUnknown.fromJson(Map<String, dynamic> json) => _$MessageAttachmentUnknownFromJson(json);
+
+
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageAttachmentUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentUnknown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+
+
+}
+
+
+
 
 
 /// @nodoc
 mixin _$ToolState {
 
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get output; String? get error;
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get output; String? get error;// COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
+ List<MessageAttachment> get attachments;
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -238,16 +556,16 @@ $ToolStateCopyWith<ToolState> get copyWith => _$ToolStateCopyWithImpl<ToolState>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error);
+int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(attachments));
 
 @override
 String toString() {
-  return 'ToolState(status: $status, title: $title, output: $output, error: $error)';
+  return 'ToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -258,7 +576,7 @@ abstract mixin class $ToolStateCopyWith<$Res>  {
   factory $ToolStateCopyWith(ToolState value, $Res Function(ToolState) _then) = _$ToolStateCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error, List<MessageAttachment> attachments
 });
 
 
@@ -275,13 +593,14 @@ class _$ToolStateCopyWithImpl<$Res>
 
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(_self.copyWith(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<MessageAttachment>,
   ));
 }
 
@@ -293,13 +612,22 @@ as String?,
 @JsonSerializable()
 
 class _ToolState implements ToolState {
-  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error});
+  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error, final  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
   factory _ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 
 @override@JsonKey(unknownEnumValue: ToolStatus.unknown) final  ToolStatus status;
 @override final  String? title;
 @override final  String? output;
 @override final  String? error;
+// COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
+ final  List<MessageAttachment> _attachments;
+// COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
+@override@JsonKey() List<MessageAttachment> get attachments {
+  if (_attachments is EqualUnmodifiableListView) return _attachments;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_attachments);
+}
+
 
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
@@ -314,16 +642,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error);
+int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(_attachments));
 
 @override
 String toString() {
-  return 'ToolState(status: $status, title: $title, output: $output, error: $error)';
+  return 'ToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -334,7 +662,7 @@ abstract mixin class _$ToolStateCopyWith<$Res> implements $ToolStateCopyWith<$Re
   factory _$ToolStateCopyWith(_ToolState value, $Res Function(_ToolState) _then) = __$ToolStateCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error, List<MessageAttachment> attachments
 });
 
 
@@ -351,13 +679,14 @@ class __$ToolStateCopyWithImpl<$Res>
 
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(_ToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<MessageAttachment>,
   ));
 }
 

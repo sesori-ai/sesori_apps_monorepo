@@ -180,7 +180,7 @@ mixin _$PluginMessagePart {
  String? get prompt; String? get description; String? get agent;// agent
  String? get agentName;// retry
  int? get attempt; String? get retryError;// file
- String? get mime; String? get url; String? get path; String? get base64; String? get filename;
+ PluginMessageAttachment? get attachment;
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -193,16 +193,16 @@ $PluginMessagePartCopyWith<PluginMessagePart> get copyWith => _$PluginMessagePar
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.path, path) || other.path == path)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.attachment, attachment) || other.attachment == attachment));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,mime,url,path,base64,filename);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,attachment);
 
 @override
 String toString() {
-  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, mime: $mime, url: $url, path: $path, base64: $base64, filename: $filename)';
+  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, attachment: $attachment)';
 }
 
 
@@ -213,11 +213,11 @@ abstract mixin class $PluginMessagePartCopyWith<$Res>  {
   factory $PluginMessagePartCopyWith(PluginMessagePart value, $Res Function(PluginMessagePart) _then) = _$PluginMessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, String? mime, String? url, String? path, String? base64, String? filename
+ String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, PluginMessageAttachment? attachment
 });
 
 
-$PluginToolStateCopyWith<$Res>? get state;
+$PluginToolStateCopyWith<$Res>? get state;$PluginMessageAttachmentCopyWith<$Res>? get attachment;
 
 }
 /// @nodoc
@@ -230,7 +230,7 @@ class _$PluginMessagePartCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? mime = freezed,Object? url = freezed,Object? path = freezed,Object? base64 = freezed,Object? filename = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -245,12 +245,8 @@ as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullabl
 as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
 as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
 as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
-as String?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
-as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
-as String?,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String?,base64: freezed == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
-as String?,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
+as PluginMessageAttachment?,
   ));
 }
 /// Create a copy of PluginMessagePart
@@ -265,6 +261,18 @@ $PluginToolStateCopyWith<$Res>? get state {
   return $PluginToolStateCopyWith<$Res>(_self.state!, (value) {
     return _then(_self.copyWith(state: value));
   });
+}/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginMessageAttachmentCopyWith<$Res>? get attachment {
+    if (_self.attachment == null) {
+    return null;
+  }
+
+  return $PluginMessageAttachmentCopyWith<$Res>(_self.attachment!, (value) {
+    return _then(_self.copyWith(attachment: value));
+  });
 }
 }
 
@@ -274,7 +282,7 @@ $PluginToolStateCopyWith<$Res>? get state {
 @JsonSerializable(createFactory: false)
 
 class _PluginMessagePart implements PluginMessagePart {
-  const _PluginMessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, this.mime, this.url, this.path, this.base64, this.filename});
+  const _PluginMessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, required this.attachment});
   
 
 @override final  String id;
@@ -296,11 +304,7 @@ class _PluginMessagePart implements PluginMessagePart {
 @override final  int? attempt;
 @override final  String? retryError;
 // file
-@override final  String? mime;
-@override final  String? url;
-@override final  String? path;
-@override final  String? base64;
-@override final  String? filename;
+@override final  PluginMessageAttachment? attachment;
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
@@ -315,16 +319,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.path, path) || other.path == path)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.attachment, attachment) || other.attachment == attachment));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,mime,url,path,base64,filename);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,attachment);
 
 @override
 String toString() {
-  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, mime: $mime, url: $url, path: $path, base64: $base64, filename: $filename)';
+  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, attachment: $attachment)';
 }
 
 
@@ -335,11 +339,11 @@ abstract mixin class _$PluginMessagePartCopyWith<$Res> implements $PluginMessage
   factory _$PluginMessagePartCopyWith(_PluginMessagePart value, $Res Function(_PluginMessagePart) _then) = __$PluginMessagePartCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, String? mime, String? url, String? path, String? base64, String? filename
+ String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, PluginMessageAttachment? attachment
 });
 
 
-@override $PluginToolStateCopyWith<$Res>? get state;
+@override $PluginToolStateCopyWith<$Res>? get state;@override $PluginMessageAttachmentCopyWith<$Res>? get attachment;
 
 }
 /// @nodoc
@@ -352,7 +356,7 @@ class __$PluginMessagePartCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? mime = freezed,Object? url = freezed,Object? path = freezed,Object? base64 = freezed,Object? filename = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
   return _then(_PluginMessagePart(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -367,12 +371,8 @@ as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullabl
 as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
 as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
 as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
-as String?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
-as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
-as String?,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String?,base64: freezed == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
-as String?,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
+as PluginMessageAttachment?,
   ));
 }
 
@@ -388,13 +388,303 @@ $PluginToolStateCopyWith<$Res>? get state {
   return $PluginToolStateCopyWith<$Res>(_self.state!, (value) {
     return _then(_self.copyWith(state: value));
   });
+}/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginMessageAttachmentCopyWith<$Res>? get attachment {
+    if (_self.attachment == null) {
+    return null;
+  }
+
+  return $PluginMessageAttachmentCopyWith<$Res>(_self.attachment!, (value) {
+    return _then(_self.copyWith(attachment: value));
+  });
 }
+}
+
+/// @nodoc
+mixin _$PluginMessageAttachment {
+
+ String get mime; String? get filename;
+/// Create a copy of PluginMessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessageAttachmentCopyWith<PluginMessageAttachment> get copyWith => _$PluginMessageAttachmentCopyWithImpl<PluginMessageAttachment>(this as PluginMessageAttachment, _$identity);
+
+  /// Serializes this PluginMessageAttachment to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachment&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mime,filename);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessageAttachmentCopyWith<$Res>  {
+  factory $PluginMessageAttachmentCopyWith(PluginMessageAttachment value, $Res Function(PluginMessageAttachment) _then) = _$PluginMessageAttachmentCopyWithImpl;
+@useResult
+$Res call({
+ String mime, String? filename
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessageAttachmentCopyWithImpl<$Res>
+    implements $PluginMessageAttachmentCopyWith<$Res> {
+  _$PluginMessageAttachmentCopyWithImpl(this._self, this._then);
+
+  final PluginMessageAttachment _self;
+  final $Res Function(PluginMessageAttachment) _then;
+
+/// Create a copy of PluginMessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? mime = null,Object? filename = freezed,}) {
+  return _then(_self.copyWith(
+mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessageAttachmentInlineImage implements PluginMessageAttachment {
+  const PluginMessageAttachmentInlineImage({required this.mime, required this.base64, required this.filename, final  String? $type}): $type = $type ?? 'inline_image';
+  
+
+@override final  String mime;
+ final  String base64;
+@override final  String? filename;
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+/// Create a copy of PluginMessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessageAttachmentInlineImageCopyWith<PluginMessageAttachmentInlineImage> get copyWith => _$PluginMessageAttachmentInlineImageCopyWithImpl<PluginMessageAttachmentInlineImage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessageAttachmentInlineImageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentInlineImage&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mime,base64,filename);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessageAttachmentInlineImageCopyWith<$Res> implements $PluginMessageAttachmentCopyWith<$Res> {
+  factory $PluginMessageAttachmentInlineImageCopyWith(PluginMessageAttachmentInlineImage value, $Res Function(PluginMessageAttachmentInlineImage) _then) = _$PluginMessageAttachmentInlineImageCopyWithImpl;
+@override @useResult
+$Res call({
+ String mime, String base64, String? filename
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessageAttachmentInlineImageCopyWithImpl<$Res>
+    implements $PluginMessageAttachmentInlineImageCopyWith<$Res> {
+  _$PluginMessageAttachmentInlineImageCopyWithImpl(this._self, this._then);
+
+  final PluginMessageAttachmentInlineImage _self;
+  final $Res Function(PluginMessageAttachmentInlineImage) _then;
+
+/// Create a copy of PluginMessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? mime = null,Object? base64 = null,Object? filename = freezed,}) {
+  return _then(PluginMessageAttachmentInlineImage(
+mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,base64: null == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
+as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessageAttachmentRemoteUrl implements PluginMessageAttachment {
+  const PluginMessageAttachmentRemoteUrl({required this.mime, required this.url, required this.filename, final  String? $type}): $type = $type ?? 'remote_url';
+  
+
+@override final  String mime;
+ final  Uri url;
+@override final  String? filename;
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+/// Create a copy of PluginMessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessageAttachmentRemoteUrlCopyWith<PluginMessageAttachmentRemoteUrl> get copyWith => _$PluginMessageAttachmentRemoteUrlCopyWithImpl<PluginMessageAttachmentRemoteUrl>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessageAttachmentRemoteUrlToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentRemoteUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mime,url,filename);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessageAttachmentRemoteUrlCopyWith<$Res> implements $PluginMessageAttachmentCopyWith<$Res> {
+  factory $PluginMessageAttachmentRemoteUrlCopyWith(PluginMessageAttachmentRemoteUrl value, $Res Function(PluginMessageAttachmentRemoteUrl) _then) = _$PluginMessageAttachmentRemoteUrlCopyWithImpl;
+@override @useResult
+$Res call({
+ String mime, Uri url, String? filename
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessageAttachmentRemoteUrlCopyWithImpl<$Res>
+    implements $PluginMessageAttachmentRemoteUrlCopyWith<$Res> {
+  _$PluginMessageAttachmentRemoteUrlCopyWithImpl(this._self, this._then);
+
+  final PluginMessageAttachmentRemoteUrl _self;
+  final $Res Function(PluginMessageAttachmentRemoteUrl) _then;
+
+/// Create a copy of PluginMessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? mime = null,Object? url = null,Object? filename = freezed,}) {
+  return _then(PluginMessageAttachmentRemoteUrl(
+mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as Uri,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessageAttachmentMetadata implements PluginMessageAttachment {
+  const PluginMessageAttachmentMetadata({required this.mime, required this.filename, final  String? $type}): $type = $type ?? 'metadata';
+  
+
+@override final  String mime;
+@override final  String? filename;
+
+@JsonKey(name: 'source')
+final String $type;
+
+
+/// Create a copy of PluginMessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessageAttachmentMetadataCopyWith<PluginMessageAttachmentMetadata> get copyWith => _$PluginMessageAttachmentMetadataCopyWithImpl<PluginMessageAttachmentMetadata>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessageAttachmentMetadataToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentMetadata&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mime,filename);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessageAttachmentMetadataCopyWith<$Res> implements $PluginMessageAttachmentCopyWith<$Res> {
+  factory $PluginMessageAttachmentMetadataCopyWith(PluginMessageAttachmentMetadata value, $Res Function(PluginMessageAttachmentMetadata) _then) = _$PluginMessageAttachmentMetadataCopyWithImpl;
+@override @useResult
+$Res call({
+ String mime, String? filename
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessageAttachmentMetadataCopyWithImpl<$Res>
+    implements $PluginMessageAttachmentMetadataCopyWith<$Res> {
+  _$PluginMessageAttachmentMetadataCopyWithImpl(this._self, this._then);
+
+  final PluginMessageAttachmentMetadata _self;
+  final $Res Function(PluginMessageAttachmentMetadata) _then;
+
+/// Create a copy of PluginMessageAttachment
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? mime = null,Object? filename = freezed,}) {
+  return _then(PluginMessageAttachmentMetadata(
+mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
 }
 
 /// @nodoc
 mixin _$PluginToolState {
 
- PluginToolStatus get status; String? get title; String? get output; String? get error;
+ PluginToolStatus get status; String? get title; String? get output; String? get error; List<PluginMessageAttachment> get attachments;
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -407,16 +697,16 @@ $PluginToolStateCopyWith<PluginToolState> get copyWith => _$PluginToolStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error);
+int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(attachments));
 
 @override
 String toString() {
-  return 'PluginToolState(status: $status, title: $title, output: $output, error: $error)';
+  return 'PluginToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -427,7 +717,7 @@ abstract mixin class $PluginToolStateCopyWith<$Res>  {
   factory $PluginToolStateCopyWith(PluginToolState value, $Res Function(PluginToolState) _then) = _$PluginToolStateCopyWithImpl;
 @useResult
 $Res call({
- PluginToolStatus status, String? title, String? output, String? error
+ PluginToolStatus status, String? title, String? output, String? error, List<PluginMessageAttachment> attachments
 });
 
 
@@ -444,13 +734,14 @@ class _$PluginToolStateCopyWithImpl<$Res>
 
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(_self.copyWith(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as PluginToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<PluginMessageAttachment>,
   ));
 }
 
@@ -462,13 +753,20 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class _PluginToolState implements PluginToolState {
-  const _PluginToolState({required this.status, required this.title, required this.output, required this.error});
+  const _PluginToolState({required this.status, required this.title, required this.output, required this.error, required final  List<PluginMessageAttachment> attachments}): _attachments = attachments;
   
 
 @override final  PluginToolStatus status;
 @override final  String? title;
 @override final  String? output;
 @override final  String? error;
+ final  List<PluginMessageAttachment> _attachments;
+@override List<PluginMessageAttachment> get attachments {
+  if (_attachments is EqualUnmodifiableListView) return _attachments;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_attachments);
+}
+
 
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
@@ -483,16 +781,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error);
+int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(_attachments));
 
 @override
 String toString() {
-  return 'PluginToolState(status: $status, title: $title, output: $output, error: $error)';
+  return 'PluginToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -503,7 +801,7 @@ abstract mixin class _$PluginToolStateCopyWith<$Res> implements $PluginToolState
   factory _$PluginToolStateCopyWith(_PluginToolState value, $Res Function(_PluginToolState) _then) = __$PluginToolStateCopyWithImpl;
 @override @useResult
 $Res call({
- PluginToolStatus status, String? title, String? output, String? error
+ PluginToolStatus status, String? title, String? output, String? error, List<PluginMessageAttachment> attachments
 });
 
 
@@ -520,13 +818,14 @@ class __$PluginToolStateCopyWithImpl<$Res>
 
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(_PluginToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as PluginToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<PluginMessageAttachment>,
   ));
 }
 
