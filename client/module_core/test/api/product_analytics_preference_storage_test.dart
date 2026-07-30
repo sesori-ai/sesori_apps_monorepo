@@ -158,6 +158,10 @@ void main() {
       await storage.read(userId: "user-a");
       fail("Expected malformed storage to fail closed");
     } on FormatException catch (error) {
+      expect(error, isA<ProductAnalyticsPreferenceStorageFormatException>());
+      final storageError = error as ProductAnalyticsPreferenceStorageFormatException;
+      expect(storageError.innerError, isA<FormatException>());
+      expect(storageError.innerStackTrace, isNot(StackTrace.empty));
       expect(error.toString(), isNot(contains("raw-user")));
       expect(error.toString(), isNot(contains("secret-key")));
       expect(error.source, isNull);

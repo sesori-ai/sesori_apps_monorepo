@@ -15,25 +15,56 @@ final class ProductAnalyticsPreferenceRecord {
 }
 
 sealed class LocalProductAnalyticsPreference {
-  final ProductAnalyticsPreferenceRecord record;
-  const LocalProductAnalyticsPreference({required this.record});
+  const LocalProductAnalyticsPreference();
+
+  ProductAnalyticsPreferenceRecord get record;
 }
 
 final class LocalProductAnalyticsSynced extends LocalProductAnalyticsPreference {
-  const LocalProductAnalyticsSynced({required super.record});
+  @override
+  final ProductAnalyticsPreferenceRecord record;
+
+  const LocalProductAnalyticsSynced({required this.record});
 }
 
 sealed class LocalProductAnalyticsPending extends LocalProductAnalyticsPreference {
+  final String userId;
+  final int revision;
+  final String userKey;
   final String operationId;
-  const LocalProductAnalyticsPending({required super.record, required this.operationId});
+
+  const LocalProductAnalyticsPending({
+    required this.userId,
+    required this.revision,
+    required this.userKey,
+    required this.operationId,
+  });
+
+  @override
+  ProductAnalyticsPreferenceRecord get record => ProductAnalyticsPreferenceRecord(
+    userId: userId,
+    preference: ProductAnalyticsPreference.disabled,
+    revision: revision,
+    userKey: userKey,
+  );
 }
 
 final class LocalProductAnalyticsPendingDisable extends LocalProductAnalyticsPending {
-  const LocalProductAnalyticsPendingDisable({required super.record, required super.operationId});
+  const LocalProductAnalyticsPendingDisable({
+    required super.userId,
+    required super.revision,
+    required super.userKey,
+    required super.operationId,
+  });
 }
 
 final class LocalProductAnalyticsPendingEnable extends LocalProductAnalyticsPending {
-  const LocalProductAnalyticsPendingEnable({required super.record, required super.operationId});
+  const LocalProductAnalyticsPendingEnable({
+    required super.userId,
+    required super.revision,
+    required super.userKey,
+    required super.operationId,
+  });
 }
 
 sealed class ProductAnalyticsPreferenceRepositoryResult {
