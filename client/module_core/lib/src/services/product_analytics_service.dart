@@ -196,6 +196,7 @@ class ProductAnalyticsService {
 
   Future<void> _synchronizeBeforeLogout() async {
     await _awaitLatestLocalInitialization();
+    if (_localReadFailed && !await _retryLocalRead(allowDuringLogout: true)) return;
     await _awaitLatestAccountOperation();
     if (_volatileDisable != null) {
       final current = _currentRecord;
@@ -409,22 +410,32 @@ class ProductAnalyticsService {
   }
 
   Future<void> _retryLocalReadAndReconcile() async {
+    if (!await _retryLocalRead(allowDuringLogout: false)) return;
+    await _reconcileIfNeeded(force: true, allowDuringLogout: false);
+  }
+
+  Future<bool> _retryLocalRead({required bool allowDuringLogout}) async {
     final userId = _userId;
-    if (!_postSplashReady || userId == null) return;
+    if ((!_postSplashReady && !allowDuringLogout) || userId == null) return false;
     final generation = _generation;
     final preferenceRequestSequence = _preferenceRequestSequence;
     try {
       final local = await _preferenceRepository.loadLocal(userId: userId);
-      if (!_matches(generation: generation, userId: userId)) return;
-      if (preferenceRequestSequence != _preferenceRequestSequence) return;
+      if (!_canApply(generation: generation, userId: userId, allowDuringLogout: allowDuringLogout)) return false;
+      if (preferenceRequestSequence != _preferenceRequestSequence) return false;
       _localReadFailed = false;
       _local = local;
-      _applyLocalState(local);
+      if (_logoutPreparation != null) {
+        _currentRecord = local?.record;
+        _reconcileAfterFailedLogout = true;
+      } else {
+        _applyLocalState(local);
+      }
     } on Object catch (error, stackTrace) {
       logw("Failed to retry local analytics preference read", error, stackTrace);
-      return;
+      return false;
     }
-    await _reconcileIfNeeded(force: true, allowDuringLogout: false);
+    return true;
   }
 
   Future<void> _performReconciliation({
