@@ -2,17 +2,17 @@ import "package:injectable/injectable.dart";
 
 import "../foundation/models/product_analytics/analytics_runtime_capability.dart";
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
-import "../repositories/installation_analytics_repository.dart";
+import "../repositories/analytics_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 
 @lazySingleton
 class InstallationAnalyticsService {
   final AnalyticsRuntimeCapability _capability;
-  final InstallationAnalyticsRepository _repository;
+  final AnalyticsRepository _repository;
 
   InstallationAnalyticsService({
     required AnalyticsRuntimeCapability capability,
-    required InstallationAnalyticsRepository repository,
+    required AnalyticsRepository repository,
   }) : _capability = capability,
        _repository = repository;
 
@@ -37,6 +37,6 @@ class InstallationAnalyticsService {
     if (!_capability.isEnabled) {
       return Future.value(AnalyticsDeliveryResult.failed);
     }
-    return _repository.logEvent(event: event);
+    return _repository.logInstallationEvent(event: event);
   }
 }
