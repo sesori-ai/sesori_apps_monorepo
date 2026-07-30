@@ -176,6 +176,12 @@ class _NeverCompletingPlugin implements NativeProjectsPluginApi {
   }
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) {
     calls++;
     throw StateError("catalog handler unexpectedly called plugin member ${invocation.memberName}");

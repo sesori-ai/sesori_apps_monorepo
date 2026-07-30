@@ -10,6 +10,10 @@ void main() {
     const stateDirectory = "/state";
     const config = PluginConfig(values: {"port": null, "bin": "codex"});
 
+    test("declares project-scoped session options", () {
+      expect(const CodexPluginDescriptor().sessionOptionsScope, PluginSessionOptionsScope.project);
+    });
+
     test("reports ready after version and read-only authentication probes", () async {
       final processes = _ProbeProcessService(
         processSequence: [

@@ -18,13 +18,26 @@ void main() {
 
     setUp(() {
       fake = FakeAcpProcess();
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       plugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
-        commandTracker: AcpCommandTracker(),
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          agentId: "acp",
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: (_) async => fake,
       );
       // Prime the session's directory so the replay skips the live warm-up
@@ -178,6 +191,8 @@ void main() {
       final liveFake = FakeAcpProcess();
       final replayFake = FakeAcpProcess();
       final availableFakes = [liveFake, replayFake];
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       final createdPlugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
@@ -187,8 +202,15 @@ void main() {
           launchDirectory: cwd,
           agentId: "acp",
           pluginId: "acp",
+          configurationTracker: configurationTracker,
         ),
-        commandTracker: AcpCommandTracker(),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: (_) async => availableFakes.removeAt(0),
       );
       final emitted = <BridgeSseEvent>[];

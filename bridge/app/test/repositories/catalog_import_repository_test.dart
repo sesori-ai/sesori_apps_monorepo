@@ -935,6 +935,12 @@ class _NativeImportPlugin implements NativeProjectsPluginApi {
   }
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -954,6 +960,12 @@ class _DerivedImportPlugin implements BridgeDerivedProjectsPluginApi {
     this.knownDirectories = knownDirectories;
     return sessions;
   }
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

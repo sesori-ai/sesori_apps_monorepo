@@ -15,13 +15,26 @@ void main() {
 
     setUp(() {
       fakes.clear();
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       plugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
-        commandTracker: AcpCommandTracker(),
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          agentId: "acp",
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: (_) async {
           final fake = FakeAcpProcess();
           fakes.add(fake);

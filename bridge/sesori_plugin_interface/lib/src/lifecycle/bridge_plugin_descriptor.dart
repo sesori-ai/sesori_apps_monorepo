@@ -8,6 +8,7 @@ import "plugin_control_capability.dart";
 import "plugin_option.dart";
 import "plugin_project_ownership.dart";
 import "plugin_residency_policy.dart";
+import "plugin_session_options_scope.dart";
 import "plugin_setup_status.dart";
 import "plugin_state_storage.dart";
 import "runtime_provision_progress.dart";
@@ -32,6 +33,9 @@ abstract class BridgePluginDescriptor {
   /// Whether this plugin exposes native projects or the bridge derives them
   /// from session directories.
   PluginProjectOwnership get projectOwnership;
+
+  /// Scope under which this plugin's session options remain coherent.
+  PluginSessionOptionsScope get sessionOptionsScope;
 
   /// Layout used for the plugin's private host state.
   ///

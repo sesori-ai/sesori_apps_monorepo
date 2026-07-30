@@ -1,0 +1,88 @@
+import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
+import "package:test/test.dart";
+
+void main() {
+  test("configuration tracker owns process defaults and per-session overrides", () {
+    final tracker = AcpSessionConfigurationTracker()
+      ..setProcessDefaults(modelId: "default-model", providerId: "provider")
+      ..setSessionOverride(
+        sessionId: "session",
+        modelId: "session-model",
+        providerId: "session-provider",
+      );
+    final mapper = AcpEventMapper(
+      launchDirectory: "/repo",
+      agentId: "agent",
+      pluginId: "plugin",
+      configurationTracker: tracker,
+    );
+
+    final defaultEvents = mapper.map(_messageUpdate(sessionId: "other"));
+    final overrideEvents = mapper.map(_messageUpdate(sessionId: "session"));
+    final defaultMessage =
+        shared.Message.fromJson(
+              defaultEvents.whereType<BridgeSseMessageUpdated>().single.info,
+            )
+            as shared.MessageAssistant;
+    final overrideMessage =
+        shared.Message.fromJson(
+              overrideEvents.whereType<BridgeSseMessageUpdated>().single.info,
+            )
+            as shared.MessageAssistant;
+
+    expect((defaultMessage.modelID, defaultMessage.providerID), ("default-model", "provider"));
+    expect((overrideMessage.modelID, overrideMessage.providerID), ("session-model", "session-provider"));
+
+    tracker.forgetSession(sessionId: "session");
+    expect(mapper.modelForSession("session"), "default-model");
+    expect(mapper.providerForSession("session"), "provider");
+  });
+
+  test("ACP aggregate becomes complete after an authoritative command snapshot", () {
+    final configurationTracker = AcpSessionConfigurationTracker()
+      ..setProcessDefaults(modelId: "model", providerId: "provider");
+    final commandTracker = AcpCommandTracker();
+    final service = AcpSessionOptionsService(
+      configurationTracker: configurationTracker,
+      commandTracker: commandTracker,
+      pluginId: "acp",
+      agentDisplayName: "ACP",
+    );
+
+    expect(service.getSessionOptions().completeness, PluginSessionOptionsCompleteness.partial);
+
+    commandTracker.consume(
+      const AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "session",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "review"},
+            ],
+          },
+        },
+      ),
+    );
+    final options = service.getSessionOptions();
+
+    expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+    expect(options.agents.single.model?.modelID, "model");
+    expect(options.providers.providers.single.defaultModelID, "model");
+    expect(options.commands.single.name, "review");
+  });
+}
+
+AcpNotification _messageUpdate({required String sessionId}) => AcpNotification(
+  method: "session/update",
+  params: {
+    "sessionId": sessionId,
+    "update": {
+      "sessionUpdate": "agent_message_chunk",
+      "content": {"type": "text", "text": "hello"},
+    },
+  },
+);

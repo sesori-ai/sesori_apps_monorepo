@@ -511,6 +511,12 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   Future<void> sendCommand({
     required String sessionId,
     required String command,

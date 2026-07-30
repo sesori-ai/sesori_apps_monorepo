@@ -249,6 +249,21 @@ void main() {
       expect(agents.every((a) => a.model == null), isTrue);
     });
 
+    test("getSessionOptions delegates one plugin-scoped tracker snapshot", () async {
+      capture(catalogResult(), fromNewSession: true);
+
+      final result = await plugin.getSessionOptions(
+        projectId: "/another-project",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+
+      final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.completeness, PluginSessionOptionsCompleteness.partial);
+      expect(options.agents.map((agent) => agent.name), ["Agent", "Plan", "Ask"]);
+      expect(options.providers.providers.single.defaultModelID, "gpt-5.4");
+      expect(options.commands.single.name, "compact");
+    });
+
     Map<String, dynamic> modelCatalog(String currentValue, {bool includeMode = true}) => {
       "sessionId": "s",
       "configOptions": [

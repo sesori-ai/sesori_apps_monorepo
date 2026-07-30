@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "acp_content.dart";
 import "acp_protocol.dart";
+import "acp_session_configuration_tracker.dart";
 import "acp_stdio_client.dart";
 
 /// A backend "halt notice": the agent ended a turn without doing the requested
@@ -47,8 +48,13 @@ class AcpHaltNotice {
 /// Harness-specific notifications (e.g. Cursor's `cursor/*`) are routed to
 /// [mapExtension], which subclasses override.
 class AcpEventMapper {
-  AcpEventMapper({required String launchDirectory, required this.agentId, required this.pluginId})
-    : launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
+  AcpEventMapper({
+    required String launchDirectory,
+    required this.agentId,
+    required this.pluginId,
+    required AcpSessionConfigurationTracker configurationTracker,
+  }) : _configurationTracker = configurationTracker,
+       launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   /// The bridge launch directory (canonicalized) — the fallback project
   /// attribution for sessions whose own directory is not (yet) known. Matches
@@ -60,38 +66,12 @@ class AcpEventMapper {
 
   final String pluginId;
 
-  /// Global fallback model/provider stamped on assistant messages when a
-  /// session has no specific model recorded. The plugin sets these once the
-  /// model catalog resolves.
-  String? currentModelId;
-  String? currentProviderId;
-
-  /// Per-session model/provider. ACP's live `*_chunk` notifications carry no
-  /// model, so the plugin records the resolved per-session model here (via
-  /// [setSessionModel]); without it every streamed message would be stamped
-  /// with the global [currentModelId], making a per-session model switch look
-  /// like it never took effect.
-  final Map<String, String> _sessionModel = {};
-  final Map<String, String> _sessionProvider = {};
-
-  /// Records the model/provider resolved for [sessionId]. A null/empty
-  /// [modelId] clears the override (falls back to [currentModelId]).
-  void setSessionModel(String sessionId, String? modelId, {String? providerId}) {
-    if (modelId == null || modelId.isEmpty) {
-      _sessionModel.remove(sessionId);
-    } else {
-      _sessionModel[sessionId] = modelId;
-    }
-    if (providerId != null && providerId.isNotEmpty) {
-      _sessionProvider[sessionId] = providerId;
-    }
-  }
+  final AcpSessionConfigurationTracker _configurationTracker;
 
   /// The model/provider to stamp on [sessionId]'s assistant messages.
-  String? modelForSession(String sessionId) =>
-      _sessionModel[sessionId] ?? currentModelId;
+  String? modelForSession(String sessionId) => _configurationTracker.snapshotForSession(sessionId: sessionId).modelId;
   String? providerForSession(String sessionId) =>
-      _sessionProvider[sessionId] ?? currentProviderId;
+      _configurationTracker.snapshotForSession(sessionId: sessionId).providerId;
 
   /// Last-known per-session metadata (title/times), fed by the plugin from
   /// enumeration and creation (like [setSessionProject]). `session_info_update`
@@ -167,15 +147,12 @@ class AcpEventMapper {
   }
 
   /// The project id/directory to stamp on [sessionId]'s session-level events.
-  String projectForSession(String sessionId) =>
-      _sessionProject[sessionId] ?? launchDirectory;
+  String projectForSession(String sessionId) => _sessionProject[sessionId] ?? launchDirectory;
 
   /// Drops every per-session cache entry for [sessionId] — called when the
   /// session is deleted so live-render state (model, project, turn counters,
   /// started parts, live tools) doesn't accumulate across a long-lived process.
   void forgetSession(String sessionId) {
-    _sessionModel.remove(sessionId);
-    _sessionProvider.remove(sessionId);
     _sessionProject.remove(sessionId);
     _sessionSnapshots.remove(sessionId);
     _turnSeq.remove(sessionId);
@@ -263,10 +240,7 @@ class AcpEventMapper {
     required String sessionId,
     required List<PluginPromptPart> parts,
   }) {
-    final textParts = parts
-        .whereType<PluginPromptPartText>()
-        .where((part) => part.text.isNotEmpty)
-        .toList();
+    final textParts = parts.whereType<PluginPromptPartText>().where((part) => part.text.isNotEmpty).toList();
     if (textParts.isEmpty) return const [];
 
     final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
@@ -365,6 +339,7 @@ class AcpEventMapper {
             sessionID: sessionId,
             projectID: projectForSession(sessionId),
           ),
+          BridgeSseSessionOptionsChanged(sessionID: sessionId),
         ];
       case "session_info_update":
         // The notification may carry `updatedAt` (ISO 8601 or epoch) — keep
@@ -456,9 +431,7 @@ class AcpEventMapper {
     // synthesized per-turn id.
     final acpMessageId = update["messageId"];
     final hasAcpMessageId = acpMessageId is String && acpMessageId.isNotEmpty;
-    final fallbackSuffix = role == _ChunkRole.assistant
-        ? "-a${_idlessAssistantSeq[sessionId] ?? 0}"
-        : "";
+    final fallbackSuffix = role == _ChunkRole.assistant ? "-a${_idlessAssistantSeq[sessionId] ?? 0}" : "";
     final messageId = hasAcpMessageId
         ? "$sessionId-m$acpMessageId-${role.name}"
         : "$sessionId-t${_turn(sessionId)}-${role.name}$fallbackSuffix";
@@ -591,10 +564,10 @@ class AcpEventMapper {
     final newOutput = acpToolOutputText(update);
     final state = _LiveTool(
       tool: hasKind ? acpToolName(update) : (prior?.tool ?? acpToolName(update)),
-      title: update.containsKey("title") && update["title"] is String
-          ? update["title"] as String?
-          : prior?.title,
-      status: update.containsKey("status") ? acpToolStatus(update["status"]) : (prior?.status ?? PluginToolStatus.pending),
+      title: update.containsKey("title") && update["title"] is String ? update["title"] as String? : prior?.title,
+      status: update.containsKey("status")
+          ? acpToolStatus(update["status"])
+          : (prior?.status ?? PluginToolStatus.pending),
       output: newOutput ?? prior?.output,
       isFileMutation: (prior?.isFileMutation ?? false) || _isFileMutation(update),
       diffEmitted: prior?.diffEmitted ?? false,
@@ -623,8 +596,7 @@ class AcpEventMapper {
 
   void _closeIdlessAssistantEnvelope(String sessionId) {
     if (!_openIdlessAssistant.remove(sessionId)) return;
-    _idlessAssistantSeq[sessionId] =
-        (_idlessAssistantSeq[sessionId] ?? 0) + 1;
+    _idlessAssistantSeq[sessionId] = (_idlessAssistantSeq[sessionId] ?? 0) + 1;
   }
 
   BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {

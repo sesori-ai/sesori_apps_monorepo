@@ -2,20 +2,20 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `fb961d16`
-- **Series state:** Step 1/6 plan PR #605 is merged; Step 2/6 PR #609 is open
-  from `multi-plugin-release-prep-codex-options`
-- **Current step:** Step 2/6 — typed Codex session-option discovery
-- **Next action:** review and merge PR #609, then start Step 3/6 from updated
-  `origin/main`
+- **Implementation base:** `origin/main` at `57e0fffb`
+- **Series state:** Steps 1/6 and 2/6 are merged; Step 3/6 is implemented and
+  verified locally on `multi-plugin-release-prep-plugin-options` with no PR open
+- **Current step:** Step 3/6 — aggregate scoped plugin options
+- **Next action:** commit, push, and open the Step 3/6 PR when the local changes
+  are ready for delivery
 
 ## Delivery
 
 | Done | Step | Branch | PR state |
 |---|---|---|---|
 | [x] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 merged |
-| [ ] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | PR #609 open |
-| [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | Blocked on Step 2 merge |
+| [x] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | PR #609 merged |
+| [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | Implemented and verified locally; PR not opened |
 | [ ] | Step 4/6 — durable bridge cache and aggregate route | `multi-plugin-release-prep-bridge-cache` | Blocked on Step 3 merge |
 | [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4 merge |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5 merge |
@@ -82,4 +82,18 @@
   Generated Freezed/JSON sources, all 204 Codex package tests, focused fatal
   analysis, formatting, and `git diff --check` passed. Aristotle implementation
   review approved the branch-local architecture with no findings. Committed as
-  `4773ddde`, pushed, and opened as PR #609.
+  `4773ddde`, pushed, opened as PR #609, and merged to `main` as `57e0fffb`.
+- Step 3/6 (2026-07-30): added the required aggregate, completeness, discovery,
+  and descriptor-scope contracts; implemented project-scoped OpenCode and Codex
+  aggregates; moved ACP configuration and aggregate state into injected tracker
+  and service peers; and added the dedicated command-advertisement options event
+  through live and replay paths. Cursor now owns one plugin-scoped service with
+  bounded reuse and forced discovery that stages both catalog and command state,
+  commits them together on success, and preserves the last-good aggregate on
+  failure. Generated the Freezed source. All 3,197 tests across plugin interface,
+  OpenCode, Codex, ACP, Cursor, and bridge app passed, as did
+  `dart analyze --fatal-infos` in all six modules and `git diff --check`.
+  Aristotle implementation review identified the command-staging and ACP peer
+  composition gaps; both were addressed, and the second/final implementation
+  review approved the corrected architecture. Verified locally with no commit,
+  push, or PR.

@@ -197,6 +197,14 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) {
+    return _call(() => _service.getSessionOptions(projectId: projectId));
+  }
+
+  @override
   Future<void> dispose() async {
     if (_disposed) {
       Log.v("[shutdown] OpenCodePlugin.dispose: already disposed, skipping");

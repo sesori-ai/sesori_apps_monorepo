@@ -103,5 +103,38 @@ class CursorCatalogTracker {
   CursorCatalogProbeOutcome? outcomeForScope({required String scope}) =>
       _outcomesByScope[_normalizeScope(scope: scope)];
 
+  /// Replaces discoverable catalog data after a successful forced probe.
+  /// Live-process defaults survive only when the refreshed catalog still
+  /// contains them; a failed probe never calls this method.
+  void replaceDiscoveredCatalog({
+    required CursorCatalogTracker discovered,
+    required String scope,
+    required CursorCatalogProbeOutcome outcome,
+  }) {
+    final previousModelConfigId = _modelConfigId;
+    final previousModeConfigId = _modeConfigId;
+    final previousCurrentModelId = _currentModelId;
+    final previousDefaultModeId = _defaultModeId;
+
+    _modelConfigId = discovered._modelConfigId ?? previousModelConfigId;
+    _models = List.unmodifiable(discovered._models);
+    _modeConfigId = discovered._modeConfigId ?? previousModeConfigId;
+    _modes = List.unmodifiable(discovered._modes);
+    _thoughtLevelsByModel
+      ..clear()
+      ..addAll(discovered._thoughtLevelsByModel);
+    _provisionalThoughtLevelVariants = List.unmodifiable(
+      discovered._provisionalThoughtLevelVariants,
+    );
+
+    _currentModelId = previousCurrentModelId != null && hasModel(modelId: previousCurrentModelId)
+        ? previousCurrentModelId
+        : discovered._currentModelId;
+    _defaultModeId = previousDefaultModeId != null && hasModeOption(modeId: previousDefaultModeId)
+        ? previousDefaultModeId
+        : discovered._defaultModeId;
+    recordOutcome(scope: scope, outcome: outcome);
+  }
+
   String _normalizeScope({required String scope}) => normalizeProjectDirectory(directory: scope);
 }

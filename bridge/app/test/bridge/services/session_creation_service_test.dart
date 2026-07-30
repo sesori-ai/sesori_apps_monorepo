@@ -319,6 +319,12 @@ class _FakePlugin implements NativeProjectsPluginApi {
   }
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

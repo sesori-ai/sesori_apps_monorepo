@@ -250,6 +250,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
 
   @override
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
   PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;
 
   @override

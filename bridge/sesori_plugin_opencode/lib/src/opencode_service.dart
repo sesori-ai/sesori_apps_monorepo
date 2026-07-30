@@ -15,6 +15,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginPromptPart,
         PluginProvidersResult,
         PluginSession,
+        PluginSessionOptions,
+        PluginSessionOptionsCompleteness,
+        PluginSessionOptionsDiscoveryResult,
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, StringExtensions;
 
@@ -104,6 +107,22 @@ class OpenCodeService {
   Future<PluginProvidersResult> getProviders({required String projectId}) {
     return repository.getProviders(
       directory: projectId,
+    );
+  }
+
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({required String projectId}) async {
+    final (agents, providers, commands) = await (
+      getAgents(projectId: projectId),
+      getProviders(projectId: projectId),
+      getCommands(projectId: projectId),
+    ).wait;
+    return PluginSessionOptionsDiscoveryResult.observed(
+      options: PluginSessionOptions(
+        agents: agents,
+        providers: providers,
+        commands: commands,
+        completeness: PluginSessionOptionsCompleteness.complete,
+      ),
     );
   }
 
