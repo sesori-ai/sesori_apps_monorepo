@@ -110,6 +110,46 @@ class CursorCatalogTracker {
   CursorCatalogProbeOutcome? outcomeForScope({required String scope}) =>
       _outcomesByScope[_normalizeScope(scope: scope)];
 
+  /// Creates an isolated mutable copy for reuse discovery. The service can
+  /// commit it atomically only if the live tracker did not change meanwhile.
+  CursorCatalogTracker stageForDiscovery() {
+    final staged = CursorCatalogTracker();
+    staged._revision = _revision;
+    staged._modelConfigId = _modelConfigId;
+    staged._models = List.unmodifiable(_models);
+    staged._modeConfigId = _modeConfigId;
+    staged._modes = List.unmodifiable(_modes);
+    staged._defaultModeId = _defaultModeId;
+    staged._thoughtLevelsByModel.addAll(_thoughtLevelsByModel);
+    staged._provisionalThoughtLevelVariants = List.unmodifiable(
+      _provisionalThoughtLevelVariants,
+    );
+    staged._currentModelId = _currentModelId;
+    staged._outcomesByScope.addAll(_outcomesByScope);
+    return staged;
+  }
+
+  /// Commits one staged reuse probe, including partial catalog progress and
+  /// per-scope retry outcomes accumulated from the prior live snapshot.
+  void replaceReusedCatalog({required CursorCatalogTracker discovered}) {
+    _modelConfigId = discovered._modelConfigId;
+    _models = List.unmodifiable(discovered._models);
+    _modeConfigId = discovered._modeConfigId;
+    _modes = List.unmodifiable(discovered._modes);
+    _defaultModeId = discovered._defaultModeId;
+    _thoughtLevelsByModel
+      ..clear()
+      ..addAll(discovered._thoughtLevelsByModel);
+    _provisionalThoughtLevelVariants = List.unmodifiable(
+      discovered._provisionalThoughtLevelVariants,
+    );
+    _currentModelId = discovered._currentModelId;
+    _outcomesByScope
+      ..clear()
+      ..addAll(discovered._outcomesByScope);
+    _revision++;
+  }
+
   /// Replaces discoverable catalog data after a successful forced probe.
   /// Live-process defaults survive only when the refreshed catalog still
   /// contains them; a failed probe never calls this method.

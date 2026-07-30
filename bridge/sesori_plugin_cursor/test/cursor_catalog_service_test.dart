@@ -312,6 +312,65 @@ void main() {
       expect(commandTracker.commands.single.name, "rehydrated-command");
     });
 
+    test("reuse discovery does not overwrite a newer live catalog snapshot", () async {
+      repository.candidates = _candidates([(id: "probe", updatedAtMs: 1)]);
+      repository.snapshots["probe"] = CursorCatalogSnapshot(
+        modelConfigId: "model-picker",
+        models: const [
+          CursorCatalogOption(value: "probe-model", name: "Probe", description: null),
+        ],
+        loadedModelId: "probe-model",
+        modeConfigId: "mode-picker",
+        modes: const [
+          CursorCatalogOption(value: "probe-mode", name: "Probe", description: null),
+        ],
+        loadedModeId: "probe-mode",
+        thoughtLevel: CursorThoughtLevelSnapshot(
+          configId: "effort",
+          variants: const ["medium"],
+          defaultValue: "medium",
+        ),
+      );
+      commandTracker.consume(_commandUpdate("live-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("probe-command"));
+      };
+      repository.listGate = Completer<void>();
+
+      final loading = service.ensureCatalog(scope: "/project");
+      while (repository.listedScopes.isEmpty) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      tracker.applySnapshot(
+        snapshot: CursorCatalogSnapshot(
+          modelConfigId: "model-picker",
+          models: const [
+            CursorCatalogOption(value: "live-model", name: "Live", description: null),
+          ],
+          loadedModelId: "live-model",
+          modeConfigId: "mode-picker",
+          modes: const [
+            CursorCatalogOption(value: "live-mode", name: "Live", description: null),
+          ],
+          loadedModeId: "live-mode",
+          thoughtLevel: CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["high"],
+            defaultValue: "high",
+          ),
+        ),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.listGate!.complete();
+      await loading;
+
+      expect(tracker.models.single.value, "live-model");
+      expect(tracker.modes.single.value, "live-mode");
+      expect(commandTracker.commands.single.name, "live-command");
+    });
+
     test("short deadline completes and resets a timed-out repository", () async {
       service = CursorCatalogService(
         repository: repository,

@@ -64,6 +64,7 @@ class CursorCatalogService {
       final operation = _probeAndCommitReuse(
         scope: scope,
         expectedCommandRevision: commandRevision,
+        expectedCatalogRevision: _tracker.revision,
       );
       _inFlight = operation;
       try {
@@ -132,8 +133,12 @@ class CursorCatalogService {
   Future<CursorCatalogProbeOutcome> _probeAndCommitReuse({
     required String scope,
     required int expectedCommandRevision,
+    required int expectedCatalogRevision,
   }) async {
-    final outcome = await _probe(scope: scope, tracker: _tracker);
+    final discovered = _tracker.stageForDiscovery();
+    final outcome = await _probe(scope: scope, tracker: discovered);
+    if (_tracker.revision != expectedCatalogRevision) return outcome;
+    _tracker.replaceReusedCatalog(discovered: discovered);
     if (outcome != CursorCatalogProbeOutcome.retryableFailure) {
       _commitStagedCommands(expectedCommandRevision: expectedCommandRevision);
     }
