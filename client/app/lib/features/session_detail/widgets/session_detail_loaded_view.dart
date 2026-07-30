@@ -164,6 +164,10 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: PromptInput(
                       draftKey: widget.sessionId,
+                      // Queued messages count: the user has already "sent"
+                      // something, so the composer should rest as a follow-up
+                      // field even before the first message lands in the list.
+                      hasMessages: state.messages.isNotEmpty || state.queuedMessages.isNotEmpty,
                       isBusy: hasActiveWork(
                         sessionStatus: state.sessionStatus,
                         childStatuses: state.childStatuses,

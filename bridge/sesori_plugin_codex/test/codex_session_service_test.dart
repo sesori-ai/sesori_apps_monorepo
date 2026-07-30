@@ -6,6 +6,7 @@ import "package:codex_plugin/src/codex_metadata_repository.dart";
 import "package:codex_plugin/src/models/codex_collaboration_mode.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/repositories/codex_model_repository.dart";
 import "package:codex_plugin/src/repositories/codex_skill_repository.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
@@ -19,6 +20,7 @@ void main() {
     final firstRepository = _StubThreadRepository();
     service.attachAppServerRepositories(
       threadRepository: firstRepository,
+      modelRepository: _StubModelRepository(),
       skillRepository: _StubSkillRepository(),
     );
     await service.resumeThreadIfNeeded(threadId: "thread-id", force: false);
@@ -27,6 +29,7 @@ void main() {
     final secondRepository = _StubThreadRepository();
     service.attachAppServerRepositories(
       threadRepository: secondRepository,
+      modelRepository: _StubModelRepository(),
       skillRepository: _StubSkillRepository(),
     );
     await service.resumeThreadIfNeeded(threadId: "thread-id", force: false);
@@ -49,6 +52,7 @@ void main() {
     );
     service.attachAppServerRepositories(
       threadRepository: threadRepository,
+      modelRepository: _StubModelRepository(),
       skillRepository: skillRepository,
     );
 
@@ -70,6 +74,7 @@ void main() {
     final service = _newService();
     service.attachAppServerRepositories(
       threadRepository: _StubThreadRepository(),
+      modelRepository: _StubModelRepository(),
       skillRepository: _StubSkillRepository(error: StateError("skills unavailable")),
     );
 
@@ -83,6 +88,7 @@ void main() {
     final threadRepository = _StubThreadRepository();
     service.attachAppServerRepositories(
       threadRepository: threadRepository,
+      modelRepository: _StubModelRepository(),
       skillRepository: _StubSkillRepository(),
     );
 
@@ -112,18 +118,150 @@ void main() {
     expect(threadRepository.compactCount, 1);
     expect(compacted.turnId, isNull);
   });
+
+  test("getSessionOptions uses one model catalog read for coherent agents and providers", () async {
+    final service = _newService(
+      metadataRepository: _StubMetadataRepository(
+        defaults: const CodexConfigDefaults(
+          model: "gpt-project",
+          modelProvider: "azure",
+        ),
+      ),
+    );
+    final modelRepository = _StubModelRepository(
+      catalog: (
+        defaultModelID: "gpt-default",
+        models: const [
+          PluginModel(
+            id: "gpt-default",
+            name: "Default model",
+            variants: [],
+            family: null,
+            isAvailable: true,
+            releaseDate: null,
+          ),
+          PluginModel(
+            id: "gpt-project",
+            name: "Project model",
+            variants: ["medium", "high"],
+            family: null,
+            isAvailable: true,
+            releaseDate: null,
+          ),
+        ],
+      ),
+    );
+    service.attachAppServerRepositories(
+      threadRepository: _StubThreadRepository(),
+      modelRepository: modelRepository,
+      skillRepository: _StubSkillRepository(
+        commands: const [
+          PluginCommand(
+            name: "review",
+            provider: null,
+            source: PluginCommandSource.skill,
+          ),
+        ],
+      ),
+    );
+
+    final options = await service.getSessionOptions(projectId: "/repo");
+
+    expect(modelRepository.listCount, 1);
+    expect(options.agents.map((agent) => agent.name), ["Default", "Plan"]);
+    expect(
+      options.agents.map((agent) => agent.model?.modelID),
+      everyElement("gpt-project"),
+    );
+    final provider = options.providers.providers.single;
+    expect(provider.id, "azure");
+    expect(provider.name, "Azure OpenAI");
+    expect(provider.defaultModelID, "gpt-project");
+    expect(provider.models.map((model) => model.id), [
+      "gpt-default",
+      "gpt-project",
+    ]);
+    expect(options.commands.map((command) => command.name), [
+      "review",
+      "compact",
+    ]);
+  });
+
+  test("model discovery failure retains the configured model fallback", () async {
+    final service = _newService(
+      metadataRepository: _StubMetadataRepository(
+        defaults: const CodexConfigDefaults(
+          model: "configured-model",
+          modelProvider: "openai",
+        ),
+      ),
+    );
+    service.attachAppServerRepositories(
+      threadRepository: _StubThreadRepository(),
+      modelRepository: _StubModelRepository(
+        error: StateError("models unavailable"),
+      ),
+      skillRepository: _StubSkillRepository(),
+    );
+
+    final providers = await service.getProviders(projectId: "/repo");
+
+    final provider = providers.providers.single;
+    expect(provider.defaultModelID, "configured-model");
+    expect(provider.models.single.id, "configured-model");
+    expect(provider.models.single.name, "configured-model");
+  });
 }
 
-CodexSessionService _newService() {
+CodexSessionService _newService({
+  CodexMetadataRepository? metadataRepository,
+}) {
   final rolloutApi = CodexRolloutApi(environment: const {});
   return CodexSessionService(
     catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
     messageRepository: CodexMessageRepository(rolloutApi: rolloutApi),
-    metadataRepository: CodexMetadataRepository(
-      configReader: CodexConfigReader(environment: const {}),
-    ),
+    metadataRepository:
+        metadataRepository ??
+        CodexMetadataRepository(
+          configReader: CodexConfigReader(environment: const {}),
+        ),
     launchDirectory: "/repo",
   );
+}
+
+class _StubMetadataRepository extends CodexMetadataRepository {
+  _StubMetadataRepository({required this.defaults}) : super(configReader: CodexConfigReader(environment: const {}));
+
+  final CodexConfigDefaults defaults;
+
+  @override
+  CodexConfigDefaults readConfigDefaults() => defaults;
+}
+
+class _StubModelRepository extends CodexModelRepository {
+  _StubModelRepository({
+    this.catalog = const (
+      defaultModelID: null,
+      models: <PluginModel>[],
+    ),
+    this.error,
+  }) : super(
+         appServerApi: CodexAppServerApi(
+           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+         ),
+       );
+
+  final CodexModelCatalog catalog;
+  final Object? error;
+  int listCount = 0;
+
+  @override
+  Future<CodexModelCatalog> listModels() async {
+    listCount += 1;
+    final failure = error;
+    if (failure != null) throw failure;
+    return catalog;
+  }
 }
 
 class _StubSkillRepository extends CodexSkillRepository {

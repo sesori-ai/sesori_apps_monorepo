@@ -6,6 +6,8 @@ import "package:flutter/services.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../capabilities/voice/voice_transcription_service.dart";
@@ -13,11 +15,22 @@ import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/command_picker_sheet.dart";
+import "composer_options_accordion.dart";
+import "prompt_editor_sheet.dart";
 
 enum _VoiceState { idle, recording, transcribing }
 
+/// The composer's three visual states: the fresh-session hold-to-talk pill,
+/// the compact follow-up pill, and the expanded typing container.
+enum _ComposerLayout { holdToTalk, compact, typing }
+
 class PromptInput extends StatefulWidget {
   final bool isBusy;
+
+  /// Whether the session already has (or has queued) messages. A fresh
+  /// session opens with the hold-to-talk pill; once messages exist the
+  /// composer rests as a compact "Follow up" field instead.
+  final bool hasMessages;
   final void Function(String text, String? command) onSend;
   final VoidCallback onAbort;
   final Widget? composerHeader;
@@ -37,6 +50,7 @@ class PromptInput extends StatefulWidget {
   const PromptInput({
     super.key,
     required this.isBusy,
+    required this.hasMessages,
     required this.onSend,
     required this.onAbort,
     required this.composerHeader,
@@ -58,12 +72,42 @@ class _PromptInputState extends State<PromptInput> {
   _VoiceState _voiceState = _VoiceState.idle;
   StreamSubscription<void>? _maxDurationSub;
 
+  /// Keeps the typing layout mounted after the keyboard affordance was tapped
+  /// while the field wasn't in the tree yet (hold-to-talk / compact layouts),
+  /// until the post-frame focus request lands. Cleared when focus leaves.
+  bool _typingRequested = false;
+
+  /// Whether the field holds sendable text. Mirrored into state so the
+  /// composer only rebuilds when emptiness flips (layout + send/stop swap),
+  /// not on every keystroke.
+  bool _hasText = false;
+
+  /// Layout pinned for the duration of a voice interaction. Swapping the
+  /// field slot for the recording/transcribing indicators must not relayout
+  /// the composer mid-hold — the gesture-owning elements would be reparented
+  /// and never receive the release.
+  _ComposerLayout? _pinnedVoiceLayout;
+
+  /// Set when the hold is released while [_startRecording] is still awaiting
+  /// the recorder, so the start path stops immediately once recording begins
+  /// instead of letting it outlive the gesture.
+  bool _releaseRequestedDuringStart = false;
+
+  /// True while [_startRecording] is awaiting the recorder ([_voiceState] is
+  /// still idle then). Guards against a second start — a concurrent hold on
+  /// the other surface or a repeated assistive-tech activation — and routes
+  /// those to the release path instead.
+  bool _isRecordStartInFlight = false;
+
   VoiceTranscriptionService get _voiceService => getIt<VoiceTranscriptionService>();
 
   @override
   void initState() {
     super.initState();
     _restoreDraft();
+    _hasText = _controller.text.trim().isNotEmpty;
+    _controller.addListener(_handleTextChanged);
+    _focusNode.addListener(_handleFocusChanged);
     _maxDurationSub = _voiceService.onMaxDurationReached.listen((_) {
       if (_voiceState == _VoiceState.recording && mounted) {
         _showRecordingLimitReached();
@@ -125,6 +169,59 @@ class _PromptInputState extends State<PromptInput> {
     store.clear(key);
   }
 
+  void _handleTextChanged() {
+    final hasText = _controller.text.trim().isNotEmpty;
+    if (hasText != _hasText && mounted) {
+      setState(() => _hasText = hasText);
+    }
+  }
+
+  void _handleFocusChanged() {
+    if (!mounted) return;
+    // Rebuild on both edges: gaining focus keeps the typing layout up via the
+    // focus check; losing it (with nothing to show) collapses back to the
+    // resting pill.
+    setState(() {
+      if (!_focusNode.hasFocus) _typingRequested = false;
+    });
+  }
+
+  /// Whether the expanded typing container is showing (vs. the resting
+  /// hold-to-talk / compact pills).
+  bool get _showsTypingLayout => _typingRequested || _focusNode.hasFocus || _hasText || widget.stagedCommand != null;
+
+  /// The layout the composer would rest in right now, ignoring any pinned
+  /// voice interaction.
+  _ComposerLayout get _restingLayout {
+    if (_showsTypingLayout) return _ComposerLayout.typing;
+    // A busy session is past its fresh state even while the first message
+    // hasn't landed in the list yet (e.g. it was sent from another device) —
+    // resting compact keeps the stop control reachable.
+    if (widget.hasMessages || widget.isBusy) return _ComposerLayout.compact;
+    return _ComposerLayout.holdToTalk;
+  }
+
+  _ComposerLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
+
+  bool get _hasSendableContent => _hasText || widget.stagedCommand != null;
+
+  /// Switches to the typing layout and raises the keyboard. Focus is
+  /// requested post-frame because the field only mounts with the typing
+  /// layout.
+  void _enterTypingMode() {
+    if (_voiceState != _VoiceState.idle) return;
+    setState(() => _typingRequested = true);
+    _focusComposerField();
+  }
+
+  /// Requests focus after the current frame, so it also works right after a
+  /// rebuild that (re)mounts the typing layout's field.
+  void _focusComposerField() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
   void _handleSend() {
     final stagedCommand = widget.stagedCommand;
     if (stagedCommand != null) {
@@ -153,18 +250,50 @@ class _PromptInputState extends State<PromptInput> {
       _restoreDraftFor(widget.draftKey);
     }
     if (oldWidget.stagedCommand?.name != widget.stagedCommand?.name && widget.stagedCommand != null) {
-      _focusNode.requestFocus();
+      _focusComposerField();
     }
   }
 
-  Future<void> _handleMicTap() async {
-    switch (_voiceState) {
-      case _VoiceState.idle:
-        await _startRecording();
-      case _VoiceState.recording:
-        await _stopAndTranscribe();
-      case _VoiceState.transcribing:
-        await _cancelTranscription();
+  Future<void> _handleRecordStart() async {
+    if (_voiceState != _VoiceState.idle || _isRecordStartInFlight) return;
+    _isRecordStartInFlight = true;
+    _releaseRequestedDuringStart = false;
+    _pinnedVoiceLayout = _restingLayout;
+    await _startRecording();
+    _isRecordStartInFlight = false;
+    if (!mounted) return;
+    if (_voiceState == _VoiceState.idle) {
+      // Recording never started (permission denied / recorder error), so no
+      // later transition will release the pin.
+      setState(() => _pinnedVoiceLayout = null);
+    } else if (_releaseRequestedDuringStart) {
+      // The hold ended while the recorder was still starting up — stop right
+      // away so recording never outlives the gesture.
+      await _stopAndTranscribe();
+    }
+  }
+
+  Future<void> _handleRecordEnd() async {
+    if (_voiceState == _VoiceState.idle) {
+      // The release raced a recorder that is still starting up (or was a
+      // stray pointer event); [_handleRecordStart] consumes this after the
+      // start completes.
+      _releaseRequestedDuringStart = true;
+      return;
+    }
+    if (_voiceState != _VoiceState.recording) return;
+    await _stopAndTranscribe();
+  }
+
+  /// Assistive-technology activation: a semantic tap cannot express the
+  /// press-and-hold gesture, so activation toggles recording instead. An
+  /// activation while the recorder is still starting up counts as the stop
+  /// half of the toggle, not another start.
+  Future<void> _handleSemanticRecordToggle() async {
+    if (_voiceState == _VoiceState.recording || _isRecordStartInFlight) {
+      await _handleRecordEnd();
+    } else {
+      await _handleRecordStart();
     }
   }
 
@@ -176,7 +305,11 @@ class _PromptInputState extends State<PromptInput> {
     } on MicrophonePermissionDeniedError {
       if (!mounted) return;
       _showVoiceError(context.loc.voiceErrorPermission);
-    } on VoiceTranscriptionError catch (error) {
+    } catch (error) {
+      // Typed voice errors and anything else the recorder throws (platform /
+      // filesystem failures) both land here: an error escaping this method
+      // would leave the in-flight guard and pinned layout stuck, silently
+      // killing voice input for the rest of the session.
       loge("Failed to start recording", error);
       if (!mounted) return;
       _showVoiceError(context.loc.voiceErrorRecording);
@@ -199,7 +332,9 @@ class _PromptInputState extends State<PromptInput> {
       }
       // Move cursor to end.
       _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
-      _focusNode.requestFocus();
+      // The transcript lands in the typing layout, whose field may only mount
+      // with this rebuild — focus once it exists.
+      _focusComposerField();
     } on TranscriptionCancelledError {
       // User cancelled — nothing to do, finally resets state.
     } on NotAuthenticatedVoiceError {
@@ -214,7 +349,10 @@ class _PromptInputState extends State<PromptInput> {
       _showVoiceError(context.loc.voiceErrorTranscription);
     } finally {
       if (mounted) {
-        setState(() => _voiceState = _VoiceState.idle);
+        setState(() {
+          _voiceState = _VoiceState.idle;
+          _pinnedVoiceLayout = null;
+        });
       }
     }
   }
@@ -226,7 +364,10 @@ class _PromptInputState extends State<PromptInput> {
       loge("Failed to cancel transcription", error);
     }
     if (!mounted) return;
-    setState(() => _voiceState = _VoiceState.idle);
+    setState(() {
+      _voiceState = _VoiceState.idle;
+      _pinnedVoiceLayout = null;
+    });
   }
 
   void _showVoiceError(String message) {
@@ -258,23 +399,36 @@ class _PromptInputState extends State<PromptInput> {
     );
     if (!mounted || selected == null) return;
     widget.onCommandSelected(selected);
-    _focusNode.requestFocus();
+    _focusComposerField();
   }
 
-  String _commandHintText(BuildContext context) {
+  Future<void> _openEditorSheet() async {
+    await PromptEditorSheet.show(
+      context,
+      controller: _controller,
+      placeholder: _hintText(context),
+    );
+    if (!mounted) return;
+    // Return the keyboard to the inline field. Via [_enterTypingMode] because
+    // an empty composer collapses to a pill while the sheet holds focus.
+    _enterTypingMode();
+  }
+
+  String _hintText(BuildContext context) {
     final command = widget.stagedCommand;
-    if (command == null) return context.loc.sessionDetailPromptHint;
-    for (final hint in command.hints ?? <String>[]) {
-      final trimmed = hint.trim();
-      if (trimmed.isNotEmpty) return trimmed;
+    if (command != null) {
+      for (final hint in command.hints ?? <String>[]) {
+        final trimmed = hint.trim();
+        if (trimmed.isNotEmpty) return trimmed;
+      }
+      return context.loc.sessionDetailCommandArgumentsHint;
     }
-    return context.loc.sessionDetailCommandArgumentsHint;
+    return widget.hasMessages ? context.loc.sessionDetailFollowUpHint : context.loc.sessionDetailPromptHint;
   }
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final loc = context.loc;
 
     return DecoratedBox(
       // Floating composer: no bar surface, no separator line. The scaffold
@@ -282,7 +436,7 @@ class _PromptInputState extends State<PromptInput> {
       // dissolves as it scrolls past — the same scrim the glass top navigation
       // bar uses (PregoGlassScaffold), mirrored to the bottom edge: opaque
       // where the controls sit, transparent where content emerges above. The
-      // controls keep their own glass.
+      // controls keep their own surfaces.
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.center,
@@ -314,7 +468,7 @@ class _PromptInputState extends State<PromptInput> {
             ),
           },
 
-          // Group only the input row with the text field via a
+          // Group only the input container with the text field via a
           // TextFieldTapRegion. The field's default `onTapOutside` unfocuses
           // (and dismisses the keyboard) on any pointer-down outside this
           // region; keeping the send button inside stops the hide/re-show
@@ -328,121 +482,346 @@ class _PromptInputState extends State<PromptInput> {
                 top: widget.header != null ? 4 : 8,
                 bottom: MediaQuery.paddingOf(context).bottom + 8,
               ),
-              child: Row(
-                spacing: 8,
-                crossAxisAlignment: .end,
-                children: [
-                  PregoButtonsIconGlass(
-                    onPressed: _voiceState == _VoiceState.idle ? _openCommandPicker : null,
-                    icon: TablerRegular.slash,
-                    semanticLabel: loc.sessionDetailCommandPickerTitle,
-                  ),
-                  Expanded(
-                    child: switch (_voiceState) {
-                      _VoiceState.recording => _RecordingIndicator(amplitudeStream: _voiceService.amplitudeStream),
-                      _VoiceState.transcribing => const _TranscribingIndicator(),
-                      _VoiceState.idle => CallbackShortcuts(
-                        // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
-                        // plain Enter stays a newline via textInputAction below.
-                        bindings: <ShortcutActivator, VoidCallback>{
-                          const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
-                          const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
-                        },
-                        child: GlassTextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          minLines: 1,
-                          maxLines: 5,
-                          textInputAction: TextInputAction.newline,
-                          // Command-aware placeholder: the staged command's hint,
-                          // else the default prompt hint. The glass field supplies
-                          // its own surface/fill/border, so only the hint text
-                          // carries over from the old InputDecoration.
-                          placeholder: _commandHintText(context),
-                        ),
-                      ),
-                    },
-                  ),
-                  _MicButton(
-                    voiceState: _voiceState,
-                    onTap: _handleMicTap,
-                  ),
-                  if (_voiceState == _VoiceState.idle) ...[
-                    // GlassIconButton has no tooltip/semanticLabel, so wrap it in
-                    // a Tooltip to restore the long-press/hover label and the
-                    // screen-reader name the old IconButton carried.
-                    Tooltip(
-                      message: loc.sessionDetailSend,
-                      child: GlassIconButton(
-                        onPressed: _handleSend,
-                        icon: const Icon(Icons.send),
-                        glowColor: prego.colors.bgBrandSolid,
-                      ),
-                    ),
-                    if (widget.isBusy)
-                      Tooltip(
-                        message: loc.sessionDetailAbort,
-                        child: GlassIconButton(
-                          onPressed: widget.onAbort,
-                          icon: const Icon(Icons.stop_circle),
-                          glowColor: prego.colors.fgErrorPrimary,
-                        ),
-                      ),
-                  ],
-                ],
-              ),
+              child: switch (_layout) {
+                _ComposerLayout.typing => _buildTypingComposer(context),
+                _ComposerLayout.compact => _buildCompactComposer(context),
+                _ComposerLayout.holdToTalk => _buildHoldToTalkComposer(context),
+              },
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// -----------------------------------------------------------------------------
-// Mic button
-// -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Composer layouts
+  // ---------------------------------------------------------------------------
 
-class _MicButton extends StatelessWidget {
-  final _VoiceState voiceState;
-  final VoidCallback onTap;
+  BoxDecoration _containerDecoration(
+    PregoDesignSystem prego, {
+    required Color borderColor,
+    required double radius,
+  }) {
+    return BoxDecoration(
+      color: prego.colors.bgSurface2,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: borderColor),
+      boxShadow: [
+        BoxShadow(color: prego.colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
+      ],
+    );
+  }
 
-  const _MicButton({required this.voiceState, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
+  /// Fresh-session resting state: one pill whose whole centre is a
+  /// press-and-hold voice target, with a keyboard button to switch to typing.
+  Widget _buildHoldToTalkComposer(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
 
-    // GlassIconButton exposes no tooltip/semanticLabel, so wrap each state's
-    // button in a Tooltip to keep the long-press/hover label and screen-reader
-    // name the old IconButton provided.
-    return switch (voiceState) {
-      _VoiceState.idle => Tooltip(
-        message: loc.voiceRecord,
-        child: GlassIconButton(
-          onPressed: onTap,
-          icon: const Icon(Icons.mic_none),
-          glowColor: prego.colors.textSecondary,
-        ),
+    return Container(
+      padding: const EdgeInsets.all(PregoSpacing.sm),
+      decoration: _containerDecoration(
+        prego,
+        borderColor: prego.colors.borderSecondary,
+        radius: PregoRadius.full,
       ),
-      _VoiceState.recording => Tooltip(
-        message: loc.voiceStopRecording,
-        child: GlassIconButton(
-          onPressed: onTap,
-          icon: const Icon(Icons.stop_circle_outlined),
-          glowColor: prego.colors.fgErrorPrimary,
-        ),
+      child: Row(
+        spacing: PregoSpacing.md,
+        children: [
+          _buildOptionsAccordion(),
+          Expanded(
+            // The detector wraps the voice-aware slot (not the other way
+            // around) so it stays mounted when the recording indicator swaps
+            // in and still receives the release that ends the hold. Semantic
+            // taps toggle recording — assistive technologies cannot express
+            // the press-and-hold gesture.
+            child: Semantics(
+              button: true,
+              label: loc.sessionDetailHoldToTalk,
+              excludeSemantics: true,
+              onTap: _handleSemanticRecordToggle,
+              child: Listener(
+                // A pointer cancel mid-hold (incoming call, system gesture)
+                // resets the accepted long-press silently — no onLongPressEnd
+                // — so the raw pointer stream is the only place to keep the
+                // recording bounded by the gesture.
+                onPointerCancel: (_) => _handleRecordEnd(),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onLongPressStart: (_) => _handleRecordStart(),
+                  onLongPressEnd: (_) => _handleRecordEnd(),
+                  child: _buildVoiceAwareSlot(
+                    height: _actionButtonSize,
+                    idle: Center(
+                      child: Text(
+                        loc.sessionDetailHoldToTalk,
+                        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Tooltip(
+            message: loc.sessionDetailTypeMessage,
+            child: PregoButtonsSolid.iconOnly(
+              leadingIcon: TablerRegular.keyboard,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              onPressed: _enterTypingMode,
+            ),
+          ),
+        ],
       ),
-      _VoiceState.transcribing => Tooltip(
-        message: loc.voiceCancelTranscription,
-        child: GlassIconButton(
-          onPressed: onTap,
-          icon: const Icon(Icons.close),
-          glowColor: prego.colors.fgErrorPrimary,
-        ),
+    );
+  }
+
+  /// Resting state once the session has messages: a compact pill whose field
+  /// area invites a follow-up, with mic and send/stop alongside.
+  Widget _buildCompactComposer(BuildContext context) {
+    final prego = context.prego;
+
+    return Container(
+      padding: const EdgeInsets.all(PregoSpacing.sm),
+      decoration: _containerDecoration(
+        prego,
+        borderColor: prego.colors.borderPrimary,
+        radius: PregoRadius.full,
       ),
+      child: Row(
+        spacing: PregoSpacing.md,
+        children: [
+          _buildOptionsAccordion(),
+          Expanded(
+            child: _buildVoiceAwareSlot(
+              height: _actionButtonSize,
+              idle: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _enterTypingMode,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                    child: Text(
+                      _hintText(context),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Row(
+            spacing: PregoSpacing.sm,
+            children: [
+              _buildMicButton(context),
+              _buildPrimaryActionButton(context),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The expanded typing container: multiline field with the fullscreen-editor
+  /// button in its top-right corner, and the action row below.
+  Widget _buildTypingComposer(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+
+    return Container(
+      padding: const EdgeInsets.all(PregoSpacing.sm),
+      decoration: _containerDecoration(
+        prego,
+        borderColor: prego.colors.borderPrimary,
+        radius: PregoRadius.x3l,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: PregoSpacing.md,
+        children: [
+          Stack(
+            children: [
+              Padding(
+                // Clear the expand button on the trailing edge so text never
+                // runs underneath it.
+                padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, 36, 0),
+                child: _buildVoiceAwareSlot(
+                  height: null,
+                  idle: CallbackShortcuts(
+                    // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
+                    // plain Enter stays a newline via textInputAction below.
+                    bindings: <ShortcutActivator, VoidCallback>{
+                      const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
+                      const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
+                    },
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      minLines: 1,
+                      maxLines: 6,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      // Material's default keeps focus on mobile touch taps;
+                      // this composer wants outside taps (e.g. the picker
+                      // pills above the region) to dismiss the keyboard — the
+                      // behaviour the TextFieldTapRegion grouping was built
+                      // around.
+                      onTapOutside: (_) => _focusNode.unfocus(),
+                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
+                        // Command-aware placeholder: the staged command's hint,
+                        // else the follow-up/default prompt hint.
+                        hintText: _hintText(context),
+                        hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              PositionedDirectional(
+                top: 0,
+                end: 0,
+                child: Tooltip(
+                  message: loc.sessionDetailExpandEditor,
+                  child: PregoTappable(
+                    onTap: _voiceState == _VoiceState.idle ? _openEditorSheet : null,
+                    borderRadius: BorderRadius.circular(PregoRadius.full),
+                    containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
+                    child: Icon(TablerRegular.maximize, size: 18, color: prego.colors.textSecondary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              _buildOptionsAccordion(),
+              const Spacer(),
+              _buildMicButton(context),
+              const SizedBox(width: PregoSpacing.sm),
+              _buildPrimaryActionButton(context),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shared pieces
+  // ---------------------------------------------------------------------------
+
+  /// The mic / send buttons and the accordion's closed pill are all 44pt.
+  static const double _actionButtonSize = 44;
+
+  Widget _buildOptionsAccordion() {
+    return ComposerOptionsAccordion(
+      actionsEnabled: _voiceState == _VoiceState.idle,
+      onSlashCommandsTap: _openCommandPicker,
+    );
+  }
+
+  /// Shows [idle] normally, or the recording / transcribing feedback in its
+  /// place while a voice interaction is running. [height] constrains the
+  /// indicators inside the 44pt-tall resting pills; the typing layout passes
+  /// null and keeps their intrinsic height.
+  Widget _buildVoiceAwareSlot({required double? height, required Widget idle}) {
+    final indicator = switch (_voiceState) {
+      _VoiceState.recording => _RecordingIndicator(amplitudeStream: _voiceService.amplitudeStream),
+      _VoiceState.transcribing => const _TranscribingIndicator(),
+      _VoiceState.idle => null,
     };
+    if (indicator == null) {
+      return height == null ? idle : SizedBox(height: height, child: idle);
+    }
+    return height == null ? indicator : SizedBox(height: height, child: indicator);
+  }
+
+  /// Hold-to-record microphone. While transcribing it becomes the cancel
+  /// affordance, mirroring the old tap-to-cancel behaviour.
+  Widget _buildMicButton(BuildContext context) {
+    final loc = context.loc;
+
+    if (_voiceState == _VoiceState.transcribing) {
+      return Tooltip(
+        message: loc.voiceCancelTranscription,
+        child: PregoButtonsSolid.iconOnly(
+          leadingIcon: TablerRegular.x,
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.lg,
+          onPressed: _cancelTranscription,
+        ),
+      );
+    }
+
+    // No Tooltip here: its long-press trigger would race the recording hold.
+    // The button keeps its enabled look and swallows plain taps via
+    // [_ignoreTap]; holds outlast the tap recognizer, so the surrounding
+    // detector wins the arena and drives the recording. Semantic taps toggle
+    // recording — assistive technologies cannot express the hold.
+    return Semantics(
+      button: true,
+      label: loc.voiceRecord,
+      excludeSemantics: true,
+      onTap: _handleSemanticRecordToggle,
+      child: Listener(
+        // A pointer cancel mid-hold resets the accepted long-press silently —
+        // no onLongPressEnd — so the raw pointer stream is the only place to
+        // keep the recording bounded by the gesture.
+        onPointerCancel: (_) => _handleRecordEnd(),
+        child: GestureDetector(
+          onLongPressStart: (_) => _handleRecordStart(),
+          onLongPressEnd: (_) => _handleRecordEnd(),
+          child: const PregoButtonsSolid.iconOnly(
+            leadingIcon: TablerRegular.microphone,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            onPressed: _ignoreTap,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Keeps the mic rendering in its enabled look; recording is press-and-hold,
+  /// so a plain tap deliberately does nothing.
+  static void _ignoreTap() {}
+
+  /// The dark action button: sends when there is content to send, otherwise
+  /// stops the agent's in-flight work while it is busy.
+  Widget _buildPrimaryActionButton(BuildContext context) {
+    final loc = context.loc;
+    final showStop = widget.isBusy && !_hasSendableContent;
+
+    if (showStop) {
+      return Tooltip(
+        message: loc.sessionDetailAbort,
+        child: PregoButtonsSolid.iconOnly(
+          leadingIcon: TablerSolid.player_stop,
+          hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+          size: PregoButtonsSolidSize.lg,
+          onPressed: widget.onAbort,
+        ),
+      );
+    }
+
+    return Tooltip(
+      message: loc.sessionDetailSend,
+      child: PregoButtonsSolid.iconOnly(
+        leadingIcon: TablerRegular.arrow_up,
+        hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+        size: PregoButtonsSolidSize.lg,
+        onPressed: _handleSend,
+      ),
+    );
   }
 }
 

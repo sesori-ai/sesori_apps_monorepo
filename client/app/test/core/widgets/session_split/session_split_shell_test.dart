@@ -201,10 +201,14 @@ void main() {
       expect(find.byType(NewSessionScreen), findsOneWidget);
 
       // Start sending; creation is now in flight. Scope to the composer — the
-      // session-detail route behind the pushed overlay also has a prompt field.
+      // session-detail route behind the pushed overlay also has a prompt
+      // composer. The fresh composer rests in its hold-to-talk pill, so enter
+      // the typing layout via the keyboard button first.
       final newSession = find.byType(NewSessionScreen);
+      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.keyboard)));
+      await tester.pumpAndSettle();
       await tester.enterText(find.descendant(of: newSession, matching: find.byType(EditableText)), "do the thing");
-      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(Icons.send)), warnIfMissed: false);
+      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)), warnIfMissed: false);
       await tester.pump();
       expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
 
