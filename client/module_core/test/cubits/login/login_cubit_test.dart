@@ -10,7 +10,9 @@ import "package:sesori_dart_core/src/cubits/login/login_failed_reason.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
+import "package:sesori_dart_core/src/services/installation_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -21,6 +23,8 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 class MockAuthSession extends Mock implements AuthSession {}
 
 class MockLifecycleSource extends Mock implements LifecycleSource {}
+
+class MockInstallationAnalyticsService extends Mock implements InstallationAnalyticsService {}
 
 const testAuthInitResponse = AuthInitResponse(
   authUrl: "https://accounts.google.com/o/oauth2/auth",
@@ -38,6 +42,7 @@ const testAuthUser = AuthUser(
 void main() {
   setUpAll(() {
     registerFallbackValue(AuthProvider.google);
+    registerFallbackValue(LoginAttemptFailureCause.unknown);
     registerFallbackValue(Uri.parse(redirectUri));
     registerFallbackValue(testAuthUser);
   });
@@ -47,12 +52,14 @@ void main() {
     late MockUrlLauncher mockUrlLauncher;
     late MockAuthSession mockAuthSession;
     late MockLifecycleSource mockLifecycleSource;
+    late MockInstallationAnalyticsService mockInstallationAnalyticsService;
 
     setUp(() {
       mockOAuthFlowProvider = MockOAuthFlowProvider();
       mockUrlLauncher = MockUrlLauncher();
       mockAuthSession = MockAuthSession();
       mockLifecycleSource = MockLifecycleSource();
+      mockInstallationAnalyticsService = MockInstallationAnalyticsService();
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
       when(
         () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
@@ -60,16 +67,29 @@ void main() {
       when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthUser);
       when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
       when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptStarted(provider: any(named: "provider")),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: any(named: "provider")),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+      when(
+        () => mockInstallationAnalyticsService.loginAttemptFailed(
+          provider: any(named: "provider"),
+          cause: any(named: "cause"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
       when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer(
         (_) => BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed).stream,
       );
     });
 
     LoginCubit buildCubit() => LoginCubit(
-      mockOAuthFlowProvider,
-      mockUrlLauncher,
-      mockAuthSession,
-      mockLifecycleSource,
+      oAuthFlowProvider: mockOAuthFlowProvider,
+      urlLauncher: mockUrlLauncher,
+      authSession: mockAuthSession,
+      lifecycleSource: mockLifecycleSource,
+      installationAnalyticsService: mockInstallationAnalyticsService,
     );
 
     test("initial state is LoginState.idle", () {
@@ -78,6 +98,180 @@ void main() {
     });
 
     group("Google OAuth", () {
+      test("reports one started and one completed installation outcome", () async {
+        final cubit = buildCubit();
+
+        await cubit.loginWithProvider(AuthProvider.google);
+
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
+        ).called(1);
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.google),
+        ).called(1);
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: any(named: "provider"),
+            cause: any(named: "cause"),
+          ),
+        );
+        await cubit.close();
+      });
+
+      test("reports timeout once as the terminal installation outcome", () async {
+        when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
+        final cubit = buildCubit();
+
+        await cubit.loginWithProvider(AuthProvider.google);
+
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
+        ).called(1);
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: AuthProvider.google,
+            cause: LoginAttemptFailureCause.timeout,
+          ),
+        ).called(1);
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: any(named: "provider")),
+        );
+        await cubit.close();
+      });
+
+      test("Apple native cancellation terminates its already-started attempt", () async {
+        final cubit = buildCubit();
+
+        final attempt = cubit.beginAppleLoginAttempt();
+        cubit.onAppleSignInCancelled(attempt: attempt);
+
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.apple),
+        ).called(1);
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: AuthProvider.apple,
+            cause: LoginAttemptFailureCause.cancelled,
+          ),
+        ).called(1);
+        await cubit.close();
+      });
+
+      test("Apple native errors use the platform-neutral unknown outcome", () async {
+        final cubit = buildCubit();
+        final attempt = cubit.beginAppleLoginAttempt();
+
+        cubit.onAppleSignInError(attempt: attempt);
+
+        expect(cubit.state, isA<LoginFailed>());
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: AuthProvider.apple,
+            cause: LoginAttemptFailureCause.unknown,
+          ),
+        ).called(1);
+        await cubit.close();
+      });
+
+      test("stale Apple callbacks cannot terminate a replacement attempt", () async {
+        final authentication = Completer<AuthUser>();
+        when(
+          () => mockAuthSession.loginWithApple(
+            idToken: any(named: "idToken"),
+            nonce: any(named: "nonce"),
+          ),
+        ).thenAnswer((_) => authentication.future);
+        final cubit = buildCubit();
+        final staleAttempt = cubit.beginAppleLoginAttempt();
+        final staleLogin = cubit.loginWithApple(
+          attempt: staleAttempt,
+          idToken: "stale-token",
+          nonce: "stale-nonce",
+        );
+        await untilCalled(
+          () => mockAuthSession.loginWithApple(
+            idToken: any(named: "idToken"),
+            nonce: any(named: "nonce"),
+          ),
+        );
+
+        cubit.beginAppleLoginAttempt();
+        cubit.onAppleSignInError(attempt: staleAttempt);
+        authentication.complete(testAuthUser);
+
+        expect(await staleLogin, isFalse);
+        expect(cubit.state, isA<LoginAuthenticating>());
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.apple),
+        );
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: AuthProvider.apple,
+            cause: any(named: "cause"),
+          ),
+        );
+        await cubit.close();
+      });
+
+      test("starting Apple leaves a prior resumable OAuth timeout", () async {
+        final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+        when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+        when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
+        when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
+        final cubit = buildCubit();
+
+        await cubit.loginWithProvider(AuthProvider.google);
+        expect(cubit.state, isA<LoginTimeout>());
+
+        cubit.beginAppleLoginAttempt();
+        expect(cubit.state, isA<LoginIdle>());
+        lifecycleSubject
+          ..add(LifecycleState.paused)
+          ..add(LifecycleState.resumed);
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
+        await cubit.close();
+        await lifecycleSubject.close();
+      });
+
+      test("starting Apple invalidates a pending OAuth resume check", () async {
+        final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+        final activeSessionCheck = Completer<bool>();
+        when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+        when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
+        when(
+          () => mockOAuthFlowProvider.hasActiveOAuthSession(),
+        ).thenAnswer((_) => activeSessionCheck.future);
+        final cubit = buildCubit();
+
+        await cubit.loginWithProvider(AuthProvider.google);
+        expect(cubit.state, isA<LoginTimeout>());
+
+        lifecycleSubject
+          ..add(LifecycleState.paused)
+          ..add(LifecycleState.resumed);
+        await untilCalled(() => mockOAuthFlowProvider.hasActiveOAuthSession());
+
+        cubit.beginAppleLoginAttempt();
+        activeSessionCheck.complete(true);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.state, isA<LoginIdle>());
+        verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.apple),
+        );
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(
+            provider: AuthProvider.apple,
+            cause: any(named: "cause"),
+          ),
+        );
+        await cubit.close();
+        await lifecycleSubject.close();
+      });
+
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) starts OAuth flow with AuthProvider.google",
         build: buildCubit,
@@ -319,6 +513,18 @@ void main() {
           expect(cubit.state, isA<LoginSuccess>());
           expect(states, contains(isA<LoginSuccess>()));
           verify(() => mockOAuthFlowProvider.resumeOAuthFlow()).called(1);
+          verify(
+            () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
+          ).called(1);
+          verify(
+            () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.google),
+          ).called(1);
+          verifyNever(
+            () => mockInstallationAnalyticsService.loginAttemptFailed(
+              provider: any(named: "provider"),
+              cause: any(named: "cause"),
+            ),
+          );
         });
 
         blocTest<LoginCubit, LoginState>(
@@ -399,10 +605,10 @@ void main() {
         final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused);
         when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
         when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
+        when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
 
         final cubit = buildCubit();
-        // Park the flow in a resumable state (e.g. a prior timeout) before resume.
-        cubit.emit(const LoginState.timeout());
+        await cubit.loginWithProvider(AuthProvider.google);
 
         final states = <LoginState>[];
         final sub = cubit.stream.listen(states.add);
@@ -424,10 +630,10 @@ void main() {
         final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused);
         when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
         when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
+        when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
 
         final cubit = buildCubit();
-        // A resumable, non-polling state (timeout) must not auto-reset to idle.
-        cubit.emit(const LoginState.timeout());
+        await cubit.loginWithProvider(AuthProvider.google);
 
         final states = <LoginState>[];
         final sub = cubit.stream.listen(states.add);
@@ -547,6 +753,9 @@ void main() {
               email: any(named: "email"),
               password: any(named: "password"),
             ),
+          );
+          verifyNever(
+            () => mockInstallationAnalyticsService.loginAttemptStarted(provider: any(named: "provider")),
           );
         },
       );

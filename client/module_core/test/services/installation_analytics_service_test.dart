@@ -1,14 +1,17 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
 class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository {
   final events = <InstallationAnalyticsEvent>[];
+  AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
 
   @override
   Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) async {
     events.add(event);
-    return AnalyticsDeliveryResult.acceptedBySdk;
+    return result;
   }
 }
 
@@ -21,8 +24,8 @@ void main() {
     );
 
     final result = await service.loginAttemptFailed(
-      provider: AnalyticsLoginProvider.google,
-      failureKind: AnalyticsLoginFailureKind.timeout,
+      provider: AuthProvider.google,
+      cause: LoginAttemptFailureCause.timeout,
     );
 
     expect(result, AnalyticsDeliveryResult.acceptedBySdk);
@@ -48,10 +51,50 @@ void main() {
       );
 
       expect(
-        await service.loginAttemptStarted(provider: AnalyticsLoginProvider.email),
+        await service.loginAttemptStarted(provider: AuthProvider.email),
         AnalyticsDeliveryResult.failed,
       );
       expect(repository.events, isEmpty);
     }
+  });
+
+  test("sealed auth providers map exhaustively to pinned analytics providers", () async {
+    final repository = _RecordingAnalyticsRepository();
+    final service = InstallationAnalyticsService(
+      capability: const AnalyticsRuntimeCapability.enabled(),
+      repository: repository,
+    );
+
+    for (final provider in [
+      AuthProvider.github,
+      AuthProvider.google,
+      AuthProvider.apple,
+      AuthProvider.email,
+    ]) {
+      await service.loginAttemptStarted(provider: provider);
+    }
+
+    expect(
+      repository.events.map((event) => event.parameters["provider"]),
+      ["github", "google", "apple", "email"],
+    );
+  });
+
+  test("enabled runtime makes rejected SDK delivery observable", () async {
+    final repository = _RecordingAnalyticsRepository()..result = AnalyticsDeliveryResult.failed;
+    final service = InstallationAnalyticsService(
+      capability: const AnalyticsRuntimeCapability.enabled(),
+      repository: repository,
+    );
+    final logLines = <String>[];
+
+    await runZoned(
+      () => service.loginAttemptStarted(provider: AuthProvider.github),
+      zoneSpecification: ZoneSpecification(
+        print: (_, _, _, line) => logLines.add(line),
+      ),
+    );
+
+    expect(logLines, contains("Failed to report installation analytics event"));
   });
 }

@@ -31,10 +31,11 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => LoginCubit(
-        getIt<OAuthFlowProvider>(),
-        getIt<UrlLauncher>(),
-        getIt<AuthSession>(),
-        getIt<LifecycleSource>(),
+        oAuthFlowProvider: getIt<OAuthFlowProvider>(),
+        urlLauncher: getIt<UrlLauncher>(),
+        authSession: getIt<AuthSession>(),
+        lifecycleSource: getIt<LifecycleSource>(),
+        installationAnalyticsService: getIt<InstallationAnalyticsService>(),
       ),
       child: const _LoginScreenBody(),
     );
@@ -76,6 +77,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     });
     final rawNonce = _generateNonce();
     final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+    final loginAttempt = context.read<LoginCubit>().beginAppleLoginAttempt();
 
     try {
       final credential = await SignInWithApple.getAppleIDCredential(
@@ -89,7 +91,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
       final idToken = credential.identityToken;
       if (idToken == null) {
         if (mounted) {
-          context.read<LoginCubit>().onMissingAppleIdToken();
+          context.read<LoginCubit>().onMissingAppleIdToken(attempt: loginAttempt);
         }
         return;
       }
@@ -97,12 +99,16 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
       if (!mounted) return;
 
       await context.read<LoginCubit>().loginWithApple(
+        attempt: loginAttempt,
         idToken: idToken,
         nonce: rawNonce,
       );
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) {
         logd("Apple Sign-In cancelled by user");
+        if (mounted) {
+          context.read<LoginCubit>().onAppleSignInCancelled(attempt: loginAttempt);
+        }
         // Cancelling the native sheet emits no cubit state, so the pending
         // marker must be cleared here.
         if (mounted) {
@@ -113,11 +119,11 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
         return;
       }
       if (mounted) {
-        context.read<LoginCubit>().onAppleSignInError();
+        context.read<LoginCubit>().onAppleSignInError(attempt: loginAttempt);
       }
     } on Exception catch (_) {
       if (mounted) {
-        context.read<LoginCubit>().onAppleSignInError();
+        context.read<LoginCubit>().onAppleSignInError(attempt: loginAttempt);
       }
     }
   }
@@ -318,9 +324,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
               top: 0,
               start: 0,
               end: 0,
-              child: _isEmailSheetOpen
-                  ? const SizedBox.shrink()
-                  : _LoginErrorBanner(state: state),
+              child: _isEmailSheetOpen ? const SizedBox.shrink() : _LoginErrorBanner(state: state),
             ),
           ],
         ),
