@@ -114,4 +114,8 @@
   the typed aggregate route; stable-project binding attribution; and independent
   creation/options-change refresh listeners. Generated shared and Drift sources.
   All 348 shared tests and 2,239 bridge-app tests passed, as did fatal analysis
-  in both owning packages and `git diff --check`. Opened PR #620.
+  in both owning packages and `git diff --check`. Aristotle's first
+  implementation review identified new Drift import cycles; the cache DAO was
+  moved to composition-root construction and the cache table now uses Drift's
+  generated row without importing the database or legacy project table module.
+  The second/final review approved the corrected architecture. Opened PR #620.
