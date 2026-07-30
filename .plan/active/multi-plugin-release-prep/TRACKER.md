@@ -156,7 +156,8 @@
 - Step 4.D/6 preparation (2026-07-30): added sealed scope-aware cache keys and a
   Layer-2 repository for project/binding resolution, plugin capture, typed JSON
   persistence, and generation-fenced CAS. Review follow-up rejects mismatched
-  project capture paths, keeps decoder presentation payload-independent, and
-  uses typed JSON test helpers. All 61 repository/runtime tests and bridge-app
-  fatal analysis passed with `git diff --check`. Aristotle approved the
-  implementation architecture without findings.
+  project capture paths without rendering path values, keeps decoder presentation
+  payload-independent, wraps corrupted persisted enum values while preserving
+  database failures, and uses typed JSON test helpers. All 62 repository/runtime
+  tests and bridge-app fatal analysis passed with `git diff --check`. Aristotle
+  approved the implementation architecture without findings.
