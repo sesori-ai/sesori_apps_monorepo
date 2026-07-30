@@ -6,7 +6,7 @@
 - **Series state:** Steps 1/6 through 4.A/6 are merged; oversized PR #620 is
   frozen as a draft and replaced by the Step 4.B/6 through 4.F/6 sequence
 - **Current step:** Step 4.B/6 — scoped cache schema and runtime database
-- **Next action:** synchronize, address review, and ready PR #624
+- **Next action:** monitor and merge PR #624
 
 ## Delivery
 
@@ -16,7 +16,7 @@
 | [x] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | PR #609 merged |
 | [x] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | PR #616 merged |
 | [x] | Step 4.A/6 — wire contracts and runtime seams | `multi-plugin-release-prep-bridge-contracts` | PR #623 merged |
-| [ ] | Step 4.B/6 — scoped cache schema/runtime database | `multi-plugin-release-prep-cache-schema` | PR #624 draft |
+| [ ] | Step 4.B/6 — scoped cache schema/runtime database | `multi-plugin-release-prep-cache-schema` | PR #624 ready |
 | [ ] | Step 4.C/6 — migration and DAO verification | `multi-plugin-release-prep-cache-verification` | Blocked on 4.B |
 | [ ] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | Blocked on 4.C |
 | [ ] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | Blocked on 4.D |
