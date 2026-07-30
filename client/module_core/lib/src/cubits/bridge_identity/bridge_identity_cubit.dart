@@ -5,6 +5,7 @@ import "package:collection/collection.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
+import "../../logging/logging.dart";
 import "../../services/registered_bridges_service.dart";
 import "bridge_identity_state.dart";
 
@@ -30,7 +31,7 @@ class BridgeIdentityCubit extends Cubit<BridgeIdentityState> {
     // Resolve immediately rather than waiting for a connection: the offline
     // surfaces name the machine they are trying to reach, and they are exactly
     // the ones no connect event ever arrives for.
-    unawaited(_resolve());
+    _scheduleResolve();
     // Then again whenever the relay becomes reachable. skip(1) drops the
     // replayed current status, which the resolve above covers.
     _statusSubscription = connectionService.status.skip(1).listen((status) {
@@ -45,7 +46,7 @@ class BridgeIdentityCubit extends Cubit<BridgeIdentityState> {
         // fresh record.
         case ConnectionConnected():
         case ConnectionBridgeOffline():
-          unawaited(_resolve());
+          _scheduleResolve();
         // Nothing to ask over: a lookup would fail from these states anyway, and
         // the resolve above already covers a launch that starts in one.
         case ConnectionDisconnected():
@@ -55,6 +56,27 @@ class BridgeIdentityCubit extends Cubit<BridgeIdentityState> {
       }
     });
   }
+
+  /// Runs a resolve after whichever one is already running, so a retry is a
+  /// genuinely fresh look at the bridge list.
+  ///
+  /// The service coalesces concurrent callers onto one in-flight request, so a
+  /// resolve started while an older one is still running would be handed the
+  /// older answer — and for a retry that follows a lookup which failed while the
+  /// phone was offline, that is precisely the answer it was triggered to
+  /// replace. Queuing keeps the identity stuck at [BridgeIdentityUnnamed] only
+  /// for as long as it really is unknown.
+  void _scheduleResolve() {
+    _resolving = _resolving
+        .then((_) => _resolve())
+        // A throw must not poison the chain — the next reconnect still needs its
+        // retry. The service's own failures are fail-soft, so reaching here is
+        // unexpected and worth a record of its own.
+        .catchError((Object error, StackTrace stackTrace) => loge("Bridge identity lookup failed", error, stackTrace));
+  }
+
+  /// The resolve currently running, or a completed future when none is.
+  Future<void> _resolving = Future<void>.value();
 
   /// Resolves the machine to name, ending in [BridgeIdentityNamed] or
   /// [BridgeIdentityUnnamed] — never back in [BridgeIdentityPending], so a

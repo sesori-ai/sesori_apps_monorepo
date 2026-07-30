@@ -112,6 +112,48 @@ void main() {
   );
 
   blocTest<BridgeIdentityCubit, BridgeIdentityState>(
+    "a connection arriving mid-lookup still gets a fresh answer, not the in-flight one",
+    build: () {
+      // Mirrors the service's documented coalescing: concurrent callers share
+      // one in-flight request. A retry that merely races the attempt it is
+      // meant to replace would therefore be handed that attempt's answer.
+      var fetches = 0;
+      final offlineAttempt = Completer<List<BridgeSummary>>();
+      Future<List<BridgeSummary>>? inFlight;
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) {
+        final active = inFlight;
+        if (active != null) return active;
+        fetches++;
+        final answer = fetches == 1
+            ? offlineAttempt.future
+            : Future.value([testBridgeSummary(name: "Macbook-Pro.local")]);
+        inFlight = answer;
+        unawaited(answer.whenComplete(() => inFlight = null));
+        return answer;
+      });
+      addTearDown(() {
+        if (!offlineAttempt.isCompleted) offlineAttempt.complete(const []);
+      });
+      // The connection comes up while that first attempt is still hanging...
+      unawaited(
+        Future<void>.delayed(Duration.zero).then((_) => statusController.add(_connectedStatus)),
+      );
+      // ...and only afterwards does it fail-soft with nothing.
+      unawaited(
+        Future<void>.delayed(const Duration(milliseconds: 2)).then((_) {
+          if (!offlineAttempt.isCompleted) offlineAttempt.complete(const []);
+        }),
+      );
+      return buildCubit();
+    },
+    wait: const Duration(milliseconds: 20),
+    expect: () => [
+      const BridgeIdentityState.unnamed(),
+      isA<BridgeIdentityNamed>().having((s) => s.bridge.name, "named machine", "Macbook-Pro.local"),
+    ],
+  );
+
+  blocTest<BridgeIdentityCubit, BridgeIdentityState>(
     "parking offline retries a lookup that came back empty",
     build: buildCubit,
     act: (cubit) async {
