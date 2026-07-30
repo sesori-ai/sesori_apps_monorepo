@@ -2,12 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `57e0fffb`
-- **Series state:** Steps 1/6 and 2/6 are merged; Step 3/6 PR #616 is open from
-  `multi-plugin-release-prep-plugin-options`
-- **Current step:** Step 3/6 — aggregate scoped plugin options
-- **Next action:** review and merge PR #616, then start Step 4/6 from updated
-  `origin/main`
+- **Implementation base:** `origin/main` at `5eabfd0d`
+- **Series state:** Steps 1/6 through 3/6 are merged; Step 4/6 is open as PR
+  #620 from `multi-plugin-release-prep-bridge-cache`
+- **Current step:** Step 4/6 — durable bridge cache and aggregate route
+- **Next action:** review, pass CI, and merge PR #620
 
 ## Delivery
 
@@ -15,8 +14,8 @@
 |---|---|---|---|
 | [x] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 merged |
 | [x] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | PR #609 merged |
-| [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | PR #616 open |
-| [ ] | Step 4/6 — durable bridge cache and aggregate route | `multi-plugin-release-prep-bridge-cache` | Blocked on Step 3 merge |
+| [x] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | PR #616 merged |
+| [ ] | Step 4/6 — durable bridge cache and aggregate route | `multi-plugin-release-prep-bridge-cache` | PR #620 open |
 | [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4 merge |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5 merge |
 
@@ -104,4 +103,15 @@
   newer live model or mode state. Forced refresh also invalidates a prior
   command snapshot when the refresh observes no authoritative command update.
   The full owning-package suites plus fatal analysis passed after each fix
-  round.
+  round. PR #616 merged to `main` as `5eabfd0d`.
+- Step 4/6 planning refresh (2026-07-30): mapped the merged codebase's exact
+  shared-model, Drift v12, runtime, repository/service, route, capability,
+  listener, session-binding, Orchestrator lifecycle, and focused-test seams.
+  The implementation map is recorded in `PLAN.md`.
+- Step 4/6 implementation (2026-07-30): added shared success/error and discovery
+  capability contracts; Drift schema v12 scoped persistence; generation-fenced
+  capture and CAS; retention, completeness, and intent-aware coalescing policy;
+  the typed aggregate route; stable-project binding attribution; and independent
+  creation/options-change refresh listeners. Generated shared and Drift sources.
+  All 348 shared tests and 2,239 bridge-app tests passed, as did fatal analysis
+  in both owning packages and `git diff --check`. Opened PR #620.

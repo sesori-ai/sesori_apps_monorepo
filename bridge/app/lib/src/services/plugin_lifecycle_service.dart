@@ -66,7 +66,7 @@ class PluginLifecycleService {
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   Map<String, PluginResidencyPolicy>? _residencyPolicyById;
-  Map<String, PluginSessionOptionsScope>? _sessionOptionsScopeById;
+  late Map<String, PluginSessionOptionsScope> _sessionOptionsScopeById;
   Map<String, Set<PluginControlCapability>>? _managementCapabilitiesById;
   List<String>? _eligiblePluginIds;
   Set<String> _startAllowedPluginIds = {};
@@ -173,7 +173,7 @@ class PluginLifecycleService {
       projectOwnershipById: Map<String, PluginProjectOwnership>.unmodifiable({
         for (final snapshot in _lifecycleRepository.snapshot) snapshot.pluginId: snapshot.projectOwnership,
       }),
-      sessionOptionsScopeById: _sessionOptionsScopeById!,
+      sessionOptionsScopeById: _sessionOptionsScopeById,
     );
   }
 

@@ -3,9 +3,9 @@
 ## Status
 
 - **Plan slug:** `multi-plugin-release-prep`
-- **Status:** ready for delivery as a six-PR series
+- **Status:** Steps 1/6 through 3/6 merged; Step 4/6 is open as PR #620
 - **Plan delivery:** this document and its tracker are Step 1/6
-- **Implementation base:** `origin/main` at `9da014e2`
+- **Implementation base:** `origin/main` at `5eabfd0d`
 - **Approved product direction:** Codex remains project-aware; Cursor and the
   ACP-backed option state use plugin-scoped caching; OpenCode remains
   project-scoped
@@ -372,6 +372,88 @@ the seed trigger. The session-event pipeline
 explicitly consumes this internal event without mapping it to client SSE;
 Orchestrator remains the only client-SSE decision owner. Each listener owns one
 trigger subscription and its disposal.
+
+### Step 4 concrete implementation map
+
+The current codebase maps the Step 4 boundary to these source changes:
+
+- In `shared/sesori_shared`, add `session_options_response.dart` and
+  `session_options_error_response.dart` beside the existing Sesori response
+  models, export both from `sesori_shared.dart`, and extend
+  `plugin_list_response.dart` with the dated `supportsSessionOptions` default.
+  The error DTO applies `unknownEnumValue: SessionOptionsErrorCode.unknown` at
+  JSON decoding; tests live under `test/models/` and cover round trips plus
+  omitted and unknown compatibility values.
+- In `bridge/app/lib/src/api/database`, add
+  `tables/session_options_cache_table.dart` and
+  `daos/session_options_cache_dao.dart`, then register both in `database.dart`.
+  Version 12 creates only the new table. The nullable project foreign key uses
+  `ProjectsTable.projectId` with `KeyAction.cascade`; the table-level CHECK
+  enforces plugin rows with null project fields and project rows with matching
+  non-null owner/project identity and a non-empty captured path. Generate the
+  Drift database, DAO, row, schema-v12 snapshot, and migration-step sources;
+  extend `test/drift/default/migration_test.dart` for v11-to-v12 structure,
+  constraints, cascade deletion, and plugin-row survival.
+- Put the sealed `SessionOptionsCacheKey` in
+  `bridge/repositories/models/session_options_cache_key.dart`. Add
+  `SessionOptionsRepository` beside the existing Layer-2 repositories and keep
+  the DAO mechanical: exact-key read/delete plus expected-revision insert or
+  update. The repository resolves project rows and backend-session bindings,
+  maps the three shared DTOs to and from their JSON columns, captures plugin
+  aggregates, and wraps persistence in runtime generation fencing.
+- Add `PluginRuntime.useWithGeneration<T>` beside `use` and `useIfActive`. It
+  uses the same activating acquisition and authentication handling as `use`,
+  accepts the same API-only body, and returns `({T value, int generation})`
+  without entering a durable commit; the repository later calls
+  `commitCurrentGeneration` around the short CAS.
+  Runtime tests extend the existing `plugin_runtime_test.dart` suite rather than
+  creating a second runtime harness.
+- Add `SessionOptionsService` under `bridge/services/`. Its public operations
+  are cache-only load, explicit refresh, active-only refresh for a known
+  project, and active-only refresh resolved from plugin/backend-session
+  identity. Internal sealed outcomes distinguish available, cache unavailable,
+  project not found, retained refresh failure, unavailable refresh failure, and
+  automatic no-op. The per-key coordinator stores at most one running future
+  and one shared forced tail; completed entries are removed so this is not a
+  durable registry.
+- Extend `RegisteredPluginMetadata` and `PluginCompositionView` in
+  `services/plugin_lifecycle_service.dart` with the descriptor-declared options
+  scope. `bridge_runtime_runner.dart` copies `descriptor.sessionOptionsScope`
+  during registration, and `Orchestrator.create()` passes the resulting
+  immutable map to `SessionOptionsService`; no downstream code imports concrete
+  plugin descriptors or checks plugin IDs.
+- Add `PostSessionOptionsHandler` beside the bridge handlers. It extends
+  `RequestHandlerBase`, rather than `BodyRequestHandler`, so expected typed
+  failures can return JSON bodies before generic plain-text normalization. It
+  reuses `PluginProjectIdRequest.fromJson`, accepts only missing, exact `false`,
+  or exact `true` refresh values from the router's canonical query map, and maps
+  every service outcome to the locked 200/400/404/502/503 contract.
+- Add `projectId` to `SessionBindingsCommitted`; both current publication sites
+  already have the stable value (`createSession`'s requested project and
+  `_persistNativeRootSessions`' resolved project). Existing session-event
+  dispatch remains unchanged apart from carrying the extra field.
+- Add `SessionOptionsCreationRefreshListener` and
+  `SessionOptionsChangedRefreshListener` under `lib/src/listeners/`. They
+  independently subscribe to `SessionRepository.bindingCommits` and
+  `PluginRuntime.backendEvents`. The options-change listener filters the raw
+  generation-attributed event and checks `isCurrentGeneration` before service
+  dispatch; it does not consume normalized client SSE. Wire both in
+  `Orchestrator.create()`, start them with the existing source listeners, retain
+  them on `OrchestratorSession`, and dispose them in the failure-isolated
+  teardown batch.
+- Update `GetPluginsHandler` to publish `supportsSessionOptions: true`, register
+  the aggregate handler in the one shared `RequestRouter`, and pass the same
+  router/service instances to relay and debug flows through the existing
+  Orchestrator composition. The client discovery-404 fallback needs no Step 4
+  logic change because the shared DTO default decodes and constructs it as
+  false; add/adjust its focused compatibility assertion if compilation does not
+  already prove that path.
+
+Implement in dependency order: shared wire contracts, Drift persistence,
+runtime/repository capture, service policy, handler/capability, then listeners
+and Orchestrator lifecycle. Generate only after source models and schema settle,
+then run focused tests after each boundary before the final owning-package
+verification.
 
 ### Client layers
 

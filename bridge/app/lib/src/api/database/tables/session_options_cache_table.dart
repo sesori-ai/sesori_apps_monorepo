@@ -32,10 +32,7 @@ class SessionOptionsCacheTable extends Table {
 
   @override
   List<String> get customConstraints => const [
-    "CHECK (owner_id <> '' AND ((scope = 'plugin' AND project_id IS NULL "
-        "AND captured_project_path IS NULL) OR (scope = 'project' "
-        "AND project_id IS NOT NULL AND owner_id = project_id "
-        "AND captured_project_path IS NOT NULL AND captured_project_path <> '')))",
+    "CHECK (owner_id <> '' AND ((scope = 'plugin' AND project_id IS NULL AND captured_project_path IS NULL) OR (scope = 'project' AND project_id IS NOT NULL AND owner_id = project_id AND captured_project_path IS NOT NULL AND captured_project_path <> '')))",
   ];
 }
 

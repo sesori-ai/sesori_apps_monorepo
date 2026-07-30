@@ -16,8 +16,8 @@ import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/projects_table.dart";
 import "tables/pull_requests_table.dart";
-import "tables/session_table.dart";
 import "tables/session_options_cache_table.dart";
+import "tables/session_table.dart";
 
 part "database.g.dart";
 
