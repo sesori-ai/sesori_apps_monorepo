@@ -10,6 +10,7 @@ import "package:sesori_mobile/core/platform/firebase/no_op_firebase_analytics_ad
 import "package:sesori_mobile/core/platform/firebase/no_op_firebase_app_adapter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_firebase_crashlytics_adapter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_firebase_messaging_adapter.dart";
+import "package:sesori_mobile/core/platform/firebase_analytics_client.dart";
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -19,12 +20,21 @@ void main() {
   });
 
   test("disabled Firebase environment registers safe SDK substitutes", () async {
-    configureDependencies(firebaseEnabled: false);
+    configureDependencies(
+      firebaseEnabled: false,
+      analyticsRuntimeCapability: const AnalyticsRuntimeCapability.disabled(
+        reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+      ),
+    );
 
     expect(getIt<FirebaseApp>(), isA<NoOpFirebaseAppAdapter>());
     expect(getIt<FirebaseMessaging>(), isA<NoOpFirebaseMessagingAdapter>());
     expect(getIt<FirebaseAnalytics>(), isA<NoOpFirebaseAnalyticsAdapter>());
     expect(getIt<FirebaseCrashlytics>(), isA<NoOpFirebaseCrashlyticsAdapter>());
+    expect(getIt<AnalyticsClient>(), isA<FirebaseAnalyticsClient>());
+    expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
+    expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
+    expect(getIt<AnalyticsRouteListener>(), isA<AnalyticsRouteListener>());
 
     final staticAdapter = getIt<FirebaseMessagingStaticAdapter>();
     staticAdapter.registerBackgroundHandler(handler: (_) async {});

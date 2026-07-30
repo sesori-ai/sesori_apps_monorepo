@@ -49,6 +49,7 @@ import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
 import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
     as _i330;
 import 'package:sesori_dart_core/src/platform/route_dispatcher.dart' as _i951;
+import 'package:sesori_dart_core/src/platform/route_source.dart' as _i366;
 import 'package:sesori_dart_core/src/repositories/analytics_repository.dart'
     as _i274;
 import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
@@ -79,6 +80,8 @@ import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/repositories/session_view_repository.dart'
     as _i150;
+import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
+    as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
 import 'package:sesori_dart_core/src/services/draft_store.dart' as _i1002;
@@ -94,6 +97,10 @@ import 'package:sesori_dart_core/src/services/notification_registration_service.
     as _i659;
 import 'package:sesori_dart_core/src/services/plugin_management_service.dart'
     as _i110;
+import 'package:sesori_dart_core/src/services/product_analytics_preference_service.dart'
+    as _i555;
+import 'package:sesori_dart_core/src/services/product_analytics_service.dart'
+    as _i204;
 import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
@@ -261,6 +268,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i7.SessionRepository>(
       () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
+    gh.lazySingleton<_i555.ProductAnalyticsPreferenceService>(
+      () => _i555.ProductAnalyticsPreferenceService(
+        capability: gh<_i684.AnalyticsRuntimeCapability>(),
+        authSession: gh<_i442.AuthSession>(),
+        preferenceRepository: gh<_i804.ProductAnalyticsPreferenceRepository>(),
+      ),
+    );
     gh.lazySingleton<_i101.ForegroundNotificationDispatcher>(
       () => _i101.ForegroundNotificationDispatcher(
         notificationPreferencesRepository:
@@ -311,6 +325,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
+    gh.lazySingleton<_i204.ProductAnalyticsService>(
+      () => _i204.ProductAnalyticsService(
+        analyticsRepository: gh<_i274.AnalyticsRepository>(),
+        preferenceService: gh<_i555.ProductAnalyticsPreferenceService>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(
         api: gh<_i733.ProjectApi>(),
@@ -338,6 +359,13 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
       ),
+    );
+    gh.lazySingleton<_i888.AnalyticsRouteListener>(
+      () => _i888.AnalyticsRouteListener(
+        routeSource: gh<_i366.RouteSource>(),
+        analyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(

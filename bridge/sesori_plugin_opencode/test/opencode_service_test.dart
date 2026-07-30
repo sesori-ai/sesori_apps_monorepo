@@ -131,6 +131,68 @@ void main() {
     });
   });
 
+  group("OpenCodeService.getSessionOptions", () {
+    test("aggregates all sources concurrently and preserves synthetic compact", () async {
+      final release = Completer<void>();
+      final starts = <String>[];
+      final repository = FakeOpenCodeRepository(
+        agents: const [
+          PluginAgent(
+            name: "build",
+            description: "Build agent",
+            model: null,
+            mode: PluginAgentMode.primary,
+            hidden: false,
+          ),
+        ],
+        providers: const PluginProvidersResult(
+          providers: [
+            PluginProvider.custom(
+              id: "provider",
+              name: "Provider",
+              authType: PluginProviderAuthType.unknown,
+              models: [],
+              defaultModelID: null,
+            ),
+          ],
+        ),
+        commands: const [PluginCommand(name: "review", provider: null)],
+        optionStarts: starts,
+        optionsRelease: release,
+      );
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      final discovery = service.getSessionOptions(projectId: "/repo");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(starts, containsAll(<String>["agents", "providers", "commands"]));
+      release.complete();
+      final result = await discovery;
+
+      expect(result, isA<PluginSessionOptionsDiscoveryObserved>());
+      final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+      expect(options.agents.single.name, "build");
+      expect(options.providers.providers.single.id, "provider");
+      expect(options.commands.map((command) => command.name), ["review", "compact"]);
+    });
+
+    test("preserves the source API error from parallel option discovery", () async {
+      final error = OpenCodeApiException(
+        "/provider",
+        503,
+        responseBody: "provider unavailable",
+      );
+      final repository = FakeOpenCodeRepository(providersError: error);
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await expectLater(
+        service.getSessionOptions(projectId: "/repo"),
+        throwsA(same(error)),
+      );
+    });
+  });
+
   group("OpenCodeService.getAgents", () {
     test("passes the projectId through as the directory", () async {
       final repository = FakeOpenCodeRepository();
@@ -1982,8 +2044,13 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   final List<Project> _projects;
   final List<Session> _sessions;
   final List<PluginCommand> _commands;
+  final List<PluginAgent> _agents;
+  final PluginProvidersResult _providers;
+  final List<String>? _optionStarts;
+  final Completer<void>? _optionsRelease;
   final PluginSession? _createdSession;
   final PluginProject? _currentProject;
+  final Object? providersError;
   final Map<String, List<QuestionRequest>> _pendingQuestionsByDirectory;
   final Map<String, List<PermissionRequest>> _pendingPermissionsByDirectory;
   int getProjectsCalls = 0;
@@ -2041,10 +2108,15 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     List<Project> projects = const [],
     List<Session> sessions = const [],
     List<PluginCommand> commands = const [],
+    List<PluginAgent> agents = const [],
+    PluginProvidersResult providers = const PluginProvidersResult(providers: []),
+    List<String>? optionStarts,
+    Completer<void>? optionsRelease,
     PluginSession? createdSession,
     PluginProject? currentProject,
     List<SessionMessagesResponseItem> messages = const [],
     Object? messagesError,
+    Object? providersError,
     Object? replyToQuestionError,
     Object? rejectQuestionError,
     Object? replyToPermissionError,
@@ -2057,8 +2129,13 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
       projects: projects,
       sessions: sessions,
       commands: commands,
+      agents: agents,
+      providers: providers,
+      optionStarts: optionStarts,
+      optionsRelease: optionsRelease,
       createdSession: createdSession,
       currentProject: currentProject,
+      providersError: providersError,
       replyToQuestionError: replyToQuestionError,
       rejectQuestionError: rejectQuestionError,
       replyToPermissionError: replyToPermissionError,
@@ -2072,8 +2149,13 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required List<Project> projects,
     required List<Session> sessions,
     required List<PluginCommand> commands,
+    required List<PluginAgent> agents,
+    required PluginProvidersResult providers,
+    required List<String>? optionStarts,
+    required Completer<void>? optionsRelease,
     required PluginSession? createdSession,
     required PluginProject? currentProject,
+    required this.providersError,
     this.replyToQuestionError,
     this.rejectQuestionError,
     this.replyToPermissionError,
@@ -2082,6 +2164,10 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }) : _projects = projects,
        _sessions = sessions,
        _commands = commands,
+       _agents = agents,
+       _providers = providers,
+       _optionStarts = optionStarts,
+       _optionsRelease = optionsRelease,
        _createdSession = createdSession,
        _currentProject = currentProject,
        _pendingQuestionsByDirectory = pendingQuestionsByDirectory,
@@ -2120,14 +2206,27 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
 
   @override
   Future<List<PluginAgent>> getAgents({required String directory}) async {
+    _optionStarts?.add("agents");
+    await _optionsRelease?.future;
     lastAgentsDirectory = directory;
-    return const [];
+    return _agents;
   }
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    _optionStarts?.add("commands");
+    await _optionsRelease?.future;
     lastCommandsProjectId = projectId;
     return _commands;
+  }
+
+  @override
+  Future<PluginProvidersResult> getProviders({required String? directory}) async {
+    _optionStarts?.add("providers");
+    await _optionsRelease?.future;
+    final error = providersError;
+    if (error != null) throw error;
+    return _providers;
   }
 
   @override

@@ -1,7 +1,6 @@
 import "dart:io" show Directory;
 
 import "package:acp_plugin/acp_plugin.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
@@ -12,8 +11,8 @@ import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "services/cursor_catalog_service.dart";
-import "services/cursor_command_service.dart";
 import "services/cursor_session_cleanup_service.dart";
+import "services/cursor_session_options_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
@@ -47,31 +46,48 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     );
     final catalogTracker = CursorCatalogTracker();
     final commandTracker = AcpCommandTracker();
+    final stagedCommandTracker = AcpCommandTracker();
+    final configurationTracker = AcpSessionConfigurationTracker();
+    final acpSessionOptionsService = AcpSessionOptionsService(
+      configurationTracker: configurationTracker,
+      commandTracker: commandTracker,
+      pluginId: pluginId,
+      agentDisplayName: "Cursor",
+    );
     final catalogCommandListener = AcpCommandListener(
       notifications: catalogApi.notifications,
-      tracker: commandTracker,
+      tracker: stagedCommandTracker,
     );
     final catalogService = CursorCatalogService(
       repository: catalogRepository,
       tracker: catalogTracker,
+      commandTracker: commandTracker,
+      stagedCommandTracker: stagedCommandTracker,
       totalTimeout: const Duration(seconds: 12),
       maxCandidates: 8,
     );
-    final commandService = CursorCommandService(
+    final cursorSessionOptionsService = CursorSessionOptionsService(
       catalogService: catalogService,
+      catalogTracker: catalogTracker,
       commandTracker: commandTracker,
       launchDirectory: cwd,
     );
     return CursorPlugin._(
       launchSpec: launchSpec,
       launchDirectory: cwd,
-      mapper: CursorEventMapper(launchDirectory: cwd, pluginId: pluginId),
+      mapper: CursorEventMapper(
+        launchDirectory: cwd,
+        pluginId: pluginId,
+        configurationTracker: configurationTracker,
+      ),
       processFactory: processFactory,
       catalogService: catalogService,
       catalogCommandListener: catalogCommandListener,
       catalogTracker: catalogTracker,
-      commandService: commandService,
+      cursorSessionOptionsService: cursorSessionOptionsService,
+      configurationTracker: configurationTracker,
       commandTracker: commandTracker,
+      sessionOptionsService: acpSessionOptionsService,
       sessionCleanupService: sessionCleanupService,
     );
   }
@@ -83,14 +99,17 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     required CursorCatalogService catalogService,
     required AcpCommandListener catalogCommandListener,
     required CursorCatalogTracker catalogTracker,
-    required CursorCommandService commandService,
+    required CursorSessionOptionsService cursorSessionOptionsService,
+    required AcpSessionConfigurationTracker configurationTracker,
     required super.commandTracker,
+    required super.sessionOptionsService,
     required CursorSessionCleanupService sessionCleanupService,
     super.processFactory,
   }) : _catalogService = catalogService,
        _catalogCommandListener = catalogCommandListener,
        _catalogTracker = catalogTracker,
-       _commandService = commandService,
+       _sessionOptionsService = cursorSessionOptionsService,
+       _configurationTracker = configurationTracker,
        _sessionCleanupService = sessionCleanupService,
        super(
          id: pluginId,
@@ -101,7 +120,8 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   final CursorCatalogService _catalogService;
   final AcpCommandListener _catalogCommandListener;
   final CursorCatalogTracker _catalogTracker;
-  final CursorCommandService _commandService;
+  final CursorSessionOptionsService _sessionOptionsService;
+  final AcpSessionConfigurationTracker _configurationTracker;
   final CursorSessionCleanupService _sessionCleanupService;
 
   String? _appliedModelId;
@@ -142,13 +162,15 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     required CursorCatalogCaptureResult capture,
     required String? sessionId,
   }) {
-    eventMapper.currentProviderId = _providerId;
-    eventMapper.currentModelId = _catalogTracker.currentModelId;
+    _configurationTracker.setProcessDefaults(
+      modelId: _catalogTracker.currentModelId,
+      providerId: _providerId,
+    );
     final loadedModelId = capture.loadedModelId;
     if (sessionId != null && loadedModelId != null) {
-      eventMapper.setSessionModel(
-        sessionId,
-        loadedModelId,
+      _configurationTracker.setSessionOverride(
+        sessionId: sessionId,
+        modelId: loadedModelId,
         providerId: _providerId,
       );
     }
@@ -164,7 +186,9 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   }) async {
     final requestedModel = model?.modelID;
     final useDefault = requestedModel == null || requestedModel.isEmpty;
-    final targetModel = useDefault ? eventMapper.modelForSession(sessionId) : requestedModel;
+    final targetModel = useDefault
+        ? _configurationTracker.snapshotForSession(sessionId: sessionId).modelId
+        : requestedModel;
     final modelConfigId = _catalogTracker.modelConfigId;
     if (targetModel != null &&
         targetModel.isNotEmpty &&
@@ -184,9 +208,9 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
         }
       }
       if (applied) {
-        eventMapper.setSessionModel(
-          sessionId,
-          targetModel,
+        _configurationTracker.setSessionOverride(
+          sessionId: sessionId,
+          modelId: targetModel,
           providerId: _providerId,
         );
       }
@@ -208,7 +232,8 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
       }
     }
 
-    final thoughtLevelModelId = eventMapper.modelForSession(sessionId) ?? _catalogTracker.currentModelId ?? "";
+    final thoughtLevelModelId =
+        _configurationTracker.snapshotForSession(sessionId: sessionId).modelId ?? _catalogTracker.currentModelId ?? "";
     final thoughtLevel = _catalogTracker.thoughtLevelForModel(
       modelId: thoughtLevelModelId,
     );
@@ -273,15 +298,9 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     _appliedThoughtLevelId = null;
   }
 
-  Future<void> _ensureCatalog({required String projectId}) {
-    return _catalogService.ensureCatalog(
-      scope: normalizeProjectDirectory(directory: projectId),
-    );
-  }
-
   Future<void> warmCatalog() async {
     try {
-      await _ensureCatalog(projectId: launchDirectory);
+      await _sessionOptionsService.warmCatalog();
     } on Object catch (error, stack) {
       Log.w(
         "[cursor] warmCatalog failed; will populate lazily",
@@ -293,52 +312,23 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) =>
-      _commandService.listCommands(projectId: projectId);
+      _sessionOptionsService.listCommands(projectId: projectId);
 
   @override
-  String commandForDispatch({required String command}) =>
-      _commandService.backendCommandFor(command: command);
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => _sessionOptionsService.getSessionOptions(
+    projectId: projectId,
+    discoveryMode: discoveryMode,
+  );
 
-  List<PluginAgent> _modeAgents() {
-    final modes = _catalogTracker.modes;
-    if (modes.isEmpty) {
-      return [
-        const PluginAgent(
-          name: "Cursor",
-          description: "Cursor CLI session",
-          model: null,
-          mode: PluginAgentMode.primary,
-          hidden: false,
-        ),
-      ];
-    }
-
-    final ordered = modes.toList(growable: true);
-    final defaultMode = _catalogTracker.defaultModeId;
-    if (defaultMode != null) {
-      final defaultIndex = ordered.indexWhere(
-        (mode) => mode.value == defaultMode,
-      );
-      if (defaultIndex > 0) {
-        ordered.insert(0, ordered.removeAt(defaultIndex));
-      }
-    }
-    return [
-      for (final mode in ordered)
-        PluginAgent(
-          name: mode.name,
-          description: mode.description,
-          model: null,
-          mode: PluginAgentMode.primary,
-          hidden: false,
-        ),
-    ];
-  }
+  @override
+  String commandForDispatch({required String command}) => _sessionOptionsService.backendCommandFor(command: command);
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    await _ensureCatalog(projectId: projectId);
-    return _modeAgents();
+    return _sessionOptionsService.listAgents(projectId: projectId);
   }
 
   @override
@@ -350,30 +340,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    await _ensureCatalog(projectId: projectId);
-    final models = _catalogTracker.models;
-    if (models.isEmpty) return const PluginProvidersResult(providers: []);
-    return PluginProvidersResult(
-      providers: [
-        PluginProvider.custom(
-          id: _providerId,
-          name: "Cursor",
-          authType: PluginProviderAuthType.unknown,
-          models: [
-            for (final model in models)
-              PluginModel(
-                id: model.value,
-                name: model.name,
-                variants: _catalogTracker.variantsForModel(modelId: model.value),
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ],
-          defaultModelID: _catalogTracker.currentModelId ?? _catalogTracker.firstModelId,
-        ),
-      ],
-    );
+    return _sessionOptionsService.listProviders(projectId: projectId);
   }
 
   @override

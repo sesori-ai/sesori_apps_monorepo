@@ -308,5 +308,11 @@ class _DerivedPermissionPlugin implements BridgeDerivedProjectsPluginApi {
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => const [];
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

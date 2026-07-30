@@ -37,6 +37,36 @@ void main() {
     expect(PluginListResponse.fromJson(json).bridgeId, isNull);
   });
 
+  test("plugin discovery defaults an omitted session-options capability to false", () {
+    final response = PluginListResponse.fromJson(const {
+      "plugins": <Object>[],
+      "bridgeId": null,
+    });
+
+    expect(response.supportsSessionOptions, isFalse);
+  });
+
+  test("plugin discovery preserves an explicit false session-options capability", () {
+    final response = PluginListResponse.fromJson(const {
+      "plugins": <Object>[],
+      "bridgeId": null,
+      "supportsSessionOptions": false,
+    });
+
+    expect(response.supportsSessionOptions, isFalse);
+  });
+
+  test("plugin discovery preserves an explicit true session-options capability", () {
+    final response = PluginListResponse.fromJson(const {
+      "plugins": <Object>[],
+      "bridgeId": null,
+      "supportsSessionOptions": true,
+    });
+
+    expect(response.supportsSessionOptions, isTrue);
+    expect(response.toJson()["supportsSessionOptions"], isTrue);
+  });
+
   test("plugin discovery maps a future lifecycle state to unavailable", () {
     final metadata = PluginMetadata.fromJson(const {
       "id": "future-plugin",

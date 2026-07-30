@@ -588,6 +588,15 @@ class CodexPlugin implements CodexManagedApi {
   }
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) async {
+    await _connectedClient();
+    return _sessionService.getSessionOptions(projectId: projectId);
+  }
+
+  @override
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,

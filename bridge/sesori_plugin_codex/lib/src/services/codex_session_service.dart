@@ -74,6 +74,12 @@ class CodexSessionService {
   );
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    return (await _resolveCommands(projectId: projectId)).commands;
+  }
+
+  Future<({List<PluginCommand> commands, bool usedFallback})> _resolveCommands({
+    required String? projectId,
+  }) async {
     final target = normalizeProjectDirectory(directory: projectId ?? _launchDirectory);
     final List<PluginCommand> commands;
     try {
@@ -84,12 +90,12 @@ class CodexSessionService {
         error,
         stackTrace,
       );
-      return const [_compactionCommand];
+      return (commands: const [_compactionCommand], usedFallback: true);
     }
     if (commands.any((command) => command.name == compactionCommandName)) {
-      return commands;
+      return (commands: commands, usedFallback: false);
     }
-    return [...commands, _compactionCommand];
+    return (commands: [...commands, _compactionCommand], usedFallback: false);
   }
 
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
@@ -104,21 +110,19 @@ class CodexSessionService {
     return options.providers;
   }
 
-  Future<
-    ({
-      List<PluginAgent> agents,
-      List<PluginCommand> commands,
-      PluginProvidersResult providers,
-    })
-  >
-  getSessionOptions({required String projectId}) async {
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({required String projectId}) async {
     final modelOptionsFuture = _resolveModelOptions(projectId: projectId);
-    final commandsFuture = getCommands(projectId: projectId);
-    final modelOptions = await modelOptionsFuture;
-    return (
-      agents: modelOptions.agents,
-      commands: await commandsFuture,
-      providers: modelOptions.providers,
+    final commandsFuture = _resolveCommands(projectId: projectId);
+    final (modelOptions, commands) = await (modelOptionsFuture, commandsFuture).wait;
+    return PluginSessionOptionsDiscoveryResult.observed(
+      options: PluginSessionOptions(
+        agents: modelOptions.agents,
+        providers: modelOptions.providers,
+        commands: commands.commands,
+        completeness: modelOptions.usedFallback || commands.usedFallback
+            ? PluginSessionOptionsCompleteness.partial
+            : PluginSessionOptionsCompleteness.complete,
+      ),
     );
   }
 
@@ -413,13 +417,15 @@ class CodexSessionService {
     ({
       List<PluginAgent> agents,
       PluginProvidersResult providers,
+      bool usedFallback,
     })
   >
   _resolveModelOptions({required String projectId}) async {
     final (:modelID, :providerID) = resolveModelDefaults(
       projectId: projectId,
     );
-    final catalog = await _listModels();
+    final catalogResult = await _listModels();
+    final catalog = catalogResult.catalog;
     final models = catalog.models.isEmpty
         ? [
             if (modelID != null)
@@ -470,23 +476,30 @@ class CodexSessionService {
                 ),
               ],
       ),
+      usedFallback: catalogResult.usedFallback || (catalog.models.isEmpty && modelID != null),
     );
   }
 
-  Future<CodexModelCatalog> _listModels() async {
+  Future<({CodexModelCatalog catalog, bool usedFallback})> _listModels() async {
     final repository = _modelRepository;
     if (repository == null) {
-      return (defaultModelID: null, models: const <PluginModel>[]);
+      return (
+        catalog: (defaultModelID: null, models: const <PluginModel>[]),
+        usedFallback: true,
+      );
     }
     try {
-      return await repository.listModels();
+      return (catalog: await repository.listModels(), usedFallback: false);
     } on Object catch (error, stackTrace) {
       Log.w(
         "[codex] model discovery failed; using configured fallback",
         error,
         stackTrace,
       );
-      return (defaultModelID: null, models: const <PluginModel>[]);
+      return (
+        catalog: (defaultModelID: null, models: const <PluginModel>[]),
+        usedFallback: true,
+      );
     }
   }
 

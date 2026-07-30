@@ -16,13 +16,26 @@ void main() {
 
     setUp(() {
       fake = FakeAcpProcess();
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       plugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
-        commandTracker: AcpCommandTracker(),
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          agentId: "acp",
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: (_) async => fake,
       );
       emitted.clear();
@@ -119,6 +132,10 @@ void main() {
       // Command metadata is current even during a history replay, so the
       // client receives the stale-session signal and re-fetches it.
       expect(emitted.whereType<BridgeSseSessionsUpdated>(), hasLength(1));
+      expect(
+        emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
+        "old-session",
+      );
 
       // Complete the first turn so the follow-up prompt dispatches (turns on
       // one session are serialized).

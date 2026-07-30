@@ -4,7 +4,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// Cursor's event mapper: the standard ACP `session/update` handling from
 /// [AcpEventMapper] plus Cursor's `cursor/*` notification extensions.
 class CursorEventMapper extends AcpEventMapper {
-  CursorEventMapper({required super.launchDirectory, required super.pluginId}) : super(agentId: pluginId);
+  CursorEventMapper({
+    required super.launchDirectory,
+    required super.pluginId,
+    required super.configurationTracker,
+  }) : super(agentId: pluginId);
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {

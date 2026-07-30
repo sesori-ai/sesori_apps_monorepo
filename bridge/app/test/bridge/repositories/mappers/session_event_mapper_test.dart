@@ -231,12 +231,18 @@ void main() {
     test("preserves nullable session references and non-session events", () {
       const error = BridgeSseSessionError(sessionID: null);
       const connected = BridgeSseServerConnected();
+      const optionsChanged = BridgeSseSessionOptionsChanged(sessionID: "backend-session");
 
       expect(mapper.backendSessionIds(event: error), isEmpty);
       final mappedError = mapper.map(event: error, sessionIdsByBackendId: const {});
       expect(mappedError, isA<BridgeSseSessionError>());
       expect((mappedError! as BridgeSseSessionError).sessionID, isNull);
       expect(mapper.map(event: connected, sessionIdsByBackendId: const {}), same(connected));
+      expect(mapper.backendSessionIds(event: optionsChanged), isEmpty);
+      expect(
+        mapper.map(event: optionsChanged, sessionIdsByBackendId: const {}),
+        same(optionsChanged),
+      );
     });
   });
 }

@@ -35,12 +35,14 @@ void main() {
                   id: "ready",
                   displayName: "Ready",
                   residencyPolicy: PluginResidencyPolicy.transient,
+                  sessionOptionsScope: PluginSessionOptionsScope.project,
                   managementCapabilities: defaultManagementCapabilities,
                 ),
                 (
                   id: "blocked",
                   displayName: "Blocked",
                   residencyPolicy: PluginResidencyPolicy.transient,
+                  sessionOptionsScope: PluginSessionOptionsScope.project,
                   managementCapabilities: defaultManagementCapabilities,
                 ),
               ],
@@ -110,6 +112,12 @@ class _ReadyPluginApi extends NativeProjectsPluginApi {
 
   @override
   Future<void> dispose() async {}
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -21,12 +21,14 @@ typedef PluginCompositionView = ({
   List<String> eligiblePluginIds,
   String? defaultPluginId,
   Map<String, PluginProjectOwnership> projectOwnershipById,
+  Map<String, PluginSessionOptionsScope> sessionOptionsScopeById,
 });
 
 typedef RegisteredPluginMetadata = ({
   String id,
   String displayName,
   PluginResidencyPolicy residencyPolicy,
+  PluginSessionOptionsScope sessionOptionsScope,
   Set<PluginControlCapability> managementCapabilities,
 });
 
@@ -64,6 +66,7 @@ class PluginLifecycleService {
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   Map<String, PluginResidencyPolicy>? _residencyPolicyById;
+  late Map<String, PluginSessionOptionsScope> _sessionOptionsScopeById;
   Map<String, Set<PluginControlCapability>>? _managementCapabilitiesById;
   List<String>? _eligiblePluginIds;
   Set<String> _startAllowedPluginIds = {};
@@ -97,6 +100,9 @@ class PluginLifecycleService {
     _knownPluginIds = Set<String>.unmodifiable(ids);
     _residencyPolicyById = Map<String, PluginResidencyPolicy>.unmodifiable({
       for (final plugin in plugins) plugin.id: plugin.residencyPolicy,
+    });
+    _sessionOptionsScopeById = Map<String, PluginSessionOptionsScope>.unmodifiable({
+      for (final plugin in plugins) plugin.id: plugin.sessionOptionsScope,
     });
     _managementCapabilitiesById = Map<String, Set<PluginControlCapability>>.unmodifiable({
       for (final plugin in plugins) plugin.id: Set<PluginControlCapability>.unmodifiable(plugin.managementCapabilities),
@@ -167,6 +173,7 @@ class PluginLifecycleService {
       projectOwnershipById: Map<String, PluginProjectOwnership>.unmodifiable({
         for (final snapshot in _lifecycleRepository.snapshot) snapshot.pluginId: snapshot.projectOwnership,
       }),
+      sessionOptionsScopeById: _sessionOptionsScopeById,
     );
   }
 

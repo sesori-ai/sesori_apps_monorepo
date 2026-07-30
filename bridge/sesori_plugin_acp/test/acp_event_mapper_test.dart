@@ -8,11 +8,17 @@ import "package:test/test.dart";
 void main() {
   group("AcpEventMapper", () {
     late AcpEventMapper mapper;
+    late AcpSessionConfigurationTracker configurationTracker;
 
     setUp(() {
-      mapper = AcpEventMapper(launchDirectory: "/repo", agentId: "cursor", pluginId: "cursor")
-        ..currentModelId = "gpt-5.4"
-        ..currentProviderId = "cursor";
+      configurationTracker = AcpSessionConfigurationTracker()
+        ..setProcessDefaults(modelId: "gpt-5.4", providerId: "cursor");
+      mapper = AcpEventMapper(
+        launchDirectory: "/repo",
+        agentId: "cursor",
+        pluginId: "cursor",
+        configurationTracker: configurationTracker,
+      );
     });
 
     AcpNotification update(Map<String, dynamic> body) => AcpNotification(
@@ -469,11 +475,16 @@ void main() {
         isA<BridgeSseTodoUpdated>(),
       );
       mapper.setSessionProject("s1", "/repo/other");
+      final events = mapper.map(update({"sessionUpdate": "available_commands_update"}));
       expect(
-        mapper.map(update({"sessionUpdate": "available_commands_update"})).single,
+        events.whereType<BridgeSseSessionsUpdated>().single,
         isA<BridgeSseSessionsUpdated>()
             .having((event) => event.sessionID, "sessionID", "s1")
             .having((event) => event.projectID, "projectID", "/repo/other"),
+      );
+      expect(
+        events.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
+        "s1",
       );
     });
 
@@ -713,9 +724,13 @@ void main() {
     });
 
     test("a per-session model overrides the global stamp", () {
-      mapper
-        ..currentModelId = "composer-2.5"
-        ..setSessionModel("s1", "claude-opus-4-8", providerId: "cursor");
+      configurationTracker
+        ..setProcessDefaults(modelId: "composer-2.5", providerId: "cursor")
+        ..setSessionOverride(
+          sessionId: "s1",
+          modelId: "claude-opus-4-8",
+          providerId: "cursor",
+        );
       mapper.beginTurn("s1");
       final events = mapper.map(update({
         "sessionUpdate": "agent_message_chunk",
@@ -739,11 +754,12 @@ void main() {
 
   group("AcpEventMapper halt notices", () {
     late _HaltMapper mapper;
+    late AcpSessionConfigurationTracker configurationTracker;
 
     setUp(() {
-      mapper = _HaltMapper()
-        ..currentModelId = "claude-fable-5"
-        ..currentProviderId = "cursor";
+      configurationTracker = AcpSessionConfigurationTracker()
+        ..setProcessDefaults(modelId: "claude-fable-5", providerId: "cursor");
+      mapper = _HaltMapper(configurationTracker: configurationTracker);
     });
 
     AcpNotification update(Map<String, dynamic> body) => AcpNotification(
@@ -839,7 +855,8 @@ void main() {
 /// Test double: classifies any message whose trimmed text starts with "HALT:"
 /// as a halt notice, using the trimmed text as the shown message.
 class _HaltMapper extends AcpEventMapper {
-  _HaltMapper() : super(launchDirectory: "/repo", agentId: "cursor", pluginId: "cursor");
+  _HaltMapper({required super.configurationTracker})
+    : super(launchDirectory: "/repo", agentId: "cursor", pluginId: "cursor");
 
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) {

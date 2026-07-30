@@ -28,6 +28,13 @@ void main() {
       }
     });
 
+    test("does not expose the internal session-options change event to clients", () {
+      expect(
+        mapper.map(const BridgeSseSessionOptionsChanged(sessionID: "backend-session")),
+        isNull,
+      );
+    });
+
     test("maps session.created with provided enriched payload", () {
       final result = mapper.map(
         const BridgeSseSessionCreated(

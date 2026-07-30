@@ -771,6 +771,12 @@ class _ThrowingBenchmarkPlugin with _PluginCounters implements NativeProjectsPlu
   }
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) {
     recordCall(rows: 0);
     throw StateError("catalog benchmark unexpectedly called ${invocation.memberName} on plugin $id");

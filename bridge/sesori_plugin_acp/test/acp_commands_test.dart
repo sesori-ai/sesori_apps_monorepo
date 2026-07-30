@@ -15,19 +15,21 @@ void main() {
 
     test("parses advertised commands fail-soft; last update wins", () {
       final tracker = AcpCommandTracker()
-        ..consume(update({
-          "sessionUpdate": "available_commands_update",
-          "availableCommands": [
-            {
-              "name": "create_plan",
-              "description": "Plan before coding",
-              "input": {"hint": "what to plan"},
-            },
-            {"name": "compress", "description": "Compact the thread"},
-            {"description": "malformed: no name"},
-            "not-a-map",
-          ],
-        }));
+        ..consume(
+          update({
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {
+                "name": "create_plan",
+                "description": "Plan before coding",
+                "input": {"hint": "what to plan"},
+              },
+              {"name": "compress", "description": "Compact the thread"},
+              {"description": "malformed: no name"},
+              "not-a-map",
+            ],
+          }),
+        );
 
       final commands = tracker.commands;
       expect(commands, hasLength(2));
@@ -38,11 +40,39 @@ void main() {
       expect(commands[1].name, "compress");
       expect(commands[1].hints, isEmpty);
 
-      tracker.consume(update({
-        "sessionUpdate": "available_commands_update",
-        "availableCommands": const <Object?>[],
-      }));
+      tracker.consume(
+        update({
+          "sessionUpdate": "available_commands_update",
+          "availableCommands": const <Object?>[],
+        }),
+      );
       expect(tracker.commands, isEmpty);
+      expect(tracker.hasSnapshot, isTrue);
+    });
+
+    test("ignores malformed command snapshots without replacing the last good value", () {
+      final emptyTracker = AcpCommandTracker()
+        ..consume(
+          update({
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": {"name": "not-a-list"},
+          }),
+        );
+      expect(emptyTracker.commands, isEmpty);
+      expect(emptyTracker.hasSnapshot, isFalse);
+
+      final populatedTracker = AcpCommandTracker()
+        ..consume(
+          update({
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "review"},
+            ],
+          }),
+        )
+        ..consume(update({"sessionUpdate": "available_commands_update"}));
+      expect(populatedTracker.commands.single.name, "review");
+      expect(populatedTracker.hasSnapshot, isTrue);
     });
 
     test("ignores unrelated notifications", () {
@@ -56,20 +86,35 @@ void main() {
   group("AcpPlugin.getCommands", () {
     late FakeAcpProcess fake;
     late AcpPlugin plugin;
+    late List<BridgeSseEvent> emitted;
     const cwd = "/repo";
 
     setUp(() {
       fake = FakeAcpProcess();
+      emitted = <BridgeSseEvent>[];
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       plugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
-        commandTracker: AcpCommandTracker(),
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          agentId: "acp",
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: (_) async => fake,
       );
-      plugin.events.listen((_) {});
+      plugin.events.listen(emitted.add);
     });
 
     tearDown(() async {
@@ -128,6 +173,17 @@ void main() {
       expect(commands.single.name, "create_plan");
       expect(commands.single.description, "Plan before coding");
       expect(commands.single.hints, ["what to plan"]);
+      final discovery = await plugin.getSessionOptions(
+        projectId: cwd,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+      final options = (discovery as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+      expect(options.commands.single.name, "create_plan");
+      expect(
+        emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
+        "s1",
+      );
     });
 
     test("clears commands when the ACP process connection resets", () async {
@@ -171,13 +227,26 @@ void main() {
     final replay = FakeAcpProcess();
     final processes = [live, replay];
     final emitted = <BridgeSseEvent>[];
+    final configurationTracker = AcpSessionConfigurationTracker();
+    final commandTracker = AcpCommandTracker();
     final plugin = AcpPlugin(
       id: "acp",
       agentDisplayName: "ACP",
       launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
       launchDirectory: "/repo",
-      eventMapper: AcpEventMapper(launchDirectory: "/repo", agentId: "acp", pluginId: "acp"),
-      commandTracker: AcpCommandTracker(),
+      eventMapper: AcpEventMapper(
+        launchDirectory: "/repo",
+        agentId: "acp",
+        pluginId: "acp",
+        configurationTracker: configurationTracker,
+      ),
+      commandTracker: commandTracker,
+      sessionOptionsService: AcpSessionOptionsService(
+        configurationTracker: configurationTracker,
+        commandTracker: commandTracker,
+        pluginId: "acp",
+        agentDisplayName: "ACP",
+      ),
       processFactory: (_) async => processes.removeAt(0),
     );
     plugin.events.listen(emitted.add);
@@ -215,7 +284,11 @@ void main() {
         model: null,
       );
       final sessionNew = await waitForFrame(live, "session/new");
-      live.emit({"jsonrpc": "2.0", "id": sessionNew["id"], "result": {"sessionId": "s1"}});
+      live.emit({
+        "jsonrpc": "2.0",
+        "id": sessionNew["id"],
+        "result": {"sessionId": "s1"},
+      });
       await creating;
 
       final messages = plugin.getSessionMessages("s1");
@@ -262,6 +335,10 @@ void main() {
       expect((await plugin.getCommands(projectId: "/repo")).single.name, "from_replay");
       expect(
         emitted.whereType<BridgeSseSessionsUpdated>().single.sessionID,
+        "s1",
+      );
+      expect(
+        emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "s1",
       );
     } finally {
