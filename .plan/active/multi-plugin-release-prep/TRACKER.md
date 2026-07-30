@@ -169,7 +169,12 @@
   revalidated authoritative paths before deletion and commit, queued reuse after
   stale-generation work, kept malformed-cache logs payload-independent, and
   named test-helper parameters. A second review round revalidates retained data
-  after capture failure and revision-fences malformed-row recovery. All 32
+  after capture failure and revision-fences malformed-row recovery. A third
+  review round rechecks project paths before cache-only responses, revalidates
+  retained data after partial capture, preserves plugin-scoped cache across
+  project moves, avoids unfenced deletion without an observed revision, and
+  retains privacy-safe typed causes for caught explicit failures. All 37 focused
   persistence/repository/service tests and bridge-app fatal analysis passed with
-  `git diff --check`. Aristotle's final review approved the revised implementation
-  architecture without findings.
+  `git diff --check`. Aristotle's second/final review approved the preceding
+  revised architecture without findings; the later feedback fixes were not
+  re-reviewed because implementation review is capped at two passes.

@@ -24,12 +24,37 @@ final class SessionOptionsProjectNotFound extends SessionOptionsOutcome {
   const SessionOptionsProjectNotFound();
 }
 
+sealed class SessionOptionsRefreshFailure {
+  const SessionOptionsRefreshFailure();
+}
+
+final class SessionOptionsKnownRefreshFailure extends SessionOptionsRefreshFailure {
+  const SessionOptionsKnownRefreshFailure();
+}
+
+final class SessionOptionsCaughtRefreshFailure extends SessionOptionsRefreshFailure {
+  const SessionOptionsCaughtRefreshFailure({
+    required this.cause,
+    required this.causeStackTrace,
+  });
+
+  final Object cause;
+  final StackTrace causeStackTrace;
+
+  @override
+  String toString() => "SessionOptionsCaughtRefreshFailure";
+}
+
 final class SessionOptionsRefreshFailedRetained extends SessionOptionsOutcome {
-  const SessionOptionsRefreshFailedRetained();
+  const SessionOptionsRefreshFailedRetained({required this.failure});
+
+  final SessionOptionsRefreshFailure failure;
 }
 
 final class SessionOptionsRefreshFailedUnavailable extends SessionOptionsOutcome {
-  const SessionOptionsRefreshFailedUnavailable();
+  const SessionOptionsRefreshFailedUnavailable({required this.failure});
+
+  final SessionOptionsRefreshFailure failure;
 }
 
 final class SessionOptionsAutomaticNoOp extends SessionOptionsOutcome {
@@ -64,7 +89,11 @@ class SessionOptionsService {
     final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
     if (resolved == null) return const SessionOptionsProjectNotFound();
     final cached = await _readValid(key: resolved.key);
-    return cached == null ? const SessionOptionsCacheUnavailable() : SessionOptionsAvailable(response: cached.response);
+    if (cached == null) return const SessionOptionsCacheUnavailable();
+    if (resolved.key is ProjectSessionOptionsCacheKey && !await _isCurrentResolution(resolved: resolved)) {
+      return const SessionOptionsCacheUnavailable();
+    }
+    return SessionOptionsAvailable(response: cached.response);
   }
 
   Future<SessionOptionsOutcome> refreshExplicit({
@@ -160,7 +189,6 @@ class SessionOptionsService {
       }
     }
 
-    final retained = await _readValid(key: resolved.key);
     final SessionOptionsCaptureResult capture;
     try {
       capture = await _repository.capture(
@@ -202,6 +230,7 @@ class SessionOptionsService {
       return _movedProjectOutcome(automatic: automatic);
     }
 
+    final retained = await _readValid(key: resolved.key);
     if (!_canReplace(observation: capture, retained: retained)) {
       return SessionOptionsAvailable(response: retained!.response);
     }
@@ -265,7 +294,9 @@ class SessionOptionsService {
           "Session options cache commit conflicted twice for plugin ${resolved.key.pluginId}; retaining newest cache",
         );
         return latest == null
-            ? const SessionOptionsRefreshFailedUnavailable()
+            ? const SessionOptionsRefreshFailedUnavailable(
+                failure: SessionOptionsKnownRefreshFailure(),
+              )
             : SessionOptionsAvailable(response: latest.response);
     }
   }
@@ -328,6 +359,19 @@ class SessionOptionsService {
     required Object? error,
     required StackTrace? stackTrace,
   }) {
+    final SessionOptionsRefreshFailure failure;
+    if (error == null) {
+      failure = const SessionOptionsKnownRefreshFailure();
+    } else {
+      final caughtStackTrace = stackTrace;
+      if (caughtStackTrace == null) {
+        throw StateError("caught refresh failure requires a stack trace");
+      }
+      failure = SessionOptionsCaughtRefreshFailure(
+        cause: error,
+        causeStackTrace: caughtStackTrace,
+      );
+    }
     if (automatic) {
       if (error == null) {
         Log.w(message);
@@ -336,8 +380,8 @@ class SessionOptionsService {
       }
     }
     return retained == null
-        ? const SessionOptionsRefreshFailedUnavailable()
-        : const SessionOptionsRefreshFailedRetained();
+        ? SessionOptionsRefreshFailedUnavailable(failure: failure)
+        : SessionOptionsRefreshFailedRetained(failure: failure);
   }
 
   Future<SessionOptionsOutcome> _captureFailure({
@@ -366,12 +410,17 @@ class SessionOptionsService {
   }
 
   Future<bool> _isCurrentResolution({required _ResolvedSessionOptions resolved}) async {
+    if (resolved.key is PluginSessionOptionsCacheKey) return true;
     final currentPath = await _repository.resolveProjectPath(projectId: resolved.projectId);
     return currentPath == resolved.projectPath;
   }
 
   SessionOptionsOutcome _movedProjectOutcome({required bool automatic}) {
-    return automatic ? const SessionOptionsAutomaticNoOp() : const SessionOptionsRefreshFailedUnavailable();
+    return automatic
+        ? const SessionOptionsAutomaticNoOp()
+        : const SessionOptionsRefreshFailedUnavailable(
+            failure: SessionOptionsKnownRefreshFailure(),
+          );
   }
 
   Future<SessionOptionsCacheEntry?> _readValid({required SessionOptionsCacheKey key}) {
@@ -386,12 +435,15 @@ class SessionOptionsService {
     try {
       entry = await _repository.read(key: key);
     } on SessionOptionsCacheDecodingException catch (error) {
-      Log.w("Recovering from undecodable session options cache for plugin ${key.pluginId}");
       final revision = error.revision;
       if (revision == null) {
-        await _repository.delete(key: key);
+        if (retryAfterDeleteConflict) {
+          return _readValidAttempt(key: key, retryAfterDeleteConflict: false);
+        }
+        Log.w("Unable to recover undecodable session options cache for plugin ${key.pluginId}");
         return null;
       }
+      Log.w("Recovering from undecodable session options cache for plugin ${key.pluginId}");
       final deleted = await _repository.deleteIfRevision(
         key: key,
         expectedRevision: revision,

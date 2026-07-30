@@ -37,6 +37,32 @@ void main() {
       expect(repository.runtimeChecks, 0);
     });
 
+    test("cache-only load does not expose a project row after its path moves", () async {
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/old",
+      );
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/old"
+        ..put(
+          _entry(
+            key: key,
+            response: _response(marker: "old-path"),
+            capturedAt: now,
+          ),
+        );
+      repository.readHandler = (_) async {
+        repository.projectPaths["project-1"] = "/projects/new";
+        return repository.stored(key);
+      };
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsCacheUnavailable>());
+    });
+
     test("project absence is typed before cache access", () async {
       final repository = _FakeSessionOptionsRepository();
       final service = _service(repository: repository, now: now);
@@ -195,6 +221,39 @@ void main() {
       expect(repository.conditionalDeleteCalls.single.expectedRevision, 1);
       expect(repository.stored(key), fresh);
     });
+
+    test("decode failure without a revision preserves a concurrently replaced row", () async {
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      final fresh = _entry(
+        key: key,
+        response: _response(marker: "fresh"),
+        capturedAt: now,
+        revision: 2,
+      );
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.readHandler = (_) async {
+        repository
+          ..put(fresh)
+          ..readHandler = null;
+        throw SessionOptionsCacheDecodingException(
+          cause: ArgumentError("unknown completeness"),
+          causeStackTrace: StackTrace.current,
+          revision: null,
+        );
+      };
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "fresh"));
+      expect(repository.deletedKeys, isEmpty);
+      expect(repository.stored(key), fresh);
+    });
   });
 
   group("SessionOptionsService refresh policy", () {
@@ -228,10 +287,32 @@ void main() {
       );
     });
 
-    test("capture failure revalidates retention before retaining the cached response", () async {
+    test("explicit thrown capture retains a privacy-safe typed cause", () async {
+      final cause = StateError("private capture details");
+      final causeStackTrace = StackTrace.current;
       final repository = _FakeSessionOptionsRepository()
         ..projectPaths["project-1"] = "/projects/one"
-        ..captureResult = const SessionOptionsCaptureFailed();
+        ..captureHandler = (_) => Future.error(cause, causeStackTrace);
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
+      final failure = (outcome as SessionOptionsRefreshFailedUnavailable).failure;
+      expect(failure, isA<SessionOptionsCaughtRefreshFailure>());
+      final caught = failure as SessionOptionsCaughtRefreshFailure;
+      expect(caught.cause, same(cause));
+      expect(caught.causeStackTrace, same(causeStackTrace));
+      expect(caught.toString(), isNot(contains("private capture details")));
+    });
+
+    test("capture failure revalidates retention before retaining the cached response", () async {
+      final clock = _MutableClock(nowValue: now);
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.captureHandler = (_) async {
+        clock.nowValue = now.add(const Duration(seconds: 1));
+        return const SessionOptionsCaptureFailed();
+      };
       const key = SessionOptionsCacheKey.project(
         pluginId: "plugin-1",
         projectId: "project-1",
@@ -247,7 +328,7 @@ void main() {
       final service = SessionOptionsService(
         repository: repository,
         pluginScopes: const {"plugin-1": PluginSessionOptionsScope.project},
-        clock: _AdvancingClock(now: now),
+        clock: clock,
         retention: Duration.zero,
       );
 
@@ -255,6 +336,33 @@ void main() {
 
       expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
       expect(repository.deletedKeys, [key]);
+    });
+
+    test("failed plugin-scoped refresh retains cache when its triggering project moves", () async {
+      const key = SessionOptionsCacheKey.plugin(pluginId: "plugin-1");
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/old"
+        ..put(
+          _entry(
+            key: key,
+            response: _response(marker: "plugin-cache"),
+            capturedAt: now,
+          ),
+        );
+      repository.captureHandler = (_) async {
+        repository.projectPaths["project-1"] = "/projects/new";
+        return const SessionOptionsCaptureFailed();
+      };
+      final service = _service(
+        repository: repository,
+        now: now,
+        scopes: const {"plugin-1": PluginSessionOptionsScope.plugin},
+      );
+
+      final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsRefreshFailedRetained>());
+      expect(repository.stored(key)!.response, _response(marker: "plugin-cache"));
     });
 
     test("path-invalid and expired rows are deleted before failed capture and cannot be retained", () async {
@@ -347,6 +455,46 @@ void main() {
         );
         expect(repository.commitCalls, isEmpty);
       }
+    });
+
+    test("partial observation seeds after the retained row expires during capture", () async {
+      final clock = _MutableClock(nowValue: now);
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      repository
+        ..put(
+          _entry(
+            key: key,
+            response: _response(marker: "retained"),
+            capturedAt: now,
+            revision: 1,
+          ),
+        )
+        ..captureHandler = (_) async {
+          clock.nowValue = now.add(const Duration(seconds: 1));
+          return _observed(
+            marker: "partial",
+            completeness: PluginSessionOptionsCompleteness.partial,
+            generation: 7,
+          );
+        };
+      final service = SessionOptionsService(
+        repository: repository,
+        pluginScopes: const {"plugin-1": PluginSessionOptionsScope.project},
+        clock: clock,
+        retention: Duration.zero,
+      );
+
+      final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "partial"));
+      expect(repository.commitCalls.single.expectedRevision, isNull);
+      expect(repository.stored(key)!.response, _response(marker: "partial"));
     });
 
     test("complete observations replace both partial and complete rows", () async {
@@ -828,6 +976,15 @@ class _FixedClock extends ServerClock {
   const _FixedClock({required this.nowValue});
 
   final DateTime nowValue;
+
+  @override
+  DateTime now() => nowValue;
+}
+
+class _MutableClock extends ServerClock {
+  _MutableClock({required this.nowValue});
+
+  DateTime nowValue;
 
   @override
   DateTime now() => nowValue;
