@@ -109,13 +109,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
         if (mounted) {
           context.read<LoginCubit>().onAppleSignInCancelled(attempt: loginAttempt);
         }
-        // Cancelling the native sheet emits no cubit state, so the pending
-        // marker must be cleared here.
-        if (mounted) {
-          setState(() {
-            _pendingOption = null;
-          });
-        }
         return;
       }
       if (mounted) {

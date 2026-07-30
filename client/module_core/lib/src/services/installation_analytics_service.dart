@@ -21,11 +21,19 @@ class InstallationAnalyticsService {
        _repository = repository;
 
   Future<AnalyticsDeliveryResult> loginAttemptStarted({required AuthProvider provider}) {
-    return _log(event: InstallationAnalyticsEvent.loginAttemptStarted(provider: _analyticsProvider(provider)));
+    return _log(
+      event: InstallationAnalyticsEvent.loginAttemptStarted(
+        provider: _analyticsProvider(provider: provider),
+      ),
+    );
   }
 
   Future<AnalyticsDeliveryResult> loginAttemptCompleted({required AuthProvider provider}) {
-    return _log(event: InstallationAnalyticsEvent.loginAttemptCompleted(provider: _analyticsProvider(provider)));
+    return _log(
+      event: InstallationAnalyticsEvent.loginAttemptCompleted(
+        provider: _analyticsProvider(provider: provider),
+      ),
+    );
   }
 
   Future<AnalyticsDeliveryResult> loginAttemptFailed({
@@ -34,20 +42,20 @@ class InstallationAnalyticsService {
   }) {
     return _log(
       event: InstallationAnalyticsEvent.loginAttemptFailed(
-        provider: _analyticsProvider(provider),
-        failureKind: _analyticsFailureKind(cause),
+        provider: _analyticsProvider(provider: provider),
+        failureKind: _analyticsFailureKind(cause: cause),
       ),
     );
   }
 
-  AnalyticsLoginProvider _analyticsProvider(AuthProvider provider) => switch (provider) {
+  AnalyticsLoginProvider _analyticsProvider({required AuthProvider provider}) => switch (provider) {
     GitHubAuthProvider() => AnalyticsLoginProvider.github,
     GoogleAuthProvider() => AnalyticsLoginProvider.google,
     AppleAuthProvider() => AnalyticsLoginProvider.apple,
     EmailAuthProvider() => AnalyticsLoginProvider.email,
   };
 
-  AnalyticsLoginFailureKind _analyticsFailureKind(LoginAttemptFailureCause cause) => switch (cause) {
+  AnalyticsLoginFailureKind _analyticsFailureKind({required LoginAttemptFailureCause cause}) => switch (cause) {
     LoginAttemptFailureCause.authentication => AnalyticsLoginFailureKind.authentication,
     LoginAttemptFailureCause.launch => AnalyticsLoginFailureKind.launch,
     LoginAttemptFailureCause.cancelled => AnalyticsLoginFailureKind.cancelled,
