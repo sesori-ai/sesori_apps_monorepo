@@ -949,6 +949,41 @@ void main() {
     expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
   });
 
+  test("prepareForLogout retries a failed local read before pending-disable reconciliation", () async {
+    createService();
+    preferenceRepository.throwOnLoad = true;
+    await service.start();
+    await service.markPostSplashReady();
+    final pending = LocalProductAnalyticsPendingDisable(
+      userId: _userA.id,
+      revision: 1,
+      userKey: _userKeyA,
+      operationId: _operationId,
+    );
+    preferenceRepository
+      ..throwOnLoad = false
+      ..localByUser[_userA.id] = pending
+      ..reconcileHandlers.add(
+        (_, local) async {
+          expect(local, same(pending));
+          return ProductAnalyticsPreferenceSynchronized(
+            record: _recordWithRevision(
+              userId: _userA.id,
+              userKey: _userKeyA,
+              preference: ProductAnalyticsPreference.disabled,
+              revision: 2,
+            ),
+          );
+        },
+      );
+
+    await service.prepareForLogout();
+
+    expect(preferenceRepository.loadCalls, [_userA.id, _userA.id]);
+    expect(preferenceRepository.reconcileCalls, hasLength(1));
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+  });
+
   test("prepareForLogout awaits a disable queued behind the captured operation", () async {
     createService();
     final enabled = _record(
