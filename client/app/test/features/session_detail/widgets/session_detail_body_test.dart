@@ -866,6 +866,50 @@ void main() {
     expect(find.byType(EditableText), findsNothing);
   });
 
+  testWidgets("a cancelled transcription settling late cannot corrupt the next recording", (tester) async {
+    final stopCompleters = <Completer<String>>[];
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) {
+      final completer = Completer<String>();
+      stopCompleters.add(completer);
+      return completer.future;
+    });
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Record and release into a slow transcription, then discard it.
+    final first = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await first.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byIcon(TablerRegular.x));
+    await tester.pumpAndSettle();
+
+    // Start a new recording, then let the cancelled upload settle mid-hold:
+    // its continuation must neither insert the stale transcript nor reset
+    // this newer interaction back to idle.
+    final second = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    stopCompleters.first.complete("stale words");
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.text("Release to transcribe"), findsOneWidget);
+
+    // The new interaction still completes normally.
+    await second.up();
+    await tester.pump();
+    stopCompleters.last.complete("fresh words");
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text("fresh words"), findsOneWidget);
+    expect(find.textContaining("stale words"), findsNothing);
+  });
+
   testWidgets("the keyboard button enters typing while transcription continues", (tester) async {
     final stopCompleter = Completer<String>();
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});

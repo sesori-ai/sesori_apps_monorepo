@@ -107,6 +107,12 @@ class _PromptInputState extends State<PromptInput> {
   /// settles rather than presenting a recording that never began.
   bool _isCancelInFlight = false;
 
+  /// Monotonic id of the current voice interaction, bumped on every start and
+  /// cancel. A cancelled transcription's upload can settle long after the
+  /// cancel; its continuations check this so they never insert a stale
+  /// transcript into — or reset the state of — a newer interaction.
+  int _voiceInteractionId = 0;
+
   /// How far the recording hold has dragged toward the cancel target:
   /// 0 at rest, 1 with the finger on the target — releasing there discards
   /// the recording. A notifier rather than state: the drag scrubs at
@@ -291,6 +297,7 @@ class _PromptInputState extends State<PromptInput> {
 
   Future<void> _handleRecordStart() async {
     if (_voiceState != _VoiceState.idle || _isRecordStartInFlight || _isCancelInFlight) return;
+    _voiceInteractionId++;
     _isRecordStartInFlight = true;
     _releaseRequestedDuringStart = false;
     _cancelDragProgress.value = 0;
@@ -385,14 +392,20 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   Future<void> _stopAndTranscribe() async {
+    // The upload can outlive this interaction (a cancel settles the state
+    // long before a slow upload errors out); every continuation below is a
+    // no-op once a newer interaction owns the composer.
+    final interactionId = _voiceInteractionId;
     setState(() {
       _voiceState = _VoiceState.transcribing;
       _cancelDragProgress.value = 0;
     });
 
+    bool stale() => !mounted || interactionId != _voiceInteractionId;
+
     try {
       final transcript = await _voiceService.stopAndTranscribe();
-      if (!mounted) return;
+      if (stale()) return;
 
       // Append transcript to the text field, preserving any existing text.
       final currentText = _controller.text;
@@ -414,17 +427,17 @@ class _PromptInputState extends State<PromptInput> {
     } on TranscriptionCancelledError {
       // User cancelled — nothing to do, finally resets state.
     } on NotAuthenticatedVoiceError {
-      if (!mounted) return;
+      if (!mounted || stale()) return;
       _showVoiceError(context.loc.voiceErrorNotAuthenticated);
     } on NetworkVoiceError {
-      if (!mounted) return;
+      if (!mounted || stale()) return;
       _showVoiceError(context.loc.voiceErrorNetwork);
     } on VoiceTranscriptionError catch (error) {
       loge("Transcription failed", error);
-      if (!mounted) return;
+      if (!mounted || stale()) return;
       _showVoiceError(context.loc.voiceErrorTranscription);
     } finally {
-      if (mounted) {
+      if (!stale()) {
         setState(() {
           _voiceState = _VoiceState.idle;
           _pinnedVoiceLayout = null;
@@ -439,7 +452,9 @@ class _PromptInputState extends State<PromptInput> {
   Future<void> _cancelVoiceInteraction() async {
     // Reset synchronously: a release landing while the platform cancel is
     // still in flight must read the interaction as over, not stop-and-
-    // transcribe the recording being discarded.
+    // transcribe the recording being discarded. The id bump orphans any
+    // still-pending transcription continuation of this interaction.
+    _voiceInteractionId++;
     setState(() {
       _voiceState = _VoiceState.idle;
       _pinnedVoiceLayout = null;
