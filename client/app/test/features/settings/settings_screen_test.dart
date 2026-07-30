@@ -291,9 +291,7 @@ void main() {
 
     expect(find.text("Basic Usage Analytics"), findsOneWidget);
     expect(
-      find.text(
-        "Help improve Sesori by sharing basic feature usage. Sesori will never look at your code or messages.",
-      ),
+      find.text("Share basic feature usage — never your code or messages."),
       findsOneWidget,
     );
     expect(find.textContaining("automatic installation events"), findsNothing);

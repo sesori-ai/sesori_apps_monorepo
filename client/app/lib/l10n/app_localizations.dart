@@ -838,7 +838,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBasicUsageAnalyticsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Help improve Sesori by sharing basic feature usage. Sesori will never look at your code or messages.'**
+  /// **'Share basic feature usage — never your code or messages.'**
   String get settingsBasicUsageAnalyticsDescription;
 
   /// No description provided for @settingsBasicUsageAnalyticsLoading.

@@ -401,8 +401,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBasicUsageAnalyticsTitle => 'Basic Usage Analytics';
 
   @override
-  String get settingsBasicUsageAnalyticsDescription =>
-      'Help improve Sesori by sharing basic feature usage. Sesori will never look at your code or messages.';
+  String get settingsBasicUsageAnalyticsDescription => 'Share basic feature usage — never your code or messages.';
 
   @override
   String get settingsBasicUsageAnalyticsLoading => 'Loading preference…';
