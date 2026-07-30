@@ -33,11 +33,15 @@ class ProductAnalyticsPreferenceRepository {
     return switch (stored) {
       StoredProductAnalyticsSynced() => LocalProductAnalyticsSynced(record: record),
       StoredProductAnalyticsPendingDisable(:final operationId) => LocalProductAnalyticsPendingDisable(
-        record: record,
+        userId: record.userId,
+        revision: record.revision,
+        userKey: record.userKey,
         operationId: operationId,
       ),
       StoredProductAnalyticsPendingEnable(:final operationId) => LocalProductAnalyticsPendingEnable(
-        record: record,
+        userId: record.userId,
+        revision: record.revision,
+        userKey: record.userKey,
         operationId: operationId,
       ),
     };
@@ -79,11 +83,15 @@ class ProductAnalyticsPreferenceRepository {
     final operationId = _newOperationId();
     final pending = switch (preference) {
       ProductAnalyticsPreference.disabled => LocalProductAnalyticsPendingDisable(
-        record: current,
+        userId: current.userId,
+        revision: current.revision,
+        userKey: current.userKey,
         operationId: operationId,
       ),
       ProductAnalyticsPreference.enabled => LocalProductAnalyticsPendingEnable(
-        record: current,
+        userId: current.userId,
+        revision: current.revision,
+        userKey: current.userKey,
         operationId: operationId,
       ),
     };
@@ -173,7 +181,9 @@ class ProductAnalyticsPreferenceRepository {
     var durablePending = hasDurablePending;
     if (conflictRecord.preference == ProductAnalyticsPreference.disabled) {
       final pending = LocalProductAnalyticsPendingDisable(
-        record: _recordFromApi(userId: userId, record: conflictRecord),
+        userId: userId,
+        revision: conflictRecord.revision,
+        userKey: conflictRecord.userKey,
         operationId: operationId,
       );
       return _persistResultForPending(
@@ -183,8 +193,12 @@ class ProductAnalyticsPreferenceRepository {
         pendingPersisted: durablePending,
       );
     }
-    final conflictDomainRecord = _recordFromApi(userId: userId, record: conflictRecord);
-    final pending = LocalProductAnalyticsPendingDisable(record: conflictDomainRecord, operationId: operationId);
+    final pending = LocalProductAnalyticsPendingDisable(
+      userId: userId,
+      revision: conflictRecord.revision,
+      userKey: conflictRecord.userKey,
+      operationId: operationId,
+    );
     try {
       await _writePending(pending);
       durablePending = true;

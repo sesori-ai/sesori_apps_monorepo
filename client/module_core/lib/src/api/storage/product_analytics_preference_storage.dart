@@ -65,8 +65,13 @@ class ProductAnalyticsPreferenceStorage {
         throw const FormatException("Invalid stored product analytics preference");
       }
       record = StoredProductAnalyticsPreference.fromJson(json);
-    } on Object {
-      throw const FormatException("Invalid stored product analytics preference");
+    } on ProductAnalyticsPreferenceStorageFormatException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      throw ProductAnalyticsPreferenceStorageFormatException(
+        innerError: error,
+        innerStackTrace: stackTrace,
+      );
     }
     if (record.userId != userId ||
         record.revision < 1 ||
@@ -85,6 +90,16 @@ class ProductAnalyticsPreferenceStorage {
   Future<void> delete({required String userId}) => _storage.delete(key: _key(userId));
 
   String _key(String userId) => "$_keyPrefix$userId";
+}
+
+final class ProductAnalyticsPreferenceStorageFormatException extends FormatException {
+  final Object innerError;
+  final StackTrace innerStackTrace;
+
+  const ProductAnalyticsPreferenceStorageFormatException({
+    required this.innerError,
+    required this.innerStackTrace,
+  }) : super("Invalid stored product analytics preference");
 }
 
 bool _hasValidOperationId(StoredProductAnalyticsPreference record) => switch (record) {

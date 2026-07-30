@@ -360,7 +360,12 @@ void main() {
       preference: ProductAnalyticsPreference.disabled,
       revision: 2,
     );
-    final staleLocal = LocalProductAnalyticsPendingEnable(record: enabled, operationId: _operationId);
+    final staleLocal = LocalProductAnalyticsPendingEnable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
     final retryLoad = Completer<LocalProductAnalyticsPreference?>();
     preferenceRepository.throwOnLoad = false;
     preferenceRepository.loadHandlers[_userA.id] = () => retryLoad.future;
@@ -413,7 +418,12 @@ void main() {
     );
     expect(analyticsRepository.calls, isEmpty);
 
-    final pending = LocalProductAnalyticsPendingDisable(record: enabled, operationId: _operationId);
+    final pending = LocalProductAnalyticsPendingDisable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
     pendingCompleter.complete(ProductAnalyticsPreferencePendingSync(pending: pending));
     await disableFuture;
 
@@ -525,7 +535,12 @@ void main() {
 
     final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
     final enableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
-    final volatileDisable = LocalProductAnalyticsPendingDisable(record: enabled, operationId: _operationId);
+    final volatileDisable = LocalProductAnalyticsPendingDisable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
     preferenceRepository.setHandlers
       ..add((_, _, _) => disableResult.future)
       ..add((_, _, _) => enableResult.future)
@@ -747,7 +762,12 @@ void main() {
     await service.start();
     await service.markPostSplashReady();
 
-    final pending = LocalProductAnalyticsPendingEnable(record: disabled, operationId: _operationId);
+    final pending = LocalProductAnalyticsPendingEnable(
+      userId: disabled.userId,
+      revision: disabled.revision,
+      userKey: disabled.userKey,
+      operationId: _operationId,
+    );
     preferenceRepository.setHandlers.add(
       (_, _, _) async => ProductAnalyticsPreferencePendingSync(pending: pending),
     );
@@ -773,7 +793,12 @@ void main() {
     await service.start();
     await service.markPostSplashReady();
 
-    final volatile = LocalProductAnalyticsPendingDisable(record: enabled, operationId: _operationId);
+    final volatile = LocalProductAnalyticsPendingDisable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
     preferenceRepository.setHandlers
       ..add((_, _, _) async => ProductAnalyticsPreferenceVolatileDisablePending(pending: volatile))
       ..add(
@@ -810,7 +835,12 @@ void main() {
     await service.start();
     await service.markPostSplashReady();
 
-    final pending = LocalProductAnalyticsPendingDisable(record: enabled, operationId: _operationId);
+    final pending = LocalProductAnalyticsPendingDisable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
     preferenceRepository.setHandlers.add(
       (_, _, _) async => ProductAnalyticsPreferencePendingSync(pending: pending),
     );
@@ -874,6 +904,48 @@ void main() {
     await Future.wait([disableFuture, preparationFuture]);
 
     expect(preparationCompleted, isTrue);
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+  });
+
+  test("prepareForLogout awaits local hydration before retrying a pending disable", () async {
+    createService();
+    final localLoad = Completer<LocalProductAnalyticsPreference?>();
+    preferenceRepository.loadHandlers[_userA.id] = () => localLoad.future;
+    final pending = LocalProductAnalyticsPendingDisable(
+      userId: _userA.id,
+      revision: 1,
+      userKey: _userKeyA,
+      operationId: _operationId,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, local) async {
+        expect(local, same(pending));
+        return ProductAnalyticsPreferenceSynchronized(
+          record: _recordWithRevision(
+            userId: _userA.id,
+            userKey: _userKeyA,
+            preference: ProductAnalyticsPreference.disabled,
+            revision: 2,
+          ),
+        );
+      },
+    );
+
+    final startFuture = service.start();
+    while (preferenceRepository.loadCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final readyFuture = service.markPostSplashReady();
+    var preparationCompleted = false;
+    final preparationFuture = service.prepareForLogout().then((_) => preparationCompleted = true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(preparationCompleted, isFalse);
+
+    localLoad.complete(pending);
+    await Future.wait([startFuture, readyFuture, preparationFuture]);
+
+    expect(preferenceRepository.reconcileCalls, hasLength(1));
     expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
   });
 
@@ -995,9 +1067,10 @@ void main() {
       await Future<void>.delayed(Duration.zero);
     }
     final readyFuture = service.markPostSplashReady();
-    await service.prepareForLogout();
+    final preparationFuture = service.prepareForLogout();
+    await Future<void>.delayed(Duration.zero);
     localLoad.complete(LocalProductAnalyticsSynced(record: enabled));
-    await Future.wait([startFuture, readyFuture]);
+    await Future.wait([startFuture, readyFuture, preparationFuture]);
 
     expect(service.state.isActive, isFalse);
     expect(
@@ -1055,7 +1128,12 @@ void main() {
     await service.start();
     await service.markPostSplashReady();
 
-    final pending = LocalProductAnalyticsPendingDisable(record: enabled, operationId: _operationId);
+    final pending = LocalProductAnalyticsPendingDisable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
     preferenceRepository.setHandlers.add(
       (_, _, _) async => ProductAnalyticsPreferencePendingSync(pending: pending),
     );
