@@ -3,9 +3,10 @@
 ## Status
 
 - **Plan slug:** `multi-plugin-release-prep`
-- **Status:** ready for delivery as a six-PR series
+- **Status:** Steps 1/6 through 3/6 merged; oversized PR #620 is frozen as a
+  draft and replaced by Steps 4.A/6 through 4.F/6
 - **Plan delivery:** this document and its tracker are Step 1/6
-- **Implementation base:** `origin/main` at `9da014e2`
+- **Implementation base:** `origin/main` at `5eabfd0d`
 - **Approved product direction:** Codex remains project-aware; Cursor and the
   ACP-backed option state use plugin-scoped caching; OpenCode remains
   project-scoped
@@ -24,11 +25,13 @@ force-confirmation sheets.
 
 ## Delivery Rules
 
-- This plan is a fixed six-PR series. Every title uses
-  `[multi-plugin-release-prep] ... [step x/6]`.
-- Keep one implementation PR open at a time. Start a successor from the latest
-  reviewed predecessor, but open it only after the predecessor merges and the
-  successor is synchronized with current `origin/main` and reverified.
+- This plan keeps six top-level product steps. Step 4 is delivered as the fixed
+  six-PR subseries 4.A through 4.F. Every title uses
+  `[multi-plugin-release-prep] ... [step <x>/6]`, including the lettered step.
+- The Step 4 replacement PRs form a stacked chain and may remain open together
+  so every review boundary is visible. Each successor targets its immediate
+  predecessor and must merge in letter order; Steps 5 and 6 retain their
+  original top-level numbering.
 - Internal Dart plugin contracts update every in-repository implementation in
   lockstep. Do not add compatibility shims for internal interfaces.
 - Client/bridge transport remains backward and forward compatible. An older
@@ -36,9 +39,10 @@ force-confirmation sheets.
   catalog.
 - Generated Freezed, JSON, Drift, Injectable, and localization files are always
   regenerated from source and never hand-edited.
-- Approximately 1,000 changed lines is a reviewability target, not a hard gate.
-  Generated migration/model output can exceed it when the substantive boundary
-  remains coherent and the PR body names the overage.
+- Keep each Step 4 replacement near 1,500 changed lines including generated
+  output. The v12 migration verifies the upgraded database against current
+  Drift declarations directly rather than committing a 3,000-line generated
+  current-schema test helper.
 
 ## Current Behavior
 
@@ -373,6 +377,91 @@ explicitly consumes this internal event without mapping it to client SSE;
 Orchestrator remains the only client-SSE decision owner. Each listener owns one
 trigger subscription and its disposal.
 
+### Step 4 concrete implementation map
+
+The current codebase maps the Step 4 boundary to these source changes:
+
+- In `shared/sesori_shared`, add `session_options_response.dart` and
+  `session_options_error_response.dart` beside the existing Sesori response
+  models, export both from `sesori_shared.dart`, and extend
+  `plugin_list_response.dart` with the dated `supportsSessionOptions` default.
+  The error DTO applies `unknownEnumValue: SessionOptionsErrorCode.unknown` at
+  JSON decoding; tests live under `test/models/` and cover round trips plus
+  omitted and unknown compatibility values.
+- In `bridge/app/lib/src/api/database`, add
+  `tables/session_options_cache_table.dart` and
+  `daos/session_options_cache_dao.dart`, then register both in `database.dart`.
+  Version 12 creates only the new table. The nullable project foreign key
+  targets `projects_table.project_id` with cascade deletion; the table-level CHECK
+  enforces plugin rows with null project fields and project rows with matching
+  non-null owner/project identity and a non-empty captured path. Generate the
+  Drift database, DAO, row, schema-v12 JSON snapshot, and migration-step
+  sources. Extend `test/drift/default/migration_test.dart` for v11-to-v12
+  structure, constraints, cascade deletion, and plugin-row survival. Open a v11
+  fixture through `AppDatabase` and call `validateDatabaseSchema()` against the
+  current declarations; do not generate or commit `schema_v12.dart` merely to
+  duplicate the entire current database in this review series.
+- Put the sealed `SessionOptionsCacheKey` in
+  `bridge/repositories/models/session_options_cache_key.dart`. Add
+  `SessionOptionsRepository` beside the existing Layer-2 repositories and keep
+  the DAO mechanical: exact-key read/delete plus expected-revision insert or
+  update. The repository resolves project rows and backend-session bindings,
+  maps the three shared DTOs to and from their JSON columns, captures plugin
+  aggregates, and wraps persistence in runtime generation fencing.
+- Add `PluginRuntime.useWithGeneration<T>` beside `use` and `useIfActive`. It
+  uses the same activating acquisition and authentication handling as `use`,
+  accepts the same API-only body, and returns `({T value, int generation})`
+  without entering a durable commit; the repository later calls
+  `commitCurrentGeneration` around the short CAS.
+  Runtime tests extend the existing `plugin_runtime_test.dart` suite rather than
+  creating a second runtime harness.
+- Add `SessionOptionsService` under `bridge/services/`. Its public operations
+  are cache-only load, explicit refresh, active-only refresh for a known
+  project, and active-only refresh resolved from plugin/backend-session
+  identity. Internal sealed outcomes distinguish available, cache unavailable,
+  project not found, retained refresh failure, unavailable refresh failure, and
+  automatic no-op. The per-key coordinator stores at most one running future
+  and one shared forced tail; completed entries are removed so this is not a
+  durable registry.
+- Extend `RegisteredPluginMetadata` and `PluginCompositionView` in
+  `services/plugin_lifecycle_service.dart` with the descriptor-declared options
+  scope. `bridge_runtime_runner.dart` copies `descriptor.sessionOptionsScope`
+  during registration, and `Orchestrator.create()` passes the resulting
+  immutable map to `SessionOptionsService`; no downstream code imports concrete
+  plugin descriptors or checks plugin IDs.
+- Add `PostSessionOptionsHandler` beside the bridge handlers. It extends
+  `RequestHandlerBase`, rather than `BodyRequestHandler`, so expected typed
+  failures can return JSON bodies before generic plain-text normalization. It
+  reuses `PluginProjectIdRequest.fromJson`, accepts only missing, exact `false`,
+  or exact `true` refresh values from the router's canonical query map, and maps
+  every service outcome to the locked 200/400/404/502/503 contract.
+- Add `projectId` to `SessionBindingsCommitted`; both current publication sites
+  already have the stable value (`createSession`'s requested project and
+  `_persistNativeRootSessions`' resolved project). Existing session-event
+  dispatch remains unchanged apart from carrying the extra field.
+- Add `SessionOptionsCreationRefreshListener` and
+  `SessionOptionsChangedRefreshListener` under `lib/src/listeners/`. They
+  independently subscribe to `SessionRepository.bindingCommits` and
+  `PluginRuntime.backendEvents`. The options-change listener filters the raw
+  generation-attributed event and checks `isCurrentGeneration` before service
+  dispatch; it does not consume normalized client SSE. Wire both in
+  `Orchestrator.create()`, start them with the existing source listeners, retain
+  them on `OrchestratorSession`, and dispose them in the failure-isolated
+  teardown batch.
+- Update `GetPluginsHandler` to publish `supportsSessionOptions: true`, register
+  the aggregate handler in the one shared `RequestRouter`, and pass the same
+  router/service instances to relay and debug flows through the existing
+  Orchestrator composition. The client discovery-404 fallback needs no Step 4
+  logic change because the shared DTO default decodes and constructs it as
+  false; add/adjust its focused compatibility assertion if compilation does not
+  already prove that path.
+
+Implement in dependency order: shared wire contracts, Drift persistence,
+runtime/repository capture, service policy, handler/capability, then listeners
+and Orchestrator lifecycle. Generate only after source models and schema settle,
+then run focused tests after each boundary before the final owning-package
+verification.
+
 ### Client layers
 
 `SessionApi` adds the aggregate POST and query parameter. `PluginRepository`
@@ -418,7 +507,12 @@ backend-neutral UI decisions.
 | 1/6 | `multi-plugin-release-prep` | `[multi-plugin-release-prep] docs: plan multi-plugin release preparation [step 1/6]` | 350-550 | Final durable plan and tracker only. |
 | 2/6 | `multi-plugin-release-prep-codex-options` | `[multi-plugin-release-prep] refactor(codex): type session option discovery [step 2/6]` | 800-1,150 | Typed `model/list` API/repository, service-owned agent/provider/default/fallback behavior, and facade delegation without changing wire routes. |
 | 3/6 | `multi-plugin-release-prep-plugin-options` | `[multi-plugin-release-prep] feat(bridge): aggregate scoped plugin options [step 3/6]` | 950-1,350 | Internal aggregate/completeness/scope contract; OpenCode, Codex, ACP, and Cursor service ownership; ACP configuration tracker and authoritative options-change event. |
-| 4/6 | `multi-plugin-release-prep-bridge-cache` | `[multi-plugin-release-prep] feat(bridge): cache scoped session options [step 4/6]` | 1,400-2,000 | Shared discovery/success/error contracts, Drift cache/migration, runtime/repository/service fencing, query-driven route, and creation/options-change refresh listeners. Generated schema/model output explains expected overage. |
+| 4.A/6 | `multi-plugin-release-prep-bridge-contracts` | `[multi-plugin-release-prep] feat(bridge): add session option wire contracts [step 4.A/6]` | 900-1,250 | Shared success/error/capability contracts, descriptor-scope composition, and activating generation capture. |
+| 4.B/6 | `multi-plugin-release-prep-cache-schema` | `[multi-plugin-release-prep] feat(bridge): persist scoped session option rows [step 4.B/6]` | 1,450-1,650 | Drift v12 table, standalone DAO, generated runtime database, migration steps, and current-schema smoke coverage. |
+| 4.C/6 | `multi-plugin-release-prep-cache-verification` | `[multi-plugin-release-prep] test(bridge): verify session option cache migration [step 4.C/6]` | 1,300-1,550 | v12 JSON snapshot, v11 upgrade/schema validation, CHECK/FK behavior, and DAO CAS tests without a generated full-schema Dart fixture. |
+| 4.D/6 | `multi-plugin-release-prep-cache-repository` | `[multi-plugin-release-prep] feat(bridge): capture scoped session options [step 4.D/6]` | 800-1,050 | Cache key, typed JSON mapping, project/binding lookup, plugin capture, and generation-fenced CAS repository. |
+| 4.E/6 | `multi-plugin-release-prep-cache-service` | `[multi-plugin-release-prep] feat(bridge): apply session option cache policy [step 4.E/6]` | 1,100-1,300 | Retention/path validation, completeness replacement, failure retention, CAS retry, and intent-aware coalescing service. |
+| 4.F/6 | `multi-plugin-release-prep-cache-route` | `[multi-plugin-release-prep] feat(bridge): expose cached session options [step 4.F/6]` | 850-1,150 | Aggregate route/capability, stable binding attribution, automatic refresh listeners, and Orchestrator lifecycle wiring. |
 | 5/6 | `multi-plugin-release-prep-client-options` | `[multi-plugin-release-prep] feat(client): consume cached session options [step 5/6]` | 900-1,300 | Aggregate client layers, service-owned option resolution, explicit refresh/old-bridge degradation, cubit state, and New Session UI. |
 | 6/6 | `multi-plugin-release-prep-harness-settings` | `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]` | 850-1,200 | One Harnesses screen/cubit, capability/setup-aware visibility, route removal, and Prego timeout/force sheets. |
 
@@ -453,32 +547,46 @@ backend-neutral UI decisions.
 - Focused package tests and fatal analysis for every touched plugin package.
 - Aristotle implementation review for shared plugin boundaries and state ownership.
 
-### Step 4/6
+### Step 4.A/6
 
-- Shared success/error response JSON round trips, unknown error-code fallback,
-  and generated-source verification.
-- Plugin discovery compatibility tests cover omitted/false/true
-  `supportsSessionOptions`; the bridge and discovery-404 fallback publish the
-  correct modern/legacy values.
-- Drift migration, CHECK constraint, FK cascade, plugin-row survival, typed JSON
-  decode, project-path invalidation, retention, partial-on-partial retention,
-  completeness, CAS conflict, and generation-fence tests. Refresh failure after
-  expiry/path invalidation deletes the row and returns unavailable, while a
-  still-valid row returns retained.
-- Handler tests for missing/false/true/invalid refresh, typed cache miss, typed
-  project absence, plugin 401/404/503 normalized to 502, retained versus
-  unavailable refresh-failure codes, and shared debug/relay router wiring.
-- Runtime tests prove cache-only reads never start a dormant plugin and explicit
-  refresh starts only the selected plugin.
-- Service/repository tests prove explicit refresh passes may-activate plus forced
-  discovery, while both automatic triggers pass active-only plus reuse. An
-  explicit refresh overlapping reuse queues and awaits exactly one forced tail.
-- Listener tests prove session creation and a current-generation dedicated
-  options-change event independently trigger active-only refresh, while stale
-  generations and generic session events do not. Moved-project coverage resolves
-  backend session identity to the stable stored project ID; a pre-binding event
-  is skipped and the later creation commit seeds the cache.
-- Shared and bridge-app fatal analysis plus Aristotle implementation review.
+- Shared success/error JSON round trips, unknown error fallback, and
+  omitted/false/true discovery capability compatibility.
+- Runtime tests for activating generation capture and immutable descriptor scope
+  composition. Run shared and bridge-app focused suites plus fatal analysis.
+
+### Step 4.B/6
+
+- Current-schema table/DAO smoke coverage and generated Drift runtime output.
+- Bridge-app focused persistence tests and fatal analysis.
+
+### Step 4.C/6
+
+- Open a generated v11 fixture through `AppDatabase`, migrate it, and use
+  `validateDatabaseSchema()` against current declarations.
+- Verify the CHECK constraint, FK cascade, plugin-row survival, exact-key DAO
+  reads/deletes, and revision CAS. Run focused migration/persistence suites and
+  fatal analysis.
+
+### Step 4.D/6
+
+- Repository tests cover project/binding resolution, typed JSON round trips,
+  activating versus active-only capture, and generation-fenced commits.
+- Run focused repository/runtime tests, fatal analysis, and Aristotle review.
+
+### Step 4.E/6
+
+- Service tests cover cache-only no-start, path/expiry invalidation, retained
+  versus unavailable failure, completeness, CAS conflicts, stale generation,
+  and one queued forced tail.
+- Run focused service/repository tests, fatal analysis, and Aristotle review.
+
+### Step 4.F/6
+
+- Handler tests cover missing/false/true/invalid refresh and every typed status.
+- Listener tests cover creation, current/stale options-change events, generic
+  events, moved projects, pre-binding skips, and disposal.
+- Run handler/listener/Orchestrator suites, full bridge-app tests, fatal analysis,
+  and Aristotle review.
 
 ### Step 5/6
 
@@ -546,7 +654,7 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 | New client confuses old-route 404 with project-not-found 404 | Additive discovery capability identifies old bridges before any aggregate call; the typed error body identifies project failure on a capable bridge. |
 | Plugin statuses collide with cache/project/Sesori-auth statuses | Plugin/runtime capture failures normalize to 502 with retained/unavailable refresh-failure codes, preserving the typed body and reserving 401 for Sesori authentication. Unknown or malformed errors fail explicitly. |
 | Settings consolidation changes capability enforcement | Keep existing service/cubit command paths; only one thin screen consumes declared capabilities. |
-| Generated migration/model output obscures logic | Keep source and tests focused, name generated overage in Step 4 PR, and review source changes first. |
+| Generated migration/model output obscures logic | Keep every Step 4 sub-PR near 1,500 total changed lines and separate runtime generation from migration verification. |
 
 ## Review Record
 
@@ -565,6 +673,10 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 - This document does not claim that the corrected version was reviewer-approved.
   Each architecture-bearing implementation PR still receives implementation
   review against its concrete Git diff.
+- After the user froze oversized PR #620, the revised 4.A-through-4.F stack and
+  lightweight current-schema migration validation received a fresh architecture
+  plan review. The reviewer approved the dependency order, ownership, PR
+  boundaries, and verification strategy with no findings.
 
 ## Completion
 

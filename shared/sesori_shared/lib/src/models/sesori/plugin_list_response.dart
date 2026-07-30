@@ -31,6 +31,10 @@ sealed class PluginListResponse with _$PluginListResponse {
     // preferences omit the ID; null disables preference recall. Remove the
     // nullable path once those bridges are unsupported.
     required String? bridgeId,
+    // COMPATIBILITY 2026-07-30 (v1.8.0): Old bridges omit this capability,
+    // which means session options are unsupported. Remove @Default and require
+    // supportsSessionOptions once those bridges are unsupported.
+    @Default(false) bool supportsSessionOptions,
   }) = _PluginListResponse;
 
   factory PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);

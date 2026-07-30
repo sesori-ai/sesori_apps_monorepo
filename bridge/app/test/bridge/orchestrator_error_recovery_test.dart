@@ -40,6 +40,7 @@ void main() {
                 id: "opencode",
                 displayName: "OpenCode",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],

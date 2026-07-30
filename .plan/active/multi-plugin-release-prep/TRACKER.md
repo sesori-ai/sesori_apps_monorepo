@@ -2,12 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `57e0fffb`
-- **Series state:** Steps 1/6 and 2/6 are merged; Step 3/6 PR #616 is open from
-  `multi-plugin-release-prep-plugin-options`
-- **Current step:** Step 3/6 — aggregate scoped plugin options
-- **Next action:** review and merge PR #616, then start Step 4/6 from updated
-  `origin/main`
+- **Implementation base:** `origin/main` at `5eabfd0d`
+- **Series state:** Steps 1/6 through 3/6 are merged; oversized PR #620 is frozen
+  as a draft and replaced by the stacked Step 4.A/6 through 4.F/6 sequence
+- **Current step:** Step 4.A/6 — wire contracts and runtime scope/generation seams
+- **Next action:** verify and open the Step 4.A/6 replacement PR
 
 ## Delivery
 
@@ -15,8 +14,13 @@
 |---|---|---|---|
 | [x] | Step 1/6 — plan multi-plugin release preparation | `multi-plugin-release-prep` | PR #605 merged |
 | [x] | Step 2/6 — type Codex session-option discovery | `multi-plugin-release-prep-codex-options` | PR #609 merged |
-| [ ] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | PR #616 open |
-| [ ] | Step 4/6 — durable bridge cache and aggregate route | `multi-plugin-release-prep-bridge-cache` | Blocked on Step 3 merge |
+| [x] | Step 3/6 — aggregate scoped plugin options | `multi-plugin-release-prep-plugin-options` | PR #616 merged |
+| [ ] | Step 4.A/6 — wire contracts and runtime seams | `multi-plugin-release-prep-bridge-contracts` | In progress |
+| [ ] | Step 4.B/6 — scoped cache schema/runtime database | `multi-plugin-release-prep-cache-schema` | Blocked on 4.A |
+| [ ] | Step 4.C/6 — migration and DAO verification | `multi-plugin-release-prep-cache-verification` | Blocked on 4.B |
+| [ ] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | Blocked on 4.C |
+| [ ] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | Blocked on 4.D |
+| [ ] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | Blocked on 4.E |
 | [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4 merge |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5 merge |
 
@@ -66,9 +70,14 @@
 1. `[multi-plugin-release-prep] docs: plan multi-plugin release preparation [step 1/6]`
 2. `[multi-plugin-release-prep] refactor(codex): type session option discovery [step 2/6]`
 3. `[multi-plugin-release-prep] feat(bridge): aggregate scoped plugin options [step 3/6]`
-4. `[multi-plugin-release-prep] feat(bridge): cache scoped session options [step 4/6]`
-5. `[multi-plugin-release-prep] feat(client): consume cached session options [step 5/6]`
-6. `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]`
+4. `[multi-plugin-release-prep] feat(bridge): add session option wire contracts [step 4.A/6]`
+5. `[multi-plugin-release-prep] feat(bridge): persist scoped session option rows [step 4.B/6]`
+6. `[multi-plugin-release-prep] test(bridge): verify session option cache migration [step 4.C/6]`
+7. `[multi-plugin-release-prep] feat(bridge): capture scoped session options [step 4.D/6]`
+8. `[multi-plugin-release-prep] feat(bridge): apply session option cache policy [step 4.E/6]`
+9. `[multi-plugin-release-prep] feat(bridge): expose cached session options [step 4.F/6]`
+10. `[multi-plugin-release-prep] feat(client): consume cached session options [step 5/6]`
+11. `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]`
 
 ## Verification Log
 
@@ -104,4 +113,30 @@
   newer live model or mode state. Forced refresh also invalidates a prior
   command snapshot when the refresh observes no authoritative command update.
   The full owning-package suites plus fatal analysis passed after each fix
-  round.
+  round. PR #616 merged to `main` as `5eabfd0d`.
+- Step 4/6 planning refresh (2026-07-30): mapped the merged codebase's exact
+  shared-model, Drift v12, runtime, repository/service, route, capability,
+  listener, session-binding, Orchestrator lifecycle, and focused-test seams.
+  The implementation map is recorded in `PLAN.md`.
+- Step 4/6 implementation (2026-07-30): added shared success/error and discovery
+  capability contracts; Drift schema v12 scoped persistence; generation-fenced
+  capture and CAS; retention, completeness, and intent-aware coalescing policy;
+  the typed aggregate route; stable-project binding attribution; and independent
+  creation/options-change refresh listeners. Generated shared and Drift sources.
+  All 348 shared tests and 2,239 bridge-app tests passed, as did fatal analysis
+  in both owning packages and `git diff --check`. Aristotle's first
+  implementation review identified new Drift import cycles; the cache DAO was
+  moved to composition-root construction and the cache table now uses Drift's
+  generated row without importing the database or legacy project table module.
+  The second/final review approved the corrected architecture. Opened PR #620.
+- Step 4 split (2026-07-30): the user rejected PR #620's 10,045-line review
+  size. Converted it to draft, stopped monitoring it, and froze the branch as
+  the implementation source. Replaced Step 4 with fixed stacked substeps 4.A
+  through 4.F, each targeting roughly 1,500 changed lines including generated
+  output.
+- Step 4.A/6 preparation (2026-07-30): added shared aggregate success/error and
+  discovery-capability contracts, immutable descriptor scope composition, and
+  activating generation capture. Generated shared models; 12 shared and 97
+  bridge focused tests passed with fatal analysis in both owning packages and
+  `git diff --check`. Aristotle approved the revised six-substep delivery plan
+  without findings.
