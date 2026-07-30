@@ -8,7 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../core/di/injection.dart";
 import "widgets/session_detail_body.dart";
 
-class SessionDetailScreen extends StatefulWidget {
+class SessionDetailScreen extends StatelessWidget {
   final String projectId;
   final String? projectName;
   final String sessionId;
@@ -25,46 +25,57 @@ class SessionDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<SessionDetailScreen> createState() => _SessionDetailScreenState();
-}
-
-class _SessionDetailScreenState extends State<SessionDetailScreen> {
-  late final SessionDetailCubit _cubit;
-  late final LifecycleSource _lifecycleSource;
-  late final ProductAnalyticsService _productAnalyticsService;
-  SessionActivityAnalyticsListener? _activityAnalyticsListener;
-
-  @override
-  void initState() {
-    super.initState();
-    _lifecycleSource = getIt<LifecycleSource>();
-    _productAnalyticsService = getIt<ProductAnalyticsService>();
-    _cubit = SessionDetailCubit(
-      getIt<ConnectionService>(),
-      loadService: getIt<SessionDetailLoadService>(),
-      promptDispatcher: getIt<SessionRepository>(),
-      permissionRepository: getIt<PermissionRepository>(),
-      sessionViewingService: getIt<SessionViewingService>(),
-      lifecycleSource: _lifecycleSource,
-      composerDraftRepository: getIt<ComposerDraftRepository>(),
-      productAnalyticsService: _productAnalyticsService,
-      sessionId: widget.sessionId,
-      projectId: widget.projectId,
-      notificationCanceller: getIt<NotificationCanceller>(),
-      failureReporter: getIt<FailureReporter>(),
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => SessionDetailCubit(
+        getIt<ConnectionService>(),
+        loadService: getIt<SessionDetailLoadService>(),
+        promptDispatcher: getIt<SessionRepository>(),
+        permissionRepository: getIt<PermissionRepository>(),
+        sessionViewingService: getIt<SessionViewingService>(),
+        lifecycleSource: getIt<LifecycleSource>(),
+        composerDraftRepository: getIt<ComposerDraftRepository>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
+        sessionId: sessionId,
+        projectId: projectId,
+        notificationCanceller: getIt<NotificationCanceller>(),
+        failureReporter: getIt<FailureReporter>(),
+      ),
+      child: _SessionActivityAnalyticsOwner(
+        child: SessionDetailBody(
+          projectId: projectId,
+          projectName: projectName,
+          sessionId: sessionId,
+          sessionTitle: sessionTitle,
+          readOnly: readOnly,
+        ),
+      ),
     );
   }
+}
+
+class _SessionActivityAnalyticsOwner extends StatefulWidget {
+  final Widget child;
+
+  const _SessionActivityAnalyticsOwner({required this.child});
+
+  @override
+  State<_SessionActivityAnalyticsOwner> createState() => _SessionActivityAnalyticsOwnerState();
+}
+
+class _SessionActivityAnalyticsOwnerState extends State<_SessionActivityAnalyticsOwner> {
+  SessionActivityAnalyticsListener? _listener;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final isRouteVisible = ModalRoute.of(context)?.isCurrent == true;
-    final listener = _activityAnalyticsListener;
+    final listener = _listener;
     if (listener == null) {
-      _activityAnalyticsListener = SessionActivityAnalyticsListener(
-        sessionDetailCubit: _cubit,
-        lifecycleSource: _lifecycleSource,
-        productAnalyticsService: _productAnalyticsService,
+      _listener = SessionActivityAnalyticsListener(
+        sessionDetailCubit: context.read<SessionDetailCubit>(),
+        lifecycleSource: getIt<LifecycleSource>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
         initialRouteVisible: isRouteVisible,
       );
     } else {
@@ -74,26 +85,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
 
   @override
   void dispose() {
-    unawaited(_disposeOwnedState());
+    final listener = _listener;
+    if (listener != null) unawaited(listener.dispose());
     super.dispose();
   }
 
-  Future<void> _disposeOwnedState() async {
-    await _activityAnalyticsListener?.dispose();
-    await _cubit.close();
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _cubit,
-      child: SessionDetailBody(
-        projectId: widget.projectId,
-        projectName: widget.projectName,
-        sessionId: widget.sessionId,
-        sessionTitle: widget.sessionTitle,
-        readOnly: widget.readOnly,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => widget.child;
 }

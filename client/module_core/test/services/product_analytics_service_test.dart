@@ -568,16 +568,16 @@ void main() {
     );
   });
 
-  test("activation readiness gates deferred candidates and retries without repeating schema readiness", () async {
+  test("later analytics activity retries activation readiness and deferred candidates", () async {
     createService();
     final record = _record(
       userId: _userA.id,
       userKey: _userKeyA,
       preference: ProductAnalyticsPreference.enabled,
     );
-    preferenceRepository.reconcileHandlers
-      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: record))
-      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: record));
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: record),
+    );
     analyticsRepository.results = Queue.of([
       AnalyticsDeliveryResult.acceptedBySdk,
       AnalyticsDeliveryResult.failed,
@@ -604,14 +604,25 @@ void main() {
     );
 
     analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
-    await service.refreshPreference();
-    await waitForAnalyticsCalls(count: 4);
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    await waitForAnalyticsCalls(count: 5);
 
     expect(
       analyticsRepository.calls.map((call) => call.envelope.event),
       [
         const ProductAnalyticsEvent.analyticsSchemaReady(),
         const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
         const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.sessionDiffViewed(
           changeState: AnalyticsChangeState.nonEmpty,

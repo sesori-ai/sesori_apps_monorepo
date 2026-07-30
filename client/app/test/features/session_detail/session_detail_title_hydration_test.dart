@@ -23,7 +23,7 @@ class MockPermissionRepository extends Mock implements PermissionRepository {}
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
-Widget _buildApp({required String? sessionTitle, GlobalKey<NavigatorState>? navigatorKey}) {
+Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return BlocProvider<ConnectionOverlayCubit>(
     create: (_) => StubConnectionOverlayCubit(),
     child: MaterialApp(
@@ -230,7 +230,7 @@ void main() {
       ),
     ).thenAnswer((_) => loadCompleter.future);
 
-    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
+    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pump();
 
     expect(find.text("Carried title"), findsOneWidget);
@@ -250,7 +250,7 @@ void main() {
       ),
     ).thenAnswer((_) async => const SessionDetailLoadResult.failed(error: Object(), stackTrace: null));
 
-    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
+    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pumpAndSettle();
 
     expect(find.text("Carried title"), findsOneWidget);
@@ -275,7 +275,7 @@ void main() {
       ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
 
-    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
+    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pumpAndSettle();
 
     expect(find.text("Canonical title"), findsOneWidget);
@@ -290,7 +290,7 @@ void main() {
       ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
 
-    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
+    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pumpAndSettle();
 
     sessionEvents.add(
@@ -305,7 +305,7 @@ void main() {
   });
 
   testWidgets("falls back to the localized title when both titles are null", (tester) async {
-    await tester.pumpWidget(_buildApp(sessionTitle: null));
+    await tester.pumpWidget(_buildApp(sessionTitle: null, navigatorKey: null));
     await tester.pumpAndSettle();
 
     expect(find.text("Session"), findsOneWidget);

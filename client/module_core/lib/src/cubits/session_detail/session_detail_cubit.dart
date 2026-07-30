@@ -536,16 +536,26 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriSessionUpdated(:final info) => info.parentID == _sessionId,
       // Permission/question events for a descendant (sub-agent) session that
       // surfaces on this session must be buffered so they replay after load.
-      SesoriPermissionAsked(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriPermissionReplied(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionAsked(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionReplied(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionRejected(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
+      SesoriPermissionAsked(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriPermissionReplied(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionAsked(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionReplied(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionRejected(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -1327,7 +1337,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         case SuccessResponse():
           _reportProductEvent(
             event: ProductAnalyticsEvent.sessionPermissionAnswered(
-              decision: _analyticsPermissionDecision(reply),
+              decision: _analyticsPermissionDecision(reply: reply),
             ),
           );
           return true;
@@ -1341,7 +1351,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
   }
 
-  AnalyticsPermissionDecision _analyticsPermissionDecision(PermissionReply reply) => switch (reply) {
+  AnalyticsPermissionDecision _analyticsPermissionDecision({required PermissionReply reply}) => switch (reply) {
     PermissionReply.once => AnalyticsPermissionDecision.once,
     PermissionReply.always => AnalyticsPermissionDecision.always,
     PermissionReply.reject => AnalyticsPermissionDecision.reject,

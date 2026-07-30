@@ -149,13 +149,14 @@ class MockProductAnalyticsService extends Mock implements ProductAnalyticsServic
 
 void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
   final states = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
+  addTearDown(states.close);
   when(
     () => service.logEvent(
       event: any(named: "event"),
       occurredAtUtc: any(named: "occurredAtUtc"),
     ),
   ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
-  when(() => service.state).thenReturn(ProductAnalyticsState.initial);
+  when(() => service.state).thenAnswer((_) => states.value);
   when(() => service.stateStream).thenAnswer((_) => states.stream);
 }
 

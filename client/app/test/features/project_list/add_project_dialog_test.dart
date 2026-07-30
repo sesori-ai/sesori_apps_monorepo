@@ -167,6 +167,7 @@ PregoButtonsSolid _button(WidgetTester tester, Finder finder) => tester.widget<P
 
 void main() {
   setUpAll(() {
+    registerAllFallbackValues();
     registerFallbackValue(OpenProjectGitAction.promptIfNeeded);
   });
 
@@ -824,7 +825,10 @@ void main() {
       // Only the folder was made: the browser moves into it and leaves adding
       // it as a project to the user's next tap.
       verifyNever(
-        () => mockCubit.discoverProject(path: any(named: "path"), gitAction: any(named: "gitAction")),
+        () => mockCubit.discoverProject(
+          path: any(named: "path"),
+          gitAction: any(named: "gitAction"),
+        ),
       );
       expect(find.text("new-app"), findsOneWidget);
       expect(find.text(newFolderPath), findsOneWidget);

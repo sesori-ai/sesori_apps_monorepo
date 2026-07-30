@@ -30,6 +30,7 @@ import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
 
 /// A [LifecycleSource] seeded as resumed, for cubits that subscribe to
 /// lifecycle. Call [emitState] to drive transitions in tests.
@@ -131,13 +132,14 @@ class MockProductAnalyticsService extends Mock implements ProductAnalyticsServic
 MockProductAnalyticsService stubbedProductAnalyticsService() {
   final mock = MockProductAnalyticsService();
   final states = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
+  addTearDown(states.close);
   when(
     () => mock.logEvent(
       event: any(named: "event"),
       occurredAtUtc: any(named: "occurredAtUtc"),
     ),
   ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
-  when(() => mock.state).thenReturn(ProductAnalyticsState.initial);
+  when(() => mock.state).thenAnswer((_) => states.value);
   when(() => mock.stateStream).thenAnswer((_) => states.stream);
   return mock;
 }
