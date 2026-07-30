@@ -139,19 +139,21 @@ void main() {
   late _FakeAuthSession authSession;
   late _FakePreferenceRepository preferenceRepository;
   late _RecordingAnalyticsRepository analyticsRepository;
+  late ProductAnalyticsPreferenceService preferenceService;
   late ProductAnalyticsService service;
 
   void createService() {
     authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingAnalyticsRepository();
+    preferenceService = ProductAnalyticsPreferenceService(
+      capability: const AnalyticsRuntimeCapability.enabled(),
+      authSession: authSession,
+      preferenceRepository: preferenceRepository,
+    );
     service = ProductAnalyticsService(
       analyticsRepository: analyticsRepository,
-      preferenceService: ProductAnalyticsPreferenceService(
-        capability: const AnalyticsRuntimeCapability.enabled(),
-        authSession: authSession,
-        preferenceRepository: preferenceRepository,
-      ),
+      preferenceService: preferenceService,
     );
   }
 
@@ -159,19 +161,37 @@ void main() {
     authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingAnalyticsRepository();
+    preferenceService = ProductAnalyticsPreferenceService(
+      capability: capability,
+      authSession: authSession,
+      preferenceRepository: preferenceRepository,
+    );
     service = ProductAnalyticsService(
       analyticsRepository: analyticsRepository,
-      preferenceService: ProductAnalyticsPreferenceService(
-        capability: capability,
-        authSession: authSession,
-        preferenceRepository: preferenceRepository,
-      ),
+      preferenceService: preferenceService,
     );
   }
 
   tearDown(() async {
     await service.dispose();
     await authSession.dispose();
+  });
+
+  test("disposed preference lifecycle ignores later work", () async {
+    createService();
+
+    await preferenceService.dispose();
+    await preferenceService.dispose();
+    await preferenceService.start().timeout(const Duration(milliseconds: 100));
+    await preferenceService.markPostSplashReady();
+    await preferenceService.refreshPreference();
+    await preferenceService.setPreference(preference: ProductAnalyticsPreference.disabled);
+    await preferenceService.prepareForLogout();
+    await preferenceService.resumeAfterFailedLogout();
+
+    expect(preferenceRepository.loadCalls, isEmpty);
+    expect(preferenceRepository.reconcileCalls, isEmpty);
+    expect(preferenceRepository.setCalls, isEmpty);
   });
 
   test("subscribes before an awaited startup load so an account switch cannot be lost", () async {
@@ -975,7 +995,7 @@ void main() {
     expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
   });
 
-  test("prepareForLogout suppresses first and makes one pending-disable retry", () async {
+  test("overlapping prepareForLogout calls share one pending-disable retry", () async {
     createService();
     final enabled = _record(
       userId: _userA.id,
@@ -998,22 +1018,40 @@ void main() {
       (_, _, _) async => ProductAnalyticsPreferencePendingSync(pending: pending),
     );
     await service.setPreference(preference: ProductAnalyticsPreference.disabled);
-    preferenceRepository.reconcileHandlers.add(
-      (_, local) async {
+    final logoutReconciliation = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.reconcileHandlers
+      ..add((_, local) {
         expect(service.state.isActive, isFalse);
         expect(local, same(pending));
-        return ProductAnalyticsPreferenceSynchronized(
+        return logoutReconciliation.future;
+      })
+      ..add(
+        (_, _) async => ProductAnalyticsPreferenceSynchronized(
           record: _recordWithRevision(
             userId: _userA.id,
             userKey: _userKeyA,
             preference: ProductAnalyticsPreference.disabled,
             revision: 2,
           ),
-        );
-      },
-    );
+        ),
+      );
 
-    await service.prepareForLogout();
+    final firstPreparation = service.prepareForLogout();
+    final secondPreparation = service.prepareForLogout();
+    while (preferenceRepository.reconcileCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    logoutReconciliation.complete(
+      ProductAnalyticsPreferenceSynchronized(
+        record: _recordWithRevision(
+          userId: _userA.id,
+          userKey: _userKeyA,
+          preference: ProductAnalyticsPreference.disabled,
+          revision: 2,
+        ),
+      ),
+    );
+    await Future.wait([firstPreparation, secondPreparation]);
 
     expect(preferenceRepository.reconcileCalls, hasLength(2));
     expect(service.state.isActive, isFalse);

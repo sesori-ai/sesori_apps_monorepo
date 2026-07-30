@@ -41,9 +41,11 @@ class ProductAnalyticsPreferenceService {
   ProductAnalyticsAccountSession _session = const ProductAnalyticsSignedOutSession(generation: 0);
   int _generationCounter = 0;
   ProductAnalyticsLogoutState _logout = const ProductAnalyticsLogoutIdle();
+  ({int generation, Future<void> future})? _logoutPreparationOperation;
   bool _postSplashReady = false;
   ProductAnalyticsPreferenceIntent _intent = const ProductAnalyticsPreferenceIntent.idle();
   Future<void>? _startFuture;
+  bool _disposed = false;
 
   ProductAnalyticsPreferenceService({
     required AnalyticsRuntimeCapability capability,
@@ -67,6 +69,7 @@ class ProductAnalyticsPreferenceService {
   bool get _isPreparingLogout => _logout is ProductAnalyticsLogoutPreparation;
 
   ProductAnalyticsDeliveryContext? get deliveryContext {
+    if (_disposed) return null;
     final userId = _userId;
     final current = _currentRecord;
     if (!state.isActive || userId == null || current == null || !_authSessionMatches(userId: userId)) return null;
@@ -78,14 +81,17 @@ class ProductAnalyticsPreferenceService {
   }
 
   bool isCurrentDeliveryContext({required ProductAnalyticsDeliveryContext context}) =>
-      _matches(generation: context.generation, userId: context.userId);
+      !_disposed && _matches(generation: context.generation, userId: context.userId);
 
-  Future<void> start() => _startFuture ??= _start();
+  Future<void> start() {
+    if (_disposed) return Future<void>.value();
+    return _startFuture ??= _start();
+  }
 
   Future<void> _start() async {
     final initialStateObserved = Completer<void>();
     _authSubscription = _authSession.authStateStream.listen((authState) {
-      final application = _applyAuthState(authState);
+      final application = _applyAuthState(authState: authState);
       if (!initialStateObserved.isCompleted) initialStateObserved.complete();
       unawaited(
         application.catchError((Object error, StackTrace stackTrace) {
@@ -98,19 +104,22 @@ class ProductAnalyticsPreferenceService {
   }
 
   Future<void> markPostSplashReady() async {
-    if (_postSplashReady) return;
+    if (_disposed || _postSplashReady) return;
     _postSplashReady = true;
     await _awaitLatestLocalInitialization();
+    if (_disposed) return;
     await _reconcileIfNeeded(force: false, allowDuringLogout: false);
   }
 
   Future<void> refreshPreference() {
+    if (_disposed) return Future<void>.value();
     if (_volatileDisable != null) return retryPendingDisable();
     if (_localReadFailed) return _retryLocalReadAndReconcile();
     return _reconcileIfNeeded(force: true, allowDuringLogout: false);
   }
 
   Future<void> setPreference({required ProductAnalyticsPreference preference}) async {
+    if (_disposed) return;
     final userId = _userId;
     if (userId == null) return;
     final generation = _generation;
@@ -189,6 +198,7 @@ class ProductAnalyticsPreferenceService {
   }
 
   Future<void> retryPendingDisable() async {
+    if (_disposed) return;
     if (_volatileDisable != null) {
       final current = _currentRecord;
       if (current != null) {
@@ -200,14 +210,30 @@ class ProductAnalyticsPreferenceService {
     await _reconcileIfNeeded(force: true, allowDuringLogout: false);
   }
 
-  Future<void> prepareForLogout() async {
+  Future<void> prepareForLogout() {
+    if (_disposed) return Future<void>.value();
     final userId = _userId;
-    if (userId == null) return;
+    if (userId == null) return Future<void>.value();
+    final generation = _generation;
+    final active = _logoutPreparationOperation;
+    if (active != null && active.generation == generation) return active.future;
+
+    late final Future<void> tracked;
+    tracked = _prepareForLogout().whenComplete(() {
+      if (identical(_logoutPreparationOperation?.future, tracked)) {
+        _logoutPreparationOperation = null;
+      }
+    });
+    _logoutPreparationOperation = (generation: generation, future: tracked);
+    return tracked;
+  }
+
+  Future<void> _prepareForLogout() async {
     if (_logout is ProductAnalyticsLogoutIdle) {
       _logout = ProductAnalyticsLogoutPreparationClean(generation: _generation, capturedState: state);
     }
-    _state.add(
-      ProductAnalyticsState(
+    _emitState(
+      state: ProductAnalyticsState(
         preference: state.preference,
         synchronization: state.synchronization,
         availability: const ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.unauthenticated),
@@ -238,6 +264,7 @@ class ProductAnalyticsPreferenceService {
   }
 
   Future<void> resumeAfterFailedLogout() async {
+    if (_disposed) return;
     final preparation = _logout;
     _logout = const ProductAnalyticsLogoutIdle();
     if (preparation is! ProductAnalyticsLogoutPreparation || preparation.generation != _generation || _userId == null) {
@@ -257,11 +284,12 @@ class ProductAnalyticsPreferenceService {
     final availability = state.availability;
     if (availability is ProductAnalyticsInactive &&
         availability.reason == ProductAnalyticsInactiveReason.unauthenticated) {
-      _state.add(preparation.capturedState);
+      _emitState(state: preparation.capturedState);
     }
   }
 
-  Future<void> _applyAuthState(AuthState authState) {
+  Future<void> _applyAuthState({required AuthState authState}) {
+    if (_disposed) return Future<void>.value();
     final userId = switch (authState) {
       AuthAuthenticated(:final user) => user.id,
       AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => null,
@@ -271,11 +299,12 @@ class ProductAnalyticsPreferenceService {
     }
     final generation = ++_generationCounter;
     _logout = const ProductAnalyticsLogoutIdle();
+    _logoutPreparationOperation = null;
     _operations.reset();
     _intent = _intent.reset();
     if (userId == null) {
       _session = ProductAnalyticsSignedOutSession(generation: generation);
-      _state.add(ProductAnalyticsState.initial);
+      _emitState(state: ProductAnalyticsState.initial);
       return Future<void>.value();
     }
 
@@ -286,7 +315,7 @@ class ProductAnalyticsPreferenceService {
       completion: completion,
       snapshot: const ProductAnalyticsPreferenceUnresolved(),
     );
-    _applyLocalState(null);
+    _applyLocalState(local: null);
     final initialization = _loadAndApplyLocalPreference(generation: generation, userId: userId);
     unawaited(
       initialization.whenComplete(() {
@@ -321,7 +350,7 @@ class ProductAnalyticsPreferenceService {
         _requireLogoutRecovery();
         return;
       }
-      _applyLocalState(local);
+      _applyLocalState(local: local);
     } on Object catch (error, stackTrace) {
       logw("Failed to read local analytics preference", error, stackTrace);
       if (!_matchesAccount(generation: generation, userId: userId)) return;
@@ -330,15 +359,17 @@ class ProductAnalyticsPreferenceService {
         _requireLogoutRecovery();
         return;
       }
-      _state.add(
-        _stateMapper.fromLocal(snapshot: _snapshot, postSplashReady: _postSplashReady),
+      _emitState(
+        state: _stateMapper.fromLocal(snapshot: _snapshot, postSplashReady: _postSplashReady),
       );
     }
   }
 
-  void _applyLocalState(LocalProductAnalyticsPreference? local) {
+  void _applyLocalState({required LocalProductAnalyticsPreference? local}) {
     _snapshot = productAnalyticsSnapshotFromLocal(local: local);
-    _state.add(_stateMapper.fromLocal(snapshot: _snapshot, postSplashReady: _postSplashReady));
+    _emitState(
+      state: _stateMapper.fromLocal(snapshot: _snapshot, postSplashReady: _postSplashReady),
+    );
   }
 
   Future<void> _awaitLatestLocalInitialization() async {
@@ -402,7 +433,7 @@ class ProductAnalyticsPreferenceService {
       if (_isPreparingLogout) {
         _requireLogoutRecovery();
       } else {
-        _applyLocalState(local);
+        _applyLocalState(local: local);
       }
     } on Object catch (error, stackTrace) {
       logw("Failed to retry local analytics preference read", error, stackTrace);
@@ -418,7 +449,7 @@ class ProductAnalyticsPreferenceService {
     required ProductAnalyticsPreference? pendingPreference,
   }) async {
     if (!_isPreparingLogout) {
-      _state.add(_stateMapper.reconciliationInProgress(current: state));
+      _emitState(state: _stateMapper.reconciliationInProgress(current: state));
     }
     final result = await _preferenceRepository.reconcile(userId: userId, local: _local);
     if (!_canApply(
@@ -454,7 +485,7 @@ class ProductAnalyticsPreferenceService {
       suppressForLogout: !publishState,
     );
     _snapshot = transition.snapshot;
-    _state.add(transition.state);
+    _emitState(state: transition.state);
   }
 
   Future<void> _runAccountOperation({
@@ -468,12 +499,17 @@ class ProductAnalyticsPreferenceService {
   );
 
   void _emitPreferenceRequestInProgress({required ProductAnalyticsPreference preference}) {
-    _state.add(
-      _stateMapper.requestInProgress(
+    _emitState(
+      state: _stateMapper.requestInProgress(
         preference: preference,
         postSplashReady: _postSplashReady,
       ),
     );
+  }
+
+  void _emitState({required ProductAnalyticsState state}) {
+    if (_disposed) return;
+    _state.add(state);
   }
 
   void _requireLogoutRecovery() {
@@ -501,9 +537,15 @@ class ProductAnalyticsPreferenceService {
       _canApply(generation: generation, userId: userId, allowDuringLogout: false);
 
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     // Invalidate every in-flight account-scoped completion before closing the
     // replay subject so detached timeout/storage work cannot publish afterward.
     _session = ProductAnalyticsSignedOutSession(generation: ++_generationCounter);
+    _logout = const ProductAnalyticsLogoutIdle();
+    _logoutPreparationOperation = null;
+    _operations.reset();
+    _intent = _intent.reset();
     _postSplashReady = false;
     await _authSubscription?.cancel();
     _authSubscription = null;

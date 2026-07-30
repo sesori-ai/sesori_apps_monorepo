@@ -31,10 +31,13 @@ class ProductAnalyticsService {
   ValueStream<ProductAnalyticsState> get stateStream => _preferenceService.stateStream;
   ProductAnalyticsState get state => _preferenceService.state;
 
-  Future<void> start() => _startFuture ??= _start();
+  Future<void> start() {
+    if (_disposed) return Future<void>.value();
+    return _startFuture ??= _start();
+  }
 
   Future<void> _start() async {
-    _stateSubscription = stateStream.listen(_onPreferenceState);
+    _stateSubscription = stateStream.listen((state) => _onPreferenceState(state: state));
     await _preferenceService.start();
   }
 
@@ -67,7 +70,7 @@ class ProductAnalyticsService {
         : AnalyticsDeliveryResult.failed;
   }
 
-  void _onPreferenceState(ProductAnalyticsState state) {
+  void _onPreferenceState({required ProductAnalyticsState state}) {
     if (_disposed || !state.isActive) return;
     final context = _preferenceService.deliveryContext;
     if (context == null) return;
