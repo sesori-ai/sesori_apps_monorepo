@@ -37,6 +37,7 @@ class SessionOptionsCacheDao extends DatabaseAccessor<AppDatabase> with _$Sessio
     required int? expectedRevision,
   }) async {
     if (expectedRevision == null) {
+      if (row.revision != 1) return false;
       final inserted = await into(sessionOptionsCacheTable).insertReturningOrNull(
         row,
         onConflict: DoNothing(
@@ -45,6 +46,7 @@ class SessionOptionsCacheDao extends DatabaseAccessor<AppDatabase> with _$Sessio
       );
       return inserted != null;
     }
+    if (row.revision != expectedRevision + 1) return false;
 
     final updated =
         await (update(sessionOptionsCacheTable)..where(

@@ -2,7 +2,9 @@ import "dart:async";
 import "dart:io";
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -26,6 +28,31 @@ void main() {
     expect(foreignKeys.single.read<String>("from"), "project_id");
     expect(foreignKeys.single.read<String>("to"), "project_id");
     expect(foreignKeys.single.read<String>("on_delete").toUpperCase(), "CASCADE");
+  });
+
+  test("session options CAS requires the exact next revision", () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final dao = SessionOptionsCacheDao(database);
+    const row = SessionOptionsCacheTableData(
+      pluginId: "plugin",
+      scope: PluginSessionOptionsScope.plugin,
+      ownerId: "plugin",
+      projectId: null,
+      capturedProjectPath: null,
+      revision: 1,
+      capturedAt: 1,
+      completeness: PluginSessionOptionsCompleteness.complete,
+      agentsJson: "{}",
+      providersJson: "{}",
+      commandsJson: "{}",
+    );
+
+    expect(await dao.compareAndSet(row: row.copyWith(revision: 0), expectedRevision: null), isFalse);
+    expect(await dao.compareAndSet(row: row, expectedRevision: null), isTrue);
+    expect(await dao.compareAndSet(row: row, expectedRevision: 1), isFalse);
+    expect(await dao.compareAndSet(row: row.copyWith(revision: 3), expectedRevision: 1), isFalse);
+    expect(await dao.compareAndSet(row: row.copyWith(revision: 2), expectedRevision: 1), isTrue);
   });
 
   test("file-backed readers observe the committed snapshot during a writer transaction", () async {

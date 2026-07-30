@@ -143,6 +143,8 @@
   to `main` as `93b45fec`.
 - Step 4.B/6 preparation (2026-07-30): added the Drift v12 cache table,
   standalone DAO, generated runtime database, migration steps, and
-  current-schema cascade smoke coverage. The 2 focused persistence tests and
-  bridge-app fatal analysis passed with `git diff --check`. Aristotle approved
-  the stacked implementation boundary without findings.
+  current-schema cascade smoke coverage. Review follow-up made the DAO reject
+  initial revisions other than 1 and updates other than the exact next revision.
+  The 3 focused persistence tests and bridge-app fatal analysis passed with
+  `git diff --check`. Aristotle approved the stacked implementation boundary
+  without findings.
