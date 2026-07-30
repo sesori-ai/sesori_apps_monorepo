@@ -155,7 +155,11 @@ class CursorCatalogService {
     if (outcome == CursorCatalogProbeOutcome.retryableFailure) return outcome;
     // A live session/new or session/load capture is newer than this isolated
     // probe. Keep that aggregate intact, including its live command snapshot.
-    if (_tracker.revision != expectedCatalogRevision) return outcome;
+    if (_tracker.revision != expectedCatalogRevision) {
+      _tracker.invalidateProbeOutcomes();
+      _retriedScopes.clear();
+      return outcome;
+    }
     _tracker.replaceDiscoveredCatalog(
       discovered: discovered,
       scope: scope,

@@ -110,6 +110,9 @@ class CursorCatalogTracker {
   CursorCatalogProbeOutcome? outcomeForScope({required String scope}) =>
       _outcomesByScope[_normalizeScope(scope: scope)];
 
+  /// Invalidates discovery decisions made for an older catalog snapshot.
+  void invalidateProbeOutcomes() => _outcomesByScope.clear();
+
   /// Creates an isolated mutable copy for reuse discovery. The service can
   /// commit it atomically only if the live tracker did not change meanwhile.
   CursorCatalogTracker stageForDiscovery() {

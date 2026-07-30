@@ -487,6 +487,64 @@ void main() {
       expect(commandTracker.commands.single.name, "live-command");
     });
 
+    test("a live capture during forced discovery invalidates stale reuse decisions", () async {
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: false,
+      );
+      await service.ensureCatalog(scope: "/project");
+      await service.ensureCatalog(scope: "/project");
+      expect(repository.openCount, 2, reason: "bounded reuse spent its one retry");
+
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "probe-model", name: "Probe", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "probe-mode", name: "Probe", description: null),
+        ],
+        defaultModeId: "probe-mode",
+        thoughtLevelsByModel: {
+          "probe-model": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      repository.resetStarted = Completer<void>();
+      repository.resetGate = Completer<void>();
+
+      final refreshing = service.refreshCatalog(scope: "/project");
+      await repository.resetStarted!.future;
+      tracker.applySnapshot(
+        snapshot: CursorCatalogSnapshot(
+          modelConfigId: "model-picker",
+          models: const [
+            CursorCatalogOption(value: "live-model", name: "Live", description: null),
+          ],
+          loadedModelId: "live-model",
+          modeConfigId: null,
+          modes: const [],
+          loadedModeId: null,
+          thoughtLevel: null,
+        ),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.resetGate!.complete();
+      expect(await refreshing, isTrue);
+      expect(tracker.isComplete, isFalse);
+
+      repository.resetStarted = null;
+      repository.resetGate = null;
+      await service.ensureCatalog(scope: "/project");
+
+      expect(repository.openCount, 4);
+      expect(tracker.isComplete, isTrue);
+    });
+
     test("forced discovery bypasses exhausted and already-retried scope state", () async {
       repository.candidates = CursorCatalogCandidateListResult(
         candidates: const [],
