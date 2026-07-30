@@ -631,6 +631,50 @@ void main() {
     );
   });
 
+  test("later analytics activity retries activation readiness without deferred candidates", () async {
+    createService();
+    final record = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: record),
+    );
+    analyticsRepository.results = Queue.of([
+      AnalyticsDeliveryResult.acceptedBySdk,
+      AnalyticsDeliveryResult.failed,
+    ]);
+
+    await service.start();
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 2);
+
+    analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    await waitForAnalyticsCalls(count: 4);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+      ],
+    );
+  });
+
   test("local read failure blocks automatic activation until an explicit successful retry", () async {
     createService();
     preferenceRepository.throwOnLoad = true;

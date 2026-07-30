@@ -67,7 +67,7 @@ class ProductAnalyticsService {
     final envelope = ProductAnalyticsEnvelope(event: event, occurredAtUtc: occurredAtUtc);
     final context = _preferenceService.deliveryContext;
     if (context != null) {
-      _retryActiveGenerationForDeferredCandidates(context: context);
+      _retryActiveGenerationDispatch(context: context);
       return _deliver(envelope: envelope, context: context);
     }
 
@@ -82,9 +82,7 @@ class ProductAnalyticsService {
     return retention.retained ? AnalyticsDeliveryResult.deferredUntilPreference : AnalyticsDeliveryResult.failed;
   }
 
-  void _retryActiveGenerationForDeferredCandidates({required ProductAnalyticsDeliveryContext context}) {
-    final candidates = _deferredCandidates;
-    if (candidates == null || candidates.generation != context.generation) return;
+  void _retryActiveGenerationDispatch({required ProductAnalyticsDeliveryContext context}) {
     unawaited(
       _coalesceActiveGenerationDispatch(context: context).catchError((Object error, StackTrace stackTrace) {
         logw("Failed to retry deferred product analytics delivery", error, stackTrace);
