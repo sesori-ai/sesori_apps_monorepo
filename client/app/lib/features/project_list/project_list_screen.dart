@@ -4,14 +4,11 @@ import "package:flutter/cupertino.dart" show CupertinoColors, CupertinoDynamicCo
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart"
-    hide BridgeInstallMethod, BridgeInstallOs, OnboardingSurface, SupportChannel;
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:share_plus/share_plus.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
-import "../../core/analytics/analytics_event.dart";
-import "../../core/analytics/analytics_reporter.dart";
 import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
@@ -48,6 +45,7 @@ class ProjectListScreen extends StatelessWidget {
         projectListService: getIt<ProjectListService>(),
         sessionUnseenTracker: getIt<SessionUnseenTracker>(),
         registeredBridgesService: getIt<RegisteredBridgesService>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
         failureReporter: getIt<FailureReporter>(),
       ),
       child: const _ProjectListBody(),

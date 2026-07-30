@@ -9,11 +9,14 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../errors/api_error_remote_failure_x.dart";
+import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
+import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/product_analytics_service.dart";
 import "../../services/project_list_service.dart";
 import "../../services/registered_bridges_service.dart";
 import "../../services/session_unseen_tracker.dart";
@@ -36,6 +39,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final SseEventTracker _sseEventTracker;
   final SessionUnseenTracker _sessionUnseenTracker;
   final RegisteredBridgesService _registeredBridgesService;
+  final ProductAnalyticsService _productAnalyticsService;
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -48,6 +52,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     required ProjectListService projectListService,
     required SessionUnseenTracker sessionUnseenTracker,
     required RegisteredBridgesService registeredBridgesService,
+    required ProductAnalyticsService productAnalyticsService,
     required FailureReporter failureReporter,
   }) : _projectRepository = projectRepository,
        _projectListService = projectListService,
@@ -55,6 +60,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
        _sseEventTracker = sseEventTracker,
        _sessionUnseenTracker = sessionUnseenTracker,
        _registeredBridgesService = registeredBridgesService,
+       _productAnalyticsService = productAnalyticsService,
        _failureReporter = failureReporter,
        super(const ProjectListState.loading()) {
     unawaited(_loadInitialProjects());
@@ -125,6 +131,58 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
   void setActiveProject(Project project) {
     _connectionService.setActiveDirectory(project.id);
+  }
+
+  void reportNeedHelpMenuOpened({required OnboardingSurface surface}) {
+    _reportProductEvent(event: ProductAnalyticsEvent.needHelpMenuOpened(surface: surface));
+  }
+
+  void reportSupportLinkOpened({required SupportChannel channel, required OnboardingSurface surface}) {
+    _reportProductEvent(
+      event: ProductAnalyticsEvent.supportLinkOpened(channel: channel, surface: surface),
+    );
+  }
+
+  void reportWhyBridgeOpened({required OnboardingSurface surface}) {
+    _reportProductEvent(event: ProductAnalyticsEvent.whyBridgeOpened(surface: surface));
+  }
+
+  void reportInstallCommandCopied({
+    required BridgeInstallMethod method,
+    required BridgeInstallOs os,
+    required OnboardingSurface surface,
+  }) {
+    _reportProductEvent(
+      event: ProductAnalyticsEvent.installCommandCopied(method: method, os: os, surface: surface),
+    );
+  }
+
+  void reportInstallCommandShared({
+    required BridgeInstallMethod method,
+    required BridgeInstallOs os,
+    required OnboardingSurface surface,
+  }) {
+    _reportProductEvent(
+      event: ProductAnalyticsEvent.installCommandShared(method: method, os: os, surface: surface),
+    );
+  }
+
+  void reportRunCommandCopied({required OnboardingSurface surface}) {
+    _reportProductEvent(event: ProductAnalyticsEvent.runCommandCopied(surface: surface));
+  }
+
+  void reportRunCommandShared({required OnboardingSurface surface}) {
+    _reportProductEvent(event: ProductAnalyticsEvent.runCommandShared(surface: surface));
+  }
+
+  void _reportProductEvent({required ProductAnalyticsEvent event}) {
+    unawaited(
+      _productAnalyticsService.logEvent(event: event, occurredAtUtc: DateTime.now().toUtc()).then<void>((result) {
+        if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+          logw("Failed to deliver onboarding analytics event");
+        }
+      }),
+    );
   }
 
   void _onUnseenUpdated() {

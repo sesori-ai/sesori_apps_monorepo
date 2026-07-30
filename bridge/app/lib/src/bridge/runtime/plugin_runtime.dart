@@ -254,6 +254,24 @@ class PluginRuntime {
     }
   }
 
+  Future<({T value, int generation})> useWithGeneration<T>({
+    required String pluginId,
+    required Enum operation,
+    required Future<T> Function(BridgePluginApi api) body,
+  }) async {
+    final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
+    try {
+      final result = await body(lease.api);
+      _requireCurrentGeneration(lease: lease, operation: operation);
+      return (value: result, generation: lease.generation);
+    } on PluginAuthenticationRequiredException catch (error) {
+      _handleAuthenticationRequired(lease: lease, failure: error);
+      rethrow;
+    } finally {
+      _release(lease);
+    }
+  }
+
   /// Runs interruptible plugin work, then linearizes a short durable commit
   /// before this generation can be replaced. Force-stop remains able to
   /// interrupt [prepare], but waits for an entered [commit] to finish. The

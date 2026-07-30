@@ -13,7 +13,11 @@ final getIt = GetIt.instance;
 //   2. configureAuthDependencies(…)  — Auth deps (AuthManager, interface bindings, etc.)
 //   3. configureCoreDependencies(…)  — Core deps (ConnectionService, VoiceApi, etc.)
 @InjectableInit()
-void configureDependencies({required bool firebaseEnabled}) {
+void configureDependencies({
+  required bool firebaseEnabled,
+  required AnalyticsRuntimeCapability analyticsRuntimeCapability,
+}) {
+  getIt.registerSingleton<AnalyticsRuntimeCapability>(analyticsRuntimeCapability);
   getIt.init(
     environment: firebaseEnabled ? firebaseEnabledEnvironmentName : firebaseDisabledEnvironmentName,
   );

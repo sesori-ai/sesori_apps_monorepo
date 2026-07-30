@@ -30,9 +30,6 @@ import 'package:sesori_mobile/capabilities/voice/voice_transcription_service.dar
     as _i1038;
 import 'package:sesori_mobile/capabilities/voice/wake_lock_service.dart'
     as _i511;
-import 'package:sesori_mobile/core/analytics/analytics_reporter.dart' as _i199;
-import 'package:sesori_mobile/core/analytics/firebase_analytics_reporter.dart'
-    as _i330;
 import 'package:sesori_mobile/core/di/firebase_register_module.dart' as _i677;
 import 'package:sesori_mobile/core/di/register_module.dart' as _i124;
 import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
@@ -173,11 +170,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i982.FirebaseApp>(),
       ),
       registerFor: {_firebaseDisabled},
-    );
-    gh.lazySingleton<_i199.AnalyticsReporter>(
-      () => _i330.FirebaseAnalyticsReporter(
-        analytics: gh<_i398.FirebaseAnalytics>(),
-      ),
     );
     gh.lazySingleton<_i901.DeepLinkService>(
       () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),

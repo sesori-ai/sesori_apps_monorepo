@@ -644,6 +644,7 @@ class BridgeRuntimeRunner {
                   id: descriptor.id,
                   displayName: descriptor.displayName,
                   residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
+                  sessionOptionsScope: descriptor.sessionOptionsScope,
                   managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
                 ),
             ],

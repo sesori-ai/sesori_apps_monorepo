@@ -40,7 +40,7 @@ void main() {
     final logs = <String>[];
 
     await runZoned(
-      () => openExternalLink(url: uri),
+      () => openExternalLink(url: uri, mode: UrlLaunchMode.externalApp),
       zoneSpecification: ZoneSpecification(
         print: (_, _, _, message) => logs.add(message),
       ),

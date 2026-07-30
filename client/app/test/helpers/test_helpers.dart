@@ -11,7 +11,14 @@ import "package:mocktail/mocktail.dart";
 import "package:record/record.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef, RouteSource;
+import "package:sesori_dart_core/sesori_dart_core.dart"
+    show
+        AnalyticsDeliveryResult,
+        AppRouteDef,
+        OnboardingSurface,
+        ProductAnalyticsEvent,
+        ProductAnalyticsService,
+        RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
@@ -42,8 +49,6 @@ import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
-import "package:sesori_mobile/core/analytics/analytics_event.dart";
-import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -137,16 +142,49 @@ class MockNotificationCanceller extends Mock implements NotificationCanceller {}
 
 class MockUrlLauncher extends Mock implements UrlLauncher {}
 
-class MockAnalyticsReporter extends Mock implements AnalyticsReporter {}
+class MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+
+void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
+  when(
+    () => service.logEvent(
+      event: any(named: "event"),
+      occurredAtUtc: any(named: "occurredAtUtc"),
+    ),
+  ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+}
 
 void registerListServices({
   required MockProjectRepository projectRepository,
+}) {
+  _registerListServices(projectRepository: projectRepository, productAnalyticsService: null);
+}
+
+void registerListServicesWithProductAnalytics({
+  required MockProjectRepository projectRepository,
+  required MockProductAnalyticsService productAnalyticsService,
+}) {
+  _registerListServices(
+    projectRepository: projectRepository,
+    productAnalyticsService: productAnalyticsService,
+  );
+}
+
+void _registerListServices({
+  required MockProjectRepository projectRepository,
+  required MockProductAnalyticsService? productAnalyticsService,
 }) {
   if (getIt.isRegistered<ProjectListService>()) {
     getIt.unregister<ProjectListService>();
   }
   if (getIt.isRegistered<SessionListService>()) {
     getIt.unregister<SessionListService>();
+  }
+  if (getIt.isRegistered<ProductAnalyticsService>()) {
+    getIt.unregister<ProductAnalyticsService>();
+  }
+  final analyticsService = productAnalyticsService ?? MockProductAnalyticsService();
+  if (productAnalyticsService != null) {
+    stubProductAnalyticsService(service: analyticsService);
   }
   getIt.registerSingleton<ProjectListService>(
     ProjectListService(
@@ -160,6 +198,7 @@ void registerListServices({
       activityCalculator: const SessionActivityCalculator(),
     ),
   );
+  getIt.registerSingleton<ProductAnalyticsService>(analyticsService);
 }
 
 /// In-memory [SessionUnseenTracker] stand-in mirroring its lean contract:
@@ -426,8 +465,9 @@ void registerAllFallbackValues() {
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
   registerFallbackValue(AuthProvider.github);
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(DateTime.utc(2000));
   registerFallbackValue(
-    const AnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
+    const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
   );
 }
 

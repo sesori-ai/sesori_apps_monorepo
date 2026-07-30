@@ -187,7 +187,7 @@ class _FilePartWidgetState extends State<FilePartWidget> {
         button: uri != null,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: uri == null ? null : () => unawaited(openExternalLink(url: uri)),
+          onTap: uri == null ? null : () => unawaited(openExternalLink(url: uri, mode: UrlLaunchMode.externalApp)),
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg, vertical: prego.spacing.md),
             decoration: BoxDecoration(
