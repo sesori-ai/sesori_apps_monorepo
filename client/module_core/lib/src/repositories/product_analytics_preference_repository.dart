@@ -100,7 +100,11 @@ class ProductAnalyticsPreferenceRepository {
       if (preference == ProductAnalyticsPreference.enabled) {
         return const ProductAnalyticsPreferenceStorageFailed();
       }
-      logw("Failed to persist analytics disable intent; continuing with server suppression", error, stackTrace);
+      logw(
+        "Failed to persist analytics disable intent; continuing with server suppression",
+        _ProductAnalyticsPreferenceStorageException(innerError: error),
+        stackTrace,
+      );
     }
 
     return _putPending(userId: userId, pending: pending, pendingPersisted: pendingPersisted);
