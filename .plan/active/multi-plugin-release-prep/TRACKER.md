@@ -168,6 +168,8 @@
   forced-tail coalescing. Review follow-up made invalidation revision-fenced,
   revalidated authoritative paths before deletion and commit, queued reuse after
   stale-generation work, kept malformed-cache logs payload-independent, and
-  named test-helper parameters. All 31 persistence/repository/service tests and
-  bridge-app fatal analysis passed with `git diff --check`. Aristotle approved
-  the revised implementation architecture without findings.
+  named test-helper parameters. A second review round revalidates retained data
+  after capture failure and revision-fences malformed-row recovery. All 32
+  persistence/repository/service tests and bridge-app fatal analysis passed with
+  `git diff --check`. Aristotle's final review approved the revised implementation
+  architecture without findings.

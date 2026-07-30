@@ -47,32 +47,21 @@ void main() {
       expect(repository.readCalls, 0);
     });
 
-    test("scope and captured path must exactly match the resolved key", () async {
-      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/current";
-      final service = _service(repository: repository, now: now);
-      repository.readHandler = (_) async => _entry(
-        key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
-        response: _response(marker: "wrong-scope"),
-        capturedAt: now,
-      );
-
-      expect(
-        await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1"),
-        isA<SessionOptionsCacheUnavailable>(),
-      );
-      expect(repository.deletedKeys.single.scope, PluginSessionOptionsScope.project);
-
-      repository
-        ..deletedKeys.clear()
-        ..readHandler = (_) async => _entry(
-          key: const SessionOptionsCacheKey.project(
-            pluginId: "plugin-1",
-            projectId: "project-1",
-            projectPath: "/projects/old",
+    test("captured path must exactly match the resolved key", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/current"
+        ..put(
+          _entry(
+            key: const SessionOptionsCacheKey.project(
+              pluginId: "plugin-1",
+              projectId: "project-1",
+              projectPath: "/projects/old",
+            ),
+            response: _response(marker: "old-path"),
+            capturedAt: now,
           ),
-          response: _response(marker: "old-path"),
-          capturedAt: now,
         );
+      final service = _service(repository: repository, now: now);
 
       expect(
         await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1"),
@@ -168,26 +157,43 @@ void main() {
     });
 
     test("undecodable cache logging excludes the payload-bearing cause", () async {
-      final repository = _FakeSessionOptionsRepository()
-        ..projectPaths["project-1"] = "/projects/one"
-        ..readHandler = (_) async => throw SessionOptionsCacheDecodingException(
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      final fresh = _entry(
+        key: key,
+        response: _response(marker: "fresh"),
+        capturedAt: now,
+        revision: 2,
+      );
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.readHandler = (_) async {
+        repository
+          ..put(fresh)
+          ..readHandler = null;
+        throw SessionOptionsCacheDecodingException(
           cause: const FormatException("private-cache-payload"),
           causeStackTrace: StackTrace.current,
+          revision: 1,
         );
+      };
       final service = _service(repository: repository, now: now);
 
       final output = await _captureLogOutput(
         level: LogLevel.verbose,
         action: () async {
-          expect(
-            await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1"),
-            isA<SessionOptionsCacheUnavailable>(),
-          );
+          final outcome = await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1");
+          expect(outcome, isA<SessionOptionsAvailable>());
+          expect((outcome as SessionOptionsAvailable).response, _response(marker: "fresh"));
         },
       );
 
-      expect(output, contains("Deleting undecodable session options cache for plugin plugin-1"));
+      expect(output, contains("Recovering from undecodable session options cache for plugin plugin-1"));
       expect(output, isNot(contains("private-cache-payload")));
+      expect(repository.conditionalDeleteCalls.single.expectedRevision, 1);
+      expect(repository.stored(key), fresh);
     });
   });
 
@@ -220,6 +226,35 @@ void main() {
         await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1"),
         isA<SessionOptionsRefreshFailedUnavailable>(),
       );
+    });
+
+    test("capture failure revalidates retention before retaining the cached response", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..captureResult = const SessionOptionsCaptureFailed();
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      repository.put(
+        _entry(
+          key: key,
+          response: _response(marker: "expired-during-capture"),
+          capturedAt: now,
+        ),
+      );
+      final service = SessionOptionsService(
+        repository: repository,
+        pluginScopes: const {"plugin-1": PluginSessionOptionsScope.project},
+        clock: _AdvancingClock(now: now),
+        retention: Duration.zero,
+      );
+
+      final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
+      expect(repository.deletedKeys, [key]);
     });
 
     test("path-invalid and expired rows are deleted before failed capture and cannot be retained", () async {
@@ -931,7 +966,7 @@ class _FakeSessionOptionsRepository implements SessionOptionsRepository {
   }) async {
     conditionalDeleteCalls.add(_ConditionalDeleteCall(key: key, expectedRevision: expectedRevision));
     final current = stored(key);
-    if (current != null && current.revision != expectedRevision) return false;
+    if (current == null || current.revision != expectedRevision) return false;
     deletedKeys.add(key);
     remove(key);
     return true;

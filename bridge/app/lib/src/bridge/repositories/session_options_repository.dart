@@ -61,10 +61,12 @@ final class SessionOptionsCacheDecodingException implements Exception {
   const SessionOptionsCacheDecodingException({
     required this.cause,
     required this.causeStackTrace,
+    required this.revision,
   });
 
   final Object cause;
   final StackTrace causeStackTrace;
+  final int? revision;
 
   @override
   String toString() => "SessionOptionsCacheDecodingException: invalid persisted session options cache";
@@ -117,7 +119,11 @@ class SessionOptionsRepository {
       );
     } on Object catch (error, stackTrace) {
       if (error is ArgumentError) {
-        throw SessionOptionsCacheDecodingException(cause: error, causeStackTrace: stackTrace);
+        throw SessionOptionsCacheDecodingException(
+          cause: error,
+          causeStackTrace: stackTrace,
+          revision: null,
+        );
       }
       rethrow;
     }
@@ -126,7 +132,11 @@ class SessionOptionsRepository {
     try {
       return _entryFromRow(row);
     } on Object catch (error, stackTrace) {
-      throw SessionOptionsCacheDecodingException(cause: error, causeStackTrace: stackTrace);
+      throw SessionOptionsCacheDecodingException(
+        cause: error,
+        causeStackTrace: stackTrace,
+        revision: row.revision,
+      );
     }
   }
 

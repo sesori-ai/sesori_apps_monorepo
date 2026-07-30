@@ -174,8 +174,8 @@ class SessionOptionsService {
       if (_becameStale(pluginId: resolved.key.pluginId, expectedGeneration: expectedGeneration)) {
         return const SessionOptionsAutomaticNoOp();
       }
-      return _refreshFailure(
-        retained: retained,
+      return _captureFailure(
+        resolved: resolved,
         automatic: automatic,
         message: "Automatic session options capture failed for plugin ${resolved.key.pluginId}",
         error: error,
@@ -187,8 +187,8 @@ class SessionOptionsService {
       case SessionOptionsCaptureInactive():
         return const SessionOptionsAutomaticNoOp();
       case SessionOptionsCaptureFailed():
-        return _refreshFailure(
-          retained: retained,
+        return _captureFailure(
+          resolved: resolved,
           automatic: automatic,
           message: "Automatic session options discovery failed for plugin ${resolved.key.pluginId}",
           error: null,
@@ -340,6 +340,26 @@ class SessionOptionsService {
         : const SessionOptionsRefreshFailedRetained();
   }
 
+  Future<SessionOptionsOutcome> _captureFailure({
+    required _ResolvedSessionOptions resolved,
+    required bool automatic,
+    required String message,
+    required Object? error,
+    required StackTrace? stackTrace,
+  }) async {
+    if (!await _isCurrentResolution(resolved: resolved)) {
+      return _movedProjectOutcome(automatic: automatic);
+    }
+    final retained = await _readValid(key: resolved.key);
+    return _refreshFailure(
+      retained: retained,
+      automatic: automatic,
+      message: message,
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
   bool _becameStale({required String pluginId, required int? expectedGeneration}) {
     return expectedGeneration != null &&
         !_repository.isCurrentGeneration(pluginId: pluginId, generation: expectedGeneration);
@@ -365,9 +385,20 @@ class SessionOptionsService {
     final SessionOptionsCacheEntry? entry;
     try {
       entry = await _repository.read(key: key);
-    } on SessionOptionsCacheDecodingException {
-      Log.w("Deleting undecodable session options cache for plugin ${key.pluginId}");
-      await _repository.delete(key: key);
+    } on SessionOptionsCacheDecodingException catch (error) {
+      Log.w("Recovering from undecodable session options cache for plugin ${key.pluginId}");
+      final revision = error.revision;
+      if (revision == null) {
+        await _repository.delete(key: key);
+        return null;
+      }
+      final deleted = await _repository.deleteIfRevision(
+        key: key,
+        expectedRevision: revision,
+      );
+      if (!deleted && retryAfterDeleteConflict) {
+        return _readValidAttempt(key: key, retryAfterDeleteConflict: false);
+      }
       return null;
     }
     if (entry == null) return null;
