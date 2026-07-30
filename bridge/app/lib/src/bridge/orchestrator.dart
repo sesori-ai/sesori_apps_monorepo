@@ -11,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/database/daos/session_options_cache_dao.dart";
 import "../api/database/database.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
@@ -220,7 +221,7 @@ class Orchestrator {
       runtime: _pluginRuntime,
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
-      cacheDao: _database.sessionOptionsCacheDao,
+      cacheDao: SessionOptionsCacheDao(_database),
     );
     final sessionOptionsService = SessionOptionsService(
       repository: sessionOptionsRepository,

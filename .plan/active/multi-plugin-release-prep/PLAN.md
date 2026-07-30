@@ -387,8 +387,8 @@ The current codebase maps the Step 4 boundary to these source changes:
 - In `bridge/app/lib/src/api/database`, add
   `tables/session_options_cache_table.dart` and
   `daos/session_options_cache_dao.dart`, then register both in `database.dart`.
-  Version 12 creates only the new table. The nullable project foreign key uses
-  `ProjectsTable.projectId` with `KeyAction.cascade`; the table-level CHECK
+  Version 12 creates only the new table. The nullable project foreign key
+  targets `projects_table.project_id` with cascade deletion; the table-level CHECK
   enforces plugin rows with null project fields and project rows with matching
   non-null owner/project identity and a non-empty captured path. Generate the
   Drift database, DAO, row, schema-v12 snapshot, and migration-step sources;

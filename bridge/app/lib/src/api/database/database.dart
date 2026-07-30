@@ -10,7 +10,6 @@ import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
-import "daos/session_options_cache_dao.dart";
 import "database.steps.dart";
 import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
@@ -33,7 +32,7 @@ part "database.g.dart";
     CatalogHydrationsTable,
     SessionOptionsCacheTable,
   ],
-  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao, SessionOptionsCacheDao],
+  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
 class AppDatabase extends _$AppDatabase {
   static const _readPoolSize = 4;

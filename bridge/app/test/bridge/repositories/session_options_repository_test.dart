@@ -1,7 +1,7 @@
 import "dart:convert";
 
+import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/api/database/tables/session_options_cache_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_options_cache_key.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_options_repository.dart";
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
@@ -14,19 +14,21 @@ import "../../helpers/test_database.dart";
 void main() {
   group("SessionOptionsRepository", () {
     late AppDatabase database;
+    late SessionOptionsCacheDao cacheDao;
     late _FakePlugin plugin;
     late _RecordingPluginRuntime runtime;
     late SessionOptionsRepository repository;
 
     setUp(() {
       database = createTestDatabase();
+      cacheDao = SessionOptionsCacheDao(database);
       plugin = _FakePlugin();
       runtime = _RecordingPluginRuntime(plugin: plugin);
       repository = SessionOptionsRepository(
         runtime: runtime,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
-        cacheDao: database.sessionOptionsCacheDao,
+        cacheDao: cacheDao,
       );
     });
 
@@ -166,7 +168,7 @@ void main() {
         isTrue,
       );
 
-      final raw = await database.sessionOptionsCacheDao.getRow(
+      final raw = await cacheDao.getRow(
         pluginId: "plugin-1",
         scope: PluginSessionOptionsScope.project,
         ownerId: "project-1",
@@ -199,7 +201,7 @@ void main() {
 
       await repository.commit(candidate: candidate, expectedRevision: null, generation: 1);
 
-      final raw = await database.sessionOptionsCacheDao.getRow(
+      final raw = await cacheDao.getRow(
         pluginId: "plugin-1",
         scope: PluginSessionOptionsScope.plugin,
         ownerId: "plugin-1",
@@ -211,8 +213,8 @@ void main() {
     });
 
     test("read wraps malformed stored JSON without hiding the original error", () async {
-      await database.sessionOptionsCacheDao.compareAndSet(
-        row: SessionOptionsCacheDto(
+      await cacheDao.compareAndSet(
+        row: SessionOptionsCacheTableData(
           pluginId: "plugin-1",
           scope: PluginSessionOptionsScope.plugin,
           ownerId: "plugin-1",
@@ -258,7 +260,7 @@ void main() {
       expect(runtime.commitCalls, 1);
       expect(runtime.lastOperation, SessionOptionsRuntimeOperation.commit);
       expect(
-        await database.sessionOptionsCacheDao.getRow(
+        await cacheDao.getRow(
           pluginId: "plugin-1",
           scope: PluginSessionOptionsScope.plugin,
           ownerId: "plugin-1",

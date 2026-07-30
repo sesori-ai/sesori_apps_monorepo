@@ -658,9 +658,7 @@
     },
     {
       "id": 5,
-      "references": [
-        0
-      ],
+      "references": [],
       "type": "table",
       "data": {
         "name": "session_options_cache_table",
@@ -705,26 +703,10 @@
             "getter_name": "projectId",
             "moor_type": "string",
             "nullable": true,
-            "customConstraints": null,
-            "defaultConstraints": "REFERENCES projects_table (project_id) ON DELETE CASCADE",
-            "dialectAwareDefaultConstraints": {
-              "sqlite": "REFERENCES projects_table (project_id) ON DELETE CASCADE"
-            },
+            "customConstraints": "NULL REFERENCES projects_table (project_id) ON DELETE CASCADE",
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": [
-              {
-                "foreign_key": {
-                  "to": {
-                    "table": "projects_table",
-                    "column": "project_id"
-                  },
-                  "initially_deferred": false,
-                  "on_update": null,
-                  "on_delete": "cascade"
-                }
-              }
-            ]
+            "dsl_features": []
           },
           {
             "name": "captured_project_path",

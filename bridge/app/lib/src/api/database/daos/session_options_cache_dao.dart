@@ -10,7 +10,7 @@ part "session_options_cache_dao.g.dart";
 class SessionOptionsCacheDao extends DatabaseAccessor<AppDatabase> with _$SessionOptionsCacheDaoMixin {
   SessionOptionsCacheDao(super.attachedDatabase);
 
-  Future<SessionOptionsCacheDto?> getRow({
+  Future<SessionOptionsCacheTableData?> getRow({
     required String pluginId,
     required PluginSessionOptionsScope scope,
     required String ownerId,
@@ -33,7 +33,7 @@ class SessionOptionsCacheDao extends DatabaseAccessor<AppDatabase> with _$Sessio
   }
 
   Future<bool> compareAndSet({
-    required SessionOptionsCacheDto row,
+    required SessionOptionsCacheTableData row,
     required int? expectedRevision,
   }) async {
     if (expectedRevision == null) {

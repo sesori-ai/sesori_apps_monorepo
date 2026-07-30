@@ -1,6 +1,5 @@
 import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/api/database/tables/session_options_cache_table.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -13,7 +12,7 @@ void main() {
 
     setUp(() {
       db = createTestDatabase();
-      dao = db.sessionOptionsCacheDao;
+      dao = SessionOptionsCacheDao(db);
     });
 
     tearDown(() async {
@@ -181,7 +180,7 @@ void main() {
   });
 }
 
-SessionOptionsCacheDto _row({
+SessionOptionsCacheTableData _row({
   required String pluginId,
   required PluginSessionOptionsScope scope,
   required String ownerId,
@@ -194,7 +193,7 @@ SessionOptionsCacheDto _row({
   required String providersJson,
   required String commandsJson,
 }) {
-  return SessionOptionsCacheDto(
+  return SessionOptionsCacheTableData(
     pluginId: pluginId,
     scope: scope,
     ownerId: ownerId,

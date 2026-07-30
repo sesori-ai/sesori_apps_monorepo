@@ -6,7 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/daos/session_options_cache_dao.dart";
-import "../../api/database/tables/session_options_cache_table.dart";
+import "../../api/database/database.dart";
 import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_agent_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
@@ -116,7 +116,7 @@ class SessionOptionsRepository {
     if (row == null) return null;
 
     try {
-      return _entryFromDto(row);
+      return _entryFromRow(row);
     } on Object catch (error, stackTrace) {
       throw SessionOptionsCacheDecodingException(cause: error, causeStackTrace: stackTrace);
     }
@@ -183,7 +183,7 @@ class SessionOptionsRepository {
       generation: generation,
       operation: SessionOptionsRuntimeOperation.commit,
       commit: () => _cacheDao.compareAndSet(
-        row: _dtoFromEntry(candidate),
+        row: _rowFromEntry(candidate),
         expectedRevision: expectedRevision,
       ),
     );
@@ -216,7 +216,7 @@ class SessionOptionsRepository {
     };
   }
 
-  SessionOptionsCacheEntry _entryFromDto(SessionOptionsCacheDto row) {
+  SessionOptionsCacheEntry _entryFromRow(SessionOptionsCacheTableData row) {
     final key = switch (row.scope) {
       PluginSessionOptionsScope.plugin
           when row.ownerId == row.pluginId && row.projectId == null && row.capturedProjectPath == null =>
@@ -246,12 +246,12 @@ class SessionOptionsRepository {
     );
   }
 
-  SessionOptionsCacheDto _dtoFromEntry(SessionOptionsCacheEntry entry) {
+  SessionOptionsCacheTableData _rowFromEntry(SessionOptionsCacheEntry entry) {
     final (projectId, capturedProjectPath) = switch (entry.key) {
       PluginSessionOptionsCacheKey() => (null, null),
       ProjectSessionOptionsCacheKey(:final projectId, :final projectPath) => (projectId, projectPath),
     };
-    return SessionOptionsCacheDto(
+    return SessionOptionsCacheTableData(
       pluginId: entry.key.pluginId,
       scope: entry.key.scope,
       ownerId: entry.key.ownerId,
