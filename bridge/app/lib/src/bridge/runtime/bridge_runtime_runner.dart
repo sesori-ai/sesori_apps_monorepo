@@ -801,6 +801,7 @@ class BridgeRuntimeRunner {
         legacyMissingPluginId: legacyMissingPluginId,
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
+        clock: serverClock,
         database: database,
         httpClient: httpClient,
         processRunner: processRunner,

@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ServerClock;
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
@@ -303,6 +304,7 @@ class _RegistrationHarness {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      clock: const ServerClock(),
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),

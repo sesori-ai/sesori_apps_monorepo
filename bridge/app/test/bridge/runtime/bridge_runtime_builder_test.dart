@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
@@ -15,13 +17,15 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ServerClock;
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/plugin_lifecycle_test_support.dart";
 import "../../helpers/restart_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
-import "../routing/routing_test_helpers.dart" show FakeBridgePlugin;
+import "../routing/routing_test_helpers.dart" show FakeBridgePlugin, makeRequest;
 
 void main() {
   test("push subsystem listeners stay passive during runtime composition", () {
@@ -62,6 +66,7 @@ void main() {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      clock: const ServerClock(),
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
@@ -82,6 +87,19 @@ void main() {
     final debugServer = runtime.createDebugServer(port: 0);
 
     expect(identical(debugServer.router, runtime.session.router), isTrue);
+    final routed = await debugServer.router.route(
+      makeRequest(
+        "POST",
+        "/session/options",
+        body: jsonEncode(PluginProjectIdRequest(projectId: "missing", pluginId: plugin.id).toJson()),
+      ),
+    );
+    expect(routed.status, 404);
+    expect(routed.headers, containsPair("content-type", "application/json"));
+    expect(
+      SessionOptionsErrorResponse.fromJson(jsonDecodeMap(routed.body!)).code,
+      SessionOptionsErrorCode.projectNotFound,
+    );
 
     await debugServer.stop();
     await runtime.close();

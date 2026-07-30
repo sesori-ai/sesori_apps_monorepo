@@ -54,6 +54,7 @@ enum SessionBindingCommitKind { sessionCreation, catalogSync }
 
 typedef SessionBindingsCommitted = ({
   String pluginId,
+  String projectId,
   int generation,
   SessionBindingCommitKind kind,
   List<String> backendSessionIds,
@@ -207,6 +208,7 @@ class SessionRepository {
     );
     _publishBindingsCommitted(
       pluginId: pluginId,
+      projectId: projectId,
       generation: result.generation,
       kind: SessionBindingCommitKind.sessionCreation,
       backendSessionIds: [result.created.id],
@@ -798,6 +800,7 @@ class SessionRepository {
     });
     _publishBindingsCommitted(
       pluginId: pluginId,
+      projectId: result.project.projectId,
       generation: generation,
       kind: SessionBindingCommitKind.catalogSync,
       backendSessionIds: result.committedByBackendId.keys.toList(growable: false),
@@ -1333,6 +1336,7 @@ class SessionRepository {
 
   void _publishBindingsCommitted({
     required String pluginId,
+    required String projectId,
     required int generation,
     required SessionBindingCommitKind kind,
     required List<String> backendSessionIds,
@@ -1340,6 +1344,7 @@ class SessionRepository {
     if (backendSessionIds.isEmpty || _bindingCommitsController.isClosed) return;
     _bindingCommitsController.add((
       pluginId: pluginId,
+      projectId: projectId,
       generation: generation,
       kind: kind,
       backendSessionIds: List<String>.unmodifiable(backendSessionIds),

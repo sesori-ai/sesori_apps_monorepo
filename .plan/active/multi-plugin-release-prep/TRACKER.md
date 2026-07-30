@@ -2,11 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `37da883a`
-- **Series state:** Steps 1/6 through 4.D/6 are merged; oversized PR #620 is
-  frozen as a draft and replaced by the Step 4.E/6 through 4.F/6 sequence
-- **Current step:** Step 4.E/6 — cache policy and intent-aware coalescing
-- **Next action:** monitor and merge PR #627
+- **Implementation base:** `origin/main` at `e25be863`
+- **Series state:** Steps 1/6 through 4.E/6 are merged; oversized PR #620 is
+  closed, with its frozen branch retained only as the split implementation source
+- **Current step:** Step 4.F/6 — route, listeners, and lifecycle wiring
+- **Next action:** commit, push, and open the verified Step 4.F/6 implementation
 
 ## Delivery
 
@@ -19,9 +19,9 @@
 | [x] | Step 4.B/6 — scoped cache schema/runtime database | `multi-plugin-release-prep-cache-schema` | PR #624 merged |
 | [x] | Step 4.C/6 — migration and DAO verification | `multi-plugin-release-prep-cache-verification` | PR #625 merged |
 | [x] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | PR #626 merged |
-| [ ] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | PR #627 ready |
-| [ ] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | Blocked on 4.E |
-| [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4 merge |
+| [x] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | PR #627 merged |
+| [ ] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | Verified; ready to open |
+| [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4.F merge |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5 merge |
 
 ## Locked Decisions
@@ -177,4 +177,12 @@
   persistence/repository/service tests and bridge-app fatal analysis passed with
   `git diff --check`. Aristotle's second/final review approved the preceding
   revised architecture without findings; the later feedback fixes were not
-  re-reviewed because implementation review is capped at two passes.
+  re-reviewed because implementation review is capped at two passes. PR #627
+  merged to `main` as `e25be863`.
+- Step 4.F/6 preparation (2026-07-30): added the typed aggregate route and
+  discovery capability, stable project attribution on binding commits,
+  independent creation/options-change refresh listeners, and shared relay/debug
+  Orchestrator composition and teardown. All 153 focused
+  handler/listener/repository/Orchestrator tests and all 2,253 bridge-app tests
+  passed, as did bridge-app fatal analysis and `git diff --check`. Aristotle
+  approved the implementation architecture without findings.

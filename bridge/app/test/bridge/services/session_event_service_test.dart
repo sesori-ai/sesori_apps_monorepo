@@ -562,6 +562,7 @@ void main() {
       final output = await service.handleBindingsCommitted(
         commit: (
           pluginId: plugin.id,
+          projectId: "project",
           generation: 1,
           kind: SessionBindingCommitKind.catalogSync,
           backendSessionIds: const ["backend-root"],
@@ -642,6 +643,7 @@ void main() {
       final output = await service.handleBindingsCommitted(
         commit: (
           pluginId: plugin.id,
+          projectId: "project",
           generation: 1,
           kind: SessionBindingCommitKind.sessionCreation,
           backendSessionIds: const ["backend-root"],
@@ -664,6 +666,7 @@ void main() {
       final output = await service.handleBindingsCommitted(
         commit: (
           pluginId: plugin.id,
+          projectId: "project",
           generation: 1,
           kind: SessionBindingCommitKind.sessionCreation,
           backendSessionIds: const ["backend-root"],
@@ -718,6 +721,7 @@ void main() {
       final output = await service.handleBindingsCommitted(
         commit: (
           pluginId: plugin.id,
+          projectId: "project",
           generation: 1,
           kind: SessionBindingCommitKind.catalogSync,
           backendSessionIds: const ["backend-root"],
@@ -773,6 +777,7 @@ void main() {
       final output = await service.handleBindingsCommitted(
         commit: (
           pluginId: plugin.id,
+          projectId: "project",
           generation: 2,
           kind: SessionBindingCommitKind.catalogSync,
           backendSessionIds: const ["backend-root"],
@@ -858,6 +863,7 @@ void main() {
       final output = await service.handleBindingsCommitted(
         commit: (
           pluginId: plugin.id,
+          projectId: "project",
           generation: 1,
           kind: SessionBindingCommitKind.catalogSync,
           backendSessionIds: const ["backend-root"],
@@ -931,6 +937,7 @@ void main() {
       final output = await service.handleBindingsCommitted(
         commit: (
           pluginId: plugin.id,
+          projectId: "project",
           generation: 1,
           kind: SessionBindingCommitKind.catalogSync,
           backendSessionIds: const ["backend-root"],
