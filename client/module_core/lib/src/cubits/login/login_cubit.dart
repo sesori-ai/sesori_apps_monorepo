@@ -92,7 +92,18 @@ class LoginCubit extends Cubit<LoginState> {
     if (state is LoginPolling || state is LoginTimeout) {
       final attempt = _currentAttempt;
       if (attempt == null) return;
-      final hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
+      late final bool hasActiveSession;
+      try {
+        hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
+      } on Object catch (error, stackTrace) {
+        loge("OAuth active-session check failed", error, stackTrace);
+        if (!_ownsAttempt(attempt: attempt) || state is! LoginPolling && state is! LoginTimeout) {
+          return;
+        }
+        _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
+        emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+        return;
+      }
       if (!_ownsAttempt(attempt: attempt) || state is! LoginPolling && state is! LoginTimeout) {
         return;
       }
@@ -255,16 +266,16 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   AppleLoginAttempt beginAppleLoginAttempt() {
-    if (state is LoginPolling || state is LoginTimeout) {
-      emit(const LoginState.idle());
-    }
-    return AppleLoginAttempt._(attempt: _beginAttempt(provider: AuthProvider.apple));
+    final attempt = AppleLoginAttempt._(attempt: _beginAttempt(provider: AuthProvider.apple));
+    emit(const LoginState.authenticating());
+    return attempt;
   }
 
   void onAppleSignInCancelled({required AppleLoginAttempt attempt}) {
     final loginAttempt = _ownedOpenAppleAttempt(attempt: attempt);
     if (loginAttempt == null) return;
     _reportFailedAttempt(attempt: loginAttempt, cause: LoginAttemptFailureCause.cancelled);
+    emit(const LoginState.idle());
   }
 
   void onAppleSignInError({required AppleLoginAttempt attempt}) {
