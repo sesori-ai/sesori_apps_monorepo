@@ -78,14 +78,15 @@ class SessionDiffService {
       revision = baseBranch;
       comparisonMode = SessionDiffComparisonMode.mergeBase;
     } else {
-      // Only the new null-branch shape is an exact session-start snapshot.
+      // Imported sessions and sessions created from an already-dirty tree have
+      // no exact start snapshot. They still expose the current working-tree
+      // changes by falling back to HEAD.
       final startCommit = session.baseBranch == null ? session.baseCommit?.trim() : null;
-      if (startCommit == null || startCommit.isEmpty) return const [];
       final projectPath = await _sessionRepository.getProjectPath(projectId: session.projectId);
       if (projectPath == null) return const [];
       if (!_filesystemRepository.directoryExists(path: projectPath)) return const [];
       worktreePath = projectPath;
-      revision = startCommit;
+      revision = startCommit == null || startCommit.isEmpty ? "HEAD" : startCommit;
       comparisonMode = SessionDiffComparisonMode.exactRevision;
     }
     final queryResult = await _sessionDiffRepository.query(

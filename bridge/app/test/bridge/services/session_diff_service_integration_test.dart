@@ -154,6 +154,28 @@ void main() {
       expect((byFile["tracked.txt"]! as FileDiffContent).after, "local in-place\n");
     });
 
+    test("in-place session without a start snapshot shows current changes from HEAD", () async {
+      await _insertInPlaceStoredSession(
+        db: db,
+        sessionId: "in-place-without-snapshot",
+        projectId: repoDir.path,
+        baseBranch: null,
+        baseCommit: null,
+      );
+
+      File("${repoDir.path}/tracked.txt").writeAsStringSync("local in-place\n");
+      File("${repoDir.path}/new.txt").writeAsStringSync("untracked\n");
+
+      final diffs = await service.getDiffs(sessionId: "in-place-without-snapshot");
+      final byFile = {for (final diff in diffs) diff.file: diff};
+
+      expect(byFile.keys, containsAll(["tracked.txt", "new.txt"]));
+      expect((byFile["tracked.txt"]! as FileDiffContent).before, "base tracked\n");
+      expect((byFile["tracked.txt"]! as FileDiffContent).after, "local in-place\n");
+      expect((byFile["new.txt"]! as FileDiffContent).before, isEmpty);
+      expect((byFile["new.txt"]! as FileDiffContent).after, "untracked\n");
+    });
+
     test("in-place session keeps its exact start tree after a branch switch", () async {
       final startCommit = (await _runGit(
         runner: processRunner,
@@ -178,7 +200,7 @@ void main() {
       expect(diffs.map((diff) => diff.file), contains("switched.txt"));
     });
 
-    test("legacy in-place project baselines do not masquerade as start snapshots", () async {
+    test("legacy in-place project baselines fall back to current changes from HEAD", () async {
       final projectBase = (await _runGit(
         runner: processRunner,
         cwd: repoDir.path,
@@ -193,7 +215,10 @@ void main() {
       );
       File("${repoDir.path}/tracked.txt").writeAsStringSync("changed\n");
 
-      expect(await service.getDiffs(sessionId: "legacy-in-place"), isEmpty);
+      final diffs = await service.getDiffs(sessionId: "legacy-in-place");
+
+      expect(diffs.map((diff) => diff.file), contains("tracked.txt"));
+      expect((diffs.singleWhere((diff) => diff.file == "tracked.txt") as FileDiffContent).before, "base tracked\n");
     });
 
     test("archived sessions do not expose diffs", () async {
@@ -380,7 +405,7 @@ Future<void> _insertInPlaceStoredSession({
   required String sessionId,
   required String projectId,
   required String? baseBranch,
-  required String baseCommit,
+  required String? baseCommit,
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await db.sessionDao.insertSession(
