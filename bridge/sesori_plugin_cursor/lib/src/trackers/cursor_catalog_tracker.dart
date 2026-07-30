@@ -133,6 +133,7 @@ class CursorCatalogTracker {
     _defaultModeId = previousDefaultModeId != null && hasModeOption(modeId: previousDefaultModeId)
         ? previousDefaultModeId
         : discovered._defaultModeId;
+    _outcomesByScope.clear();
     recordOutcome(scope: scope, outcome: outcome);
   }
 

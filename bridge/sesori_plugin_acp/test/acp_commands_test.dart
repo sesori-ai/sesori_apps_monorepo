@@ -50,6 +50,31 @@ void main() {
       expect(tracker.hasSnapshot, isTrue);
     });
 
+    test("ignores malformed command snapshots without replacing the last good value", () {
+      final emptyTracker = AcpCommandTracker()
+        ..consume(
+          update({
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": {"name": "not-a-list"},
+          }),
+        );
+      expect(emptyTracker.commands, isEmpty);
+      expect(emptyTracker.hasSnapshot, isFalse);
+
+      final populatedTracker = AcpCommandTracker()
+        ..consume(
+          update({
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "review"},
+            ],
+          }),
+        )
+        ..consume(update({"sessionUpdate": "available_commands_update"}));
+      expect(populatedTracker.commands.single.name, "review");
+      expect(populatedTracker.hasSnapshot, isTrue);
+    });
+
     test("ignores unrelated notifications", () {
       final tracker = AcpCommandTracker()
         ..consume(const AcpNotification(method: "cursor/update_todos", params: {}))

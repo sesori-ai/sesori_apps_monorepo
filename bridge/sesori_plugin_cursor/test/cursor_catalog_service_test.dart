@@ -217,6 +217,101 @@ void main() {
       expect(repository.resetCount, 2);
     });
 
+    test("waiting reuse callers do not observe catalog before staged commands commit", () async {
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "model", name: "Model", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "agent", name: "Agent", description: null),
+        ],
+        defaultModeId: "agent",
+        thoughtLevelsByModel: {
+          "model": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      commandTracker.consume(_commandUpdate("old-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("fresh-command"));
+      };
+      repository.resetStarted = Completer<void>();
+      repository.resetGate = Completer<void>();
+
+      final first = service.ensureCatalog(scope: "/project");
+      await repository.resetStarted!.future;
+      var secondCompleted = false;
+      final second = service.ensureCatalog(scope: "/project").whenComplete(() {
+        secondCompleted = true;
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(secondCompleted, isFalse);
+      expect(commandTracker.commands.single.name, "old-command");
+
+      repository.resetGate!.complete();
+      await Future.wait([first, second]);
+      expect(commandTracker.commands.single.name, "fresh-command");
+    });
+
+    test("a newer live command snapshot wins over an in-flight probe snapshot", () async {
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "model", name: "Model", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "agent", name: "Agent", description: null),
+        ],
+        defaultModeId: "agent",
+        thoughtLevelsByModel: {
+          "model": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      commandTracker.consume(_commandUpdate("old-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("probe-command"));
+      };
+      repository.resetStarted = Completer<void>();
+      repository.resetGate = Completer<void>();
+
+      final loading = service.ensureCatalog(scope: "/project");
+      await repository.resetStarted!.future;
+      commandTracker.consume(_commandUpdate("live-command"));
+      repository.resetGate!.complete();
+      await loading;
+
+      expect(commandTracker.commands.single.name, "live-command");
+    });
+
+    test("a cleared command snapshot is rehydrated despite a complete catalog", () async {
+      tracker.applySnapshot(
+        snapshot: _snapshot(includeThoughtLevel: true),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      commandTracker.consume(_commandUpdate("old-command"));
+      await service.ensureCatalog(scope: "/project");
+      expect(repository.openCount, 0);
+
+      commandTracker.clear();
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("rehydrated-command"));
+      };
+
+      await service.ensureCatalog(scope: "/project");
+
+      expect(repository.openCount, 1);
+      expect(commandTracker.commands.single.name, "rehydrated-command");
+    });
+
     test("short deadline completes and resets a timed-out repository", () async {
       service = CursorCatalogService(
         repository: repository,
@@ -292,6 +387,32 @@ void main() {
         tracker.outcomeForScope(scope: "/project"),
         CursorCatalogProbeOutcome.exhausted,
       );
+    });
+
+    test("successful forced replacement clears stale scope outcomes and retry budgets", () async {
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: false,
+      );
+      await service.ensureCatalog(scope: "/stale");
+      await service.ensureCatalog(scope: "/stale");
+      expect(repository.openCount, 2, reason: "bounded reuse spent its one retry");
+
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: true,
+      );
+      expect(await service.refreshCatalog(scope: "/refresh"), isTrue);
+      expect(repository.openCount, 3);
+
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: false,
+      );
+      await service.ensureCatalog(scope: "/stale");
+
+      expect(repository.openCount, 4);
+      expect(repository.listedScopes.last, "/stale");
     });
 
     test("concurrent forced discovery callers join one bounded probe", () async {
@@ -400,6 +521,8 @@ class _FakeCursorCatalogRepository implements CursorCatalogRepository {
   Object? bootstrapError;
   Object? openError;
   Completer<void>? openGate;
+  Completer<void>? resetStarted;
+  Completer<void>? resetGate;
   void Function()? onOpen;
   int openCount = 0;
   int resetCount = 0;
@@ -462,6 +585,8 @@ class _FakeCursorCatalogRepository implements CursorCatalogRepository {
   @override
   Future<void> reset() async {
     resetCount++;
+    resetStarted?.complete();
+    await resetGate?.future;
   }
 
   @override

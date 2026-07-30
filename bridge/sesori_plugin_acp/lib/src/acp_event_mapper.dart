@@ -69,8 +69,9 @@ class AcpEventMapper {
   final AcpSessionConfigurationTracker _configurationTracker;
 
   /// The model/provider to stamp on [sessionId]'s assistant messages.
-  String? modelForSession(String sessionId) => _configurationTracker.snapshotForSession(sessionId: sessionId).modelId;
-  String? providerForSession(String sessionId) =>
+  String? modelForSession({required String sessionId}) =>
+      _configurationTracker.snapshotForSession(sessionId: sessionId).modelId;
+  String? providerForSession({required String sessionId}) =>
       _configurationTracker.snapshotForSession(sessionId: sessionId).providerId;
 
   /// Last-known per-session metadata (title/times), fed by the plugin from
@@ -147,7 +148,7 @@ class AcpEventMapper {
   }
 
   /// The project id/directory to stamp on [sessionId]'s session-level events.
-  String projectForSession(String sessionId) => _sessionProject[sessionId] ?? launchDirectory;
+  String projectForSession({required String sessionId}) => _sessionProject[sessionId] ?? launchDirectory;
 
   /// Drops every per-session cache entry for [sessionId] — called when the
   /// session is deleted so live-render state (model, project, turn counters,
@@ -337,7 +338,7 @@ class AcpEventMapper {
         return [
           BridgeSseSessionsUpdated(
             sessionID: sessionId,
-            projectID: projectForSession(sessionId),
+            projectID: projectForSession(sessionId: sessionId),
           ),
           BridgeSseSessionOptionsChanged(sessionID: sessionId),
         ];
@@ -495,8 +496,8 @@ class AcpEventMapper {
           id: messageId,
           sessionID: sessionId,
           agent: agentId,
-          modelID: modelForSession(sessionId),
-          providerID: providerForSession(sessionId),
+          modelID: modelForSession(sessionId: sessionId),
+          providerID: providerForSession(sessionId: sessionId),
           errorName: notice.errorName,
           errorMessage: notice.message,
           time: null,
@@ -605,8 +606,8 @@ class AcpEventMapper {
         id: messageId,
         sessionID: sessionId,
         agent: agentId,
-        modelID: modelForSession(sessionId),
-        providerID: providerForSession(sessionId),
+        modelID: modelForSession(sessionId: sessionId),
+        providerID: providerForSession(sessionId: sessionId),
         // ACP carries no per-message timestamps; the mobile model treats a null
         // time as "unknown".
         time: null,
@@ -647,8 +648,8 @@ class AcpEventMapper {
         id: messageId,
         sessionID: sessionId,
         agent: agentId,
-        modelID: modelForSession(sessionId),
-        providerID: providerForSession(sessionId),
+        modelID: modelForSession(sessionId: sessionId),
+        providerID: providerForSession(sessionId: sessionId),
         time: null,
       ),
     };
@@ -662,7 +663,7 @@ class AcpEventMapper {
   /// historical session). Times come from the plugin-fed snapshot (see
   /// [setSessionSnapshot]); with no snapshot at all, time stays null.
   shared.Session _sessionUpdate(String id) {
-    final project = projectForSession(id);
+    final project = projectForSession(sessionId: id);
     final snapshot = _sessionSnapshots[id];
     final created = snapshot?.createdMs;
     final updated = snapshot?.updatedMs ?? created;

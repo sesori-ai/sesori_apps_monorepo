@@ -673,7 +673,7 @@ void main() {
       await plugin.listAllSessions(knownDirectories: const {});
       stopAgain();
       expect(
-        plugin.eventMapper.projectForSession("cold-s"),
+        plugin.eventMapper.projectForSession(sessionId: "cold-s"),
         stored,
         reason: "an unfiltered fallback must not replace established event attribution",
       );

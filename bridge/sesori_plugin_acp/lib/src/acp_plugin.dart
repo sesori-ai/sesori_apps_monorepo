@@ -1292,8 +1292,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final collector = AcpReplayCollector(
       sessionId: sessionId,
       agentId: agentDisplayName,
-      modelId: eventMapper.modelForSession(sessionId),
-      providerId: eventMapper.providerForSession(sessionId),
+      modelId: eventMapper.modelForSession(sessionId: sessionId),
+      providerId: eventMapper.providerForSession(sessionId: sessionId),
       initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
           ? AcpEventMapper.initialUserMessageId(sessionId)
           : null,
@@ -1303,6 +1303,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     );
     StreamSubscription<AcpNotification>? sub;
     AcpCommandListener? commandListener;
+    List<BridgeSseEvent>? deferredCommandRefresh;
+    void flushDeferredCommandRefresh() {
+      final events = deferredCommandRefresh;
+      if (events == null) return;
+      deferredCommandRefresh = null;
+      events.forEach(_eventBuffer.add);
+    }
+
     try {
       await replayClient.connect();
       final replayInit = await _initialize(replayClient);
@@ -1317,7 +1325,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         throw StateError("replay agent exited during initialization");
       }
       var received = 0;
-      List<BridgeSseEvent>? deferredCommandRefresh;
       commandListener = AcpCommandListener(
         notifications: replayClient.notifications,
         tracker: _commandTracker,
@@ -1366,7 +1373,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           // A command snapshot replayed before the rejection already mutated
           // the process-global tracker, so consumers still need the refresh
           // nudge — same flush as the success path below.
-          deferredCommandRefresh?.forEach(_eventBuffer.add);
+          flushDeferredCommandRefresh();
           return collector.build();
         }
         // Any other RPC error is a genuine load failure — wrapped typed below.
@@ -1384,13 +1391,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // AFTER it. Drain until the replay stream goes quiet so multi-turn history
       // is captured in full, bounded so a chatty agent can't hang the request.
       await _drainReplay(() => received);
-      deferredCommandRefresh?.forEach(_eventBuffer.add);
-      collector.modelId = eventMapper.modelForSession(sessionId);
-      collector.providerId = eventMapper.providerForSession(sessionId);
+      flushDeferredCommandRefresh();
+      collector.modelId = eventMapper.modelForSession(sessionId: sessionId);
+      collector.providerId = eventMapper.providerForSession(sessionId: sessionId);
       return collector.build();
     } on PluginAuthenticationRequiredException {
+      flushDeferredCommandRefresh();
       rethrow;
     } on Object catch (error, stackTrace) {
+      flushDeferredCommandRefresh();
       // A broken replay (connect/init/auth/load failure) must stay
       // distinguishable from a genuinely empty thread: surface it as a typed
       // failure (the bridge router maps it to a 502 and the phone renders a

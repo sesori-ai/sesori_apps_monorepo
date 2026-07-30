@@ -688,7 +688,7 @@ void main() {
         agent: null,
       );
 
-      expect(plugin.eventMapper.modelForSession("s1"), "cursor-internal-model");
+      expect(plugin.eventMapper.modelForSession(sessionId: "s1"), "cursor-internal-model");
       expect(fake.written.where((frame) => frame["method"] == "session/set_config_option"), isEmpty);
       await client.dispose();
     });
@@ -860,7 +860,7 @@ void main() {
       await respond("session/set_config_option", const {}); // effort
       await applying;
 
-      expect(plugin.eventMapper.modelForSession("s1"), "gpt-5.4");
+      expect(plugin.eventMapper.modelForSession(sessionId: "s1"), "gpt-5.4");
 
       await client.dispose();
     });
@@ -904,7 +904,7 @@ void main() {
       await pump();
       await b;
 
-      expect(plugin.eventMapper.modelForSession("sB"), "gpt-5.4");
+      expect(plugin.eventMapper.modelForSession(sessionId: "sB"), "gpt-5.4");
 
       await client.dispose();
     });

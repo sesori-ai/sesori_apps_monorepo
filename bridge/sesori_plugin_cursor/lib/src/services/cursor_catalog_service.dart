@@ -21,7 +21,8 @@ class CursorCatalogService {
        _commandTracker = commandTracker,
        _stagedCommandTracker = stagedCommandTracker,
        _totalTimeout = totalTimeout,
-       _maxCandidates = maxCandidates;
+       _maxCandidates = maxCandidates,
+       _observedCommandRevision = commandTracker.revision;
 
   final CursorCatalogRepository _repository;
   final CursorCatalogTracker _tracker;
@@ -32,24 +33,38 @@ class CursorCatalogService {
   Future<CursorCatalogProbeOutcome>? _inFlight;
   Future<bool>? _forcedInFlight;
   final Set<String> _retriedScopes = {};
+  int _observedCommandRevision;
+  int? _probedCommandRevision;
 
   Future<void> ensureCatalog({required String scope}) async {
-    while (!_tracker.isComplete) {
+    while (true) {
       final pending = _inFlight;
       if (pending != null) {
         await pending;
         continue;
       }
 
+      final commandRevision = _commandTracker.revision;
+      if (_observedCommandRevision != commandRevision) {
+        _observedCommandRevision = commandRevision;
+        _retriedScopes.clear();
+      }
+      final commandDiscoverySettled = _commandTracker.hasSnapshot || _probedCommandRevision == commandRevision;
+      if (_tracker.isComplete && commandDiscoverySettled) return;
+
       final outcome = _tracker.outcomeForScope(scope: scope);
-      if (outcome == CursorCatalogProbeOutcome.complete || outcome == CursorCatalogProbeOutcome.exhausted) {
+      if (commandDiscoverySettled &&
+          (outcome == CursorCatalogProbeOutcome.complete || outcome == CursorCatalogProbeOutcome.exhausted)) {
         return;
       }
       if (outcome == CursorCatalogProbeOutcome.retryableFailure && !_retriedScopes.add(scope)) {
         return;
       }
 
-      final operation = _probeAndCommitReuse(scope: scope);
+      final operation = _probeAndCommitReuse(
+        scope: scope,
+        expectedCommandRevision: commandRevision,
+      );
       _inFlight = operation;
       try {
         await operation;
@@ -99,7 +114,10 @@ class CursorCatalogService {
       await pending;
     }
 
-    final operation = _probeAndCommitRefresh(scope: scope);
+    final operation = _probeAndCommitRefresh(
+      scope: scope,
+      expectedCommandRevision: _commandTracker.revision,
+    );
     _inFlight = operation;
     final CursorCatalogProbeOutcome outcome;
     try {
@@ -110,15 +128,21 @@ class CursorCatalogService {
     return outcome != CursorCatalogProbeOutcome.retryableFailure;
   }
 
-  Future<CursorCatalogProbeOutcome> _probeAndCommitReuse({required String scope}) async {
+  Future<CursorCatalogProbeOutcome> _probeAndCommitReuse({
+    required String scope,
+    required int expectedCommandRevision,
+  }) async {
     final outcome = await _probe(scope: scope, tracker: _tracker);
     if (outcome != CursorCatalogProbeOutcome.retryableFailure) {
-      _commitStagedCommands();
+      _commitStagedCommands(expectedCommandRevision: expectedCommandRevision);
     }
     return outcome;
   }
 
-  Future<CursorCatalogProbeOutcome> _probeAndCommitRefresh({required String scope}) async {
+  Future<CursorCatalogProbeOutcome> _probeAndCommitRefresh({
+    required String scope,
+    required int expectedCommandRevision,
+  }) async {
     final discovered = CursorCatalogTracker();
     final outcome = await _probe(scope: scope, tracker: discovered);
     if (outcome == CursorCatalogProbeOutcome.retryableFailure) return outcome;
@@ -127,12 +151,17 @@ class CursorCatalogService {
       scope: scope,
       outcome: outcome,
     );
-    _commitStagedCommands();
+    _retriedScopes.clear();
+    _commitStagedCommands(expectedCommandRevision: expectedCommandRevision);
     return outcome;
   }
 
-  void _commitStagedCommands() {
-    if (!_stagedCommandTracker.hasSnapshot) return;
+  void _commitStagedCommands({required int expectedCommandRevision}) {
+    if (_commandTracker.revision != expectedCommandRevision) return;
+    if (!_stagedCommandTracker.hasSnapshot) {
+      _probedCommandRevision = expectedCommandRevision;
+      return;
+    }
     _commandTracker.replaceSnapshot(commands: _stagedCommandTracker.commands);
   }
 

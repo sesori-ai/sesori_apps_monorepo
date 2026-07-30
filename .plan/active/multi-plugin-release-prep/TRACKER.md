@@ -90,10 +90,13 @@
   through live and replay paths. Cursor now owns one plugin-scoped service with
   bounded reuse and forced discovery that stages both catalog and command state,
   commits them together on success, and preserves the last-good aggregate on
-  failure. Generated the Freezed source. All 3,197 tests across plugin interface,
+  failure. Generated the Freezed source. All 3,203 tests across plugin interface,
   OpenCode, Codex, ACP, Cursor, and bridge app passed, as did
   `dart analyze --fatal-infos` in all six modules and `git diff --check`.
   Aristotle implementation review identified the command-staging and ACP peer
   composition gaps; both were addressed, and the second/final implementation
   review approved the corrected architecture. Committed as `81ce51e5`, pushed,
-  and opened as PR #616.
+  and opened as PR #616. Review follow-up hardened malformed ACP command
+  snapshots and replay-failure signaling, and revision-fenced Cursor catalog
+  commits so reconnects and concurrent live updates preserve coherent commands;
+  the full ACP and Cursor suites plus fatal analysis passed after those fixes.

@@ -36,8 +36,8 @@ void main() {
     expect((overrideMessage.modelID, overrideMessage.providerID), ("session-model", "session-provider"));
 
     tracker.forgetSession(sessionId: "session");
-    expect(mapper.modelForSession("session"), "default-model");
-    expect(mapper.providerForSession("session"), "provider");
+    expect(mapper.modelForSession(sessionId: "session"), "default-model");
+    expect(mapper.providerForSession(sessionId: "session"), "provider");
   });
 
   test("ACP aggregate becomes complete after an authoritative command snapshot", () {

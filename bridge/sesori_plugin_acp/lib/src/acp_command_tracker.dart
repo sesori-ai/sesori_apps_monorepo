@@ -13,8 +13,13 @@ import "acp_stdio_client.dart";
 /// cache would invent scoping the plugin API can't express.
 class AcpCommandTracker {
   bool _hasSnapshot = false;
+  int _revision = 0;
 
   bool get hasSnapshot => _hasSnapshot;
+
+  /// Monotonically identifies mutations so isolated discovery cannot replace a
+  /// newer snapshot advertised by the live ACP process.
+  int get revision => _revision;
 
   /// The most recently advertised commands (empty until the first update).
   List<PluginCommand> get commands => List.unmodifiable(_commands);
@@ -24,6 +29,7 @@ class AcpCommandTracker {
   void clear() {
     _commands = const [];
     _hasSnapshot = false;
+    _revision++;
   }
 
   /// Replaces the authoritative snapshot after an isolated discovery process
@@ -31,6 +37,7 @@ class AcpCommandTracker {
   void replaceSnapshot({required List<PluginCommand> commands}) {
     _commands = List.unmodifiable(commands);
     _hasSnapshot = true;
+    _revision++;
   }
 
   /// Consumes one agent notification; a no-op unless it is a
@@ -41,8 +48,11 @@ class AcpCommandTracker {
     if (update is! Map) return;
     final map = update.cast<String, dynamic>();
     if (map["sessionUpdate"] != "available_commands_update") return;
-    _commands = _parse(map["availableCommands"]);
+    final availableCommands = map["availableCommands"];
+    if (availableCommands is! List) return;
+    _commands = _parse(availableCommands);
     _hasSnapshot = true;
+    _revision++;
   }
 
   /// Fail-soft parse: a malformed entry is skipped rather than dropping the

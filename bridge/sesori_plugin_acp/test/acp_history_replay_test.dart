@@ -187,6 +187,42 @@ void main() {
       await expectLater(loading, throwsA(isA<PluginOperationException>()));
     });
 
+    test("a command snapshot replayed before a genuine failure still signals option changes", () async {
+      final emitted = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(emitted.add);
+      addTearDown(subscription.cancel);
+      final loading = plugin.getSessionMessages(sessionId);
+      await completeReplayHandshake();
+
+      final loadFrame = await waitForFrame("session/load");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "from_failed_replay"},
+            ],
+          },
+        },
+      });
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "error": {"code": -32000, "message": "Server error"},
+      });
+
+      await expectLater(loading, throwsA(isA<PluginOperationException>()));
+      await pump();
+      expect(
+        emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
+        sessionId,
+      );
+    });
+
     test("same-process replay reuses the synthesized initial prompt identity", () async {
       final liveFake = FakeAcpProcess();
       final replayFake = FakeAcpProcess();
