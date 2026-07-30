@@ -2,11 +2,11 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-class _RecordingInstallationRepository extends Mock implements InstallationAnalyticsRepository {
+class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository {
   final events = <InstallationAnalyticsEvent>[];
 
   @override
-  Future<AnalyticsDeliveryResult> logEvent({required InstallationAnalyticsEvent event}) async {
+  Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) async {
     events.add(event);
     return AnalyticsDeliveryResult.acceptedBySdk;
   }
@@ -14,7 +14,7 @@ class _RecordingInstallationRepository extends Mock implements InstallationAnaly
 
 void main() {
   test("enabled runtime sends only the closed installation event", () async {
-    final repository = _RecordingInstallationRepository();
+    final repository = _RecordingAnalyticsRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
@@ -41,7 +41,7 @@ void main() {
       AnalyticsRuntimeDisabledReason.unsupportedPlatform,
       AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
     ]) {
-      final repository = _RecordingInstallationRepository();
+      final repository = _RecordingAnalyticsRepository();
       final service = InstallationAnalyticsService(
         capability: AnalyticsRuntimeCapability.disabled(reason: reason),
         repository: repository,

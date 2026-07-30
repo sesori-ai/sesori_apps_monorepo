@@ -26,7 +26,7 @@ void main() {
   });
 
   test("product repository maps SDK acceptance and failure without throwing", () async {
-    final repository = ProductAnalyticsRepository(api: api);
+    final repository = AnalyticsRepository(api: api);
     final envelope = ProductAnalyticsEnvelope(
       event: const ProductAnalyticsEvent.analyticsSchemaReady(),
       occurredAtUtc: DateTime.utc(2026),
@@ -39,7 +39,7 @@ void main() {
     ).thenAnswer((_) async {});
 
     expect(
-      await repository.logEvent(envelope: envelope, userKey: _userKey),
+      await repository.logProductEvent(envelope: envelope, userKey: _userKey),
       AnalyticsDeliveryResult.acceptedBySdk,
     );
 
@@ -50,20 +50,20 @@ void main() {
       ),
     ).thenThrow(StateError("sdk unavailable"));
     expect(
-      await repository.logEvent(envelope: envelope, userKey: _userKey),
+      await repository.logProductEvent(envelope: envelope, userKey: _userKey),
       AnalyticsDeliveryResult.failed,
     );
   });
 
   test("installation repository maps SDK acceptance and failure without adding account state", () async {
-    final repository = InstallationAnalyticsRepository(api: api);
+    final repository = AnalyticsRepository(api: api);
     const event = InstallationAnalyticsEvent.loginAttemptCompleted(provider: AnalyticsLoginProvider.apple);
     when(
       () => api.logInstallationEvent(event: any(named: "event")),
     ).thenAnswer((_) async {});
 
     expect(
-      await repository.logEvent(event: event),
+      await repository.logInstallationEvent(event: event),
       AnalyticsDeliveryResult.acceptedBySdk,
     );
 
@@ -71,7 +71,7 @@ void main() {
       () => api.logInstallationEvent(event: any(named: "event")),
     ).thenThrow(StateError("sdk unavailable"));
     expect(
-      await repository.logEvent(event: event),
+      await repository.logInstallationEvent(event: event),
       AnalyticsDeliveryResult.failed,
     );
   });
