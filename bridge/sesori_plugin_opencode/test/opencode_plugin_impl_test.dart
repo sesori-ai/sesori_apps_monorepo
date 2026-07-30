@@ -145,6 +145,24 @@ void main() {
       );
     });
 
+    test("getSessionOptions delegates the complete coherent aggregate", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+      final result = await plugin.getSessionOptions(
+        projectId: "project-1",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+
+      final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+      expect(options.agents, isNotEmpty);
+      expect(options.providers.providers, isNotEmpty);
+      expect(
+        options.commands.map((command) => command.name),
+        contains(OpenCodeService.compactionCommandName),
+      );
+    });
+
     test("createSession creates the session then sends the first prompt", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await server.waitForSseConnection();
@@ -1066,6 +1084,21 @@ class _FakeOpenCodeServer {
             "provider": "openai",
             "source": "skill",
             "subtask": true,
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/agent") {
+        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
+        await _sendJson(request.response, [
+          {
+            "name": "build",
+            "description": "The default agent.",
+            "mode": "primary",
+            "permission": <dynamic>[],
+            "options": <String, dynamic>{},
+            "model": {"modelID": "gpt-4.1", "providerID": "openai"},
           },
         ]);
         return;

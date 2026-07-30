@@ -8,6 +8,7 @@ void main() {
       expect(descriptor.id, 'noop');
       expect(descriptor.options, isEmpty);
       expect(descriptor.stateStorage, PluginStateStorage.isolated);
+      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
     });
 
     test('validateConfig accepts everything by default', () {
@@ -205,6 +206,9 @@ class _MinimalDescriptor extends BridgePluginDescriptor {
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
 
   @override
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override
@@ -248,6 +252,9 @@ class _ValidatingDescriptor extends BridgePluginDescriptor {
 
   @override
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
+
+  @override
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
   List<PluginOption> get options => const [

@@ -40,6 +40,7 @@ void main() {
                 id: "opencode",
                 displayName: "OpenCode",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],
@@ -509,6 +510,12 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
 
   @override
   Future<void> sendCommand({

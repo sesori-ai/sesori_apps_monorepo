@@ -1,48 +1,73 @@
 import "dart:async";
 
-import "package:acp_plugin/acp_plugin.dart" show AcpNewSessionResult;
+import "package:acp_plugin/acp_plugin.dart" show AcpCommandTracker, AcpNewSessionResult;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../models/cursor_catalog_models.dart";
 import "../repositories/cursor_catalog_repository.dart";
 import "../trackers/cursor_catalog_tracker.dart";
 
+enum _MissingCommandSnapshotPolicy { retain, invalidate }
+
 /// Coordinates bounded, isolated Cursor catalog discovery.
 class CursorCatalogService {
   CursorCatalogService({
     required CursorCatalogRepository repository,
     required CursorCatalogTracker tracker,
+    required AcpCommandTracker commandTracker,
+    required AcpCommandTracker stagedCommandTracker,
     required Duration totalTimeout,
     required int maxCandidates,
   }) : _repository = repository,
        _tracker = tracker,
+       _commandTracker = commandTracker,
+       _stagedCommandTracker = stagedCommandTracker,
        _totalTimeout = totalTimeout,
-       _maxCandidates = maxCandidates;
+       _maxCandidates = maxCandidates,
+       _observedCommandRevision = commandTracker.revision;
 
   final CursorCatalogRepository _repository;
   final CursorCatalogTracker _tracker;
+  final AcpCommandTracker _commandTracker;
+  final AcpCommandTracker _stagedCommandTracker;
   final Duration _totalTimeout;
   final int _maxCandidates;
-  Future<void>? _inFlight;
+  Future<CursorCatalogProbeOutcome>? _inFlight;
+  Future<bool>? _forcedInFlight;
   final Set<String> _retriedScopes = {};
+  int _observedCommandRevision;
+  int? _probedCommandRevision;
 
   Future<void> ensureCatalog({required String scope}) async {
-    while (!_tracker.isComplete) {
+    while (true) {
       final pending = _inFlight;
       if (pending != null) {
         await pending;
         continue;
       }
 
+      final commandRevision = _commandTracker.revision;
+      if (_observedCommandRevision != commandRevision) {
+        _observedCommandRevision = commandRevision;
+        _retriedScopes.clear();
+      }
+      final commandDiscoverySettled = _commandTracker.hasSnapshot || _probedCommandRevision == commandRevision;
+      if (_tracker.isComplete && commandDiscoverySettled) return;
+
       final outcome = _tracker.outcomeForScope(scope: scope);
-      if (outcome == CursorCatalogProbeOutcome.complete || outcome == CursorCatalogProbeOutcome.exhausted) {
+      if (commandDiscoverySettled &&
+          (outcome == CursorCatalogProbeOutcome.complete || outcome == CursorCatalogProbeOutcome.exhausted)) {
         return;
       }
       if (outcome == CursorCatalogProbeOutcome.retryableFailure && !_retriedScopes.add(scope)) {
         return;
       }
 
-      final operation = _probe(scope: scope);
+      final operation = _probeAndCommitReuse(
+        scope: scope,
+        expectedCommandRevision: commandRevision,
+        expectedCatalogRevision: _tracker.revision,
+      );
       _inFlight = operation;
       try {
         await operation;
@@ -51,6 +76,22 @@ class CursorCatalogService {
       }
       return;
     }
+  }
+
+  /// Runs one bounded probe regardless of prior complete/exhausted/retried
+  /// state. Concurrent forced callers join the same operation. Discovery is
+  /// applied transactionally so a failed probe leaves the last-good tracker
+  /// untouched.
+  Future<bool> refreshCatalog({required String scope}) {
+    final pending = _forcedInFlight;
+    if (pending != null) return pending;
+
+    late final Future<bool> operation;
+    operation = _refreshCatalog(scope: scope).whenComplete(() {
+      if (identical(_forcedInFlight, operation)) _forcedInFlight = null;
+    });
+    _forcedInFlight = operation;
+    return operation;
   }
 
   CursorCatalogCaptureResult captureSessionConfig({
@@ -70,7 +111,97 @@ class CursorCatalogService {
 
   Future<void> dispose() => _repository.dispose();
 
-  Future<void> _probe({required String scope}) async {
+  Future<bool> _refreshCatalog({required String scope}) async {
+    while (_inFlight != null) {
+      final pending = _inFlight!;
+      await pending;
+    }
+
+    final operation = _probeAndCommitRefresh(
+      scope: scope,
+      expectedCommandRevision: _commandTracker.revision,
+      expectedCatalogRevision: _tracker.revision,
+    );
+    _inFlight = operation;
+    final CursorCatalogProbeOutcome outcome;
+    try {
+      outcome = await operation;
+    } finally {
+      if (identical(_inFlight, operation)) _inFlight = null;
+    }
+    return outcome != CursorCatalogProbeOutcome.retryableFailure;
+  }
+
+  Future<CursorCatalogProbeOutcome> _probeAndCommitReuse({
+    required String scope,
+    required int expectedCommandRevision,
+    required int expectedCatalogRevision,
+  }) async {
+    final discovered = _tracker.stageForDiscovery();
+    final outcome = await _probe(scope: scope, tracker: discovered);
+    if (_tracker.revision != expectedCatalogRevision) return outcome;
+    _tracker.replaceReusedCatalog(discovered: discovered);
+    if (outcome != CursorCatalogProbeOutcome.retryableFailure) {
+      _commitStagedCommands(
+        expectedCommandRevision: expectedCommandRevision,
+        missingSnapshotPolicy: _MissingCommandSnapshotPolicy.retain,
+      );
+    }
+    return outcome;
+  }
+
+  Future<CursorCatalogProbeOutcome> _probeAndCommitRefresh({
+    required String scope,
+    required int expectedCommandRevision,
+    required int expectedCatalogRevision,
+  }) async {
+    final discovered = CursorCatalogTracker();
+    final outcome = await _probe(scope: scope, tracker: discovered);
+    if (outcome == CursorCatalogProbeOutcome.retryableFailure) return outcome;
+    // A live session/new or session/load capture is newer than this isolated
+    // probe. Keep that aggregate intact, including its live command snapshot.
+    if (_tracker.revision != expectedCatalogRevision) {
+      _tracker.invalidateProbeOutcomes();
+      _retriedScopes.clear();
+      return outcome;
+    }
+    _tracker.replaceDiscoveredCatalog(
+      discovered: discovered,
+      scope: scope,
+      outcome: outcome,
+    );
+    _retriedScopes.clear();
+    _commitStagedCommands(
+      expectedCommandRevision: expectedCommandRevision,
+      missingSnapshotPolicy: _MissingCommandSnapshotPolicy.invalidate,
+    );
+    return outcome;
+  }
+
+  void _commitStagedCommands({
+    required int expectedCommandRevision,
+    required _MissingCommandSnapshotPolicy missingSnapshotPolicy,
+  }) {
+    if (_commandTracker.revision != expectedCommandRevision) return;
+    if (!_stagedCommandTracker.hasSnapshot) {
+      switch (missingSnapshotPolicy) {
+        case _MissingCommandSnapshotPolicy.retain:
+          _probedCommandRevision = expectedCommandRevision;
+        case _MissingCommandSnapshotPolicy.invalidate:
+          _commandTracker.clear();
+          _probedCommandRevision = _commandTracker.revision;
+      }
+      return;
+    }
+    _commandTracker.replaceSnapshot(commands: _stagedCommandTracker.commands);
+  }
+
+  Future<CursorCatalogProbeOutcome> _probe({
+    required String scope,
+    required CursorCatalogTracker tracker,
+  }) async {
+    final target = tracker;
+    _stagedCommandTracker.clear();
     final stopwatch = Stopwatch()..start();
     try {
       final supported = await _repository.open(
@@ -82,7 +213,7 @@ class CursorCatalogService {
           timeout: _remaining(stopwatch: stopwatch),
         );
         if (bootstrap != null) {
-          _tracker.applyBootstrapSnapshot(snapshot: bootstrap);
+          target.applyBootstrapSnapshot(snapshot: bootstrap);
         }
       } on Object catch (error, stack) {
         Log.w(
@@ -92,20 +223,20 @@ class CursorCatalogService {
         );
       }
 
-      if (_tracker.isComplete) {
-        _tracker.recordOutcome(
+      if (target.isComplete) {
+        target.recordOutcome(
           scope: scope,
           outcome: CursorCatalogProbeOutcome.complete,
         );
-        return;
+        return CursorCatalogProbeOutcome.complete;
       }
 
       if (!supported) {
-        _tracker.recordOutcome(
+        target.recordOutcome(
           scope: scope,
           outcome: CursorCatalogProbeOutcome.exhausted,
         );
-        return;
+        return CursorCatalogProbeOutcome.exhausted;
       }
 
       final candidateResult = await _repository.listCandidates(
@@ -126,13 +257,13 @@ class CursorCatalogService {
             candidate: candidate,
             timeout: _remaining(stopwatch: stopwatch),
           );
-          _tracker.applySnapshot(
+          target.applySnapshot(
             snapshot: snapshot,
             fromNewSession: false,
             thoughtLevelModelId: null,
             captureThoughtLevelDefault: false,
           );
-          if (_tracker.isComplete) break;
+          if (target.isComplete) break;
         } on TimeoutException {
           rethrow;
         } on Object catch (error, stack) {
@@ -146,38 +277,38 @@ class CursorCatalogService {
         }
       }
 
-      if (_tracker.isComplete) {
-        _tracker.recordOutcome(
+      if (target.isComplete) {
+        target.recordOutcome(
           scope: scope,
           outcome: CursorCatalogProbeOutcome.complete,
         );
-        return;
+        return CursorCatalogProbeOutcome.complete;
       }
 
       final inspectedBoundedCandidates = attempted == ordered.length || attempted == _maxCandidates;
       if (candidateResult.exhaustive && !loadFailed && inspectedBoundedCandidates) {
-        _tracker.recordOutcome(
+        target.recordOutcome(
           scope: scope,
           outcome: CursorCatalogProbeOutcome.exhausted,
         );
-        return;
+        return CursorCatalogProbeOutcome.exhausted;
       }
 
-      _recordRetryableFailure(scope: scope);
+      return _recordRetryableFailure(tracker: target, scope: scope);
     } on TimeoutException catch (error, stack) {
       Log.w(
         "[cursor] catalog probe timed out (scope=$scope)",
         error,
         stack,
       );
-      _recordRetryableFailure(scope: scope);
+      return _recordRetryableFailure(tracker: target, scope: scope);
     } on Object catch (error, stack) {
       Log.w(
         "[cursor] catalog probe failed (scope=$scope)",
         error,
         stack,
       );
-      _recordRetryableFailure(scope: scope);
+      return _recordRetryableFailure(tracker: target, scope: scope);
     } finally {
       await _resetRepository(
         failureMessage: "[cursor] failed to stop catalog probe process (scope=$scope)",
@@ -185,11 +316,15 @@ class CursorCatalogService {
     }
   }
 
-  void _recordRetryableFailure({required String scope}) {
-    _tracker.recordOutcome(
+  CursorCatalogProbeOutcome _recordRetryableFailure({
+    required CursorCatalogTracker tracker,
+    required String scope,
+  }) {
+    tracker.recordOutcome(
       scope: scope,
       outcome: CursorCatalogProbeOutcome.retryableFailure,
     );
+    return CursorCatalogProbeOutcome.retryableFailure;
   }
 
   Future<void> _resetRepository({required String failureMessage}) async {

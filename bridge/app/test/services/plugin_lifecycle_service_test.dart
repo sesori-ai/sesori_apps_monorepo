@@ -25,18 +25,21 @@ void main() {
           id: "zeta",
           displayName: "Zeta",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
         (
           id: "beta",
           displayName: "Beta",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
         ),
         (
           id: "alpha",
           displayName: "Alpha",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
       ],
@@ -56,6 +59,16 @@ void main() {
     expect(policy.defaultPluginId, "alpha");
     expect(service.compositionView.eligiblePluginIds, ["alpha", "zeta"]);
     expect(service.compositionView.orderedPluginIds, ["alpha", "beta", "zeta"]);
+    final sessionOptionsScopeById = service.compositionView.sessionOptionsScopeById;
+    expect(sessionOptionsScopeById, const {
+      "alpha": PluginSessionOptionsScope.project,
+      "beta": PluginSessionOptionsScope.plugin,
+      "zeta": PluginSessionOptionsScope.project,
+    });
+    expect(
+      () => sessionOptionsScopeById["alpha"] = PluginSessionOptionsScope.plugin,
+      throwsUnsupportedError,
+    );
     expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "beta").state, PluginRuntimeState.disabled);
     expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "zeta").state, PluginRuntimeState.blocked);
   });
@@ -72,12 +85,14 @@ void main() {
           id: "alpha",
           displayName: "Alpha",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
         (
           id: "opencode",
           displayName: "OpenCode",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
       ],
@@ -111,12 +126,14 @@ void main() {
           id: "opencode",
           displayName: "OpenCode",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
         (
           id: "alpha",
           displayName: "Alpha",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
       ],
@@ -144,12 +161,14 @@ void main() {
           id: "opencode",
           displayName: "OpenCode",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
         (
           id: "cursor",
           displayName: "Cursor",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
         ),
       ],
@@ -210,18 +229,21 @@ void main() {
                 id: "opencode",
                 displayName: "OpenCode",
                 residencyPolicy: PluginResidencyPolicy.resident,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
               (
                 id: "alpha",
                 displayName: "Alpha",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
               (
                 id: "beta",
                 displayName: "Beta",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],
@@ -352,12 +374,14 @@ void main() {
               id: "external",
               displayName: "External",
               residencyPolicy: PluginResidencyPolicy.resident,
+              sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: {PluginControlCapability.setupRefresh},
             ),
             (
               id: "managed",
               displayName: "Managed",
               residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
             ),
           ],
@@ -385,6 +409,7 @@ void main() {
               id: "alpha",
               displayName: "Alpha",
               residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
             ),
           ],
@@ -446,12 +471,14 @@ void main() {
               id: "alpha",
               displayName: "Alpha",
               residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
             ),
             (
               id: "beta",
               displayName: "Beta",
               residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: defaultManagementCapabilities,
             ),
           ],
@@ -569,12 +596,14 @@ void main() {
                 id: "managed",
                 displayName: "Managed",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: {PluginControlCapability.idleTimeout},
               ),
               (
                 id: "external",
                 displayName: "External",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: {PluginControlCapability.setupRefresh},
               ),
             ],
@@ -689,6 +718,7 @@ void main() {
                 id: "one",
                 displayName: "One",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],
@@ -941,6 +971,7 @@ void main() {
                 id: "one",
                 displayName: "One",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],
@@ -994,6 +1025,7 @@ void main() {
                 id: "one",
                 displayName: "One",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],
@@ -1049,6 +1081,7 @@ void main() {
                 id: "one",
                 displayName: "One",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],
@@ -1091,6 +1124,7 @@ void main() {
                 id: "one",
                 displayName: "One",
                 residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
               ),
             ],
@@ -1385,12 +1419,14 @@ void main() {
           id: "beta",
           displayName: "Beta",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
         ),
         (
           id: "alpha",
           displayName: "Alpha",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
       ],
@@ -1434,6 +1470,7 @@ void main() {
           id: "alpha",
           displayName: "Alpha",
           residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
         ),
       ],
@@ -1462,6 +1499,7 @@ void main() {
               id: "one",
               displayName: "One",
               residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
             ),
           ],
@@ -1493,6 +1531,7 @@ void main() {
               id: "one",
               displayName: "One",
               residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
             ),
           ],
@@ -1541,6 +1580,7 @@ void main() {
               id: "one",
               displayName: "One",
               residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
             ),
           ],
@@ -1584,6 +1624,7 @@ void main() {
               id: "one",
               displayName: "One",
               residencyPolicy: PluginResidencyPolicy.resident,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
             ),
           ],
@@ -1636,6 +1677,7 @@ PluginLifecycleService _singleIdleService({
           id: "one",
           displayName: "One",
           residencyPolicy: residencyPolicy,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: managementCapabilities,
         ),
       ],
@@ -1663,6 +1705,7 @@ PluginLifecycleService _commandService({
         id: "one",
         displayName: "One",
         residencyPolicy: PluginResidencyPolicy.transient,
+        sessionOptionsScope: PluginSessionOptionsScope.project,
         managementCapabilities: managementCapabilities,
       ),
     ],
@@ -1680,6 +1723,12 @@ class _FakePluginApi extends BridgeDerivedProjectsPluginApi {
 
   @override
   Future<void> dispose() async {}
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

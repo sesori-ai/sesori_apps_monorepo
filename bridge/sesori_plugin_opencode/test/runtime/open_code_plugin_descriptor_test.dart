@@ -19,6 +19,7 @@ void main() {
       expect(descriptor.id, equals("opencode"));
       expect(descriptor.displayName, equals("OpenCode"));
       expect(descriptor.stateStorage, PluginStateStorage.legacySharedRuntime);
+      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(
         descriptor.options.map((o) => o.name).toList(),
         equals(<String>["port", "host", "no-auto-start", "password", "no-password", "bin"]),
@@ -983,6 +984,12 @@ class _FakeManagedApi implements OpenCodeManagedApi {
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

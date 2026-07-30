@@ -53,6 +53,15 @@ class BridgeSseSessionsUpdated extends BridgeSseEvent {
   });
 }
 
+/// Signals that session-creation options changed for a backend session.
+///
+/// This is an internal plugin event. [sessionID] is the backend's session
+/// identity so bridge core can resolve its stable persisted binding.
+class BridgeSseSessionOptionsChanged extends BridgeSseEvent {
+  final String sessionID;
+  const BridgeSseSessionOptionsChanged({required this.sessionID});
+}
+
 class BridgeSseSessionDeleted extends BridgeSseEvent {
   final Map<String, dynamic> info;
   const BridgeSseSessionDeleted({required this.info});

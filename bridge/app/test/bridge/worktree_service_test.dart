@@ -1205,6 +1205,12 @@ class _FakeBridgePluginApi implements NativeProjectsPluginApi {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,

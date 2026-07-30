@@ -823,6 +823,54 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get settingsSectionAppearance;
 
+  /// No description provided for @settingsSectionAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics'**
+  String get settingsSectionAnalytics;
+
+  /// No description provided for @settingsBasicUsageAnalyticsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic Usage Analytics'**
+  String get settingsBasicUsageAnalyticsTitle;
+
+  /// No description provided for @settingsBasicUsageAnalyticsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Share basic feature usage — never your code or messages.'**
+  String get settingsBasicUsageAnalyticsDescription;
+
+  /// No description provided for @settingsBasicUsageAnalyticsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading preference…'**
+  String get settingsBasicUsageAnalyticsLoading;
+
+  /// No description provided for @settingsBasicUsageAnalyticsSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving preference…'**
+  String get settingsBasicUsageAnalyticsSaving;
+
+  /// No description provided for @settingsBasicUsageAnalyticsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics preference failed to load.'**
+  String get settingsBasicUsageAnalyticsLoadFailed;
+
+  /// No description provided for @settingsBasicUsageAnalyticsSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sync preference.'**
+  String get settingsBasicUsageAnalyticsSyncFailed;
+
+  /// No description provided for @settingsBasicUsageAnalyticsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry preference sync'**
+  String get settingsBasicUsageAnalyticsRetry;
+
   /// Theme option that always renders the app in the light theme
   ///
   /// In en, this message translates to:

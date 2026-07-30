@@ -11,7 +11,9 @@ export "src/acp_event_mapper.dart";
 export "src/acp_plugin.dart";
 export "src/acp_process_factory.dart";
 export "src/acp_protocol.dart";
+export "src/acp_session_configuration_tracker.dart";
 export "src/acp_session_loader.dart";
+export "src/acp_session_options_service.dart";
 export "src/acp_stdio_client.dart";
 // Plugin-lifecycle housing: the BridgePlugin wrapper + the host-backed process
 // factory a descriptor uses to run an ACP agent under the bridge's lifecycle.

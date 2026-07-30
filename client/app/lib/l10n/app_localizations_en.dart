@@ -395,6 +395,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionAppearance => 'Appearance';
 
   @override
+  String get settingsSectionAnalytics => 'Analytics';
+
+  @override
+  String get settingsBasicUsageAnalyticsTitle => 'Basic Usage Analytics';
+
+  @override
+  String get settingsBasicUsageAnalyticsDescription => 'Share basic feature usage — never your code or messages.';
+
+  @override
+  String get settingsBasicUsageAnalyticsLoading => 'Loading preference…';
+
+  @override
+  String get settingsBasicUsageAnalyticsSaving => 'Saving preference…';
+
+  @override
+  String get settingsBasicUsageAnalyticsLoadFailed => 'Analytics preference failed to load.';
+
+  @override
+  String get settingsBasicUsageAnalyticsSyncFailed => 'Couldn\'t sync preference.';
+
+  @override
+  String get settingsBasicUsageAnalyticsRetry => 'Retry preference sync';
+
+  @override
   String get settingsAppearanceLight => 'Light';
 
   @override

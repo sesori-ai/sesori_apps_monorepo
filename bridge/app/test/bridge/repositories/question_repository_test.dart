@@ -742,6 +742,12 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
   }
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -758,6 +764,12 @@ class _FakeNativeQuestionPlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) => projectQuestions();
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -249,6 +249,21 @@ void main() {
       expect(agents.every((a) => a.model == null), isTrue);
     });
 
+    test("getSessionOptions delegates one plugin-scoped tracker snapshot", () async {
+      capture(catalogResult(), fromNewSession: true);
+
+      final result = await plugin.getSessionOptions(
+        projectId: "/another-project",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+
+      final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.completeness, PluginSessionOptionsCompleteness.partial);
+      expect(options.agents.map((agent) => agent.name), ["Agent", "Plan", "Ask"]);
+      expect(options.providers.providers.single.defaultModelID, "gpt-5.4");
+      expect(options.commands.single.name, "compact");
+    });
+
     Map<String, dynamic> modelCatalog(String currentValue, {bool includeMode = true}) => {
       "sessionId": "s",
       "configOptions": [
@@ -673,7 +688,7 @@ void main() {
         agent: null,
       );
 
-      expect(plugin.eventMapper.modelForSession("s1"), "cursor-internal-model");
+      expect(plugin.eventMapper.modelForSession(sessionId: "s1"), "cursor-internal-model");
       expect(fake.written.where((frame) => frame["method"] == "session/set_config_option"), isEmpty);
       await client.dispose();
     });
@@ -845,7 +860,7 @@ void main() {
       await respond("session/set_config_option", const {}); // effort
       await applying;
 
-      expect(plugin.eventMapper.modelForSession("s1"), "gpt-5.4");
+      expect(plugin.eventMapper.modelForSession(sessionId: "s1"), "gpt-5.4");
 
       await client.dispose();
     });
@@ -889,7 +904,7 @@ void main() {
       await pump();
       await b;
 
-      expect(plugin.eventMapper.modelForSession("sB"), "gpt-5.4");
+      expect(plugin.eventMapper.modelForSession(sessionId: "sB"), "gpt-5.4");
 
       await client.dispose();
     });

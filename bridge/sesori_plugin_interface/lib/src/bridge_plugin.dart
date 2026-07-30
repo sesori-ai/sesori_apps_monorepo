@@ -9,6 +9,7 @@ import "models/plugin_project_activity_summary.dart";
 import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_session.dart";
+import "models/plugin_session_options.dart";
 import "models/plugin_session_status.dart";
 import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
@@ -35,6 +36,15 @@ sealed class BridgePluginApi {
 
   /// Get the slash commands available to the current project.
   Future<List<PluginCommand>> getCommands({required String? projectId});
+
+  /// Discovers one coherent snapshot of the options used to create a session.
+  ///
+  /// [discoveryMode] controls plugin-local discovery only. Durable cache,
+  /// retention, and replacement policy belong to the bridge core.
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  });
 
   /// Create a new session in the given directory and send the first prompt.
   ///

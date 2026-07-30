@@ -20,13 +20,26 @@ void main() {
 
     setUp(() {
       fakes.clear();
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       plugin = _RegistryCapturingAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
-        commandTracker: AcpCommandTracker(),
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          agentId: "acp",
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: (_) async {
           final fake = FakeAcpProcess();
           fakes.add(fake);
@@ -57,9 +70,7 @@ void main() {
     // which zero-duration pumps never outlast.
     Future<Map<String, dynamic>> waitForFrame(String method) async {
       for (var i = 0; i < 400; i++) {
-        final matches = fake()
-            .written
-            .where((f) => f["method"] == method && !answered.contains((fake(), f["id"])));
+        final matches = fake().written.where((f) => f["method"] == method && !answered.contains((fake(), f["id"])));
         if (matches.isNotEmpty) return matches.last;
         await Future<void>.delayed(const Duration(milliseconds: 5));
       }
@@ -105,10 +116,7 @@ void main() {
       var running = true;
       unawaited(() async {
         while (running) {
-          final frames = fake()
-              .written
-              .where((f) => f["method"] == "session/list")
-              .toList(growable: false);
+          final frames = fake().written.where((f) => f["method"] == "session/list").toList(growable: false);
           for (final frame in frames) {
             if (!answered.add(frame["id"])) continue;
             final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
@@ -223,8 +231,7 @@ void main() {
       var running = true;
       unawaited(() async {
         while (running) {
-          for (final frame
-              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+          for (final frame in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
             if (!answered.add(frame["id"])) continue;
             final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
             if (params["cwd"] == null) {
@@ -259,8 +266,7 @@ void main() {
       var running = true;
       unawaited(() async {
         while (running) {
-          for (final frame
-              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+          for (final frame in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
             if (!answered.add(frame["id"])) continue;
             final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
             if (params["cwd"] == null) {
@@ -314,8 +320,7 @@ void main() {
       unawaited(() async {
         final answered = <Object?>{};
         while (answered.length < 3) {
-          for (final frame
-              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+          for (final frame in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
             if (!answered.add(frame["id"])) continue;
             final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
             if (params["cwd"] == null) {
@@ -668,7 +673,7 @@ void main() {
       await plugin.listAllSessions(knownDirectories: const {});
       stopAgain();
       expect(
-        plugin.eventMapper.projectForSession("cold-s"),
+        plugin.eventMapper.projectForSession(sessionId: "cold-s"),
         stored,
         reason: "an unfiltered fallback must not replace established event attribution",
       );
@@ -726,13 +731,26 @@ void main() {
     });
 
     test("a broken history replay surfaces as a typed failure, not an empty thread", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       final failingPlugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
-        commandTracker: AcpCommandTracker(),
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          agentId: "acp",
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: _throwReplayProcess,
       );
       addTearDown(failingPlugin.dispose);
@@ -848,6 +866,7 @@ class _RegistryCapturingAcpPlugin extends AcpPlugin {
     required super.launchDirectory,
     required super.eventMapper,
     required super.commandTracker,
+    required super.sessionOptionsService,
     super.processFactory,
   });
 

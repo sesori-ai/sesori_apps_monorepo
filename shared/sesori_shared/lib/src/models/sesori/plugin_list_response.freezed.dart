@@ -164,7 +164,10 @@ mixin _$PluginListResponse {
  List<PluginMetadata> get plugins;// COMPATIBILITY 2026-07-26 (v1.7.0): Bridges predating per-bridge harness
 // preferences omit the ID; null disables preference recall. Remove the
 // nullable path once those bridges are unsupported.
- String? get bridgeId;
+ String? get bridgeId;// COMPATIBILITY 2026-07-30 (v1.8.0): Old bridges omit this capability,
+// which means session options are unsupported. Remove @Default and require
+// supportsSessionOptions once those bridges are unsupported.
+ bool get supportsSessionOptions;
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -177,16 +180,16 @@ $PluginListResponseCopyWith<PluginListResponse> get copyWith => _$PluginListResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(plugins),bridgeId);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(plugins),bridgeId,supportsSessionOptions);
 
 @override
 String toString() {
-  return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId)';
+  return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions)';
 }
 
 
@@ -197,7 +200,7 @@ abstract mixin class $PluginListResponseCopyWith<$Res>  {
   factory $PluginListResponseCopyWith(PluginListResponse value, $Res Function(PluginListResponse) _then) = _$PluginListResponseCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> plugins, String? bridgeId
+ List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions
 });
 
 
@@ -214,11 +217,12 @@ class _$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? bridgeId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,}) {
   return _then(_self.copyWith(
 plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,supportsSessionOptions: null == supportsSessionOptions ? _self.supportsSessionOptions : supportsSessionOptions // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -230,7 +234,7 @@ as String?,
 @JsonSerializable()
 
 class _PluginListResponse implements PluginListResponse {
-  const _PluginListResponse({required final  List<PluginMetadata> plugins, required this.bridgeId}): _plugins = plugins;
+  const _PluginListResponse({required final  List<PluginMetadata> plugins, required this.bridgeId, this.supportsSessionOptions = false}): _plugins = plugins;
   factory _PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
 
  final  List<PluginMetadata> _plugins;
@@ -244,6 +248,10 @@ class _PluginListResponse implements PluginListResponse {
 // preferences omit the ID; null disables preference recall. Remove the
 // nullable path once those bridges are unsupported.
 @override final  String? bridgeId;
+// COMPATIBILITY 2026-07-30 (v1.8.0): Old bridges omit this capability,
+// which means session options are unsupported. Remove @Default and require
+// supportsSessionOptions once those bridges are unsupported.
+@override@JsonKey() final  bool supportsSessionOptions;
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -258,16 +266,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other._plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other._plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId,supportsSessionOptions);
 
 @override
 String toString() {
-  return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId)';
+  return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions)';
 }
 
 
@@ -278,7 +286,7 @@ abstract mixin class _$PluginListResponseCopyWith<$Res> implements $PluginListRe
   factory _$PluginListResponseCopyWith(_PluginListResponse value, $Res Function(_PluginListResponse) _then) = __$PluginListResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<PluginMetadata> plugins, String? bridgeId
+ List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions
 });
 
 
@@ -295,11 +303,12 @@ class __$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,Object? bridgeId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,}) {
   return _then(_PluginListResponse(
 plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,supportsSessionOptions: null == supportsSessionOptions ? _self.supportsSessionOptions : supportsSessionOptions // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

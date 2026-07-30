@@ -171,10 +171,10 @@ class WorktreeService {
     );
   }
 
-  Future<String?> resolveCleanHeadCommit({
+  Future<String?> resolveHeadCommit({
     required String projectId,
   }) async {
-    return _worktreeRepository.resolveCleanHeadCommit(
+    return _worktreeRepository.resolveHeadCommit(
       projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
     );
   }

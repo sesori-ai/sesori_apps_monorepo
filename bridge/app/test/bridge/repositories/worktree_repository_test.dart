@@ -10,7 +10,7 @@ import "package:test/test.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
-  group("WorktreeRepository.resolveCleanHeadCommit", () {
+  group("WorktreeRepository.resolveHeadCommit", () {
     late AppDatabase db;
     late _FakeProcessRunner processRunner;
     late _FakeBridgePlugin plugin;
@@ -35,31 +35,22 @@ void main() {
       plugin: plugin,
     );
 
-    test("captures HEAD when the working tree is clean", () async {
-      processRunner.enqueue(result: ProcessResult(0, 0, "", ""));
+    test("captures HEAD", () async {
       processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
 
-      final result = await repository(isGitRepository: true).resolveCleanHeadCommit(
+      final result = await repository(isGitRepository: true).resolveHeadCommit(
         projectPath: "/repo",
       );
 
       expect(result, "abc123");
-      expect(processRunner.invocations[0].arguments, [
-        "status",
-        "--porcelain",
-        "--untracked-files=normal",
-        "--",
-        ".",
-      ]);
-      expect(processRunner.invocations[1].arguments, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
+      expect(processRunner.invocations.single.arguments, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
     });
 
     test("captures Git state when the project is nested inside a worktree", () async {
       processRunner.enqueue(result: ProcessResult(0, 0, "true\n", ""));
-      processRunner.enqueue(result: ProcessResult(0, 0, "", ""));
       processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
 
-      final result = await repository(isGitRepository: false).resolveCleanHeadCommit(
+      final result = await repository(isGitRepository: false).resolveHeadCommit(
         projectPath: "/repo/packages/nested",
       );
 
@@ -70,7 +61,7 @@ void main() {
     test("returns no snapshot when the project is outside a Git worktree", () async {
       processRunner.enqueue(result: ProcessResult(0, 128, "", "fatal: not a git repository"));
 
-      final result = await repository(isGitRepository: false).resolveCleanHeadCommit(
+      final result = await repository(isGitRepository: false).resolveHeadCommit(
         projectPath: "/plain-directory",
       );
 
@@ -78,25 +69,19 @@ void main() {
       expect(processRunner.invocations.single.arguments, ["rev-parse", "--is-inside-work-tree"]);
     });
 
-    test("returns no snapshot when the working tree is already dirty", () async {
-      processRunner.enqueue(result: ProcessResult(0, 0, " M existing.dart\n", ""));
+    test("captures HEAD without inspecting existing working-tree changes", () async {
+      processRunner.enqueue(result: ProcessResult(0, 0, "abc123\n", ""));
 
-      final result = await repository(isGitRepository: true).resolveCleanHeadCommit(
+      final result = await repository(isGitRepository: true).resolveHeadCommit(
         projectPath: "/repo",
       );
 
-      expect(result, isNull);
-      expect(processRunner.invocations.single.arguments, [
-        "status",
-        "--porcelain",
-        "--untracked-files=normal",
-        "--",
-        ".",
-      ]);
+      expect(result, "abc123");
+      expect(processRunner.invocations.single.arguments, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
     });
 
     test("returns no snapshot when Git snapshot capture fails", () async {
-      final result = await repository(isGitRepository: true).resolveCleanHeadCommit(
+      final result = await repository(isGitRepository: true).resolveHeadCommit(
         projectPath: "/repo",
       );
 
@@ -253,6 +238,12 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
       throw Exception("OpenCode unavailable");
     }
   }
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -23,6 +23,10 @@ void main() {
       expect(CursorPluginDescriptor.targetVersion, "2026.07.20-8cc9c0b");
     });
 
+    test("declares plugin-scoped session options", () {
+      expect(const CursorPluginDescriptor().sessionOptionsScope, PluginSessionOptionsScope.plugin);
+    });
+
     test("reports ready after version and read-only authentication probes", () async {
       final processes = _ProbeProcessService(
         processSequence: [

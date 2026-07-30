@@ -11,7 +11,10 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/project_list/add_project_outcome.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
+import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/project_list_service.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -44,8 +47,14 @@ const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
   health: _connectionHealth,
 );
 
+class _MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+
 void main() {
-  setUpAll(registerAllFallbackValues);
+  setUpAll(() {
+    registerAllFallbackValues();
+    registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+    registerFallbackValue(DateTime.utc(2026));
+  });
 
   group("ProjectListCubit", () {
     late MockProjectRepository mockProjectRepository;
@@ -56,6 +65,7 @@ void main() {
     late MockRegisteredBridgesService mockRegisteredBridgesService;
     late FakeSessionUnseenTracker fakeSessionUnseenTracker;
     late MockFailureReporter mockFailureReporter;
+    late _MockProductAnalyticsService mockProductAnalyticsService;
     late BehaviorSubject<ConnectionStatus> statusController;
     late Completer<ApiResponse<Projects>> projectFetchCompleter;
 
@@ -71,6 +81,7 @@ void main() {
       mockRegisteredBridgesService = MockRegisteredBridgesService();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();
       mockFailureReporter = MockFailureReporter();
+      mockProductAnalyticsService = _MockProductAnalyticsService();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         _connectedStatus,
       );
@@ -91,6 +102,12 @@ void main() {
           information: any(named: "information"),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
     });
 
     tearDown(() async {
@@ -108,8 +125,64 @@ void main() {
       projectListService: projectListService,
       sessionUnseenTracker: fakeSessionUnseenTracker,
       registeredBridgesService: mockRegisteredBridgesService,
+      productAnalyticsService: mockProductAnalyticsService,
       failureReporter: mockFailureReporter,
     );
+
+    test("onboarding outcome intents report the seven bounded events", () async {
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <Project>[])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      cubit
+        ..reportNeedHelpMenuOpened(surface: OnboardingSurface.connectSetup)
+        ..reportSupportLinkOpened(
+          channel: SupportChannel.email,
+          surface: OnboardingSurface.connectSetup,
+        )
+        ..reportWhyBridgeOpened(surface: OnboardingSurface.connectSetup)
+        ..reportInstallCommandCopied(
+          method: BridgeInstallMethod.curl,
+          os: BridgeInstallOs.unix,
+          surface: OnboardingSurface.connectSetup,
+        )
+        ..reportInstallCommandShared(
+          method: BridgeInstallMethod.powershell,
+          os: BridgeInstallOs.windows,
+          surface: OnboardingSurface.connectSetup,
+        )
+        ..reportRunCommandCopied(surface: OnboardingSurface.bridgeOffline)
+        ..reportRunCommandShared(surface: OnboardingSurface.bridgeOffline);
+
+      final events = verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: captureAny(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).captured.cast<ProductAnalyticsEvent>();
+      expect(events, [
+        const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
+        const ProductAnalyticsEvent.supportLinkOpened(
+          channel: SupportChannel.email,
+          surface: OnboardingSurface.connectSetup,
+        ),
+        const ProductAnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.connectSetup),
+        const ProductAnalyticsEvent.installCommandCopied(
+          method: BridgeInstallMethod.curl,
+          os: BridgeInstallOs.unix,
+          surface: OnboardingSurface.connectSetup,
+        ),
+        const ProductAnalyticsEvent.installCommandShared(
+          method: BridgeInstallMethod.powershell,
+          os: BridgeInstallOs.windows,
+          surface: OnboardingSurface.connectSetup,
+        ),
+        const ProductAnalyticsEvent.runCommandCopied(surface: OnboardingSurface.bridgeOffline),
+        const ProductAnalyticsEvent.runCommandShared(surface: OnboardingSurface.bridgeOffline),
+      ]);
+    });
 
     // -------------------------------------------------------------------------
     // Test 1: constructor triggers load — success with projects

@@ -6,7 +6,11 @@ import "package:test/test.dart";
 
 void main() {
   group("CursorEventMapper", () {
-    final mapper = CursorEventMapper(launchDirectory: "/repo", pluginId: CursorPlugin.pluginId);
+    final mapper = CursorEventMapper(
+      launchDirectory: "/repo",
+      pluginId: CursorPlugin.pluginId,
+      configurationTracker: AcpSessionConfigurationTracker(),
+    );
 
     test("cursor/update_todos maps to a todo update", () {
       final events = mapper.map(

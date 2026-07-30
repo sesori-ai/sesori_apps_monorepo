@@ -1386,6 +1386,10 @@ directory name.
   state; coalesce schema readiness; retain pending disable through logout; await
   an active disable within the fixed deadline; and restore exact state when
   logout fails.
+- Replace Step 3.A's temporary root `AGENTS.md` prohibition on account-linked
+  reporting with the final `ProductAnalyticsService` consumer guidance in this
+  PR; no step-numbered or pre-lifecycle transitional instruction remains after
+  Step 3.C.
 - Test splash/readiness, one read per auth generation plus explicit refresh,
   pending/volatile disable, enable finalization, schema retry, logout timeout/
   recovery, rapid account switches, stale completions, and cross-account key
@@ -1412,9 +1416,10 @@ directory name.
   to post-splash authenticated enabled release builds, while allowing only the separately
   typed, release-only, account-less login catalog; add schema-ready and stable
   GoRouter-backed screen reporting.
-- Add the Settings toggle, explanatory/localized copy, pending/error behavior,
-  explicit installation/login-funnel/automatic-event limitations, and privacy/
-  legal/store-disclosure updates.
+- Add a concise `Basic Usage Analytics` toggle to the account/profile page with
+  inline pending/error state and a failure-only retry action. Keep detailed
+  installation/login-funnel/automatic-event and retention limitations in the
+  privacy/legal/store disclosures rather than dense control copy.
 - Move the existing seven-event onboarding contract to confirmed platform
   outcomes through explicit `ProjectListCubit` intents backed by
   `ProductAnalyticsService`: widgets dispatch links after successful launch,

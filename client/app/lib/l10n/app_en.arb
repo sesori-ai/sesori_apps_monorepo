@@ -238,6 +238,14 @@
   "harnessesWorkBusy": "Busy",
   "settingsProfileTitle": "Profile",
   "settingsSectionAppearance": "Appearance",
+  "settingsSectionAnalytics": "Analytics",
+  "settingsBasicUsageAnalyticsTitle": "Basic Usage Analytics",
+  "settingsBasicUsageAnalyticsDescription": "Share basic feature usage — never your code or messages.",
+  "settingsBasicUsageAnalyticsLoading": "Loading preference…",
+  "settingsBasicUsageAnalyticsSaving": "Saving preference…",
+  "settingsBasicUsageAnalyticsLoadFailed": "Analytics preference failed to load.",
+  "settingsBasicUsageAnalyticsSyncFailed": "Couldn't sync preference.",
+  "settingsBasicUsageAnalyticsRetry": "Retry preference sync",
   "settingsAppearanceLight": "Light",
   "@settingsAppearanceLight": {
     "description": "Theme option that always renders the app in the light theme"

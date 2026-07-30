@@ -36,6 +36,7 @@ class SettingsScreen extends StatelessWidget {
       create: (_) => SettingsCubit(
         authSession: getIt<AuthSession>(),
         notificationRegistrationService: getIt<NotificationRegistrationService>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
       ),
       child: const _SettingsBody(),
     );
@@ -197,7 +198,9 @@ class _SupportRow extends StatelessWidget {
       icon: icon,
       title: Text(title),
       trailing: const Icon(TablerRegular.external_link),
-      onTap: () => unawaited(openExternalLink(url: Uri.parse(url))),
+      onTap: () => unawaited(
+        openExternalLink(url: Uri.parse(url), mode: UrlLaunchMode.externalApp).then<void>((_) {}),
+      ),
       isLast: isLast,
     );
   }
