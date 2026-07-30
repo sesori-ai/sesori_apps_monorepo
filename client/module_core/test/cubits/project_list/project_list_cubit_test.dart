@@ -12,7 +12,9 @@ import "package:sesori_dart_core/src/cubits/project_list/add_project_outcome.dar
 import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/project_list_service.dart";
@@ -67,6 +69,7 @@ void main() {
     late MockFailureReporter mockFailureReporter;
     late _MockProductAnalyticsService mockProductAnalyticsService;
     late BehaviorSubject<ConnectionStatus> statusController;
+    late BehaviorSubject<ProductAnalyticsState> analyticsStateController;
     late Completer<ApiResponse<Projects>> projectFetchCompleter;
 
     setUp(() {
@@ -85,6 +88,7 @@ void main() {
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         _connectedStatus,
       );
+      analyticsStateController = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
@@ -108,10 +112,13 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+      when(() => mockProductAnalyticsService.state).thenAnswer((_) => analyticsStateController.value);
+      when(() => mockProductAnalyticsService.stateStream).thenAnswer((_) => analyticsStateController.stream);
     });
 
     tearDown(() async {
       await statusController.close();
+      await analyticsStateController.close();
     });
 
     /// Creates a fresh [ProjectListCubit] with the route source seeded to
@@ -135,6 +142,8 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <Project>[])));
       final cubit = buildCubit();
       addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+      clearInteractions(mockProductAnalyticsService);
 
       cubit
         ..reportNeedHelpMenuOpened(surface: OnboardingSurface.connectSetup)
@@ -182,6 +191,101 @@ void main() {
         const ProductAnalyticsEvent.runCommandCopied(surface: OnboardingSurface.bridgeOffline),
         const ProductAnalyticsEvent.runCommandShared(surface: OnboardingSurface.bridgeOffline),
       ]);
+    });
+
+    test("reports each successful empty and non-empty inventory classification once", () async {
+      var projects = const <Project>[];
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(Projects(data: projects)));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      projects = [projectA];
+      await cubit.refreshProjects();
+      await cubit.refreshProjects();
+      await Future<void>.delayed(Duration.zero);
+
+      final events = verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: captureAny(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).captured.cast<ProductAnalyticsEvent>();
+      expect(events, [
+        const ProductAnalyticsEvent.projectInventoryLoaded(
+          inventoryState: AnalyticsInventoryState.empty,
+        ),
+        const ProductAnalyticsEvent.projectInventoryLoaded(
+          inventoryState: AnalyticsInventoryState.nonEmpty,
+        ),
+      ]);
+    });
+
+    test("a deferred non-empty inventory consumes the cubit lifetime guard", () async {
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.deferredUntilPreference);
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.refreshProjects();
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.projectInventoryLoaded(
+            inventoryState: AnalyticsInventoryState.nonEmpty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+    });
+
+    test("an empty inventory retries on the later active preference edge", () async {
+      var deliveryResult = AnalyticsDeliveryResult.failed;
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => deliveryResult);
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <Project>[])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      deliveryResult = AnalyticsDeliveryResult.acceptedBySdk;
+      analyticsStateController.add(
+        const ProductAnalyticsState(
+          preference: ProductAnalyticsPreferenceKnown(
+            preference: ProductAnalyticsPreference.enabled,
+          ),
+          synchronization: ProductAnalyticsSynchronized(),
+          availability: ProductAnalyticsActive(),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.projectInventoryLoaded(
+            inventoryState: AnalyticsInventoryState.empty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(2);
+      verify(() => mockProjectRepository.listProjects()).called(1);
     });
 
     // -------------------------------------------------------------------------

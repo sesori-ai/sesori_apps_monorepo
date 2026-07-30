@@ -52,6 +52,8 @@ export "src/capabilities/server_connection/server_connection_config.dart";
 export "src/capabilities/session/session_service.dart";
 // Capabilities
 export "src/capabilities/voice/voice_api.dart";
+// Consumers
+export "src/consumers/analytics/session_activity_analytics_listener.dart";
 // Cubits
 export "src/cubits/appearance/appearance_cubit.dart";
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";

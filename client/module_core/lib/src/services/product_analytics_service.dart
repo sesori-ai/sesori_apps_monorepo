@@ -18,6 +18,7 @@ class ProductAnalyticsService {
   final AnalyticsRepository _analyticsRepository;
   final ProductAnalyticsPreferenceService _preferenceService;
   final ProductAnalyticsGenerationEventDispatcher _schemaReadiness = ProductAnalyticsGenerationEventDispatcher();
+  final ProductAnalyticsGenerationEventDispatcher _activationReadiness = ProductAnalyticsGenerationEventDispatcher();
 
   StreamSubscription<ProductAnalyticsState>? _stateSubscription;
   DeferredProductAnalyticsCandidates? _deferredCandidates;
@@ -153,6 +154,24 @@ class ProductAnalyticsService {
     );
     if (schemaResult != AnalyticsDeliveryResult.acceptedBySdk) {
       if (_isCurrentActiveContext(context: context)) logw("Failed to deliver analytics schema readiness");
+      return;
+    }
+    if (!_isCurrentActiveContext(context: context)) return;
+
+    final activationResult = await _activationReadiness.dispatch(
+      generation: context.generation,
+      deliver: () => _deliver(
+        envelope: ProductAnalyticsEnvelope(
+          event: const ProductAnalyticsEvent.analyticsActivationReady(),
+          occurredAtUtc: DateTime.now().toUtc(),
+        ),
+        context: context,
+      ),
+    );
+    if (activationResult != AnalyticsDeliveryResult.acceptedBySdk) {
+      if (_isCurrentActiveContext(context: context)) {
+        logw("Failed to deliver analytics activation readiness");
+      }
       return;
     }
     if (!_isCurrentActiveContext(context: context)) return;
