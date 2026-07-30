@@ -850,7 +850,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsProductAnalyticsRetention.
   ///
   /// In en, this message translates to:
-  /// **'Google\'s upstream analytics retention is two months. Sesori\'s restricted exported raw copy expires after 90 days.'**
+  /// **'Google\'s upstream analytics retention is two months. Sesori\'s restricted exported raw copy expires after 90 days. Minimized pseudonymous curated event facts are retained for 14 months.'**
   String get settingsProductAnalyticsRetention;
 
   /// No description provided for @settingsProductAnalyticsLoading.

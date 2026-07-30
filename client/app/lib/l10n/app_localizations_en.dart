@@ -410,7 +410,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsProductAnalyticsRetention =>
-      'Google\'s upstream analytics retention is two months. Sesori\'s restricted exported raw copy expires after 90 days.';
+      'Google\'s upstream analytics retention is two months. Sesori\'s restricted exported raw copy expires after 90 days. Minimized pseudonymous curated event facts are retained for 14 months.';
 
   @override
   String get settingsProductAnalyticsLoading => 'Checking your saved preference…';

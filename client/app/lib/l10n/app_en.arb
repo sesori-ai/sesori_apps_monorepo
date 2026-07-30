@@ -242,7 +242,7 @@
   "settingsProductAnalyticsTitle": "Share pseudonymous product usage from this device",
   "settingsProductAnalyticsDescription": "Shares bounded feature and screen outcomes linked by a pseudonymous account key. Sesori never sends source code, prompts, responses, transcripts, paths, project or session names, or raw account identifiers.",
   "settingsProductAnalyticsLimitations": "This switch does not control Firebase automatic installation events or its pseudonymous installation/device and approximate-location processing, the bounded account-less sign-in funnel, operational account and bridge records, older app versions, or another supported device until it next synchronizes.",
-  "settingsProductAnalyticsRetention": "Google's upstream analytics retention is two months. Sesori's restricted exported raw copy expires after 90 days.",
+  "settingsProductAnalyticsRetention": "Google's upstream analytics retention is two months. Sesori's restricted exported raw copy expires after 90 days. Minimized pseudonymous curated event facts are retained for 14 months.",
   "settingsProductAnalyticsLoading": "Checking your saved preference…",
   "settingsProductAnalyticsDisablePending": "Disabled on this device. Account sync is pending.",
   "settingsProductAnalyticsEnablePending": "Account enablement or local finalization is pending. Product usage remains off here.",

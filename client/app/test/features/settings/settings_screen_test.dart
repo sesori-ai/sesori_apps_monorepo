@@ -286,6 +286,7 @@ void main() {
     expect(find.textContaining("approximate-location processing"), findsOneWidget);
     expect(find.textContaining("upstream analytics retention is two months"), findsOneWidget);
     expect(find.textContaining("expires after 90 days"), findsOneWidget);
+    expect(find.textContaining("retained for 14 months"), findsOneWidget);
 
     await tester.tap(find.text("Share pseudonymous product usage from this device"));
     await tester.pump();
