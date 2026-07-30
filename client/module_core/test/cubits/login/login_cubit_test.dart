@@ -175,7 +175,7 @@ void main() {
         await cubit.close();
       });
 
-      test("stale Apple callbacks cannot terminate a replacement attempt", () async {
+      test("a replacement terminates the displaced attempt and rejects its stale callbacks", () async {
         final authentication = Completer<AuthUser>();
         when(
           () => mockAuthSession.loginWithApple(
@@ -206,12 +206,12 @@ void main() {
         verifyNever(
           () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.apple),
         );
-        verifyNever(
+        verify(
           () => mockInstallationAnalyticsService.loginAttemptFailed(
             provider: AuthProvider.apple,
-            cause: any(named: "cause"),
+            cause: LoginAttemptFailureCause.unknown,
           ),
-        );
+        ).called(1);
         await cubit.close();
       });
 
