@@ -10,6 +10,86 @@ void main() {
         const {},
       ),
       (
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        "analytics_activation_ready",
+        const {"activation_schema_version": "1"},
+      ),
+      (
+        const ProductAnalyticsEvent.projectInventoryLoaded(
+          inventoryState: AnalyticsInventoryState.nonEmpty,
+        ),
+        "project_inventory_loaded",
+        const {"inventory_state": "non_empty"},
+      ),
+      (
+        const ProductAnalyticsEvent.sessionActivityViewed(
+          activityState: AnalyticsActivityState.empty,
+        ),
+        "session_activity_viewed",
+        const {"activity_state": "empty"},
+      ),
+      (
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.command(),
+        ),
+        "session_message_sent",
+        const {"submission_kind": "command", "input_mode": "typed"},
+      ),
+      (
+        const ProductAnalyticsEvent.sessionCreatedWithMessage(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.voiceAssisted),
+          workspaceKind: AnalyticsWorkspaceKind.dedicatedWorktree,
+        ),
+        "session_created_with_message",
+        const {
+          "submission_kind": "text",
+          "input_mode": "voice_assisted",
+          "workspace_kind": "dedicated_worktree",
+        },
+      ),
+      (
+        const ProductAnalyticsEvent.sessionCreationFailed(
+          failureReason: AnalyticsSessionCreationFailureReason.networkDown,
+          workspaceKind: AnalyticsWorkspaceKind.project,
+        ),
+        "session_creation_failed",
+        const {"failure_reason": "network_down", "workspace_kind": "project"},
+      ),
+      (
+        const ProductAnalyticsEvent.voiceTranscriptionCompleted(),
+        "voice_transcription_completed",
+        const {},
+      ),
+      (
+        const ProductAnalyticsEvent.sessionQuestionAnswered(),
+        "session_question_answered",
+        const {},
+      ),
+      (
+        const ProductAnalyticsEvent.sessionQuestionRejected(),
+        "session_question_rejected",
+        const {},
+      ),
+      (
+        const ProductAnalyticsEvent.sessionPermissionAnswered(
+          decision: AnalyticsPermissionDecision.always,
+        ),
+        "session_permission_answered",
+        const {"decision": "always"},
+      ),
+      (
+        const ProductAnalyticsEvent.sessionAbortSucceeded(),
+        "session_abort_succeeded",
+        const {},
+      ),
+      (
+        const ProductAnalyticsEvent.sessionDiffViewed(
+          changeState: AnalyticsChangeState.nonEmpty,
+        ),
+        "session_diff_viewed",
+        const {"change_state": "non_empty"},
+      ),
+      (
         const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
         "onboarding_need_help_opened",
         const {"surface": "connect_setup"},

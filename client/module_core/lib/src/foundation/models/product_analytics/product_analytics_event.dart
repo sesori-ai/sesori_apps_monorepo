@@ -59,11 +59,130 @@ enum AnalyticsInputMode {
   const AnalyticsInputMode({required this.wireValue});
 }
 
+enum AnalyticsInventoryState {
+  empty(wireValue: "empty"),
+  nonEmpty(wireValue: "non_empty");
+
+  final String wireValue;
+  const AnalyticsInventoryState({required this.wireValue});
+}
+
+enum AnalyticsActivityState {
+  empty(wireValue: "empty"),
+  nonEmpty(wireValue: "non_empty");
+
+  final String wireValue;
+  const AnalyticsActivityState({required this.wireValue});
+}
+
+enum AnalyticsSubmissionKind {
+  text(wireValue: "text"),
+  command(wireValue: "command");
+
+  final String wireValue;
+  const AnalyticsSubmissionKind({required this.wireValue});
+}
+
+@immutable
+sealed class AnalyticsSubmission {
+  const AnalyticsSubmission();
+
+  const factory AnalyticsSubmission.text({required AnalyticsInputMode inputMode}) = AnalyticsTextSubmission;
+  const factory AnalyticsSubmission.command() = AnalyticsCommandSubmission;
+
+  AnalyticsSubmissionKind get kind;
+  AnalyticsInputMode get inputMode;
+}
+
+final class AnalyticsTextSubmission extends AnalyticsSubmission {
+  @override
+  final AnalyticsInputMode inputMode;
+
+  const AnalyticsTextSubmission({required this.inputMode});
+
+  @override
+  AnalyticsSubmissionKind get kind => AnalyticsSubmissionKind.text;
+}
+
+final class AnalyticsCommandSubmission extends AnalyticsSubmission {
+  const AnalyticsCommandSubmission();
+
+  @override
+  AnalyticsSubmissionKind get kind => AnalyticsSubmissionKind.command;
+
+  @override
+  AnalyticsInputMode get inputMode => AnalyticsInputMode.typed;
+}
+
+enum AnalyticsWorkspaceKind {
+  project(wireValue: "project"),
+  dedicatedWorktree(wireValue: "dedicated_worktree");
+
+  final String wireValue;
+  const AnalyticsWorkspaceKind({required this.wireValue});
+}
+
+enum AnalyticsSessionCreationFailureReason {
+  notAuthenticated(wireValue: "not_authenticated"),
+  serverRejected(wireValue: "server_rejected"),
+  networkDown(wireValue: "network_down"),
+  badResponse(wireValue: "bad_response"),
+  unknown(wireValue: "unknown");
+
+  final String wireValue;
+  const AnalyticsSessionCreationFailureReason({required this.wireValue});
+}
+
+enum AnalyticsPermissionDecision {
+  once(wireValue: "once"),
+  always(wireValue: "always"),
+  reject(wireValue: "reject");
+
+  final String wireValue;
+  const AnalyticsPermissionDecision({required this.wireValue});
+}
+
+enum AnalyticsChangeState {
+  empty(wireValue: "empty"),
+  nonEmpty(wireValue: "non_empty");
+
+  final String wireValue;
+  const AnalyticsChangeState({required this.wireValue});
+}
+
 @immutable
 sealed class ProductAnalyticsEvent {
   const ProductAnalyticsEvent();
 
   const factory ProductAnalyticsEvent.analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
+  const factory ProductAnalyticsEvent.analyticsActivationReady() = AnalyticsActivationReadyEvent;
+  const factory ProductAnalyticsEvent.projectInventoryLoaded({
+    required AnalyticsInventoryState inventoryState,
+  }) = ProjectInventoryLoadedEvent;
+  const factory ProductAnalyticsEvent.sessionActivityViewed({
+    required AnalyticsActivityState activityState,
+  }) = SessionActivityViewedEvent;
+  const factory ProductAnalyticsEvent.sessionMessageSent({
+    required AnalyticsSubmission submission,
+  }) = SessionMessageSentEvent;
+  const factory ProductAnalyticsEvent.sessionCreatedWithMessage({
+    required AnalyticsSubmission submission,
+    required AnalyticsWorkspaceKind workspaceKind,
+  }) = SessionCreatedWithMessageEvent;
+  const factory ProductAnalyticsEvent.sessionCreationFailed({
+    required AnalyticsSessionCreationFailureReason failureReason,
+    required AnalyticsWorkspaceKind workspaceKind,
+  }) = SessionCreationFailedEvent;
+  const factory ProductAnalyticsEvent.voiceTranscriptionCompleted() = VoiceTranscriptionCompletedEvent;
+  const factory ProductAnalyticsEvent.sessionQuestionAnswered() = SessionQuestionAnsweredEvent;
+  const factory ProductAnalyticsEvent.sessionQuestionRejected() = SessionQuestionRejectedEvent;
+  const factory ProductAnalyticsEvent.sessionPermissionAnswered({
+    required AnalyticsPermissionDecision decision,
+  }) = SessionPermissionAnsweredEvent;
+  const factory ProductAnalyticsEvent.sessionAbortSucceeded() = SessionAbortSucceededEvent;
+  const factory ProductAnalyticsEvent.sessionDiffViewed({
+    required AnalyticsChangeState changeState,
+  }) = SessionDiffViewedEvent;
   const factory ProductAnalyticsEvent.needHelpMenuOpened({required OnboardingSurface surface}) =
       NeedHelpMenuOpenedEvent;
   const factory ProductAnalyticsEvent.supportLinkOpened({
@@ -111,6 +230,154 @@ final class AnalyticsSchemaReadyEvent extends ProductAnalyticsEvent {
 
   @override
   Map<String, String> get parameters => const {};
+}
+
+final class AnalyticsActivationReadyEvent extends ProductAnalyticsEvent {
+  const AnalyticsActivationReadyEvent();
+
+  @override
+  String get wireName => "analytics_activation_ready";
+
+  @override
+  Map<String, String> get parameters => const {"activation_schema_version": "1"};
+}
+
+final class ProjectInventoryLoadedEvent extends ProductAnalyticsEvent {
+  final AnalyticsInventoryState inventoryState;
+  const ProjectInventoryLoadedEvent({required this.inventoryState});
+
+  @override
+  String get wireName => "project_inventory_loaded";
+
+  @override
+  Map<String, String> get parameters => {"inventory_state": inventoryState.wireValue};
+}
+
+final class SessionActivityViewedEvent extends ProductAnalyticsEvent {
+  final AnalyticsActivityState activityState;
+  const SessionActivityViewedEvent({required this.activityState});
+
+  @override
+  String get wireName => "session_activity_viewed";
+
+  @override
+  Map<String, String> get parameters => {"activity_state": activityState.wireValue};
+}
+
+final class SessionMessageSentEvent extends ProductAnalyticsEvent {
+  final AnalyticsSubmission submission;
+  const SessionMessageSentEvent({required this.submission});
+
+  AnalyticsSubmissionKind get submissionKind => submission.kind;
+  AnalyticsInputMode get inputMode => submission.inputMode;
+
+  @override
+  String get wireName => "session_message_sent";
+
+  @override
+  Map<String, String> get parameters => {
+    "submission_kind": submissionKind.wireValue,
+    "input_mode": inputMode.wireValue,
+  };
+}
+
+final class SessionCreatedWithMessageEvent extends ProductAnalyticsEvent {
+  final AnalyticsSubmission submission;
+  final AnalyticsWorkspaceKind workspaceKind;
+  const SessionCreatedWithMessageEvent({
+    required this.submission,
+    required this.workspaceKind,
+  });
+
+  AnalyticsSubmissionKind get submissionKind => submission.kind;
+  AnalyticsInputMode get inputMode => submission.inputMode;
+
+  @override
+  String get wireName => "session_created_with_message";
+
+  @override
+  Map<String, String> get parameters => {
+    "submission_kind": submissionKind.wireValue,
+    "input_mode": inputMode.wireValue,
+    "workspace_kind": workspaceKind.wireValue,
+  };
+}
+
+final class SessionCreationFailedEvent extends ProductAnalyticsEvent {
+  final AnalyticsSessionCreationFailureReason failureReason;
+  final AnalyticsWorkspaceKind workspaceKind;
+  const SessionCreationFailedEvent({required this.failureReason, required this.workspaceKind});
+
+  @override
+  String get wireName => "session_creation_failed";
+
+  @override
+  Map<String, String> get parameters => {
+    "failure_reason": failureReason.wireValue,
+    "workspace_kind": workspaceKind.wireValue,
+  };
+}
+
+final class VoiceTranscriptionCompletedEvent extends ProductAnalyticsEvent {
+  const VoiceTranscriptionCompletedEvent();
+
+  @override
+  String get wireName => "voice_transcription_completed";
+
+  @override
+  Map<String, String> get parameters => const {};
+}
+
+final class SessionQuestionAnsweredEvent extends ProductAnalyticsEvent {
+  const SessionQuestionAnsweredEvent();
+
+  @override
+  String get wireName => "session_question_answered";
+
+  @override
+  Map<String, String> get parameters => const {};
+}
+
+final class SessionQuestionRejectedEvent extends ProductAnalyticsEvent {
+  const SessionQuestionRejectedEvent();
+
+  @override
+  String get wireName => "session_question_rejected";
+
+  @override
+  Map<String, String> get parameters => const {};
+}
+
+final class SessionPermissionAnsweredEvent extends ProductAnalyticsEvent {
+  final AnalyticsPermissionDecision decision;
+  const SessionPermissionAnsweredEvent({required this.decision});
+
+  @override
+  String get wireName => "session_permission_answered";
+
+  @override
+  Map<String, String> get parameters => {"decision": decision.wireValue};
+}
+
+final class SessionAbortSucceededEvent extends ProductAnalyticsEvent {
+  const SessionAbortSucceededEvent();
+
+  @override
+  String get wireName => "session_abort_succeeded";
+
+  @override
+  Map<String, String> get parameters => const {};
+}
+
+final class SessionDiffViewedEvent extends ProductAnalyticsEvent {
+  final AnalyticsChangeState changeState;
+  const SessionDiffViewedEvent({required this.changeState});
+
+  @override
+  String get wireName => "session_diff_viewed";
+
+  @override
+  Map<String, String> get parameters => {"change_state": changeState.wireValue};
 }
 
 final class NeedHelpMenuOpenedEvent extends ProductAnalyticsEvent {
