@@ -1,46 +1,83 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:freezed_annotation/freezed_annotation.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/models/product_analytics/product_analytics_preference.dart";
 
+part "product_analytics_preference_api.freezed.dart";
+part "product_analytics_preference_api.g.dart";
+
 const _operationDeadline = Duration(seconds: 10);
 
-final class ProductAnalyticsPreferenceApiRecord {
-  final ProductAnalyticsPreference preference;
-  final int revision;
-  final String userKey;
+@Freezed(fromJson: true, toJson: true)
+sealed class ProductAnalyticsPreferenceApiRecord with _$ProductAnalyticsPreferenceApiRecord {
+  const factory ProductAnalyticsPreferenceApiRecord({
+    required ProductAnalyticsPreference preference,
+    required int revision,
+    required String userKey,
+  }) = _ProductAnalyticsPreferenceApiRecord;
 
-  const ProductAnalyticsPreferenceApiRecord({
-    required this.preference,
-    required this.revision,
-    required this.userKey,
-  });
+  factory ProductAnalyticsPreferenceApiRecord.fromJson(Map<String, dynamic> json) {
+    if (json["revision"] is! int) {
+      throw const FormatException("Invalid product analytics preference response");
+    }
+    final record = _$ProductAnalyticsPreferenceApiRecordFromJson(json);
+    if (record.revision < 1 || !isValidProductAnalyticsUserKey(value: record.userKey)) {
+      throw const FormatException("Invalid product analytics preference response");
+    }
+    return record;
+  }
 }
 
-sealed class ProductAnalyticsPreferenceApiResult {
-  const ProductAnalyticsPreferenceApiResult();
+@Freezed(fromJson: false, toJson: false)
+sealed class ProductAnalyticsPreferenceApiResult with _$ProductAnalyticsPreferenceApiResult {
+  const factory ProductAnalyticsPreferenceApiResult.success({required ProductAnalyticsPreferenceApiRecord record}) =
+      ProductAnalyticsPreferenceApiSuccess;
+  const factory ProductAnalyticsPreferenceApiResult.conflict({required ProductAnalyticsPreferenceApiRecord record}) =
+      ProductAnalyticsPreferenceApiConflict;
+  const factory ProductAnalyticsPreferenceApiResult.timeout() = ProductAnalyticsPreferenceApiTimeout;
+  const factory ProductAnalyticsPreferenceApiResult.failure() = ProductAnalyticsPreferenceApiFailure;
 }
 
-final class ProductAnalyticsPreferenceApiSuccess extends ProductAnalyticsPreferenceApiResult {
-  final ProductAnalyticsPreferenceApiRecord record;
-  const ProductAnalyticsPreferenceApiSuccess({required this.record});
+@Freezed(fromJson: true, toJson: false)
+sealed class ProductAnalyticsPreferenceConflictResponse with _$ProductAnalyticsPreferenceConflictResponse {
+  const factory ProductAnalyticsPreferenceConflictResponse({
+    required ProductAnalyticsPreferenceConflictError error,
+    required ProductAnalyticsPreference preference,
+    required int revision,
+    required String userKey,
+  }) = _ProductAnalyticsPreferenceConflictResponse;
+
+  const ProductAnalyticsPreferenceConflictResponse._();
+
+  factory ProductAnalyticsPreferenceConflictResponse.fromJson(Map<String, dynamic> json) {
+    if (json["revision"] is! int) {
+      throw const FormatException("Invalid product analytics preference conflict response");
+    }
+    final response = _$ProductAnalyticsPreferenceConflictResponseFromJson(json);
+    if (response.revision < 1 || !isValidProductAnalyticsUserKey(value: response.userKey)) {
+      throw const FormatException("Invalid product analytics preference conflict response");
+    }
+    return response;
+  }
+
+  ProductAnalyticsPreferenceApiRecord get record => ProductAnalyticsPreferenceApiRecord(
+    preference: preference,
+    revision: revision,
+    userKey: userKey,
+  );
 }
 
-final class ProductAnalyticsPreferenceApiConflict extends ProductAnalyticsPreferenceApiResult {
-  final ProductAnalyticsPreferenceApiRecord record;
-  const ProductAnalyticsPreferenceApiConflict({required this.record});
-}
+@JsonEnum(valueField: "wireValue")
+enum ProductAnalyticsPreferenceConflictError {
+  conflict(wireValue: "conflict");
 
-final class ProductAnalyticsPreferenceApiTimeout extends ProductAnalyticsPreferenceApiResult {
-  const ProductAnalyticsPreferenceApiTimeout();
-}
-
-final class ProductAnalyticsPreferenceApiFailure extends ProductAnalyticsPreferenceApiResult {
-  const ProductAnalyticsPreferenceApiFailure();
+  final String wireValue;
+  const ProductAnalyticsPreferenceConflictError({required this.wireValue});
 }
 
 @lazySingleton
@@ -58,17 +95,17 @@ class ProductAnalyticsPreferenceApi {
           .getForUser<ProductAnalyticsPreferenceApiRecord>(
             url: _url,
             userId: userId,
-            fromJson: _recordFromJson,
+            fromJson: (dynamic json) => ProductAnalyticsPreferenceApiRecord.fromJson(jsonCastMap(json)),
           )
           .timeout(_operationDeadline);
       return switch (response) {
-        SuccessResponse(:final data) => ProductAnalyticsPreferenceApiSuccess(record: data),
-        ErrorResponse() => const ProductAnalyticsPreferenceApiFailure(),
+        SuccessResponse(:final data) => ProductAnalyticsPreferenceApiResult.success(record: data),
+        ErrorResponse() => const ProductAnalyticsPreferenceApiResult.failure(),
       };
     } on TimeoutException {
-      return const ProductAnalyticsPreferenceApiTimeout();
+      return const ProductAnalyticsPreferenceApiResult.timeout();
     } on Object {
-      return const ProductAnalyticsPreferenceApiFailure();
+      return const ProductAnalyticsPreferenceApiResult.failure();
     }
   }
 
@@ -83,7 +120,7 @@ class ProductAnalyticsPreferenceApi {
           .putForUser<ProductAnalyticsPreferenceApiRecord>(
             url: _url,
             userId: userId,
-            fromJson: _recordFromJson,
+            fromJson: (dynamic json) => ProductAnalyticsPreferenceApiRecord.fromJson(jsonCastMap(json)),
             body: jsonEncode(
               ProductAnalyticsPreferenceUpdateRequest(
                 preference: switch (preference) {
@@ -97,52 +134,26 @@ class ProductAnalyticsPreferenceApi {
           )
           .timeout(_operationDeadline);
       return switch (response) {
-        SuccessResponse(:final data) => ProductAnalyticsPreferenceApiSuccess(record: data),
+        SuccessResponse(:final data) => ProductAnalyticsPreferenceApiResult.success(record: data),
         ErrorResponse(error: NonSuccessCodeError(errorCode: 409, :final rawErrorString)) => _conflictFromRawJson(
           rawErrorString,
         ),
-        ErrorResponse() => const ProductAnalyticsPreferenceApiFailure(),
+        ErrorResponse() => const ProductAnalyticsPreferenceApiResult.failure(),
       };
     } on TimeoutException {
-      return const ProductAnalyticsPreferenceApiTimeout();
+      return const ProductAnalyticsPreferenceApiResult.timeout();
     } on Object {
-      return const ProductAnalyticsPreferenceApiFailure();
+      return const ProductAnalyticsPreferenceApiResult.failure();
     }
   }
 
   ProductAnalyticsPreferenceApiResult _conflictFromRawJson(String? value) {
-    if (value == null) return const ProductAnalyticsPreferenceApiFailure();
+    if (value == null) return const ProductAnalyticsPreferenceApiResult.failure();
     try {
-      final decoded = jsonDecode(value);
-      // ignore: no_slop_linter/prefer_specific_type, JSON boundary
-      if (decoded is! Map<String, dynamic> || decoded["error"] != "conflict") {
-        return const ProductAnalyticsPreferenceApiFailure();
-      }
-      return ProductAnalyticsPreferenceApiConflict(record: _recordFromJson(decoded));
+      final response = ProductAnalyticsPreferenceConflictResponse.fromJson(jsonDecodeMap(value));
+      return ProductAnalyticsPreferenceApiResult.conflict(record: response.record);
     } on Object {
-      return const ProductAnalyticsPreferenceApiFailure();
+      return const ProductAnalyticsPreferenceApiResult.failure();
     }
   }
-}
-
-// ignore: no_slop_linter/prefer_specific_type, SafeApiClient JSON callback
-ProductAnalyticsPreferenceApiRecord _recordFromJson(dynamic value) {
-  // ignore: no_slop_linter/prefer_specific_type, JSON boundary
-  if (value is! Map<String, dynamic>) {
-    throw const FormatException("Invalid product analytics preference response");
-  }
-  final preferenceValue = value["preference"];
-  final revision = value["revision"];
-  final userKey = value["userKey"];
-  final preference = preferenceValue is String
-      ? ProductAnalyticsPreference.fromWireValue(value: preferenceValue)
-      : null;
-  if (preference == null ||
-      revision is! int ||
-      revision < 1 ||
-      userKey is! String ||
-      !isValidProductAnalyticsUserKey(value: userKey)) {
-    throw const FormatException("Invalid product analytics preference response");
-  }
-  return ProductAnalyticsPreferenceApiRecord(preference: preference, revision: revision, userKey: userKey);
 }

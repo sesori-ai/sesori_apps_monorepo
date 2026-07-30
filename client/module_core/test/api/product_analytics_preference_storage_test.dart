@@ -65,8 +65,11 @@ void main() {
       if (record case StoredProductAnalyticsSynced(:final preference)) {
         expect((restored! as StoredProductAnalyticsSynced).preference, preference);
       }
-      if (record case StoredProductAnalyticsPending(:final operationId)) {
-        expect((restored! as StoredProductAnalyticsPending).operationId, operationId);
+      if (record case StoredProductAnalyticsPendingDisable(:final operationId)) {
+        expect((restored! as StoredProductAnalyticsPendingDisable).operationId, operationId);
+      }
+      if (record case StoredProductAnalyticsPendingEnable(:final operationId)) {
+        expect((restored! as StoredProductAnalyticsPendingEnable).operationId, operationId);
       }
     }
 
@@ -95,7 +98,40 @@ void main() {
 
   test("invalid version, account, key, and operation ID fail closed", () async {
     final invalidPayloads = [
+      {"kind": "synced", "userId": "user-a", "preference": "enabled", "revision": 1, "userKey": _userKey},
+      {
+        "version": null,
+        "kind": "synced",
+        "userId": "user-a",
+        "preference": "enabled",
+        "revision": 1,
+        "userKey": _userKey,
+      },
+      {
+        "version": 1.5,
+        "kind": "synced",
+        "userId": "user-a",
+        "preference": "enabled",
+        "revision": 1,
+        "userKey": _userKey,
+      },
       {"version": 2, "kind": "synced", "userId": "user-a", "preference": "enabled", "revision": 1, "userKey": _userKey},
+      {
+        "version": 1,
+        "kind": "synced",
+        "userId": "user-a",
+        "preference": "enabled",
+        "revision": 1.5,
+        "userKey": _userKey,
+      },
+      {
+        "version": 1,
+        "kind": "unknown",
+        "userId": "user-a",
+        "preference": "enabled",
+        "revision": 1,
+        "userKey": _userKey,
+      },
       {"version": 1, "kind": "synced", "userId": "user-b", "preference": "enabled", "revision": 1, "userKey": _userKey},
       {"version": 1, "kind": "synced", "userId": "user-a", "preference": "enabled", "revision": 1, "userKey": "bad"},
       {
