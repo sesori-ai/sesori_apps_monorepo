@@ -145,7 +145,7 @@ PRs #611-#614 so each review stays near 1,500 added lines.
 | 3.B/5 | apps monorepo | `[user-analytics] Add durable analytics preference sync [step 3.B/5]` | PR #612 merged as `a792481b` on 2026-07-30 | Step 3.A |
 | 3.C/5 | apps monorepo | `[user-analytics] Add account-linked analytics lifecycle [step 3.C/5]` | PR #613 merged as `53e9453f` on 2026-07-30, including supplemental lifecycle decomposition PR #619 | Step 3.B |
 | 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 merged as `fb8cd0e8`; focused account-page UX follow-up PR #628 merged as `5e42bedc` on 2026-07-30 | Step 3.C |
-| 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | Implementation and local verification complete on `user-analytics-outcome-instrumentation`; awaiting commit/PR | Step 3.D released |
+| 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | PR #629 open from `user-analytics-outcome-instrumentation`; local verification and architecture review passed | Step 3.D released |
 | 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
 ## Release Evidence
