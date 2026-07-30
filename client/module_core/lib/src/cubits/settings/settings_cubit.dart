@@ -6,18 +6,22 @@ import "package:sesori_auth/sesori_auth.dart";
 
 import "../../logging/logging.dart";
 import "../../services/notification_registration_service.dart";
+import "../../services/product_analytics_service.dart";
 import "settings_state.dart";
 
 class SettingsCubit extends Cubit<SettingsState> {
   final AuthSession _authSession;
   final NotificationRegistrationService _notificationRegistrationService;
+  final ProductAnalyticsService _productAnalyticsService;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   SettingsCubit({
     required AuthSession authSession,
     required NotificationRegistrationService notificationRegistrationService,
+    required ProductAnalyticsService productAnalyticsService,
   }) : _authSession = authSession,
        _notificationRegistrationService = notificationRegistrationService,
+       _productAnalyticsService = productAnalyticsService,
        super(SettingsState(account: _accountFrom(authSession.currentState))) {
     // Keep the signed-in account in sync: the session is restored
     // asynchronously on launch, so the account may resolve after the cubit is
@@ -43,6 +47,11 @@ class SettingsCubit extends Cubit<SettingsState> {
 
     try {
       try {
+        await _productAnalyticsService.prepareForLogout();
+      } catch (error, stackTrace) {
+        logw("Failed to prepare product analytics for logout", error, stackTrace);
+      }
+      try {
         await _notificationRegistrationService.unregisterCurrentDevice();
       } catch (error, stackTrace) {
         logw("Failed to clean up push notifications during logout", error, stackTrace);
@@ -51,6 +60,11 @@ class SettingsCubit extends Cubit<SettingsState> {
       if (isClosed) return;
       emit(state.copyWith(logoutStatus: SettingsLogoutStatus.success));
     } catch (_) {
+      try {
+        await _productAnalyticsService.resumeAfterFailedLogout();
+      } catch (error, stackTrace) {
+        logw("Failed to restore product analytics after logout failed", error, stackTrace);
+      }
       try {
         await _notificationRegistrationService.resumeRegistrationAfterFailedLogout();
       } catch (error, stackTrace) {

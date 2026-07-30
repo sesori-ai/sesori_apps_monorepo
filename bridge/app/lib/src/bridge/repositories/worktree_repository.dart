@@ -167,20 +167,12 @@ class WorktreeRepository {
     }
   }
 
-  Future<String?> resolveCleanHeadCommit({
+  Future<String?> resolveHeadCommit({
     required String projectPath,
   }) async {
     try {
       final isGitRoot = await _gitApi.isGitInitialized(projectPath: projectPath);
       if (!isGitRoot && !await _gitApi.isInsideGitWorkTree(projectPath: projectPath)) {
-        return null;
-      }
-
-      final statusResult = await _gitApi.readWorkingTreeStatus(projectPath: projectPath);
-      if (statusResult.exitCode != 0) {
-        throw StateError("git status failed with exit ${statusResult.exitCode}");
-      }
-      if (statusResult.stdout.toString().trim().isNotEmpty) {
         return null;
       }
 
