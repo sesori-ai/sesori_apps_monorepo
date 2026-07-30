@@ -198,10 +198,10 @@ class ProductAnalyticsPreferenceRepository {
     try {
       await _writePending(pending);
       durablePending = true;
-    } on Object catch (_, stackTrace) {
+    } on Object catch (error, stackTrace) {
       logw(
         "Failed to persist refreshed analytics disable intent",
-        const _ProductAnalyticsPreferenceStorageException(),
+        _ProductAnalyticsPreferenceStorageException(innerError: error),
         stackTrace,
       );
       // Source suppression is already active in memory. Continue the bounded
@@ -344,7 +344,9 @@ class ProductAnalyticsPreferenceRepository {
 }
 
 final class _ProductAnalyticsPreferenceStorageException implements Exception {
-  const _ProductAnalyticsPreferenceStorageException();
+  final Object innerError;
+
+  const _ProductAnalyticsPreferenceStorageException({required this.innerError});
 
   @override
   String toString() => "Product analytics preference storage operation failed";
