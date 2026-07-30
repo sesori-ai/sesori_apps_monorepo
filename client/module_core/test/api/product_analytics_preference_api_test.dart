@@ -121,6 +121,21 @@ void main() {
     expect(result, isA<ProductAnalyticsPreferenceApiFailure>());
   });
 
+  test("PUT rejects success records whose revision does not advance", () async {
+    for (final revision in [2, 1]) {
+      client.putJson = {"preference": "disabled", "revision": revision, "userKey": _userKey};
+
+      final result = await api.updatePreference(
+        userId: _userId,
+        preference: ProductAnalyticsPreference.disabled,
+        expectedRevision: 2,
+        operationId: "123e4567-e89b-42d3-a456-426614174000",
+      );
+
+      expect(result, isA<ProductAnalyticsPreferenceApiFailure>());
+    }
+  });
+
   test("PUT parses an explicit conflict record", () async {
     client.putError = ApiError.nonSuccessCode(
       errorCode: 409,
