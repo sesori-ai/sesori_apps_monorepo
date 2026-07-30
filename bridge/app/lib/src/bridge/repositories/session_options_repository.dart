@@ -138,6 +138,18 @@ class SessionOptionsRepository {
     );
   }
 
+  Future<bool> deleteIfRevision({
+    required SessionOptionsCacheKey key,
+    required int expectedRevision,
+  }) {
+    return _cacheDao.deleteRowIfRevision(
+      pluginId: key.pluginId,
+      scope: key.scope,
+      ownerId: key.ownerId,
+      expectedRevision: expectedRevision,
+    );
+  }
+
   Future<SessionOptionsCaptureResult> capture({
     required SessionOptionsCacheKey key,
     required String projectPath,

@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:sesori_bridge/src/bridge/repositories/models/session_options_cache_key.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_options_repository.dart";
@@ -17,7 +18,7 @@ void main() {
         ..put(
           _entry(
             key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
-            response: _response("cached"),
+            response: _response(marker: "cached"),
             capturedAt: now,
           ),
         );
@@ -30,7 +31,7 @@ void main() {
       final outcome = await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1");
 
       expect(outcome, isA<SessionOptionsAvailable>());
-      expect((outcome as SessionOptionsAvailable).response, _response("cached"));
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "cached"));
       expect(repository.captureCalls, isEmpty);
       expect(repository.commitCalls, isEmpty);
       expect(repository.runtimeChecks, 0);
@@ -51,7 +52,7 @@ void main() {
       final service = _service(repository: repository, now: now);
       repository.readHandler = (_) async => _entry(
         key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
-        response: _response("wrong-scope"),
+        response: _response(marker: "wrong-scope"),
         capturedAt: now,
       );
 
@@ -69,7 +70,7 @@ void main() {
             projectId: "project-1",
             projectPath: "/projects/old",
           ),
-          response: _response("old-path"),
+          response: _response(marker: "old-path"),
           capturedAt: now,
         );
 
@@ -92,7 +93,7 @@ void main() {
       repository.put(
         _entry(
           key: key,
-          response: _response("boundary"),
+          response: _response(marker: "boundary"),
           capturedAt: now.subtract(const Duration(days: 30)),
         ),
       );
@@ -105,7 +106,7 @@ void main() {
       repository.put(
         _entry(
           key: key,
-          response: _response("expired"),
+          response: _response(marker: "expired"),
           capturedAt: now.subtract(const Duration(days: 30, milliseconds: 1)),
         ),
       );
@@ -118,7 +119,7 @@ void main() {
       repository.put(
         _entry(
           key: key,
-          response: _response("future"),
+          response: _response(marker: "future"),
           capturedAt: now.add(const Duration(milliseconds: 1)),
         ),
       );
@@ -127,6 +128,66 @@ void main() {
         isA<SessionOptionsCacheUnavailable>(),
       );
       expect(repository.deletedKeys, hasLength(2));
+    });
+
+    test("invalid cache deletion preserves a concurrently replaced revision", () async {
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      final expired = _entry(
+        key: key,
+        response: _response(marker: "expired"),
+        capturedAt: now.subtract(const Duration(days: 31)),
+        revision: 1,
+      );
+      final fresh = _entry(
+        key: key,
+        response: _response(marker: "fresh"),
+        capturedAt: now,
+        revision: 2,
+      );
+      repository
+        ..put(expired)
+        ..readHandler = (_) async {
+          repository
+            ..put(fresh)
+            ..readHandler = null;
+          return expired;
+        };
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "fresh"));
+      expect(repository.conditionalDeleteCalls.single.expectedRevision, 1);
+      expect(repository.stored(key), fresh);
+    });
+
+    test("undecodable cache logging excludes the payload-bearing cause", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..readHandler = (_) async => throw SessionOptionsCacheDecodingException(
+          cause: const FormatException("private-cache-payload"),
+          causeStackTrace: StackTrace.current,
+        );
+      final service = _service(repository: repository, now: now);
+
+      final output = await _captureLogOutput(
+        level: LogLevel.verbose,
+        action: () async {
+          expect(
+            await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1"),
+            isA<SessionOptionsCacheUnavailable>(),
+          );
+        },
+      );
+
+      expect(output, contains("Deleting undecodable session options cache for plugin plugin-1"));
+      expect(output, isNot(contains("private-cache-payload")));
     });
   });
 
@@ -140,7 +201,13 @@ void main() {
         projectId: "project-1",
         projectPath: "/projects/one",
       );
-      repository.put(_entry(key: key, response: _response("retained"), capturedAt: now));
+      repository.put(
+        _entry(
+          key: key,
+          response: _response(marker: "retained"),
+          capturedAt: now,
+        ),
+      );
       final service = _service(repository: repository, now: now);
 
       expect(
@@ -171,7 +238,7 @@ void main() {
             projectId: "project-1",
             projectPath: "/projects/old",
           ),
-          response: _response("old-path"),
+          response: _response(marker: "old-path"),
           capturedAt: now,
         ),
       );
@@ -186,7 +253,7 @@ void main() {
       repository.put(
         _entry(
           key: currentKey,
-          response: _response("expired"),
+          response: _response(marker: "expired"),
           capturedAt: now.subtract(const Duration(days: 31)),
         ),
       );
@@ -200,7 +267,11 @@ void main() {
     test("partial observations seed only empty cache and never replace retained data", () async {
       final repository = _FakeSessionOptionsRepository()
         ..projectPaths["project-1"] = "/projects/one"
-        ..captureResult = _observed("partial-seed", PluginSessionOptionsCompleteness.partial);
+        ..captureResult = _observed(
+          marker: "partial-seed",
+          completeness: PluginSessionOptionsCompleteness.partial,
+          generation: 7,
+        );
       final service = _service(repository: repository, now: now);
       const key = SessionOptionsCacheKey.project(
         pluginId: "plugin-1",
@@ -220,20 +291,24 @@ void main() {
           ..put(
             _entry(
               key: key,
-              response: _response("retained-${completeness.name}"),
+              response: _response(marker: "retained-${completeness.name}"),
               capturedAt: now,
               completeness: completeness,
               revision: 5,
             ),
           )
-          ..captureResult = _observed("ignored", PluginSessionOptionsCompleteness.partial);
+          ..captureResult = _observed(
+            marker: "ignored",
+            completeness: PluginSessionOptionsCompleteness.partial,
+            generation: 7,
+          );
 
         final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
 
         expect(outcome, isA<SessionOptionsAvailable>());
         expect(
           (outcome as SessionOptionsAvailable).response,
-          _response("retained-${completeness.name}"),
+          _response(marker: "retained-${completeness.name}"),
         );
         expect(repository.commitCalls, isEmpty);
       }
@@ -243,7 +318,11 @@ void main() {
       for (final completeness in PluginSessionOptionsCompleteness.values) {
         final repository = _FakeSessionOptionsRepository()
           ..projectPaths["project-1"] = "/projects/one"
-          ..captureResult = _observed("complete", PluginSessionOptionsCompleteness.complete);
+          ..captureResult = _observed(
+            marker: "complete",
+            completeness: PluginSessionOptionsCompleteness.complete,
+            generation: 7,
+          );
         const key = SessionOptionsCacheKey.project(
           pluginId: "plugin-1",
           projectId: "project-1",
@@ -252,7 +331,7 @@ void main() {
         repository.put(
           _entry(
             key: key,
-            response: _response("old"),
+            response: _response(marker: "old"),
             capturedAt: now,
             completeness: completeness,
             revision: 4,
@@ -263,7 +342,7 @@ void main() {
         final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
 
         expect(outcome, isA<SessionOptionsAvailable>());
-        expect((outcome as SessionOptionsAvailable).response, _response("complete"));
+        expect((outcome as SessionOptionsAvailable).response, _response(marker: "complete"));
         expect(repository.commitCalls.single.expectedRevision, 4);
         expect(repository.commitCalls.single.candidate.revision, 5);
         expect(repository.stored(key)!.completeness, PluginSessionOptionsCompleteness.complete);
@@ -273,7 +352,11 @@ void main() {
     test("explicit and automatic refresh use the required activation and discovery pairs", () async {
       final repository = _FakeSessionOptionsRepository()
         ..projectPaths["project-1"] = "/projects/one"
-        ..captureResult = _observed("captured", PluginSessionOptionsCompleteness.complete);
+        ..captureResult = _observed(
+          marker: "captured",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        );
       final service = _service(repository: repository, now: now);
 
       await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
@@ -290,7 +373,11 @@ void main() {
       final repository = _FakeSessionOptionsRepository()
         ..projectPaths["stable-project"] = "/projects/stable"
         ..backendBindings["plugin-1/backend-session"] = "stable-project"
-        ..captureResult = _observed("captured", PluginSessionOptionsCompleteness.complete);
+        ..captureResult = _observed(
+          marker: "captured",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        );
       final service = _service(repository: repository, now: now);
 
       final outcome = await service.refreshActiveOnlyForBackendSession(
@@ -315,7 +402,7 @@ void main() {
               projectId: "project-1",
               projectPath: "/projects/old",
             ),
-            response: _response("invalid"),
+            response: _response(marker: "invalid"),
             capturedAt: now,
           ),
         );
@@ -345,13 +432,57 @@ void main() {
       expect(staleRepository.captureCalls, isEmpty);
       expect(staleRepository.commitCalls, isEmpty);
     });
+
+    test("a moved project prevents stale in-flight capture from replacing the new-path cache", () async {
+      final oldCapture = Completer<SessionOptionsCaptureResult>();
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/old";
+      repository.captureHandler = (call) {
+        if (call.projectPath == "/projects/old") return oldCapture.future;
+        return Future.value(
+          _observed(
+            marker: "new-path",
+            completeness: PluginSessionOptionsCompleteness.complete,
+            generation: 7,
+          ),
+        );
+      };
+      final service = _service(repository: repository, now: now);
+      const newKey = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/new",
+      );
+
+      final staleRefresh = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+      await _waitFor(condition: () => repository.captureCalls.length == 1);
+      repository.projectPaths["project-1"] = "/projects/new";
+
+      final currentOutcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+      oldCapture.complete(
+        _observed(
+          marker: "old-path",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        ),
+      );
+      final staleOutcome = await staleRefresh;
+
+      expect(currentOutcome, isA<SessionOptionsAvailable>());
+      expect(staleOutcome, isA<SessionOptionsRefreshFailedUnavailable>());
+      expect(repository.stored(newKey)!.response, _response(marker: "new-path"));
+      expect(repository.commitCalls, hasLength(1));
+    });
   });
 
   group("SessionOptionsService CAS", () {
     test("a conflict rereads and retries the same complete observation once with the newest revision", () async {
       final repository = _FakeSessionOptionsRepository()
         ..projectPaths["project-1"] = "/projects/one"
-        ..captureResult = _observed("observation", PluginSessionOptionsCompleteness.complete);
+        ..captureResult = _observed(
+          marker: "observation",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        );
       const key = SessionOptionsCacheKey.project(
         pluginId: "plugin-1",
         projectId: "project-1",
@@ -364,7 +495,7 @@ void main() {
           repository.put(
             _entry(
               key: key,
-              response: _response("concurrent"),
+              response: _response(marker: "concurrent"),
               capturedAt: now,
               revision: 4,
             ),
@@ -383,7 +514,7 @@ void main() {
       final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
 
       expect(outcome, isA<SessionOptionsAvailable>());
-      expect((outcome as SessionOptionsAvailable).response, _response("observation"));
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "observation"));
       expect(repository.commitCalls, hasLength(2));
       expect(repository.commitCalls[0].expectedRevision, isNull);
       expect(repository.commitCalls[0].candidate.revision, 1);
@@ -395,7 +526,11 @@ void main() {
     test("a partial observation loses a conflict to the newest retained row without retrying", () async {
       final repository = _FakeSessionOptionsRepository()
         ..projectPaths["project-1"] = "/projects/one"
-        ..captureResult = _observed("partial", PluginSessionOptionsCompleteness.partial);
+        ..captureResult = _observed(
+          marker: "partial",
+          completeness: PluginSessionOptionsCompleteness.partial,
+          generation: 7,
+        );
       const key = SessionOptionsCacheKey.project(
         pluginId: "plugin-1",
         projectId: "project-1",
@@ -405,7 +540,7 @@ void main() {
         repository.put(
           _entry(
             key: key,
-            response: _response("concurrent-complete"),
+            response: _response(marker: "concurrent-complete"),
             capturedAt: now,
             completeness: PluginSessionOptionsCompleteness.complete,
             revision: 2,
@@ -418,14 +553,18 @@ void main() {
       final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
 
       expect(outcome, isA<SessionOptionsAvailable>());
-      expect((outcome as SessionOptionsAvailable).response, _response("concurrent-complete"));
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "concurrent-complete"));
       expect(repository.commitCalls, hasLength(1));
     });
 
     test("a second conflict retains the newest row and never attempts a third CAS", () async {
       final repository = _FakeSessionOptionsRepository()
         ..projectPaths["project-1"] = "/projects/one"
-        ..captureResult = _observed("observation", PluginSessionOptionsCompleteness.complete);
+        ..captureResult = _observed(
+          marker: "observation",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        );
       const key = SessionOptionsCacheKey.project(
         pluginId: "plugin-1",
         projectId: "project-1",
@@ -437,7 +576,7 @@ void main() {
         repository.put(
           _entry(
             key: key,
-            response: _response("concurrent-$attempt"),
+            response: _response(marker: "concurrent-$attempt"),
             capturedAt: now,
             revision: attempt + 1,
           ),
@@ -449,7 +588,7 @@ void main() {
       final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
 
       expect(outcome, isA<SessionOptionsAvailable>());
-      expect((outcome as SessionOptionsAvailable).response, _response("concurrent-2"));
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "concurrent-2"));
       expect(repository.commitCalls, hasLength(2));
     });
   });
@@ -468,7 +607,7 @@ void main() {
       final service = _service(repository: repository, now: now);
 
       final automatic = service.refreshActiveOnly(pluginId: "plugin-1", projectId: "project-1", generation: 7);
-      await _waitFor(() => repository.captureCalls.length == 1);
+      await _waitFor(condition: () => repository.captureCalls.length == 1);
       final firstForced = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
       final secondForced = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
       var forcedCompletions = 0;
@@ -479,23 +618,72 @@ void main() {
       expect(repository.captureCalls, hasLength(1));
       expect(forcedCompletions, 0);
 
-      reuseGate.complete(_observed("reuse", PluginSessionOptionsCompleteness.complete));
+      reuseGate.complete(
+        _observed(
+          marker: "reuse",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        ),
+      );
       final automaticOutcome = await automatic;
-      expect((automaticOutcome as SessionOptionsAvailable).response, _response("reuse"));
-      await _waitFor(() => repository.captureCalls.length == 2);
+      expect((automaticOutcome as SessionOptionsAvailable).response, _response(marker: "reuse"));
+      await _waitFor(condition: () => repository.captureCalls.length == 2);
       expect(repository.captureCalls[0].discoveryMode, PluginSessionOptionsDiscoveryMode.reuse);
       expect(repository.captureCalls[1].discoveryMode, PluginSessionOptionsDiscoveryMode.refresh);
       expect(forcedCompletions, 0);
 
-      forcedGate.complete(_observed("forced", PluginSessionOptionsCompleteness.complete));
+      forcedGate.complete(
+        _observed(
+          marker: "forced",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        ),
+      );
       final forcedOutcomes = await Future.wait([firstForced, secondForced]);
 
       expect(repository.captureCalls, hasLength(2));
       expect(forcedCompletions, 2);
       expect(
         forcedOutcomes.map((outcome) => (outcome as SessionOptionsAvailable).response),
-        everyElement(_response("forced")),
+        everyElement(_response(marker: "forced")),
       );
+    });
+
+    test("a current-generation reuse queues behind stale-generation reuse", () async {
+      final staleCapture = Completer<SessionOptionsCaptureResult>();
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.captureHandler = (call) {
+        if (call.expectedGeneration == 7) return staleCapture.future;
+        return Future.value(
+          _observed(
+            marker: "generation-8",
+            completeness: PluginSessionOptionsCompleteness.complete,
+            generation: 8,
+          ),
+        );
+      };
+      final service = _service(repository: repository, now: now);
+
+      final stale = service.refreshActiveOnly(pluginId: "plugin-1", projectId: "project-1", generation: 7);
+      await _waitFor(condition: () => repository.captureCalls.length == 1);
+      repository.currentGeneration = 8;
+      final current = service.refreshActiveOnly(pluginId: "plugin-1", projectId: "project-1", generation: 8);
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.captureCalls, hasLength(1));
+
+      staleCapture.complete(
+        _observed(
+          marker: "generation-7",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        ),
+      );
+
+      expect(await stale, isA<SessionOptionsAutomaticNoOp>());
+      final currentOutcome = await current;
+      expect(currentOutcome, isA<SessionOptionsAvailable>());
+      expect((currentOutcome as SessionOptionsAvailable).response, _response(marker: "generation-8"));
+      expect(repository.captureCalls.map((call) => call.expectedGeneration), [7, 8]);
     });
   });
 }
@@ -529,18 +717,19 @@ SessionOptionsCacheEntry _entry({
   );
 }
 
-SessionOptionsCaptureObserved _observed(
-  String marker,
-  PluginSessionOptionsCompleteness completeness,
-) {
+SessionOptionsCaptureObserved _observed({
+  required String marker,
+  required PluginSessionOptionsCompleteness completeness,
+  required int generation,
+}) {
   return SessionOptionsCaptureObserved(
-    response: _response(marker),
+    response: _response(marker: marker),
     completeness: completeness,
-    generation: 7,
+    generation: generation,
   );
 }
 
-SessionOptionsResponse _response(String marker) {
+SessionOptionsResponse _response({required String marker}) {
   return SessionOptionsResponse(
     agents: Agents(
       agents: [
@@ -557,12 +746,47 @@ SessionOptionsResponse _response(String marker) {
   );
 }
 
-Future<void> _waitFor(bool Function() condition) async {
+Future<void> _waitFor({required bool Function() condition}) async {
   for (var attempt = 0; attempt < 100; attempt++) {
     if (condition()) return;
     await Future<void>.delayed(Duration.zero);
   }
   fail("condition was not reached");
+}
+
+Future<String> _captureLogOutput({
+  required LogLevel level,
+  required Future<void> Function() action,
+}) async {
+  final stdoutBuffer = _BufferingStdout();
+  final stderrBuffer = _BufferingStdout();
+  final previousLevel = Log.level;
+  try {
+    Log.level = level;
+    await IOOverrides.runZoned(
+      action,
+      stdout: () => stdoutBuffer,
+      stderr: () => stderrBuffer,
+    );
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderrBuffer.text;
+}
+
+class _BufferingStdout implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 class _FixedClock extends ServerClock {
@@ -617,11 +841,19 @@ class _CommitCall {
   final int generation;
 }
 
+class _ConditionalDeleteCall {
+  const _ConditionalDeleteCall({required this.key, required this.expectedRevision});
+
+  final SessionOptionsCacheKey key;
+  final int expectedRevision;
+}
+
 class _FakeSessionOptionsRepository implements SessionOptionsRepository {
   final Map<String, String> projectPaths = {};
   final Map<String, String> backendBindings = {};
   final Map<_CacheIdentity, SessionOptionsCacheEntry> _cache = {};
   final List<SessionOptionsCacheKey> deletedKeys = [];
+  final List<_ConditionalDeleteCall> conditionalDeleteCalls = [];
   final List<_CaptureCall> captureCalls = [];
   final List<_CommitCall> commitCalls = [];
   bool pluginActive = true;
@@ -629,7 +861,11 @@ class _FakeSessionOptionsRepository implements SessionOptionsRepository {
   int runtimeChecks = 0;
   int bindingReads = 0;
   int readCalls = 0;
-  SessionOptionsCaptureResult captureResult = _observed("default", PluginSessionOptionsCompleteness.complete);
+  SessionOptionsCaptureResult captureResult = _observed(
+    marker: "default",
+    completeness: PluginSessionOptionsCompleteness.complete,
+    generation: 7,
+  );
   Future<SessionOptionsCacheEntry?> Function(SessionOptionsCacheKey key)? readHandler;
   Future<SessionOptionsCaptureResult> Function(_CaptureCall call)? captureHandler;
   Future<bool> Function(_CommitCall call)? commitHandler;
@@ -689,6 +925,19 @@ class _FakeSessionOptionsRepository implements SessionOptionsRepository {
   }
 
   @override
+  Future<bool> deleteIfRevision({
+    required SessionOptionsCacheKey key,
+    required int expectedRevision,
+  }) async {
+    conditionalDeleteCalls.add(_ConditionalDeleteCall(key: key, expectedRevision: expectedRevision));
+    final current = stored(key);
+    if (current != null && current.revision != expectedRevision) return false;
+    deletedKeys.add(key);
+    remove(key);
+    return true;
+  }
+
+  @override
   Future<SessionOptionsCaptureResult> capture({
     required SessionOptionsCacheKey key,
     required String projectPath,
@@ -714,6 +963,13 @@ class _FakeSessionOptionsRepository implements SessionOptionsRepository {
     required int? expectedRevision,
     required int generation,
   }) async {
+    if (generation != currentGeneration) {
+      throw PluginOperationException(
+        SessionOptionsRuntimeOperation.commit.name,
+        statusCode: 503,
+        message: "stale generation",
+      );
+    }
     final call = _CommitCall(
       candidate: candidate,
       expectedRevision: expectedRevision,

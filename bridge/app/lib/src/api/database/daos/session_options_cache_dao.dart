@@ -32,6 +32,24 @@ class SessionOptionsCacheDao extends DatabaseAccessor<AppDatabase> with _$Sessio
         .go();
   }
 
+  Future<bool> deleteRowIfRevision({
+    required String pluginId,
+    required PluginSessionOptionsScope scope,
+    required String ownerId,
+    required int expectedRevision,
+  }) async {
+    final deleted =
+        await (delete(sessionOptionsCacheTable)..where(
+              (table) =>
+                  table.pluginId.equals(pluginId) &
+                  table.scope.equalsValue(scope) &
+                  table.ownerId.equals(ownerId) &
+                  table.revision.equals(expectedRevision),
+            ))
+            .go();
+    return deleted == 1;
+  }
+
   Future<bool> compareAndSet({
     required SessionOptionsCacheTableData row,
     required int? expectedRevision,

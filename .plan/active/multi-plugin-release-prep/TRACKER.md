@@ -165,6 +165,9 @@
 - Step 4.E/6 preparation (2026-07-30): added Layer-3 scope resolution,
   path/retention invalidation, completeness replacement, last-good failure
   handling, one-retry revision CAS, stale-generation no-op, and intent-aware
-  forced-tail coalescing. All 23 service/repository tests and bridge-app fatal
-  analysis passed with `git diff --check`. Aristotle approved the implementation
-  architecture without findings.
+  forced-tail coalescing. Review follow-up made invalidation revision-fenced,
+  revalidated authoritative paths before deletion and commit, queued reuse after
+  stale-generation work, kept malformed-cache logs payload-independent, and
+  named test-helper parameters. All 31 persistence/repository/service tests and
+  bridge-app fatal analysis passed with `git diff --check`. Aristotle approved
+  the revised implementation architecture without findings.

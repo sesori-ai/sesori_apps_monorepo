@@ -76,6 +76,7 @@ class SessionOptionsService {
     return _coalesce(
       key: resolved.key,
       intent: _RefreshIntent.forced,
+      generation: null,
       operation: () => _refresh(
         resolved: resolved,
         activation: SessionOptionsCaptureActivation.mayActivate,
@@ -99,6 +100,7 @@ class SessionOptionsService {
     return _coalesce(
       key: resolved.key,
       intent: _RefreshIntent.reuse,
+      generation: generation,
       operation: () => _refresh(
         resolved: resolved,
         activation: SessionOptionsCaptureActivation.activeOnly,
@@ -127,6 +129,7 @@ class SessionOptionsService {
     return _coalesce(
       key: resolved.key,
       intent: _RefreshIntent.reuse,
+      generation: generation,
       operation: () => _refresh(
         resolved: resolved,
         activation: SessionOptionsCaptureActivation.activeOnly,
@@ -195,12 +198,16 @@ class SessionOptionsService {
         break;
     }
 
+    if (!await _isCurrentResolution(resolved: resolved)) {
+      return _movedProjectOutcome(automatic: automatic);
+    }
+
     if (!_canReplace(observation: capture, retained: retained)) {
       return SessionOptionsAvailable(response: retained!.response);
     }
 
     return _commitObservation(
-      key: resolved.key,
+      resolved: resolved,
       observation: capture,
       capturedAt: _clock.now().toUtc(),
       retained: retained,
@@ -210,7 +217,7 @@ class SessionOptionsService {
   }
 
   Future<SessionOptionsOutcome> _commitObservation({
-    required SessionOptionsCacheKey key,
+    required _ResolvedSessionOptions resolved,
     required SessionOptionsCaptureObserved observation,
     required DateTime capturedAt,
     required SessionOptionsCacheEntry? retained,
@@ -218,7 +225,7 @@ class SessionOptionsService {
     required int? expectedGeneration,
   }) async {
     final firstCommit = await _tryCommit(
-      key: key,
+      resolved: resolved,
       observation: observation,
       capturedAt: capturedAt,
       retained: retained,
@@ -234,13 +241,13 @@ class SessionOptionsService {
         break;
     }
 
-    final newest = await _readValid(key: key);
+    final newest = await _readValid(key: resolved.key);
     if (!_canReplace(observation: observation, retained: newest)) {
       return SessionOptionsAvailable(response: newest!.response);
     }
 
     final secondCommit = await _tryCommit(
-      key: key,
+      resolved: resolved,
       observation: observation,
       capturedAt: capturedAt,
       retained: newest,
@@ -253,8 +260,10 @@ class SessionOptionsService {
       case _CommitSucceeded():
         return SessionOptionsAvailable(response: observation.response);
       case _CommitConflict():
-        final latest = await _readValid(key: key);
-        Log.w("Session options cache commit conflicted twice for plugin ${key.pluginId}; retaining newest cache");
+        final latest = await _readValid(key: resolved.key);
+        Log.w(
+          "Session options cache commit conflicted twice for plugin ${resolved.key.pluginId}; retaining newest cache",
+        );
         return latest == null
             ? const SessionOptionsRefreshFailedUnavailable()
             : SessionOptionsAvailable(response: latest.response);
@@ -262,13 +271,17 @@ class SessionOptionsService {
   }
 
   Future<_CommitAttempt> _tryCommit({
-    required SessionOptionsCacheKey key,
+    required _ResolvedSessionOptions resolved,
     required SessionOptionsCaptureObserved observation,
     required DateTime capturedAt,
     required SessionOptionsCacheEntry? retained,
     required bool automatic,
     required int? expectedGeneration,
   }) async {
+    final key = resolved.key;
+    if (!await _isCurrentResolution(resolved: resolved)) {
+      return _CommitFailed(outcome: _movedProjectOutcome(automatic: automatic));
+    }
     final expectedRevision = retained?.revision;
     final candidate = SessionOptionsCacheEntry(
       key: key,
@@ -332,16 +345,28 @@ class SessionOptionsService {
         !_repository.isCurrentGeneration(pluginId: pluginId, generation: expectedGeneration);
   }
 
-  Future<SessionOptionsCacheEntry?> _readValid({required SessionOptionsCacheKey key}) async {
+  Future<bool> _isCurrentResolution({required _ResolvedSessionOptions resolved}) async {
+    final currentPath = await _repository.resolveProjectPath(projectId: resolved.projectId);
+    return currentPath == resolved.projectPath;
+  }
+
+  SessionOptionsOutcome _movedProjectOutcome({required bool automatic}) {
+    return automatic ? const SessionOptionsAutomaticNoOp() : const SessionOptionsRefreshFailedUnavailable();
+  }
+
+  Future<SessionOptionsCacheEntry?> _readValid({required SessionOptionsCacheKey key}) {
+    return _readValidAttempt(key: key, retryAfterDeleteConflict: true);
+  }
+
+  Future<SessionOptionsCacheEntry?> _readValidAttempt({
+    required SessionOptionsCacheKey key,
+    required bool retryAfterDeleteConflict,
+  }) async {
     final SessionOptionsCacheEntry? entry;
     try {
       entry = await _repository.read(key: key);
-    } on SessionOptionsCacheDecodingException catch (error) {
-      Log.w(
-        "Deleting undecodable session options cache for plugin ${key.pluginId}",
-        error.cause,
-        error.causeStackTrace,
-      );
+    } on SessionOptionsCacheDecodingException {
+      Log.w("Deleting undecodable session options cache for plugin ${key.pluginId}");
       await _repository.delete(key: key);
       return null;
     }
@@ -350,7 +375,17 @@ class SessionOptionsService {
     final now = _clock.now().toUtc();
     final capturedAt = entry.capturedAt.toUtc();
     if (entry.key != key || capturedAt.isAfter(now) || now.difference(capturedAt) > _retention) {
-      await _repository.delete(key: key);
+      if (entry.key != key && key is ProjectSessionOptionsCacheKey) {
+        final currentPath = await _repository.resolveProjectPath(projectId: key.projectId);
+        if (currentPath != key.projectPath) return null;
+      }
+      final deleted = await _repository.deleteIfRevision(
+        key: key,
+        expectedRevision: entry.revision,
+      );
+      if (!deleted && retryAfterDeleteConflict) {
+        return _readValidAttempt(key: key, retryAfterDeleteConflict: false);
+      }
       return null;
     }
     return entry;
@@ -374,31 +409,66 @@ class SessionOptionsService {
         projectPath: projectPath,
       ),
     };
-    return _ResolvedSessionOptions(key: key, projectPath: projectPath);
+    return _ResolvedSessionOptions(
+      key: key,
+      projectId: projectId,
+      projectPath: projectPath,
+    );
   }
 
   Future<SessionOptionsOutcome> _coalesce({
     required SessionOptionsCacheKey key,
     required _RefreshIntent intent,
+    required int? generation,
     required Future<SessionOptionsOutcome> Function() operation,
   }) {
+    if (intent == _RefreshIntent.reuse && generation == null) {
+      throw StateError("reuse refresh requires a runtime generation");
+    }
     final existing = _refreshes[key];
     if (existing != null) {
-      if (intent == _RefreshIntent.reuse || existing.intent == _RefreshIntent.forced) {
+      final forcedTail = existing.forcedTail;
+      if (forcedTail != null) return forcedTail;
+      if (existing.intent == _RefreshIntent.forced) {
         return existing.running;
       }
-      final queued = existing.forcedTail;
-      if (queued != null) return queued;
 
+      if (intent == _RefreshIntent.reuse) {
+        if (existing.generation == generation) return existing.running;
+        if (existing.reuseTailGeneration == generation) return existing.reuseTail!;
+
+        final predecessor = existing.reuseTail ?? existing.running;
+        late final Future<SessionOptionsOutcome> tail;
+        Future<SessionOptionsOutcome> startReuse() {
+          existing
+            ..intent = _RefreshIntent.reuse
+            ..generation = generation
+            ..running = tail;
+          return Future<SessionOptionsOutcome>.sync(operation);
+        }
+
+        tail = predecessor.then(
+          (_) => startReuse(),
+          onError: (Object _, StackTrace __) => startReuse(),
+        );
+        existing
+          ..reuseTail = tail
+          ..reuseTailGeneration = generation;
+        _removeAfterCompletion(key: key, coordinator: existing, future: tail);
+        return tail;
+      }
+
+      final predecessor = existing.reuseTail ?? existing.running;
       late final Future<SessionOptionsOutcome> tail;
       Future<SessionOptionsOutcome> startForced() {
         existing
           ..intent = _RefreshIntent.forced
+          ..generation = null
           ..running = tail;
         return Future<SessionOptionsOutcome>.sync(operation);
       }
 
-      tail = existing.running.then(
+      tail = predecessor.then(
         (_) => startForced(),
         onError: (Object _, StackTrace __) => startForced(),
       );
@@ -408,7 +478,11 @@ class SessionOptionsService {
     }
 
     final running = Future<SessionOptionsOutcome>.sync(operation);
-    final coordinator = _RefreshCoordinator(intent: intent, running: running);
+    final coordinator = _RefreshCoordinator(
+      intent: intent,
+      generation: generation,
+      running: running,
+    );
     _refreshes[key] = coordinator;
     _removeAfterCompletion(key: key, coordinator: coordinator, future: running);
     return running;
@@ -420,8 +494,9 @@ class SessionOptionsService {
     required Future<SessionOptionsOutcome> future,
   }) {
     void remove() {
-      if (coordinator.forcedTail == null || identical(coordinator.forcedTail, future)) {
-        if (identical(_refreshes[key], coordinator)) _refreshes.remove(key);
+      final terminal = coordinator.forcedTail ?? coordinator.reuseTail ?? coordinator.running;
+      if (identical(terminal, future) && identical(_refreshes[key], coordinator)) {
+        _refreshes.remove(key);
       }
     }
 
@@ -430,19 +505,31 @@ class SessionOptionsService {
 }
 
 final class _ResolvedSessionOptions {
-  const _ResolvedSessionOptions({required this.key, required this.projectPath});
+  const _ResolvedSessionOptions({
+    required this.key,
+    required this.projectId,
+    required this.projectPath,
+  });
 
   final SessionOptionsCacheKey key;
+  final String projectId;
   final String projectPath;
 }
 
 enum _RefreshIntent { reuse, forced }
 
 final class _RefreshCoordinator {
-  _RefreshCoordinator({required this.intent, required this.running});
+  _RefreshCoordinator({
+    required this.intent,
+    required this.generation,
+    required this.running,
+  });
 
   _RefreshIntent intent;
+  int? generation;
   Future<SessionOptionsOutcome> running;
+  Future<SessionOptionsOutcome>? reuseTail;
+  int? reuseTailGeneration;
   Future<SessionOptionsOutcome>? forcedTail;
 }
 

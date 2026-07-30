@@ -80,10 +80,23 @@ void main() {
         isNull,
       );
 
-      await dao.deleteRow(
-        pluginId: "cursor",
-        scope: PluginSessionOptionsScope.plugin,
-        ownerId: "cursor",
+      expect(
+        await dao.deleteRowIfRevision(
+          pluginId: "cursor",
+          scope: PluginSessionOptionsScope.plugin,
+          ownerId: "cursor",
+          expectedRevision: 0,
+        ),
+        isFalse,
+      );
+      expect(
+        await dao.deleteRowIfRevision(
+          pluginId: "cursor",
+          scope: PluginSessionOptionsScope.plugin,
+          ownerId: "cursor",
+          expectedRevision: 1,
+        ),
+        isTrue,
       );
 
       expect(
