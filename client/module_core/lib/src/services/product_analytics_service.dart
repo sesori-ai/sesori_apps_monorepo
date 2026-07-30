@@ -164,7 +164,10 @@ class ProductAnalyticsService {
     _deferredCandidates = null;
     for (final envelope in candidates.envelopes) {
       if (!_isCurrentActiveContext(context: context)) return;
-      await _deliver(envelope: envelope, context: context);
+      final result = await _deliver(envelope: envelope, context: context);
+      if (result == AnalyticsDeliveryResult.failed && _isCurrentActiveContext(context: context)) {
+        logw("Failed to deliver deferred product analytics event");
+      }
     }
   }
 

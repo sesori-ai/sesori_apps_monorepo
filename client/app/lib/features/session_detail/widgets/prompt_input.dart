@@ -163,10 +163,7 @@ class _PromptInputState extends State<PromptInput> {
     final draft = store.read(key: key);
     _controller.text = draft?.text ?? "";
     _inputMode = draft?.inputMode ?? AnalyticsInputMode.typed;
-    _voiceOriginByCodeUnit = List.filled(
-      _controller.text.length,
-      _inputMode == AnalyticsInputMode.voiceAssisted,
-    );
+    _voiceOriginByCodeUnit = draft?.voiceOriginByCodeUnit.toList() ?? const [];
     _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
   }
 
@@ -177,7 +174,10 @@ class _PromptInputState extends State<PromptInput> {
     if (key == null || store == null) return;
     store.write(
       key: key,
-      draft: ComposerDraft(text: _controller.text, inputMode: _inputMode),
+      draft: ComposerDraft(
+        text: _controller.text,
+        voiceOriginByCodeUnit: _voiceOriginByCodeUnit,
+      ),
     );
   }
 
@@ -207,7 +207,6 @@ class _PromptInputState extends State<PromptInput> {
 
   List<bool> _updatedVoiceOrigins({required TextEditingValue previousValue, required String currentText}) {
     final previousText = previousValue.text;
-    if (previousText == currentText) return _voiceOriginByCodeUnit;
     final previousOrigins = _voiceOriginByCodeUnit.length == previousText.length
         ? _voiceOriginByCodeUnit
         : List.filled(previousText.length, _inputMode == AnalyticsInputMode.voiceAssisted);
@@ -222,6 +221,7 @@ class _PromptInputState extends State<PromptInput> {
         ];
       }
     }
+    if (previousText == currentText) return _voiceOriginByCodeUnit;
     var prefixLength = 0;
     while (prefixLength < previousText.length &&
         prefixLength < currentText.length &&

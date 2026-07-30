@@ -1155,7 +1155,10 @@ void main() {
     await tester.pump();
     expect(
       draftStore.read(key: "new-session:project-1"),
-      const ComposerDraft(text: "half-written idea", inputMode: AnalyticsInputMode.typed),
+      ComposerDraft(
+        text: "half-written idea",
+        voiceOriginByCodeUnit: List.filled("half-written idea".length, false),
+      ),
     );
 
     // Re-open the new-session screen — the per-project draft is restored.

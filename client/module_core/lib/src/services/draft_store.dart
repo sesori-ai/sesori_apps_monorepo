@@ -1,3 +1,4 @@
+import "package:collection/collection.dart";
 import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 
@@ -6,16 +7,31 @@ import "../foundation/models/product_analytics/product_analytics_event.dart";
 @immutable
 final class ComposerDraft {
   final String text;
-  final AnalyticsInputMode inputMode;
+  final List<bool> voiceOriginByCodeUnit;
 
-  const ComposerDraft({required this.text, required this.inputMode});
+  ComposerDraft({required this.text, required List<bool> voiceOriginByCodeUnit})
+    : voiceOriginByCodeUnit = List.unmodifiable(voiceOriginByCodeUnit) {
+    if (voiceOriginByCodeUnit.length != text.length) {
+      throw ArgumentError.value(
+        voiceOriginByCodeUnit,
+        "voiceOriginByCodeUnit",
+        "must contain one origin value per UTF-16 code unit",
+      );
+    }
+  }
+
+  AnalyticsInputMode get inputMode =>
+      voiceOriginByCodeUnit.any((isVoice) => isVoice) ? AnalyticsInputMode.voiceAssisted : AnalyticsInputMode.typed;
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is ComposerDraft && text == other.text && inputMode == other.inputMode;
+      identical(this, other) ||
+      other is ComposerDraft &&
+          text == other.text &&
+          const ListEquality<bool>().equals(voiceOriginByCodeUnit, other.voiceOriginByCodeUnit);
 
   @override
-  int get hashCode => Object.hash(text, inputMode);
+  int get hashCode => Object.hash(text, const ListEquality<bool>().hash(voiceOriginByCodeUnit));
 }
 
 /// In-memory store for unsent composer drafts, keyed by a stable key — the

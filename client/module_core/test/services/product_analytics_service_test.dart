@@ -413,6 +413,41 @@ void main() {
     );
   });
 
+  test("failed deferred outcome delivery remains operationally observable", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    analyticsRepository.results = Queue.of([
+      AnalyticsDeliveryResult.acceptedBySdk,
+      AnalyticsDeliveryResult.acceptedBySdk,
+      AnalyticsDeliveryResult.failed,
+    ]);
+    final logLines = <String>[];
+
+    await runZoned(
+      () async {
+        await service.start();
+        await service.logEvent(
+          event: const ProductAnalyticsEvent.sessionMessageSent(
+            submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          ),
+          occurredAtUtc: DateTime.utc(2026, 7, 30),
+        );
+        await service.markPostSplashReady();
+        await waitForAnalyticsCalls(count: 3);
+      },
+      zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logLines.add(line)),
+    );
+
+    expect(logLines, contains("Failed to deliver deferred product analytics event"));
+  });
+
   test("disabled runtime retains preference truth but never emits custom events", () async {
     createServiceWithCapability(
       capability: const AnalyticsRuntimeCapability.disabled(

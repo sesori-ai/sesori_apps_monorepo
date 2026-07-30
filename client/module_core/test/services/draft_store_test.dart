@@ -1,4 +1,3 @@
-import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/services/draft_store.dart";
 import "package:test/test.dart";
 
@@ -12,49 +11,49 @@ void main() {
       expect(store.read(key: "s1"), isNull);
     });
 
-    test("write then read round-trips text and input mode per key", () {
+    test("write then read round-trips text and voice origins per key", () {
       store.write(
         key: "s1",
-        draft: const ComposerDraft(text: "hello", inputMode: AnalyticsInputMode.voiceAssisted),
+        draft: _voiceDraft("hello"),
       );
       store.write(
         key: "s2",
-        draft: const ComposerDraft(text: "world", inputMode: AnalyticsInputMode.typed),
+        draft: _typedDraft("world"),
       );
-      expect(store.read(key: "s1"), const ComposerDraft(text: "hello", inputMode: AnalyticsInputMode.voiceAssisted));
-      expect(store.read(key: "s2"), const ComposerDraft(text: "world", inputMode: AnalyticsInputMode.typed));
+      expect(store.read(key: "s1"), _voiceDraft("hello"));
+      expect(store.read(key: "s2"), _typedDraft("world"));
     });
 
     test("write overwrites the previous draft for a key", () {
       store.write(
         key: "s1",
-        draft: const ComposerDraft(text: "first", inputMode: AnalyticsInputMode.voiceAssisted),
+        draft: _voiceDraft("first"),
       );
       store.write(
         key: "s1",
-        draft: const ComposerDraft(text: "second", inputMode: AnalyticsInputMode.typed),
+        draft: _typedDraft("second"),
       );
-      expect(store.read(key: "s1"), const ComposerDraft(text: "second", inputMode: AnalyticsInputMode.typed));
+      expect(store.read(key: "s1"), _typedDraft("second"));
     });
 
     test("writing empty or whitespace-only text clears the draft", () {
       store.write(
         key: "s1",
-        draft: const ComposerDraft(text: "draft", inputMode: AnalyticsInputMode.voiceAssisted),
+        draft: _voiceDraft("draft"),
       );
       store.write(
         key: "s1",
-        draft: const ComposerDraft(text: "   \n ", inputMode: AnalyticsInputMode.voiceAssisted),
+        draft: _voiceDraft("   \n "),
       );
       expect(store.read(key: "s1"), isNull);
 
       store.write(
         key: "s1",
-        draft: const ComposerDraft(text: "draft", inputMode: AnalyticsInputMode.voiceAssisted),
+        draft: _voiceDraft("draft"),
       );
       store.write(
         key: "s1",
-        draft: const ComposerDraft(text: "", inputMode: AnalyticsInputMode.voiceAssisted),
+        draft: _voiceDraft(""),
       );
       expect(store.read(key: "s1"), isNull);
     });
@@ -62,7 +61,7 @@ void main() {
     test("clear removes a saved draft", () {
       store.write(
         key: "s1",
-        draft: const ComposerDraft(text: "draft", inputMode: AnalyticsInputMode.typed),
+        draft: _typedDraft("draft"),
       );
       store.clear(key: "s1");
       expect(store.read(key: "s1"), isNull);
@@ -71,18 +70,22 @@ void main() {
     test("preserves internal whitespace of a non-blank draft", () {
       store.write(
         key: "s1",
-        draft: const ComposerDraft(
-          text: "  leading and trailing  ",
-          inputMode: AnalyticsInputMode.voiceAssisted,
-        ),
+        draft: _voiceDraft("  leading and trailing  "),
       );
       expect(
         store.read(key: "s1"),
-        const ComposerDraft(
-          text: "  leading and trailing  ",
-          inputMode: AnalyticsInputMode.voiceAssisted,
-        ),
+        _voiceDraft("  leading and trailing  "),
       );
     });
   });
 }
+
+ComposerDraft _typedDraft(String text) => ComposerDraft(
+  text: text,
+  voiceOriginByCodeUnit: List.filled(text.length, false),
+);
+
+ComposerDraft _voiceDraft(String text) => ComposerDraft(
+  text: text,
+  voiceOriginByCodeUnit: List.filled(text.length, true),
+);

@@ -584,14 +584,20 @@ void main() {
     await tester.pump();
     expect(
       draftStore.read(key: "session-1"),
-      const ComposerDraft(text: "transcript", inputMode: AnalyticsInputMode.voiceAssisted),
+      ComposerDraft(
+        text: "transcript",
+        voiceOriginByCodeUnit: List.filled("transcript".length, true),
+      ),
     );
   });
 
   testWidgets("restored voice-assisted draft preserves its input mode when sent", (tester) async {
     GetIt.instance<DraftStore>().write(
       key: "session-1",
-      draft: const ComposerDraft(text: "restored transcript", inputMode: AnalyticsInputMode.voiceAssisted),
+      draft: ComposerDraft(
+        text: "restored transcript",
+        voiceOriginByCodeUnit: List.filled("restored transcript".length, true),
+      ),
     );
     when(
       () => cubit.sendMessage(
@@ -620,7 +626,10 @@ void main() {
   testWidgets("replacing the entire voice-assisted draft resets its input mode", (tester) async {
     GetIt.instance<DraftStore>().write(
       key: "session-1",
-      draft: const ComposerDraft(text: "restored transcript", inputMode: AnalyticsInputMode.voiceAssisted),
+      draft: ComposerDraft(
+        text: "restored transcript",
+        voiceOriginByCodeUnit: List.filled("restored transcript".length, true),
+      ),
     );
     when(
       () => cubit.sendMessage(
@@ -651,10 +660,50 @@ void main() {
     ).called(1);
   });
 
+  testWidgets("retyping selected transcript text identically resets its input mode", (tester) async {
+    GetIt.instance<DraftStore>().write(
+      key: "session-1",
+      draft: ComposerDraft(
+        text: "transcript",
+        voiceOriginByCodeUnit: List.filled("transcript".length, true),
+      ),
+    );
+    when(
+      () => cubit.sendMessage(
+        text: "transcript",
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final editable = tester.widget<EditableText>(find.byType(EditableText));
+    editable.controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: editable.controller.text.length,
+    );
+    await tester.enterText(find.byType(EditableText), "transcript");
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "transcript",
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      ),
+    ).called(1);
+  });
+
   testWidgets("deleting only the appended transcript restores typed input mode", (tester) async {
     GetIt.instance<DraftStore>().write(
       key: "session-1",
-      draft: const ComposerDraft(text: "typed", inputMode: AnalyticsInputMode.typed),
+      draft: ComposerDraft(
+        text: "typed",
+        voiceOriginByCodeUnit: List.filled("typed".length, false),
+      ),
     );
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
@@ -674,6 +723,15 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(find.text("typed spoken"), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(
+      GetIt.instance<DraftStore>().read(key: "session-1")?.voiceOriginByCodeUnit,
+      [false, false, false, false, false, false, true, true, true, true, true, true],
+    );
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
 
     final editable = tester.widget<EditableText>(find.byType(EditableText));
     editable.controller.selection = const TextSelection(baseOffset: 6, extentOffset: 12);
