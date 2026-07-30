@@ -136,10 +136,10 @@ Future<void> bootstrapSesoriApp({
 
   // Awaited: the persisted theme has to be in place before the first frame,
   // otherwise a pinned light/dark choice flashes the device theme on launch.
-  // The chat input mode rides along — same store, and reading it here keeps
-  // the composer preference synchronous for the rest of the app.
-  final appearance = await readAppearanceFn();
-  final chatInputMode = await readChatInputModeFn();
+  // The chat input mode rides along concurrently — same store, and reading it
+  // here keeps the composer preference synchronous for the rest of the app.
+  // Both reads swallow their own failures, so the parallel wait cannot throw.
+  final (appearance, chatInputMode) = await (readAppearanceFn(), readChatInputModeFn()).wait;
 
   final isImpeller = ui.ImageFilter.isShaderFilterSupported;
 

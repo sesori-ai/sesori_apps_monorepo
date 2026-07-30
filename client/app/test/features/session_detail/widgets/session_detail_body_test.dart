@@ -27,6 +27,7 @@ class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionSe
 Widget _buildApp({
   required SessionDetailCubit cubit,
   ChatInputMode chatInputMode = ChatInputMode.voiceFirst,
+  StubChatInputModeCubit? chatInputModeCubit,
 }) {
   final router = GoRouter(
     routes: [
@@ -53,7 +54,9 @@ Widget _buildApp({
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
-      BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit(initialState: chatInputMode)),
+      BlocProvider<ChatInputModeCubit>(
+        create: (_) => chatInputModeCubit ?? StubChatInputModeCubit(initialState: chatInputMode),
+      ),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -849,6 +852,54 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("dictated words"), findsOneWidget);
     expect(composerFocus(tester).hasFocus, isTrue);
+  });
+
+  testWidgets("switching the chat input mode re-shapes the resting composer live", (tester) async {
+    final modeCubit = StubChatInputModeCubit();
+
+    await tester.pumpWidget(_buildApp(cubit: cubit, chatInputModeCubit: modeCubit));
+    await tester.pumpAndSettle();
+    expect(find.text("Hold to talk"), findsOneWidget);
+
+    await modeCubit.select(mode: ChatInputMode.textFirst);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Hold to talk"), findsNothing);
+    expect(find.text("Ask anything..."), findsOneWidget);
+    expect(find.byIcon(TablerRegular.microphone), findsOneWidget);
+  });
+
+  testWidgets("holding the typing container's voice pill records while the text stays", (tester) async {
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "draft");
+    await tester.pump();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk more")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The field (and its text) stay while the bottom pill hosts the chrome.
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(find.text("draft"), findsOneWidget);
+    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceWaveform), findsOneWidget);
+    expect(find.text("Release to transcribe"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
+
+    await gesture.up();
+    await tester.pump();
+    stopCompleter.complete("more words");
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text("draft more words"), findsOneWidget);
   });
 
   testWidgets("voice-first transcript rests unfocused for review before sending", (tester) async {

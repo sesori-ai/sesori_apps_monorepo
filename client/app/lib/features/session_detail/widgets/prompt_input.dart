@@ -221,10 +221,12 @@ class _PromptInputState extends State<PromptInput> {
 
   /// Switches to the typing layout and raises the keyboard. Focus is
   /// requested post-frame because the field only mounts with the typing
-  /// layout. Blocked only while recording — a running transcription keeps
-  /// going and lands its transcript in the now-focused field.
+  /// layout. Blocked while recording and while a record start is in flight —
+  /// unpinning in that window would reparent the hold-owning subtree and the
+  /// release would never be delivered. A running transcription keeps going
+  /// and lands its transcript in the now-focused field.
   void _enterTypingMode() {
-    if (_voiceState == _VoiceState.recording) return;
+    if (_voiceState == _VoiceState.recording || _isRecordStartInFlight) return;
     setState(() {
       _typingRequested = true;
       // Safe to unpin while transcribing: no gesture is in flight once the
@@ -243,6 +245,7 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   void _handleSend() {
+    final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
     if (stagedCommand != null) {
       widget.onSend(_controller.text, stagedCommand.name);
@@ -255,7 +258,13 @@ class _PromptInputState extends State<PromptInput> {
 
     _controller.clear();
     _clearDraft();
-    _focusNode.requestFocus();
+    // Keep the keyboard up across a send only where it was already part of
+    // the flow: always in text-first, and in voice-first when the field was
+    // focused. Sending a reviewed voice transcript stays keyboard-free — the
+    // composer collapses back to its hold-to-talk pill.
+    if (!_isVoiceFirst || wasFocused) {
+      _focusNode.requestFocus();
+    }
   }
 
   @override
@@ -282,7 +291,12 @@ class _PromptInputState extends State<PromptInput> {
     _pinnedVoiceLayout = _restingLayout;
     await _startRecording();
     _isRecordStartInFlight = false;
-    if (!mounted) return;
+    if (!mounted) {
+      // Disposed while the recorder was starting: [dispose] saw an idle state
+      // and could not cancel, so release the orphaned recording here.
+      unawaited(_voiceService.cancelRecording());
+      return;
+    }
     if (_voiceState == _VoiceState.idle) {
       // Recording never started (permission denied / recorder error), so no
       // later transition will release the pin.
@@ -417,17 +431,19 @@ class _PromptInputState extends State<PromptInput> {
   /// Discards the running voice interaction: a drag released on the cancel
   /// target, a tap on it mid-recording, or a tap on the X while transcribing.
   Future<void> _cancelVoiceInteraction() async {
-    try {
-      await _voiceService.cancelRecording();
-    } catch (error) {
-      loge("Failed to cancel the voice interaction", error);
-    }
-    if (!mounted) return;
+    // Reset synchronously: a release landing while the platform cancel is
+    // still in flight must read the interaction as over, not stop-and-
+    // transcribe the recording being discarded.
     setState(() {
       _voiceState = _VoiceState.idle;
       _pinnedVoiceLayout = null;
       _cancelDragProgress.value = 0;
     });
+    try {
+      await _voiceService.cancelRecording();
+    } catch (error) {
+      loge("Failed to cancel the voice interaction", error);
+    }
   }
 
   void _showVoiceError(String message) {
@@ -666,20 +682,36 @@ class _PromptInputState extends State<PromptInput> {
   /// sandwiched between its background and [child]. The gradient layer is
   /// always mounted (invisible at zero progress) so entering the recording
   /// state never restructures the tree around an in-flight hold.
+  ///
+  /// [tightensTrailingWhileRecording] is set by the pills whose trailing
+  /// actions fully collapse during recording: with only the row gap left, the
+  /// end inset eases down so the waveform ends the spec's 12pt from the edge.
   Widget _buildVoicePillSurface(
     BuildContext context, {
     required Color borderColor,
     required Widget child,
+    bool tightensTrailingWhileRecording = false,
   }) {
     final prego = context.prego;
     const radius = BorderRadius.all(Radius.circular(PregoRadius.full));
+    final tightenEnd = tightensTrailingWhileRecording && _voiceState == _VoiceState.recording;
 
     return DecoratedBox(
       decoration: _containerDecoration(prego, borderColor: borderColor, borderRadius: radius),
       child: Stack(
         children: [
           Positioned.fill(child: _buildCancelGradient(context, borderRadius: radius)),
-          Padding(padding: const EdgeInsets.all(PregoSpacing.sm), child: child),
+          AnimatedPadding(
+            duration: _morphDuration,
+            curve: _morphCurve,
+            padding: EdgeInsetsDirectional.only(
+              start: PregoSpacing.sm,
+              top: PregoSpacing.sm,
+              bottom: PregoSpacing.sm,
+              end: tightenEnd ? PregoSpacing.xs : PregoSpacing.sm,
+            ),
+            child: child,
+          ),
         ],
       ),
     );
@@ -723,6 +755,7 @@ class _PromptInputState extends State<PromptInput> {
     return _buildVoicePillSurface(
       context,
       borderColor: prego.colors.borderSecondary,
+      tightensTrailingWhileRecording: true,
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -916,6 +949,7 @@ class _PromptInputState extends State<PromptInput> {
     return _buildVoicePillSurface(
       context,
       borderColor: prego.colors.borderSecondary,
+      tightensTrailingWhileRecording: true,
       child: Row(
         spacing: PregoSpacing.md,
         children: [
