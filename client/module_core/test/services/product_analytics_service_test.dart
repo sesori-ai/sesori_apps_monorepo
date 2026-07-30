@@ -1258,6 +1258,107 @@ void main() {
     expect(service.state.availability, isA<ProductAnalyticsActive>());
   });
 
+  test("failed logout retries a volatile disable instead of restoring active analytics", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final volatileDisable = LocalProductAnalyticsPendingDisable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    for (var i = 0; i < 3; i++) {
+      preferenceRepository.setHandlers.add(
+        (_, _, _) async => ProductAnalyticsPreferenceVolatileDisablePending(pending: volatileDisable),
+      );
+    }
+    await service.start();
+    await service.markPostSplashReady();
+    await service.setPreference(preference: ProductAnalyticsPreference.disabled);
+
+    await service.prepareForLogout();
+    expect(preferenceRepository.setCalls, hasLength(2));
+
+    await service.resumeAfterFailedLogout();
+
+    expect(preferenceRepository.setCalls, hasLength(3));
+    expect(service.state.synchronization, isA<ProductAnalyticsDisableRetryRequired>());
+    expect(service.state.isActive, isFalse);
+  });
+
+  test("failed logout stays inactive while required reconciliation is in flight", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final disabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 2,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+    analyticsRepository.calls.clear();
+
+    final refreshResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.reconcileHandlers.add((_, _) => refreshResult.future);
+    final refreshFuture = service.refreshPreference();
+    while (preferenceRepository.reconcileCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final preparationFuture = service.prepareForLogout();
+    final disableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers.add((_, _, _) => disableResult.future);
+    final disableFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    refreshResult.complete(ProductAnalyticsPreferenceSynchronized(record: enabled));
+    await refreshFuture;
+    while (preferenceRepository.setCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    disableResult.complete(ProductAnalyticsPreferenceSynchronized(record: disabled));
+    await Future.wait([disableFuture, preparationFuture]);
+
+    final recoveryResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.reconcileHandlers.add((_, _) => recoveryResult.future);
+    final recoveryFuture = service.resumeAfterFailedLogout();
+
+    expect(service.state.isActive, isFalse);
+    expect(
+      (service.state.availability as ProductAnalyticsInactive).reason,
+      ProductAnalyticsInactiveReason.unauthenticated,
+    );
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.connectSetup),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.failed,
+    );
+    expect(analyticsRepository.calls, isEmpty);
+
+    while (preferenceRepository.reconcileCalls.length < 3) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    recoveryResult.complete(ProductAnalyticsPreferenceSynchronized(record: disabled));
+    await recoveryFuture;
+
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+    expect(service.state.isActive, isFalse);
+  });
+
   test("failed logout recovery restores an unknown preference with no local record", () async {
     createService();
     preferenceRepository.reconcileHandlers.add(

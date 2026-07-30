@@ -216,17 +216,20 @@ class ProductAnalyticsService {
     if (preparation == null || preparation.generation != _generation || _userId == null) return;
     final shouldReconcile = _reconcileAfterFailedLogout;
     _reconcileAfterFailedLogout = false;
-    final availability = state.availability;
-    if (availability is ProductAnalyticsInactive &&
-        availability.reason == ProductAnalyticsInactiveReason.unauthenticated) {
-      _state.add(preparation.state);
-    }
     if (shouldReconcile) {
-      if (_localReadFailed) {
+      if (_volatileDisable != null) {
+        await retryPendingDisable();
+      } else if (_localReadFailed) {
         await _retryLocalReadAndReconcile();
       } else {
         await _reconcileIfNeeded(force: true, allowDuringLogout: false);
       }
+      return;
+    }
+    final availability = state.availability;
+    if (availability is ProductAnalyticsInactive &&
+        availability.reason == ProductAnalyticsInactiveReason.unauthenticated) {
+      _state.add(preparation.state);
     }
   }
 
