@@ -8,7 +8,7 @@ part "session_options_cache_dao.g.dart";
 
 @DriftAccessor(tables: [SessionOptionsCacheTable])
 class SessionOptionsCacheDao extends DatabaseAccessor<AppDatabase> with _$SessionOptionsCacheDaoMixin {
-  SessionOptionsCacheDao(super.attachedDatabase);
+  SessionOptionsCacheDao({required AppDatabase database}) : super(database);
 
   Future<SessionOptionsCacheTableData?> getRow({
     required String pluginId,

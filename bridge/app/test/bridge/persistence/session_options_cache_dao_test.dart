@@ -12,7 +12,7 @@ void main() {
 
     setUp(() {
       db = createTestDatabase();
-      dao = SessionOptionsCacheDao(db);
+      dao = SessionOptionsCacheDao(database: db);
     });
 
     tearDown(() async {

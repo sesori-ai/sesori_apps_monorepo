@@ -176,7 +176,7 @@ void main() {
   });
 
   group("OrchestratorSession SSE error recovery", () {
-    test("initial relay connect failure does not leave push listeners running", () async {
+    test("local options listener starts before an initial relay connect failure", () async {
       final plugin = _ThrowingSummaryPlugin();
       final database = createTestDatabase();
       final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
@@ -219,7 +219,7 @@ void main() {
       await expectLater(localWireEventsDone, completes);
       await expectLater(session.start(), throwsA(isA<StateError>()));
 
-      expect(plugin.subscribeCount, equals(0));
+      expect(plugin.subscribeCount, equals(1));
 
       await lifecycleService.dispose();
       httpClient.close();

@@ -24,7 +24,7 @@ class SessionOptionsCreationRefreshListener {
     _subscription = _source.listen(
       (commit) {
         if (commit.kind != SessionBindingCommitKind.sessionCreation) return;
-        _track(_refresh(commit));
+        _track(_refresh(commit: commit));
       },
       onError: (Object error, StackTrace stackTrace) {
         Log.w("Session options creation trigger stream failed", error, stackTrace);
@@ -45,7 +45,7 @@ class SessionOptionsCreationRefreshListener {
     unawaited(operation.whenComplete(() => _pending.remove(operation)));
   }
 
-  Future<void> _refresh(SessionBindingsCommitted commit) async {
+  Future<void> _refresh({required SessionBindingsCommitted commit}) async {
     try {
       final outcome = await _service.refreshActiveOnly(
         pluginId: commit.pluginId,

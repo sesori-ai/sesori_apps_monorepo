@@ -185,4 +185,8 @@
   Orchestrator composition and teardown. All 153 focused
   handler/listener/repository/Orchestrator tests and all 2,253 bridge-app tests
   passed, as did bridge-app fatal analysis and `git diff --check`. Aristotle
-  approved the implementation architecture without findings.
+  approved the implementation architecture without findings. Review follow-up
+  rejects non-canonical or unknown plugin IDs at the route boundary, uses named
+  DAO/private parameters, and synchronously starts local refresh listeners before
+  debug mutation routes can become reachable. All 65 focused follow-up tests and
+  bridge-app fatal analysis passed.

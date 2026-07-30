@@ -21,7 +21,7 @@ void main() {
 
     setUp(() {
       database = createTestDatabase();
-      cacheDao = SessionOptionsCacheDao(database);
+      cacheDao = SessionOptionsCacheDao(database: database);
       plugin = _FakePlugin();
       runtime = _RecordingPluginRuntime(plugin: plugin);
       repository = SessionOptionsRepository(

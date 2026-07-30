@@ -35,7 +35,7 @@ void main() {
   test("session options CAS requires the exact next revision", () async {
     final database = createTestDatabase();
     addTearDown(database.close);
-    final dao = SessionOptionsCacheDao(database);
+    final dao = SessionOptionsCacheDao(database: database);
     const row = SessionOptionsCacheTableData(
       pluginId: "plugin",
       scope: PluginSessionOptionsScope.plugin,

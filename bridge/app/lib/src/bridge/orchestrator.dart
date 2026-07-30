@@ -221,7 +221,7 @@ class Orchestrator {
       runtime: _pluginRuntime,
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
-      cacheDao: SessionOptionsCacheDao(_database),
+      cacheDao: SessionOptionsCacheDao(database: _database),
     );
     final sessionOptionsService = SessionOptionsService(
       repository: sessionOptionsRepository,
@@ -446,8 +446,6 @@ class Orchestrator {
       }
       sessionBindingCommitListener.start();
       sessionDeletionListener.start();
-      sessionOptionsCreationRefreshListener.start();
-      sessionOptionsChangedRefreshListener.start();
     });
     final router = RequestRouter(
       handlers: [
@@ -457,7 +455,10 @@ class Orchestrator {
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
-        PostSessionOptionsHandler(service: sessionOptionsService),
+        PostSessionOptionsHandler(
+          service: sessionOptionsService,
+          pluginIds: pluginComposition.sessionOptionsScopeById.keys.toSet(),
+        ),
         RestartBridgeHandler(restartService: _restartService),
         GetCurrentProjectHandler(projectRepository: projectRepository),
         GetProjectsHandler(projectActivityService: projectActivityService),
@@ -762,6 +763,8 @@ class OrchestratorSession {
       return Future.error(StateError("OrchestratorSession has already started"), StackTrace.current);
     }
 
+    _sessionOptionsCreationRefreshListener.start();
+    _sessionOptionsChangedRefreshListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
       () => _runLifecycle(readiness: readiness),

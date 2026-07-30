@@ -15,7 +15,10 @@ void main() {
 
     setUp(() {
       service = _FakeSessionOptionsService();
-      handler = PostSessionOptionsHandler(service: service);
+      handler = PostSessionOptionsHandler(
+        service: service,
+        pluginIds: const {"plugin"},
+      );
     });
 
     test("handles only POST /session/options", () {
@@ -29,6 +32,8 @@ void main() {
       ("malformed", "{"),
       ("invalid", jsonEncode({"projectId": 1, "pluginId": "plugin"})),
       ("empty", jsonEncode({"projectId": " ", "pluginId": "plugin"})),
+      ("non-canonical", jsonEncode({"projectId": " project", "pluginId": "plugin"})),
+      ("unknown plugin", jsonEncode({"projectId": "project", "pluginId": "unknown"})),
     ]) {
       test("returns typed 400 for $description body", () async {
         final response = await _send(handler: handler, body: body);

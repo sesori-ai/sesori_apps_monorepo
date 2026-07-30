@@ -7,11 +7,15 @@ import "../services/session_options_service.dart";
 import "request_handler.dart";
 
 class PostSessionOptionsHandler extends RequestHandlerBase {
-  PostSessionOptionsHandler({required SessionOptionsService service})
-    : _service = service,
-      super(HttpMethod.post, "/session/options");
+  PostSessionOptionsHandler({
+    required SessionOptionsService service,
+    required Set<String> pluginIds,
+  }) : _service = service,
+       _pluginIds = Set.unmodifiable(pluginIds),
+       super(HttpMethod.post, "/session/options");
 
   final SessionOptionsService _service;
+  final Set<String> _pluginIds;
 
   @override
   Future<RelayResponse> handleInternal(
@@ -29,7 +33,13 @@ class PostSessionOptionsHandler extends RequestHandlerBase {
     } on Object {
       return _error(request: request, status: 400, code: SessionOptionsErrorCode.unknown);
     }
-    if (body.projectId.trim().isEmpty || body.pluginId.trim().isEmpty) {
+    final projectId = body.projectId.trim();
+    final pluginId = body.pluginId.trim();
+    if (projectId.isEmpty ||
+        pluginId.isEmpty ||
+        projectId != body.projectId ||
+        pluginId != body.pluginId ||
+        !_pluginIds.contains(pluginId)) {
       return _error(request: request, status: 400, code: SessionOptionsErrorCode.unknown);
     }
 
@@ -41,8 +51,8 @@ class PostSessionOptionsHandler extends RequestHandlerBase {
     final SessionOptionsOutcome outcome;
     try {
       outcome = refresh == "true"
-          ? await _service.refreshExplicit(pluginId: body.pluginId, projectId: body.projectId)
-          : await _service.loadCacheOnly(pluginId: body.pluginId, projectId: body.projectId);
+          ? await _service.refreshExplicit(pluginId: pluginId, projectId: projectId)
+          : await _service.loadCacheOnly(pluginId: pluginId, projectId: projectId);
     } on Object catch (error, stackTrace) {
       Log.w("Session options request failed", error, stackTrace);
       return _error(request: request, status: 500, code: SessionOptionsErrorCode.unknown);
@@ -74,11 +84,11 @@ class PostSessionOptionsHandler extends RequestHandlerBase {
         status: 502,
         code: SessionOptionsErrorCode.refreshFailedUnavailable,
       ),
-      SessionOptionsAutomaticNoOp() => _unexpectedAutomaticNoOp(request),
+      SessionOptionsAutomaticNoOp() => _unexpectedAutomaticNoOp(request: request),
     };
   }
 
-  RelayResponse _unexpectedAutomaticNoOp(RelayRequest request) {
+  RelayResponse _unexpectedAutomaticNoOp({required RelayRequest request}) {
     Log.w("Explicit session options request produced an automatic no-op outcome");
     return _error(request: request, status: 500, code: SessionOptionsErrorCode.unknown);
   }
