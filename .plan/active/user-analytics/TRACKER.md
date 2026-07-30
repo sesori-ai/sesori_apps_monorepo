@@ -87,6 +87,14 @@
   clients; one shared secret serves web/export/suppression runtimes, while a
   deletion-only legacy SHA-256 value remains restricted to privacy targets for
   pre-migration Firebase `user_id` deletion.
+- [x] Decompose Step 3.C's lifecycle implementation in supplemental PR #619:
+  keep `ProductAnalyticsService` as the delivery facade, move preference and
+  account lifecycle into an injected collaborator with one disposal owner, and
+  replace coordinated nullable fields with explicit snapshots/runtime states.
+  Two implementation-review passes found premature local activation, hidden
+  storage-read failure, split lifecycle ownership, and pass-through DI; all
+  findings were applied directly. Per the two-pass cap, do not describe the
+  final correction as reviewer-approved.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
@@ -118,10 +126,10 @@ each review stays near 1,500 added lines.
 | --- | --- | --- | --- | --- |
 | 1/5 | `sesori_auth_server` | `[user-analytics] Add write-first analytics preference [step 1/5]` | Deployed; 2026-07-29 backfilled 656/656 and two repeated validations reported zero missing | Deploy before backfill; Firebase export preflight is independent |
 | 2/5 | `sesori_auth_server` | `[user-analytics] Enforce analytics preference and add export [step 2/5]` | PR #49 merged as `043ee9f` and deployed 2026-07-29; production health is `ok`, required-field enforcement is live, and the web HMAC secret is configured; export/suppression jobs remain unprovisioned and disabled | Step 1 deployed and repeated backfill validation at zero missing |
-| 3.A/5 | apps monorepo | `[user-analytics] Add client analytics contracts and delivery [step 3.A/5]` | Replacement branch in progress; frozen PR #610 is not receiving further changes | Step 2 deployed |
-| 3.B/5 | apps monorepo | `[user-analytics] Add durable analytics preference sync [step 3.B/5]` | Not started | Step 3.A |
-| 3.C/5 | apps monorepo | `[user-analytics] Add account-linked analytics lifecycle [step 3.C/5]` | Not started | Step 3.B |
-| 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | Not started | Step 3.C |
+| 3.A/5 | apps monorepo | `[user-analytics] Add client analytics contracts and delivery [step 3.A/5]` | PR #611 merged as `3a181ee3` on 2026-07-30; frozen PR #610 remains superseded | Step 2 deployed |
+| 3.B/5 | apps monorepo | `[user-analytics] Add durable analytics preference sync [step 3.B/5]` | PR #612 merged as `a792481b` on 2026-07-30 | Step 3.A |
+| 3.C/5 | apps monorepo | `[user-analytics] Add account-linked analytics lifecycle [step 3.C/5]` | PR #613 open at `6b80b7bf`; supplemental lifecycle decomposition PR #619 targets its branch and has passed local/downstream verification | Step 3.B |
+| 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 open and approved at `47a7fcb9`; propagate the Step 3.C refactor after #619 merges | Step 3.C |
 | 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | Not started | Step 3.D released |
 | 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
