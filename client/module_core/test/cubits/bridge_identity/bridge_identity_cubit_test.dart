@@ -174,6 +174,40 @@ void main() {
   );
 
   blocTest<BridgeIdentityCubit, BridgeIdentityState>(
+    "a lookup that blows up still releases the placeholder",
+    build: () {
+      // Not the service's fail-soft path — an unexpected throw, e.g. from the
+      // persisted registered-bridge latch.
+      when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenThrow(StateError("latch unavailable"));
+      return buildCubit();
+    },
+    // Unknown, not loading: leaving the state pending would shimmer the bar's
+    // subtitle skeleton forever.
+    expect: () => [const BridgeIdentityState.unnamed()],
+  );
+
+  test("a resolve queued when the cubit closes never runs", () async {
+    var latchLookups = 0;
+    final firstLookup = Completer<bool>();
+    when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) {
+      latchLookups++;
+      return latchLookups == 1 ? firstLookup.future : Future.value(true);
+    });
+
+    final cubit = buildCubit();
+    await Future<void>.delayed(Duration.zero); // the first lookup is in flight
+    statusController.add(_connectedStatus); // queues a second resolve behind it
+    await Future<void>.delayed(Duration.zero);
+    await cubit.close();
+    firstLookup.complete(true);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    // The Projects surface is gone, so the queued resolve does no work for it.
+    expect(latchLookups, 1);
+  });
+
+  blocTest<BridgeIdentityCubit, BridgeIdentityState>(
     "a bridge going offline keeps the machine it named",
     build: () {
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(

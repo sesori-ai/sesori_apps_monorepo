@@ -68,11 +68,17 @@ class BridgeIdentityCubit extends Cubit<BridgeIdentityState> {
   /// for as long as it really is unknown.
   void _scheduleResolve() {
     _resolving = _resolving
-        .then((_) => _resolve())
-        // A throw must not poison the chain — the next reconnect still needs its
-        // retry. The service's own failures are fail-soft, so reaching here is
-        // unexpected and worth a record of its own.
-        .catchError((Object error, StackTrace stackTrace) => loge("Bridge identity lookup failed", error, stackTrace));
+        // A queue that outlives the surface it feeds has nothing to resolve for.
+        .then((_) => isClosed ? null : _resolve())
+        .catchError((Object error, StackTrace stackTrace) {
+          // A throw must not poison the chain — the next reconnect still needs
+          // its retry. The service's own failures are fail-soft, so reaching
+          // here is unexpected and worth a record of its own.
+          loge("Bridge identity lookup failed", error, stackTrace);
+          // The placeholder is still released: a lookup that blew up leaves the
+          // machine unknown, not loading. An identity resolved earlier stands.
+          if (!isClosed && state is BridgeIdentityPending) emit(const BridgeIdentityState.unnamed());
+        });
   }
 
   /// The resolve currently running, or a completed future when none is.
