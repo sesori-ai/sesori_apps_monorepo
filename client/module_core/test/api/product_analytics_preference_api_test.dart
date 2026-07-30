@@ -108,6 +108,19 @@ void main() {
     expect(result, isA<ProductAnalyticsPreferenceApiSuccess>());
   });
 
+  test("PUT rejects a success record that contradicts the requested preference", () async {
+    client.putJson = {"preference": "enabled", "revision": 3, "userKey": _userKey};
+
+    final result = await api.updatePreference(
+      userId: _userId,
+      preference: ProductAnalyticsPreference.disabled,
+      expectedRevision: 2,
+      operationId: "123e4567-e89b-42d3-a456-426614174000",
+    );
+
+    expect(result, isA<ProductAnalyticsPreferenceApiFailure>());
+  });
+
   test("PUT parses an explicit conflict record", () async {
     client.putError = ApiError.nonSuccessCode(
       errorCode: 409,
