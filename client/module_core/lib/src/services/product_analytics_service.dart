@@ -196,7 +196,10 @@ class ProductAnalyticsService {
 
   Future<void> _synchronizeBeforeLogout() async {
     await _awaitLatestLocalInitialization();
-    if (_localReadFailed && !await _retryLocalRead(allowDuringLogout: true)) return;
+    if (_localReadFailed && !await _retryLocalRead(allowDuringLogout: true)) {
+      await _awaitLatestAccountOperation();
+      return;
+    }
     await _awaitLatestAccountOperation();
     if (_volatileDisable != null) {
       final current = _currentRecord;
