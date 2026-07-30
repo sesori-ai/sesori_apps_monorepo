@@ -67,7 +67,7 @@ final class SessionOptionsCacheDecodingException implements Exception {
   final StackTrace causeStackTrace;
 
   @override
-  String toString() => "SessionOptionsCacheDecodingException: $cause";
+  String toString() => "SessionOptionsCacheDecodingException: invalid persisted session options cache";
 }
 
 class SessionOptionsRepository {
@@ -137,6 +137,9 @@ class SessionOptionsRepository {
     required PluginSessionOptionsDiscoveryMode discoveryMode,
     required int? expectedGeneration,
   }) async {
+    if (key is ProjectSessionOptionsCacheKey && key.projectPath != projectPath) {
+      throw ArgumentError.value(projectPath, "projectPath", "must match the project cache key path");
+    }
     switch (activation) {
       case SessionOptionsCaptureActivation.mayActivate:
         final captured = await _runtime.useWithGeneration(

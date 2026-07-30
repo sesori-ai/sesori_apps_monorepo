@@ -102,6 +102,26 @@ void main() {
       expect(observed.response, _response(marker: "fresh"));
     });
 
+    test("project capture rejects a path that disagrees with the cache key", () async {
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+
+      await expectLater(
+        repository.capture(
+          key: key,
+          projectPath: "/projects/other",
+          activation: SessionOptionsCaptureActivation.mayActivate,
+          discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+          expectedGeneration: null,
+        ),
+        throwsArgumentError,
+      );
+      expect(plugin.callCount, 0);
+    });
+
     test("active-only capture returns an explicit no-op without invoking an inactive or stale plugin", () async {
       const key = SessionOptionsCacheKey.plugin(pluginId: "plugin-1");
       runtime.active = false;
@@ -176,9 +196,9 @@ void main() {
       expect(raw, isNotNull);
       expect(raw!.projectId, "project-1");
       expect(raw.capturedProjectPath, "/projects/one");
-      expect(jsonDecode(raw.agentsJson), candidate.response.agents.toJson());
-      expect(jsonDecode(raw.providersJson), candidate.response.providers.toJson());
-      expect(jsonDecode(raw.commandsJson), candidate.response.commands.toJson());
+      expect(jsonDecodeMap(raw.agentsJson), candidate.response.agents.toJson());
+      expect(jsonDecodeMap(raw.providersJson), candidate.response.providers.toJson());
+      expect(jsonDecodeMap(raw.commandsJson), candidate.response.commands.toJson());
 
       final decoded = await repository.read(key: key);
       expect(decoded, isNotNull);
@@ -233,11 +253,17 @@ void main() {
       await expectLater(
         repository.read(key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1")),
         throwsA(
-          isA<SessionOptionsCacheDecodingException>().having(
-            (error) => error.cause,
-            "cause",
-            isA<FormatException>(),
-          ),
+          isA<SessionOptionsCacheDecodingException>()
+              .having(
+                (error) => error.cause,
+                "cause",
+                isA<FormatException>(),
+              )
+              .having(
+                (error) => error.toString(),
+                "privacy-safe presentation",
+                "SessionOptionsCacheDecodingException: invalid persisted session options cache",
+              ),
         ),
       );
     });
