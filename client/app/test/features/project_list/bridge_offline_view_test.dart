@@ -4,7 +4,6 @@ import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -84,7 +83,6 @@ void main() {
     getIt.registerLazySingleton<SessionUnseenTracker>(FakeSessionUnseenTracker.new);
     getIt.registerLazySingleton<RegisteredBridgesService>(() => mockRegisteredBridgesService);
     getIt.registerLazySingleton<FailureReporter>(MockFailureReporter.new);
-    getIt.registerLazySingleton<AnalyticsReporter>(MockAnalyticsReporter.new);
   });
 
   tearDown(() async {

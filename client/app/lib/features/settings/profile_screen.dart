@@ -26,6 +26,7 @@ class ProfileScreen extends StatelessWidget {
       create: (_) => SettingsCubit(
         authSession: getIt<AuthSession>(),
         notificationRegistrationService: getIt<NotificationRegistrationService>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
       ),
       child: const _ProfileBody(),
     );

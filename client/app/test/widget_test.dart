@@ -22,7 +22,12 @@ void main() {
     when(() => mockStorage.read(key: "oauth_provider")).thenAnswer((_) async => null);
     when(() => mockStorage.read(key: "relay_room_key")).thenAnswer((_) async => null);
 
-    configureDependencies(firebaseEnabled: false);
+    configureDependencies(
+      firebaseEnabled: false,
+      analyticsRuntimeCapability: const AnalyticsRuntimeCapability.disabled(
+        reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+      ),
+    );
     getIt.unregister<FlutterSecureStorage>();
     getIt.registerLazySingleton<FlutterSecureStorage>(() => mockStorage);
 

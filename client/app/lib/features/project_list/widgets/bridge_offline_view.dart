@@ -83,15 +83,11 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
             centered: true,
           ),
           const SizedBox(height: PregoSpacing.md),
-          const _CommandBoxFrame(
+          _CommandBoxFrame(
             child: _CommandActionRow(
               command: BridgeInstall.runCommand,
-              copiedEvent: AnalyticsEvent.runCommandCopied(
-                surface: OnboardingSurface.bridgeOffline,
-              ),
-              sharedEvent: AnalyticsEvent.runCommandShared(
-                surface: OnboardingSurface.bridgeOffline,
-              ),
+              reportCopied: (cubit) => cubit.reportRunCommandCopied(surface: OnboardingSurface.bridgeOffline),
+              reportShared: (cubit) => cubit.reportRunCommandShared(surface: OnboardingSurface.bridgeOffline),
             ),
           ),
           const SizedBox(height: PregoSpacing.xl),
