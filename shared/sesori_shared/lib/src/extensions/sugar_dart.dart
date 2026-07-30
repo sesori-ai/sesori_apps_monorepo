@@ -13,7 +13,7 @@ final _random = Random.secure();
 // ignore: no_slop_linter/prefer_specific_type, centralized decoded JSON boundary
 Map<String, dynamic> jsonCastMap(dynamic value) {
   if (value is Map) return value.cast();
-  throw const FormatException("Invalid JSON Object (not a Map)");
+  throw FormatException("Invalid JSON Object (not a Map)", value);
 }
 
 // ignore: no_slop_linter/prefer_specific_type, JSON decoding

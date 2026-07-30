@@ -11,7 +11,12 @@ void main() {
     });
 
     test("rejects decoded non-map values", () {
-      expect(() => jsonCastMap(<int>[1, 2, 3]), throwsFormatException);
+      final value = <int>[1, 2, 3];
+
+      expect(
+        () => jsonCastMap(value),
+        throwsA(isA<FormatException>().having((error) => error.source, "source", same(value))),
+      );
     });
   });
 
