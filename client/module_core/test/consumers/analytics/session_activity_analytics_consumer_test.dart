@@ -53,6 +53,7 @@ void main() {
     when(() => cubit.state).thenAnswer((_) => states.value);
     when(() => cubit.stream).thenAnswer((_) => states.stream);
     when(() => analyticsService.stateStream).thenAnswer((_) => analyticsStates.stream);
+    when(() => analyticsService.state).thenAnswer((_) => analyticsStates.value);
     when(
       () => analyticsService.logEvent(
         event: any(named: "event"),
@@ -176,6 +177,23 @@ void main() {
     await _settle();
 
     expect(events, hasLength(2));
+  });
+
+  test("active failed delivery remains operationally observable", () async {
+    results = [AnalyticsDeliveryResult.failed];
+    analyticsStates.add(_activeAnalyticsState);
+    states.add(_loaded());
+    final logLines = <String>[];
+
+    await runZoned(
+      () async {
+        createConsumer();
+        await _settle();
+      },
+      zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logLines.add(line)),
+    );
+
+    expect(logLines, contains("Failed to deliver session activity analytics event"));
   });
 
   test("retries an empty snapshot when analytics becomes active", () async {

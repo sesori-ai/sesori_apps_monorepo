@@ -651,6 +651,46 @@ void main() {
     ).called(1);
   });
 
+  testWidgets("deleting only the appended transcript restores typed input mode", (tester) async {
+    GetIt.instance<DraftStore>().write(
+      key: "session-1",
+      draft: const ComposerDraft(text: "typed", inputMode: AnalyticsInputMode.typed),
+    );
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "spoken");
+    when(
+      () => cubit.sendMessage(
+        text: "typed",
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.byIcon(TablerRegular.microphone)));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text("typed spoken"), findsOneWidget);
+
+    final editable = tester.widget<EditableText>(find.byType(EditableText));
+    editable.controller.selection = const TextSelection(baseOffset: 6, extentOffset: 12);
+    await tester.enterText(find.byType(EditableText), "typed");
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "typed",
+        command: null,
+        inputMode: AnalyticsInputMode.typed,
+      ),
+    ).called(1);
+  });
+
   testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {
     final startCompleter = Completer<void>();
     final stopCompleter = Completer<String>();

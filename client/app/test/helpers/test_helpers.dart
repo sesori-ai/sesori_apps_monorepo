@@ -148,6 +148,7 @@ class MockProductAnalyticsService extends Mock implements ProductAnalyticsServic
 
 void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
   registerFallbackValue(const AnalyticsSchemaReadyEvent());
+  final stateStream = Stream.value(ProductAnalyticsState.initial).shareValueSeeded(ProductAnalyticsState.initial);
   when(
     () => service.logEvent(
       event: any(named: "event"),
@@ -155,6 +156,7 @@ void stubProductAnalyticsService({required MockProductAnalyticsService service})
     ),
   ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
   when(() => service.state).thenReturn(ProductAnalyticsState.initial);
+  when(() => service.stateStream).thenAnswer((_) => stateStream);
 }
 
 MockProductAnalyticsService createStubbedProductAnalyticsService() {

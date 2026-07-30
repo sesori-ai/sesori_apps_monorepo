@@ -121,6 +121,7 @@ class _FakePreferenceRepository extends Mock implements ProductAnalyticsPreferen
 class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository {
   final calls = <({ProductAnalyticsEnvelope envelope, String userKey})>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
+  Queue<AnalyticsDeliveryResult>? results;
   Completer<AnalyticsDeliveryResult>? deliveryCompleter;
 
   @override
@@ -131,7 +132,8 @@ class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository 
     calls.add((envelope: envelope, userKey: userKey));
     final completer = deliveryCompleter;
     if (completer != null) return completer.future;
-    return result;
+    final queuedResults = results;
+    return queuedResults == null || queuedResults.isEmpty ? result : queuedResults.removeFirst();
   }
 }
 
@@ -365,6 +367,52 @@ void main() {
     expect(analyticsRepository.calls.last.envelope.occurredAtUtc, occurredAt);
   });
 
+  test("retains deferred outcomes until activation readiness is accepted", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled))
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled));
+    analyticsRepository.results = Queue.of([
+      AnalyticsDeliveryResult.acceptedBySdk,
+      AnalyticsDeliveryResult.failed,
+    ]);
+    await service.start();
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.deferredUntilPreference,
+    );
+
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 2);
+    expect(analyticsRepository.calls, hasLength(2));
+
+    analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
+    await service.refreshPreference();
+    await waitForAnalyticsCalls(count: 4);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+      ],
+    );
+  });
+
   test("disabled runtime retains preference truth but never emits custom events", () async {
     createServiceWithCapability(
       capability: const AnalyticsRuntimeCapability.disabled(
@@ -402,17 +450,16 @@ void main() {
 
     await service.start();
     await service.markPostSplashReady();
-    await waitForAnalyticsCalls(count: 2);
+    await waitForAnalyticsCalls(count: 1);
 
     analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
     await service.refreshPreference();
-    await waitForAnalyticsCalls(count: 4);
+    await waitForAnalyticsCalls(count: 3);
 
     expect(
       analyticsRepository.calls.map((call) => call.envelope.event),
       [
         const ProductAnalyticsEvent.analyticsSchemaReady(),
-        const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.analyticsSchemaReady(),
         const ProductAnalyticsEvent.analyticsActivationReady(),
       ],

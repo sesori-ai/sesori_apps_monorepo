@@ -88,6 +88,7 @@ class _PromptInputState extends State<PromptInput> {
   bool _hasText = false;
   AnalyticsInputMode _inputMode = AnalyticsInputMode.typed;
   TextEditingValue _previousEditingValue = TextEditingValue.empty;
+  List<bool> _voiceOriginByCodeUnit = const [];
 
   /// Layout pinned for the duration of a voice interaction. Swapping the
   /// field slot for the recording/transcribing indicators must not relayout
@@ -156,11 +157,16 @@ class _PromptInputState extends State<PromptInput> {
     if (key == null || store == null) {
       _controller.clear();
       _inputMode = AnalyticsInputMode.typed;
+      _voiceOriginByCodeUnit = const [];
       return;
     }
     final draft = store.read(key: key);
     _controller.text = draft?.text ?? "";
     _inputMode = draft?.inputMode ?? AnalyticsInputMode.typed;
+    _voiceOriginByCodeUnit = List.filled(
+      _controller.text.length,
+      _inputMode == AnalyticsInputMode.voiceAssisted,
+    );
     _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
   }
 
@@ -186,15 +192,54 @@ class _PromptInputState extends State<PromptInput> {
     final currentValue = _controller.value;
     final previousValue = _previousEditingValue;
     final hasText = currentValue.text.trim().isNotEmpty;
-    final replacedEntireText = previousValue.text.isNotEmpty &&
-        previousValue.selection.start == 0 &&
-        previousValue.selection.end == previousValue.text.length &&
-        !currentValue.text.startsWith(previousValue.text);
-    if (!hasText || replacedEntireText) _inputMode = AnalyticsInputMode.typed;
+    _voiceOriginByCodeUnit = _updatedVoiceOrigins(
+      previousValue: previousValue,
+      currentText: currentValue.text,
+    );
+    _inputMode = _voiceOriginByCodeUnit.any((isVoice) => isVoice)
+        ? AnalyticsInputMode.voiceAssisted
+        : AnalyticsInputMode.typed;
     _previousEditingValue = currentValue;
     if (hasText != _hasText && mounted) {
       setState(() => _hasText = hasText);
     }
+  }
+
+  List<bool> _updatedVoiceOrigins({required TextEditingValue previousValue, required String currentText}) {
+    final previousText = previousValue.text;
+    if (previousText == currentText) return _voiceOriginByCodeUnit;
+    final previousOrigins = _voiceOriginByCodeUnit.length == previousText.length
+        ? _voiceOriginByCodeUnit
+        : List.filled(previousText.length, _inputMode == AnalyticsInputMode.voiceAssisted);
+    final selection = previousValue.selection;
+    if (selection.isValid && !selection.isCollapsed) {
+      final replacementLength = currentText.length - (previousText.length - selection.end + selection.start);
+      if (replacementLength >= 0) {
+        return [
+          ...previousOrigins.take(selection.start),
+          ...List.filled(replacementLength, false),
+          ...previousOrigins.skip(selection.end),
+        ];
+      }
+    }
+    var prefixLength = 0;
+    while (prefixLength < previousText.length &&
+        prefixLength < currentText.length &&
+        previousText.codeUnitAt(prefixLength) == currentText.codeUnitAt(prefixLength)) {
+      prefixLength++;
+    }
+    var suffixLength = 0;
+    while (suffixLength < previousText.length - prefixLength &&
+        suffixLength < currentText.length - prefixLength &&
+        previousText.codeUnitAt(previousText.length - suffixLength - 1) ==
+            currentText.codeUnitAt(currentText.length - suffixLength - 1)) {
+      suffixLength++;
+    }
+    return [
+      ...previousOrigins.take(prefixLength),
+      ...List.filled(currentText.length - prefixLength - suffixLength, false),
+      ...previousOrigins.skip(previousText.length - suffixLength),
+    ];
   }
 
   void _handleFocusChanged() {
@@ -350,13 +395,17 @@ class _PromptInputState extends State<PromptInput> {
       if (transcript.trim().isEmpty) return;
 
       // Append transcript to the text field, preserving any existing text.
-      _inputMode = AnalyticsInputMode.voiceAssisted;
       final currentText = _controller.text;
       if (currentText.isNotEmpty && !currentText.endsWith(" ")) {
         _controller.text = "$currentText $transcript";
       } else {
         _controller.text = "$currentText$transcript";
       }
+      final transcriptStart = _controller.text.length - transcript.length;
+      for (var i = transcriptStart; i < _controller.text.length; i++) {
+        _voiceOriginByCodeUnit[i] = true;
+      }
+      _inputMode = AnalyticsInputMode.voiceAssisted;
       // Move cursor to end.
       _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
       widget.onVoiceTranscriptionCompleted();

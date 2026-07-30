@@ -127,6 +127,9 @@ final class SessionActivityAnalyticsConsumer {
       event: ProductAnalyticsEvent.sessionActivityViewed(activityState: activityState),
       occurredAtUtc: occurredAtUtc,
     );
+    if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+      logw("Failed to deliver session activity analytics event");
+    }
     if (result != AnalyticsDeliveryResult.acceptedBySdk && result != AnalyticsDeliveryResult.deferredUntilPreference) {
       return;
     }

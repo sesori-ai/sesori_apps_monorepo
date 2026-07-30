@@ -114,13 +114,20 @@ class ProductAnalyticsService {
       _deferredCandidates = null;
       return;
     }
-    if (!state.isActive && _preferenceService.deferrableGeneration == null) {
+    final shouldDrop = switch (state.preference) {
+      ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.disabled) => true,
+      ProductAnalyticsPreferenceUnknown() =>
+        state.synchronization is ProductAnalyticsSynchronizationFailed &&
+            _preferenceService.deferrableGeneration == null,
+      ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled) => false,
+    };
+    if (!state.isActive && shouldDrop) {
       _deferredCandidates = null;
     }
   }
 
   Future<void> _dispatchActiveGeneration({required ProductAnalyticsDeliveryContext context}) async {
-    await _schemaReadiness.dispatch(
+    final schemaResult = await _schemaReadiness.dispatch(
       generation: context.generation,
       deliver: () => _deliver(
         envelope: ProductAnalyticsEnvelope(
@@ -130,9 +137,13 @@ class ProductAnalyticsService {
         context: context,
       ),
     );
+    if (schemaResult != AnalyticsDeliveryResult.acceptedBySdk) {
+      if (_isCurrentActiveContext(context: context)) logw("Failed to deliver analytics schema readiness");
+      return;
+    }
     if (!_isCurrentActiveContext(context: context)) return;
 
-    await _activationReadiness.dispatch(
+    final activationResult = await _activationReadiness.dispatch(
       generation: context.generation,
       deliver: () => _deliver(
         envelope: ProductAnalyticsEnvelope(
@@ -142,6 +153,10 @@ class ProductAnalyticsService {
         context: context,
       ),
     );
+    if (activationResult != AnalyticsDeliveryResult.acceptedBySdk) {
+      if (_isCurrentActiveContext(context: context)) logw("Failed to deliver analytics activation readiness");
+      return;
+    }
     if (!_isCurrentActiveContext(context: context)) return;
 
     final candidates = _deferredCandidates;
