@@ -45,6 +45,7 @@ class ProductAnalyticsPreferenceService {
   bool _postSplashReady = false;
   ProductAnalyticsPreferenceIntent _intent = const ProductAnalyticsPreferenceIntent.idle();
   Future<void>? _startFuture;
+  Future<void>? _disposeFuture;
   bool _disposed = false;
 
   ProductAnalyticsPreferenceService({
@@ -536,8 +537,9 @@ class ProductAnalyticsPreferenceService {
   bool _matches({required int generation, required String userId}) =>
       _canApply(generation: generation, userId: userId, allowDuringLogout: false);
 
-  Future<void> dispose() async {
-    if (_disposed) return;
+  Future<void> dispose() => _disposeFuture ??= _dispose();
+
+  Future<void> _dispose() async {
     _disposed = true;
     // Invalidate every in-flight account-scoped completion before closing the
     // replay subject so detached timeout/storage work cannot publish afterward.

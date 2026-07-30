@@ -180,8 +180,10 @@ void main() {
   test("disposed preference lifecycle ignores later work", () async {
     createService();
 
-    await preferenceService.dispose();
-    await preferenceService.dispose();
+    final firstDisposal = preferenceService.dispose();
+    final secondDisposal = preferenceService.dispose();
+    expect(secondDisposal, same(firstDisposal));
+    await Future.wait([firstDisposal, secondDisposal]);
     await preferenceService.start().timeout(const Duration(milliseconds: 100));
     await preferenceService.markPostSplashReady();
     await preferenceService.refreshPreference();
@@ -192,6 +194,16 @@ void main() {
     expect(preferenceRepository.loadCalls, isEmpty);
     expect(preferenceRepository.reconcileCalls, isEmpty);
     expect(preferenceRepository.setCalls, isEmpty);
+  });
+
+  test("facade disposal callers share terminal cleanup", () async {
+    createService();
+
+    final firstDisposal = service.dispose();
+    final secondDisposal = service.dispose();
+
+    expect(secondDisposal, same(firstDisposal));
+    await Future.wait([firstDisposal, secondDisposal]);
   });
 
   test("subscribes before an awaited startup load so an account switch cannot be lost", () async {

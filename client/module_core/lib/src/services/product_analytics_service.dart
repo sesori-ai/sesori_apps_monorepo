@@ -20,6 +20,7 @@ class ProductAnalyticsService {
 
   StreamSubscription<ProductAnalyticsState>? _stateSubscription;
   Future<void>? _startFuture;
+  Future<void>? _disposeFuture;
   bool _disposed = false;
 
   ProductAnalyticsService({
@@ -90,8 +91,9 @@ class ProductAnalyticsService {
   }
 
   @disposeMethod
-  Future<void> dispose() async {
-    if (_disposed) return;
+  Future<void> dispose() => _disposeFuture ??= _dispose();
+
+  Future<void> _dispose() async {
     _disposed = true;
     await _stateSubscription?.cancel();
     _stateSubscription = null;
