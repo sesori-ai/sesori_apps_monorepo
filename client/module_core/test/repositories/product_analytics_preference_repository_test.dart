@@ -138,12 +138,9 @@ void main() {
 
   test("reconciliation rejects pending state owned by another account", () async {
     const pending = LocalProductAnalyticsPendingDisable(
-      record: ProductAnalyticsPreferenceRecord(
-        userId: "user-a",
-        preference: ProductAnalyticsPreference.enabled,
-        revision: 1,
-        userKey: _userKey,
-      ),
+      userId: "user-a",
+      revision: 1,
+      userKey: _userKey,
       operationId: _operationId,
     );
 
@@ -188,11 +185,18 @@ void main() {
     );
 
     expect(result, isA<ProductAnalyticsPreferenceVolatileDisablePending>());
+    final pending = (result as ProductAnalyticsPreferenceVolatileDisablePending).pending;
+    expect(pending.record.preference, ProductAnalyticsPreference.disabled);
     expect(operations, [startsWith("storage:write:"), "api:put:disabled:1"]);
   });
 
   test("pending enable stays pending when reconciliation cannot reach the server", () async {
-    final pending = LocalProductAnalyticsPendingEnable(record: _domainRecord(), operationId: _operationId);
+    const pending = LocalProductAnalyticsPendingEnable(
+      userId: "user-a",
+      revision: 1,
+      userKey: _userKey,
+      operationId: _operationId,
+    );
     api.getResults.add(const ProductAnalyticsPreferenceApiTimeout());
 
     final result = await repository.reconcile(userId: "user-a", local: pending);
@@ -203,8 +207,10 @@ void main() {
   });
 
   test("pending enable retries its stable operation when the server revision is unchanged", () async {
-    final pending = LocalProductAnalyticsPendingEnable(
-      record: _domainRecord(preference: ProductAnalyticsPreference.disabled, revision: 7),
+    const pending = LocalProductAnalyticsPendingEnable(
+      userId: "user-a",
+      revision: 7,
+      userKey: _userKey,
       operationId: _operationId,
     );
     api.getResults.add(
@@ -231,8 +237,10 @@ void main() {
   });
 
   test("pending enable yields to a newer disabled revision", () async {
-    final pending = LocalProductAnalyticsPendingEnable(
-      record: _domainRecord(preference: ProductAnalyticsPreference.disabled, revision: 7),
+    const pending = LocalProductAnalyticsPendingEnable(
+      userId: "user-a",
+      revision: 7,
+      userKey: _userKey,
       operationId: _operationId,
     );
     api.getResults.add(
