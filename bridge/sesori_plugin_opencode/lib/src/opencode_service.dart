@@ -111,11 +111,18 @@ class OpenCodeService {
   }
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({required String projectId}) async {
-    final (agents, providers, commands) = await (
+    // Record `.wait` wraps source failures in `ParallelWaitError`, preventing
+    // the plugin boundary from translating an `OpenCodeApiException`. The list
+    // join preserves the original exception while still starting every request
+    // concurrently.
+    final results = await Future.wait<Object>([
       getAgents(projectId: projectId),
       getProviders(projectId: projectId),
       getCommands(projectId: projectId),
-    ).wait;
+    ]);
+    final agents = results[0] as List<PluginAgent>;
+    final providers = results[1] as PluginProvidersResult;
+    final commands = results[2] as List<PluginCommand>;
     return PluginSessionOptionsDiscoveryResult.observed(
       options: PluginSessionOptions(
         agents: agents,

@@ -176,6 +176,21 @@ void main() {
       expect(options.providers.providers.single.id, "provider");
       expect(options.commands.map((command) => command.name), ["review", "compact"]);
     });
+
+    test("preserves the source API error from parallel option discovery", () async {
+      final error = OpenCodeApiException(
+        "/provider",
+        503,
+        responseBody: "provider unavailable",
+      );
+      final repository = FakeOpenCodeRepository(providersError: error);
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await expectLater(
+        service.getSessionOptions(projectId: "/repo"),
+        throwsA(same(error)),
+      );
+    });
   });
 
   group("OpenCodeService.getAgents", () {
@@ -2035,6 +2050,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   final Completer<void>? _optionsRelease;
   final PluginSession? _createdSession;
   final PluginProject? _currentProject;
+  final Object? providersError;
   final Map<String, List<QuestionRequest>> _pendingQuestionsByDirectory;
   final Map<String, List<PermissionRequest>> _pendingPermissionsByDirectory;
   int getProjectsCalls = 0;
@@ -2100,6 +2116,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     PluginProject? currentProject,
     List<SessionMessagesResponseItem> messages = const [],
     Object? messagesError,
+    Object? providersError,
     Object? replyToQuestionError,
     Object? rejectQuestionError,
     Object? replyToPermissionError,
@@ -2118,6 +2135,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
       optionsRelease: optionsRelease,
       createdSession: createdSession,
       currentProject: currentProject,
+      providersError: providersError,
       replyToQuestionError: replyToQuestionError,
       rejectQuestionError: rejectQuestionError,
       replyToPermissionError: replyToPermissionError,
@@ -2137,6 +2155,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required Completer<void>? optionsRelease,
     required PluginSession? createdSession,
     required PluginProject? currentProject,
+    required this.providersError,
     this.replyToQuestionError,
     this.rejectQuestionError,
     this.replyToPermissionError,
@@ -2205,6 +2224,8 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   Future<PluginProvidersResult> getProviders({required String? directory}) async {
     _optionStarts?.add("providers");
     await _optionsRelease?.future;
+    final error = providersError;
+    if (error != null) throw error;
     return _providers;
   }
 

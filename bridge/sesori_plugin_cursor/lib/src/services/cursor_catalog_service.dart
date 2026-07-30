@@ -117,6 +117,7 @@ class CursorCatalogService {
     final operation = _probeAndCommitRefresh(
       scope: scope,
       expectedCommandRevision: _commandTracker.revision,
+      expectedCatalogRevision: _tracker.revision,
     );
     _inFlight = operation;
     final CursorCatalogProbeOutcome outcome;
@@ -142,10 +143,14 @@ class CursorCatalogService {
   Future<CursorCatalogProbeOutcome> _probeAndCommitRefresh({
     required String scope,
     required int expectedCommandRevision,
+    required int expectedCatalogRevision,
   }) async {
     final discovered = CursorCatalogTracker();
     final outcome = await _probe(scope: scope, tracker: discovered);
     if (outcome == CursorCatalogProbeOutcome.retryableFailure) return outcome;
+    // A live session/new or session/load capture is newer than this isolated
+    // probe. Keep that aggregate intact, including its live command snapshot.
+    if (_tracker.revision != expectedCatalogRevision) return outcome;
     _tracker.replaceDiscoveredCatalog(
       discovered: discovered,
       scope: scope,

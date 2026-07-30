@@ -366,6 +366,68 @@ void main() {
       expect(commandTracker.commands.single.name, "fresh-command");
     });
 
+    test("forced discovery does not overwrite a newer live catalog snapshot", () async {
+      tracker.applySnapshot(
+        snapshot: _snapshot(includeThoughtLevel: true),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "probe-model", name: "Probe", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "probe-mode", name: "Probe", description: null),
+        ],
+        defaultModeId: "probe-mode",
+        thoughtLevelsByModel: {
+          "probe-model": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      commandTracker.consume(_commandUpdate("live-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("probe-command"));
+      };
+      repository.resetStarted = Completer<void>();
+      repository.resetGate = Completer<void>();
+
+      final refreshing = service.refreshCatalog(scope: "/project");
+      await repository.resetStarted!.future;
+      tracker.applySnapshot(
+        snapshot: CursorCatalogSnapshot(
+          modelConfigId: "model-picker",
+          models: const [
+            CursorCatalogOption(value: "live-model", name: "Live", description: null),
+          ],
+          loadedModelId: "live-model",
+          modeConfigId: "mode-picker",
+          modes: const [
+            CursorCatalogOption(value: "live-mode", name: "Live", description: null),
+          ],
+          loadedModeId: "live-mode",
+          thoughtLevel: CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["high"],
+            defaultValue: "high",
+          ),
+        ),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.resetGate!.complete();
+
+      expect(await refreshing, isTrue);
+      expect(tracker.models.single.value, "live-model");
+      expect(tracker.modes.single.value, "live-mode");
+      expect(commandTracker.commands.single.name, "live-command");
+    });
+
     test("forced discovery bypasses exhausted and already-retried scope state", () async {
       repository.candidates = CursorCatalogCandidateListResult(
         candidates: const [],

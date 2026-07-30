@@ -4,6 +4,7 @@ import "../models/cursor_catalog_models.dart";
 
 /// Layer-2 owner of Cursor's learned catalog and per-scope probe outcomes.
 class CursorCatalogTracker {
+  int _revision = 0;
   String? _modelConfigId;
   List<CursorCatalogOption> _models = const [];
   String? _modeConfigId;
@@ -21,9 +22,14 @@ class CursorCatalogTracker {
   String? get defaultModeId => _defaultModeId;
   String? get currentModelId => _currentModelId;
 
+  /// Monotonically identifies catalog mutations so an isolated refresh cannot
+  /// replace newer state captured from the live Cursor process.
+  int get revision => _revision;
+
   bool get isComplete => _models.isNotEmpty && _modes.isNotEmpty && _provisionalThoughtLevelVariants.isNotEmpty;
 
   void applyBootstrapSnapshot({required CursorCatalogBootstrapSnapshot snapshot}) {
+    _revision++;
     if (_models.isEmpty && snapshot.models.isNotEmpty) _models = snapshot.models;
     if (_modes.isEmpty && snapshot.modes.isNotEmpty) _modes = snapshot.modes;
     _defaultModeId ??= snapshot.defaultModeId;
@@ -41,6 +47,7 @@ class CursorCatalogTracker {
     required String? thoughtLevelModelId,
     required bool captureThoughtLevelDefault,
   }) {
+    _revision++;
     if (snapshot.modelConfigId != null) _modelConfigId = snapshot.modelConfigId;
     if (snapshot.models.isNotEmpty) _models = snapshot.models;
     final loadedModelId = snapshot.loadedModelId;
@@ -135,6 +142,7 @@ class CursorCatalogTracker {
         : discovered._defaultModeId;
     _outcomesByScope.clear();
     recordOutcome(scope: scope, outcome: outcome);
+    _revision++;
   }
 
   String _normalizeScope({required String scope}) => normalizeProjectDirectory(directory: scope);
