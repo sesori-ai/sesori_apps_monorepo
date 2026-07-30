@@ -245,6 +245,9 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   void beginAppleLoginAttempt() {
+    if (state is LoginPolling || state is LoginTimeout) {
+      emit(const LoginState.idle());
+    }
     _beginAttempt(provider: AuthProvider.apple);
   }
 

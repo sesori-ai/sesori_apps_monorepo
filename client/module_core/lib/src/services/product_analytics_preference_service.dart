@@ -93,7 +93,10 @@ class ProductAnalyticsPreferenceService {
   }
 
   int? get deferrableGeneration {
-    if (!_capability.isEnabled || _isPreparingLogout || state.preference is! ProductAnalyticsPreferenceUnknown) {
+    if (!_capability.isEnabled ||
+        _isPreparingLogout ||
+        state.preference is! ProductAnalyticsPreferenceUnknown ||
+        state.synchronization is ProductAnalyticsSynchronizationFailed) {
       return null;
     }
     return authenticatedGeneration;

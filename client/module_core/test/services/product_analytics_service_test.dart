@@ -437,6 +437,15 @@ void main() {
     expect(preferenceRepository.reconcileCalls, isEmpty);
     expect(service.state.availability, isA<ProductAnalyticsInactive>());
     expect(analyticsRepository.calls, isEmpty);
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.failed,
+    );
 
     preferenceRepository.throwOnLoad = false;
     await service.refreshPreference();

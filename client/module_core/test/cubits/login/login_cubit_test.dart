@@ -157,6 +157,28 @@ void main() {
         await cubit.close();
       });
 
+      test("starting Apple leaves a prior resumable OAuth timeout", () async {
+        final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+        when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+        when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
+        when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
+        final cubit = buildCubit();
+
+        await cubit.loginWithProvider(AuthProvider.google);
+        expect(cubit.state, isA<LoginTimeout>());
+
+        cubit.beginAppleLoginAttempt();
+        expect(cubit.state, isA<LoginIdle>());
+        lifecycleSubject
+          ..add(LifecycleState.paused)
+          ..add(LifecycleState.resumed);
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
+        await cubit.close();
+        await lifecycleSubject.close();
+      });
+
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) starts OAuth flow with AuthProvider.google",
         build: buildCubit,

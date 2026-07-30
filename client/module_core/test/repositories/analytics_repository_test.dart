@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
@@ -72,6 +74,28 @@ void main() {
     ).thenThrow(StateError("sdk unavailable"));
     expect(
       await repository.logInstallationEvent(event: event),
+      AnalyticsDeliveryResult.failed,
+    );
+  });
+
+  test("a stalled SDK operation fails after the bounded delivery deadline", () async {
+    final repository = AnalyticsRepository.withDeliveryDeadline(
+      api: api,
+      deliveryDeadline: Duration.zero,
+    );
+    final envelope = ProductAnalyticsEnvelope(
+      event: const ProductAnalyticsEvent.analyticsSchemaReady(),
+      occurredAtUtc: DateTime.utc(2026),
+    );
+    when(
+      () => api.logProductEvent(
+        envelope: any(named: "envelope"),
+        userKey: _userKey,
+      ),
+    ).thenAnswer((_) => Completer<void>().future);
+
+    expect(
+      await repository.logProductEvent(envelope: envelope, userKey: _userKey),
       AnalyticsDeliveryResult.failed,
     );
   });
