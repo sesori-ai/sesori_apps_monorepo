@@ -112,14 +112,17 @@ class ProductAnalyticsService {
             }
             return;
           }
-          _emitPreferenceRequestInProgress(preference: preference);
+          final visiblePreference = requestSequence == _preferenceRequestSequence
+              ? preference
+              : _latestRequestedPreference ?? preference;
+          _emitPreferenceRequestInProgress(preference: visiblePreference);
           var operationRecord = _currentRecord;
           if (operationRecord == null) {
             await _performReconciliation(
               generation: generation,
               userId: userId,
               allowDuringLogout: allowDuringLogout,
-              pendingPreference: preference,
+              pendingPreference: visiblePreference,
             );
             if (!_canApply(
               generation: generation,
@@ -139,20 +142,16 @@ class ProductAnalyticsService {
             current: operationRecord,
             preference: preference,
           );
-          if (!_canApply(
-            generation: generation,
-            userId: userId,
-            allowDuringLogout: allowDuringLogout,
-          )) {
-            if (_matchesAccount(generation: generation, userId: userId)) {
-              _reconcileAfterFailedLogout = true;
-            }
-            return;
-          }
-          if (_logoutPreparation != null) _reconcileAfterFailedLogout = true;
+          if (!_matchesAccount(generation: generation, userId: userId)) return;
+          final publishState = _logoutPreparation == null;
+          if (!publishState) _reconcileAfterFailedLogout = true;
           final newerPreference = requestSequence == _preferenceRequestSequence ? null : _latestRequestedPreference;
-          await _applyRepositoryResult(result: result, pendingPreference: newerPreference);
-          if (newerPreference != null) {
+          await _applyRepositoryResult(
+            result: result,
+            pendingPreference: newerPreference,
+            publishState: publishState,
+          );
+          if (publishState && newerPreference != null) {
             _emitPreferenceRequestInProgress(preference: newerPreference);
           }
         },
@@ -395,6 +394,7 @@ class ProductAnalyticsService {
       userId: userId,
       operation: () async {
         if (!force && _reconciledGeneration == generation) return;
+        if (_volatileDisable != null) return;
         if (!_canApply(
           generation: generation,
           userId: userId,
@@ -472,18 +472,27 @@ class ProductAnalyticsService {
     await _applyRepositoryResult(
       result: result,
       pendingPreference: pendingPreference ?? _latestRequestedPreference,
+      publishState: _logoutPreparation == null,
     );
   }
 
   Future<void> _applyRepositoryResult({
     required ProductAnalyticsPreferenceRepositoryResult result,
     required ProductAnalyticsPreference? pendingPreference,
+    required bool publishState,
   }) async {
     switch (result) {
       case ProductAnalyticsPreferenceSynchronized(:final record):
         _volatileDisable = null;
         _currentRecord = record;
         _local = LocalProductAnalyticsSynced(record: record);
+        if (!publishState) {
+          _emitLogoutSuppressedPreference(
+            preference: record.preference,
+            synchronization: const ProductAnalyticsSynchronized(),
+          );
+          return;
+        }
         if (pendingPreference != null) {
           _emitPreferenceRequestInProgress(preference: pendingPreference);
         } else if (record.preference == ProductAnalyticsPreference.enabled && _capability.isEnabled) {
@@ -510,6 +519,17 @@ class ProductAnalyticsService {
         _volatileDisable = null;
         _local = pending;
         _currentRecord = pending.record;
+        if (!publishState) {
+          _emitLogoutSuppressedPreference(
+            preference: pending is LocalProductAnalyticsPendingDisable
+                ? ProductAnalyticsPreference.disabled
+                : ProductAnalyticsPreference.enabled,
+            synchronization: pending is LocalProductAnalyticsPendingDisable
+                ? const ProductAnalyticsDisablePending()
+                : const ProductAnalyticsEnablePending(),
+          );
+          return;
+        }
         _emitInactiveForPreference(
           preference: pending is LocalProductAnalyticsPendingDisable
               ? ProductAnalyticsPreference.disabled
@@ -523,6 +543,17 @@ class ProductAnalyticsService {
         _volatileDisable = pendingPreference == ProductAnalyticsPreference.enabled ? null : pending;
         _local = null;
         _currentRecord = pending.record;
+        if (!publishState) {
+          _emitLogoutSuppressedPreference(
+            preference: pendingPreference == ProductAnalyticsPreference.enabled
+                ? ProductAnalyticsPreference.enabled
+                : ProductAnalyticsPreference.disabled,
+            synchronization: pendingPreference == ProductAnalyticsPreference.enabled
+                ? const ProductAnalyticsEnableRequestInProgress()
+                : const ProductAnalyticsDisableRetryRequired(),
+          );
+          return;
+        }
         if (pendingPreference == ProductAnalyticsPreference.enabled) {
           _emitPreferenceRequestInProgress(preference: ProductAnalyticsPreference.enabled);
         } else {
@@ -536,6 +567,13 @@ class ProductAnalyticsService {
         _volatileDisable = null;
         _currentRecord = record;
         _local = LocalProductAnalyticsSynced(record: record);
+        if (!publishState) {
+          _emitLogoutSuppressedPreference(
+            preference: record.preference,
+            synchronization: const ProductAnalyticsSynchronizationFailed(),
+          );
+          return;
+        }
         _emitInactiveForPreference(
           preference: record.preference,
           synchronization: const ProductAnalyticsSynchronizationFailed(),
@@ -544,12 +582,20 @@ class ProductAnalyticsService {
       case ProductAnalyticsPreferenceServerConfirmedStorageFailed(:final record):
         _volatileDisable = null;
         _currentRecord = record;
+        if (!publishState) {
+          _emitLogoutSuppressedPreference(
+            preference: record.preference,
+            synchronization: const ProductAnalyticsSynchronizationFailed(),
+          );
+          return;
+        }
         _emitInactiveForPreference(
           preference: record.preference,
           synchronization: const ProductAnalyticsSynchronizationFailed(),
           reason: ProductAnalyticsInactiveReason.storageFailure,
         );
       case ProductAnalyticsPreferenceTimedOut() || ProductAnalyticsPreferenceFailed():
+        if (!publishState) return;
         _state.add(
           ProductAnalyticsState(
             preference: state.preference,
@@ -558,6 +604,7 @@ class ProductAnalyticsService {
           ),
         );
       case ProductAnalyticsPreferenceStorageFailed():
+        if (!publishState) return;
         final current = _currentRecord;
         if (current == null) {
           _state.add(
@@ -575,6 +622,19 @@ class ProductAnalyticsService {
           );
         }
     }
+  }
+
+  void _emitLogoutSuppressedPreference({
+    required ProductAnalyticsPreference preference,
+    required ProductAnalyticsSynchronizationStatus synchronization,
+  }) {
+    _state.add(
+      ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(preference: preference),
+        synchronization: synchronization,
+        availability: const ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.unauthenticated),
+      ),
+    );
   }
 
   void _emitInactiveForPreference({

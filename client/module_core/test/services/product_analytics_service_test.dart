@@ -520,6 +520,69 @@ void main() {
     expect(service.state.isActive, isTrue);
   });
 
+  test("an older middle toggle keeps the newest queued preference visible", () async {
+    createService();
+    final disabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+    );
+    final enabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+      revision: 2,
+    );
+    final reDisabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.disabled,
+      revision: 3,
+    );
+    final reEnabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+      revision: 4,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: disabled),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    final firstResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    final secondResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers
+      ..add((_, _, _) => firstResult.future)
+      ..add((_, _, _) => secondResult.future)
+      ..add((_, _, _) async => ProductAnalyticsPreferenceSynchronized(record: reEnabled));
+
+    final firstFuture = service.setPreference(preference: ProductAnalyticsPreference.enabled);
+    final secondFuture = service.setPreference(preference: ProductAnalyticsPreference.disabled);
+    final thirdFuture = service.setPreference(preference: ProductAnalyticsPreference.enabled);
+    firstResult.complete(ProductAnalyticsPreferenceSynchronized(record: enabled));
+    while (preferenceRepository.setCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(service.state.displayedPreference, ProductAnalyticsPreference.enabled);
+    expect(service.state.synchronization, isA<ProductAnalyticsEnableRequestInProgress>());
+
+    secondResult.complete(ProductAnalyticsPreferenceSynchronized(record: reDisabled));
+    await Future.wait([firstFuture, secondFuture, thirdFuture]);
+
+    expect(
+      preferenceRepository.setCalls.map((call) => call.preference),
+      [
+        ProductAnalyticsPreference.enabled,
+        ProductAnalyticsPreference.disabled,
+        ProductAnalyticsPreference.enabled,
+      ],
+    );
+    expect(service.state.isActive, isTrue);
+  });
+
   test("an obsolete volatile disable cannot override a queued enable during refresh", () async {
     createService();
     final enabled = _record(
@@ -562,6 +625,48 @@ void main() {
     expect(preferenceRepository.setCalls, hasLength(2));
     expect(service.state.displayedPreference, ProductAnalyticsPreference.enabled);
     expect(service.state.isActive, isTrue);
+  });
+
+  test("a queued refresh cannot reactivate after a repeated volatile disable failure", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final volatileDisable = LocalProductAnalyticsPendingDisable(
+      userId: enabled.userId,
+      revision: enabled.revision,
+      userKey: enabled.userKey,
+      operationId: _operationId,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    preferenceRepository.setHandlers.add(
+      (_, _, _) async => ProductAnalyticsPreferenceVolatileDisablePending(pending: volatileDisable),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+    await service.setPreference(preference: ProductAnalyticsPreference.disabled);
+
+    final retryResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers.add((_, _, _) => retryResult.future);
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+
+    final retryFuture = service.refreshPreference();
+    while (preferenceRepository.setCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final queuedRefreshFuture = service.refreshPreference();
+    retryResult.complete(ProductAnalyticsPreferenceVolatileDisablePending(pending: volatileDisable));
+    await Future.wait([retryFuture, queuedRefreshFuture]);
+
+    expect(preferenceRepository.reconcileCalls, hasLength(1));
+    expect(service.state.synchronization, isA<ProductAnalyticsDisableRetryRequired>());
+    expect(service.state.isActive, isFalse);
   });
 
   test("a queued disable reasserts suppression after an earlier refresh completes", () async {
@@ -1032,6 +1137,53 @@ void main() {
 
     expect(preparationCompleted, isTrue);
     expect(service.state.displayedPreference, ProductAnalyticsPreference.disabled);
+  });
+
+  test("logout retains an in-flight enable instead of retrying a stale pending disable", () async {
+    createService();
+    final pendingDisable = LocalProductAnalyticsPendingDisable(
+      userId: _userA.id,
+      revision: 1,
+      userKey: _userKeyA,
+      operationId: _operationId,
+    );
+    final enabled = _recordWithRevision(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+      revision: 2,
+    );
+    preferenceRepository.localByUser[_userA.id] = pendingDisable;
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferencePendingSync(pending: pendingDisable),
+    );
+    await service.start();
+    await service.markPostSplashReady();
+
+    final enableResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.setHandlers.add((_, _, _) => enableResult.future);
+    final enableFuture = service.setPreference(preference: ProductAnalyticsPreference.enabled);
+    while (preferenceRepository.setCalls.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final preparationFuture = service.prepareForLogout();
+    preferenceRepository.reconcileHandlers.add(
+      (_, local) async {
+        expect(local, isA<LocalProductAnalyticsSynced>());
+        expect(local?.record.preference, ProductAnalyticsPreference.enabled);
+        return ProductAnalyticsPreferenceSynchronized(record: enabled);
+      },
+    );
+    enableResult.complete(ProductAnalyticsPreferenceSynchronized(record: enabled));
+    await Future.wait([enableFuture, preparationFuture]);
+
+    expect(preferenceRepository.reconcileCalls, hasLength(1));
+    expect(service.state.isActive, isFalse);
+
+    await service.resumeAfterFailedLogout();
+
+    expect(preferenceRepository.reconcileCalls, hasLength(2));
+    expect(service.state.isActive, isTrue);
   });
 
   test("prepareForLogout awaits a disable queued behind the captured operation", () async {
