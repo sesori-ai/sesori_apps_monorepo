@@ -304,6 +304,9 @@ class _TestDescriptor extends BridgePluginDescriptor {
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
 
   @override
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override

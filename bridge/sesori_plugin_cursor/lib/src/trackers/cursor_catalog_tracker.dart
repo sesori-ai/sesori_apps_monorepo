@@ -4,6 +4,7 @@ import "../models/cursor_catalog_models.dart";
 
 /// Layer-2 owner of Cursor's learned catalog and per-scope probe outcomes.
 class CursorCatalogTracker {
+  int _revision = 0;
   String? _modelConfigId;
   List<CursorCatalogOption> _models = const [];
   String? _modeConfigId;
@@ -21,9 +22,14 @@ class CursorCatalogTracker {
   String? get defaultModeId => _defaultModeId;
   String? get currentModelId => _currentModelId;
 
+  /// Monotonically identifies catalog mutations so an isolated refresh cannot
+  /// replace newer state captured from the live Cursor process.
+  int get revision => _revision;
+
   bool get isComplete => _models.isNotEmpty && _modes.isNotEmpty && _provisionalThoughtLevelVariants.isNotEmpty;
 
   void applyBootstrapSnapshot({required CursorCatalogBootstrapSnapshot snapshot}) {
+    _revision++;
     if (_models.isEmpty && snapshot.models.isNotEmpty) _models = snapshot.models;
     if (_modes.isEmpty && snapshot.modes.isNotEmpty) _modes = snapshot.modes;
     _defaultModeId ??= snapshot.defaultModeId;
@@ -41,6 +47,7 @@ class CursorCatalogTracker {
     required String? thoughtLevelModelId,
     required bool captureThoughtLevelDefault,
   }) {
+    _revision++;
     if (snapshot.modelConfigId != null) _modelConfigId = snapshot.modelConfigId;
     if (snapshot.models.isNotEmpty) _models = snapshot.models;
     final loadedModelId = snapshot.loadedModelId;
@@ -102,6 +109,84 @@ class CursorCatalogTracker {
 
   CursorCatalogProbeOutcome? outcomeForScope({required String scope}) =>
       _outcomesByScope[_normalizeScope(scope: scope)];
+
+  /// Invalidates discovery decisions made for an older catalog snapshot.
+  void invalidateProbeOutcomes() => _outcomesByScope.clear();
+
+  /// Creates an isolated mutable copy for reuse discovery. The service can
+  /// commit it atomically only if the live tracker did not change meanwhile.
+  CursorCatalogTracker stageForDiscovery() {
+    final staged = CursorCatalogTracker();
+    staged._revision = _revision;
+    staged._modelConfigId = _modelConfigId;
+    staged._models = List.unmodifiable(_models);
+    staged._modeConfigId = _modeConfigId;
+    staged._modes = List.unmodifiable(_modes);
+    staged._defaultModeId = _defaultModeId;
+    staged._thoughtLevelsByModel.addAll(_thoughtLevelsByModel);
+    staged._provisionalThoughtLevelVariants = List.unmodifiable(
+      _provisionalThoughtLevelVariants,
+    );
+    staged._currentModelId = _currentModelId;
+    staged._outcomesByScope.addAll(_outcomesByScope);
+    return staged;
+  }
+
+  /// Commits one staged reuse probe, including partial catalog progress and
+  /// per-scope retry outcomes accumulated from the prior live snapshot.
+  void replaceReusedCatalog({required CursorCatalogTracker discovered}) {
+    _modelConfigId = discovered._modelConfigId;
+    _models = List.unmodifiable(discovered._models);
+    _modeConfigId = discovered._modeConfigId;
+    _modes = List.unmodifiable(discovered._modes);
+    _defaultModeId = discovered._defaultModeId;
+    _thoughtLevelsByModel
+      ..clear()
+      ..addAll(discovered._thoughtLevelsByModel);
+    _provisionalThoughtLevelVariants = List.unmodifiable(
+      discovered._provisionalThoughtLevelVariants,
+    );
+    _currentModelId = discovered._currentModelId;
+    _outcomesByScope
+      ..clear()
+      ..addAll(discovered._outcomesByScope);
+    _revision++;
+  }
+
+  /// Replaces discoverable catalog data after a successful forced probe.
+  /// Live-process defaults survive only when the refreshed catalog still
+  /// contains them; a failed probe never calls this method.
+  void replaceDiscoveredCatalog({
+    required CursorCatalogTracker discovered,
+    required String scope,
+    required CursorCatalogProbeOutcome outcome,
+  }) {
+    final previousModelConfigId = _modelConfigId;
+    final previousModeConfigId = _modeConfigId;
+    final previousCurrentModelId = _currentModelId;
+    final previousDefaultModeId = _defaultModeId;
+
+    _modelConfigId = discovered._modelConfigId ?? previousModelConfigId;
+    _models = List.unmodifiable(discovered._models);
+    _modeConfigId = discovered._modeConfigId ?? previousModeConfigId;
+    _modes = List.unmodifiable(discovered._modes);
+    _thoughtLevelsByModel
+      ..clear()
+      ..addAll(discovered._thoughtLevelsByModel);
+    _provisionalThoughtLevelVariants = List.unmodifiable(
+      discovered._provisionalThoughtLevelVariants,
+    );
+
+    _currentModelId = previousCurrentModelId != null && hasModel(modelId: previousCurrentModelId)
+        ? previousCurrentModelId
+        : discovered._currentModelId;
+    _defaultModeId = previousDefaultModeId != null && hasModeOption(modeId: previousDefaultModeId)
+        ? previousDefaultModeId
+        : discovered._defaultModeId;
+    _outcomesByScope.clear();
+    recordOutcome(scope: scope, outcome: outcome);
+    _revision++;
+  }
 
   String _normalizeScope({required String scope}) => normalizeProjectDirectory(directory: scope);
 }

@@ -165,9 +165,12 @@ void main() {
       ),
     );
 
-    final options = await service.getSessionOptions(projectId: "/repo");
+    final result = await service.getSessionOptions(projectId: "/repo");
 
     expect(modelRepository.listCount, 1);
+    expect(result, isA<PluginSessionOptionsDiscoveryObserved>());
+    final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+    expect(options.completeness, PluginSessionOptionsCompleteness.complete);
     expect(options.agents.map((agent) => agent.name), ["Default", "Plan"]);
     expect(
       options.agents.map((agent) => agent.model?.modelID),
@@ -210,6 +213,46 @@ void main() {
     expect(provider.defaultModelID, "configured-model");
     expect(provider.models.single.id, "configured-model");
     expect(provider.models.single.name, "configured-model");
+  });
+
+  test("aggregate marks model fallback partial and still lists models exactly once", () async {
+    final service = _newService(
+      metadataRepository: _StubMetadataRepository(
+        defaults: const CodexConfigDefaults(
+          model: "configured-model",
+          modelProvider: "openai",
+        ),
+      ),
+    );
+    final modelRepository = _StubModelRepository(error: StateError("models unavailable"));
+    service.attachAppServerRepositories(
+      threadRepository: _StubThreadRepository(),
+      modelRepository: modelRepository,
+      skillRepository: _StubSkillRepository(),
+    );
+
+    final result = await service.getSessionOptions(projectId: "/repo");
+
+    expect(modelRepository.listCount, 1);
+    final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+    expect(options.completeness, PluginSessionOptionsCompleteness.partial);
+    expect(options.providers.providers.single.defaultModelID, "configured-model");
+    expect(options.commands.single.name, "compact");
+  });
+
+  test("aggregate marks the deliberate skill fallback partial", () async {
+    final service = _newService();
+    service.attachAppServerRepositories(
+      threadRepository: _StubThreadRepository(),
+      modelRepository: _StubModelRepository(),
+      skillRepository: _StubSkillRepository(error: StateError("skills unavailable")),
+    );
+
+    final result = await service.getSessionOptions(projectId: "/repo");
+
+    final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+    expect(options.completeness, PluginSessionOptionsCompleteness.partial);
+    expect(options.commands.single.name, "compact");
   });
 }
 

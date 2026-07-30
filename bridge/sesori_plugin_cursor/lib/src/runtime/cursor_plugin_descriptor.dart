@@ -115,6 +115,9 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
 
   @override
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
+
+  @override
   List<PluginOption> get options => cliOptions;
 
   @override

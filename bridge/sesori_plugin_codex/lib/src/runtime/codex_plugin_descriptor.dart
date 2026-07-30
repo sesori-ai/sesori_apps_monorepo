@@ -119,6 +119,9 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
 
   @override
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
   PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;
 
   @override

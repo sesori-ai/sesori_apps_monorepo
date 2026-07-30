@@ -11,14 +11,20 @@ void main() {
   group("CursorCatalogService", () {
     late _FakeCursorCatalogRepository repository;
     late CursorCatalogTracker tracker;
+    late AcpCommandTracker commandTracker;
+    late AcpCommandTracker stagedCommandTracker;
     late CursorCatalogService service;
 
     setUp(() {
       repository = _FakeCursorCatalogRepository();
       tracker = CursorCatalogTracker();
+      commandTracker = AcpCommandTracker();
+      stagedCommandTracker = AcpCommandTracker();
       service = CursorCatalogService(
         repository: repository,
         tracker: tracker,
+        commandTracker: commandTracker,
+        stagedCommandTracker: stagedCommandTracker,
         totalTimeout: const Duration(seconds: 12),
         maxCandidates: 8,
       );
@@ -157,6 +163,9 @@ void main() {
         tracker.outcomeForScope(scope: "/project"),
         CursorCatalogProbeOutcome.exhausted,
       );
+
+      expect(await service.refreshCatalog(scope: "/project"), isTrue);
+      expect(repository.listedScopes, ["/project", "/project"]);
     });
 
     test("an exhausted launch scope does not suppress another project scope", () async {
@@ -208,10 +217,166 @@ void main() {
       expect(repository.resetCount, 2);
     });
 
+    test("waiting reuse callers do not observe catalog before staged commands commit", () async {
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "model", name: "Model", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "agent", name: "Agent", description: null),
+        ],
+        defaultModeId: "agent",
+        thoughtLevelsByModel: {
+          "model": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      commandTracker.consume(_commandUpdate("old-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("fresh-command"));
+      };
+      repository.resetStarted = Completer<void>();
+      repository.resetGate = Completer<void>();
+
+      final first = service.ensureCatalog(scope: "/project");
+      await repository.resetStarted!.future;
+      var secondCompleted = false;
+      final second = service.ensureCatalog(scope: "/project").whenComplete(() {
+        secondCompleted = true;
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(secondCompleted, isFalse);
+      expect(commandTracker.commands.single.name, "old-command");
+
+      repository.resetGate!.complete();
+      await Future.wait([first, second]);
+      expect(commandTracker.commands.single.name, "fresh-command");
+    });
+
+    test("a newer live command snapshot wins over an in-flight probe snapshot", () async {
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "model", name: "Model", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "agent", name: "Agent", description: null),
+        ],
+        defaultModeId: "agent",
+        thoughtLevelsByModel: {
+          "model": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      commandTracker.consume(_commandUpdate("old-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("probe-command"));
+      };
+      repository.resetStarted = Completer<void>();
+      repository.resetGate = Completer<void>();
+
+      final loading = service.ensureCatalog(scope: "/project");
+      await repository.resetStarted!.future;
+      commandTracker.consume(_commandUpdate("live-command"));
+      repository.resetGate!.complete();
+      await loading;
+
+      expect(commandTracker.commands.single.name, "live-command");
+    });
+
+    test("a cleared command snapshot is rehydrated despite a complete catalog", () async {
+      tracker.applySnapshot(
+        snapshot: _snapshot(includeThoughtLevel: true),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      commandTracker.consume(_commandUpdate("old-command"));
+      await service.ensureCatalog(scope: "/project");
+      expect(repository.openCount, 0);
+
+      commandTracker.clear();
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("rehydrated-command"));
+      };
+
+      await service.ensureCatalog(scope: "/project");
+
+      expect(repository.openCount, 1);
+      expect(commandTracker.commands.single.name, "rehydrated-command");
+    });
+
+    test("reuse discovery does not overwrite a newer live catalog snapshot", () async {
+      repository.candidates = _candidates([(id: "probe", updatedAtMs: 1)]);
+      repository.snapshots["probe"] = CursorCatalogSnapshot(
+        modelConfigId: "model-picker",
+        models: const [
+          CursorCatalogOption(value: "probe-model", name: "Probe", description: null),
+        ],
+        loadedModelId: "probe-model",
+        modeConfigId: "mode-picker",
+        modes: const [
+          CursorCatalogOption(value: "probe-mode", name: "Probe", description: null),
+        ],
+        loadedModeId: "probe-mode",
+        thoughtLevel: CursorThoughtLevelSnapshot(
+          configId: "effort",
+          variants: const ["medium"],
+          defaultValue: "medium",
+        ),
+      );
+      commandTracker.consume(_commandUpdate("live-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("probe-command"));
+      };
+      repository.listGate = Completer<void>();
+
+      final loading = service.ensureCatalog(scope: "/project");
+      while (repository.listedScopes.isEmpty) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      tracker.applySnapshot(
+        snapshot: CursorCatalogSnapshot(
+          modelConfigId: "model-picker",
+          models: const [
+            CursorCatalogOption(value: "live-model", name: "Live", description: null),
+          ],
+          loadedModelId: "live-model",
+          modeConfigId: "mode-picker",
+          modes: const [
+            CursorCatalogOption(value: "live-mode", name: "Live", description: null),
+          ],
+          loadedModeId: "live-mode",
+          thoughtLevel: CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["high"],
+            defaultValue: "high",
+          ),
+        ),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.listGate!.complete();
+      await loading;
+
+      expect(tracker.models.single.value, "live-model");
+      expect(tracker.modes.single.value, "live-mode");
+      expect(commandTracker.commands.single.name, "live-command");
+    });
+
     test("short deadline completes and resets a timed-out repository", () async {
       service = CursorCatalogService(
         repository: repository,
         tracker: tracker,
+        commandTracker: commandTracker,
+        stagedCommandTracker: stagedCommandTracker,
         totalTimeout: const Duration(milliseconds: 20),
         maxCandidates: 8,
       );
@@ -227,6 +392,274 @@ void main() {
         CursorCatalogProbeOutcome.retryableFailure,
       );
       expect(repository.resetCount, 1);
+    });
+
+    test("forced discovery bypasses an already-complete tracker", () async {
+      tracker.applySnapshot(
+        snapshot: _snapshot(includeThoughtLevel: true),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [CursorCatalogOption(value: "fresh", name: "Fresh", description: null)],
+        modes: const [CursorCatalogOption(value: "agent", name: "Agent", description: null)],
+        defaultModeId: "agent",
+        thoughtLevelsByModel: {
+          "fresh": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      commandTracker.consume(_commandUpdate("old-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("fresh-command"));
+      };
+
+      expect(await service.refreshCatalog(scope: "/project"), isTrue);
+
+      expect(repository.openCount, 1);
+      expect(tracker.models.single.value, "fresh");
+      expect(commandTracker.commands.single.name, "fresh-command");
+    });
+
+    test("forced discovery does not overwrite a newer live catalog snapshot", () async {
+      tracker.applySnapshot(
+        snapshot: _snapshot(includeThoughtLevel: true),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "probe-model", name: "Probe", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "probe-mode", name: "Probe", description: null),
+        ],
+        defaultModeId: "probe-mode",
+        thoughtLevelsByModel: {
+          "probe-model": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      commandTracker.consume(_commandUpdate("live-command"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("probe-command"));
+      };
+      repository.resetStarted = Completer<void>();
+      repository.resetGate = Completer<void>();
+
+      final refreshing = service.refreshCatalog(scope: "/project");
+      await repository.resetStarted!.future;
+      tracker.applySnapshot(
+        snapshot: CursorCatalogSnapshot(
+          modelConfigId: "model-picker",
+          models: const [
+            CursorCatalogOption(value: "live-model", name: "Live", description: null),
+          ],
+          loadedModelId: "live-model",
+          modeConfigId: "mode-picker",
+          modes: const [
+            CursorCatalogOption(value: "live-mode", name: "Live", description: null),
+          ],
+          loadedModeId: "live-mode",
+          thoughtLevel: CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["high"],
+            defaultValue: "high",
+          ),
+        ),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.resetGate!.complete();
+
+      expect(await refreshing, isTrue);
+      expect(tracker.models.single.value, "live-model");
+      expect(tracker.modes.single.value, "live-mode");
+      expect(commandTracker.commands.single.name, "live-command");
+    });
+
+    test("forced discovery without commands invalidates the stale command snapshot", () async {
+      tracker.applySnapshot(
+        snapshot: _snapshot(includeThoughtLevel: true),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      commandTracker.consume(_commandUpdate("stale-command"));
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "fresh", name: "Fresh", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "agent", name: "Agent", description: null),
+        ],
+        defaultModeId: "agent",
+        thoughtLevelsByModel: {
+          "fresh": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+
+      expect(await service.refreshCatalog(scope: "/project"), isTrue);
+
+      expect(commandTracker.commands, isEmpty);
+      expect(commandTracker.hasSnapshot, isFalse);
+    });
+
+    test("a live capture during forced discovery invalidates stale reuse decisions", () async {
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: false,
+      );
+      await service.ensureCatalog(scope: "/project");
+      await service.ensureCatalog(scope: "/project");
+      expect(repository.openCount, 2, reason: "bounded reuse spent its one retry");
+
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "probe-model", name: "Probe", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "probe-mode", name: "Probe", description: null),
+        ],
+        defaultModeId: "probe-mode",
+        thoughtLevelsByModel: {
+          "probe-model": CursorThoughtLevelSnapshot(
+            configId: "effort",
+            variants: const ["medium"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+      repository.resetStarted = Completer<void>();
+      repository.resetGate = Completer<void>();
+
+      final refreshing = service.refreshCatalog(scope: "/project");
+      await repository.resetStarted!.future;
+      tracker.applySnapshot(
+        snapshot: CursorCatalogSnapshot(
+          modelConfigId: "model-picker",
+          models: const [
+            CursorCatalogOption(value: "live-model", name: "Live", description: null),
+          ],
+          loadedModelId: "live-model",
+          modeConfigId: null,
+          modes: const [],
+          loadedModeId: null,
+          thoughtLevel: null,
+        ),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      repository.resetGate!.complete();
+      expect(await refreshing, isTrue);
+      expect(tracker.isComplete, isFalse);
+
+      repository.resetStarted = null;
+      repository.resetGate = null;
+      await service.ensureCatalog(scope: "/project");
+
+      expect(repository.openCount, 4);
+      expect(tracker.isComplete, isTrue);
+    });
+
+    test("forced discovery bypasses exhausted and already-retried scope state", () async {
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: false,
+      );
+      await service.ensureCatalog(scope: "/project");
+      await service.ensureCatalog(scope: "/project");
+      await service.ensureCatalog(scope: "/project");
+      expect(repository.openCount, 2, reason: "bounded reuse spent its one retry");
+
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: true,
+      );
+      expect(await service.refreshCatalog(scope: "/project"), isTrue);
+
+      expect(repository.openCount, 3);
+      expect(
+        tracker.outcomeForScope(scope: "/project"),
+        CursorCatalogProbeOutcome.exhausted,
+      );
+    });
+
+    test("successful forced replacement clears stale scope outcomes and retry budgets", () async {
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: false,
+      );
+      await service.ensureCatalog(scope: "/stale");
+      await service.ensureCatalog(scope: "/stale");
+      expect(repository.openCount, 2, reason: "bounded reuse spent its one retry");
+
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: true,
+      );
+      expect(await service.refreshCatalog(scope: "/refresh"), isTrue);
+      expect(repository.openCount, 3);
+
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: false,
+      );
+      await service.ensureCatalog(scope: "/stale");
+
+      expect(repository.openCount, 4);
+      expect(repository.listedScopes.last, "/stale");
+    });
+
+    test("concurrent forced discovery callers join one bounded probe", () async {
+      repository.openGate = Completer<void>();
+
+      final first = service.refreshCatalog(scope: "/project");
+      final second = service.refreshCatalog(scope: "/other");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repository.openCount, 1);
+      repository.openGate!.complete();
+      expect(await Future.wait([first, second]), everyElement(isTrue));
+      expect(repository.openCount, 1);
+      expect(repository.resetCount, 1);
+    });
+
+    test("failed forced discovery retains the last-good tracker", () async {
+      tracker.applySnapshot(
+        snapshot: _snapshot(includeThoughtLevel: true),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
+      );
+      final modelsBefore = tracker.models;
+      final modesBefore = tracker.modes;
+      commandTracker.consume(_commandUpdate("last-good"));
+      repository.onOpen = () {
+        stagedCommandTracker.consume(_commandUpdate("failed-refresh"));
+      };
+      repository.openError = StateError("probe unavailable");
+
+      expect(await service.refreshCatalog(scope: "/project"), isFalse);
+
+      expect(tracker.models, modelsBefore);
+      expect(tracker.modes, modesBefore);
+      expect(tracker.isComplete, isTrue);
+      expect(commandTracker.commands.single.name, "last-good");
     });
   });
 }
@@ -269,6 +702,19 @@ CursorCatalogSnapshot _snapshot({required bool includeThoughtLevel}) {
   );
 }
 
+AcpNotification _commandUpdate(String name) => AcpNotification(
+  method: "session/update",
+  params: {
+    "sessionId": "session",
+    "update": {
+      "sessionUpdate": "available_commands_update",
+      "availableCommands": [
+        {"name": name},
+      ],
+    },
+  },
+);
+
 class _FakeCursorCatalogRepository implements CursorCatalogRepository {
   CursorCatalogCandidateListResult candidates = CursorCatalogCandidateListResult(
     candidates: const [],
@@ -283,12 +729,25 @@ class _FakeCursorCatalogRepository implements CursorCatalogRepository {
   bool delayLoadsUntilTimeout = false;
   CursorCatalogBootstrapSnapshot? bootstrapSnapshot;
   Object? bootstrapError;
+  Object? openError;
+  Completer<void>? openGate;
+  Completer<void>? resetStarted;
+  Completer<void>? resetGate;
+  void Function()? onOpen;
+  int openCount = 0;
   int resetCount = 0;
   int _concurrentLists = 0;
   int maxConcurrentLists = 0;
 
   @override
-  Future<bool> open({required Duration timeout}) async => probeSupported;
+  Future<bool> open({required Duration timeout}) async {
+    openCount++;
+    await openGate?.future;
+    onOpen?.call();
+    final error = openError;
+    if (error != null) throw error;
+    return probeSupported;
+  }
 
   @override
   Future<CursorCatalogBootstrapSnapshot?> loadAvailableCatalog({required Duration timeout}) async {
@@ -336,6 +795,8 @@ class _FakeCursorCatalogRepository implements CursorCatalogRepository {
   @override
   Future<void> reset() async {
     resetCount++;
+    resetStarted?.complete();
+    await resetGate?.future;
   }
 
   @override

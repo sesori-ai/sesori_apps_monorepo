@@ -237,6 +237,12 @@ class _ThrowingPlugin implements NativeProjectsPluginApi {
   String get id => "running-plugin";
 
   @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) {
     calls++;
     throw StateError("plugin member ${invocation.memberName} must not be called by catalog reads");

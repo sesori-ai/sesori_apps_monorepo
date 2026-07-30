@@ -1574,6 +1574,54 @@ void main() {
       expect(agents.every((agent) => agent.model?.modelID == "gpt-5.5"), isTrue);
     });
 
+    test("getSessionOptions delegates one coherent aggregate with one model/list", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "data": [
+              {
+                "id": "gpt-5.5",
+                "displayName": "GPT-5.5",
+                "hidden": false,
+                "isDefault": true,
+              },
+            ],
+          },
+        ),
+        const _Response(
+          result: {
+            "data": [
+              {
+                "cwd": "/work/sample",
+                "skills": [
+                  {
+                    "name": "review",
+                    "description": "Review changes",
+                    "shortDescription": null,
+                    "interface": null,
+                    "enabled": true,
+                  },
+                ],
+              },
+            ],
+          },
+        ),
+      ]);
+
+      final result = await plugin.getSessionOptions(
+        projectId: "/work/sample",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+
+      final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+      expect(options.providers.providers.single.models.single.id, "gpt-5.5");
+      expect(options.agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(options.commands.map((command) => command.name), ["review", "compact"]);
+      expect(fake.sentMethods.where((method) => method == "model/list"), hasLength(1));
+    });
+
     test("getProviders preselects the project's own latest rollout model over codex's live default", () async {
       // The selected project's newest rollout used gpt-5.4-mini, while codex's
       // live catalog marks gpt-5.5 as the global default — the project-scoped

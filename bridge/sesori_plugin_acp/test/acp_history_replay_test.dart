@@ -18,13 +18,26 @@ void main() {
 
     setUp(() {
       fake = FakeAcpProcess();
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       plugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
-        commandTracker: AcpCommandTracker(),
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          agentId: "acp",
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: (_) async => fake,
       );
       // Prime the session's directory so the replay skips the live warm-up
@@ -174,10 +187,48 @@ void main() {
       await expectLater(loading, throwsA(isA<PluginOperationException>()));
     });
 
+    test("a command snapshot replayed before a genuine failure still signals option changes", () async {
+      final emitted = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(emitted.add);
+      addTearDown(subscription.cancel);
+      final loading = plugin.getSessionMessages(sessionId);
+      await completeReplayHandshake();
+
+      final loadFrame = await waitForFrame("session/load");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "from_failed_replay"},
+            ],
+          },
+        },
+      });
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "error": {"code": -32000, "message": "Server error"},
+      });
+
+      await expectLater(loading, throwsA(isA<PluginOperationException>()));
+      await pump();
+      expect(
+        emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
+        sessionId,
+      );
+    });
+
     test("same-process replay reuses the synthesized initial prompt identity", () async {
       final liveFake = FakeAcpProcess();
       final replayFake = FakeAcpProcess();
       final availableFakes = [liveFake, replayFake];
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
       final createdPlugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
@@ -187,8 +238,15 @@ void main() {
           launchDirectory: cwd,
           agentId: "acp",
           pluginId: "acp",
+          configurationTracker: configurationTracker,
         ),
-        commandTracker: AcpCommandTracker(),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
         processFactory: (_) async => availableFakes.removeAt(0),
       );
       final emitted = <BridgeSseEvent>[];

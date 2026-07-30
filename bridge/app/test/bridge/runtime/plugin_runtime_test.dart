@@ -1512,6 +1512,9 @@ class _FakeDescriptor extends BridgePluginDescriptor {
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
 
   @override
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override
@@ -1612,6 +1615,12 @@ class _FakeApi extends NativeProjectsPluginApi {
     disposeCount++;
     if (closeEventsOnDispose && !eventsController.isClosed) await eventsController.close();
   }
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

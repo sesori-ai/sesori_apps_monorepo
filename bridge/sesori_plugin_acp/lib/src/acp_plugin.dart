@@ -12,6 +12,7 @@ import "acp_event_mapper.dart";
 import "acp_process_factory.dart";
 import "acp_protocol.dart";
 import "acp_session_loader.dart";
+import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
 
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
@@ -39,10 +40,12 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required String launchDirectory,
     required this.eventMapper,
     required AcpCommandTracker commandTracker,
+    required AcpSessionOptionsService sessionOptionsService,
     AcpProcessFactory? processFactory,
   }) : launchDirectory = normalizeProjectDirectory(directory: launchDirectory),
        _processFactory = processFactory,
        _commandTracker = commandTracker,
+       _sessionOptionsService = sessionOptionsService,
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
 
   @override
@@ -68,6 +71,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// Snapshot of the agent's advertised slash commands, fed by the
   /// notification listener and served by [getCommands].
   final AcpCommandTracker _commandTracker;
+  final AcpSessionOptionsService _sessionOptionsService;
   AcpCommandListener? _commandListener;
 
   /// sessionId -> the canonical directory the session lives in. Populated on
@@ -197,8 +201,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   /// Captures the model/mode catalog from a `session/new` or `session/load`
   /// result (config-option ids, available models/modes, current values) and
-  /// seeds the event mapper's fallback model. When [sessionId] is known, the
-  /// session's current model is recorded for per-message stamping.
+  /// seeds the configuration tracker's process fallback. When [sessionId] is
+  /// known, the session's current model is recorded for per-message stamping.
   ///
   /// [fromNewSession] distinguishes a `session/new` response — the only source
   /// that carries the backend's *new-session default* model/mode — from a
@@ -661,6 +665,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // Served from the `available_commands_update` snapshot — ACP advertises
       // commands via that notification, not a request endpoint.
       _commandTracker.commands;
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) async => PluginSessionOptionsDiscoveryResult.observed(
+    options: _sessionOptionsService.getSessionOptions(),
+  );
 
   @override
   Future<PluginSession> createSession({
@@ -1231,9 +1243,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     _syntheticInitialPromptSessions.remove(sessionId);
     _residentSessions.remove(sessionId);
     _sessionDirectories.remove(sessionId);
+    _sessionOptionsService.forgetSession(sessionId: sessionId);
     // Drops the session's project attribution plus all other per-session mapper
-    // caches (model, turn counters, started parts, live tools) so nothing
-    // accumulates for a deleted session.
+    // caches (turn counters, started parts, live tools) so nothing accumulates
+    // for a deleted session. Provider/model state is cleared from its tracker
+    // independently above.
     eventMapper.forgetSession(sessionId);
   }
 
@@ -1278,8 +1292,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final collector = AcpReplayCollector(
       sessionId: sessionId,
       agentId: agentDisplayName,
-      modelId: eventMapper.modelForSession(sessionId),
-      providerId: eventMapper.providerForSession(sessionId),
+      modelId: eventMapper.modelForSession(sessionId: sessionId),
+      providerId: eventMapper.providerForSession(sessionId: sessionId),
       initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
           ? AcpEventMapper.initialUserMessageId(sessionId)
           : null,
@@ -1289,6 +1303,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     );
     StreamSubscription<AcpNotification>? sub;
     AcpCommandListener? commandListener;
+    List<BridgeSseEvent>? deferredCommandRefresh;
+    void flushDeferredCommandRefresh() {
+      final events = deferredCommandRefresh;
+      if (events == null) return;
+      deferredCommandRefresh = null;
+      events.forEach(_eventBuffer.add);
+    }
+
     try {
       await replayClient.connect();
       final replayInit = await _initialize(replayClient);
@@ -1303,7 +1325,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         throw StateError("replay agent exited during initialization");
       }
       var received = 0;
-      BridgeSseSessionsUpdated? deferredCommandRefresh;
       commandListener = AcpCommandListener(
         notifications: replayClient.notifications,
         tracker: _commandTracker,
@@ -1314,8 +1335,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           collector.consume(notification.params);
           final update = notification.params["update"];
           if (update is Map && update["sessionUpdate"] == "available_commands_update") {
-            final refreshes = eventMapper.map(notification).whereType<BridgeSseSessionsUpdated>();
-            if (refreshes.isNotEmpty) deferredCommandRefresh = refreshes.last;
+            deferredCommandRefresh = eventMapper.map(notification);
           }
         }
       });
@@ -1353,8 +1373,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           // A command snapshot replayed before the rejection already mutated
           // the process-global tracker, so consumers still need the refresh
           // nudge — same flush as the success path below.
-          final commandRefresh = deferredCommandRefresh;
-          if (commandRefresh != null) _eventBuffer.add(commandRefresh);
+          flushDeferredCommandRefresh();
           return collector.build();
         }
         // Any other RPC error is a genuine load failure — wrapped typed below.
@@ -1372,14 +1391,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // AFTER it. Drain until the replay stream goes quiet so multi-turn history
       // is captured in full, bounded so a chatty agent can't hang the request.
       await _drainReplay(() => received);
-      final commandRefresh = deferredCommandRefresh;
-      if (commandRefresh != null) _eventBuffer.add(commandRefresh);
-      collector.modelId = eventMapper.modelForSession(sessionId);
-      collector.providerId = eventMapper.providerForSession(sessionId);
+      flushDeferredCommandRefresh();
+      collector.modelId = eventMapper.modelForSession(sessionId: sessionId);
+      collector.providerId = eventMapper.providerForSession(sessionId: sessionId);
       return collector.build();
     } on PluginAuthenticationRequiredException {
+      flushDeferredCommandRefresh();
       rethrow;
     } on Object catch (error, stackTrace) {
+      flushDeferredCommandRefresh();
       // A broken replay (connect/init/auth/load failure) must stay
       // distinguishable from a genuinely empty thread: surface it as a typed
       // failure (the bridge router maps it to a 502 and the phone renders a
@@ -1432,49 +1452,12 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    final modelId = eventMapper.currentModelId;
-    return [
-      PluginAgent(
-        name: id,
-        description: "$agentDisplayName session",
-        model: modelId == null
-            ? null
-            : PluginAgentModel(
-                modelID: modelId,
-                providerID: eventMapper.currentProviderId ?? id,
-                variant: null,
-              ),
-        mode: PluginAgentMode.primary,
-        hidden: false,
-      ),
-    ];
+    return _sessionOptionsService.getSessionOptions().agents;
   }
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    final modelId = eventMapper.currentModelId;
-    if (modelId == null) return const PluginProvidersResult(providers: []);
-    final providerId = eventMapper.currentProviderId ?? id;
-    return PluginProvidersResult(
-      providers: [
-        PluginProvider.custom(
-          id: providerId,
-          name: agentDisplayName,
-          authType: PluginProviderAuthType.unknown,
-          models: [
-            PluginModel(
-              id: modelId,
-              name: modelId,
-              variants: const [],
-              family: null,
-              isAvailable: true,
-              releaseDate: null,
-            ),
-          ],
-          defaultModelID: modelId,
-        ),
-      ],
-    );
+    return _sessionOptionsService.getSessionOptions().providers;
   }
 
   @override
