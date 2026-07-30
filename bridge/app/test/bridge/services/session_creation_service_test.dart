@@ -159,8 +159,8 @@ void main() {
       expect((plugin.lastCreateParts!.first as PluginPromptPartText).text, contains("SYSTEM CONTEXT"));
     });
 
-    test("stores a clean HEAD snapshot for an in-place session", () async {
-      worktreeService.cleanHeadCommit = "abc123";
+    test("stores the HEAD commit for an in-place session", () async {
+      worktreeService.headCommit = "abc123";
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
@@ -259,7 +259,7 @@ class _FakeWorktreeService extends WorktreeService {
   int prepareCalls = 0;
   int resolveCalls = 0;
   WorktreeResult prepareResult = WorktreeFallback(originalPath: "/repo", reason: "fallback");
-  String? cleanHeadCommit;
+  String? headCommit;
 
   _FakeWorktreeService({required super.worktreeRepository});
 
@@ -274,11 +274,11 @@ class _FakeWorktreeService extends WorktreeService {
   }
 
   @override
-  Future<String?> resolveCleanHeadCommit({
+  Future<String?> resolveHeadCommit({
     required String projectId,
   }) async {
     resolveCalls++;
-    return cleanHeadCommit;
+    return headCommit;
   }
 }
 
