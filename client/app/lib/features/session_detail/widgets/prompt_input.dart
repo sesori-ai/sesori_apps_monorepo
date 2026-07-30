@@ -169,6 +169,9 @@ class _PromptInputState extends State<PromptInput> {
         previousSelection: previousSelection.isValid
             ? (start: previousSelection.start, end: previousSelection.end)
             : null,
+        currentSelection: currentValue.selection.isValid
+            ? (start: currentValue.selection.start, end: currentValue.selection.end)
+            : null,
       );
       if (nextDraft != _draft) {
         _draft = nextDraft;
@@ -238,9 +241,9 @@ class _PromptInputState extends State<PromptInput> {
       );
       widget.onCommandCleared();
     } else {
-      final text = _controller.text.trim();
-      if (text.isEmpty) return;
-      widget.onSend(text: text, command: null, inputMode: _draft.inputMode);
+      final submission = _draftCalculator.trim(draft: _draft);
+      if (submission.text.isEmpty) return;
+      widget.onSend(text: submission.text, command: null, inputMode: submission.inputMode);
     }
 
     _controller.clear();

@@ -661,6 +661,35 @@ void main() {
     ).called(1);
   });
 
+  testWidgets("trimmed voice-only whitespace does not make a typed submission voice-assisted", (tester) async {
+    when(() => cubit.composerDraft).thenReturn(
+      ComposerDraft(
+        text: " typed",
+        voiceSpans: [VoiceOriginSpan(start: 0, end: 1)],
+      ),
+    );
+    when(
+      () => cubit.sendMessage(
+        text: "typed",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "typed",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      ),
+    ).called(1);
+  });
+
   testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {
     final startCompleter = Completer<void>();
     final stopCompleter = Completer<String>();

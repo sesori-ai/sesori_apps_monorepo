@@ -8,14 +8,24 @@ final class ComposerDraftCalculator {
     required ComposerDraft draft,
     required String newText,
     required ({int start, int end})? previousSelection,
+    required ({int start, int end})? currentSelection,
   }) {
     if (draft.text == newText) return draft;
 
     final selection = previousSelection;
     if (selection != null &&
         selection.start >= 0 &&
-        selection.end > selection.start &&
+        selection.end >= selection.start &&
         selection.end <= draft.text.length) {
+      if (selection.start == selection.end) {
+        final caretResult = _applyCollapsedCaretEdit(
+          draft: draft,
+          newText: newText,
+          previousCaret: selection.start,
+          currentSelection: currentSelection,
+        );
+        if (caretResult != null) return caretResult;
+      }
       final prefix = draft.text.substring(0, selection.start);
       final suffix = draft.text.substring(selection.end);
       final replacementLength = newText.length - prefix.length - suffix.length;
@@ -50,6 +60,90 @@ final class ComposerDraftCalculator {
       end: draft.text.length - suffixLength,
       replacement: newText.substring(prefixLength, newText.length - suffixLength),
     );
+  }
+
+  ComposerDraft? _applyCollapsedCaretEdit({
+    required ComposerDraft draft,
+    required String newText,
+    required int previousCaret,
+    required ({int start, int end})? currentSelection,
+  }) {
+    final current = currentSelection;
+    if (current == null || current.start != current.end || current.start < 0 || current.start > newText.length) {
+      return null;
+    }
+    final delta = newText.length - draft.text.length;
+    if (delta > 0 && current.start == previousCaret + delta) {
+      return _validatedTypedReplacement(
+        draft: draft,
+        newText: newText,
+        start: previousCaret,
+        end: previousCaret,
+      );
+    }
+    if (delta < 0) {
+      final deletedLength = -delta;
+      if (current.start == previousCaret - deletedLength) {
+        return _validatedTypedReplacement(
+          draft: draft,
+          newText: newText,
+          start: current.start,
+          end: previousCaret,
+        );
+      }
+      if (current.start == previousCaret) {
+        return _validatedTypedReplacement(
+          draft: draft,
+          newText: newText,
+          start: previousCaret,
+          end: previousCaret + deletedLength,
+        );
+      }
+    }
+    return null;
+  }
+
+  ComposerDraft? _validatedTypedReplacement({
+    required ComposerDraft draft,
+    required String newText,
+    required int start,
+    required int end,
+  }) {
+    if (start < 0 || end < start || end > draft.text.length) return null;
+    final replacementLength = newText.length - (draft.text.length - (end - start));
+    if (replacementLength < 0 || start + replacementLength > newText.length) return null;
+    final prefix = draft.text.substring(0, start);
+    final suffix = draft.text.substring(end);
+    if (!newText.startsWith(prefix) || !newText.endsWith(suffix)) return null;
+    return replaceTyped(
+      draft: draft,
+      start: start,
+      end: end,
+      replacement: newText.substring(start, start + replacementLength),
+    );
+  }
+
+  ComposerDraft trim({required ComposerDraft draft}) {
+    var result = draft;
+    final trimmedRightLength = result.text.trimRight().length;
+    if (trimmedRightLength != result.text.length) {
+      result = replaceTyped(
+        draft: result,
+        start: trimmedRightLength,
+        end: result.text.length,
+        replacement: "",
+      );
+    }
+    final leadingWhitespaceLength = result.text.length - result.text.trimLeft().length;
+    if (leadingWhitespaceLength != 0) {
+      result = replaceTyped(
+        draft: result,
+        start: 0,
+        end: leadingWhitespaceLength,
+        replacement: "",
+      );
+    }
+    return result;
   }
 
   ComposerDraft replaceTyped({

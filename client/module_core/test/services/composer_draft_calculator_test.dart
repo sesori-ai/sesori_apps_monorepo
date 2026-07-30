@@ -94,8 +94,38 @@ void main() {
       draft: voiceDraft("voice text", 0, 5),
       newText: "voice typed",
       previousSelection: (start: 0, end: 10),
+      currentSelection: (start: 11, end: 11),
     );
 
     expect(result.inputMode, ComposerInputMode.typed);
+  });
+
+  test("collapsed backspace uses caret positions to preserve repeated voice text", () {
+    final result = calculator.applyTypedEdit(
+      draft: voiceDraft("aa", 1, 2),
+      newText: "a",
+      previousSelection: (start: 1, end: 1),
+      currentSelection: (start: 0, end: 0),
+    );
+
+    expect(result.text, "a");
+    expect(result.voiceSpans, [VoiceOriginSpan(start: 0, end: 1)]);
+  });
+
+  test("trim removes voice attribution that exists only in omitted whitespace", () {
+    final result = calculator.trim(
+      draft: voiceDraft(" typed", 0, 1),
+    );
+
+    expect(result, ComposerDraft.typed(text: "typed"));
+  });
+
+  test("trim shifts retained voice attribution with the submitted text", () {
+    final result = calculator.trim(
+      draft: voiceDraft(" voice ", 1, 6),
+    );
+
+    expect(result.text, "voice");
+    expect(result.voiceSpans, [VoiceOriginSpan(start: 0, end: 5)]);
   });
 }
