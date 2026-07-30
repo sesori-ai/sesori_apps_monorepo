@@ -17,6 +17,7 @@ import "../../core/widgets/legal_document_sheet.dart";
 import "../../core/widgets/sesori_logo.dart";
 import "widgets/account_row.dart";
 import "widgets/appearance_picker.dart";
+import "widgets/chat_input_mode_picker.dart";
 import "widgets/settings_section.dart";
 
 /// Vertical inset between the nav bar and the first settings section.
@@ -116,6 +117,11 @@ class _SettingsBody extends StatelessWidget {
                 SettingsSection(
                   title: loc.settingsSectionAppearance,
                   child: const AppearancePicker(),
+                ),
+                const SizedBox(height: PregoSpacing.xl),
+                SettingsSection(
+                  title: loc.settingsSectionChatInput,
+                  child: const ChatInputModePicker(),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(

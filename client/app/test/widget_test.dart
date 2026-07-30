@@ -52,6 +52,9 @@ void main() {
   });
 
   test("SesoriApp can be instantiated", () {
-    expect(const SesoriApp(initialAppearance: AppearanceMode.system), isA<SesoriApp>());
+    expect(
+      const SesoriApp(initialAppearance: AppearanceMode.system, initialChatInputMode: ChatInputMode.voiceFirst),
+      isA<SesoriApp>(),
+    );
   });
 }

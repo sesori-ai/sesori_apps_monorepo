@@ -21,6 +21,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/connection_s
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
+import "package:sesori_dart_core/src/cubits/chat_input_mode/chat_input_mode_cubit.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_cubit.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_state.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
@@ -28,6 +29,7 @@ import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
+import "package:sesori_dart_core/src/repositories/chat_input_mode_store.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
@@ -65,6 +67,16 @@ class StubConnectionOverlayCubit extends Cubit<ConnectionOverlayState> implement
 
   @override
   void reconnect() {}
+}
+
+/// The composer resolves its resting layout (hold-to-talk vs tap-to-type)
+/// from [ChatInputModeCubit], so any harness that pumps a composer-bearing
+/// screen must provide one. Defaults to the app default, voice-first.
+class StubChatInputModeCubit extends Cubit<ChatInputMode> implements ChatInputModeCubit {
+  StubChatInputModeCubit({ChatInputMode initialState = ChatInputMode.voiceFirst}) : super(initialState);
+
+  @override
+  Future<void> select({required ChatInputMode mode}) async => emit(mode);
 }
 
 class MockProjectApi extends Mock implements ProjectApi {}

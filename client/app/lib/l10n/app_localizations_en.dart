@@ -404,6 +404,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
+  String get settingsSectionChatInput => 'Chat input';
+
+  @override
+  String get settingsChatInputVoiceFirst => 'Voice first';
+
+  @override
+  String get settingsChatInputTextFirst => 'Text first';
+
+  @override
   String get settingsSectionSupport => 'Support';
 
   @override
@@ -527,6 +536,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailFollowUpHint => 'Follow up...';
+
+  @override
+  String get sessionDetailHoldToTalkMore => 'Hold to talk more';
 
   @override
   String get sessionDetailTypeMessage => 'Type a message';
@@ -866,6 +878,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceCancelTranscription => 'Cancel transcription';
+
+  @override
+  String get voiceCancelRecording => 'Cancel recording';
+
+  @override
+  String get voiceReleaseToTranscribe => 'Release to transcribe';
+
+  @override
+  String get voiceReleaseToCancel => 'Release to cancel';
 
   @override
   String get voiceTranscribing => 'Transcribing...';

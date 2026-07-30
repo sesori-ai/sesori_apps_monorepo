@@ -32,11 +32,13 @@ class _MockNotificationRegistrationService extends Mock implements NotificationR
 
 class _MockAppearanceStore extends Mock implements AppearanceStore {}
 
+class _MockChatInputModeStore extends Mock implements ChatInputModeStore {}
+
 class _MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class _MockLegalRepository extends Mock implements LegalRepository {}
 
-Widget _app({required AppearanceCubit appearance}) {
+Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputMode}) {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -57,8 +59,14 @@ Widget _app({required AppearanceCubit appearance}) {
     ],
   );
 
-  return BlocProvider<AppearanceCubit>.value(
-    value: appearance,
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<AppearanceCubit>.value(value: appearance),
+      if (chatInputMode != null)
+        BlocProvider<ChatInputModeCubit>.value(value: chatInputMode)
+      else
+        BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -85,6 +93,7 @@ void main() {
     registerFallbackValue(Uri());
     registerFallbackValue(UrlLaunchMode.externalApp);
     registerFallbackValue(AppearanceMode.system);
+    registerFallbackValue(ChatInputMode.voiceFirst);
     registerFallbackValue(LegalDocument.terms);
   });
 
@@ -161,6 +170,54 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(appearance.state, AppearanceMode.dark);
+  });
+
+  testWidgets("tapping a chat input tile switches and persists the mode", (tester) async {
+    _useTallSurface(tester);
+    final store = _MockChatInputModeStore();
+    when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
+    final chatInputMode = ChatInputModeCubit(store: store, initialMode: ChatInputMode.voiceFirst);
+
+    await tester.pumpWidget(_app(appearance: appearance, chatInputMode: chatInputMode));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Chat input"), findsOneWidget);
+    await tester.tap(find.text("Text first"));
+    await tester.pumpAndSettle();
+
+    expect(chatInputMode.state, ChatInputMode.textFirst);
+    verify(() => store.write(mode: ChatInputMode.textFirst)).called(1);
+  });
+
+  testWidgets("the chat input tiles announce as one mutually exclusive choice", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    final handle = tester.ensureSemantics();
+
+    // Voice-first is the app default, so it is the checked tile.
+    expect(
+      tester.getSemantics(find.text("Voice first")),
+      matchesSemantics(
+        label: "Voice first",
+        isInMutuallyExclusiveGroup: true,
+        hasCheckedState: true,
+        isChecked: true,
+        hasTapAction: true,
+      ),
+    );
+    expect(
+      tester.getSemantics(find.text("Text first")),
+      matchesSemantics(
+        label: "Text first",
+        isInMutuallyExclusiveGroup: true,
+        hasCheckedState: true,
+        hasTapAction: true,
+      ),
+    );
+
+    handle.dispose();
   });
 
   testWidgets("the theme tiles announce as one mutually exclusive choice", (tester) async {

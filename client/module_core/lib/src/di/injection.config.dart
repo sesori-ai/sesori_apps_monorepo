@@ -55,6 +55,8 @@ import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
     as _i209;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
+import 'package:sesori_dart_core/src/repositories/chat_input_mode_store.dart'
+    as _i901;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
@@ -158,6 +160,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i209.AppearanceStore>(
       () => _i209.AppearanceStore(secureStorage: gh<_i442.SecureStorage>()),
+    );
+    gh.lazySingleton<_i901.ChatInputModeStore>(
+      () => _i901.ChatInputModeStore(secureStorage: gh<_i442.SecureStorage>()),
     );
     gh.lazySingleton<_i835.LegalApi>(
       () => _i835.LegalApi(client: gh<_i442.HttpApiClient>()),

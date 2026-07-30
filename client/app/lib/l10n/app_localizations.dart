@@ -841,6 +841,24 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
+  /// Settings section choosing which input the session composer leads with
+  ///
+  /// In en, this message translates to:
+  /// **'Chat input'**
+  String get settingsSectionChatInput;
+
+  /// Chat input option: the composer rests as a hold-to-talk pill and leads with voice dictation
+  ///
+  /// In en, this message translates to:
+  /// **'Voice first'**
+  String get settingsChatInputVoiceFirst;
+
+  /// Chat input option: the composer rests as a tap-to-type field with the microphone alongside
+  ///
+  /// In en, this message translates to:
+  /// **'Text first'**
+  String get settingsChatInputTextFirst;
+
   /// No description provided for @settingsSectionSupport.
   ///
   /// In en, this message translates to:
@@ -1080,6 +1098,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Follow up...'**
   String get sessionDetailFollowUpHint;
+
+  /// Label of the voice-first composer's hold-to-record area once the field already holds text; holding it appends more transcribed speech.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to talk more'**
+  String get sessionDetailHoldToTalkMore;
 
   /// Accessibility label of the keyboard button that switches the composer from hold-to-talk to typing.
   ///
@@ -1692,6 +1716,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel transcription'**
   String get voiceCancelTranscription;
+
+  /// Accessibility label of the X button shown in the accordion's place while recording; releasing or tapping on it discards the recording.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel recording'**
+  String get voiceCancelRecording;
+
+  /// Floating helper above the composer while a hold-to-talk recording is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Release to transcribe'**
+  String get voiceReleaseToTranscribe;
+
+  /// Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording.
+  ///
+  /// In en, this message translates to:
+  /// **'Release to cancel'**
+  String get voiceReleaseToCancel;
 
   /// No description provided for @voiceTranscribing.
   ///
