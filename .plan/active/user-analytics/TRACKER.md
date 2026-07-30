@@ -118,10 +118,10 @@ PRs #611-#614 so each review stays near 1,500 added lines.
 | --- | --- | --- | --- | --- |
 | 1/5 | `sesori_auth_server` | `[user-analytics] Add write-first analytics preference [step 1/5]` | Deployed; 2026-07-29 backfilled 656/656 and two repeated validations reported zero missing | Deploy before backfill; Firebase export preflight is independent |
 | 2/5 | `sesori_auth_server` | `[user-analytics] Enforce analytics preference and add export [step 2/5]` | PR #49 merged as `043ee9f` and deployed 2026-07-29; production health is `ok`, required-field enforcement is live, and the web HMAC secret is configured; export/suppression jobs remain unprovisioned and disabled | Step 1 deployed and repeated backfill validation at zero missing |
-| 3.A/5 | apps monorepo | `[user-analytics] Add client analytics contracts and delivery [step 3.A/5]` | PR #611 open from verified commit `11915231` | Step 2 deployed |
-| 3.B/5 | apps monorepo | `[user-analytics] Add durable analytics preference sync [step 3.B/5]` | PR #612 open from verified commit `762d6b42` | Step 3.A |
-| 3.C/5 | apps monorepo | `[user-analytics] Add account-linked analytics lifecycle [step 3.C/5]` | PR #613 open from verified commit `06c0ca53` | Step 3.B |
-| 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 open from verified commit `63bbbaeb` | Step 3.C |
+| 3.A/5 | apps monorepo | `[user-analytics] Add client analytics contracts and delivery [step 3.A/5]` | PR #611 merged as `3a181ee3` | Step 2 deployed |
+| 3.B/5 | apps monorepo | `[user-analytics] Add durable analytics preference sync [step 3.B/5]` | PR #612 open from verified commit `124bed4c`; CI passing | Step 3.A |
+| 3.C/5 | apps monorepo | `[user-analytics] Add account-linked analytics lifecycle [step 3.C/5]` | PR #613 open from verified commit `64173b2e`; CI running | Step 3.B |
+| 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 open from verified commit `3af1cdbf`; CI running | Step 3.C |
 | 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | Not started | Step 3.D released |
 | 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
