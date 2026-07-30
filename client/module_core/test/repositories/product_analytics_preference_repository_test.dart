@@ -127,12 +127,18 @@ void main() {
     expect(api.updates.single.operationId, matches(RegExp(r"^[0-9a-f-]{36}$")));
   });
 
-  test("malformed local storage remains unreadable and fails closed", () async {
-    storage.readError = const FormatException("invalid stored preference");
+  test("malformed local storage remains unreadable and preserves its typed cause", () async {
+    final innerError = StateError("invalid stored preference");
+    final storageError = ProductAnalyticsPreferenceStorageFormatException(
+      innerError: innerError,
+      innerStackTrace: StackTrace.current,
+    );
+    storage.readError = storageError;
 
     final result = repository.loadLocal(userId: "user-a");
 
-    await expectLater(result, throwsA(isA<FormatException>()));
+    await expectLater(result, throwsA(same(storageError)));
+    expect(storageError.innerError, same(innerError));
     expect(operations, ["storage:read:user-a"]);
   });
 

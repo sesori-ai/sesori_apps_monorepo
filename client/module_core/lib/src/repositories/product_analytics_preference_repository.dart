@@ -20,14 +20,10 @@ class ProductAnalyticsPreferenceRepository {
        _storage = storage;
 
   Future<LocalProductAnalyticsPreference?> loadLocal({required String userId}) async {
-    final StoredProductAnalyticsPreference? stored;
-    try {
-      stored = await _storage.read(userId: userId);
-    } on FormatException {
-      // Keep the unreadable value in place so every automatic read remains
-      // fail-closed across retries and process restarts.
-      throw const FormatException("Invalid stored product analytics preference");
-    }
+    // Keep unreadable values in place so every automatic read remains
+    // fail-closed across retries and process restarts. The storage boundary's
+    // privacy-safe typed parse error and its original cause propagate intact.
+    final stored = await _storage.read(userId: userId);
     if (stored == null) return null;
     final record = _recordFromStored(stored);
     return switch (stored) {
