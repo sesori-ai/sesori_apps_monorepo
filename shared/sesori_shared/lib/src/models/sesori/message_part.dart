@@ -63,7 +63,11 @@ MessageAttachment? _messageAttachmentFromJson(Object? json) {
 
 // ignore: no_slop_linter/prefer_specific_type, JSON converter input
 List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
-  if (json is! List) return const [];
+  if (json == null) return const [];
+  if (json is! List) {
+    developer.log("Ignoring malformed message attachments payload", name: "sesori_shared");
+    return const [];
+  }
   return [
     for (final item in json) ?_messageAttachmentFromJson(item),
   ];

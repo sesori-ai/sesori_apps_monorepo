@@ -1,5 +1,4 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show decodedBase64Length;
 
 import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
@@ -136,46 +135,11 @@ class PluginModelMapper {
     final parts = raw.parts.map(_messagePartMapper.mapPart).where((part) => part.type.isVisible).toList();
     return PluginMessageWithParts(
       info: pluginInfo,
-      parts: _applyAttachmentBudget(parts: parts),
+      parts: _messagePartMapper.applyAttachmentBudget(
+        parts: parts,
+        maxInlineAttachmentBytes: _maxInlineAttachmentBytes,
+      ),
     );
-  }
-
-  List<PluginMessagePart> _applyAttachmentBudget({required List<PluginMessagePart> parts}) {
-    var remainingBytes = _maxInlineAttachmentBytes;
-    var didLogOverflow = false;
-
-    PluginMessageAttachment bound({required PluginMessageAttachment attachment}) {
-      if (attachment case PluginMessageAttachmentInlineImage(:final mime, :final base64, :final filename)) {
-        final decodedBytes = decodedBase64Length(base64Data: base64);
-        if (decodedBytes <= remainingBytes) {
-          remainingBytes -= decodedBytes;
-          return attachment;
-        }
-        if (!didLogOverflow) {
-          Log.w("OpenCode message attachments exceed the aggregate transport limit; forwarding metadata only");
-          didLogOverflow = true;
-        }
-        return PluginMessageAttachment.metadata(mime: mime, filename: filename);
-      }
-      return attachment;
-    }
-
-    PluginMessagePart boundPart({required PluginMessagePart part}) {
-      final attachment = part.attachment;
-      final state = part.state;
-      return part.copyWith(
-        attachment: attachment == null ? null : bound(attachment: attachment),
-        state: state == null
-            ? null
-            : state.copyWith(
-                attachments: state.attachments
-                    .map((attachment) => bound(attachment: attachment))
-                    .toList(growable: false),
-              ),
-      );
-    }
-
-    return parts.map((part) => boundPart(part: part)).toList(growable: false);
   }
 
   PluginMessageTime _mapUserMessageTime(UserMessageTime time) {

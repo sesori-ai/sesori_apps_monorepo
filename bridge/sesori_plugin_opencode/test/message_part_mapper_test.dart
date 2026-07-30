@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:typed_data";
 
 import "package:opencode_plugin/opencode_plugin.dart";
 import "package:opencode_plugin/src/models/openapi/compaction_part.g.dart";
@@ -188,6 +189,47 @@ void main() {
           filename: "screenshot-0.png",
         ),
       ),
+    );
+  });
+
+  test("bounds total inline bytes in completed tool attachments", () {
+    final threeMegabyteImage = base64Encode(Uint8List(3 * 1024 * 1024));
+    final part = mapper.mapPart(
+      ToolPart(
+        id: "part-tool",
+        sessionID: "session-1",
+        messageID: "message-1",
+        callID: "call-1",
+        tool: "browser",
+        state: ToolStateCompleted(
+          input: const {},
+          output: "done",
+          title: "Screenshots",
+          metadata: const {},
+          time: const ToolStateCompletedTime(start: 0, end: 1, compacted: null),
+          attachments: [
+            _filePart(
+              url: "data:image/png;base64,$threeMegabyteImage",
+              mime: "image/png",
+              filename: "first.png",
+              source: null,
+            ),
+            _filePart(
+              url: "data:image/png;base64,$threeMegabyteImage",
+              mime: "image/png",
+              filename: "second.png",
+              source: null,
+            ),
+          ],
+        ),
+        metadata: null,
+      ),
+    );
+
+    expect(part.state?.attachments.first, isA<PluginMessageAttachmentInlineImage>());
+    expect(
+      part.state?.attachments.last,
+      equals(const PluginMessageAttachment.metadata(mime: "image/png", filename: "second.png")),
     );
   });
 }

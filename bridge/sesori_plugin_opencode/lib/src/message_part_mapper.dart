@@ -1,7 +1,8 @@
 import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show isInlineMessageAttachmentWithinSizeLimit;
+import "package:sesori_shared/sesori_shared.dart"
+    show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
 import "models/openapi/agent_part.g.dart";
 import "models/openapi/compaction_part.g.dart";
@@ -46,7 +47,13 @@ class MessagePartMapper {
   /// is exposed as distinct Dart types, so there is no string matching on a
   /// `type` field and the common `id`/`sessionID`/`messageID` are read as
   /// strongly-typed, non-null fields (no `?? ""` fallbacks).
-  PluginMessagePart mapPart(Part raw) => switch (raw) {
+  PluginMessagePart mapPart(Part raw) {
+    final part = _mapPart(raw);
+    if (part.attachment == null && (part.state?.attachments.isEmpty ?? true)) return part;
+    return applyAttachmentBudget(parts: [part], maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes).single;
+  }
+
+  PluginMessagePart _mapPart(Part raw) => switch (raw) {
     TextPart() => _part(
       id: raw.id,
       sessionID: raw.sessionID,
@@ -141,6 +148,47 @@ class MessagePartMapper {
     // become an `unknown` part, which downstream mapping filters out.
     _ => _unknownPart(raw),
   };
+
+  List<PluginMessagePart> applyAttachmentBudget({
+    required List<PluginMessagePart> parts,
+    required int maxInlineAttachmentBytes,
+  }) {
+    var remainingBytes = maxInlineAttachmentBytes;
+    var didLogOverflow = false;
+
+    PluginMessageAttachment bound({required PluginMessageAttachment attachment}) {
+      if (attachment case PluginMessageAttachmentInlineImage(:final mime, :final base64, :final filename)) {
+        final decodedBytes = decodedBase64Length(base64Data: base64);
+        if (decodedBytes <= remainingBytes) {
+          remainingBytes -= decodedBytes;
+          return attachment;
+        }
+        if (!didLogOverflow) {
+          Log.w("OpenCode message attachments exceed the aggregate transport limit; forwarding metadata only");
+          didLogOverflow = true;
+        }
+        return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+      }
+      return attachment;
+    }
+
+    PluginMessagePart boundPart({required PluginMessagePart part}) {
+      final attachment = part.attachment;
+      final state = part.state;
+      return part.copyWith(
+        attachment: attachment == null ? null : bound(attachment: attachment),
+        state: state == null
+            ? null
+            : state.copyWith(
+                attachments: state.attachments
+                    .map((attachment) => bound(attachment: attachment))
+                    .toList(growable: false),
+              ),
+      );
+    }
+
+    return parts.map((part) => boundPart(part: part)).toList(growable: false);
+  }
 
   PluginMessagePart _part({
     required String id,
