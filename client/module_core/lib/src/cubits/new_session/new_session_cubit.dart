@@ -9,13 +9,18 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
+import "../../foundation/models/composer/composer_draft.dart";
+import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
+import "../../repositories/composer_draft_repository.dart";
+import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
 import "../../services/new_session_options_service.dart";
 import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
+import "../../services/product_analytics_service.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
@@ -26,6 +31,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required NewSessionOptionsService newSessionOptionsService,
     required ProjectRepository projectRepository,
     required NewSessionSelectionTracker selectionTracker,
+    required ComposerDraftRepository composerDraftRepository,
+    required ProductAnalyticsService productAnalyticsService,
     required String projectId,
     required bool? initialSupportsDedicatedWorktrees,
   }) : _connectionService = connectionService,
@@ -34,7 +41,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
        _newSessionOptionsService = newSessionOptionsService,
        _projectRepository = projectRepository,
        _selectionTracker = selectionTracker,
+       _composerDraftRepository = composerDraftRepository,
+       _productAnalyticsService = productAnalyticsService,
        _projectId = projectId,
+       _composerDraft = composerDraftRepository.readForNewSession(projectId: projectId),
        super(
          NewSessionState.idle(
            availablePlugins: const [],
@@ -58,7 +68,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   final NewSessionOptionsService _newSessionOptionsService;
   final ProjectRepository _projectRepository;
   final NewSessionSelectionTracker _selectionTracker;
+  final ComposerDraftRepository _composerDraftRepository;
+  final ProductAnalyticsService _productAnalyticsService;
   final String _projectId;
+  ComposerDraft _composerDraft;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late bool _wasConnected;
   int _loadGeneration = 0;
@@ -71,6 +84,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final isConnected = status is ConnectionConnected;
     final reconnected = isConnected && !_wasConnected;
     _wasConnected = isConnected;
+    if (!isConnected) _hasDiscoveryAffinity = false;
     if (!reconnected || state is NewSessionSending || state is NewSessionCreated) return;
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
@@ -290,7 +304,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       );
       _emitStateUpdate(
         options: refresh && previousOptions != null
-            ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions)
+            ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions, source: source)
             : NewSessionOptionsFailureState(reason: RemoteFailureReason.unknown, source: source),
         isPluginDiscoveryInFlight: false,
         supportsDedicatedWorktrees: null,
@@ -312,6 +326,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       ),
       NewSessionOptionsRefreshFailureRetained(:final options) => NewSessionOptionsRefreshFailureRetainedState(
         options: options,
+        source: source,
       ),
       NewSessionOptionsRefreshFailureUnavailable() => const NewSessionOptionsRefreshFailureUnavailableState(),
     };
@@ -385,7 +400,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final source = currentOptions?.source;
     if (source == null) return;
     final next = switch (currentOptions) {
-      NewSessionOptionsRefreshFailureRetainedState() => NewSessionOptionsRefreshFailureRetainedState(options: options),
+      NewSessionOptionsRefreshFailureRetainedState() => NewSessionOptionsRefreshFailureRetainedState(
+        options: options,
+        source: source,
+      ),
       NewSessionOptionsRefreshingState() => NewSessionOptionsRefreshingState(options: options, source: source),
       NewSessionOptionsLoadingState() ||
       NewSessionOptionsAvailableState() ||
@@ -413,13 +431,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
     final pluginId = _selectedPluginId;
-    final variantIntent = pluginId == null
-        ? null
-        : _selectionTracker.read(projectId: _projectId, pluginId: pluginId)?.variant;
+    final selectionIntent = pluginId == null ? null : _selectionTracker.read(projectId: _projectId, pluginId: pluginId);
     final selected = _newSessionOptionsService.selectAgent(
       options: options,
       agent: agent,
-      variantIntent: variantIntent,
+      selectionIntent: selectionIntent,
     );
     if (selected == null) return;
     _replaceOptionsData(options: selected);
@@ -495,6 +511,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String text,
     required bool dedicatedWorktree,
     required String? command,
+    required ComposerInputMode inputMode,
   }) async {
     final current = state;
     if (current is NewSessionSending || current is NewSessionCreated) return;
@@ -506,6 +523,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
     final trimmed = text.trim();
     if (trimmed.isEmpty && !hasCommand) return;
+    final analyticsSubmission = hasCommand
+        ? const AnalyticsSubmission.command()
+        : AnalyticsSubmission.text(inputMode: _analyticsInputMode(inputMode));
+    final usesDedicatedWorktree = dedicatedWorktree && config.supportsDedicatedWorktrees;
+    final workspaceKind = usesDedicatedWorktree
+        ? AnalyticsWorkspaceKind.dedicatedWorktree
+        : AnalyticsWorkspaceKind.project;
 
     final pluginId = selectedPlugin.id;
     final selectionRevisionAtSend = _selectionTracker.currentRevision(
@@ -540,15 +564,29 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       modelID: selectedAgentModel?.modelID,
       variant: selectedVariant == null ? null : SessionVariant(id: selectedVariant),
       command: normalizedCommand,
-      dedicatedWorktree: dedicatedWorktree && config.supportsDedicatedWorktrees,
+      dedicatedWorktree: usesDedicatedWorktree,
     );
 
-    if (response case SuccessResponse()) {
-      _selectionTracker.clearIfRevision(
-        projectId: _projectId,
-        pluginId: pluginId,
-        revision: selectionRevisionAtSend,
-      );
+    switch (response) {
+      case SuccessResponse():
+        _selectionTracker.clearIfRevision(
+          projectId: _projectId,
+          pluginId: pluginId,
+          revision: selectionRevisionAtSend,
+        );
+        _reportProductEvent(
+          event: ProductAnalyticsEvent.sessionCreatedWithMessage(
+            submission: analyticsSubmission,
+            workspaceKind: workspaceKind,
+          ),
+        );
+      case ErrorResponse(:final error):
+        _reportProductEvent(
+          event: ProductAnalyticsEvent.sessionCreationFailed(
+            failureReason: _analyticsFailureReason(error.remoteFailureReason),
+            workspaceKind: workspaceKind,
+          ),
+        );
     }
 
     if (isClosed) return;
@@ -568,7 +606,55 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             supportsDedicatedWorktrees: latest.supportsDedicatedWorktrees,
           ),
         );
+        if (!_hasDiscoveryAffinity && _wasConnected) {
+          unawaited(_discoverPlugins());
+          unawaited(_loadProjectCapability());
+        }
     }
+  }
+
+  ComposerDraft get composerDraft => _composerDraft;
+
+  void saveComposerDraft({required ComposerDraft draft}) {
+    _composerDraft = draft;
+    _composerDraftRepository.saveForNewSession(projectId: _projectId, draft: draft);
+  }
+
+  void clearComposerDraft() {
+    _composerDraft = ComposerDraft.typed(text: "");
+    _composerDraftRepository.clearForNewSession(projectId: _projectId);
+  }
+
+  void reportVoiceTranscriptionCompleted() {
+    _reportProductEvent(event: const ProductAnalyticsEvent.voiceTranscriptionCompleted());
+  }
+
+  AnalyticsInputMode _analyticsInputMode(ComposerInputMode inputMode) => switch (inputMode) {
+    ComposerInputMode.typed => AnalyticsInputMode.typed,
+    ComposerInputMode.voiceAssisted => AnalyticsInputMode.voiceAssisted,
+  };
+
+  AnalyticsSessionCreationFailureReason _analyticsFailureReason(RemoteFailureReason reason) => switch (reason) {
+    RemoteFailureReason.notAuthenticated => AnalyticsSessionCreationFailureReason.notAuthenticated,
+    RemoteFailureReason.serverRejected => AnalyticsSessionCreationFailureReason.serverRejected,
+    RemoteFailureReason.networkDown => AnalyticsSessionCreationFailureReason.networkDown,
+    RemoteFailureReason.badResponse => AnalyticsSessionCreationFailureReason.badResponse,
+    RemoteFailureReason.unknown => AnalyticsSessionCreationFailureReason.unknown,
+  };
+
+  void _reportProductEvent({required ProductAnalyticsEvent event}) {
+    unawaited(
+      _productAnalyticsService
+          .logEvent(event: event, occurredAtUtc: DateTime.now().toUtc())
+          .then<void>((result) {
+            if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+              logw("Failed to deliver new-session outcome analytics event");
+            }
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            logw("Failed to report new-session outcome analytics event", error, stackTrace);
+          }),
+    );
   }
 
   @override

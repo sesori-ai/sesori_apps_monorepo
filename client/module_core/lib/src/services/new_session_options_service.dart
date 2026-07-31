@@ -226,14 +226,23 @@ class NewSessionOptionsService {
   NewSessionOptionsData? selectAgent({
     required NewSessionOptionsData options,
     required String agent,
-    required NewSessionVariantIntent? variantIntent,
+    required NewSessionSelectionIntent? selectionIntent,
   }) {
     final agentInfo = options.agents.firstWhereOrNull((item) => item.name == agent);
     if (agentInfo == null) return null;
+    final modelIntent = selectionIntent?.model;
     final selectedAgentModel = _applyVariantIntent(
       providers: options.providers,
-      model: _validatedModel(providers: options.providers, model: agentInfo.model) ?? options.selectedAgentModel,
-      variantIntent: variantIntent,
+      model:
+          _validatedModel(
+            providers: options.providers,
+            model: modelIntent == null
+                ? null
+                : AgentModel(providerID: modelIntent.providerId, modelID: modelIntent.modelId, variant: null),
+          ) ??
+          _validatedModel(providers: options.providers, model: agentInfo.model) ??
+          options.selectedAgentModel,
+      variantIntent: selectionIntent?.variant,
     );
     return NewSessionOptionsData(
       agents: options.agents,

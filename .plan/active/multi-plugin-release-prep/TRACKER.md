@@ -2,7 +2,7 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `0352553d`
+- **Implementation base:** `origin/main` at `c662a639`
 - **Series state:** Steps 1/6 through 5.A/6 are merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
 - **Current step:** Step 5.B/6 — cached New Session composer
@@ -228,3 +228,11 @@
 - Step 5.B/6 delivery (2026-07-31): committed as `e62e1d7a`, pushed, and opened
   as stacked PR #636 against the Step 5.A branch. After PR #635 merged, GitHub
   retargeted PR #636 to `main`; the updated base is merged into the branch.
+- Step 5.B/6 review hardening (2026-07-31): bridge-affinity fencing now covers
+  failed rediscovery and reconnects during in-flight creation; backend-local
+  intent resets on bridge changes; agent/model actions preserve independent
+  model/variant intent; and caught refresh failures retain both usable options
+  and their aggregate or legacy source. Merged `main` at `c662a639`, preserving
+  its composer-draft and product-analytics changes. All 111 focused core tests
+  and 27 mobile New Session tests passed, as did fatal analysis in module-core,
+  mobile, and desktop plus `git diff --check`.

@@ -47,9 +47,10 @@ final class NewSessionOptionsFailureState extends NewSessionOptionsLoadState {
 }
 
 final class NewSessionOptionsRefreshFailureRetainedState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsRefreshFailureRetainedState({required this.options});
+  const NewSessionOptionsRefreshFailureRetainedState({required this.options, required this.source});
 
   final NewSessionOptionsData options;
+  final NewSessionOptionsSource source;
 }
 
 final class NewSessionOptionsRefreshFailureUnavailableState extends NewSessionOptionsLoadState {
@@ -74,10 +75,10 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
     NewSessionOptionsLoadingState(:final source) => source,
     NewSessionOptionsRefreshingState(:final source) ||
     NewSessionOptionsAvailableState(:final source) ||
-    NewSessionOptionsFailureState(:final source) => source,
+    NewSessionOptionsFailureState(:final source) ||
+    NewSessionOptionsRefreshFailureRetainedState(:final source) => source,
     NewSessionOptionsUnsupportedState() => NewSessionOptionsSource.legacy,
     NewSessionOptionsUnavailableState() ||
-    NewSessionOptionsRefreshFailureRetainedState() ||
     NewSessionOptionsRefreshFailureUnavailableState() => NewSessionOptionsSource.aggregate,
   };
 }

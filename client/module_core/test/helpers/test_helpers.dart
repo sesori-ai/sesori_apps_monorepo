@@ -6,6 +6,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/filesystem_api.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
+import "package:sesori_dart_core/src/api/storage/composer_draft_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
@@ -13,6 +14,7 @@ import "package:sesori_dart_core/src/foundation/models/product_analytics/product
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
+import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
@@ -138,6 +140,8 @@ MockProductAnalyticsService stubbedProductAnalyticsService() {
   when(() => mock.state).thenReturn(ProductAnalyticsState.initial);
   return mock;
 }
+
+ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(storage: ComposerDraftStorage());
 
 class MockBridgeRepository extends Mock implements BridgeRepository {}
 

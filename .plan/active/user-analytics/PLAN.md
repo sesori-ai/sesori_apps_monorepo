@@ -626,12 +626,13 @@ without duplicate framework-generated names. Foundation sees neither
 provider intent is accepted, then exactly one completed or failed terminal event
 for that attempt. Apple is the exception to Cubit-owned platform execution: the
 mobile call site first calls typed `LoginCubit.beginAppleLoginAttempt()` before
-opening `SignInWithApple.getAppleIDCredential`; native cancellation/failure calls
-the Cubit's terminal failure method, while a credential continues the already-
+opening `SignInWithApple.getAppleIDCredential`; its opaque attempt handle is
+carried through every native callback so stale work cannot terminate a replacement
+attempt. Native cancellation stays distinct, missing-token/server-auth failures
+map to authentication, and other SDK exceptions map to platform-neutral unknown
+without translating SDK codes in the widget. A credential continues the already-
 started attempt through its server login method without a second start. OAuth
-polling timeout maps to bounded `timeout`; native cancellation, launch,
-authentication, and unknown failures remain separate closed values only where
-the current state distinguishes them. No exception text, OAuth user, account
+polling timeout maps to bounded `timeout`. No exception text, OAuth user, account
 key, or random attempt ID is emitted. Installation events are not buffered or
 joined to later accounts; BigQuery reports aggregate provider completion rates
 and excludes them from account-level funnel/retention tables.
@@ -1473,8 +1474,9 @@ directory name.
   and one terminal completion/failure (including timeout) per valid attempt.
 - Keep provider and failure mapping exhaustive and account-less. Starting Apple
   sign-in is an explicit new login intent that leaves resumable OAuth before the
-  native sheet; cancellation/launch/authentication outcomes terminate only that
-  Apple attempt.
+  native sheet; an opaque handle ensures cancellation, unknown native failure,
+  missing-token authentication failure, and server authentication outcomes
+  terminate only that Apple attempt.
 - Wire mobile Apple and desktop no-op consumers and add focused lifecycle tests.
 
 ### PR 4.C/5 — Activation and voice outcomes

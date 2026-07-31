@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
@@ -122,6 +123,8 @@ void main() {
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
           lifecycleSource: FakeLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -151,8 +154,18 @@ void main() {
         verifyNever(() => mockSessionService.getPendingQuestions(sessionId: sessionId));
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
-        verifyNever(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1"));
-        verifyNever(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1"));
+        verifyNever(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: "plugin-1",
+          ),
+        );
+        verifyNever(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: "plugin-1",
+          ),
+        );
 
         connectionStatus.add(connectedStatus);
         await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -176,6 +189,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -202,8 +217,18 @@ void main() {
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: "plugin-1",
+        ),
+      ).called(1);
+      verify(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: "plugin-1",
+        ),
+      ).called(1);
 
       expect(emitted.first, isA<SessionDetailLoaded>().having((s) => s.isRefreshing, "isRefreshing", isTrue));
       expect(
@@ -222,6 +247,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -246,6 +273,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -333,6 +362,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -343,7 +374,11 @@ void main() {
       await _awaitLoaded(cubit);
       cubit.selectVariant(const SessionVariant(id: "low"));
 
-      await cubit.sendMessage(text: "hello", command: null);
+      await cubit.sendMessage(
+        text: "hello",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
 
       verify(
         () => mockSessionRepository.sendMessage(
@@ -365,6 +400,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -438,6 +475,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -479,6 +518,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -493,8 +534,18 @@ void main() {
       verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: "plugin-1",
+        ),
+      ).called(1);
+      verify(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: "plugin-1",
+        ),
+      ).called(1);
 
       messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
       await _awaitLoaded(cubit);
@@ -513,6 +564,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -538,6 +591,8 @@ void main() {
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
           lifecycleSource: FakeLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -577,6 +632,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -626,6 +683,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -687,6 +746,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -748,8 +809,18 @@ void main() {
       verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: "plugin-1",
+        ),
+      ).called(1);
+      verify(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: "plugin-1",
+        ),
+      ).called(1);
     });
 
     test("staleness bursts inside the cooldown collapse into one immediate and one trailing refresh", () async {
@@ -760,6 +831,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -806,6 +879,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -865,6 +940,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -919,6 +996,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: lifecycle,
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -969,6 +1048,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: lifecycle,
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1024,6 +1105,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: lifecycle,
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
