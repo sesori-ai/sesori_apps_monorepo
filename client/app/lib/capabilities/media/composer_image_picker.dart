@@ -37,7 +37,8 @@ class ComposerImagePicker {
 
   /// Returns the staged attachment, or null when the user dismissed the
   /// picker. Throws [AttachmentTooLargeError] when the image cannot fit the
-  /// inline transport limit.
+  /// inline transport limit, and [UnsupportedAttachmentImageError] when the
+  /// content is not a recognized image format.
   Future<ComposerAttachment?> pickImage() async {
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
