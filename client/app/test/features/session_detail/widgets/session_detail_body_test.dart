@@ -10,6 +10,7 @@ import "package:go_router/go_router.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
@@ -23,6 +24,18 @@ import "../../../helpers/test_helpers.dart";
 class MockSessionDetailCubit extends MockCubit<SessionDetailState> implements SessionDetailCubit {}
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
+
+class MockComposerImagePicker extends Mock implements ComposerImagePicker {}
+
+/// A valid 1x1 transparent PNG so `Image.memory` thumbnails decode in tests.
+final Uint8List _tinyPng = Uint8List.fromList(const [
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, //
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, //
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, //
+  0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x62, 0x00, 0x01, 0x00, 0x00, //
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, //
+  0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+]);
 
 Widget _buildApp({
   required SessionDetailCubit cubit,
@@ -129,10 +142,16 @@ const _permission = SesoriPermissionAsked(
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
+  late MockComposerImagePicker imagePicker;
 
   setUpAll(() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
+    registerFallbackValue(ComposerInputMode.typed);
   });
+
+
+  Finder semanticsWithLabel(String label) =>
+      find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == label);
 
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
   // renders its flat (cue) menu here — the menu rows are Material InkWells, not
@@ -159,6 +178,9 @@ void main() {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+
+    imagePicker = MockComposerImagePicker();
+    GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
   });
 
   tearDown(() async {
@@ -649,7 +671,7 @@ void main() {
       ),
     );
     when(
-      () => cubit.sendMessage(
+      () => cubit.sendMessage(attachments: const [],
         text: "typed transcript",
         command: null,
         inputMode: ComposerInputMode.voiceAssisted,
@@ -664,7 +686,7 @@ void main() {
     await tester.pump();
 
     verify(
-      () => cubit.sendMessage(
+      () => cubit.sendMessage(attachments: const [],
         text: "typed transcript",
         command: null,
         inputMode: ComposerInputMode.voiceAssisted,
@@ -680,7 +702,7 @@ void main() {
       ),
     );
     when(
-      () => cubit.sendMessage(
+      () => cubit.sendMessage(attachments: const [],
         text: "typed replacement",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -700,7 +722,7 @@ void main() {
     await tester.pump();
 
     verify(
-      () => cubit.sendMessage(
+      () => cubit.sendMessage(attachments: const [],
         text: "typed replacement",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -716,7 +738,7 @@ void main() {
       ),
     );
     when(
-      () => cubit.sendMessage(
+      () => cubit.sendMessage(attachments: const [],
         text: "typed",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -729,7 +751,7 @@ void main() {
     await tester.pump();
 
     verify(
-      () => cubit.sendMessage(
+      () => cubit.sendMessage(attachments: const [],
         text: "typed",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1122,5 +1144,118 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
     expect(composerFocus(tester).hasFocus, isFalse);
     expect(find.text("Hold to talk more"), findsOneWidget);
+  });
+
+  testWidgets("accordion attach action stages a removable thumbnail without raising the keyboard", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+
+    // The staged image switches the composer to the typing layout so the
+    // thumbnail is visible, but the keyboard stays down for review parity
+    // with the voice transcript flow.
+    expect(semanticsWithLabel("screenshot.png"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
+    expect(composerFocus(tester).hasFocus, isFalse);
+
+    await tester.tap(find.byTooltip("Remove attachment"));
+    await tester.pumpAndSettle();
+    expect(semanticsWithLabel("screenshot.png"), findsNothing);
+    // Nothing left to show: the composer collapses back to its resting pill.
+    expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("send includes the staged attachment and clears the strip", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(
+      () => cubit.sendMessage(
+        text: any(named: "text"),
+        command: any(named: "command"),
+        inputMode: any(named: "inputMode"),
+        attachments: any(named: "attachments"),
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(EditableText), "with image");
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "with image",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: [attachment],
+      ),
+    ).called(1);
+    await tester.pumpAndSettle();
+    expect(semanticsWithLabel("screenshot.png"), findsNothing);
+  });
+
+  testWidgets("an attachment alone is sendable", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
+    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(
+      () => cubit.sendMessage(
+        text: any(named: "text"),
+        command: any(named: "command"),
+        inputMode: any(named: "inputMode"),
+        attachments: any(named: "attachments"),
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+
+    expect(semanticsWithLabel("Attached image"), findsOneWidget);
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: [attachment],
+      ),
+    ).called(1);
+  });
+
+  testWidgets("an oversized image is rejected with a notice", (tester) async {
+    when(imagePicker.pickImage).thenAnswer((_) async => throw const AttachmentTooLargeError());
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+
+    expect(find.text("That image is too large to attach."), findsOneWidget);
+    // Nothing was staged, so the composer stays in its resting pill.
+    expect(find.byType(EditableText), findsNothing);
   });
 }

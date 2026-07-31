@@ -574,6 +574,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailHideActions => 'Hide actions';
 
   @override
+  String get sessionDetailAttachImage => 'Attach image';
+
+  @override
+  String get sessionDetailRemoveAttachment => 'Remove attachment';
+
+  @override
+  String get sessionDetailAttachedImage => 'Attached image';
+
+  @override
+  String get sessionDetailAttachmentTooLarge => 'That image is too large to attach.';
+
+  @override
+  String get sessionDetailAttachmentPickFailed => 'Couldn\'t attach the image.';
+
+  @override
   String get sessionDetailExpandEditor => 'Expand editor';
 
   @override

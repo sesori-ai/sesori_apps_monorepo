@@ -317,11 +317,12 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             initialDraft: context.read<NewSessionCubit>().composerDraft,
                             hasMessages: false,
                             isBusy: state is NewSessionSending,
-                            onSend: ({required text, required command, required inputMode}) {
+                            onSend: ({required text, required command, required inputMode, required attachments}) {
                               context.read<NewSessionCubit>().createSession(
                                 text: text,
                                 command: command,
                                 inputMode: inputMode,
+                                attachments: attachments,
                                 dedicatedWorktree: _dedicatedWorktree,
                               );
                             },

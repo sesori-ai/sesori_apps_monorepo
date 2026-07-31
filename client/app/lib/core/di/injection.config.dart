@@ -19,9 +19,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart'
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
+import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:record/record.dart' as _i1039;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
+import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
+    as _i140;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
 import 'package:sesori_mobile/capabilities/voice/recording_file_provider.dart'
@@ -83,6 +86,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.relayCryptoService,
     );
     gh.lazySingleton<_i1039.AudioRecorder>(() => registerModule.audioRecorder);
+    gh.lazySingleton<_i183.ImagePicker>(() => registerModule.imagePicker);
     gh.lazySingleton<_i163.FlutterLocalNotificationsPlugin>(
       () => registerModule.flutterLocalNotificationsPlugin,
     );
@@ -116,6 +120,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i62.RecordingFileProvider>(
       () => _i62.RecordingFileProvider(gh<_i430.AudioFormatConfig>()),
+    );
+    gh.lazySingleton<_i140.ComposerImagePicker>(
+      () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),
     );
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
