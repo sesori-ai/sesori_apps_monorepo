@@ -64,6 +64,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
   String? _discoveryBridgeId;
+  bool _hasDiscoveryAffinity = false;
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
@@ -97,6 +98,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         case SuccessResponse(:final data):
           final bridgeIdentityChanged = _discoveryBridgeId != data.bridgeId;
           _discoveryBridgeId = data.bridgeId;
+          _hasDiscoveryAffinity = true;
+          _selectionTracker.establishBridgeScope(bridgeId: data.bridgeId);
           final selectedPlugin = data.selected;
           final currentData = state.agentModelData;
           final isSamePlugin =
@@ -140,10 +143,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
     if (isClosed) return;
-    // A failed discovery cannot identify the connected bridge (it may have
-    // changed), so a later creation must not save a plugin preference under the
-    // previous bridge's key.
-    _discoveryBridgeId = null;
+    // Retained options still belong to the last successful bridge scope, but a
+    // failed discovery cannot prove that the current connection has affinity
+    // with that bridge.
+    _hasDiscoveryAffinity = false;
     final data = state.agentModelData;
     final options = switch (data?.optionsState) {
       NewSessionOptionsRefreshingState(:final options, :final source) => NewSessionOptionsAvailableState(
@@ -235,6 +238,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final source = data?.optionsState.source;
     if (current is NewSessionSending ||
         current is NewSessionCreated ||
+        !_hasDiscoveryAffinity ||
         data == null ||
         data.isLoading ||
         source == null ||
@@ -285,7 +289,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         stackTrace,
       );
       _emitStateUpdate(
-        options: NewSessionOptionsFailureState(reason: RemoteFailureReason.unknown, source: source),
+        options: refresh && previousOptions != null
+            ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions)
+            : NewSessionOptionsFailureState(reason: RemoteFailureReason.unknown, source: source),
         isPluginDiscoveryInFlight: false,
         supportsDedicatedWorktrees: null,
       );
@@ -334,6 +340,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final data = state.agentModelData;
     return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
   }
+
+  bool get canRefreshOptions => _hasDiscoveryAffinity && _canEditComposer;
 
   void _emitStateUpdate({
     required NewSessionOptionsLoadState? options,
@@ -404,10 +412,17 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (!_canEditComposer) return;
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
-    final selected = _newSessionOptionsService.selectAgent(options: options, agent: agent);
+    final pluginId = _selectedPluginId;
+    final variantIntent = pluginId == null
+        ? null
+        : _selectionTracker.read(projectId: _projectId, pluginId: pluginId)?.variant;
+    final selected = _newSessionOptionsService.selectAgent(
+      options: options,
+      agent: agent,
+      variantIntent: variantIntent,
+    );
     if (selected == null) return;
     _replaceOptionsData(options: selected);
-    final pluginId = _selectedPluginId;
     if (pluginId != null) {
       _selectionTracker.recordAgent(projectId: _projectId, pluginId: pluginId, agentName: agent);
     }
@@ -417,14 +432,18 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (!_canEditComposer) return;
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
+    final pluginId = _selectedPluginId;
+    final variantIntent = pluginId == null
+        ? null
+        : _selectionTracker.read(projectId: _projectId, pluginId: pluginId)?.variant;
     final selected = _newSessionOptionsService.selectModel(
       options: options,
       providerId: providerID,
       modelId: modelID,
+      variantIntent: variantIntent,
     );
     if (selected == null) return;
     _replaceOptionsData(options: selected);
-    final pluginId = _selectedPluginId;
     if (pluginId != null) {
       _selectionTracker.recordModel(
         projectId: _projectId,
@@ -506,7 +525,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final options = config.optionsState.data;
     final selectedAgentModel = options?.selectedAgentModel;
     unawaited(
-      _newSessionPluginService.recordSelection(bridgeId: _discoveryBridgeId, plugin: selectedPlugin),
+      _newSessionPluginService.recordSelection(
+        bridgeId: _hasDiscoveryAffinity ? _discoveryBridgeId : null,
+        plugin: selectedPlugin,
+      ),
     );
     final selectedVariant = selectedAgentModel?.variant;
     final response = await _sessionService.createSessionWithMessage(

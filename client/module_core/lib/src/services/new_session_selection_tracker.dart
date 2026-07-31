@@ -14,6 +14,19 @@ typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revisi
 class NewSessionSelectionTracker {
   final Map<({String projectId, String pluginId}), _RevisionedSelection> _selections = {};
   int _nextRevision = 0;
+  bool _hasBridgeScope = false;
+  String? _bridgeId;
+
+  /// Clears backend-local intent when the active connection moves to another
+  /// identified bridge. Re-establishing the same scope preserves intent across
+  /// New Session screen recreation within the current app run.
+  void establishBridgeScope({required String? bridgeId}) {
+    if (_hasBridgeScope && _bridgeId != bridgeId) {
+      _selections.clear();
+    }
+    _hasBridgeScope = true;
+    _bridgeId = bridgeId;
+  }
 
   NewSessionSelectionIntent? read({required String projectId, required String pluginId}) =>
       _selections[(projectId: projectId, pluginId: pluginId)]?.selection;

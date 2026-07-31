@@ -212,5 +212,23 @@ void main() {
       expect(tracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
       expect(tracker.read(projectId: "project-1", pluginId: "plugin-b")?.agentName, "agent-b");
     });
+
+    test("clears backend-local choices when the bridge scope changes", () {
+      tracker.establishBridgeScope(bridgeId: "bridge-a");
+      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
+
+      tracker.establishBridgeScope(bridgeId: "bridge-b");
+
+      expect(tracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
+    });
+
+    test("preserves choices when the same bridge scope is re-established", () {
+      tracker.establishBridgeScope(bridgeId: "bridge-a");
+      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
+
+      tracker.establishBridgeScope(bridgeId: "bridge-a");
+
+      expect(tracker.read(projectId: "project-1", pluginId: "plugin-a")?.agentName, "agent-a");
+    });
   });
 }

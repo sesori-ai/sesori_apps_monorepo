@@ -182,7 +182,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             hierarchy: PregoButtonsSolidHierarchy.link,
             size: PregoButtonsSolidSize.sm,
             leadingIcon: TablerRegular.refresh,
-            onPressed: () => context.read<NewSessionCubit>().refreshOptions(),
+            onPressed: context.read<NewSessionCubit>().canRefreshOptions
+                ? () => context.read<NewSessionCubit>().refreshOptions()
+                : null,
           ),
         ],
       ),

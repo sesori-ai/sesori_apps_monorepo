@@ -223,11 +223,18 @@ class NewSessionOptionsService {
     };
   }
 
-  NewSessionOptionsData? selectAgent({required NewSessionOptionsData options, required String agent}) {
+  NewSessionOptionsData? selectAgent({
+    required NewSessionOptionsData options,
+    required String agent,
+    required NewSessionVariantIntent? variantIntent,
+  }) {
     final agentInfo = options.agents.firstWhereOrNull((item) => item.name == agent);
     if (agentInfo == null) return null;
-    final selectedAgentModel =
-        _validatedModel(providers: options.providers, model: agentInfo.model) ?? options.selectedAgentModel;
+    final selectedAgentModel = _applyVariantIntent(
+      providers: options.providers,
+      model: _validatedModel(providers: options.providers, model: agentInfo.model) ?? options.selectedAgentModel,
+      variantIntent: variantIntent,
+    );
     return NewSessionOptionsData(
       agents: options.agents,
       providers: options.providers,
@@ -243,6 +250,7 @@ class NewSessionOptionsService {
     required NewSessionOptionsData options,
     required String providerId,
     required String modelId,
+    required NewSessionVariantIntent? variantIntent,
   }) {
     final requested = AgentModel(providerID: providerId, modelID: modelId, variant: null);
     if (_validatedModel(providers: options.providers, model: requested) == null) return null;
@@ -260,7 +268,11 @@ class NewSessionOptionsService {
         : agentVariant != null && variants.any((variant) => variant.id == agentVariant)
         ? agentVariant
         : null;
-    final selectedAgentModel = requested.copyWith(variant: selectedVariant);
+    final selectedAgentModel = _applyVariantIntent(
+      providers: options.providers,
+      model: requested.copyWith(variant: selectedVariant),
+      variantIntent: variantIntent,
+    );
 
     return NewSessionOptionsData(
       agents: options.agents,

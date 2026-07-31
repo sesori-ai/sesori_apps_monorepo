@@ -498,6 +498,41 @@ void main() {
       expect(cubit.state.agentModelData?.stagedCommand, command);
     });
 
+    test("unexpected refresh exception preserves the prior catalog", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      var loadCalls = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          refresh: any(named: "refresh"),
+        ),
+      ).thenAnswer((_) async {
+        loadCalls++;
+        if (loadCalls > 1) throw StateError("unexpected refresh failure");
+        return SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const [],
+            providers: _providerResponse().items,
+            commands: const [],
+          ),
+        );
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      final previousModel = cubit.state.agentModelData?.agentModel;
+
+      await cubit.refreshOptions();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshFailureRetainedState>());
+      expect(cubit.state.agentModelData?.agentModel, previousModel);
+      expect(cubit.state.agentModelData?.providers, isNotEmpty);
+    });
+
     test("typed unavailable refresh failure clears the prior option catalog", () async {
       when(
         pluginRepository.listPlugins,
@@ -1088,6 +1123,32 @@ void main() {
       expect(data.agentModel, isNull);
     });
 
+    test("reconnect to a different bridge does not restore the prior bridge selection", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(
+          _pluginSnapshot(bridgeId: discoveryCalls == 1 ? "br_a" : "br_b", plugins: [pluginA]),
+        );
+      });
+      when(
+        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async => ApiResponse.success(_providerResponse()));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectVariant(const SessionVariant(id: "high"));
+      expect(cubit.state.agentModelData?.agentModel?.variant, "high");
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.agentModel?.variant, isNull);
+    });
+
     test("failed rediscovery does not record under the stale bridge key", () async {
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {
@@ -1122,6 +1183,16 @@ void main() {
         final data = cubit.state.agentModelData;
         return cubit.state is NewSessionError && !(data?.isLoading ?? true);
       });
+
+      clearInteractions(sessionRepository);
+      await cubit.refreshOptions();
+      verifyNever(
+        () => sessionRepository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          refresh: true,
+        ),
+      );
 
       await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
 

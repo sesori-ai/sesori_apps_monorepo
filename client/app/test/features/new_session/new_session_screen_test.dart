@@ -15,6 +15,7 @@ import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -919,6 +920,10 @@ void main() {
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsOneWidget);
     expect(
+      tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_options_refresh"))).onPressed,
+      isNull,
+    );
+    expect(
       find.ancestor(
         of: find.byType(PromptInput),
         matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
@@ -1090,9 +1095,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "reviewer"), findsOneWidget);
-    // Changing the agent seeds the variant from the agent's default.
-    // Reviewer has variant: null, so the pill shows "Default".
-    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
+    // Variant intent is independent, so the explicit xhigh choice survives the
+    // agent change while that variant remains valid for the selected model.
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("shows the loading overlay with accessible message during sending", (tester) async {

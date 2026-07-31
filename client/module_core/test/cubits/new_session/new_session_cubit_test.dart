@@ -787,6 +787,59 @@ void main() {
       ],
     );
 
+    test("selectModel preserves an explicit Default variant intent", () async {
+      selectionTracker.recordVariant(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        variant: const NewSessionDefaultVariantIntent(),
+      );
+      when(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Agents(
+            agents: [
+              AgentInfo(
+                name: "build",
+                description: "Build",
+                model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+                mode: AgentMode.primary,
+              ),
+              AgentInfo(
+                name: "build",
+                description: "Build",
+                model: AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+                mode: AgentMode.primary,
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
+
+      expect(
+        cubit.state.agentModelData?.agentModel,
+        const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: null),
+      );
+      expect(
+        selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.variant,
+        isA<NewSessionDefaultVariantIntent>(),
+      );
+    });
+
     blocTest<NewSessionCubit, NewSessionState>(
       "selectModel leaves provider-only model variant at Default",
       skip: 1,
