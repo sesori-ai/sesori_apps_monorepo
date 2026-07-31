@@ -675,6 +675,53 @@ void main() {
     );
   });
 
+  test("analytics activity queues one readiness retry behind an in-flight attempt", () async {
+    createService();
+    final record = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: record),
+    );
+    final activationResult = Completer<AnalyticsDeliveryResult>();
+    analyticsRepository.deliveryFutures.addAll([
+      Future.value(AnalyticsDeliveryResult.acceptedBySdk),
+      activationResult.future,
+      Future.value(AnalyticsDeliveryResult.acceptedBySdk),
+      Future.value(AnalyticsDeliveryResult.acceptedBySdk),
+    ]);
+
+    await service.start();
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 2);
+
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    activationResult.complete(AnalyticsDeliveryResult.failed);
+    await waitForAnalyticsCalls(count: 4);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+      ],
+    );
+  });
+
   test("local read failure blocks automatic activation until an explicit successful retry", () async {
     createService();
     preferenceRepository.throwOnLoad = true;

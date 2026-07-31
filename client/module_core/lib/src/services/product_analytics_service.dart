@@ -23,6 +23,7 @@ class ProductAnalyticsService {
   StreamSubscription<ProductAnalyticsState>? _stateSubscription;
   DeferredProductAnalyticsCandidates? _deferredCandidates;
   ({int generation, Future<void> future})? _activeGenerationDispatch;
+  ProductAnalyticsDeliveryContext? _trailingGenerationDispatch;
   Future<void>? _startFuture;
   Future<void>? _disposeFuture;
   bool _disposed = false;
@@ -121,12 +122,21 @@ class ProductAnalyticsService {
 
   Future<void> _coalesceActiveGenerationDispatch({required ProductAnalyticsDeliveryContext context}) {
     final active = _activeGenerationDispatch;
-    if (active != null && active.generation == context.generation) return active.future;
+    if (active != null && active.generation == context.generation) {
+      _trailingGenerationDispatch = context;
+      return active.future;
+    }
+    _trailingGenerationDispatch = null;
 
     late final Future<void> future;
     future = _dispatchActiveGeneration(context: context).whenComplete(() {
       if (identical(_activeGenerationDispatch?.future, future)) {
         _activeGenerationDispatch = null;
+        final trailingContext = _trailingGenerationDispatch;
+        _trailingGenerationDispatch = null;
+        if (trailingContext != null && _isCurrentActiveContext(context: trailingContext)) {
+          _retryActiveGenerationDispatch(context: trailingContext);
+        }
       }
     });
     _activeGenerationDispatch = (generation: context.generation, future: future);
@@ -217,6 +227,7 @@ class ProductAnalyticsService {
     _disposed = true;
     _deferredCandidates = null;
     _activeGenerationDispatch = null;
+    _trailingGenerationDispatch = null;
     await _stateSubscription?.cancel();
     _stateSubscription = null;
     await _preferenceService.dispose();
