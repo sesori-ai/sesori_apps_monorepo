@@ -10,6 +10,7 @@ export 'components/buttons/prego_switch.dart';
 export 'components/icons/prego_avatar_user.dart';
 export 'components/icons/prego_brand_logo.dart';
 export 'components/inputs/prego_input_field.dart';
+export 'components/inputs/prego_voice_waveform.dart';
 export 'components/lists/prego_animated_sliver_list.dart';
 export 'components/loaders/prego_activity_indicator.dart';
 export 'components/loaders/prego_ai_loader.dart';

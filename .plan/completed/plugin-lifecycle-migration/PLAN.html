@@ -87,7 +87,7 @@
   <h1>Plugin Lifecycle Migration Plan</h1>
   <div class="sub">Move all OpenCode runtime ownership (spawn, ports, health, ownership records, DB maintenance) out of <code>bridge/app</code> and into the OpenCode plugin, behind a plugin interface that supports managed-runtime, direct-CLI, and remote-server plugins — with per-plugin enable/start/stop. Delivered as a ladder of small, always-green PRs.</div>
   <div class="meta">
-    <span><b>Status:</b> in progress (rev 7 — PRs 1–11 merged, PR 12 shipped #249, PR 13 shipped #251; PR 14 had no remaining deletions and was folded into PR 15 docs sweep; codegen / line-budget rule revised per maintainer review; shipped cards carry delta callouts binding on later PRs)</span>
+    <span><b>Status:</b> complete (PRs 1–13 merged; empty PR 14 folded into the final PR 15 docs sweep, shipped as #252)</span>
     <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11; rev 4–6: 2026-06-12)</span>
     <span><b>PRs:</b> 15, strictly sequential</span>
     <span><b>Max PR size:</b> ~2,000 hand-written changed lines (soft target; generated code excluded)</span>
@@ -392,6 +392,7 @@
   </li>
 </ul>
 <div class="safe"><b>Why always-green:</b> docs only; no production code changes.</div>
+<div class="callout green"><b>Shipped as #252 (2026-06-13).</b> The final docs sweep closed the plugin-lifecycle migration ladder.</div>
 </div>
 
 <h2><span class="num">4</span>Risk register → where each is retired</h2>

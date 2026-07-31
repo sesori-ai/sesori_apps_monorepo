@@ -2,9 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `3adaf4e4` after Step 7/8 merged
-- **Series state:** Step 8/8 PR #595 open; management controls implemented and verified
-- **Next action:** monitor and settle PR #595
+- **Completion base:** `origin/main` at current-main Harnesses consolidation
+  `0da8ec7c`; final Stage 13 implementation merged as `a30b671b`
+- **Series state:** complete; all eight replacement PRs merged and final
+  current-main simulator E2E passed
+- **Next action:** none; child plan archived with its parent
 
 ## Delivery
 
@@ -17,7 +19,7 @@
 | [x] | Step 5/7 — Harnesses overview and state contract | `setup-aware-harness-settings-overview` | PR #592 merged as `1b0f9874`; combined simulator E2E passed |
 | [x] | Step 6/8 — management actions | `setup-aware-harness-settings-state` | PR #593 merged as `075951cb`; estimate 650-800 changed lines |
 | [x] | Step 7/8 — management capabilities | `setup-aware-harness-settings-capabilities` | PR #594 merged as `3adaf4e4` |
-| [ ] | Step 8/8 — management controls | `setup-aware-harness-settings-controls` | PR #595 open; 1,416 changed lines (generated localization and test-matrix overage) |
+| [x] | Step 8/8 — management controls | `setup-aware-harness-settings-controls` | PR #595 merged as `a30b671b`; 1,416 changed lines (generated localization and test-matrix overage) |
 
 ## Source Material
 
@@ -189,3 +191,19 @@
   module_core, desktop, and module_desktop_core. Architecture review's sole
   finding was applied by using the shared fail-closed `PluginRuntimeState.isEnabled`
   semantic rather than classifying lifecycle state in the Flutter shell.
+- Step 8/8 delivery (2026-07-28): PR #595 merged to `main` as `a30b671b` and
+  frozen PR #511 closed as superseded. PR #647 later folded the overview and
+  management controls into one current-main Harnesses screen as `0da8ec7c`.
+- Final simulator E2E (2026-07-31): the iPhone 17 simulator and source bridge
+  verified current-main navigation, bundled logos and live facts, setup refresh,
+  safe restart, safe disable/enable, no-timeout override and clear, apply-all
+  timeout persistence across bridge process restart, busy conflict copy,
+  cancellation with no force mutation, one-shot force disable, retained session
+  reconciliation after re-enable, and successful session creation in
+  `random stuff`. A pre-existing OpenCode server on port 4096 was used for
+  no-auto-start attach mode; the UI exposed only setup refresh and explained
+  that lifecycle/timeout ownership was external. The 10-minute/no-override/all-
+  enabled baseline was restored, the E2E session was deleted, the unrelated
+  OpenCode process was left untouched, and the ordinary source bridge was left
+  running. Exact actions, observations, cleanup, and optional follow-ups are in
+  `E2E.md`.

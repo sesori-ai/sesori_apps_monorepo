@@ -24,8 +24,11 @@ class MockPermissionRepository extends Mock implements PermissionRepository {}
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
-  return BlocProvider<ConnectionOverlayCubit>(
-    create: (_) => StubConnectionOverlayCubit(),
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
+      BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+    ],
     child: MaterialApp(
       navigatorKey: navigatorKey,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),

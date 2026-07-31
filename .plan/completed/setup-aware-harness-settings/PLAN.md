@@ -3,12 +3,11 @@
 ## Status
 
 - **Plan slug:** `setup-aware-harness-settings`
-- **Parent plan:** `.plan/active/setup-aware-plugin-lifecycle`
-- **Status:** ready for implementation; no Stage 13 implementation branch has
-  started
-- **Implementation base:** current `origin/main` after Stage 12 merge
-  `6cedf5bd`, force-disable reconciliation `877f0b58`, and Cursor recency
-  `ae060c5f`
+- **Parent plan:** `.plan/completed/setup-aware-plugin-lifecycle`
+- **Status:** complete; all eight replacement PRs merged and final simulator E2E
+  passed on the current single-screen Harnesses destination
+- **Completion base:** `origin/main` at current-main Harnesses consolidation
+  `0da8ec7c`; final Stage 13 implementation merged as `a30b671b`
 - **Reference only:** frozen PR #511, substantive implementation commit
   `167a3ee7`, action-preservation follow-up `bc3918cb`, head `4f07172f`
 
@@ -1110,6 +1109,11 @@ Production files:
 
 ## Real Simulator E2E
 
+The completed current-main execution record is in `E2E.md`. PR #647 replaced
+the original two-page presentation below with one consolidated Harnesses screen;
+the final run applied the same lifecycle, timeout, capability, persistence, and
+cleanup gates to that current product destination.
+
 Use the available iOS simulator with the PR build and the source bridge from
 this repository. Launch the bridge with
 `--data-dir ~/.local/share/sesori-dev` so it reuses the existing login and
@@ -1138,7 +1142,8 @@ and handle every bridge process before startup, not only after testing.
 
 ## Completion
 
-Stage 13 completes after all seven PRs merge, the Harnesses entry and two
-pages are verified against a real bridge and simulator in `random stuff`,
-frozen PR #511 is closed as superseded, and the parent tracker records merge
-commits and verification.
+Stage 13 completed after all eight replacement PRs merged, frozen PR #511 closed
+as superseded, and the final lifecycle controls were verified against a real
+bridge and simulator in `random stuff`. PR #647 subsequently consolidated the
+two original pages into the current single Harnesses screen; `E2E.md` records
+the final current-main verification, cleanup, and optional follow-ups.

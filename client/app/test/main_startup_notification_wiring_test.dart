@@ -41,6 +41,11 @@ void main() {
       return AppearanceMode.dark;
     }
 
+    Future<ChatInputMode> readChatInputMode() async {
+      events.add("readChatInputMode");
+      return ChatInputMode.voiceFirst;
+    }
+
     void runAppFn(_) => events.add("runApp");
 
     await bootstrapSesoriApp(
@@ -51,6 +56,7 @@ void main() {
       startAnalyticsRouteListenerFn: startAnalyticsRouteListener,
       startNotificationStartupFn: startNotificationStartup,
       readAppearanceFn: readAppearance,
+      readChatInputModeFn: readChatInputMode,
       runAppFn: runAppFn,
     );
 
@@ -62,9 +68,10 @@ void main() {
       "productAnalytics",
       "analyticsRoutes",
       "notificationStartup.start",
-      // The persisted theme is restored before the first frame, so the app
-      // never launches in the wrong appearance.
+      // The persisted preferences are restored before the first frame, so the
+      // app never launches in the wrong appearance.
       "readAppearance",
+      "readChatInputMode",
       "runApp",
     ]);
 
@@ -80,6 +87,7 @@ void main() {
         "analyticsRoutes",
         "notificationStartup.start",
         "readAppearance",
+        "readChatInputMode",
         "runApp",
         "notificationStartup.done",
       ],

@@ -51,7 +51,18 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
   /// "jump to latest" pill clears them) while older content scrolls up behind
   /// the composer's fade. Stays 0 in the read-only variant, which renders none
   /// of these controls.
-  double _bottomControlsHeight = 0;
+  ///
+  /// A notifier rather than state: the composer's layout morphs animate its
+  /// height frame-by-frame, and each measurement must re-inset only the
+  /// message list — not rebuild the whole view including the very composer
+  /// being measured.
+  final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(0);
+
+  @override
+  void dispose() {
+    _bottomControlsHeight.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,24 +85,27 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
               child: state.messages.isEmpty && state.retryErrorMessage == null
                   ? Center(child: Text(loc.sessionDetailEmpty))
                   : PregoTopBarInsetBuilder(
-                      builder: (context, topInset, _) => SessionDetailMessageList(
-                        projectId: widget.projectId,
-                        messages: state.messages,
-                        streamingText: state.streamingText,
-                        children: state.children,
-                        childStatuses: state.childStatuses,
-                        retryErrorMessage: state.retryErrorMessage,
-                        // Pad the oldest-message edge clear of the bar it scrolls
-                        // behind, and the newest-message edge clear of the floating
-                        // bottom controls overlaid below (background-tasks bar,
-                        // queued messages and composer); content in between scrolls
-                        // up behind the bar's fade and the composer's fade.
-                        topInset: topInset,
-                        // The read-only variant renders no floating controls, so
-                        // force the inset to 0 there — guarding against a stale
-                        // measured height lingering if a state object is reused
-                        // across an editable -> read-only transition.
-                        bottomInset: widget.readOnly ? 0 : _bottomControlsHeight,
+                      builder: (context, topInset, _) => ValueListenableBuilder<double>(
+                        valueListenable: _bottomControlsHeight,
+                        builder: (context, bottomControlsHeight, _) => SessionDetailMessageList(
+                          projectId: widget.projectId,
+                          messages: state.messages,
+                          streamingText: state.streamingText,
+                          children: state.children,
+                          childStatuses: state.childStatuses,
+                          retryErrorMessage: state.retryErrorMessage,
+                          // Pad the oldest-message edge clear of the bar it scrolls
+                          // behind, and the newest-message edge clear of the floating
+                          // bottom controls overlaid below (background-tasks bar,
+                          // queued messages and composer); content in between scrolls
+                          // up behind the bar's fade and the composer's fade.
+                          topInset: topInset,
+                          // The read-only variant renders no floating controls, so
+                          // force the inset to 0 there — guarding against a stale
+                          // measured height lingering if a state object is reused
+                          // across an editable -> read-only transition.
+                          bottomInset: widget.readOnly ? 0 : bottomControlsHeight,
+                        ),
                       ),
                     ),
             ),
@@ -147,8 +161,8 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
             right: 0,
             child: _MeasureSize(
               onChange: (size) {
-                if (!mounted || size.height == _bottomControlsHeight) return;
-                setState(() => _bottomControlsHeight = size.height);
+                if (!mounted) return;
+                _bottomControlsHeight.value = size.height;
               },
               child: Column(
                 mainAxisSize: MainAxisSize.min,

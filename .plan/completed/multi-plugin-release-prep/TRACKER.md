@@ -2,11 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `4be1e7bb`
-- **Series state:** Steps 1/6 through 5.C/6 are merged; oversized PR #620 is
+- **Completion base:** `origin/main` at final Step 6 merge `0da8ec7c`
+- **Series state:** complete; Steps 1/6 through 6/6 merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
-- **Current step:** Step 6/6 — consolidated Harnesses settings
-- **Next action:** monitor final Step 6 PR #647 through review and CI
+- **Current step:** complete
+- **Next action:** none; plan archived after the final implementation merge
 
 ## Delivery
 
@@ -24,7 +24,7 @@
 | [x] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | PR #635 merged |
 | [x] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | PR #636 merged |
 | [x] | Step 5.C/6 — dynamic session-option cache misses | `multi-plugin-release-prep-dynamic-options` | PR #642 merged |
-| [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | [PR #647](https://github.com/sesori-ai/sesori_apps_monorepo/pull/647) open against `main` |
+| [x] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | [PR #647](https://github.com/sesori-ai/sesori_apps_monorepo/pull/647) merged as `0da8ec7c` |
 
 ## Locked Decisions
 
@@ -311,3 +311,6 @@
   than transitional stacked delivery.
 - Step 6/6 delivery (2026-07-31): committed as `f300d958`, pushed, and opened as
   PR #647 against `main`.
+- Step 6/6 merge (2026-07-31): PR #647 merged to `main` as `0da8ec7c`. All
+  planned release-preparation steps are complete, and the plan moved to the
+  completed archive.

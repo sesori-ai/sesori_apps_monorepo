@@ -258,6 +258,18 @@
   "@settingsAppearanceSystem": {
     "description": "Theme option that follows the device appearance setting"
   },
+  "settingsSectionChatInput": "Chat input",
+  "@settingsSectionChatInput": {
+    "description": "Settings section choosing which input the session composer leads with"
+  },
+  "settingsChatInputVoiceFirst": "Voice first",
+  "@settingsChatInputVoiceFirst": {
+    "description": "Chat input option: the composer rests as a hold-to-talk pill and leads with voice dictation"
+  },
+  "settingsChatInputTextFirst": "Text first",
+  "@settingsChatInputTextFirst": {
+    "description": "Chat input option: the composer rests as a tap-to-type field with the microphone alongside"
+  },
   "settingsSectionSupport": "Support",
   "settingsSupportEmail": "Email",
   "settingsSupportDiscord": "Discord",
@@ -336,6 +348,10 @@
   "sessionDetailFollowUpHint": "Follow up...",
   "@sessionDetailFollowUpHint": {
     "description": "Composer placeholder once the session already has messages."
+  },
+  "sessionDetailHoldToTalkMore": "Hold to talk more",
+  "@sessionDetailHoldToTalkMore": {
+    "description": "Label of the voice-first composer's hold-to-record area once the field already holds text; holding it appends more transcribed speech."
   },
   "sessionDetailTypeMessage": "Type a message",
   "@sessionDetailTypeMessage": {
@@ -534,6 +550,18 @@
   "voiceRecord": "Record voice",
   "voiceStopRecording": "Stop recording",
   "voiceCancelTranscription": "Cancel transcription",
+  "voiceCancelRecording": "Cancel recording",
+  "@voiceCancelRecording": {
+    "description": "Accessibility label of the X button shown in the accordion's place while recording; releasing or tapping on it discards the recording."
+  },
+  "voiceReleaseToTranscribe": "Release to transcribe",
+  "@voiceReleaseToTranscribe": {
+    "description": "Floating helper above the composer while a hold-to-talk recording is running."
+  },
+  "voiceReleaseToCancel": "Release to cancel",
+  "@voiceReleaseToCancel": {
+    "description": "Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording."
+  },
   "voiceTranscribing": "Transcribing...",
   "voiceRecording": "Recording...",
   "voiceErrorPermission": "Microphone permission is required for voice input",

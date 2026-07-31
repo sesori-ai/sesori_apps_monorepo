@@ -3,9 +3,9 @@
 ## Status
 
 - **Plan slug:** `multi-plugin-release-prep`
-- **Status:** Steps 1/6 through 5.C/6 merged; Step 6/6 is in progress
+- **Status:** complete; Steps 1/6 through 6/6 merged
 - **Plan delivery:** this document and its tracker are Step 1/6
-- **Implementation base:** `origin/main` at `4be1e7bb`
+- **Completion base:** `origin/main` at final Step 6 merge `0da8ec7c`
 - **Approved product direction:** Codex remains project-aware; Cursor and the
   ACP-backed option state use plugin-scoped caching; OpenCode remains
   project-scoped
@@ -737,7 +737,7 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 
 ## Completion
 
-The plan completes after all six PRs merge, New Session switching reads durable
+The plan completed after all six steps merged, New Session switching reads durable
 scope-correct options and dynamically starts only the selected harness on cache
 miss, explicit cache-only and forced-refresh semantics plus old-bridge
 degradation are verified, both cache scopes survive restart, and the single

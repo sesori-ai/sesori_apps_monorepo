@@ -1,7 +1,9 @@
 import "dart:async";
+import "dart:ui" show PointerDeviceKind;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
+import "package:flutter/gestures.dart" show kSecondaryButton;
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -13,6 +15,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
+import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -23,7 +26,11 @@ class MockSessionDetailCubit extends MockCubit<SessionDetailState> implements Se
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
-Widget _buildApp({required SessionDetailCubit cubit}) {
+Widget _buildApp({
+  required SessionDetailCubit cubit,
+  ChatInputMode chatInputMode = ChatInputMode.voiceFirst,
+  StubChatInputModeCubit? chatInputModeCubit,
+}) {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -46,8 +53,13 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
     ],
   );
 
-  return BlocProvider<ConnectionOverlayCubit>(
-    create: (_) => StubConnectionOverlayCubit(),
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
+      BlocProvider<ChatInputModeCubit>(
+        create: (_) => chatInputModeCubit ?? StubChatInputModeCubit(initialState: chatInputMode),
+      ),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -500,10 +512,13 @@ void main() {
     expect(find.byType(EditableText), findsOneWidget);
     expect(composerFocus(tester).hasFocus, isTrue);
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
-    expect(find.byIcon(TablerRegular.microphone), findsOneWidget);
+    // Voice-first typing nests a hold-to-talk pill along the bottom instead
+    // of the text-first mic button.
+    expect(find.byIcon(TablerRegular.microphone), findsNothing);
+    expect(find.text("Hold to talk"), findsOneWidget);
   });
 
-  testWidgets("session with messages rests as a follow-up field that expands on tap", (tester) async {
+  testWidgets("voice-first session with messages still rests in hold-to-talk", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -515,10 +530,42 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
+    expect(find.text("Hold to talk"), findsOneWidget);
+    expect(find.text("Follow up..."), findsNothing);
+    expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("text-first session with messages rests as a follow-up field that expands on tap", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      messages: [testMessageWithParts()],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: ChatInputMode.textFirst));
+    await tester.pumpAndSettle();
+
     expect(find.text("Hold to talk"), findsNothing);
     expect(find.text("Follow up..."), findsOneWidget);
 
     await tester.tap(find.text("Follow up..."));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(composerFocus(tester).hasFocus, isTrue);
+  });
+
+  testWidgets("text-first fresh session rests as a tap-to-type field with the mic alongside", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: ChatInputMode.textFirst));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Hold to talk"), findsNothing);
+    expect(find.byIcon(TablerRegular.microphone), findsOneWidget);
+    expect(find.text("Ask anything..."), findsOneWidget);
+
+    await tester.tap(find.text("Ask anything..."));
     await tester.pumpAndSettle();
 
     expect(find.byType(EditableText), findsOneWidget);
@@ -542,56 +589,109 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    // Nothing to send yet, so the dark action button is the stop control.
+    // Nothing to send yet, so the dark action button is the stop control —
+    // reachable next to the keyboard button even in the resting voice pill.
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
     await tester.tap(find.byIcon(TablerSolid.player_stop));
     verify(() => cubit.abort()).called(1);
 
     // Typed text flips the same button back to send: sending queues while the
     // agent works, so it must stay reachable.
-    await tester.tap(find.text("Follow up..."));
+    await tester.tap(find.byIcon(TablerRegular.keyboard));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.enterText(find.byType(EditableText), "follow-up");
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
     expect(find.byIcon(TablerSolid.player_stop), findsNothing);
   });
 
-  testWidgets("release during recorder startup still stops the recording", (tester) async {
-    final startCompleter = Completer<void>();
-    final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+  testWidgets("a very short tap starts recording immediately but never transcribes", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    // Hold the hold-to-talk pill long enough for the long-press to fire (the
-    // recording start is now awaiting the recorder), then release before the
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+  });
+
+  testWidgets("a secondary pointer button does not start recording", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text("Hold to talk")),
+      kind: PointerDeviceKind.mouse,
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    verifyNever(() => voiceTranscriptionService.startRecording());
+    verifyNever(() => voiceTranscriptionService.cancelRecording());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+  });
+
+  testWidgets("a short one-word recording still transcribes", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "yes");
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    verifyNever(() => voiceTranscriptionService.cancelRecording());
+    expect(find.text("yes"), findsOneWidget);
+  });
+
+  testWidgets("release during recorder startup discards the incomplete recording", (tester) async {
+    final startCompleter = Completer<void>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Recording is requested on touch-down, then the finger lifts before the
     // recorder finishes starting up.
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
-    await tester.pump(const Duration(milliseconds: 600));
+    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    await tester.pump(const Duration(milliseconds: 100));
     await gesture.up();
     await tester.pump();
     verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
 
-    // The recorder finishes starting after the finger already lifted — the
-    // composer must stop immediately instead of recording open-endedly.
+    // The recorder finishes starting after the finger already lifted, so the
+    // incomplete local recording is discarded instead of uploaded.
     startCompleter.complete();
     await tester.pump();
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
-
-    stopCompleter.complete("transcript");
     await tester.pumpAndSettle();
-    expect(find.text("transcript"), findsOneWidget);
-    verify(cubit.reportVoiceTranscriptionCompleted).called(1);
-    final savedDrafts = verify(
-      () => cubit.saveComposerDraft(draft: captureAny(named: "draft")),
-    ).captured.cast<ComposerDraft>();
-    expect(savedDrafts.last.text, "transcript");
-    expect(savedDrafts.last.voiceSpans, [VoiceOriginSpan(start: 0, end: 10)]);
+    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
   });
 
   testWidgets("restored mixed draft keeps voice-assisted input mode when sent", (tester) async {
@@ -692,10 +792,9 @@ void main() {
 
   testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {
     final startCompleter = Completer<void>();
-    final stopCompleter = Completer<String>();
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
     final state = _loadedState(
       pendingQuestions: const [],
@@ -705,29 +804,28 @@ void main() {
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
 
-    await tester.pumpWidget(_buildApp(cubit: cubit));
+    // Text-first keeps the mic button as the hold surface.
+    await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: ChatInputMode.textFirst));
     await tester.pumpAndSettle();
 
-    // First hold on the mic reaches the recorder; a second long-press (e.g. a
+    // First hold on the mic reaches the recorder; a second press (e.g. a
     // second finger on the same surface after a stray release) while the
     // recorder is still starting must not start again.
     final first = await tester.startGesture(tester.getCenter(find.byIcon(TablerRegular.microphone)));
-    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 100));
     await first.up();
     await tester.pump();
     final second = await tester.startGesture(tester.getCenter(find.byIcon(TablerRegular.microphone)));
-    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 100));
     await second.up();
     await tester.pump();
     verify(() => voiceTranscriptionService.startRecording()).called(1);
 
-    // Both holds released before startup finished — the pending release stops
-    // the recording as soon as it begins.
+    // Both holds released before startup finished, so the incomplete
+    // recording is discarded as soon as startup settles.
     startCompleter.complete();
     await tester.pump();
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
-
-    stopCompleter.complete("transcript");
+    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
     await tester.pumpAndSettle();
   });
 
@@ -800,5 +898,309 @@ void main() {
       find.descendant(of: find.byType(PromptEditorSheet), matching: find.text("long prompt")),
       findsOneWidget,
     );
+  });
+
+  testWidgets("recording swaps the pill chrome for the cancel target and waveform", (tester) async {
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    // Let the swap-in transitions finish (bounded: the waveform never settles).
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    // The cancel target must keep the full 44pt footprint (a CustomPaint with
+    // a child would otherwise shrink to its icon).
+    expect(tester.getSize(find.byType(VoiceCancelButton)), const Size(44, 44));
+    expect(find.byType(PregoVoiceWaveform), findsOneWidget);
+    expect(find.text("Release to transcribe"), findsOneWidget);
+    // The keyboard button leaves the pill while the waveform needs its width.
+    expect(find.byIcon(TablerRegular.keyboard), findsNothing);
+
+    await gesture.up();
+    await tester.pump();
+    stopCompleter.complete("dictated words");
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text("dictated words"), findsOneWidget);
+  });
+
+  testWidgets("dragging the hold onto the cancel target discards the recording", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await tester.pump();
+    expect(find.text("Release to cancel"), findsOneWidget);
+
+    await gesture.up();
+    await tester.pump();
+    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+
+    // The pill rests again with nothing transcribed.
+    await tester.pumpAndSettle();
+    expect(find.text("Hold to talk"), findsOneWidget);
+    expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("dragging toward cancel during recorder startup is preserved", (tester) async {
+    final startCompleter = Completer<void>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final cancelPosition = tester.getCenter(find.byIcon(TablerRegular.chevron_right));
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await gesture.moveTo(cancelPosition);
+    await tester.pump();
+
+    // The recorder starts after the finger has already reached the future
+    // cancel target. No further movement should be needed to preserve that
+    // intent or update the drag feedback.
+    startCompleter.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.text("Release to cancel"), findsOneWidget);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+  });
+
+  testWidgets("a hold during an in-flight cancel does not present a phantom recording", (tester) async {
+    final cancelCompleter = Completer<void>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) => cancelCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Record, then discard by releasing on the cancel target.
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+    verify(() => voiceTranscriptionService.startRecording()).called(1);
+
+    // The platform cancel is still in flight: the service would silently
+    // ignore a start, so the composer must not enter a recording that never
+    // began.
+    final second = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await second.up();
+    await tester.pump();
+    verifyNever(() => voiceTranscriptionService.startRecording());
+
+    // Once the cancel settles, recording works again.
+    cancelCompleter.complete();
+    await tester.pumpAndSettle();
+    final third = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    await third.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("transcribing shows the shimmer and its X discards the transcription", (tester) async {
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.up();
+    // Bounded pumps: the transcribing shimmer sweeps until the upload ends.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text("Transcribing..."), findsOneWidget);
+    // The keyboard affordance returns while transcription runs.
+    expect(find.byIcon(TablerRegular.keyboard), findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.x));
+    await tester.pump();
+    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+
+    // The cancel path resets the composer without waiting for the in-flight
+    // upload (the real service fails it with a cancellation error).
+    await tester.pumpAndSettle();
+    expect(find.text("Hold to talk"), findsOneWidget);
+    expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("a cancelled transcription settling late cannot corrupt the next recording", (tester) async {
+    final stopCompleters = <Completer<String>>[];
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) {
+      final completer = Completer<String>();
+      stopCompleters.add(completer);
+      return completer.future;
+    });
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Record and release into a slow transcription, then discard it.
+    final first = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await first.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byIcon(TablerRegular.x));
+    await tester.pumpAndSettle();
+
+    // Start a new recording, then let the cancelled upload settle mid-hold:
+    // its continuation must neither insert the stale transcript nor reset
+    // this newer interaction back to idle.
+    final second = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    stopCompleters.first.complete("stale words");
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.text("Release to transcribe"), findsOneWidget);
+
+    // The new interaction still completes normally.
+    await second.up();
+    await tester.pump();
+    stopCompleters.last.complete("fresh words");
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text("fresh words"), findsOneWidget);
+    expect(find.textContaining("stale words"), findsNothing);
+  });
+
+  testWidgets("the keyboard button enters typing while transcription continues", (tester) async {
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.byIcon(TablerRegular.keyboard));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(composerFocus(tester).hasFocus, isTrue);
+
+    // The transcript lands in the already-focused field.
+    stopCompleter.complete("dictated words");
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text("dictated words"), findsOneWidget);
+    expect(composerFocus(tester).hasFocus, isTrue);
+  });
+
+  testWidgets("switching the chat input mode re-shapes the resting composer live", (tester) async {
+    final modeCubit = StubChatInputModeCubit();
+
+    await tester.pumpWidget(_buildApp(cubit: cubit, chatInputModeCubit: modeCubit));
+    await tester.pumpAndSettle();
+    expect(find.text("Hold to talk"), findsOneWidget);
+
+    await modeCubit.select(mode: ChatInputMode.textFirst);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Hold to talk"), findsNothing);
+    expect(find.text("Ask anything..."), findsOneWidget);
+    expect(find.byIcon(TablerRegular.microphone), findsOneWidget);
+  });
+
+  testWidgets("holding the typing container's voice pill records while the text stays", (tester) async {
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "draft");
+    await tester.pump();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk more")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The field (and its text) stay while the bottom pill hosts the chrome.
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(find.text("draft"), findsOneWidget);
+    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceWaveform), findsOneWidget);
+    expect(find.text("Release to transcribe"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
+
+    await gesture.up();
+    await tester.pump();
+    stopCompleter.complete("more words");
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text("draft more words"), findsOneWidget);
+  });
+
+  testWidgets("voice-first transcript rests unfocused for review before sending", (tester) async {
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.up();
+    await tester.pump();
+
+    stopCompleter.complete("dictated words");
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    // The transcript rests in the typing container for review: send is one
+    // tap away, the keyboard only rises if the text itself is tapped.
+    expect(find.text("dictated words"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
+    expect(composerFocus(tester).hasFocus, isFalse);
+    expect(find.text("Hold to talk more"), findsOneWidget);
   });
 }
