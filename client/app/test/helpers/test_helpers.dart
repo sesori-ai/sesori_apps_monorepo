@@ -703,9 +703,11 @@ AuthUser testAuthUser() {
 ///
 /// Matched by asset rather than by rendered pixels: the artwork is what the
 /// component promises for a harness it knows, and loading it would mean
-/// decoding an SVG per assertion.
+/// decoding an SVG per assertion. Monochrome marks ship a `_light` and a
+/// `_dark` export, so the basename is matched with that optional suffix.
 Finder findBrandLogo(String pluginId) => find.byWidgetPredicate((widget) {
   if (widget is! SvgPicture) return false;
   final loader = widget.bytesLoader;
-  return loader is SvgAssetLoader && loader.assetName.endsWith("/$pluginId.svg");
+  return loader is SvgAssetLoader &&
+      RegExp("/${RegExp.escape(pluginId)}(_light|_dark)?\\.svg\$").hasMatch(loader.assetName);
 }, description: "brand artwork for $pluginId");

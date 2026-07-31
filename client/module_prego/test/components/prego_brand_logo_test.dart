@@ -18,17 +18,37 @@ SvgAssetLoader _loaderOf(WidgetTester tester) =>
     tester.widget<SvgPicture>(find.byType(SvgPicture)).bytesLoader as SvgAssetLoader;
 
 void main() {
-  for (final mapping in <({String pluginId, String asset})>[
-    (pluginId: Harness.opencode.name, asset: "assets/svgs/brands/opencode.svg"),
-    (pluginId: Harness.codex.name, asset: "assets/svgs/brands/codex.svg"),
-    (pluginId: Harness.cursor.name, asset: "assets/svgs/brands/cursor.svg"),
+  for (final mapping in <({String pluginId, String lightAsset, String darkAsset})>[
+    (
+      pluginId: Harness.opencode.name,
+      lightAsset: "assets/svgs/brands/opencode_light.svg",
+      darkAsset: "assets/svgs/brands/opencode_dark.svg",
+    ),
+    (
+      pluginId: Harness.codex.name,
+      lightAsset: "assets/svgs/brands/codex_light.svg",
+      darkAsset: "assets/svgs/brands/codex_dark.svg",
+    ),
+    (
+      pluginId: Harness.cursor.name,
+      lightAsset: "assets/svgs/brands/cursor_light.svg",
+      darkAsset: "assets/svgs/brands/cursor_dark.svg",
+    ),
   ]) {
     testWidgets("maps ${mapping.pluginId} to its bundled artwork", (tester) async {
       await tester.pumpWidget(_harness(logo: PregoBrandLogo(pluginId: mapping.pluginId, color: null)));
 
       final loader = _loaderOf(tester);
-      expect(loader.assetName, mapping.asset);
+      expect(loader.assetName, mapping.lightAsset);
       expect(loader.packageName, "theme_prego");
+    });
+
+    testWidgets("follows the dark theme with ${mapping.pluginId}'s dark artwork", (tester) async {
+      await tester.pumpWidget(
+        _harness(logo: PregoBrandLogo(pluginId: mapping.pluginId, color: null), brightness: Brightness.dark),
+      );
+
+      expect(_loaderOf(tester).assetName, mapping.darkAsset);
     });
   }
 
@@ -58,36 +78,5 @@ void main() {
       find.descendant(of: find.byType(PregoBrandLogo), matching: find.byType(ExcludeSemantics)),
       findsWidgets,
     );
-  });
-
-  group("the greys the artwork is drawn in", () {
-    testWidgets("stay as exported under the light theme", (tester) async {
-      await tester.pumpWidget(_harness(logo: PregoBrandLogo(pluginId: Harness.opencode.name, color: null)));
-
-      // A no-op in light mode: the export already carries these values.
-      final mapper = _loaderOf(tester).colorMapper!;
-      expect(mapper.substitute(null, "path", "fill", const Color(0xFF141414)), PregoDesignSystem.light.colors.textPrimary);
-      expect(
-        mapper.substitute(null, "path", "fill", const Color(0xFF474747)),
-        PregoDesignSystem.light.colors.textSecondary,
-      );
-    });
-
-    testWidgets("flip with the dark theme, leaving brand colours alone", (tester) async {
-      await tester.pumpWidget(
-        _harness(logo: PregoBrandLogo(pluginId: Harness.opencode.name, color: null), brightness: Brightness.dark),
-      );
-
-      final mapper = _loaderOf(tester).colorMapper!;
-      // Near-black marks would all but vanish on a dark surface.
-      expect(mapper.substitute(null, "path", "fill", const Color(0xFF141414)), PregoDesignSystem.dark.colors.textPrimary);
-      expect(
-        mapper.substitute(null, "path", "fill", const Color(0xFF474747)),
-        PregoDesignSystem.dark.colors.textSecondary,
-      );
-      // Codex's gradient is its own, and white is load-bearing in the masks.
-      expect(mapper.substitute(null, "stop", "stop-color", const Color(0xFF3941FF)), const Color(0xFF3941FF));
-      expect(mapper.substitute(null, "path", "fill", const Color(0xFFFFFFFF)), const Color(0xFFFFFFFF));
-    });
   });
 }
