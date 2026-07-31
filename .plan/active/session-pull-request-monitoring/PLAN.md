@@ -95,8 +95,9 @@ OpenCode, Codex, Cursor, ACP, or future backend behavior crosses
 - GitHub.com only, through the user's installed/authenticated `gh` CLI.
 - Match canonical base-repository identity and exact head branch.
 - Accept any author in that repository; reject `isCrossRepository == true`.
-- Query at most one newest open and one newest terminal candidate per target,
-  then select open before terminal. Do not fetch or retain PR history.
+- Select and retain at most one newest open or terminal PR per target. Query
+  ordered candidate pages only as far as needed to skip ineligible fork heads;
+  those transient candidates are not persisted as PR history.
 - Draft PRs are open and eligible.
 - “Most recent” means GitHub creation time, with PR number as a deterministic
   tie-breaker.
@@ -203,7 +204,8 @@ The 2026-07-31 GitHub CLI/API contracts were checked against installed
 - One GraphQL document can alias several repository/branch targets and return
   rich PR fields in one `gh api graphql` invocation.
 - GitHub search's 1,000-result window is irrelevant to the final exact-target
-  query. Each target asks only for the newest open and terminal candidate.
+  query. Each target uses its repository connection and paginates only when
+  newer fork-head candidates obscure an eligible same-repository PR.
 
 Implementation must recheck the CLI schema at Step 3 rather than assume an
 unversioned hosted API never changes.
@@ -238,34 +240,44 @@ waiting for GitHub.
 ### Batched GitHub selection
 
 `GhCliApi` builds one variable-bound GraphQL document for a bounded batch of
-unique lowercase-repository/case-sensitive-branch targets. Each alias requests:
+unique lowercase-repository/case-sensitive-branch targets. Each initial alias
+requests a bounded page and cursor metadata for both state groups:
 
 ```graphql
 open: pullRequests(
   headRefName: $branch
   states: [OPEN]
-  first: 1
+  first: 10
   orderBy: {field: CREATED_AT, direction: DESC}
 )
 terminal: pullRequests(
   headRefName: $branch
   states: [MERGED, CLOSED]
-  first: 1
+  first: 10
   orderBy: {field: CREATED_AT, direction: DESC}
 )
 ```
 
 The shared fragment includes number, URL, title, `createdAt`, state,
-`headRefName`, `isCrossRepository`, mergeability, review decision, and the
-latest commit's aggregate check-rollup state. The API parses generated typed
-DTOs; it does not pass raw JSON maps through layers.
+`headRefName`, `isCrossRepository`, mergeability, review decision, the latest
+commit's aggregate check-rollup state, and typed `pageInfo`. The API parses
+generated typed DTOs; it does not pass raw JSON maps through layers.
+
+The source filters each ordered page before selection. When a page contains
+only ineligible fork heads, it follows that connection's cursor until it finds
+an eligible same-repository candidate or exhausts the connection. It also reads
+through an equal-`createdAt` page boundary before applying PR-number tie-breaks.
+Open pagination completes before terminal fallback. Follow-up cursors for
+different targets are coalesced into the same bounded command where possible;
+candidate pages exist only in memory and never become stored history.
 
 The production batch bound is 20 unique targets per command. Larger active
 sets are sorted and split into deterministic chunks inside one refresh cycle.
-Every chunk reports the authenticated viewer login; all chunks and one final
-identity recheck must agree before cache writes. Cross-repository candidates are
-discarded. The repository selects open first, otherwise terminal, and verifies
-the returned repository/branch against the requested target.
+Every chunk reports the authenticated viewer login; all initial/paginated
+chunks and one final identity recheck must agree before cache writes.
+Cross-repository candidates are discarded. The repository selects open first,
+otherwise terminal, and verifies the returned repository/branch against the
+requested target.
 
 ### Persistence and read flow
 
@@ -297,9 +309,18 @@ transaction to:
 5. return project ids whose rendered branch or PR changed.
 
 `SessionRepository` reads DAOs directly and has no repository peer dependency.
-Live mapping joins project id, current repository, current branch, and current
-cache login. The join can produce only current-target candidates; its defensive
-selector orders open first, then GitHub creation time/number. Shared
+Every handler path that can map a cached PR first asks `PrSyncService` for a
+fresh typed `gh` identity result, without waiting for branch or GraphQL work.
+The handler passes the verified login (or explicit absence) into required
+nullable parameters on the repository's PR-bearing reads. Live mapping joins
+project id, current repository, current branch, project cache login, row login,
+and that read-scoped verified login. Unknown/failed verification yields the
+session and branch without a PR; it can never default to the last persisted
+login. This keeps reads cache-first while preventing an out-of-band
+`gh auth switch` from exposing the prior account's private metadata.
+
+The join can produce only current-target candidates; its defensive selector
+orders open first, then GitHub creation time/number. Shared
 `Session.branchName` maps from `current_branch_name`; the stored creation branch
 continues to serve cleanup code only.
 
@@ -320,10 +341,14 @@ ViewedProjectPrRefreshListener one-shot timer
 ```
 
 `PrSyncService` evolves in place into the single refresh owner; do not add a
-parallel dispatcher plus facade. It accepts a set of project ids, deduplicates
-one in-flight cycle, and exposes typed completion/rendered-change results.
-Explicit waiters receive completion for their requested project. Scheduled
-cycles never overlap; the next timer starts from prior completion.
+parallel dispatcher plus facade. It accepts a set of project ids and exposes
+typed completion/rendered-change results. One cycle runs at a time. A request
+whose projects are already covered shares that completion; project ids added
+during the cycle enter one coalesced pending set. Completion atomically drains
+that set into one immediate follow-up cycle, so a newly viewed project is not
+dropped and no cycles overlap. Explicit waiters complete only after a cycle
+that covered their requested project. The listener's next interval starts from
+the final drained completion.
 
 `ProjectViewTracker` owns `connectionId -> projectId?`, per-project counts, and
 typed active-set changes. `Orchestrator` routes `RelayProjectView`, releases one
@@ -401,6 +426,9 @@ app failure.
   case-sensitive and are never logged at normal levels or reported to analytics.
 - Every GraphQL chunk carries one authenticated login. A mismatch/unknown login
   suspends visibility before another account's data can be written or exposed.
+- Before any session response can include cached PR metadata, a fresh typed
+  identity check gates the repository join. Unknown, failed, or switched login
+  omits PR metadata immediately without deleting another account's cache.
 - A newly resolved branch/repository invalidates the previous selected PR before
   network work, preventing same-name branches in a moved project from reusing
   stale metadata.
@@ -417,6 +445,8 @@ app failure.
 - A transient GitHub query failure under the same freshly verified identity may
   retain the same current-target cached PR; identity/repository/branch change
   never does.
+- A failed read-time identity check fails closed for PR presentation while
+  still returning non-sensitive session and current-branch data.
 - A complete successful target with no candidate clears that target's selected
   row.
 - Recovered failures log once at the recovering service/listener with typed,
@@ -507,6 +537,8 @@ Scope:
 - Add the minimal active-login and canonical project-remote reads needed for the
   existing request-driven writer to populate required scoped rows before the
   GraphQL source lands.
+- Require every PR-bearing session read to receive a freshly verified typed
+  GitHub login from the calling handler/service; explicit absence omits PR data.
 - Adapt existing request-driven writer/read code to the new required cache row
   shape without activating current-branch semantics yet.
 - Add schema verifier, old-row, key/FK/cascade, and cache-empty migration tests.
@@ -516,12 +548,15 @@ Acceptance:
 - Existing project/session/catalog identities and cleanup metadata survive.
 - Old unscoped PR rows cannot become visible after migration.
 - Request-driven refresh can repopulate scoped rows on the next request.
+- Switching or invalidating `gh` identity between two session reads prevents
+  the second response from exposing the first login's cached PR metadata.
 - No project presence, timer, or client behavior ships.
 
 Verification:
 
 - Drift schema/code generation and migration tests
 - focused DAO/repository/session mapping tests
+- list/detail read-gate tests for same/switched/unknown/failed identity
 - bridge analyze/tests for changed modules
 - generated-line count and overage rationale recorded in tracker
 
@@ -532,8 +567,9 @@ Scope:
 - Add generated typed GraphQL response DTOs and `createdAt` mapping.
 - Add bounded variable/alias query construction to `GhCliApi`; no manual raw-map
   business parsing.
-- Query newest open plus newest merged/closed candidate per exact target,
-  include viewer identity, and reject cross-repository/mismatched results.
+- Query bounded ordered open and terminal candidate pages per exact target,
+  include viewer identity, and paginate past cross-repository/mismatched results
+  only until an eligible winner or exhaustion.
 - Extend `PrSourceRepository` with typed batch targets/outcomes.
 - Evolve request-driven `PrSyncService` to use the final batch API and replace
   current selected rows; remove the old repository-wide open list and
@@ -546,12 +582,14 @@ Acceptance:
 - A coworker-authored same-repository PR is selected.
 - Newest open wins; absent open falls back to newest merged/closed.
 - A fork-head PR, wrong repository, wrong branch, or older candidate cannot win.
+- A newer fork-head candidate cannot hide an older eligible same-repository PR.
 - Multiple repo/branch targets use one command up to the batch bound.
 - Complete no-match clears; typed query failure does not masquerade as empty.
 
 Verification:
 
-- exact command/query/variables and 20-target split tests
+- exact initial/cursor query/variables, fork-only page, equal-time boundary, and
+  20-target split tests
 - DTO enum/check-rollup/null/error tests
 - source/repository/service selection and identity tests
 - bridge fatal-info analysis and focused/full tests
@@ -566,8 +604,8 @@ Scope:
   current branch/repository scope before GitHub work.
 - Make one `PrSyncService` call accept a set of project ids and serialize its
   local/network/write phases.
-- Gate joins on project id + repository + branch + active login; replace only
-  complete current-target selections.
+- Gate joins on project id + repository + branch + project cache login + fresh
+  read-scoped verified login; replace only complete current-target selections.
 - Map shared `Session.branchName` from the current field and keep cleanup paths
   on creation `branch_name`.
 - Remove prior-branch fallback and emit rendered changes from local and network
@@ -578,7 +616,8 @@ Acceptance:
 - Dedicated and non-dedicated roots behave identically by exact directory.
 - Shared-directory roots share branch/PR; children have none.
 - Branch A -> branch B with no PR immediately shows B and no PR.
-- Detached/non-git/non-GitHub produces no branch/PR without crashing.
+- Detached/non-git produces no branch/PR; a named branch with a non-GitHub or
+  missing remote still displays its branch while producing no PR.
 - Same branch with a transient same-identity GitHub failure may retain its
   selected row; changed branch/repo/login cannot.
 - Normal and explicit session loads preserve cache-first/five-second behavior.
@@ -600,6 +639,8 @@ Scope:
 - Add one `ViewedProjectPrRefreshListener` with immediate activation and one
   completion-based fixed 30-second timer for the active union.
 - Batch different devices' projects through the same `PrSyncService` cycle.
+- Coalesce projects added during an in-flight cycle into one immediate
+  non-overlapping follow-up before rearming the interval.
 - Cancel future work when the active set empties; integrate disposal.
 - Keep request-driven old-client triggers.
 
@@ -610,12 +651,15 @@ Acceptance:
 - Duplicate viewers/targets do not duplicate GraphQL aliases.
 - Relay drop clears all timers; foreground reassertion can activate again.
 - No timer runs with an empty active set and cycles never overlap.
+- A project first viewed during another project's cycle is covered by the
+  immediate follow-up rather than waiting one full interval.
 - PR changes still do not touch unseen or push subsystems.
 
 Verification:
 
 - tracker multi-connection and late-clear tests
-- deterministic fake-clock activation/timer/completion/disposal tests
+- deterministic fake-clock activation/add-during-flight/timer/completion/
+  disposal tests
 - orchestrator routing/drop/SSE tests
 - bridge fatal-info analysis and focused/full tests
 
@@ -741,12 +785,12 @@ Verification:
 | Current branch overwrites cleanup branch | Separate internal current fields; creation `branch_name` remains the only cleanup value. |
 | Same-name branch after project/repository move | Bind session and PR rows to canonical repository identity; invalidate local scope before GitHub. |
 | Coworker PR is missed | No author filter; exact same-repository head branch is authoritative. |
-| Fork PR collides by branch name | Explicitly reject cross-repository heads; fork support is deferred. |
+| Fork PR collides by branch name | Reject cross-repository heads and page past newer fork candidates until an eligible same-repository PR or exhaustion; fork support is deferred. |
 | Multiple devices view different projects | Per-connection tracker plus one active-set scheduler; batch/dedupe targets. |
-| Timer/config races or duplicate work | One completion-based timer, one serialized refresh, callback-scoped settings mutation. |
-| `gh auth switch` exposes prior private metadata | Login-gated rows, per-chunk identity, final recheck, and fail-closed visibility suspension. |
+| Timer/config races or duplicate work | One completion-based timer, one serialized refresh with a coalesced pending-project set, callback-scoped settings mutation. |
+| `gh auth switch` exposes prior private metadata | Fresh read-scoped identity gating, login-gated rows, per-chunk identity, final recheck, and fail-closed visibility suspension. |
 | GraphQL query becomes too large | Deterministic 20-target chunks in one refresh cycle; no per-project timers. |
-| GraphQL/`gh` is unavailable | Local branch still commits; cache-first sessions continue; typed failure never becomes empty success. |
+| GraphQL/`gh` is unavailable | Local branch still commits; cache-first sessions continue without PR metadata when identity is unverifiable; typed failure never becomes empty success. |
 | Old clients never declare project view | Preserve both request-driven refresh modes and exact compatibility cleanup marker. |
 | Old bridges ignore project view/settings | Request refresh remains; settings UI reports unsupported 404. |
 | Settings paths continue evolving | Step 8 starts from current `main`; merged #647 is evidence, not a frozen path assumption. |

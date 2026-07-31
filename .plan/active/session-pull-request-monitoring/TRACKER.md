@@ -26,7 +26,7 @@
 - **Reviewer:** `aristotle-plan-review`
 - **Reviewed scope:** complete current `PLAN.md`, `TRACKER.md`, and
   `CONSIDERATIONS.md` plus removal of superseded stage files, against audited
-  `main` at `83518cc087b76928bdd3a8c654f41dcfbefde6b4`
+  `main` at `83518cc0e7d0a2f0be50ba7ec6a866f6cbf79c44`
 - **Date:** 2026-07-31
 - **Findings applied:** none; pre-review gate and bridge/client/shared
   architecture all passed
@@ -123,6 +123,12 @@
   within its recorded 4,000–7,000 target; the intentional overage atomically
   removes obsolete executable stage authority. No Dart/Flutter suite was run.
   [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) is open.
+- **PR #649 review follow-up:** Assessed five unresolved automated-review
+  threads. All five identified concrete plan defects; the plan now covers
+  fork-obscured candidate pagination, add-during-flight scheduling, read-time
+  identity gating, named non-GitHub branch display, and the correct reviewed
+  baseline SHA. Documentation validation remains `git diff --check`; no product
+  suite applies.
 
 ## Findings and Plan Deltas
 
@@ -140,3 +146,7 @@
   supports live client mutation, and intentionally has no JSON file watcher.
 - **2026-07-31 — Plan lifecycle:** Fixed a nine-PR series with this plan as
   Step 1/9 and active-to-completed retirement as Step 9/9.
+- **2026-07-31 — PR #649 review:** Corrected the reviewed baseline SHA; required
+  candidate pagination past newer fork heads, read-time GitHub identity gating,
+  a coalesced add-during-flight refresh, and independent branch display for
+  named non-GitHub repositories.
