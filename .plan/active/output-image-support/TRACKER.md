@@ -27,7 +27,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/13 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/13]` | 450-700 | [PR #638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638) merged as `bfadd097` |
-| [ ] | 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639) open; 642 changed lines |
+| [ ] | 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639) open; 680 changed lines |
 | [ ] | 3/13 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/13]` | 900-1,350 | Blocked on Step 2 merge |
 | [ ] | 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | Blocked on Step 3 merge |
 | [ ] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | Blocked on Step 4 merge |
@@ -97,7 +97,7 @@
   `dart pub get`, `dart analyze --fatal-infos`, and `git diff --cached --check`
   pass. `aristotle-impl-review` approved the staged architecture with no
   findings. Commit `3b18da2d` is open as [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639).
-  The 642-line diff is below the 1,500-line soft cap; no neighboring scope was combined.
+  The 680-line diff is below the 1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas
 

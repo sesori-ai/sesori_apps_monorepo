@@ -561,6 +561,8 @@ mixin _$CodexRolloutContentDto {
 
 
 
+  /// Serializes this CodexRolloutContentDto to a JSON map.
+  Map<String, dynamic> toJson();
 
 
 @override
@@ -588,7 +590,7 @@ $CodexRolloutContentDtoCopyWith(CodexRolloutContentDto _, $Res Function(CodexRol
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 
 class CodexRolloutInputTextDto implements CodexRolloutContentDto {
   const CodexRolloutInputTextDto({required this.text, final  String? $type}): $type = $type ?? 'input_text';
@@ -606,7 +608,10 @@ final String $type;
 @pragma('vm:prefer-inline')
 $CodexRolloutInputTextDtoCopyWith<CodexRolloutInputTextDto> get copyWith => _$CodexRolloutInputTextDtoCopyWithImpl<CodexRolloutInputTextDto>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$CodexRolloutInputTextDtoToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
@@ -658,7 +663,7 @@ as String,
 }
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 
 class CodexRolloutOutputTextDto implements CodexRolloutContentDto {
   const CodexRolloutOutputTextDto({required this.text, final  String? $type}): $type = $type ?? 'output_text';
@@ -676,7 +681,10 @@ final String $type;
 @pragma('vm:prefer-inline')
 $CodexRolloutOutputTextDtoCopyWith<CodexRolloutOutputTextDto> get copyWith => _$CodexRolloutOutputTextDtoCopyWithImpl<CodexRolloutOutputTextDto>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$CodexRolloutOutputTextDtoToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
@@ -728,7 +736,7 @@ as String,
 }
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 
 class CodexRolloutSummaryTextDto implements CodexRolloutContentDto {
   const CodexRolloutSummaryTextDto({required this.text, final  String? $type}): $type = $type ?? 'summary_text';
@@ -746,7 +754,10 @@ final String $type;
 @pragma('vm:prefer-inline')
 $CodexRolloutSummaryTextDtoCopyWith<CodexRolloutSummaryTextDto> get copyWith => _$CodexRolloutSummaryTextDtoCopyWithImpl<CodexRolloutSummaryTextDto>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$CodexRolloutSummaryTextDtoToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
@@ -798,7 +809,7 @@ as String,
 }
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 
 class CodexRolloutInputImageDto implements CodexRolloutContentDto {
   const CodexRolloutInputImageDto({@JsonKey(name: "image_url") required this.imageUrl, final  String? $type}): $type = $type ?? 'input_image';
@@ -816,7 +827,10 @@ final String $type;
 @pragma('vm:prefer-inline')
 $CodexRolloutInputImageDtoCopyWith<CodexRolloutInputImageDto> get copyWith => _$CodexRolloutInputImageDtoCopyWithImpl<CodexRolloutInputImageDto>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$CodexRolloutInputImageDtoToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
@@ -868,7 +882,7 @@ as String,
 }
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 
 class CodexRolloutUnknownContentDto implements CodexRolloutContentDto {
   const CodexRolloutUnknownContentDto({final  String? $type}): $type = $type ?? 'unknown';
@@ -881,7 +895,10 @@ final String $type;
 
 
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$CodexRolloutUnknownContentDtoToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {

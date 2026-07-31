@@ -94,7 +94,7 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
   unionKey: "type",
   fallbackUnion: "unknown",
   fromJson: true,
-  toJson: false,
+  toJson: true,
 )
 sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
   @FreezedUnionValue("input_text")
@@ -153,26 +153,7 @@ class CodexRolloutContentListConverter implements JsonConverter<List<CodexRollou
   Object? toJson(List<CodexRolloutContentDto>? object) {
     if (object == null) return null;
     return [
-      for (final content in object)
-        switch (content) {
-          CodexRolloutInputTextDto(:final text) => {
-            "type": "input_text",
-            "text": text,
-          },
-          CodexRolloutOutputTextDto(:final text) => {
-            "type": "output_text",
-            "text": text,
-          },
-          CodexRolloutSummaryTextDto(:final text) => {
-            "type": "summary_text",
-            "text": text,
-          },
-          CodexRolloutInputImageDto(:final imageUrl) => {
-            "type": "input_image",
-            "image_url": imageUrl,
-          },
-          CodexRolloutUnknownContentDto() => {"type": "unknown"},
-        },
+      for (final content in object) content.toJson(),
     ];
   }
 }

@@ -403,6 +403,16 @@ void main() {
         "data:image/png;base64,AA==",
       );
       expect(content[4], isA<CodexRolloutUnknownContentDto>());
+      expect(const CodexRolloutContentListConverter().toJson(content), [
+        {"type": "input_text", "text": "input"},
+        {"type": "output_text", "text": "output"},
+        {"type": "summary_text", "text": "summary"},
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,AA==",
+        },
+        {"type": "future_content"},
+      ]);
     });
 
     test("rollout content skips malformed known variants without exposing values", () {
