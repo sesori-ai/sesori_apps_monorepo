@@ -985,7 +985,8 @@ restricted privacy-target/raw datasets, write only to the deletion-exclusion
 control, keyed-publication guard, sweep checkpoint, and privacy-target status,
 delete/rebuild permission on auth-private/curated (and matching retained raw
 rows), metadata-only reporting
-inventory access, plus the minimum GA deletion API role. It has no Mongo access,
+inventory access, plus the minimum GA deletion API role. It has no Mongo
+access,
 reporting mutation, or general controls/deployment role. The attached identity
 supplies production credentials; no service-account key enters Git.
 
@@ -1559,8 +1560,8 @@ directory name.
 **Step 5 completion includes the cloud setup above.** Landing the standalone
 repository implementation delivers the reviewed automation and contracts, but
 does not complete Step 5 by itself. After the required security/privacy
-decisions are approved, the same
-Step 5 work must use the checked-in runbook and tools to create the service
+decisions are approved, the same Step 5 work must use the checked-in runbook and
+tools to create the service
 identities and dataset ACLs, authorize views, apply warehouse schemas, provision
 auth export and privacy jobs, apply transform/deletion schedules, run deployed
 assertions and deletion drills, build/restrict Looker, and record go-live
