@@ -48,37 +48,36 @@ unless the user explicitly requests it. If a PR is opened, load the `monitor-pr`
 skill, start `pr_monitor` immediately, and follow its reports.
 
 When a task is split across multiple PRs, title every PR
-`[<slug>] [C<n> <emoji>] <description> [step <x>/<y>]`. For durable planned work,
+`<emoji> [<slug>] <description> [step <x>/<y>]`. For durable planned work,
 `<slug>` is exactly the plan directory name under `.plan`; do not derive it from
 the branch, title, or stage. Without a durable plan, choose one stable,
 lowercase kebab-case slug. Keep one fixed step order/total and exact complexity
-tag for each planned step, and do not add the slug/step wrapper to a single-PR
+emoji for each planned step, and do not add the slug/step wrapper to a single-PR
 task.
 
 ## PR Complexity and Communication
 
 Assign every PR one implementation-complexity level using this fixed scale:
 
-- `C1 🟢` — trivial: isolated documentation, copy, or mechanical work;
-- `C2 🔵` — straightforward: localized implementation with a small blast radius;
-- `C3 🟡` — moderate: several files or layers, meaningful state, or notable edge
+- `🌱` — trivial: isolated documentation, copy, or mechanical work;
+- `🌿` — straightforward: localized implementation with a small blast radius;
+- `⚙️` — moderate: several files or layers, meaningful state, or notable edge
   cases;
-- `C4 🟠` — complex: cross-layer flow, persistence, concurrency, lifecycle,
+- `🚧` — complex: cross-layer flow, persistence, concurrency, lifecycle,
   compatibility, or security-sensitive behavior; and
-- `C5 🔴` — very complex: several coupled high-complexity concerns or a broad,
+- `🚨` — very complex: several coupled high-complexity concerns or a broad,
   high-stakes migration.
 
 Complexity is implementation/review difficulty, not the risk rating. Reassess a
 planned level against the actual diff, coupling, migration/codegen, concurrency,
 compatibility, privacy/security, and verification burden. If it changes, update
 the durable plan/tracker before opening the PR. For a single PR, prefix the
-normal title with `[C<n> <emoji>]`; for a series, use the slug-first format
-above. The number and emoji must always remain together.
+normal title with `<emoji>`; for a series, use the emoji-first format above.
 
 Every PR body you create or materially update must contain concise Markdown
 sections with these headings:
 
-- `## Complexity` — `C<n> <emoji>` and a one-sentence rationale;
+- `## Complexity` — the emoji, label, and a one-sentence rationale;
 - `## What` — what was changed;
 - `## Why` — why it was changed;
 - `## Risk and test focus` — risk level, potentially impacted flows, screens,

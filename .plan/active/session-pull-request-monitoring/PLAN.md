@@ -474,7 +474,7 @@ settings screen analytics continue unchanged.
 ## Delivery Rules
 
 - The series has exactly nine PRs. Every title uses the fixed
-  `[session-pull-request-monitoring] [C<n> <emoji>] ... [step x/9]` form below.
+  `<emoji> [session-pull-request-monitoring] ... [step x/9]` form below.
 - Step 1 raises this complete plan and updates the repository, Plan Maker, and
   Plan Worker PR communication rules. It changes `.plan/**`, root `AGENTS.md`,
   and the two agent definitions only, so it runs documentation/config validation
@@ -510,15 +510,15 @@ settings screen analytics continue unchanged.
 
 | Step | Branch | Exact PR title | Complexity rationale | Changed-line target | Outcome |
 |---|---|---|---|---:|---|
-| 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] [C2 🔵] docs: plan current PR monitoring [step 1/9]` | Documentation/instruction/agent-definition changes only, with no runtime behavior. | 4,000–7,000 | Publish this reviewed plan/tracker and the reusable PR communication/cleanup rules. |
-| 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): persist scoped PR selections [step 2/9]` | Drift migration plus fail-closed account identity and cache visibility. | 1,300–2,000 | Migrate current branch/repository/login scope and repository-keyed ephemeral PR cache while preserving request-driven behavior. |
-| 3/9 | `session-pull-request-monitoring-graphql-selection` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): batch exact PR selection [step 3/9]` | Typed dynamic GraphQL batching/pagination, identity fencing, and deterministic selection. | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
-| 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): refresh current session branches [step 4/9]` | Git/process resolution, persisted scope, cache races, and cross-layer rendering. | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |
-| 5/9 | `session-pull-request-monitoring-view-scheduler` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | Multi-device connection lifecycle and serialized add-during-flight scheduling. | 900–1,400 | Route per-connection project presence and run one fixed 30-second aggregate scheduler. |
-| 6/9 | `session-pull-request-monitoring-bridge-settings` | `[session-pull-request-monitoring] [C3 🟡] feat(bridge): configure PR refresh cadence [step 6/9]` | Localized persisted settings flow with concurrent writes and live timer updates. | 1,000–1,500 | Persist/validate interval settings, expose GET/PATCH, serialize settings writes, and rearm the live timer. |
-| 7/9 | `session-pull-request-monitoring-client-presence` | `[session-pull-request-monitoring] [C4 🟠] feat(client): declare viewed projects [step 7/9]` | Shared list/detail lifecycle, reconnect ordering, and multi-device bridge behavior. | 1,000–1,500 | Add layered client project presence with list/detail, lifecycle, reconnect, and multi-device-safe bridge behavior. |
-| 8/9 | `session-pull-request-monitoring-client-settings` | `[session-pull-request-monitoring] [C4 🟠] feat(client): configure PR refresh cadence [step 8/9]` | Shared settings layers, compatibility UI, and end-to-end bridge/client regression coverage. | 1,000–1,500 | Add shared client interval settings, compatibility UI, final integration verification, and current-branch/PR regressions. |
-| 9/9 | `session-pull-request-monitoring-retire-plan` | `[session-pull-request-monitoring] [C1 🟢] docs: retire current PR monitoring plan [step 9/9]` | Mechanical documentation state/move after implementation completion. | 50–200 | Record completion and move the plan directory from active to completed. |
+| 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | Documentation/instruction/agent-definition changes only, with no runtime behavior. | 4,000–7,000 | Publish this reviewed plan/tracker and the reusable PR communication/cleanup rules. |
+| 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | Drift migration plus fail-closed account identity and cache visibility. | 1,300–2,000 | Migrate current branch/repository/login scope and repository-keyed ephemeral PR cache while preserving request-driven behavior. |
+| 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | Typed dynamic GraphQL batching/pagination, identity fencing, and deterministic selection. | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
+| 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | Git/process resolution, persisted scope, cache races, and cross-layer rendering. | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |
+| 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | Multi-device connection lifecycle and serialized add-during-flight scheduling. | 900–1,400 | Route per-connection project presence and run one fixed 30-second aggregate scheduler. |
+| 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | Localized persisted settings flow with concurrent writes and live timer updates. | 1,000–1,500 | Persist/validate interval settings, expose GET/PATCH, serialize settings writes, and rearm the live timer. |
+| 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | Shared list/detail lifecycle, reconnect ordering, and multi-device bridge behavior. | 1,000–1,500 | Add layered client project presence with list/detail, lifecycle, reconnect, and multi-device-safe bridge behavior. |
+| 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | Shared settings layers, compatibility UI, and end-to-end bridge/client regression coverage. | 1,000–1,500 | Add shared client interval settings, compatibility UI, final integration verification, and current-branch/PR regressions. |
+| 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | Mechanical documentation state/move after implementation completion. | 50–200 | Record completion and move the plan directory from active to completed. |
 
 ## Implementation Steps
 
@@ -528,9 +528,9 @@ Scope:
 
 - Publish the current-branch architecture and tracker as one plan authority.
 - Consolidate execution guidance into the top-level plan files.
-- Record the fixed nine complexity-tagged titles, line budgets, existing PR
-  #457 contract baseline, current code baseline, open-PR drift, and final
-  retirement step.
+- Record the fixed nine emoji-prefixed titles, line budgets, existing PR #457
+  contract baseline, current code baseline, open-PR drift, and final retirement
+  step.
 - Update root repository guidance, Plan Maker, and Plan Worker with the reusable
   complexity scale and required PR summaries; add feature cleanup
   assessment/execution rules to the planning agents.

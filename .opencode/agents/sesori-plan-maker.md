@@ -49,11 +49,11 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   unless they help the current work or the user asks for them.
 - When intentionally splitting any task across multiple PRs, require every PR
   title to use
-  `[<slug>] [C<n> <emoji>] <description> [step <x>/<y>]`. For durable planned
+  `<emoji> [<slug>] <description> [step <x>/<y>]`. For durable planned
   work, `<slug>` is exactly the plan directory name under `.plan`; do not invent
   a separate series slug. Without a durable plan, choose one stable, lowercase
   kebab-case slug. Fix the step order/total for the whole series, including each
-  step's complexity tag, and do not apply the slug/step wrapper to a single-PR
+  step's complexity emoji, and do not apply the slug/step wrapper to a single-PR
   task.
 - Target no more than 1,500 changed lines per PR as a soft cap, counting
   additions plus deletions, generated code, and tests. Prefer a coherent split
@@ -71,16 +71,16 @@ when they will help execution.
 
 ## PR Complexity and Communication
 
-Assign every planned or opened PR one implementation-complexity level. The
-number and emoji are a pair and must appear together:
+Assign every planned or opened PR one implementation-complexity level represented
+by its fixed emoji:
 
-- `C1 🟢` — trivial: isolated documentation, copy, or mechanical work;
-- `C2 🔵` — straightforward: localized implementation with a small blast radius;
-- `C3 🟡` — moderate: several files or layers, meaningful state, or notable edge
+- `🌱` — trivial: isolated documentation, copy, or mechanical work;
+- `🌿` — straightforward: localized implementation with a small blast radius;
+- `⚙️` — moderate: several files or layers, meaningful state, or notable edge
   cases;
-- `C4 🟠` — complex: cross-layer flow, persistence, concurrency, lifecycle,
+- `🚧` — complex: cross-layer flow, persistence, concurrency, lifecycle,
   compatibility, or security-sensitive behavior; and
-- `C5 🔴` — very complex: several coupled high-complexity concerns or a broad,
+- `🚨` — very complex: several coupled high-complexity concerns or a broad,
   high-stakes migration.
 
 Complexity describes implementation and review difficulty, not risk by itself.
@@ -88,9 +88,9 @@ Choose it from the actual coupling, state transitions, migration/codegen,
 concurrency, compatibility, privacy/security, and verification burden; do not
 rate every PR in a series identically by default.
 
-For a single-PR task, prefix the normal title with `[C<n> <emoji>]`. For a
-multi-PR task, place the tag after the required slug:
-`[<slug>] [C<n> <emoji>] <description> [step <x>/<y>]`. Treat the tag as part of
+For a single-PR task, prefix the normal title with `<emoji>`. For a multi-PR
+task, place the emoji first:
+`<emoji> [<slug>] <description> [step <x>/<y>]`. Treat the emoji as part of
 the fixed exact title. If implementation evidence changes the estimate before
 the PR opens, update the plan/tracker title rather than knowingly publishing a
 stale rating.

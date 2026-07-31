@@ -73,10 +73,10 @@ eagerly "just in case."
 - Never hand-edit generated files. Change their source and run the generator.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
-- Every PR title includes one implementation-complexity tag: `C1 🟢` trivial,
-  `C2 🔵` straightforward, `C3 🟡` moderate, `C4 🟠` complex, or `C5 🔴` very
-  complex. Complexity is implementation/review difficulty, not the risk rating.
-  Single-PR tasks use `[C<n> <emoji>] <normal title>`.
+- Every PR title starts with one implementation-complexity emoji: `🌱` trivial,
+  `🌿` straightforward, `⚙️` moderate, `🚧` complex, or `🚨` very complex.
+  Complexity is implementation/review difficulty, not the risk rating.
+  Single-PR tasks use `<emoji> <normal title>`.
 - Every PR body includes concise `## Complexity`, `## What`, `## Why`,
   `## Risk and test focus`, and `## Expected result` sections. State explicitly
   when there is no user-visible or database impact; keep verification as an
@@ -86,7 +86,7 @@ eagerly "just in case."
   testing, commit, push, and open a PR by default. Leave changes local only when
   the user explicitly requests that.
 - When splitting any task across multiple PRs, title every PR
-  `[<slug>] [C<n> <emoji>] <description> [step <x>/<y>]`. For planned work,
+  `<emoji> [<slug>] <description> [step <x>/<y>]`. For planned work,
   `<slug>` is the plan directory name under `.plan`; otherwise choose one
   stable, lowercase kebab-case slug. Keep one total for the whole series.
 - Backward and forward compatibility is required only for transport

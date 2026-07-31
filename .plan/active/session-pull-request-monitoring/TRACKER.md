@@ -37,27 +37,27 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] [C2 🔵] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) open; architecture/docs validation passed |
-| [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Blocked on Step 1 merge; generated migration overage may be unavoidable |
-| [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2 merge |
-| [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
-| [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
-| [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `[session-pull-request-monitoring] [C3 🟡] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Blocked on Step 5 merge |
-| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `[session-pull-request-monitoring] [C4 🟠] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Blocked on Step 6 merge |
-| [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `[session-pull-request-monitoring] [C4 🟠] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
-| [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `[session-pull-request-monitoring] [C1 🟢] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8 merge |
+| [ ] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) open; architecture/docs validation passed |
+| [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Blocked on Step 1 merge; generated migration overage may be unavoidable |
+| [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2 merge |
+| [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
+| [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
+| [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Blocked on Step 5 merge |
+| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Blocked on Step 6 merge |
+| [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
+| [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8 merge |
 
 ## Exact PR Titles
 
-1. `[session-pull-request-monitoring] [C2 🔵] docs: plan current PR monitoring [step 1/9]`
-2. `[session-pull-request-monitoring] [C4 🟠] feat(bridge): persist scoped PR selections [step 2/9]`
-3. `[session-pull-request-monitoring] [C4 🟠] feat(bridge): batch exact PR selection [step 3/9]`
-4. `[session-pull-request-monitoring] [C4 🟠] feat(bridge): refresh current session branches [step 4/9]`
-5. `[session-pull-request-monitoring] [C4 🟠] feat(bridge): schedule viewed-project PR refresh [step 5/9]`
-6. `[session-pull-request-monitoring] [C3 🟡] feat(bridge): configure PR refresh cadence [step 6/9]`
-7. `[session-pull-request-monitoring] [C4 🟠] feat(client): declare viewed projects [step 7/9]`
-8. `[session-pull-request-monitoring] [C4 🟠] feat(client): configure PR refresh cadence [step 8/9]`
-9. `[session-pull-request-monitoring] [C1 🟢] docs: retire current PR monitoring plan [step 9/9]`
+1. `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]`
+2. `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]`
+3. `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]`
+4. `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]`
+5. `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]`
+6. `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]`
+7. `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]`
+8. `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]`
+9. `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]`
 
 ## Execution Rules
 
@@ -65,7 +65,7 @@
   after its predecessor merges and records a drift audit.
 - Step 1 is the plan PR. Step 9 moves the plan from active to completed and has
   no production changes.
-- Keep each fixed complexity tag in its exact title unless implementation
+- Keep each fixed complexity emoji in its exact title unless implementation
   evidence requires a plan/tracker update before opening that PR.
 - Every PR body includes complexity/rationale, what, why, risk/test focus, and
   expected user-visible/data/internal results.
@@ -130,7 +130,7 @@
   identity gating, named non-GitHub branch display, and the correct reviewed
   baseline SHA. Documentation validation remains `git diff --check`; no product
   suite applies.
-- **PR guidance update:** Added the requested `C1 🟢`–`C5 🔴` title scale,
+- **PR guidance update:** Added the requested `🌱`–`🚨` title scale,
   required PR-body summaries, and feature cleanup assessment/execution rules to
   Plan Maker and Plan Worker, with matching title/body rules in root
   `AGENTS.md`. These non-production instructions do not change the approved
