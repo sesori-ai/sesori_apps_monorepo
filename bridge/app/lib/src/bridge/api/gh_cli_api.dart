@@ -11,6 +11,7 @@ class GhCliApi {
   final ProcessRunner _processRunner;
   bool _availabilityFailureReported = false;
   bool _authenticationFailureReported = false;
+  bool _identityVerificationFailureReported = false;
 
   GhCliApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
 
@@ -66,17 +67,18 @@ class GhCliApi {
         const ["api", "--hostname", "github.com", "user", "--jq", ".login"],
       );
       if (result.exitCode != 0) {
-        _reportAuthenticationFailure();
+        _reportIdentityVerificationFailure();
         return null;
       }
 
       final identity = GhAuthenticatedIdentity.tryParse(rawLogin: result.stdout.toString());
       if (identity == null) {
-        _reportAuthenticationFailure();
+        _reportIdentityVerificationFailure();
         return null;
       }
 
       _authenticationFailureReported = false;
+      _identityVerificationFailureReported = false;
       return identity;
     } on ProcessException {
       _reportAvailabilityFailure(
@@ -103,12 +105,27 @@ class GhCliApi {
     );
   }
 
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
+  void _reportIdentityVerificationFailure() {
+    if (_identityVerificationFailureReported) return;
+    _identityVerificationFailureReported = true;
+    Console.warning(
+      "GitHub CLI (gh) could not verify the active github.com account. "
+      "GitHub pull request and CI status metadata is hidden until verification succeeds. "
+      "Run 'gh auth status --hostname github.com' to check authentication and connectivity.",
+    );
+  }
+
+  Future<List<GhPullRequest>> listOpenPrs({
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async {
     final result = await _processRunner.run(
       "gh",
-      const <String>[
+      <String>[
         "pr",
         "list",
+        "--repo",
+        githubRepositoryIdentity,
         "--state",
         "open",
         "--json",
@@ -129,6 +146,7 @@ class GhCliApi {
   Future<GhPullRequest> getPrByNumber({
     required int number,
     required String workingDirectory,
+    required String githubRepositoryIdentity,
   }) async {
     final result = await _processRunner.run(
       "gh",
@@ -136,6 +154,8 @@ class GhCliApi {
         "pr",
         "view",
         number.toString(),
+        "--repo",
+        githubRepositoryIdentity,
         "--json",
         "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
       ],

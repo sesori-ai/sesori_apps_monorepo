@@ -137,7 +137,10 @@ class PrSyncService {
     required List<StoredSession> storedSessions,
   }) async {
     final (openPrs, activePrs) = await (
-      _prSource.listOpenPrs(workingDirectory: projectPath),
+      _prSource.listOpenPrs(
+        workingDirectory: projectPath,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+      ),
       _pullRequestRepository.getActivePullRequestsByProjectId(
         projectId: projectId,
         githubRepositoryIdentity: githubRepositoryIdentity,
@@ -186,6 +189,7 @@ class PrSyncService {
         final finalPr = await _prSource.getPrByNumber(
           number: disappeared.prNumber,
           workingDirectory: projectPath,
+          githubRepositoryIdentity: githubRepositoryIdentity,
         );
 
         if (_pullRequestRepository.hasChangedFromExisting(existing: disappeared, pr: finalPr)) {

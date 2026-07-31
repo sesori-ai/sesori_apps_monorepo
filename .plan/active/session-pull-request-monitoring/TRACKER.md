@@ -162,7 +162,7 @@
   the waited refresh/final mapping path fails. Per repository policy, these
   applied findings were not re-reviewed; no approval is claimed for the revised
   working tree.
-- **Step 2/9 line overage:** The implementation changes 6,394
+- **Step 2/9 line overage:** The implementation changes 6,848
   lines, including 3,646 generated Drift/Freezed/schema-fixture lines. The schema
   migration, generated artifacts, required internal contract updates, privacy
   read gates, and their migration/DAO/repository/routing regressions must land in

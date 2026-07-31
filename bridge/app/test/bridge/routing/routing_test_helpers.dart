@@ -804,11 +804,17 @@ class FakePrSourceRepository implements PrSourceRepository {
   }
 
   @override
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => listOpenPrsResult;
+  Future<List<GhPullRequest>> listOpenPrs({
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async => listOpenPrsResult;
 
   @override
-  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async =>
-      throw StateError("getPrByNumber should not be called");
+  Future<GhPullRequest> getPrByNumber({
+    required int number,
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async => throw StateError("getPrByNumber should not be called");
 }
 
 class _NoopPullRequestRepository implements PullRequestRepository {

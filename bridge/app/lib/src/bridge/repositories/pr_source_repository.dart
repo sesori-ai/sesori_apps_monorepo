@@ -40,9 +40,21 @@ class PrSourceRepository {
     return identity.slug.toLowerCase();
   }
 
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) =>
-      _ghCli.listOpenPrs(workingDirectory: workingDirectory);
+  Future<List<GhPullRequest>> listOpenPrs({
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) => _ghCli.listOpenPrs(
+    workingDirectory: workingDirectory,
+    githubRepositoryIdentity: githubRepositoryIdentity,
+  );
 
-  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) =>
-      _ghCli.getPrByNumber(number: number, workingDirectory: workingDirectory);
+  Future<GhPullRequest> getPrByNumber({
+    required int number,
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) => _ghCli.getPrByNumber(
+    number: number,
+    workingDirectory: workingDirectory,
+    githubRepositoryIdentity: githubRepositoryIdentity,
+  );
 }

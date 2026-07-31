@@ -322,6 +322,10 @@ void main() {
           ),
         ]),
       );
+      expect(
+        prSource.listOpenPrsRepositoryIdentities,
+        equals(<String>[_canonicalGithubRepositoryIdentity]),
+      );
       expect(pullRequestRepository.upsertScopeCalls, hasLength(1));
       expect(
         pullRequestRepository.upsertScopeCalls.single,
@@ -424,6 +428,10 @@ void main() {
       final prs = pullRequestRepository.getByProjectId(projectId: "project-1");
       expect(prs.single.state, equals(PrState.merged));
       expect(prSource.getPrByNumberCalls, contains(22));
+      expect(
+        prSource.getPrByNumberRepositoryIdentities,
+        everyElement(_canonicalGithubRepositoryIdentity),
+      );
     });
 
     test("caches unavailable gh capability and detects installation after the TTL", () async {
@@ -654,7 +662,9 @@ class _FakePrSource implements PrSourceRepository {
   int getAuthenticatedIdentityCallCount = 0;
   int listOpenPrsCallCount = 0;
   final List<String> getGithubRepositoryIdentityCalls = <String>[];
+  final List<String> listOpenPrsRepositoryIdentities = <String>[];
   final List<int> getPrByNumberCalls = <int>[];
+  final List<String> getPrByNumberRepositoryIdentities = <String>[];
 
   _FakePrSource({
     required this.listOpenPrsResult,
@@ -695,8 +705,12 @@ class _FakePrSource implements PrSourceRepository {
   }
 
   @override
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
+  Future<List<GhPullRequest>> listOpenPrs({
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async {
     listOpenPrsCallCount++;
+    listOpenPrsRepositoryIdentities.add(githubRepositoryIdentity);
     if (onListOpenPrs case final callback?) {
       await callback();
     }
@@ -704,8 +718,13 @@ class _FakePrSource implements PrSourceRepository {
   }
 
   @override
-  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
+  Future<GhPullRequest> getPrByNumber({
+    required int number,
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async {
     getPrByNumberCalls.add(number);
+    getPrByNumberRepositoryIdentities.add(githubRepositoryIdentity);
     final pr = prByNumber[number];
     if (pr == null) {
       throw Exception("PR #$number not found");
