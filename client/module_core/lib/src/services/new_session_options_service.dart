@@ -29,6 +29,8 @@ sealed class NewSessionOptionsLoadResult {
   const NewSessionOptionsLoadResult();
 }
 
+enum NewSessionOptionsLoadMode { cached, refresh }
+
 final class NewSessionOptionsLoaded extends NewSessionOptionsLoadResult {
   const NewSessionOptionsLoaded({required this.options, required this.source});
 
@@ -44,24 +46,18 @@ final class NewSessionOptionsUnavailable extends NewSessionOptionsLoadResult {
   const NewSessionOptionsUnavailable();
 }
 
-final class NewSessionOptionsLoadFailure extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsLoadFailure({required this.error, required this.source});
-
-  final ApiError error;
-  final NewSessionOptionsSource source;
-}
-
-final class NewSessionOptionsProjectNotFound extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsProjectNotFound({required this.error, required this.source});
-
-  final ApiError error;
-  final NewSessionOptionsSource source;
-}
-
-final class NewSessionOptionsRefreshFailureRetained extends NewSessionOptionsLoadResult {
-  const NewSessionOptionsRefreshFailureRetained({required this.options});
+final class NewSessionOptionsFailureRetained extends NewSessionOptionsLoadResult {
+  const NewSessionOptionsFailureRetained({required this.options, required this.source});
 
   final NewSessionOptionsData options;
+  final NewSessionOptionsSource source;
+}
+
+final class NewSessionOptionsFailureUnavailable extends NewSessionOptionsLoadResult {
+  const NewSessionOptionsFailureUnavailable({required this.error, required this.source});
+
+  final ApiError error;
+  final NewSessionOptionsSource source;
 }
 
 final class NewSessionOptionsRefreshFailureUnavailable extends NewSessionOptionsLoadResult {
@@ -83,12 +79,12 @@ class NewSessionOptionsService {
     required String projectId,
     required String pluginId,
     required NewSessionOptionsSource source,
-    required bool refresh,
+    required NewSessionOptionsLoadMode mode,
     required NewSessionSelectionIntent? restoredSelection,
     required NewSessionOptionsData? previousOptions,
   }) async {
     if (source == NewSessionOptionsSource.legacy) {
-      if (!refresh) {
+      if (mode == NewSessionOptionsLoadMode.cached) {
         return previousOptions == null
             ? const NewSessionOptionsUnsupported()
             : NewSessionOptionsLoaded(options: previousOptions, source: NewSessionOptionsSource.legacy);
@@ -104,7 +100,7 @@ class NewSessionOptionsService {
     final result = await _sessionRepository.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      refresh: refresh,
+      refresh: mode == NewSessionOptionsLoadMode.refresh,
     );
     return switch (result) {
       SessionOptionsRepositoryAvailable(:final catalog) => NewSessionOptionsLoaded(
@@ -116,18 +112,22 @@ class NewSessionOptionsService {
         source: NewSessionOptionsSource.aggregate,
       ),
       SessionOptionsRepositoryCacheUnavailable() => const NewSessionOptionsUnavailable(),
-      SessionOptionsRepositoryProjectNotFound(:final error) => NewSessionOptionsProjectNotFound(
+      SessionOptionsRepositoryProjectNotFound(:final error) => NewSessionOptionsFailureUnavailable(
         error: error,
         source: NewSessionOptionsSource.aggregate,
       ),
       SessionOptionsRepositoryRefreshFailedRetained() =>
         previousOptions == null
             ? const NewSessionOptionsRefreshFailureUnavailable()
-            : NewSessionOptionsRefreshFailureRetained(options: previousOptions),
+            : NewSessionOptionsFailureRetained(
+                options: previousOptions,
+                source: NewSessionOptionsSource.aggregate,
+              ),
       SessionOptionsRepositoryRefreshFailedUnavailable() => const NewSessionOptionsRefreshFailureUnavailable(),
-      SessionOptionsRepositoryFailure(:final error) => NewSessionOptionsLoadFailure(
+      SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
         source: NewSessionOptionsSource.aggregate,
+        previousOptions: previousOptions,
       ),
     };
   }
@@ -147,12 +147,21 @@ class NewSessionOptionsService {
         ),
         source: NewSessionOptionsSource.legacy,
       ),
-      LegacySessionOptionsRepositoryFailure(:final error) => NewSessionOptionsLoadFailure(
+      LegacySessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
         source: NewSessionOptionsSource.legacy,
+        previousOptions: previousOptions,
       ),
     };
   }
+
+  NewSessionOptionsLoadResult _transientFailure({
+    required ApiError error,
+    required NewSessionOptionsSource source,
+    required NewSessionOptionsData? previousOptions,
+  }) => previousOptions == null
+      ? NewSessionOptionsFailureUnavailable(error: error, source: source)
+      : NewSessionOptionsFailureRetained(options: previousOptions, source: source);
 
   NewSessionOptionsData _resolve({
     required SessionOptionsCatalog catalog,

@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/services/models/new_session_backend_scope.dart";
 import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
 import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
@@ -58,6 +59,9 @@ void main() {
       );
       mockProjectRepository = MockProjectRepository();
       selectionTracker = NewSessionSelectionTracker();
+      selectionTracker.applyBackendScopeTransition(
+        transition: selectionTracker.backendScope.transitionToDiscovered(bridgeId: "bridge-1"),
+      );
       mockProductAnalyticsService = stubbedProductAnalyticsService();
 
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
@@ -66,7 +70,7 @@ void main() {
       when(mockPluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(
           PluginDiscoverySnapshot(
-            bridgeId: null,
+            bridgeId: "bridge-1",
             supportsSessionOptions: true,
             plugins: [defaultPlugin],
           ),
@@ -178,6 +182,7 @@ void main() {
           ),
           source: NewSessionOptionsSource.aggregate,
         ),
+        backendScope: NewSessionBackendScope.verified(bridgeId: "bridge-1"),
         isPluginDiscoveryInFlight: false,
         supportsDedicatedWorktrees: true,
       );

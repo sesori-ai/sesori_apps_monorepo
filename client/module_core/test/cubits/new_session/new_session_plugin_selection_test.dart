@@ -62,7 +62,7 @@ final class _AggregateTestOptionsService extends NewSessionOptionsService {
     required String projectId,
     required String pluginId,
     required NewSessionOptionsSource source,
-    required bool refresh,
+    required NewSessionOptionsLoadMode mode,
     required NewSessionSelectionIntent? restoredSelection,
     required NewSessionOptionsData? previousOptions,
   }) {
@@ -70,7 +70,7 @@ final class _AggregateTestOptionsService extends NewSessionOptionsService {
       projectId: projectId,
       pluginId: pluginId,
       source: NewSessionOptionsSource.aggregate,
-      refresh: refresh,
+      mode: mode,
       restoredSelection: restoredSelection,
       previousOptions: previousOptions,
     );
@@ -148,6 +148,12 @@ void main() {
       initialSupportsDedicatedWorktrees: true,
     );
 
+    void establishSelectionScope({required String bridgeId}) {
+      selectionTracker.applyBackendScopeTransition(
+        transition: selectionTracker.backendScope.transitionToDiscovered(bridgeId: bridgeId),
+      );
+    }
+
     test("discovery error recovers after a reconnect", () async {
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {
@@ -181,7 +187,7 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         if (discoveryCalls == 1) {
-          return ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA]));
+          return ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB]));
         }
         return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
       });
@@ -224,6 +230,10 @@ void main() {
       expect(afterRefresh.stagedCommand, beforeRefresh.stagedCommand);
       expect(afterRefresh.isLoading, isFalse);
       expect(afterRefresh.isPluginDiscoveryInFlight, isFalse);
+
+      cubit.selectPlugin(pluginId: "plugin-b");
+      expect(cubit.state, isA<NewSessionError>());
+      expect(cubit.state.agentModelData?.plugin, pluginA);
 
       cubit.clearStagedCommand();
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
@@ -510,7 +520,7 @@ void main() {
 
       await cubit.refreshOptions();
 
-      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshFailureRetainedState>());
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
       expect(cubit.state.agentModelData?.commands, [command]);
       expect(cubit.state.agentModelData?.stagedCommand, command);
     });
@@ -545,7 +555,7 @@ void main() {
 
       await cubit.refreshOptions();
 
-      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshFailureRetainedState>());
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
       expect(cubit.state.agentModelData?.agentModel, previousModel);
       expect(cubit.state.agentModelData?.providers, isNotEmpty);
     });
@@ -583,7 +593,7 @@ void main() {
       await cubit.refreshOptions();
       await cubit.refreshOptions();
 
-      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshFailureRetainedState>());
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
       expect(cubit.state.agentModelData?.optionsState.source, NewSessionOptionsSource.legacy);
 
       await cubit.refreshOptions();
@@ -633,7 +643,7 @@ void main() {
       cubit.stageCommand(command);
       await cubit.refreshOptions();
 
-      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshFailureRetainedState>());
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
       expect(cubit.state.agentModelData?.optionsState.source, NewSessionOptionsSource.legacy);
       expect(cubit.state.agentModelData?.commands, [command]);
       expect(cubit.state.agentModelData?.stagedCommand, command);
@@ -682,7 +692,7 @@ void main() {
         ..add(connectedStatus);
       await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
 
-      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshFailureRetainedState>());
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
       expect(cubit.state.agentModelData?.commands, [command]);
       expect(cubit.state.agentModelData?.stagedCommand, command);
     });
@@ -1337,8 +1347,9 @@ void main() {
 
     test("restores selection only from the matching project-plugin key", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA, pluginB])),
       );
+      establishSelectionScope(bridgeId: "bridge-a");
       selectionTracker
         ..recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a")
         ..recordAgent(projectId: "project-1", pluginId: "plugin-b", agentName: "agent-b");
@@ -1361,8 +1372,9 @@ void main() {
 
     test("successful creation clears only its matching plugin snapshot", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA, pluginB])),
       );
+      establishSelectionScope(bridgeId: "bridge-a");
       selectionTracker
         ..recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a")
         ..recordAgent(projectId: "project-1", pluginId: "plugin-b", agentName: "agent-b");

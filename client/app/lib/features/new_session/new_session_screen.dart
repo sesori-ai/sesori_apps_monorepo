@@ -145,7 +145,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       case NewSessionOptionsFailureState(:final reason):
         message = reason.localizedMessage(loc);
         isFailure = true;
-      case NewSessionOptionsRefreshFailureRetainedState():
+      case NewSessionOptionsFailureRetainedState():
         message = loc.newSessionOptionsRefreshFailedRetained;
         isFailure = true;
       case NewSessionOptionsRefreshFailureUnavailableState():
@@ -274,7 +274,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             plugins: composerData?.plugins ?? const [],
                             selectedPluginId: composerData?.plugin?.id,
                             isComposerDataLoading: composerData?.isLoading ?? false,
-                            isSelectionEnabled: !(composerData?.isPluginDiscoveryInFlight ?? false),
+                            isSelectionEnabled:
+                                (composerData?.backendScope.isVerified ?? false) &&
+                                !(composerData?.isPluginDiscoveryInFlight ?? false),
                             onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(
                               pluginId: pluginId,
                             ),

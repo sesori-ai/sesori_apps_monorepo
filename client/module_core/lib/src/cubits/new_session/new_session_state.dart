@@ -2,6 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
+import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/new_session_options_service.dart";
 
@@ -31,10 +32,10 @@ sealed class NewSessionOptionsLoadState with _$NewSessionOptionsLoadState {
     required NewSessionOptionsSource source,
   }) = NewSessionOptionsFailureState;
 
-  const factory NewSessionOptionsLoadState.refreshFailureRetained({
+  const factory NewSessionOptionsLoadState.failureRetained({
     required NewSessionOptionsData options,
     required NewSessionOptionsSource source,
-  }) = NewSessionOptionsRefreshFailureRetainedState;
+  }) = NewSessionOptionsFailureRetainedState;
 
   const factory NewSessionOptionsLoadState.refreshFailureUnavailable() =
       NewSessionOptionsRefreshFailureUnavailableState;
@@ -44,7 +45,7 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
   NewSessionOptionsData? get data => switch (this) {
     NewSessionOptionsRefreshingState(:final options) ||
     NewSessionOptionsAvailableState(:final options) ||
-    NewSessionOptionsRefreshFailureRetainedState(:final options) => options,
+    NewSessionOptionsFailureRetainedState(:final options) => options,
     NewSessionOptionsLoadingState() ||
     NewSessionOptionsUnsupportedState() ||
     NewSessionOptionsUnavailableState() ||
@@ -59,7 +60,7 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
     NewSessionOptionsRefreshingState(:final source) ||
     NewSessionOptionsAvailableState(:final source) ||
     NewSessionOptionsFailureState(:final source) ||
-    NewSessionOptionsRefreshFailureRetainedState(:final source) => source,
+    NewSessionOptionsFailureRetainedState(:final source) => source,
     NewSessionOptionsUnsupportedState() => NewSessionOptionsSource.legacy,
     NewSessionOptionsUnavailableState() ||
     NewSessionOptionsRefreshFailureUnavailableState() => NewSessionOptionsSource.aggregate,
@@ -72,6 +73,7 @@ sealed class NewSessionState with _$NewSessionState {
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
     required NewSessionOptionsLoadState options,
+    required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
     required bool supportsDedicatedWorktrees,
   }) = NewSessionIdle;
@@ -80,6 +82,7 @@ sealed class NewSessionState with _$NewSessionState {
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
     required NewSessionOptionsLoadState options,
+    required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
     required bool supportsDedicatedWorktrees,
   }) = NewSessionSending;
@@ -89,6 +92,7 @@ sealed class NewSessionState with _$NewSessionState {
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
     required NewSessionOptionsLoadState options,
+    required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
     required bool supportsDedicatedWorktrees,
   }) = NewSessionError;
@@ -100,6 +104,7 @@ typedef AgentModelData = ({
   List<PluginMetadata> plugins,
   PluginMetadata? plugin,
   NewSessionOptionsLoadState optionsState,
+  NewSessionBackendScope backendScope,
   bool isLoading,
   bool isPluginDiscoveryInFlight,
   List<AgentInfo> agents,
@@ -118,6 +123,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final availablePlugins,
       :final selectedPlugin,
       :final options,
+      :final backendScope,
       :final isPluginDiscoveryInFlight,
       :final supportsDedicatedWorktrees,
     ) =>
@@ -125,6 +131,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         plugins: availablePlugins,
         plugin: selectedPlugin,
         options: options,
+        backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
         supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
@@ -132,6 +139,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final availablePlugins,
       :final selectedPlugin,
       :final options,
+      :final backendScope,
       :final isPluginDiscoveryInFlight,
       :final supportsDedicatedWorktrees,
     ) =>
@@ -139,6 +147,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         plugins: availablePlugins,
         plugin: selectedPlugin,
         options: options,
+        backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
         supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
@@ -146,6 +155,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final availablePlugins,
       :final selectedPlugin,
       :final options,
+      :final backendScope,
       :final isPluginDiscoveryInFlight,
       :final supportsDedicatedWorktrees,
     ) =>
@@ -153,6 +163,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         plugins: availablePlugins,
         plugin: selectedPlugin,
         options: options,
+        backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
         supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
@@ -173,6 +184,7 @@ AgentModelData _agentModelData({
   required List<PluginMetadata> plugins,
   required PluginMetadata? plugin,
   required NewSessionOptionsLoadState options,
+  required NewSessionBackendScope backendScope,
   required bool isPluginDiscoveryInFlight,
   required bool supportsDedicatedWorktrees,
 }) {
@@ -181,6 +193,7 @@ AgentModelData _agentModelData({
     plugins: plugins,
     plugin: plugin,
     optionsState: options,
+    backendScope: backendScope,
     isLoading: options.isLoading,
     isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
     agents: data?.agents ?? const [],

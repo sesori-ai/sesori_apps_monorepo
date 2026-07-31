@@ -883,7 +883,7 @@ void main() {
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
   });
 
-  testWidgets("refresh discovery failure keeps the chooser but disables creation", (tester) async {
+  testWidgets("refresh discovery failure keeps prior context but disables backend actions", (tester) async {
     var discoveryCalls = 0;
     when(pluginRepository.listPlugins).thenAnswer((_) async {
       discoveryCalls++;
@@ -928,6 +928,8 @@ void main() {
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsOneWidget);
+    expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
+    expect(tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_plugin-1"))).onTap, isNull);
     expect(
       tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_options_refresh"))).onPressed,
       isNull,

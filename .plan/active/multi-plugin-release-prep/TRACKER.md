@@ -259,3 +259,11 @@
   unidentified bridge scope now clears backend-local selection intent as well
   as cached options. The directly affected tracker and reconnect tests passed,
   as did fatal module-core analysis and `git diff --check`.
+- Step 5.B/6 affinity architecture cleanup (2026-07-31): replaced the mutable
+  bridge-ID/affinity pair with a Freezed backend-scope state and sealed scope
+  transition shared by option retention and selection intent. Backend scope is
+  now emitted in `NewSessionState`, so disconnects immediately disable UI and
+  cubit backend actions. Option loading uses a closed mode enum and authoritative
+  retained/unavailable service outcomes rather than cubit-side typed-failure
+  policy. All 102 focused core tests and 27 mobile New Session tests passed, as
+  did fatal analysis in module-core, mobile, and desktop plus `git diff --check`.

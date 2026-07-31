@@ -1,3 +1,4 @@
+import "package:sesori_dart_core/src/services/models/new_session_backend_scope.dart";
 import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
 import "package:test/test.dart";
@@ -214,28 +215,40 @@ void main() {
     });
 
     test("clears backend-local choices when the bridge scope changes", () {
-      tracker.establishBridgeScope(bridgeId: "bridge-a");
+      final bridgeA = const NewSessionBackendScope.unverified(
+        lastIdentifiedBridgeId: null,
+      ).transitionToDiscovered(bridgeId: "bridge-a");
+      tracker.applyBackendScopeTransition(transition: bridgeA);
       tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
 
-      tracker.establishBridgeScope(bridgeId: "bridge-b");
+      final bridgeB = bridgeA.scope.invalidate().transitionToDiscovered(bridgeId: "bridge-b");
+      tracker.applyBackendScopeTransition(transition: bridgeB);
 
       expect(tracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
     });
 
     test("preserves choices when the same bridge scope is re-established", () {
-      tracker.establishBridgeScope(bridgeId: "bridge-a");
+      final initial = const NewSessionBackendScope.unverified(
+        lastIdentifiedBridgeId: null,
+      ).transitionToDiscovered(bridgeId: "bridge-a");
+      tracker.applyBackendScopeTransition(transition: initial);
       tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
 
-      tracker.establishBridgeScope(bridgeId: "bridge-a");
+      final reconnect = initial.scope.invalidate().transitionToDiscovered(bridgeId: "bridge-a");
+      tracker.applyBackendScopeTransition(transition: reconnect);
 
       expect(tracker.read(projectId: "project-1", pluginId: "plugin-a")?.agentName, "agent-a");
     });
 
     test("clears choices when an unidentified bridge scope is re-established", () {
-      tracker.establishBridgeScope(bridgeId: null);
+      final initial = const NewSessionBackendScope.unverified(
+        lastIdentifiedBridgeId: null,
+      ).transitionToDiscovered(bridgeId: null);
+      tracker.applyBackendScopeTransition(transition: initial);
       tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
 
-      tracker.establishBridgeScope(bridgeId: null);
+      final reconnect = initial.scope.invalidate().transitionToDiscovered(bridgeId: null);
+      tracker.applyBackendScopeTransition(transition: reconnect);
 
       expect(tracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
     });

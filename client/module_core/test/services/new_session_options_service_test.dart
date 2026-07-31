@@ -28,7 +28,7 @@ void main() {
         projectId: "project-1",
         pluginId: "plugin-1",
         source: NewSessionOptionsSource.legacy,
-        refresh: false,
+        mode: NewSessionOptionsLoadMode.cached,
         restoredSelection: null,
         previousOptions: null,
       );
@@ -63,7 +63,7 @@ void main() {
         projectId: "project-1",
         pluginId: "plugin-1",
         source: NewSessionOptionsSource.legacy,
-        refresh: true,
+        mode: NewSessionOptionsLoadMode.refresh,
         restoredSelection: null,
         previousOptions: null,
       );
@@ -97,14 +97,14 @@ void main() {
         projectId: "project-1",
         pluginId: "plugin-1",
         source: NewSessionOptionsSource.legacy,
-        refresh: true,
+        mode: NewSessionOptionsLoadMode.refresh,
         restoredSelection: null,
         previousOptions: null,
       );
 
       expect(
         result,
-        isA<NewSessionOptionsLoadFailure>()
+        isA<NewSessionOptionsFailureUnavailable>()
             .having((value) => value.error, "error", error)
             .having((value) => value.source, "source", NewSessionOptionsSource.legacy),
       );
@@ -127,14 +127,14 @@ void main() {
         projectId: "project-1",
         pluginId: "plugin-1",
         source: NewSessionOptionsSource.aggregate,
-        refresh: false,
+        mode: NewSessionOptionsLoadMode.cached,
         restoredSelection: null,
         previousOptions: null,
       );
 
       expect(
         result,
-        isA<NewSessionOptionsProjectNotFound>()
+        isA<NewSessionOptionsFailureUnavailable>()
             .having((value) => value.error, "error", error)
             .having((value) => value.source, "source", NewSessionOptionsSource.aggregate),
       );
@@ -166,7 +166,7 @@ void main() {
                 projectId: "project-1",
                 pluginId: "plugin-1",
                 source: NewSessionOptionsSource.aggregate,
-                refresh: false,
+                mode: NewSessionOptionsLoadMode.cached,
                 restoredSelection: const NewSessionSelectionIntent(
                   agentName: "review",
                   model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
@@ -204,7 +204,7 @@ void main() {
                 projectId: "project-1",
                 pluginId: "plugin-1",
                 source: NewSessionOptionsSource.aggregate,
-                refresh: false,
+                mode: NewSessionOptionsLoadMode.cached,
                 restoredSelection: const NewSessionSelectionIntent(
                   agentName: "missing",
                   model: NewSessionModelIntent(providerId: "provider-a", modelId: "unavailable"),
@@ -245,7 +245,7 @@ void main() {
                 projectId: "project-1",
                 pluginId: "plugin-1",
                 source: NewSessionOptionsSource.aggregate,
-                refresh: false,
+                mode: NewSessionOptionsLoadMode.cached,
                 restoredSelection: const NewSessionSelectionIntent(
                   agentName: "build",
                   model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
@@ -267,7 +267,7 @@ void main() {
         projectId: "project-1",
         pluginId: "plugin-1",
         source: NewSessionOptionsSource.aggregate,
-        refresh: false,
+        mode: NewSessionOptionsLoadMode.cached,
         restoredSelection: null,
         previousOptions: null,
       );
@@ -284,18 +284,36 @@ void main() {
       );
       when(
         () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", refresh: true),
+      ).thenAnswer((_) async => SessionOptionsRepositoryFailure(error: ApiError.generic()));
+      final transientFailure = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.refresh,
+        restoredSelection: null,
+        previousOptions: previous,
+      );
+      expect(
+        transientFailure,
+        isA<NewSessionOptionsFailureRetained>()
+            .having((value) => value.options, "retained options", previous)
+            .having((value) => value.source, "source", NewSessionOptionsSource.aggregate),
+      );
+
+      when(
+        () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", refresh: true),
       ).thenAnswer((_) async => const SessionOptionsRepositoryRefreshFailedRetained());
       final retained = await service.load(
         projectId: "project-1",
         pluginId: "plugin-1",
         source: NewSessionOptionsSource.aggregate,
-        refresh: true,
+        mode: NewSessionOptionsLoadMode.refresh,
         restoredSelection: null,
         previousOptions: previous,
       );
       expect(
         retained,
-        isA<NewSessionOptionsRefreshFailureRetained>().having(
+        isA<NewSessionOptionsFailureRetained>().having(
           (value) => identical(value.options, previous),
           "retained options",
           isTrue,
@@ -309,7 +327,7 @@ void main() {
         projectId: "project-1",
         pluginId: "plugin-1",
         source: NewSessionOptionsSource.aggregate,
-        refresh: true,
+        mode: NewSessionOptionsLoadMode.refresh,
         restoredSelection: null,
         previousOptions: previous,
       );

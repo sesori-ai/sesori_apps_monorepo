@@ -1,6 +1,7 @@
 import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 
+import "models/new_session_backend_scope.dart";
 import "models/new_session_selection_intent.dart";
 
 typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revision});
@@ -14,19 +15,17 @@ typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revisi
 class NewSessionSelectionTracker {
   final Map<({String projectId, String pluginId}), _RevisionedSelection> _selections = {};
   int _nextRevision = 0;
-  bool _hasBridgeScope = false;
-  String? _bridgeId;
+  NewSessionBackendScope _backendScope = const NewSessionBackendScope.unverified(
+    lastIdentifiedBridgeId: null,
+  );
 
-  /// Clears backend-local intent when the active connection moves to another
-  /// identified bridge or when bridge identity is unavailable. Re-establishing
-  /// the same identified scope preserves intent across New Session screen
-  /// recreation within the current app run.
-  void establishBridgeScope({required String? bridgeId}) {
-    if (_hasBridgeScope && (bridgeId == null || _bridgeId != bridgeId)) {
-      _selections.clear();
-    }
-    _hasBridgeScope = true;
-    _bridgeId = bridgeId;
+  NewSessionBackendScope get backendScope => _backendScope;
+
+  /// Applies the same backend-scope transition used to decide whether cached
+  /// options can survive discovery.
+  void applyBackendScopeTransition({required NewSessionBackendScopeTransition transition}) {
+    if (!transition.retainsBackendState) _selections.clear();
+    _backendScope = transition.scope;
   }
 
   NewSessionSelectionIntent? read({required String projectId, required String pluginId}) =>

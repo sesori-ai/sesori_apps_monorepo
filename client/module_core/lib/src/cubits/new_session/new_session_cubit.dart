@@ -15,6 +15,7 @@ import "../../logging/logging.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
+import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
 import "../../services/new_session_options_service.dart";
@@ -50,6 +51,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            availablePlugins: const [],
            selectedPlugin: null,
            options: const NewSessionOptionsLoadingState(source: null),
+           backendScope: selectionTracker.backendScope.invalidate(),
            isPluginDiscoveryInFlight: false,
            // Notification/deep-link entry lacks project-list context; retain
            // the prior visible behavior until the project fetch completes.
@@ -76,15 +78,23 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
-  String? _discoveryBridgeId;
-  bool _hasDiscoveryAffinity = false;
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
     final isConnected = status is ConnectionConnected;
     final reconnected = isConnected && !_wasConnected;
     _wasConnected = isConnected;
-    if (!isConnected) _hasDiscoveryAffinity = false;
+    if (!isConnected) {
+      final backendScope = state.agentModelData?.backendScope;
+      if (backendScope != null) {
+        _emitStateUpdate(
+          options: null,
+          backendScope: backendScope.invalidate(),
+          isPluginDiscoveryInFlight: null,
+          supportsDedicatedWorktrees: null,
+        );
+      }
+    }
     if (!reconnected || state is NewSessionSending || state is NewSessionCreated) return;
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
@@ -98,32 +108,34 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         previousOptions: beforeDiscovery?.optionsState.data,
         source: beforeDiscovery?.optionsState.source,
       ),
+      backendScope: null,
       isPluginDiscoveryInFlight: true,
       supportsDedicatedWorktrees: null,
     );
     try {
       final response = await _newSessionPluginService.discover(
         currentSelectedPluginId: beforeDiscovery?.plugin?.id,
-        currentSelectionBridgeId: _discoveryBridgeId,
+        currentSelectionBridgeId: beforeDiscovery?.backendScope.lastIdentifiedBridgeId,
       );
       if (!_canApplyLoad(generation: generation, pluginId: null)) return;
 
       switch (response) {
         case SuccessResponse(:final data):
-          final bridgeIdentityChanged =
-              _discoveryBridgeId == null || data.bridgeId == null || _discoveryBridgeId != data.bridgeId;
-          _discoveryBridgeId = data.bridgeId;
-          _hasDiscoveryAffinity = true;
-          _selectionTracker.establishBridgeScope(bridgeId: data.bridgeId);
+          final scopeTransition =
+              (beforeDiscovery?.backendScope ?? const NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null))
+                  .transitionToDiscovered(bridgeId: data.bridgeId);
+          _selectionTracker.applyBackendScopeTransition(transition: scopeTransition);
           final selectedPlugin = data.selected;
-          final currentData = state.agentModelData;
           final source = data.optionsSource;
-          final isSamePlugin =
-              !bridgeIdentityChanged &&
-              currentData?.plugin?.id != null &&
-              selectedPlugin?.id == currentData?.plugin?.id &&
-              currentData?.optionsState.source == source;
-          final previousOptions = isSamePlugin ? currentData?.optionsState.data : null;
+          final previousOptions =
+              _canRetainOptions(
+                transition: scopeTransition,
+                previousData: beforeDiscovery,
+                selectedPlugin: selectedPlugin,
+                source: source,
+              )
+              ? beforeDiscovery?.optionsState.data
+              : null;
           final canLoad = selectedPlugin?.isRoutable ?? false;
           emit(
             NewSessionState.idle(
@@ -134,15 +146,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
                   : source == NewSessionOptionsSource.aggregate
                   ? const NewSessionOptionsUnavailableState()
                   : const NewSessionOptionsUnsupportedState(),
+              backendScope: scopeTransition.scope,
               isPluginDiscoveryInFlight: false,
-              supportsDedicatedWorktrees: currentData?.supportsDedicatedWorktrees ?? false,
+              supportsDedicatedWorktrees:
+                  state.agentModelData?.supportsDedicatedWorktrees ??
+                  beforeDiscovery?.supportsDedicatedWorktrees ??
+                  false,
             ),
           );
           if (selectedPlugin != null && canLoad) {
             await _loadOptions(
               pluginId: selectedPlugin.id,
               generation: generation,
-              refresh: false,
+              mode: NewSessionOptionsLoadMode.cached,
               previousOptions: previousOptions,
               source: source,
             );
@@ -157,12 +173,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
   }
 
+  bool _canRetainOptions({
+    required NewSessionBackendScopeTransition transition,
+    required AgentModelData? previousData,
+    required PluginMetadata? selectedPlugin,
+    required NewSessionOptionsSource source,
+  }) =>
+      transition.retainsBackendState &&
+      previousData?.plugin?.id != null &&
+      selectedPlugin?.id == previousData?.plugin?.id &&
+      previousData?.optionsState.source == source;
+
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
     if (isClosed) return;
-    // Retained options still belong to the last successful bridge scope, but a
-    // failed discovery cannot prove that the current connection has affinity
-    // with that bridge.
-    _hasDiscoveryAffinity = false;
     final data = state.agentModelData;
     final options = switch (data?.optionsState) {
       NewSessionOptionsRefreshingState(:final options, :final source) => NewSessionOptionsAvailableState(
@@ -182,6 +205,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availablePlugins: data?.plugins ?? const [],
         selectedPlugin: data?.plugin,
         options: options,
+        backendScope:
+            data?.backendScope.invalidate() ?? const NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null),
         isPluginDiscoveryInFlight: false,
         supportsDedicatedWorktrees: data?.supportsDedicatedWorktrees ?? false,
       ),
@@ -198,6 +223,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
           if (state.agentModelData?.supportsDedicatedWorktrees != data.supportsDedicatedWorktrees) {
             _emitStateUpdate(
               options: null,
+              backendScope: null,
               isPluginDiscoveryInFlight: null,
               supportsDedicatedWorktrees: data.supportsDedicatedWorktrees,
             );
@@ -217,6 +243,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (current is NewSessionSending ||
         current is NewSessionCreated ||
         data == null ||
+        !data.backendScope.isVerified ||
         data.isPluginDiscoveryInFlight ||
         data.plugin?.id == pluginId) {
       return;
@@ -232,6 +259,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availablePlugins: data.plugins,
         selectedPlugin: selectedPlugin,
         options: NewSessionOptionsLoadingState(source: source),
+        backendScope: data.backendScope,
         isPluginDiscoveryInFlight: false,
         supportsDedicatedWorktrees: data.supportsDedicatedWorktrees,
       ),
@@ -240,7 +268,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       _loadOptions(
         pluginId: pluginId,
         generation: generation,
-        refresh: false,
+        mode: NewSessionOptionsLoadMode.cached,
         previousOptions: null,
         source: source,
       ),
@@ -254,7 +282,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final source = data?.optionsState.source;
     if (current is NewSessionSending ||
         current is NewSessionCreated ||
-        !_hasDiscoveryAffinity ||
+        !(data?.backendScope.isVerified ?? false) ||
         data == null ||
         data.isLoading ||
         source == null ||
@@ -267,13 +295,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final previousOptions = data.optionsState.data;
     _emitStateUpdate(
       options: _loadingState(previousOptions: previousOptions, source: source),
+      backendScope: null,
       isPluginDiscoveryInFlight: false,
       supportsDedicatedWorktrees: null,
     );
     await _loadOptions(
       pluginId: plugin.id,
       generation: generation,
-      refresh: true,
+      mode: NewSessionOptionsLoadMode.refresh,
       previousOptions: previousOptions,
       source: source,
     );
@@ -282,7 +311,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   Future<void> _loadOptions({
     required String pluginId,
     required int generation,
-    required bool refresh,
+    required NewSessionOptionsLoadMode mode,
     required NewSessionOptionsData? previousOptions,
     required NewSessionOptionsSource source,
   }) async {
@@ -292,7 +321,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         projectId: _projectId,
         pluginId: pluginId,
         source: source,
-        refresh: refresh,
+        mode: mode,
         restoredSelection: _selectionTracker.read(projectId: _projectId, pluginId: pluginId),
         previousOptions: previousOptions,
       );
@@ -300,14 +329,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
       loge(
         "New session: failed to load options for plugin $pluginId "
-        "(source: ${source.name}, refresh: ${refresh.toString()})",
+        "(source: ${source.name}, mode: ${mode.name})",
         error,
         stackTrace,
       );
       _emitStateUpdate(
         options: previousOptions != null
-            ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions, source: source)
+            ? NewSessionOptionsFailureRetainedState(options: previousOptions, source: source)
             : NewSessionOptionsFailureState(reason: RemoteFailureReason.unknown, source: source),
+        backendScope: null,
         isPluginDiscoveryInFlight: false,
         supportsDedicatedWorktrees: null,
       );
@@ -322,21 +352,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       ),
       NewSessionOptionsUnsupported() => const NewSessionOptionsUnsupportedState(),
       NewSessionOptionsUnavailable() => const NewSessionOptionsUnavailableState(),
-      NewSessionOptionsLoadFailure(:final error, :final source) => previousOptions != null
-          ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions, source: source)
-          : NewSessionOptionsFailureState(reason: error.remoteFailureReason, source: source),
-      NewSessionOptionsProjectNotFound(:final error, :final source) => NewSessionOptionsFailureState(
-        reason: error.remoteFailureReason,
+      NewSessionOptionsFailureRetained(:final options, :final source) => NewSessionOptionsFailureRetainedState(
+        options: options,
         source: source,
       ),
-      NewSessionOptionsRefreshFailureRetained(:final options) => NewSessionOptionsRefreshFailureRetainedState(
-        options: options,
+      NewSessionOptionsFailureUnavailable(:final error, :final source) => NewSessionOptionsFailureState(
+        reason: error.remoteFailureReason,
         source: source,
       ),
       NewSessionOptionsRefreshFailureUnavailable() => const NewSessionOptionsRefreshFailureUnavailableState(),
     };
     _emitStateUpdate(
       options: options,
+      backendScope: null,
       isPluginDiscoveryInFlight: false,
       supportsDedicatedWorktrees: null,
     );
@@ -361,12 +389,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
   }
 
-  bool get canRefreshOptions => _hasDiscoveryAffinity && _canEditComposer;
+  bool get canRefreshOptions => (state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer;
 
-  bool get canCreateSession => _hasDiscoveryAffinity && _canEditComposer;
+  bool get canCreateSession => (state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer;
 
   void _emitStateUpdate({
     required NewSessionOptionsLoadState? options,
+    required NewSessionBackendScope? backendScope,
     required bool? isPluginDiscoveryInFlight,
     required bool? supportsDedicatedWorktrees,
   }) {
@@ -377,6 +406,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         emit(
           current.copyWith(
             options: options ?? current.options,
+            backendScope: backendScope ?? current.backendScope,
             isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
             supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
@@ -385,6 +415,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         emit(
           current.copyWith(
             options: options ?? current.options,
+            backendScope: backendScope ?? current.backendScope,
             isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
             supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
@@ -393,6 +424,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         emit(
           current.copyWith(
             options: options ?? current.options,
+            backendScope: backendScope ?? current.backendScope,
             isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
             supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
@@ -407,7 +439,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final source = currentOptions?.source;
     if (source == null) return;
     final next = switch (currentOptions) {
-      NewSessionOptionsRefreshFailureRetainedState() => NewSessionOptionsRefreshFailureRetainedState(
+      NewSessionOptionsFailureRetainedState() => NewSessionOptionsFailureRetainedState(
         options: options,
         source: source,
       ),
@@ -422,6 +454,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     };
     _emitStateUpdate(
       options: next,
+      backendScope: null,
       isPluginDiscoveryInFlight: null,
       supportsDedicatedWorktrees: null,
     );
@@ -524,8 +557,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (current is NewSessionSending || current is NewSessionCreated) return;
     final config = current.agentModelData;
     final selectedPlugin = config?.plugin;
-    if (!_hasDiscoveryAffinity ||
-        config == null ||
+    if (config == null ||
+        !config.backendScope.isVerified ||
         config.isLoading ||
         selectedPlugin == null ||
         !selectedPlugin.isRoutable) {
@@ -554,6 +587,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availablePlugins: config.plugins,
         selectedPlugin: selectedPlugin,
         options: config.optionsState,
+        backendScope: config.backendScope,
         isPluginDiscoveryInFlight: false,
         supportsDedicatedWorktrees: config.supportsDedicatedWorktrees,
       ),
@@ -563,7 +597,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final selectedAgentModel = options?.selectedAgentModel;
     unawaited(
       _newSessionPluginService.recordSelection(
-        bridgeId: _hasDiscoveryAffinity ? _discoveryBridgeId : null,
+        bridgeId: config.backendScope.identifiedBridgeId,
         plugin: selectedPlugin,
       ),
     );
@@ -615,11 +649,12 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availablePlugins: latest.plugins,
             selectedPlugin: latest.plugin,
             options: latest.optionsState,
+            backendScope: latest.backendScope,
             isPluginDiscoveryInFlight: false,
             supportsDedicatedWorktrees: latest.supportsDedicatedWorktrees,
           ),
         );
-        if (!_hasDiscoveryAffinity && _wasConnected) {
+        if (!latest.backendScope.isVerified && _wasConnected) {
           unawaited(_discoverPlugins());
           unawaited(_loadProjectCapability());
         }

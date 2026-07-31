@@ -136,6 +136,7 @@ export "src/routing/notification_open_dispatcher.dart";
 export "src/services/composer_draft_calculator.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";
+export "src/services/models/new_session_backend_scope.dart";
 export "src/services/models/new_session_options_source.dart";
 export "src/services/models/new_session_selection_intent.dart";
 export "src/services/models/product_analytics_state.dart";
