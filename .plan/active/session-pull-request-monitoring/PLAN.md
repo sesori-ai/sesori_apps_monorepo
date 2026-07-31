@@ -1,809 +1,767 @@
-# Session Pull Request Monitoring
+# Current-Branch Pull Request Monitoring
 
-## 0. Plan Metadata
+## Status
 
-- **Status:** Approved — ready for delivery on plan PR #436
-- **Format version:** 1
-- **Generated:** 2026-07-14
 - **Plan slug:** `session-pull-request-monitoring`
-- **Plan host:** `sesori-ai/sesori_apps_monorepo`
-- **Selected implementation base:** `main`
-- **Legacy source:** `docs/pr-monitor/PLAN.md` from an earlier commit on the
-  existing plan-PR branch. The canonical migration removes that path; it remains
-  historical context only, not an implementation baseline or authority.
+- **Status:** Approved — Step 1/9 plan PR preparing
+- **Plan revision date:** 2026-07-31
+- **Repository:** `sesori-ai/sesori_apps_monorepo`
+- **Implementation base:** `main`
+- **Latest audited tip:** `0da8ec7cae9e23ac17569ab7a1069e815e16f8cf`
+- **Historical plan PR:** [#436](https://github.com/sesori-ai/sesori_apps_monorepo/pull/436)
+- **Historical prerequisite:** [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) shipped additive
+  `RelayProjectView` and `Session.pullRequestHistory` contracts.
+- **Delivery:** one revised-plan PR, seven sequential implementation PRs, and
+  one plan-retirement PR.
 
-| Repository | Implementation base | Initial audited tip | Commit date | Latest re-review | Latest audited tip | Commit date |
-|---|---|---|---|---|---|---|
-| `sesori-ai/sesori_apps_monorepo` | `main` | `2f4adf2dec643f44db231f88d09672499a8a8619` | 2026-07-14T17:20:37+03:00 | 2026-07-14 | `e766684e0fdc22256419b7b99691021c9f14732d` | 2026-07-14T17:59:08+03:00 |
+The earlier approved design retained every visited branch, stored multiple PRs
+per session, added terminal archive snapshots, and used adaptive per-project
+polling. The user explicitly replaced those requirements with a smaller
+current-branch-only feature after parallel plugins and the durable catalog
+merged. This document and `TRACKER.md` are the sole current authority. Removed
+stage files describe superseded work and must not guide implementation.
 
-The audited SHA is staleness metadata, not a historical branch point. Each
-implementation wave starts from and pins the then-current tip of `main` after
-assessing drift from the latest audited tip. Every first-wave PR in this
-plan-host repository declares `main` as its base.
+## Goal
 
-## 1. Goal
+Show one useful GitHub pull request beside each root session:
 
-Give each root session a durable pull-request timeline derived from the named
-Git branches actually visited in that session's exact working directory:
+1. resolve the root session directory's current named Git branch;
+2. find same-repository PRs whose head branch exactly matches it;
+3. show the newest open PR, including drafts; otherwise show the newest merged
+   or closed PR; and
+4. keep that branch and PR fresh while any connected client device views the
+   project.
 
-- keep the newest associated PR on the current named branch prominent;
-- retain PRs from every previously observed named branch as collapsed history;
-- refresh authored GitHub state near real time only while a connected client is
-  viewing that project;
-- continue local branch observation without a connected client so history is
-  not lost;
-- keep PR status independent from conversation unseen state; and
-- make archive terminal for PR tracking while preserving one immutable display
-  snapshot and one non-blocking final refresh attempt.
+Dedicated and non-dedicated sessions follow the same rule. A branch switch
+immediately changes association scope. If the new branch has no matching PR,
+the session shows no PR; it never falls back to one from a prior branch.
 
-Git and GitHub behavior remains bridge-owned and plugin-agnostic. No OpenCode,
-Codex, Cursor, ACP, or future harness detail crosses `BridgePluginApi` into the
-shared contract or client.
+Git and GitHub behavior remains headless-bridge-owned and plugin-agnostic. No
+OpenCode, Codex, Cursor, ACP, or future backend behavior crosses
+`BridgePluginApi` for this feature.
 
-## 2. Success Criteria
+## Success Criteria
 
-1. A named local `HEAD` transition is persisted from filesystem events, updates
-   the session's current branch, preserves prior history under each observation's
-   verified Git common directory, and emits a project-scoped `sessionsUpdated`
-   invalidation without waiting for GitHub.
-2. Detached `HEAD` clears the current branch without creating a fake `HEAD`
-   history row; returning to a named branch in the same Git common directory
-   updates `last_seen_at` rather than duplicating it.
-3. Sessions sharing one checkout use one normalized git-`HEAD` watcher while
-   receiving independent durable history updates.
-4. While at least one connected client views a project, GitHub refreshes use a
-   15-second tier when the repository has an authored open PR and a 90-second
-   tier otherwise. No GitHub timer survives the final viewer leaving.
-5. A continuously viewed project completes an all-state authored reconciliation
-   at least once every ten minutes; a failed attempt keeps the deadline pending
-   and follows bounded backoff.
-6. Every `gh pr list` query is restricted to `--author @me`, explicitly sorted
-   by creation descending, and limited to 1,001 fetched authored rows; accepted
-   observations are additionally restricted to the resolved same repository.
-   The first 1,000 pre-filter authored rows are supported; row 1,001 marks an
-   observable truncated result that never authoritatively deletes absent cached
-   rows.
-7. The bridge captures and rechecks active GitHub login plus canonical
-   repository identity around every write. Once a refresh observes an unknown
-   or changed account/repository, it suspends old cache visibility before
-   query/write and emits invalidation. Cache-first reads remain non-blocking, so
-   an as-yet-unobserved local `gh auth switch` can remain visible only until the
-   next existing request/view trigger detects it.
-8. The headline is the highest-numbered associated PR on the current named
-   branch, regardless of open/merged/closed state. History is every other
-   associated PR, ordered by descending PR number, with no headline duplicate.
-9. Archive never waits for `gh`, freezes the latest locally resolvable branch and
-   verified cache snapshot, and performs at most one asynchronous final
-   all-state attempt. Unarchive never restarts branch or PR tracking.
-10. New clients talking to old bridges and old clients talking to new bridges
-    continue loading sessions. Missing `pullRequestHistory` decodes to a
-    non-null empty list, and both existing `waitForPrData` request modes remain
-    supported.
-11. PR changes never modify session/project unseen timestamps and never generate
-    push notifications.
-12. Bridge, shared, module-core, mobile, desktop-core, and desktop-shell
-    verification passes at the end of the plan.
+1. Every root session response displays the most recently resolved named branch
+   from its exact persisted `directory`; child sessions have no independent PR
+   association.
+2. Detached `HEAD`, a missing/non-git directory, a non-GitHub remote, or a
+   branch with no matching PR produces no PR and never reuses a prior branch's
+   PR.
+3. For an exact lowercase GitHub repository identity plus case-sensitive head
+   branch, selection is newest open PR first, then newest merged/closed PR,
+   ordered by GitHub `createdAt DESC` and PR number descending.
+4. PR author is irrelevant. A same-repository coworker PR is eligible; a
+   fork-head/cross-repository PR is not.
+5. One GraphQL request can batch several active repository/branch targets and
+   returns repository, branch, state, mergeability, review decision, and latest
+   check-rollup state through the installed authenticated `gh` CLI.
+6. Normal session loads remain cache-first. Project activation, each configured
+   refresh cycle, branch changes discovered by that cycle, and explicit
+   pull-to-refresh resolve local branch state before GitHub selection.
+7. One device connection declares at most one viewed project. The bridge unions
+   declarations across devices, refreshes different viewed projects together,
+   deduplicates shared targets, and releases only the disconnected/backgrounded
+   device's claim.
+8. One bridge-wide refresh interval defaults to 30 seconds. The JSON setting is
+   read at startup; a successful client settings mutation persists it and
+   updates the running timer without a file watcher.
+9. PR/branch changes reuse project-scoped `sessionsUpdated`; they never mutate
+   conversation unseen state and never send push notifications.
+10. Archive has no PR-specific behavior: no stop marker, snapshot, final
+    attempt, pause, or resume path is introduced.
+11. `Session.pullRequestHistory` remains empty. No multiple-PR/history UI or
+    desktop-shell-specific implementation is added.
+12. Every implementation PR is independently releasable, preserves old/new
+    client-bridge compatibility, and passes directly relevant analysis/tests.
 
-## 3. Scope
+## Locked Product Decisions
 
-### In Scope
+### Session and branch scope
 
-- Additive shared `RelayProjectView` and `Session.pullRequestHistory` contracts.
-- Exact root-session directory/Git-common-directory persistence and durable
-  named-branch history.
-- Filesystem-driven git `HEAD` observation with watcher sharing and recovery.
-- Authored, same-repository GitHub discovery through the installed `gh` CLI.
-- GitHub-account/repository-scoped global PR cache and project cache identity,
-  bound to the project path and normalized Git common directory at verification
-  time.
-- Per-project serialized refresh dispatch, open/all reconciliation, truncation
-  handling, and identity-switch protection.
-- Terminal archive stop state, immutable archived PR snapshots, and one final
-  asynchronous refresh attempt.
-- Connection-scoped project-view declarations from session-list and
-  session-detail client surfaces.
-- Adaptive viewed-project scheduling and project-scoped SSE invalidation.
-- Mobile collapsed PR-history presentation using Prego tokens.
-- Removal of superseded `PrSyncService` internals after all supported triggers
-  route through the new dispatcher.
-- Drift, generated-code, unit, integration, widget, and advisory manual checks.
+- Root sessions only. Child tasks do not duplicate their root's PR status.
+- Resolve `SessionTable.directory` for dedicated and non-dedicated roots alike.
+- Sessions sharing one directory intentionally share its current branch and
+  selected PR.
+- Resolve on activation, every scheduled cycle, and explicit refresh. Do not
+  add filesystem watchers or retain visited branches.
+- A named branch is the only associable state. Detached/unknown has no branch
+  and no PR.
+- The persisted creation/cleanup `branch_name` remains untouched. A separate
+  internal current-branch field owns observed display state.
 
-### Non-Goals
+### PR selection
 
-- Review comments, individual check runs, labels, assignees, commits, or PR
-  mutation.
-- Push notifications or conversation unseen activity for PR changes.
-- Polling GitHub when no client views the project.
-- Polling git for local branch changes.
-- Continuous plugin enumeration, plugin capability changes, or backend-specific
-  PR behavior.
-- Cross-host GitHub synchronization, GitHub Enterprise support, or credentials
-  outside the existing local `gh` CLI.
-- More than the newest 1,000 authored PRs returned by repository-wide discovery.
-- Restoring PR tracking after a session reaches terminal PR archive state.
-- Changing the existing user-visible ability to unarchive a session.
-- Offline/local-first client caching.
-- Desktop-only PR UI before the shared accessory UI exists.
-- The separate OpenCode `pr_monitor` development tool under `.opencode/`.
-- Teams, permissions policy, metering, managed-VM trust changes, or speculative
-  forge abstractions.
+- GitHub.com only, through the user's installed/authenticated `gh` CLI.
+- Match canonical base-repository identity and exact head branch.
+- Accept any author in that repository; reject `isCrossRepository == true`.
+- Query at most one newest open and one newest terminal candidate per target,
+  then select open before terminal. Do not fetch or retain PR history.
+- Draft PRs are open and eligible.
+- “Most recent” means GitHub creation time, with PR number as a deterministic
+  tie-breaker.
+- Cache only the selected current-target projection. Successful complete
+  refreshes remove rows outside the project's current target set.
 
-## 4. Audited Baseline
+### Presence and cadence
 
-The selected `main` tip was initially fetched and audited at
-`2f4adf2dec643f44db231f88d09672499a8a8619`. A pre-delivery drift review at
-`e766684e0fdc22256419b7b99691021c9f14732d` found only iOS TestFlight workflow
-and Fastfile changes, with no planned path, contract, schema, architecture, or
-product-intent impact. The plan branch diverged at
-`7e019af01ecb4c658a3e9e6b05e002517ed4910e`; changes from that merge base to the
-initial audited tip affect prompt-sheet routing only and do not alter planned PR
-paths.
+- Session-list and session-detail screens both count as viewing the project.
+- One connection has one effective project. Multiple connections/devices may
+  view different projects simultaneously.
+- Presence is connection-scoped, not account-global. Background/disconnect
+  clears only that connection; foreground reconnect reasserts it.
+- One bridge listener owns one non-overlapping timer for the union of viewed
+  projects. It batches their unique repository/branch targets rather than
+  creating a timer per project.
+- Use a fixed interval, not the old 15/90-second adaptive state machine.
+- Default to 30 seconds. Persist a custom integer in seconds per bridge. The
+  implementation validates a conservative 15–3,600 second range.
+- A client settings PATCH updates the running listener immediately. Manual
+  edits to `~/.config/sesori/config.json` require bridge restart because no file
+  watcher is added.
+- Explicit pull-to-refresh retains the existing five-second bounded wait.
 
-### Current behavior
+### Presentation and lifecycle
 
-- `bridge/app/lib/src/bridge/services/pr_sync_service.dart:43-74` accepts only
-  request-driven refreshes, deduplicates one active project refresh, and applies
-  a 30-second debounce. It owns no viewed-project timer.
-- `bridge/app/lib/src/bridge/services/pr_sync_service.dart:103-179` lists open
-  PRs, matches them to one stored `branchName`, finalizes disappeared open PRs,
-  and emits a project id only when cache data changes.
-- `bridge/app/lib/src/bridge/api/gh_cli_api.dart:34-55` runs
-  `gh pr list --state open --limit 100` without `--author @me` or PR author
-  parsing. `gh pr view` likewise does not parse author identity.
-- `bridge/app/lib/src/api/database/daos/pull_request_dao.dart:24-49`
-  associates PRs by joining PR branch to the session row's single
-  `branch_name`. The cache key is `(project_id, pr_number)`.
-- `bridge/app/lib/src/bridge/repositories/session_repository.dart:519-572`
-  depends on peer `PullRequestRepository`, chooses an open PR before a newer
-  closed PR, and exposes only one `Session.pullRequest`.
-- `bridge/app/lib/src/api/database/tables/session_table.dart:35-76` stores
-  worktree-creation `branch_name` but no exact generic session directory,
-  current live branch, branch history, or terminal PR stop marker.
-- `bridge/app/lib/src/bridge/api/git_cli_api.dart:168-178` already resolves
-  `git rev-parse --abbrev-ref HEAD` for worktree safety, but no component
-  observes live `HEAD` changes.
-- `bridge/app/lib/src/bridge/api/filesystem_api.dart:9-55` is the existing dumb
-  host-filesystem boundary and has no watch operation.
-- `bridge/app/lib/src/bridge/routing/get_sessions_handler.dart:67-142` fetches
-  and persists plugin sessions, triggers PR refresh for both request modes, and
-  gives `waitForPrData: true` a five-second budget. Commit
-  `214f000ca88e29ba88dd6facbeed3629f1c77c2c` shipped that compatibility behavior.
-- Initial/background client loads already use `waitForPrData: false`; explicit
-  pull-to-refresh uses `true`
-  (`client/module_core/lib/src/cubits/session_list/session_list_cubit.dart:630-676`,
-  `client/app/lib/features/session_list/session_list_content.dart:13-20`). This
-  plan preserves rather than reintroduces cache-first loading.
-- `SessionMutationDispatcher` currently serializes title/delete mutations only.
-  A live `session.created` reaches `SessionUnseenService` after the SSE payload
-  is enqueued (`bridge/app/lib/src/bridge/orchestrator.dart:720-739,
-  872-883`).
-- `SessionViewTracker`, `RelaySessionView`, `SessionViewApi` /
-  `SessionViewRepository` / `SessionViewingService`, and detail-cubit tests are
-  a proven connection-scoped declaration pattern. They remain dedicated to
-  mark-seen semantics and are not reused for project presence.
-- `bridge/app/lib/src/bridge/services/session_archive_service.dart:97-133`
-  performs cleanup, writes reversible `archived_at` through the legacy
-  `SessionPersistenceService`, and notifies the plugin asynchronously. Archived
-  PR presentation still reads the mutable global cache.
-- `bridge/app/lib/src/bridge/services/session_archive_service.dart:1-10,
-  72-95,136-188` also imports cleanup policy upward from `routing/`, initializes
-  missing rows through DAO-backed `SessionPersistenceService`, and calls
-  `Directory.existsSync` directly. S02-W03 removes those touched boundary
-  violations instead of extending them.
-- `bridge/app/lib/src/bridge/orchestrator.dart:450-454` is the sole current
-  owner of translating PR-cache change streams into `sessionsUpdated` SSE.
-- `client/app/lib/features/session_list/session_tile.dart:113-148` renders one
-  prominent `PrStatusRow`; there is no history UI.
-- `shared/sesori_shared/lib/src/models/sesori/session.dart:34-56` has only the
-  optional headline PR. `shared/sesori_shared/lib/src/protocol/messages.dart`
-  has `RelaySessionView` but no project-view declaration.
-- The declared bridge/mobile version is `1.5.0`
-  (`bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, and
-  `client/app/pubspec.yaml`). Compatibility markers introduced by this plan use
-  the implementation date and this repository-declared version unless the
-  version changes before that PR begins.
-- The audited Drift schema is version 10. Every schema-owning PR must inspect
-  the current `main` version and allocate the next version; it must never rewrite
-  a merged snapshot or migration.
+- Continue using the existing `Session.pullRequest` and `PrStatusRow`.
+- `Session.branchName` becomes the bridge's best current named-branch
+  presentation. Older bridges continue supplying the creation branch as
+  graceful degraded behavior; database cleanup still uses its separate stored
+  creation field.
+- No previous-branch fallback, history disclosure, PR detail route, mutation,
+  comments, or check-run detail.
+- The product client UI is shared by mobile and the eventual full desktop
+  client. Do not add feature code to the current `client/desktop` bridge-control
+  shell; validate it only as a downstream consumer of shared/module-core code.
+- Archive is ordinary session metadata and does not participate in PR logic.
+- PR changes affect neither unseen timestamps nor notifications.
 
-### History evidence
+## Non-Goals
 
-- `da32bf71196326a5acf0c8c1668427d8c2d25f5c` introduced the current
-  Aristotle-layered PR-awareness implementation and schema v4.
-- `214f000ca88e29ba88dd6facbeed3629f1c77c2c` made PR waiting configurable and
-  limited waiting to explicit pull-to-refresh.
-- `1bf31620ea91c693a269e96dcf90ed12db6dcd26` introduced connection-scoped
-  session viewing and unseen behavior that project presence must not disturb.
-- `366fd4e939eeb8f7c6fd97909f84a7290ed6ec41` reduced recurring session sync
-  battery work and strengthened current PR capability/debounce tests.
+- PRs from a coworker's fork or another head repository.
+- More than one selected PR per root session.
+- Branch or PR history, visited-branch retention, archive snapshots, or final
+  archive refreshes.
+- Always-on branch observation or GitHub work while no client views a project.
+- GitHub Enterprise, GitLab, other forges, direct token storage, or GitHub web
+  API credentials outside local `gh`.
+- Review comments, individual checks, labels, assignees, commits, or PR
+  mutations.
+- Push notifications, unseen activity, or client-side offline caching.
+- Backend-plugin capability or behavior changes.
+- A new analytics event or warehouse model.
 
-### External references
+## Current Repository Baseline
 
-The 2026-07-14 GitHub CLI manuals confirm that `gh pr list` supports
-`--author`, `--state {open|closed|merged|all}`, finite `--limit`, and JSON fields
-including `author`, `isCrossRepository`, `reviewDecision`, and
-`statusCheckRollup`; `gh pr view` supports the same JSON fields but no author
-filter. These command contracts are pinned in the PR-step verification rather
-than inferred at implementation time.
+The audited `main` tip is
+`0da8ec7cae9e23ac17569ab7a1069e815e16f8cf` (2026-07-31). Parallel plugins are
+complete through PR #497. The durable catalog and later release-prep work
+materially invalidate the old plan:
 
-## 5. Architecture and Data Flow
+- Drift is schema v12, not v10
+  (`bridge/app/lib/src/api/database/database.dart`).
+- `SessionTable` already has stable Sesori/backend/plugin identity, parent/root
+  hierarchy, and non-null exact `directory`. Its nullable `branchName` remains
+  dedicated-worktree creation/cleanup metadata.
+- Project/root/detail/child reads are database-only. Catalog import updates
+  projection-owned fields without overwriting worktree state.
+- `SessionLifecycleService` now owns archive/cleanup orchestration; no
+  PR-specific archive work is required.
+- `PrSyncService` remains request-driven, per-project, 30-second debounced, and
+  lists only open PRs. It matches the project cache to stored creation branch.
+- `GhCliApi` still runs repository-scoped `gh pr list`/`gh pr view`; it does not
+  expose GraphQL batches or GitHub creation timestamps.
+- `PullRequestsTable` is keyed by `(project_id, pr_number)` and has no canonical
+  repository/login scope. `PullRequestDao` joins it to `SessionTable.branchName`.
+- `SessionRepository` still prefers open PRs then highest number and maps only
+  `Session.pullRequest`. `pullRequestHistory` decodes but remains empty.
+- `RelayProjectView` is shipped in shared code but is ignored by the bridge and
+  never sent by clients.
+- `SessionViewTracker` proves connection-scoped declaration/release behavior,
+  but it is mark-seen-specific and must remain separate.
+- The session tile already renders `session.branchName` and
+  `session.pullRequest` through `PrStatusRow`; no new PR display widget is
+  required.
+- `BridgeSettingsRepository` persists
+  `~/.config/sesori/config.json`; `PluginLifecycleService` demonstrates
+  client-driven live settings mutation but its private mutation tail does not
+  serialize another settings domain.
+- PR #647 has merged and consolidates Harness management into
+  `harnesses_settings_screen.dart`. Step 8 uses that merged numeric-bottom-sheet
+  pattern where useful but keeps PR cadence in a separate bridge settings row.
 
-### Boundaries and dependency direction
+### External GitHub evidence
 
-All new code follows Foundation -> API -> Repository -> Service -> Consumer.
-Existing legacy files are modified in place only where they own the current
-behavior; new classes live in visible top-level layer directories.
+The 2026-07-31 GitHub CLI/API contracts were checked against installed
+`gh 2.97.0` and current official documentation:
 
-| Component | Layer / path | Ownership |
-|---|---|---|
-| `GitCliApi` additions | Layer 1, existing `bridge/app/lib/src/bridge/api/git_cli_api.dart` | Resolve current named branch plus raw git `HEAD` and Git-common-directory paths. No retries or branch decisions. |
-| `FilesystemApi` addition | Layer 1, existing `bridge/app/lib/src/bridge/api/filesystem_api.dart` | Expose raw directory watch events. |
-| `GhCliApi` / `GhPullRequest` additions | Layer 1, existing legacy paths | Execute exact `gh` commands, parse author/login/canonical repository identity and typed PR DTO fields, and throw on failures/truncation parsing errors. |
-| New branch/archive tables and DAOs | Layer 1, `bridge/app/lib/src/api/database/` | Raw owner-scoped queries and transactions inputs; no selection policy. |
-| `SessionBranchRepository` | Layer 2, `bridge/app/lib/src/repositories/` | Resolve stored exact directories to normalized watch targets and Git common directories; map raw watch events to typed signals; atomically persist verified non-null Git-common-directory/current/history state; emit `SessionBranchChanged` after committed verified binding/branch changes. |
-| `PrSourceRepository` | Layer 2, existing legacy path | Wrap GitHub CLI availability, active-login/repository resolution, authored PR reads, and cached GitHub-remote eligibility. Never write another repository. |
-| `PullRequestRepository` | Layer 2, existing legacy path | Sole runtime writer/finalizer of the live global PR cache and project cache visibility/login/repository/path/Git-common-directory metadata; compare the complete expected session branch/binding scope inside each cache-write transaction using injected raw DAOs. |
-| `SessionArchiveRepository` | Layer 2, `bridge/app/lib/src/repositories/` | Sole runtime writer of terminal stop state and immutable archived PR snapshots; transactionally revalidate terminal session/project/path and expected project/frozen-session Git bindings before final replacement. |
-| `SessionRepository` | Layer 2, existing legacy path | Sole exact-directory writer; atomically clear derived current branch/Git common directory when that exact directory changes and emit `SessionBranchChanged` after the committed clear; read branch/PR/archive DAOs and map headline/history. It has no repository peer dependency. |
-| `WorktreeRepository` additions | Layer 2, existing legacy path | Expose repository-backed worktree existence/restore operations over `FilesystemApi`/`GitCliApi`; services never call `dart:io` directly. |
-| Mappers and typed models | Layer 2, `bridge/app/lib/src/repositories/{mappers,models}/` | Pure API/DAO/domain/shared transformations only. |
-| `ProjectViewTracker` | Layer 3 state collaborator, `bridge/app/lib/src/services/` | Maintain connection -> project declarations, aggregate counts, and typed 0->1 / 1->0 changes. |
-| `PrRefreshDispatcher` | Layer 3, `bridge/app/lib/src/services/` | Own per-project request serialization, request-strength coalescing, identity recheck, live/final write coordination, and typed completions. |
-| `WorktreeCleanupService` | Layer 3, `bridge/app/lib/src/services/` | Own the existing multi-caller shared-worktree/safety/delete policy using `SessionRepository` and `WorktreeRepository`; replace the routing-layer free function. |
-| `SessionArchiveService` changes | Layer 3, existing legacy path | Coordinate injected cleanup collaborator, branch freeze, archive repository transaction, repository-backed worktree restoration, plugin notification, and final-refresh request publication. It imports no routing, DAO, API, or `dart:io` type. |
-| `SessionMutationDispatcher` changes | Layer 3, existing legacy path | Preserve ordered session-mutation invariants and persist live root-session identity/directory before unseen handling. |
-| PR-monitor listeners | Layer 4, `bridge/app/lib/src/listeners/pr_monitor/` | One trigger lifecycle per class: filesystem branch events, project activation, scheduled refresh, branch refresh, or archive-final refresh. Listeners receive typed streams and never depend on listener peers. |
-| `Orchestrator` | Layer 5 / sole bridge composer | Construct and wire every new/touched API, repository, service, tracker, listener, and typed stream; route relay declarations; release connection state; and remain the only SSE owner. |
-| `BridgeRuntime` | Bridge lifecycle holder | Receive an already-composed `Orchestrator`, start/stop its session, and delegate debug/disposal lifecycle. It constructs no layered collaborator. |
-| `RelayControlClient` | Client Layer 0, `module_core/lib/src/foundation/transport/` | Send a caller-built generic `RelayMessage` through the currently connected relay. It owns no session/project message shape or view policy. |
-| `ProjectViewApi` | Client Layer 1 | Construct `RelayProjectView` and send it through `RelayControlClient`; migrate `SessionViewApi` to the same generic control transport. |
-| `ProjectViewRepository` | Client Layer 2 | Mandatory thin repository boundary over the API. |
-| `ProjectViewingService` | Client Layer 3 | Own list/detail claims, lifecycle/reconnect state, send serialization, stale-clear protection, and bounded retry of failed connected declarations. |
-| Session list/detail cubits | Client Layer 4 | Declare/clear project claims after successful render; never depend on each other. |
-| `PrHistorySection` / `SessionTile` | Flutter consumer | Render collapsed history with stable per-session expansion state and Prego tokens. |
+- `gh search prs --repo A --repo B` returns the union of repositories, but its
+  JSON fields omit `headRefName`, mergeability, review decision, and check
+  rollup, so it is not the production data source.
+- GraphQL `Repository.pullRequests` accepts `headRefName`, `states`, `first`,
+  and `orderBy`.
+- One GraphQL document can alias several repository/branch targets and return
+  rich PR fields in one `gh api graphql` invocation.
+- GitHub search's 1,000-result window is irrelevant to the final exact-target
+  query. Each target asks only for the newest open and terminal candidate.
 
-No listener emits SSE or transport messages. No handler/cubit imports a Layer 1
-type. No repository depends on a repository peer. `Orchestrator` is the only
-bridge class that constructs/wires across layers; `BridgeRuntime` owns lifecycle
-only. `BridgePluginApi` remains a Layer 1 source for session data and is absent
-from all PR-monitor services and client contracts.
+Implementation must recheck the CLI schema at Step 3 rather than assume an
+unversioned hosted API never changes.
 
-### Root-session persistence and branch flow
+## Final Architecture
+
+Dependencies continue to flow Foundation -> API -> Repository -> Service ->
+Consumer. Existing legacy files may be modified in place; new production
+classes use current top-level layer directories.
+
+### Local target resolution
 
 ```text
-plugin root session.created OR successful root-session list
-  -> SessionMutationDispatcher / GetSessionsHandler
-  -> SessionRepository persists identity, plugin, project, exact directory
-  -> SessionBranchDao watch emits the trackable root set
-  -> SessionBranchListener groups by normalized absolute git HEAD watch key
-  -> one SessionBranchRepository-backed OS subscription per key
-  -> repository resolves `git symbolic-ref --short -q HEAD` plus Git common dir
-  -> transaction rechecks trackability and writes common-dir/current/history
-  -> SessionRepository clear stream + SessionBranchRepository verify/branch stream
-  -> Orchestrator merges Stream<SessionBranchChanged> sources once
-     -> emits sessionsUpdated for a real branch/repository-binding change
-     -> PrBranchChangeListener refreshes only if the project is viewed
+active project ids or explicit project id
+  -> SessionDao reads root rows only
+  -> PrSourceRepository deduplicates exact session directories
+  -> GitCliApi resolves symbolic current HEAD + preferred remote URL
+  -> GitRemoteIdentityParser produces host + canonical slug
+  -> github.com + named branch targets only
+  -> local transaction persists current branch/repository scope
+     and invalidates stale selected rows before network work
 ```
 
-The API resolves the git `HEAD` path with `git rev-parse --git-path HEAD` and the
-checkout-family identity with `git rev-parse --git-common-dir`; the repository
-converts relative results against the exact stored session/project directory and
-normalizes absolute paths. Main and linked-worktree directories therefore share
-one local repository binding while unrelated checkouts do not. The raw
-filesystem source watches the `HEAD` parent so atomic replacement is observed.
-The listener performs an initial branch/common-directory resolve, shares
-subscriptions by watch key, and retries failed watch setup with bounded jittered
-backoff only while a session remains trackable. This is failure recovery, not
-periodic git polling.
+`GitCliApi` is a dumb command wrapper. `PrSourceRepository` maps command results
+to typed target variants such as named GitHub target, detached, unsupported,
+missing, or failed. It does not write another repository.
 
-`SessionBranchRepository.resolveAndPersist` re-reads the session inside its
-transaction. Before terminal state exists it requires `archived_at IS NULL`;
-after S02-W03 it requires `pr_tracking_stopped_at IS NULL`. An archive race
-therefore either commits before the archive transaction freezes it or observes
-the terminal marker and emits nothing.
+The local phase commits even when `gh` is missing or slow. A branch/repository
+change can therefore clear a stale prior PR and emit `sessionsUpdated` without
+waiting for GitHub.
 
-Git-common-directory mutation ownership is split by transition, not duplicated:
-`SessionRepository` is the only writer of exact `directory` and the only writer
-of current branch/binding -> null when that directory changes;
-`SessionBranchRepository` is the only writer of observed current branch plus
-null/old -> freshly verified non-null Git common directory. Each repository
-publishes exactly one
-`SessionBranchChanged` after its own committed branch/binding mutation.
-`Orchestrator` merges both typed streams and sends every event through the same
-SSE and viewed-project refresh pipeline; no source calls the other repository.
+### Batched GitHub selection
 
-### Project-presence flow
+`GhCliApi` builds one variable-bound GraphQL document for a bounded batch of
+unique lowercase-repository/case-sensitive-branch targets. Each alias requests:
+
+```graphql
+open: pullRequests(
+  headRefName: $branch
+  states: [OPEN]
+  first: 1
+  orderBy: {field: CREATED_AT, direction: DESC}
+)
+terminal: pullRequests(
+  headRefName: $branch
+  states: [MERGED, CLOSED]
+  first: 1
+  orderBy: {field: CREATED_AT, direction: DESC}
+)
+```
+
+The shared fragment includes number, URL, title, `createdAt`, state,
+`headRefName`, `isCrossRepository`, mergeability, review decision, and the
+latest commit's aggregate check-rollup state. The API parses generated typed
+DTOs; it does not pass raw JSON maps through layers.
+
+The production batch bound is 20 unique targets per command. Larger active
+sets are sorted and split into deterministic chunks inside one refresh cycle.
+Every chunk reports the authenticated viewer login; all chunks and one final
+identity recheck must agree before cache writes. Cross-repository candidates are
+discarded. The repository selects open first, otherwise terminal, and verifies
+the returned repository/branch against the requested target.
+
+### Persistence and read flow
+
+One Drift migration allocates the next schema version on then-current `main`:
+
+- `sessions_table.current_branch_name TEXT NULL` — latest resolved named branch;
+- `sessions_table.current_github_repository_identity TEXT NULL` — lowercase
+  `owner/repo` for the exact session directory;
+- `projects_table.pr_cache_github_login TEXT NULL` — non-null only while rows
+  are visible under a freshly verified active login; and
+- `pull_requests_table.github_repository_identity TEXT NOT NULL` plus
+  `github_login TEXT NOT NULL`, with primary key
+  `(project_id, github_repository_identity, pr_number)`.
+
+The migration cannot honestly infer current branches, repository identities, or
+active GitHub login. It leaves new session/project scope null and rebuilds the
+ephemeral PR cache empty. The first request/view refresh repopulates it. It does
+not alter `sessions_table.branch_name`.
+
+`PullRequestRepository` remains the sole PR-cache writer. It uses raw DAOs in a
+transaction to:
+
+1. compare the captured current root-session directory/project scope;
+2. apply local current branch/repository updates and delete no-longer-matching
+   selected rows;
+3. suspend project visibility when GitHub login changes or becomes unknown;
+4. replace only the complete requested project's current selected target rows;
+   and
+5. return project ids whose rendered branch or PR changed.
+
+`SessionRepository` reads DAOs directly and has no repository peer dependency.
+Live mapping joins project id, current repository, current branch, and current
+cache login. The join can produce only current-target candidates; its defensive
+selector orders open first, then GitHub creation time/number. Shared
+`Session.branchName` maps from `current_branch_name`; the stored creation branch
+continues to serve cleanup code only.
+
+`Session.pullRequestHistory` is never populated by this plan.
+
+### Refresh and multi-device scheduling
 
 ```text
-SessionListCubit / SessionDetailCubit
-  -> ProjectViewingService
-  -> ProjectViewRepository
-  -> ProjectViewApi
-  -> RelayControlClient -> ConnectionService -> RelayClient
-  -> RelayProjectView(projectId?)
-  -> Orchestrator
-  -> ProjectViewTracker
-  -> Stream<ProjectViewChange>
-  -> activation/scheduled/branch listeners
+GetSessionsHandler wait/non-wait compatibility requests
+ProjectViewTracker active-set transitions
+ViewedProjectPrRefreshListener one-shot timer
+  -> PrSyncService one serialized batched refresh
+  -> local target commit
+  -> GraphQL target chunks
+  -> selected-cache commit
+  -> renderedChanges stream
+  -> Orchestrator -> sessionsUpdated(projectId)
 ```
 
-The client service owns separate list and detail claims; detail wins in split
-or nested navigation, and clearing detail falls back to a still-mounted list
-claim. Hidden/paused/detached lifecycle enqueues one null transition and retains
-intended claims; a failed connected clear retries the latest null generation.
-Because project presence has no mark-seen effect, resume and a foreground
-reconnect reassert the effective project. A reconnect while hidden remains
-dormant until resume. Every queued send reads current state when it executes.
-Unexpected send failure while the relay remains connected retries the latest
-project/null intent at bounded one-shot backoff; navigation, disconnect, or
-dispose supersedes/cancels that generation.
+`PrSyncService` evolves in place into the single refresh owner; do not add a
+parallel dispatcher plus facade. It accepts a set of project ids, deduplicates
+one in-flight cycle, and exposes typed completion/rendered-change results.
+Explicit waiters receive completion for their requested project. Scheduled
+cycles never overlap; the next timer starts from prior completion.
 
-### GitHub refresh flow
+`ProjectViewTracker` owns `connectionId -> projectId?`, per-project counts, and
+typed active-set changes. `Orchestrator` routes `RelayProjectView`, releases one
+connection on disconnect, clears all on relay loss, and remains the only SSE
+owner.
 
-```text
-GetSessionsHandler compatibility trigger
-ProjectViewPrRefreshListener
-ScheduledPrRefreshListener
-PrBranchChangeListener
-ArchivePrRefreshListener
-  -> PrRefreshDispatcher
-     -> SessionBranchRepository (repository-bound live scope/path)
-     -> PrSourceRepository -> GhCliApi
-     -> PullRequestRepository (live cache only)
-     -> SessionArchiveRepository (terminal snapshot only)
-  -> Stream<PrRefreshCompletion>
-  -> Orchestrator -> sessionsUpdated(projectId) only for rendered changes
-```
+`ViewedProjectPrRefreshListener` owns exactly one timer for the aggregate active
+set. A 0->nonzero transition or newly added project requests an immediate cycle.
+The final viewer leaving cancels future work; an already-running cycle may
+finish. Interval changes cancel/rearm the pending timer without spawning a
+second loop.
 
-The dispatcher serializes by project. Every request has an opaque id and typed
-origin; one execution completion carries all satisfied ids/origins after
-coalescing. Live open requests may coalesce; a queued
-live all-state request supersedes weaker queued open work. Archive-final
-requests are never dropped or merged into live requests. Every waiter receives
-a result at least as strong as requested for the same target. The dispatcher
-never autonomously retries `identityChanged`; a still-eligible originating
-handler/listener may issue one all-state follow-up.
+### Bridge settings
 
-### Session read flow
+`BridgeSettings` adds root JSON key `pullRequestRefreshIntervalSeconds`, default
+30. Missing uses the default. Non-integer/out-of-range manual values warn and
+repair to 30 at startup. No file watcher is added.
 
-```text
-POST /sessions
-  -> SessionRepository obtains plugin/catalog session payload
-  -> read-only SessionBranchDao + PullRequestDao + ArchivedSessionPullRequestDao
-  -> live rows: exact branch-name + repository-bound associations + verified cache
-  -> terminal rows: immutable archived snapshot only
-  -> current headline + descending history mapper
-  -> Session.pullRequest + non-null Session.pullRequestHistory
-  -> SessionListCubit -> SessionTile -> PrHistorySection
-```
+`BridgeSettingsRepository` gains one callback-scoped serialized mutation seam
+used by plugin and PR settings writers so concurrent devices/settings domains
+cannot lose each other's fields. Successful writes publish the in-memory
+settings stream.
 
-## 6. Locked Decisions
+New shared request/response models back GET/PATCH
+`/settings/pull-request-refresh`. A focused bridge settings service validates
+15–3,600 seconds, persists through the repository, and returns the committed
+value. The listener consumes the repository/service stream and updates live.
 
-1. Implementation uses `main`; first-wave branches do not start from the
-   legacy plan branch.
-2. This seven-PR plan completes before parallel-plugin Stage 2 begins. The
-   parallel-plugin plan must receive explicit stale-plan re-review afterward;
-   the workstreams do not interleave.
-3. Record every named branch observed at each root session whose PR tracking has
-   not terminally stopped, keyed with the successfully verified normalized Git
-   common directory in which that observation occurred.
-4. Persist the exact reported root-session directory. Migration may backfill
-   from non-null stored `worktree_path`, otherwise the owning project's persisted
-   `path` through its FK; it never treats an unknown id as a filesystem path.
-5. Sessions sharing a checkout intentionally observe the same live branch and
-   may associate the same PRs.
-6. Detached `HEAD` has no current branch and creates no history row; existing
-   history remains.
-7. The headline is the highest-numbered associated PR on the current named
-   branch regardless of state. History is every other associated PR, newest PR
-   number first.
-8. GitHub discovery is same-repository and authored by the active `gh` account.
-   Fork-head/cross-repository PRs are excluded.
-9. Repository-wide open/all discovery supports the newest 1,000 authored rows
-   by creation time before cross-repository rejection. Commands use the
-   supported `sort:created-desc` search qualifier and request 1,001 so truncation
-   is explicit; incomplete results never delete cache rows merely because they
-   are absent. Pagination to recover same-repository rows displaced by more than
-   1,000 newer fork-head rows is explicitly deferred.
-10. Local branch observation runs for every nonterminal root session,
-    independent of phone presence. GitHub network scheduling runs only while at
-    least one connection views the project.
-11. Project activation and a newly recorded branch while viewed request
-    all-state reconciliation. Steady scheduling requests open reconciliation;
-    a successful all-state run is forced at least every ten minutes.
-12. Poll at 15 seconds when the complete supported open result contains any PR
-    authored by `@me`, otherwise at 90 seconds. Failure backoff starts at the
-    greater of the normal tier and 30 seconds, doubles with fresh +/-20% jitter,
-    and caps at five minutes.
-13. Every persisted current-branch or Git-common-directory binding change
-    invalidates the affected project immediately even if GitHub is unavailable
-    or cache data is unchanged.
-14. Session-list and session-detail surfaces both count as viewing the project;
-    any connected client keeps it active.
-15. Archive synchronously resolves the latest local `HEAD`, performs existing
-    cleanup checks, commits terminal state plus an immediate verified snapshot,
-    returns, and then publishes exactly one final async request.
-16. Unknown active GitHub identity clears a non-empty terminal snapshot only
-    through a transaction that revalidates the final request's complete frozen
-    archive scope. Scope mismatch/unavailability and truncated archive-final
-    results perform no snapshot mutation. A PR query failure retains a snapshot
-    only after the same final job freshly confirmed the same login. Archive-final
-    never follows identity change and never retries.
-17. Unarchive retains existing worktree/session restoration but never clears
-    the PR stop marker, restarts branch observation, or switches reads away from
-    the terminal snapshot.
-18. PR changes reuse `sessionsUpdated` and never affect unseen state.
-19. `Session.pullRequestHistory` uses an honest empty transport default and is
-    non-null throughout modern bridge/client APIs.
-20. Both existing `waitForPrData` paths remain. The awaited path keeps the
-    five-second response budget; the non-wait path remains a compatibility
-    fire-and-forget trigger for clients that never declare project view.
-21. New PR tables/cache keys carry `owner_identity = "local"`; Sesori ownership
-    and GitHub login remain separate. GitHub login is never sent to clients.
-22. One runtime writer owns each concern and derived transition:
-    `SessionRepository` owns exact directory plus atomic invalidation-to-null of
-    stale current branch/Git common directory, `SessionBranchRepository` owns
-    freshly observed current branch/non-null Git common directory plus bound
-    history state,
-    `PullRequestRepository` live PR cache/login, and
-    `SessionArchiveRepository` terminal stop/snapshot state.
-23. Branch/refresh/archive triggers are peer Layer 4 listeners over typed
-    streams. `Orchestrator` wires them; peers never reference each other.
-24. Visible live PR rows must match the active project cache's GitHub login,
-    canonical lowercase `owner/name` repository identity, verified project path,
-    and normalized Git common directory. Each history row is eligible only when
-    its own persisted Git common directory matches both the session's current
-    binding and project cache binding and its branch name equals the PR head-ref
-    branch name. Moving a stable project id/session cannot reinterpret old-
-    repository history, and repository equality alone never associates branches.
-25. Account/repository changes are detected by existing refresh triggers rather
-    than a blocking check on every cache-first read. Detection atomically nulls
-    project cache login before query, retains rows physically, and emits rendered
-    change; fresh verification is required to re-expose them.
-26. A complete open refresh finalizes at most one disappeared row with `gh pr
-    view`; two or more disappearances upgrade the same execution to one bounded
-    all-state list.
-27. Coalesced dispatcher completions carry satisfied request ids/origins.
-    Scheduled polling rearms only from activation-origin or its own request-id
-    completions, and an unsuccessful overdue all-state waits bounded backoff
-    instead of zero-delay deadline retries.
-28. Project-view sends distinguish disconnected from failed-connected outcomes.
-    Disconnected relies on bridge connection release/reconnect reassertion;
-    failed-connected sends retry the latest generation at 1s, 2s, 4s... capped
-    at 30s so visible activation and hidden null cannot remain lost indefinitely.
-29. Every live cache-write transaction re-reads and compares the complete
-    captured project path plus active/eligible-archived session Git binding and
-    branch scope. Concurrent location, enrollment, branch, or archive changes
-    return typed `scopeChanged` with zero writes; repositories do not call peers.
+### Shared client behavior
 
-## 7. Backward Compatibility and Migration
+`ProjectViewApi -> ProjectViewRepository -> ProjectViewingService -> cubits`
+uses the shipped `RelayProjectView` contract. The service owns separate list and
+detail claims, one effective project, send ordering, lifecycle, reconnect, and
+late-clear protection. Unlike session viewing, project presence has no mark-seen
+side effect, so a foreground reconnect/resume reasserts immediately.
 
-### Shared contract compatibility
+- `SessionListCubit` claims only after a successful list snapshot and clears on
+  close.
+- `SessionDetailCubit` claims its loaded root project's id and clears on close.
+  Child detail uses its root/project association; it does not create child PR
+  state.
+- List/detail claims for one navigation stack cannot transiently clear the same
+  project; detail precedence falls back to a still-mounted list.
+- Old bridges ignore the additive control message; both existing request refresh
+  paths remain as fallback.
 
-`Session.pullRequest` remains unchanged. S01-W01 adds:
+Client settings use a focused API, repository, service, and cubit. The current
+settings screen adds one bridge section row and Prego numeric bottom sheet; it
+does not add another route. A successful PATCH updates the displayed committed
+value. Older bridges returning 404 are rendered as unsupported rather than an
+app failure.
 
-```dart
-// COMPATIBILITY <implementation-date> (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
-@Default(<PullRequestInfo>[]) List<PullRequestInfo> pullRequestHistory,
-```
+## Compatibility, Security, and Failure Behavior
 
-The worker substitutes the actual implementation date and re-reads the declared
-application version immediately before implementation. New bridges always emit
-the list; new clients receive empty history from old bridges. Old clients ignore
-the additive JSON key.
+### Client/bridge version skew
 
-`RelayProjectView` is additive. Old bridges already isolate an unknown union
-variant at relay-message parsing and keep the connection alive; new clients
-therefore fall back to the existing request-driven refresh behavior. S01 lands
-decode support before S03 sends the variant.
+- `Session.pullRequest` and `Session.branchName` keep their wire shapes.
+- Modern bridges send current `branchName`; old bridges continue sending the
+  creation branch. Add a dated compatibility comment at the mapping/model seam
+  explaining this degraded old-bridge behavior.
+- `pullRequestHistory` keeps its shipped empty default and remains empty.
+- `RelayProjectView` is already additive. Old bridges ignore it and continue
+  request-driven refresh.
+- Keep `waitForPrData: false` as a non-blocking refresh trigger for old clients
+  that never declare presence. Keep `waitForPrData: true` as explicit refresh
+  with its existing five-second budget. Add the exact dated compatibility marker
+  only to the non-wait legacy trigger.
+- New settings APIs return 404 on old bridges; clients show unsupported.
 
-S02-W02 adds this source marker immediately above the non-wait request trigger,
-and S03-W02 audits/preserves it when deleting the old sync facade:
+### Identity and source privacy
 
-```dart
-// COMPATIBILITY <implementation-date> (v1.5.0): Clients before project-view declarations rely on non-wait /sessions requests to start PR refresh. Remove this fire-and-forget trigger after the minimum supported client always declares project view; keep the awaited explicit-refresh path.
-```
+- Tokens remain owned by local `gh`; the bridge stores no GitHub token and sends
+  no GitHub login to clients.
+- Repository identity is canonical lowercase `owner/repo`; branch names remain
+  case-sensitive and are never logged at normal levels or reported to analytics.
+- Every GraphQL chunk carries one authenticated login. A mismatch/unknown login
+  suspends visibility before another account's data can be written or exposed.
+- A newly resolved branch/repository invalidates the previous selected PR before
+  network work, preventing same-name branches in a moved project from reusing
+  stale metadata.
+- Same-repository enforcement uses both requested base repository and
+  `isCrossRepository == false`.
+- Logs never contain source paths, branch names, repository slugs, PR titles,
+  URLs, raw GraphQL payloads, or raw errors that may embed those values.
 
-The awaited explicit pull-to-refresh remains a current product behavior and is
-not marked compatibility-only.
+### Failure behavior
 
-### Drift workflow
+- Missing `gh`, unauthenticated GitHub, unsupported remote, detached HEAD, and
+  command/query failure are distinct typed outcomes, not successful empty data.
+- Local branch changes commit and invalidate stale PRs even if GitHub fails.
+- A transient GitHub query failure under the same freshly verified identity may
+  retain the same current-target cached PR; identity/repository/branch change
+  never does.
+- A complete successful target with no candidate clears that target's selected
+  row.
+- Recovered failures log once at the recovering service/listener with typed,
+  privacy-safe context. Explicit failures returned to callers are not double
+  logged.
+- Timer failures wait the configured fixed interval; no adaptive backoff or
+  zero-delay retry state is added.
 
-S02-W01, S02-W02, and S02-W03 each own one cohesive migration. At the audited
-tip the schema is v10, so absent intervening migrations they become v11, v12,
-and v13. Each step instead reads current `main` and allocates `N+1` at execution.
+## Analytics Decision
 
-For every migration:
+No product analytics event is added. PR association is passive rendering, not a
+confirmed user action, and branch/repository/PR context is prohibited. The
+interval setting mutation alone does not yet drive a defined product or
+investor decision that justifies a warehouse/reporting surface. Existing
+settings screen analytics continue unchanged.
 
-1. Pin the wave baseline and run `dart run drift_dev make-migrations` from
-   `bridge/app/` before table edits to preserve the current schema export.
-2. Modify source tables/DAOs and increment `schemaVersion` exactly once.
-3. Run `dart run drift_dev make-migrations` again.
-4. Implement only generated migration callback bodies; never hand-edit schema
-   JSON or other generated content.
-5. Run bridge-wide code generation.
-6. Add `SchemaVerifier.migrateAndValidate` plus old-row data-integrity, FK,
-   cascade, key, and rollback tests.
-7. Preserve every schema version already merged to `main`; conflicts move this
-   plan's pending migration forward rather than rewriting history.
+## Delivery Rules
 
-### Persistence migrations
+- The revised series has exactly nine PRs. Every title uses the fixed
+  `[session-pull-request-monitoring] ... [step x/9]` form below.
+- Step 1 raises this complete revised plan. It changes `.plan/**` only and runs
+  documentation validation, not Dart/Flutter suites.
+- Step 9 contains no production change. It records completion and moves
+  `.plan/active/session-pull-request-monitoring/` to
+  `.plan/completed/session-pull-request-monitoring/`.
+- Steps merge in numeric order. Each implementation branch starts from current
+  `main` after its predecessor merges and re-audits declared paths/schema/open
+  overlapping PRs.
+- Target no more than 1,500 additions plus deletions per implementation PR,
+  including generated code and tests. Do not combine adjacent steps because one
+  is small.
+- Step 1 necessarily exceeds the soft cap because it atomically removes several
+  thousand lines of now-dangerous obsolete branch-history/archive step files.
+  Splitting the plan authority would leave an invalid implementation source.
+- Step 2 may modestly exceed 1,500 because one Drift table rekey, generated
+  schema/steps, migration callback, writer adaptation, and migration tests must
+  ship together. Record actual generated size and seek a coherent split before
+  proceeding if production/test logic—not generated migration output—causes the
+  overage.
+- Never hand-edit generated files. Internal Dart contracts update every
+  in-repository consumer in lockstep.
+- Run `aristotle-impl-review` for Steps 2–8 because they alter production
+  persistence, APIs, ownership, lifecycle, public/wire contracts, or cross-layer
+  flow. Do not run it for documentation-only Steps 1 or 9.
 
-- **S02-W01:** add non-null session `directory`, nullable normalized
-  `git_common_directory`, nullable `current_branch_name`, and owner-scoped
-  `session_branch_history` keyed by non-null normalized Git common directory and
-  branch. Backfill directory from stored worktree or FK-joined project path and
-  leave session Git common directory null because migration cannot execute git;
-  runtime observation verifies it before writing history. Backfill only the
-  last-known current branch from a non-empty legacy `branch_name`; do not seed an
-  unverified history row. Only unarchived rows enter runtime observation.
-- **S02-W02:** rebuild/extend the global PR cache with non-null
-  `owner_identity = "local"`, nullable verified `github_author_login`, nullable
-  canonical `github_repository_identity`, and key
-  `(owner_identity, project_id, pr_number)`. Add nullable project cache login,
-  repository identity, verified project path, and normalized Git common
-  directory. Legacy verification fields remain null and are hidden until an
-  authored all-state refresh verifies them.
-- **S02-W03:** add nullable `pr_tracking_stopped_at` and owner-scoped
-  `archived_session_pull_requests`. Existing archived sessions receive
-  `pr_tracking_stopped_at = archived_at`; migration snapshots only rows whose
-  non-null author/repository match project cache identity, whose verified cache
-  path equals current project path, and whose bound history-row Git common
-  directory matches session/project cache bindings. It performs no network work.
+## Fixed PR Series
 
-Rollback before new terminal/random state is written may use the previous
-binary against additive columns only if its Drift compatibility is verified.
-Once terminal snapshots/stop markers exist, rollback requires a binary that
-understands those fields; release notes identify that minimum version.
+| Step | Branch | Exact PR title | Changed-line target | Outcome |
+|---|---|---|---:|---|
+| 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] docs: replan current PR monitoring [step 1/9]` | 4,000–7,000 | Replace stale durable authority with this reviewed plan and tracker. |
+| 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `[session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Migrate current branch/repository/login scope and repository-keyed ephemeral PR cache while preserving request-driven behavior. |
+| 3/9 | `session-pull-request-monitoring-graphql-selection` | `[session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
+| 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `[session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |
+| 5/9 | `session-pull-request-monitoring-view-scheduler` | `[session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Route per-connection project presence and run one fixed 30-second aggregate scheduler. |
+| 6/9 | `session-pull-request-monitoring-bridge-settings` | `[session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Persist/validate interval settings, expose GET/PATCH, serialize settings writes, and rearm the live timer. |
+| 7/9 | `session-pull-request-monitoring-client-presence` | `[session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Add layered client project presence with list/detail, lifecycle, reconnect, and multi-device-safe bridge behavior. |
+| 8/9 | `session-pull-request-monitoring-client-settings` | `[session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Add shared client interval settings, compatibility UI, final integration verification, and current-branch/PR regressions. |
+| 9/9 | `session-pull-request-monitoring-retire-plan` | `[session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Record completion and move the plan directory from active to completed. |
 
-## 8. Rollout and Verification
+## Implementation Steps
 
-### Release-safe ordering
+### Step 1/9 — Revised durable plan
 
-1. S01 lands additive shared decode/model support with no behavior change.
-2. S02-W01 records branch state but does not start GitHub scheduling.
-3. S02-W02 replaces request-driven PR internals while retaining both shipped
-   request triggers.
-4. S02-W03 atomically lands terminal writes and immutable reads; no build can
-   write a stop marker without snapshot support.
-5. S02-W04 routes project-view declarations on the bridge and adds scheduling
-   before any client sends them.
-6. S03-W01 adds client declarations; older bridges safely ignore them.
-7. S03-W02 adds presentation and removes only dead `PrSyncService` internals.
+Scope:
 
-Every merged PR leaves standalone/headless bridge and mobile release paths
-viable. No feature flag, desktop supervisor, plugin capability, or relay/auth
-server deployment is required.
+- Replace obsolete all-branch/history/archive architecture and tracker state.
+- Remove superseded stage/step files so there is one plan authority.
+- Record the fixed nine titles, line budgets, historical PR #457 prerequisite,
+  current baseline, open-PR drift, and final retirement step.
+- Run `aristotle-plan-review` against the complete revised plan.
 
-### Global verification strategy
+Verification:
 
-- Unit-test each API command shape, parser, mapper, repository writer, state
-  machine, timer, identity race, and lifecycle path with deterministic clocks
-  and fake process/filesystem streams.
-- Migration-test structure and representative old data at each new schema
-  version; never rely only on current-schema tests.
-- Integration-test branch event -> durable state -> dispatcher -> cache -> SSE
-  -> client re-fetch with fake Git/GitHub sources.
-- Widget-test headline prominence, collapsed/default history, expansion
-  stability, archived snapshot, no-history parity, text scale, and adaptive
-  widths.
-- Run fatal-info analysis for changed Dart modules and downstream desktop
-  consumers of shared/module-core contracts.
-- Execute the advisory manual checkpoint in S03-W03 when credentials and a
-  disposable GitHub repository are available; record separate User and Worker
-  evidence in `TRACKER.md`.
+- `git diff --check`
+- cross-check every title/step total/branch in `PLAN.md` and `TRACKER.md`
+- confirm only `.plan/**` changed
 
-### Observability
+### Step 2/9 — Scoped PR persistence
 
-- Every recovered filesystem, git, `gh`, timer, final-refresh, or disposal
-  failure logs context with the error/stack argument and explains why
-  continuation is safe.
-- Typed failures returned to an originating listener/handler are not logged in
-  the dispatcher first; the recovering origin logs once.
-- Unsupported/non-GitHub projects, missing `gh`, unauthenticated `gh`, identity
-  change, command timeout, and truncated query are distinct outcomes rather
-  than empty authoritative PR lists.
-- Cache suspension logs the detected account/repository/path reason and whether
-  rendered data changed; retained rows are not reported as deleted.
-- Truncation logs project/repository, mode, and the supported 1,000-row bound.
-  It preserves absent cache rows and remains visible in tests; no new telemetry
-  subsystem is built.
-- `Orchestrator` remains the only SSE owner and emits only when rendered branch
-  or PR data changed.
+Scope:
 
-### Security
+- Pin current `main`; export the current Drift schema before source edits and
+  allocate exactly one next migration.
+- Add internal current branch/repository fields, project cache login, and
+  repository/login-scoped PR rows/key.
+- Rebuild legacy cache empty because no valid repository/login backfill exists.
+- Keep creation `branch_name` unchanged.
+- Add the minimal active-login and canonical project-remote reads needed for the
+  existing request-driven writer to populate required scoped rows before the
+  GraphQL source lands.
+- Adapt existing request-driven writer/read code to the new required cache row
+  shape without activating current-branch semantics yet.
+- Add schema verifier, old-row, key/FK/cascade, and cache-empty migration tests.
 
-- GitHub credentials remain inside the local `gh` CLI; the bridge stores no
-  token and sends no GitHub login to clients.
-- Active-login/repository capture and recheck plus row/project/path and Git
-  common-directory verification prevent detected account, repository, or stable-id
-  location changes from leaving prior cache visible or cross-associating an old
-  session. Normal reads stay cache-first and detection occurs at the next
-  existing refresh trigger rather than by blocking every response on `gh`.
-- Only canonical same-repository authored PRs are accepted;
-  cross-repository/fork-head observations are rejected before writes.
-- Relay encryption, local zero-knowledge posture, managed-mode separation, and
-  per-bridge addressing remain unchanged.
+Acceptance:
 
-## 9. Risks and Deferrals
+- Existing project/session/catalog identities and cleanup metadata survive.
+- Old unscoped PR rows cannot become visible after migration.
+- Request-driven refresh can repopulate scoped rows on the next request.
+- No project presence, timer, or client behavior ships.
+
+Verification:
+
+- Drift schema/code generation and migration tests
+- focused DAO/repository/session mapping tests
+- bridge analyze/tests for changed modules
+- generated-line count and overage rationale recorded in tracker
+
+### Step 3/9 — Exact GraphQL selection
+
+Scope:
+
+- Add generated typed GraphQL response DTOs and `createdAt` mapping.
+- Add bounded variable/alias query construction to `GhCliApi`; no manual raw-map
+  business parsing.
+- Query newest open plus newest merged/closed candidate per exact target,
+  include viewer identity, and reject cross-repository/mismatched results.
+- Extend `PrSourceRepository` with typed batch targets/outcomes.
+- Evolve request-driven `PrSyncService` to use the final batch API and replace
+  current selected rows; remove the old repository-wide open list and
+  per-disappeared-PR
+  finalization paths.
+- Preserve the current `/sessions` trigger behavior.
+
+Acceptance:
+
+- A coworker-authored same-repository PR is selected.
+- Newest open wins; absent open falls back to newest merged/closed.
+- A fork-head PR, wrong repository, wrong branch, or older candidate cannot win.
+- Multiple repo/branch targets use one command up to the batch bound.
+- Complete no-match clears; typed query failure does not masquerade as empty.
+
+Verification:
+
+- exact command/query/variables and 20-target split tests
+- DTO enum/check-rollup/null/error tests
+- source/repository/service selection and identity tests
+- bridge fatal-info analysis and focused/full tests
+
+### Step 4/9 — Current-branch request refresh
+
+Scope:
+
+- Add `GitCliApi` named-current-branch resolution and repository mapping for
+  each exact root-session directory.
+- Read root sessions only, dedupe shared directories/targets, and persist local
+  current branch/repository scope before GitHub work.
+- Make one `PrSyncService` call accept a set of project ids and serialize its
+  local/network/write phases.
+- Gate joins on project id + repository + branch + active login; replace only
+  complete current-target selections.
+- Map shared `Session.branchName` from the current field and keep cleanup paths
+  on creation `branch_name`.
+- Remove prior-branch fallback and emit rendered changes from local and network
+  phases.
+
+Acceptance:
+
+- Dedicated and non-dedicated roots behave identically by exact directory.
+- Shared-directory roots share branch/PR; children have none.
+- Branch A -> branch B with no PR immediately shows B and no PR.
+- Detached/non-git/non-GitHub produces no branch/PR without crashing.
+- Same branch with a transient same-identity GitHub failure may retain its
+  selected row; changed branch/repo/login cannot.
+- Normal and explicit session loads preserve cache-first/five-second behavior.
+
+Verification:
+
+- root/child/shared-directory/dedicated/detached/missing/path-move tests
+- request false/true timeout and SSE change-only tests
+- account/repository/branch race and privacy-safe logging tests
+- bridge fatal-info analysis and focused/full tests
+
+### Step 5/9 — Multi-device view scheduling
+
+Scope:
+
+- Add `ProjectViewTracker` with connection -> project ownership, counts, active
+  set changes, release-one, and clear-all.
+- Route the shipped `RelayProjectView` in `Orchestrator`.
+- Add one `ViewedProjectPrRefreshListener` with immediate activation and one
+  completion-based fixed 30-second timer for the active union.
+- Batch different devices' projects through the same `PrSyncService` cycle.
+- Cancel future work when the active set empties; integrate disposal.
+- Keep request-driven old-client triggers.
+
+Acceptance:
+
+- Devices A/B viewing projects X/Y keep both active; disconnecting A removes X
+  only when no other connection claims it.
+- Duplicate viewers/targets do not duplicate GraphQL aliases.
+- Relay drop clears all timers; foreground reassertion can activate again.
+- No timer runs with an empty active set and cycles never overlap.
+- PR changes still do not touch unseen or push subsystems.
+
+Verification:
+
+- tracker multi-connection and late-clear tests
+- deterministic fake-clock activation/timer/completion/disposal tests
+- orchestrator routing/drop/SSE tests
+- bridge fatal-info analysis and focused/full tests
+
+### Step 6/9 — Bridge cadence settings
+
+Scope:
+
+- Add `pullRequestRefreshIntervalSeconds` to `BridgeSettings`, default 30, with
+  startup repair/validation for 15–3,600.
+- Add one callback-scoped serialized settings mutation seam and migrate touched
+  plugin settings writers to it to prevent cross-domain lost updates.
+- Add shared GET/PATCH request/response models and bridge handlers/service for
+  `/settings/pull-request-refresh`.
+- Publish successful in-process settings changes and make the listener
+  cancel/rearm its pending timer with the committed interval.
+- Do not watch the JSON file.
+
+Acceptance:
+
+- Missing key uses/writes 30; invalid manual value warns and repairs at startup.
+- Concurrent plugin and PR interval mutations preserve both values.
+- PATCH persists and changes the running timer without restart.
+- Manual file edit alone has no live effect and takes effect after restart.
+- Values outside 15–3,600 receive a typed 400 response.
+
+Verification:
+
+- settings parse/repair/round-trip/concurrent-mutation tests
+- handler/service range and persistence tests
+- fake-clock live timer rearm tests
+- shared codegen/round-trip tests
+- bridge/shared fatal-info analysis and tests
+
+### Step 7/9 — Shared client project presence
+
+Scope:
+
+- Add `ProjectViewApi`, `ProjectViewRepository`, and singleton
+  `ProjectViewingService` in module-core.
+- Add the minimal Layer-0/connection send seam for caller-built project view
+  declarations; do not couple it to session mark-seen state.
+- Own list/detail claim precedence, one effective project, serialized sends,
+  background null, resume/reconnect reassertion, and stale-clear protection.
+- Integrate `SessionListCubit` after successful list render and
+  `SessionDetailCubit` after loaded session/project resolution.
+- Regenerate DI. Do not add `client/desktop` feature code.
+
+Acceptance:
+
+- List and detail each activate the project; list -> detail -> list does not
+  send a false null.
+- Cross-project navigation and late clear cannot erase the new claim.
+- Background clears once; foreground reconnect/resume reasserts.
+- Each physical device sends its own declaration; bridge tests from Step 5 prove
+  their union.
+- Old bridge ignore behavior leaves request-driven refresh working.
+
+Verification:
+
+- API/repository/service lifecycle/reconnect/send-order tests
+- list/detail direct navigation, load failure, close, and race tests
+- module-core codegen, fatal-info analysis, and tests
+- mobile and desktop downstream analysis/tests required by shared changes
+
+### Step 8/9 — Shared client settings and final integration
+
+Scope:
+
+- Re-audit current settings ownership before editing, using merged PR #647's
+  consolidated Harness screen only as a proven input/mutation pattern.
+- Add module-core settings API/repository/service/cubit for GET/PATCH, numeric
+  planning, unsupported old bridge, mutation uncertainty, and committed value.
+- Add one localized Prego settings row/bottom sheet in the product client's
+  existing settings owner; custom integer seconds, default display 30, range
+  15–3,600.
+- Keep current session row/`PrStatusRow` presentation; add no history UI.
+- Complete fake Git/GitHub/relay integration for view -> branch -> batch ->
+  selected cache -> `sessionsUpdated` -> refetch -> shared row.
+- Remove obsolete tests/comments/fakes from the old repository-wide open-list
+  implementation that survived earlier transition steps.
+- Run final bridge/shared/client/mobile/desktop verification.
+
+Acceptance:
+
+- Successful update displays and applies the bridge-committed value live.
+- Invalid input dispatches nothing; disconnected/unsupported/failure states are
+  clear and retryable; an uncertain sent mutation refreshes before another send.
+- Branch changes never show a previous branch's PR.
+- Current open then newest terminal selection renders through existing status
+  UI on supported widths/themes/text scales.
+- No history, archive special case, unseen change, push, or analytics event is
+  introduced.
+
+Verification:
+
+- module-core API/repository/service/cubit tests
+- settings widget/localization/accessibility tests
+- session row current branch/PR/no-match/detached tests
+- bridge fake-source end-to-end and old/new compatibility tests
+- full relevant bridge/shared/client workspace matrix
+
+### Step 9/9 — Retire plan
+
+Scope:
+
+- Confirm Steps 2–8 merged and required verification/findings are recorded.
+- Mark the tracker complete.
+- Move the entire directory unchanged except final state from
+  `.plan/active/session-pull-request-monitoring/` to
+  `.plan/completed/session-pull-request-monitoring/`.
+- Make no production/test/config change.
+
+Verification:
+
+- `git diff --check`
+- confirm no active plan directory remains and completed plan retains history
+- confirm only `.plan/**` changed
+
+## Risk Register
 
 | Risk | Decision / mitigation |
 |---|---|
-| Parallel-plugin schema/session rewrites conflict | Finish this plan first without interleaving; explicitly stale-re-review the parallel-plugin plan afterward. |
-| Filesystem watch misses atomic replacement | Resolve absolute git `HEAD`, watch its parent, perform initial read, dedupe events, and test worktree gitdir paths. |
-| Watch setup fails for missing/permission-denied path | Log and use cancellable jittered retry while the row remains trackable; never infer another path. |
-| More than 1,000 authored PRs, including fork heads | Fetch 1,001 before same-repository rejection, mark truncation, retain the newest 1,000 pre-filter rows, preserve absent cache rows, and report that older same-repository rows may be displaced. Full pagination is deferred. |
-| `gh` hangs or is slow | Explicit process timeouts, one per-project dispatcher, five-second legacy wait budget, completion-based timers, bounded retry, and at most one per-row finalization before all-state upgrade. |
-| `gh auth switch` races writes | Capture login, verify every returned author, recheck before transaction, suspend old visibility when detected, discard stale results, and allow one origin-owned follow-up. Cache-first reads intentionally detect at the next trigger. |
-| Stable project id moves to another repository | Persist each observed session's normalized Git common directory, bind project cache metadata to the current path's common directory, and require equality on live association; path mismatch hides immediately and old-session branch names cannot join new-repository PRs. |
-| Short-lived PR opens and closes between open polls | Successful all-state reconciliation at least every ten minutes while viewed. |
-| Same checkout links one PR to multiple sessions | Explicitly accepted; share the watcher but persist/session-map independently. |
-| Laptop-created root switches before phone fetch | Persist exact `session.created` root through the mutation dispatcher before unseen handling; DAO watch enrolls it. |
-| Old client never declares project presence | Keep request-driven compatibility triggers with exact marker and cleanup condition. |
-| Archived display mutates from live cache | Snapshot table and terminal-only read path land atomically with the stop marker. |
-| Unknown/stale GitHub identity on archive final | Validate the frozen archive scope before identity handling; clear unknown/mismatched login only through the same scope-gated transaction, retain on moved/unavailable scope, and retain query failure only after fresh same-identity confirmation. |
-| Timer/viewer leak after disconnect | Per-connection tracker, explicit release, relay-drop clear, listener cancellation tests. |
-| Client declaration send fails while relay stays live | Keep the latest project/null generation pending and retry with capped one-shot backoff; cancel on superseding intent, disconnect, or disposal. |
-| PR status changes conversation unseen | No dependency on unseen repository/service/tracker; regression tests across all stages. |
-| Desktop lacks this UI | Deferred until shared accessory UI exists; desktop compiles against additive contracts now. |
-| Forge-neutral abstraction | Deferred until comments/check actions create a concrete second forge need; current scope uses existing local GitHub CLI. |
+| Current branch overwrites cleanup branch | Separate internal current fields; creation `branch_name` remains the only cleanup value. |
+| Same-name branch after project/repository move | Bind session and PR rows to canonical repository identity; invalidate local scope before GitHub. |
+| Coworker PR is missed | No author filter; exact same-repository head branch is authoritative. |
+| Fork PR collides by branch name | Explicitly reject cross-repository heads; fork support is deferred. |
+| Multiple devices view different projects | Per-connection tracker plus one active-set scheduler; batch/dedupe targets. |
+| Timer/config races or duplicate work | One completion-based timer, one serialized refresh, callback-scoped settings mutation. |
+| `gh auth switch` exposes prior private metadata | Login-gated rows, per-chunk identity, final recheck, and fail-closed visibility suspension. |
+| GraphQL query becomes too large | Deterministic 20-target chunks in one refresh cycle; no per-project timers. |
+| GraphQL/`gh` is unavailable | Local branch still commits; cache-first sessions continue; typed failure never becomes empty success. |
+| Old clients never declare project view | Preserve both request-driven refresh modes and exact compatibility cleanup marker. |
+| Old bridges ignore project view/settings | Request refresh remains; settings UI reports unsupported 404. |
+| Settings paths continue evolving | Step 8 starts from current `main`; merged #647 is evidence, not a frozen path assumption. |
+| Plan PR exceeds line cap | Atomic removal of obsolete plan authority is safer than leaving executable stale stage files. |
+| Schema PR exceeds line cap | Generated migration/table-rekey output stays with source, callback, and migration proof; split non-generated behavior first if needed. |
 
-## 10. Stage Map
+## Completion Conditions
 
-| Stage | Outcome | Waves |
-|---|---|---|
-| S01 — Additive contracts | New bridge/client code can decode project presence and non-null history without behavior changes. | W01: S01-W01-P01 |
-| S02 — Durable bridge monitoring | Branch history, authored PR cache, terminal snapshots, viewed-project scheduling, and SSE invalidation are complete on the bridge. | W01: S02-W01-P01; W02: S02-W02-P01; W03: S02-W03-P01; W04: S02-W04-P01 |
-| S03 — Client presence and history | Mobile declares project presence, renders collapsed history, removes dead sync code, and completes integration verification. | W01: S03-W01-P01; W02: S03-W02-P01; W03 advisory: S03-W03-M01 |
+The feature is complete only when:
 
-Waves are strict merge barriers. No stacked PRs are planned. Every PR in a wave
-must merge to `main` before the next wave begins. The sole manual checkpoint is
-advisory and does not block plan closure or any later wave.
-
-## 11. Plan-Specific Detail
-
-### Exact GitHub command contract
-
-`GhCliApi` executes these shapes through the existing injected `ProcessRunner`:
-
-```text
-gh --version
-gh api user --hostname github.com --jq .login
-gh repo view --json nameWithOwner --jq .nameWithOwner
-gh pr list --state open --author @me --search sort:created-desc --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
-gh pr list --state all --author @me --search sort:created-desc --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
-gh pr view <number> --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author
-```
-
-Commands run in the project's persisted live path. Login, repository, and
-single-PR commands use a 15-second timeout; list commands use 30 seconds. The
-repository identity is normalized to lowercase `owner/name`. A `gh pr view` call never
-receives the list-only `--author` flag, so its parsed `author.login` must equal
-the request's captured active login before acceptance.
-
-The supported search qualifier makes the returned window creation-descending.
-The list DTO reports `truncated = rows.length == 1001` and exposes only the first
-1,000 rows. A complete result may replace branch-matched rows for the captured
-login. A truncated result may upsert returned rows and finalize a specifically
-queried known PR, but it does not delete rows absent from the partial result or
-claim complete history. This partial-upsert allowance applies only to live
-refresh; archive-final truncation invokes no post-query writer and retains its
-same-identity snapshot (without reversing a prior scoped identity-mismatch clear).
-
-### Refresh policies
-
-Activation/all-state:
-
-1. Resolve GitHub availability, active login, canonical repository identity,
-   and cached GitHub-remote eligibility.
-2. Resolve/persist every active root session's current named branch and Git
-   common directory. Resolve the current project path's common directory and
-   read only history rows whose own non-null common-directory binding equals
-   both the session's current binding and project value. On first post-migration
-   verification, archived-only history remains eligible only when its rows
-   already carry that repository binding; no archived path is touched or guessed.
-3. Before query, suspend old visibility if cached path/common-directory/
-   repository/login differs; if current identity cannot be verified, suspend
-   and stop.
-4. Query all states with the 1,001-row contract; reject cross-repository or
-   mismatched-author rows.
-5. Recheck active login/repository plus current project path/common-directory
-   binding. On difference or failure, suspend old visibility, discard
-   observations, and return typed identity failure.
-6. Ask `PullRequestRepository` to atomically revalidate the complete captured
-   session state plus each history row's common-directory/branch identity, then
-   upsert/replace supported bound matches and project cache login/repository/path/
-   common-directory metadata. Scope mismatch writes nothing; only a complete
-   result deletes absent branch-matched rows.
-7. Publish a rendered-change completion only when headline/history output can
-   differ.
-
-Steady open refresh:
-
-1. Query authored open PRs and derive the 15/90 tier from the complete supported
-   result before branch matching.
-2. Upsert matching open rows.
-3. If exactly one previously cached open row is absent from a complete result,
-   run one `gh pr view`; if two or more are absent, upgrade to one all-state list
-   in the same serialized execution. Accept only same-author/repository results.
-4. A truncated open result does not treat absence as closure.
-5. Recheck login/repository/path/common-directory before one transaction and
-   apply the same suspension/identity-change rule.
-6. Schedule the next one-shot timer from completion time, never start time.
-
-Continuous-view all-state deadline:
-
-- Each viewed project tracks its last successful all-state completion.
-- The scheduled listener caps the next delay at the remaining ten-minute
-  deadline and upgrades that trigger to all-state when due.
-- Failed, unavailable, identity-changed, or truncated all-state attempts do not
-  consume the deadline. New signals remain independently eligible.
-- If the deadline is already overdue and the due all-state attempt is
-  unsuccessful, bounded failure backoff temporarily overrides the zero deadline
-  remainder; the next timer remains all-state and cannot spin immediately.
-
-### Persistence shape
-
-`sessions_table` additions:
-
-- `directory TEXT NOT NULL` — exact root-session working directory;
-- `git_common_directory TEXT NULL` — normalized absolute local repository
-  binding; null means git has not verified the migrated/failed location;
-- `current_branch_name TEXT NULL` — current named branch or null; and
-- `pr_tracking_stopped_at INTEGER NULL` — irreversible PR terminal marker.
-
-`session_branch_history`:
-
-- key `(owner_identity, session_id, git_common_directory, branch_name)`;
-- non-null `owner_identity`, normalized `git_common_directory`, `first_seen_at`,
-  and `last_seen_at`;
-- FK session delete cascade.
-
-`pull_requests_table` additions/rekey:
-
-- key `(owner_identity, project_id, pr_number)`;
-- non-null `owner_identity`;
-- nullable `github_author_login` and `github_repository_identity`, hidden until
-  both match non-null project cache metadata, the cache's verified path equals
-  current `projects.path`, and the session/project Git common directories match.
-
-`projects_table` cache metadata:
-
-- nullable `pr_cache_github_login`;
-- nullable canonical `pr_cache_repository_identity`;
-- nullable `pr_cache_project_path`; and
-- nullable normalized `pr_cache_git_common_directory`.
-
-`archived_session_pull_requests`:
-
-- key `(owner_identity, session_id, pr_number)`;
-- verified author login and repository identity, branch, URL, title, typed
-  status fields, original creation/check times, and non-null snapshot time;
-- FK session delete cascade.
-
-### Terminal archive sequence
-
-1. Synchronously attempt `SessionBranchRepository.resolveAndPersist` before any
-   destructive cleanup. A local failure is logged and the last durable branch is
-   used so archive remains available.
-2. Run existing worktree/branch cleanup validation and operations.
-3. In one `SessionArchiveRepository` transaction, write `archived_at`, write the
-   irreversible stop marker, freeze current/history branches, and snapshot only
-   global-cache rows verified against project cache login/repository, current
-   verified project path, and a history row whose own binding matches frozen
-   session/project Git common directories.
-4. Return the archived session from the immutable snapshot read path.
-5. Publish an archive-final request containing session id, project id/path,
-   frozen session Git common directory plus frozen per-row common-directory/
-   branch identities, captured snapshot login, and repository identity.
-6. The archive listener delegates one all-state attempt. Unknown login,
-   repository, or identity mismatch clears only after a transaction revalidates
-   the complete frozen archive scope. Project common-directory unavailability or
-   any scope mismatch retains the snapshot and stops. Under unchanged identity,
-   a truncated result invokes no post-query writer and retains the immediate
-   snapshot. Same-login/repository/binding query failure also retains it. Success
-   rechecks all bindings, then the repository replacement transaction re-reads
-   terminal state, project path, expected project/frozen-session common
-   directories, and per-row scope before atomically replacing the full snapshot.
-7. No retry, pending sentinel, startup recovery, later project-poll mutation, or
-   unarchive restart exists.
+- all nine titled PRs merge in order;
+- the current session branch and one selected same-repository PR obey the locked
+  rules for dedicated/non-dedicated/shared/detached cases;
+- multi-device project presence and one configured bridge timer are proven;
+- client settings update the bridge live and manual JSON edits require restart;
+- compatibility, identity privacy, no-unseen/no-push/no-history invariants pass;
+  and
+- Step 9 moves this directory to `.plan/completed/`.

@@ -1,61 +1,95 @@
-# Session Pull Request Monitoring: Considerations
+# Current-Branch Pull Request Monitoring: Considerations
 
-> **Non-authoritative.** Durable decisions live in `PLAN.md`; mutable execution
-> state lives in `TRACKER.md`. This file records rejected alternatives and
-> migration context only.
+> **Non-authoritative.** Product and architecture decisions live in `PLAN.md`;
+> execution state lives in `TRACKER.md`. This file records intentionally
+> rejected alternatives and superseded context.
+
+## Superseded Historical Design
+
+The 2026-07-14 plan retained every named branch visited by a root session,
+stored all associated PRs, rendered collapsed history, watched git `HEAD`
+continuously, froze archive snapshots, and used adaptive per-project polling.
+
+Rejected after the durable multi-plugin catalog shipped and the user
+re-evaluated product value. Prior-branch history is noisy, has no approved
+qualitative presentation, and forced branch-history, archive, reconciliation,
+and lifecycle machinery that the current one-PR requirement does not need.
 
 ## Rejected Alternatives
 
-### Keep the legacy single-file plan
+### Account-wide authored PR cache
 
-Rejected because it duplicated durable intent, mutable tracking, stage goals,
-and PR implementation detail in one document. The canonical `.plan` tree gives
-each concern one owner and supports strict wave baselines.
+GitHub can globally search `author:@me`, but users sometimes take ownership of a
+coworker's same-repository PR. Author-scoped discovery would silently miss that
+core workflow. The final design queries exact active repository/branch targets
+without an author filter.
 
-### Interleave with parallel-plugin implementation
+### Globally search every visible PR
 
-Rejected because both plans change Drift session fields, `SessionRepository`,
-`SessionMutationDispatcher`, archive persistence, and event composition. Even
-if schema numbers were dynamically allocated, alternating PRs would repeatedly
-invalidate file/class assumptions. This plan completes first; parallel plugins
-then receive explicit stale-plan re-review.
+An unscoped global search is noisy, capped, and cannot safely discover every PR
+that might match a local branch. Exact known repository/branch GraphQL
+connections are smaller and deterministic.
 
-### Nullable `pullRequestHistory`
+### Repository-wide all-PR reconciliation
 
-Rejected because legacy omission has one honest display meaning: the old bridge
-provides no history beyond its existing headline. `@Default([])` keeps modern
-state non-null and avoids a compatibility branch beyond the wire boundary.
+Fetching all PRs for every active repository wastes rate budget and recreates a
+history cache the product no longer uses. The GraphQL query asks for only the
+newest open and newest merged/closed candidate for each exact current target.
 
-### Unbounded GraphQL pagination
+### Fork-head PR support
 
-Rejected for this scope. `gh pr list` already provides the exact typed fields
-needed, accepts a finite limit, and supports the `sort:created-desc` search
-qualifier. Fetching 1,001 creation-descending rows supports the newest 1,000,
-makes truncation observable, and prevents destructive replacement from an
-incomplete result without adding a second GitHub query subsystem.
+A coworker branch in the shared base repository is supported. A fork head also
+needs local upstream/head-repository identity to prevent same-name branch
+collisions. The user chose same-repository only for this plan.
 
-### Periodic git polling
+### Filesystem branch watchers
 
-Rejected because git `HEAD` is locally stream-observable. The design watches the
-resolved `HEAD` parent and uses retry-with-backoff only to recover a failed watch
-setup; it does not repeatedly invoke git to rediscover data already exposed by
-filesystem events.
+Rejected because no branch history survives. Resolving current `HEAD` during
+activation, each scheduled refresh, and explicit refresh provides the required
+freshness without watcher enrollment/recovery/disposal state.
 
-### Reuse session-view declarations for project presence
+### Reuse creation `branch_name` for live state
 
-Rejected because session viewing marks content seen and deliberately delays
-resume/reconnect reassertion until fresh content renders. Project presence has no
-seen side effect and must reassert immediately while foregrounded. Separate
-contracts/services preserve both invariants.
+Rejected because cleanup/restoration must continue targeting the bridge-created
+worktree branch. A separate internal current branch is the only safe writer
+boundary. The shared presentation field may map current state without changing
+the persisted cleanup field.
 
-### Read archived PRs from the global cache
+### One selected PR row per session
 
-Rejected because another live session or a local `gh auth switch` could mutate
-archived presentation. A terminal owner-scoped snapshot is the smallest design
-that makes archive immutable and account-safe.
+Considered for simple reads, but it duplicates identical PR metadata across
+sessions sharing a directory/branch. A scoped project/repository PR cache plus
+current session repository/branch join deduplicates storage while still exposing
+only one selected row per current target.
 
-### Put GitHub behavior behind `BridgePluginApi`
+### One timer per project
 
-Rejected because PR association is derived from the bridge's local git checkout
-and local `gh` credentials, not from an assistant backend. Plugin exposure would
-leak forge/session-shell concerns across the sacred plugin boundary.
+Rejected because users may have several devices on different projects. One
+connection-scoped active set and one aggregate completion-based timer can batch
+all unique targets without independent timer/dispatcher state machines.
+
+### Adaptive 15/90-second cadence
+
+Rejected in favor of one fixed configurable interval. The user selected 30
+seconds by default and values in seconds per bridge.
+
+### JSON file watcher
+
+Rejected. App/API mutations publish in-process changes for live timer updates;
+manual JSON changes become active after restart.
+
+### Archive-specific behavior
+
+Rejected entirely. Archive neither freezes nor restarts PR tracking and adds no
+snapshot/final-attempt persistence.
+
+### Multiple-PR/history UI
+
+Deferred to separate designer-led work if a valuable presentation emerges.
+`pullRequestHistory` remains an empty compatibility field.
+
+### Product analytics event
+
+Rejected for this plan. PR rendering is passive, relevant identifiers are
+privacy-sensitive, and no concrete product/retention decision currently
+justifies a new event plus warehouse model.
