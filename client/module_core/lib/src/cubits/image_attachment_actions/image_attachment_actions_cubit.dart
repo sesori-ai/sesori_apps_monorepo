@@ -31,8 +31,6 @@ class ImageAttachmentActionsCubit extends Cubit<ImageAttachmentActionsState> {
        _filename = actionFilename,
        super(const ImageAttachmentActionsIdle());
 
-  bool get canSave => _imageSaver.isSupported;
-
   Future<void> copy() async {
     if (state is ImageAttachmentActionRunning) return;
     emit(const ImageAttachmentActionRunning(action: ImageAttachmentAction.copy));

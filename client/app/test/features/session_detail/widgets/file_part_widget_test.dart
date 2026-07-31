@@ -24,9 +24,6 @@ class _FakeImageSaver implements ImageSaver {
   String? savedFilename;
 
   @override
-  bool isSupported = true;
-
-  @override
   Future<ImageSaveResult> saveImage({
     required Uint8List bytes,
     required String mime,
@@ -227,39 +224,6 @@ void main() {
 
     expect(imageSaver.savedFilename, "unsafe.png");
     expect(identical(imageSaver.savedBytes, bytes), isTrue);
-  });
-
-  testWidgets("hides Save when the current platform does not support image saving", (tester) async {
-    imageSaver.isSupported = false;
-    final bytes = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47]);
-
-    await tester.pumpWidget(
-      _app(
-        child: BlocProvider(
-          create: (_) => ImageAttachmentActionsCubit(
-            imageSaver: imageSaver,
-            imageClipboard: imageClipboard,
-            imageSharer: imageSharer,
-            bytes: bytes,
-            mime: "image/png",
-            actionFilename: "image.png",
-          ),
-          child: ImageAttachmentViewer(
-            image: LoadedMessageImage(
-              bytes: bytes,
-              provider: MemoryImage(bytes),
-              mime: "image/png",
-              actionFilename: "image.png",
-              originalUri: null,
-            ),
-            filename: null,
-            heroTag: UniqueKey(),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
   });
 
   testWidgets("opens a safe remote attachment only after a tap", (tester) async {

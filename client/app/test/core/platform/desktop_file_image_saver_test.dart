@@ -30,8 +30,6 @@ void main() {
     final client = _FakeFileSaveClient()..result = true;
     final saver = DesktopFileImageSaver(fileSaveClient: client);
 
-    expect(saver.isSupported, isTrue);
-
     final result = await saver.saveImage(bytes: bytes, mime: "image/png", filename: "image.png");
 
     expect(result, ImageSaveResult.saved);

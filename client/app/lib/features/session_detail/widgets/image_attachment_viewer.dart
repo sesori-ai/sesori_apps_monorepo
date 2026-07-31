@@ -106,8 +106,7 @@ class ImageAttachmentViewer extends StatelessWidget {
     final prego = context.prego;
     final originalUri = image.originalUri;
     final displayFilename = filename;
-    final actionsCubit = context.watch<ImageAttachmentActionsCubit>();
-    final isRunningAction = actionsCubit.state is ImageAttachmentActionRunning;
+    final isRunningAction = context.watch<ImageAttachmentActionsCubit>().state is ImageAttachmentActionRunning;
     return BlocListener<ImageAttachmentActionsCubit, ImageAttachmentActionsState>(
       listener: _handleActionState,
       child: Scaffold(
@@ -171,12 +170,11 @@ class ImageAttachmentViewer extends StatelessWidget {
                           icon: Icon(Icons.share_outlined, color: prego.colors.textPrimary),
                         ),
                       ),
-                      if (actionsCubit.canSave)
-                        IconButton(
-                          tooltip: context.loc.sessionDetailImageSave,
-                          onPressed: () => unawaited(context.read<ImageAttachmentActionsCubit>().save()),
-                          icon: Icon(Icons.download_outlined, color: prego.colors.textPrimary),
-                        ),
+                      IconButton(
+                        tooltip: context.loc.sessionDetailImageSave,
+                        onPressed: () => unawaited(context.read<ImageAttachmentActionsCubit>().save()),
+                        icon: Icon(Icons.download_outlined, color: prego.colors.textPrimary),
+                      ),
                     ],
                   ],
                 ),
