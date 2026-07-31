@@ -144,6 +144,26 @@ CodexRolloutWebSearchCallDto _$CodexRolloutWebSearchCallDtoFromJson(Map json) =>
       $type: json['type'] as String?,
     );
 
+CodexRolloutImageGenerationDto _$CodexRolloutImageGenerationDtoFromJson(
+  Map json,
+) => CodexRolloutImageGenerationDto(
+  id: json['id'] as String?,
+  status: $enumDecode(
+    _$CodexRolloutImageGenerationStatusEnumMap,
+    json['status'],
+    unknownValue: CodexRolloutImageGenerationStatus.unknown,
+  ),
+  result: json['result'] as String,
+  $type: json['type'] as String?,
+);
+
+const _$CodexRolloutImageGenerationStatusEnumMap = {
+  CodexRolloutImageGenerationStatus.inProgress: 'in_progress',
+  CodexRolloutImageGenerationStatus.completed: 'completed',
+  CodexRolloutImageGenerationStatus.failed: 'failed',
+  CodexRolloutImageGenerationStatus.unknown: 'unknown',
+};
+
 CodexRolloutUnknownResponseItemDto _$CodexRolloutUnknownResponseItemDtoFromJson(
   Map json,
 ) => CodexRolloutUnknownResponseItemDto($type: json['type'] as String?);

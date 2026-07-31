@@ -83,6 +83,7 @@ class CodexMessageRepository {
               title: "Context compacted",
               status: PluginToolStatus.completed,
               output: null,
+              attachments: const [],
             ),
           );
           continue;
@@ -111,6 +112,7 @@ class CodexMessageRepository {
               title: call.title,
               status: result?.status ?? PluginToolStatus.running,
               output: result?.output,
+              attachments: result?.attachments ?? const [],
             ),
           );
         case CodexRolloutFunctionCallOutputDto() || CodexRolloutCustomToolCallOutputDto():
@@ -130,6 +132,26 @@ class CodexMessageRepository {
               title: action?.query,
               status: PluginToolStatus.completed,
               output: null,
+              attachments: const [],
+            ),
+          );
+        case CodexRolloutImageGenerationDto():
+          final generation = _rolloutToolMapper.mapImageGeneration(item: payload);
+          messageCounter += 1;
+          final messageId = _persistedOrLegacyMessageId(
+            persistedId: generation.id,
+            legacyCounter: messageCounter,
+          );
+          messages.add(
+            _toolMessage(
+              messageId: messageId,
+              sessionId: sessionId,
+              info: assistantInfo(messageId, messageTime),
+              tool: "image_generation",
+              title: null,
+              status: generation.status,
+              output: null,
+              attachments: generation.attachments,
             ),
           );
         case CodexRolloutReasoningDto(:final id, :final summary):
@@ -230,6 +252,7 @@ class CodexMessageRepository {
     required PluginToolStatus status,
     required String? title,
     required String? output,
+    required List<PluginMessageAttachment> attachments,
   }) {
     return PluginMessageWithParts(
       info: info,
@@ -246,7 +269,7 @@ class CodexMessageRepository {
             title: title,
             output: output,
             error: status == PluginToolStatus.error ? output : null,
-            attachments: const [],
+            attachments: attachments,
           ),
           prompt: null,
           description: null,

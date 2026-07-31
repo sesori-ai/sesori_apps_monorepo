@@ -10,6 +10,14 @@ enum CodexRolloutRole {
   unknown,
 }
 
+enum CodexRolloutImageGenerationStatus {
+  @JsonValue("in_progress")
+  inProgress,
+  completed,
+  failed,
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexSessionIndexEntryDto with _$CodexSessionIndexEntryDto {
   const factory CodexSessionIndexEntryDto({
@@ -133,6 +141,14 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
     required String? id,
     required CodexRolloutActionDto? action,
   }) = CodexRolloutWebSearchCallDto;
+
+  @FreezedUnionValue("image_generation_call")
+  const factory CodexRolloutResponseItemDto.imageGeneration({
+    required String? id,
+    @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown)
+    required CodexRolloutImageGenerationStatus status,
+    required String result,
+  }) = CodexRolloutImageGenerationDto;
 
   const factory CodexRolloutResponseItemDto.unknown() = CodexRolloutUnknownResponseItemDto;
 

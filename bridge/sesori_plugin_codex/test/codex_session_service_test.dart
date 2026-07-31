@@ -9,6 +9,7 @@ import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/codex_model_repository.dart";
 import "package:codex_plugin/src/repositories/codex_skill_repository.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
@@ -265,7 +266,9 @@ CodexSessionService _newService({
     catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
     messageRepository: CodexMessageRepository(
       rolloutApi: rolloutApi,
-      rolloutToolMapper: const CodexRolloutToolMapper(),
+      rolloutToolMapper: const CodexRolloutToolMapper(
+        imageAttachmentMapper: CodexImageAttachmentMapper(),
+      ),
     ),
     metadataRepository:
         metadataRepository ??

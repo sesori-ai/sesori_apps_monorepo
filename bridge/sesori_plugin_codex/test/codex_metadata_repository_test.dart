@@ -4,6 +4,7 @@ import "dart:io";
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:path/path.dart" as p;
 import "package:test/test.dart";
@@ -44,7 +45,9 @@ void main() {
           catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
           messageRepository: CodexMessageRepository(
             rolloutApi: rolloutApi,
-            rolloutToolMapper: const CodexRolloutToolMapper(),
+            rolloutToolMapper: const CodexRolloutToolMapper(
+              imageAttachmentMapper: CodexImageAttachmentMapper(),
+            ),
           ),
           metadataRepository: metadata,
           launchDirectory: launchProject.path,

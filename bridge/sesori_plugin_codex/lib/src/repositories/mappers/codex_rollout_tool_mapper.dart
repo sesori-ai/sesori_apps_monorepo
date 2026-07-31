@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../../api/models/codex_rollout_dto.dart";
+import "codex_image_attachment_mapper.dart";
 
 class CodexRolloutToolCall {
   const CodexRolloutToolCall({
@@ -22,11 +23,25 @@ class CodexRolloutToolResult {
     required this.callId,
     required this.status,
     required this.output,
+    required this.attachments,
   });
 
   final String callId;
   final PluginToolStatus status;
   final String? output;
+  final List<PluginMessageAttachment> attachments;
+}
+
+class CodexRolloutImageGeneration {
+  const CodexRolloutImageGeneration({
+    required this.id,
+    required this.status,
+    required this.attachments,
+  });
+
+  final String? id;
+  final PluginToolStatus status;
+  final List<PluginMessageAttachment> attachments;
 }
 
 /// Pure normalization shared by live rollout enrichment and history replay.
@@ -36,7 +51,39 @@ class CodexRolloutToolResult {
 /// prevents the live and reload paths from independently inventing titles,
 /// statuses, or output clipping.
 class CodexRolloutToolMapper {
-  const CodexRolloutToolMapper();
+  const CodexRolloutToolMapper({
+    required CodexImageAttachmentMapper imageAttachmentMapper,
+  }) : _imageAttachmentMapper = imageAttachmentMapper;
+
+  final CodexImageAttachmentMapper _imageAttachmentMapper;
+
+  CodexRolloutImageGeneration mapImageGeneration({
+    required CodexRolloutImageGenerationDto item,
+  }) {
+    final status = switch (item.status) {
+      CodexRolloutImageGenerationStatus.inProgress => PluginToolStatus.running,
+      CodexRolloutImageGenerationStatus.completed => PluginToolStatus.completed,
+      CodexRolloutImageGenerationStatus.failed => PluginToolStatus.error,
+      // Rollout response items are terminal history. Preserve a valid result
+      // when a future Codex version adds another terminal status.
+      CodexRolloutImageGenerationStatus.unknown => PluginToolStatus.completed,
+    };
+    return CodexRolloutImageGeneration(
+      id: _usefulText(item.id),
+      status: status,
+      attachments: status == PluginToolStatus.completed
+          ? _imageAttachmentMapper.map(
+              candidates: [
+                CodexImageAttachmentCandidate.base64(
+                  data: item.result,
+                  mime: "image/png",
+                  filenameHint: null,
+                ),
+              ],
+            )
+          : const [],
+    );
+  }
 
   CodexRolloutToolCall? mapCall(CodexRolloutResponseItemDto payload) {
     return switch (payload) {
@@ -69,6 +116,7 @@ class CodexRolloutToolMapper {
       CodexRolloutFunctionCallOutputDto() ||
       CodexRolloutCustomToolCallOutputDto() ||
       CodexRolloutWebSearchCallDto() ||
+      CodexRolloutImageGenerationDto() ||
       CodexRolloutUnknownResponseItemDto() => null,
     };
   }
@@ -90,24 +138,32 @@ class CodexRolloutToolMapper {
   }
 
   CodexRolloutToolResult? mapResult(CodexRolloutResponseItemDto payload) {
-    final output = switch (payload) {
+    final ({String callId, List<CodexRolloutContentDto> content})? output = switch (payload) {
       CodexRolloutFunctionCallOutputDto(:final callId, :final output) ||
-      CodexRolloutCustomToolCallOutputDto(:final callId, :final output) => (callId, output),
+      CodexRolloutCustomToolCallOutputDto(:final callId, :final output) => (callId: callId, content: output),
       CodexRolloutMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallDto() ||
       CodexRolloutCustomToolCallDto() ||
       CodexRolloutWebSearchCallDto() ||
+      CodexRolloutImageGenerationDto() ||
       CodexRolloutUnknownResponseItemDto() => null,
     };
     if (output == null) return null;
-    final callId = _usefulText(output.$1);
+    final callId = _usefulText(output.callId);
     if (callId == null) return null;
-    final rawOutput = toolOutputText(output.$2);
+    final rawOutput = toolOutputText(output.content);
     return CodexRolloutToolResult(
       callId: callId,
       status: toolOutputStatus(rawOutput),
       output: clipOutput(rawOutput),
+      attachments: _imageAttachmentMapper.map(
+        candidates: [
+          for (final item in output.content)
+            if (item case CodexRolloutInputImageDto(:final imageUrl))
+              CodexImageAttachmentCandidate.imageUrl(imageUrl: imageUrl),
+        ],
+      ),
     );
   }
 
@@ -145,9 +201,7 @@ class CodexRolloutToolMapper {
     if (embeddedCommand != null && embeddedCommand.isNotEmpty) {
       return embeddedCommand;
     }
-    return argumentsJson.runes.length > 120
-        ? String.fromCharCodes(argumentsJson.runes.take(120))
-        : argumentsJson;
+    return argumentsJson.runes.length > 120 ? String.fromCharCodes(argumentsJson.runes.take(120)) : argumentsJson;
   }
 
   /// Removes the launcher added by app-server so the provisional live title
