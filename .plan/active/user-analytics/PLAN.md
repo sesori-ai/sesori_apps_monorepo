@@ -235,7 +235,7 @@ honestly labeled setup trends.
 | `client/desktop` | `lib/core/platform/no_op_analytics_client.dart`, DI generated file | Satisfy the shared core platform capability without collecting desktop analytics. | No desktop product events or UI are added. Analyze/test verifies core DI remains resolvable. |
 | `client/module_desktop_core` | No planned production edit; tests/build are downstream validation | Continue unchanged. | Shared core DI/downstream validation only. |
 | `bridge/app` | No planned production or contract edit | Remain outside product analytics. | No additional bridge validation beyond normal CI is caused by this plan. |
-| Apps monorepo tooling | `tool/product_analytics/` (deployment tooling/SQL/runbook plus `privacy_deletion/` layered command flow) | Version BigQuery DDL, transforms, assertions, dashboard contract, deletion exclusion/upstream submission, and recurring keyed-upload sweep. | Cloud deployment supplies property/project/location and ADC identities; no credentials or live identifiers enter Git. |
+| Private analytics platform repository | `sesori-ai/sesori_analytics_platform`: root deployment tooling/SQL plus `privacy_deletion/` layered command flow and gradual-disclosure `docs/` | Version BigQuery DDL, transforms, assertions, dashboard contract, deletion exclusion/upstream submission, and recurring keyed-upload sweep outside the product-app repository. | Cloud deployment supplies property/project/location and ADC identities; no credentials or live identifiers enter Git. |
 
 ## Privacy And Identity Contract
 
@@ -378,7 +378,9 @@ pseudonymous personal data. Documentation and access controls must call it that.
   seam and used only as validated warehouse time—not registered as a GA custom
   dimension.
 - Stable screen enum.
-- Platform and app version/build supplied by Firebase.
+- Platform and app version supplied by Firebase. Build number is not emitted by
+  the typed clients or exposed by the GA4 raw app-info record, so it is not a
+  warehouse/reporting dimension.
 - Bounded onboarding, interaction, voice-input, login-provider, login-failure,
   and product-failure enums.
 
@@ -968,22 +970,24 @@ only on `privacy_private.product_analytics_deletion_targets`; it cannot query GA
 raw data or mutate controls/curated/reporting. The restricted target table is the
 only raw-ID-to-`user_key` handoff, and raw account ID never crosses it.
 
-**Warehouse/upstream deletion (`tool/product_analytics/privacy_deletion/`):**
+**Warehouse/upstream deletion (`sesori_analytics_platform/privacy_deletion/`):**
 
 | Class/file | Layer/dependencies | Responsibility |
 | --- | --- | --- |
-| `bigquery_privacy_deletion_client.dart` and `ga_user_deletion_client.dart` | Foundation clients | Typed BigQuery operations within allowlisted datasets and typed GA User Deletion API submission; no orchestration or raw account ID. |
-| `privacy_deletion_api.dart` | Layer 1; requires both clients | Loads pending privacy-private targets for request processing; upserts/reads the permanent deletion-exclusion control; range-joins the overlapping raw window against **all** permanent tombstones for sweeps; discovers currently linkable installation IDs, deletes matching warehouse rows, submits app-instance/legacy-user deletion, rebuilds aggregates, and updates target status through typed operations. |
-| `privacy_deletion_repository.dart` | Layer 2; requires API | Owns idempotent request status, target validation, run checkpoints, tombstone-aware auth-export cutoff checks, and explicit result mapping. It never persists discovered installation IDs. |
-| `privacy_deletion_service.dart` | Layer 3; requires repository | Orchestrates exclusion-before-delete, waits for a successful auth export with `runCutoff >= suppressedAt`, performs final delete/rebuild/verification, and marks the request complete or retryable. |
-| `run_privacy_deletion.dart` / `sweep_privacy_deletions.dart` | Manual and scheduled composition roots | Construct with ADC/config, process one request or a checkpointed raw-partition range, return only aggregate status, and close clients. Each daily sweep starts from the earlier of the last-success watermark continuation and the latest three UTC event dates, matching GA4 late-arrival recomputation; it joins every scanned version against all permanent deletion tombstones regardless of target completion/age. Submission/deletion is idempotent and acts only on future **keyed** uploads. |
+| `google_api_foundation.dart`, `bigquery_privacy_deletion_client.dart`, and `ga_user_deletion_client.dart` | Neutral Google credential/transport foundation plus peer Foundation clients | Shared metadata-first credential acquisition and bounded Google API failures live in the neutral file. The peer clients own typed BigQuery operations within allowlisted datasets and typed GA User Deletion API submission; neither client depends on the other, orchestrates deletion, or receives a raw account ID. |
+| `privacy_deletion_api.dart` | Layer 1; requires both clients | Loads pending privacy-private targets for request processing; transactionally advances the keyed-publication epoch while upserting/reading the permanent deletion-exclusion control; range-joins the overlapping raw window against **all** permanent tombstones for sweeps; discovers currently linkable installation IDs, deletes matching warehouse rows, submits app-instance/legacy-user deletion, rebuilds aggregates, and updates target status through typed operations. |
+| `privacy_deletion_repository.dart` | Layer 2; requires API | Owns idempotent request status, target validation, run checkpoints, typed latest-auth-snapshot retrieval, and explicit operation/result mapping. It never decides lifecycle readiness, orchestrates cross-system cleanup, or persists discovered installation IDs. |
+| `privacy_deletion_service.dart` | Layer 3; requires repository and clock | Orchestrates exclusion-before-delete, evaluates one-shot tombstone-aware auth readiness using the configured publication-age/clock policy plus cutoff, then owns upstream/raw/keyed deletion, fixed rebuild, verification, and completion. When no fresh successful auth export has `runCutoff >= suppressedAt`, it returns retryable and relies on the external job/operator to invoke the idempotent command again rather than polling in-process. A sweep applies that gate to the newest permanent tombstone before auth-private cleanup or checkpoint advancement. |
+| `run_privacy_deletion.dart` / `sweep_privacy_deletions.dart` | Manual and scheduled composition roots | Construct with the attached metadata-server identity by default (with explicit local ADC fallback only for approved operator runs), process one request or a checkpointed raw-partition range, return only aggregate status, and close clients. Each daily sweep starts from the earlier of the last-success watermark continuation and the latest three UTC event dates, matching GA4 late-arrival recomputation; it joins every scanned version against all permanent deletion tombstones regardless of target completion/age. Submission/deletion is idempotent and acts only on future **keyed** uploads. |
 
 Use a dedicated deletion service account with BigQuery Job User, read of the
 restricted privacy-target/raw datasets, write only to the deletion-exclusion
-control and privacy-target status, delete/rebuild permission on auth-private/curated/
-reporting (and matching retained raw rows), plus the minimum GA deletion API
-role. It has no Mongo access and no general controls/deployment role. Secret
-Manager/ADC supply credentials; no service-account key enters Git.
+control, keyed-publication guard, sweep checkpoint, and privacy-target status,
+delete/rebuild permission on auth-private/curated (and matching retained raw
+rows), metadata-only reporting
+inventory access, plus the minimum GA deletion API role. It has no Mongo access,
+reporting mutation, or general controls/deployment role. The attached identity
+supplies production credentials; no service-account key enters Git.
 
 No persistent account-to-installation map is created. Once currently linkable
 app-instance IDs are submitted and raw keyed rows are deleted/expired, later
@@ -1042,36 +1046,37 @@ property/project IDs:
 | `sesori_analytics_curated` | Analytics engineers | Flattened allowlisted events, daily user activity, user milestones, scheduled intermediate tables |
 | `sesori_analytics_reporting` | Looker service account/product leadership | Identifier-free authorized views and dashboard tables |
 
-Version deployable assets under `tool/product_analytics/`: a data dictionary,
-templated DDL and scheduled-query SQL, a small deployment command accepting
-project/GA4 dataset/location, BigQuery `ASSERT` fixture tests, and an operations
-runbook. Never commit service-account material or live internal user keys.
+Version deployable assets in the private
+`sesori-ai/sesori_analytics_platform` repository: a data dictionary, templated
+DDL and scheduled-query SQL, a small deployment command accepting project/GA4
+dataset/location, BigQuery `ASSERT` fixture tests, and an operations runbook.
+Never commit service-account material or live internal user keys.
 
 The initial file ownership is fixed:
 
-- `tool/product_analytics/deploy.dart` validates named project, location, raw,
+- `deploy.dart` validates named project, location, raw,
   auth-private/privacy-private/controls/curated/reporting datasets, and both
   start timestamps;
   renders identifier placeholders from the checked-in SQL; and invokes `bq`
   non-interactively with the explicit location. It does not perform `gcloud`
   login or read key files.
-- `tool/product_analytics/sql/00_datasets.sql` creates/configures derived
+- `sql/00_datasets.sql` creates/configures derived
    datasets and reference tables; `10_events_flattened.sql`,
    `15_installation_login_daily.sql`, `20_user_activity_daily.sql`,
    `30_user_milestones.sql`,
   `40_activation_retention.sql`, and `50_reporting_views.sql` own the dependency
   order described below.
-- `tool/product_analytics/sql/schedules.json` is a credential-free manifest of
+- `sql/schedules.json` is a credential-free manifest of
   query file, destination, cadence, recent-date recomputation window, and max
   bytes; the deploy command creates/updates those transfer configs only after a
   `--apply-schedules` flag.
-- `tool/product_analytics/tests/metric_contract_assertions.sql` uses temporary
+- `tests/metric_contract_assertions.sql` uses temporary
   fixture tables and BigQuery `ASSERT`; `schema_allowlist_assertions.sql` fails
   when curated columns/event parameters exceed the approved contract.
-- `tool/product_analytics/README.md` is the operator runbook/data dictionary;
-  `LOOKER_STUDIO.md` pins page sources, filters, formulas, access group, and
-  manual dashboard verification because Looker Studio report layout is not a
-  safely deployable repository artifact.
+- Root `README.md` is a short navigation entry point; task guides under `docs/`
+  provide gradual disclosure, `docs/reference/full-runbook.md` is the exhaustive
+  operator/data reference, and `docs/reporting/looker-studio.md` pins page
+  sources, filters, formulas, access, and manual dashboard verification.
 
 ### Vendor-managed raw GA4 boundary
 
@@ -1116,7 +1121,7 @@ not weaken the written privacy boundary to fit an unchecked property.
    `emitted_at` via `TIMESTAMP_MICROS(event_timestamp)`, parse required integer
    `occurred_at_micros` the same way as `occurred_at`,
    require schema version and non-null custom `user_key`, and retain Firebase
-   platform/app version/build. Reject occurrence later than emitted time beyond
+   platform/app version. Reject occurrence later than emitted time beyond
    the documented clock-skew allowance. User-milestone/cohort joins additionally
    require occurrence no earlier than account creation beyond that allowance;
    invalid timing remains a data-quality count and is excluded from time-bound
@@ -1138,7 +1143,7 @@ not weaken the written privacy boundary to fit an unchecked property.
 3. **`user_activity_daily`**: one row per user/date with monitor, control,
    message, voice-assisted, transcription, diff, screen, and feature
    flags/counts.
-4. **`user_milestones`**: auth timestamps plus earliest foundation and
+4. **`user_milestones`**: auth timestamps plus earliest schema-ready foundation and
    activation-capable exposure,
    project availability, full activation, monitor activity, and feature
    milestones. Full activation is the minimum of the two successful message
@@ -1146,8 +1151,9 @@ not weaken the written privacy boundary to fit an unchecked property.
    `activation_capable_at` is the earliest activation-ready event or activation
    outcome.
 5. **`activation_cohorts`**: account-cohort denominators only when activation-
-   capable schema-v1 exposure occurs within 24 hours of account creation, plus
-   1/7/30-day milestone flags, times to milestone, cohort maturity, and separate
+   capable schema-v1 exposure occurs within 24 hours of account creation, with
+   ordered account -> bridge -> project -> message progression, 1/7/30-day
+   milestone flags, times to milestone, cohort maturity, and separate
    preference/foundation/activation-capability coverage.
 6. **`retention_cohorts`**: activation-anchored W1/W4 eligibility and activity.
 
@@ -1161,6 +1167,10 @@ snapshot and anti-joins the permanent internal exclusion table. Therefore a
 disable or newly added internal exclusion takes effect after the next auth
 export/report refresh even when an older curated partition exists; those gates
 are not applied only at the historical partition's original build time.
+Keyed transforms capture a shared publication epoch before staging and advance
+it inside their publication transaction. Permanent tombstone insertion advances
+the same singleton transactionally. An epoch mismatch or overlapping write
+aborts rather than republishing a concurrently deleted user.
 
 The auth export atomically publishes snapshot metadata (`run_id`, immutable
 source cutoff, completion time, eligible/source counts) with its tables. Before
@@ -1517,10 +1527,13 @@ directory name.
 
 **Title:** `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]`
 
-**Repository:** apps monorepo plus cloud deployment
+**Repository:** private `sesori-ai/sesori_analytics_platform` plus cloud deployment
 
-- Add `tool/product_analytics/` data contract, parameterized deployment tool,
+- Add the analytics-platform data contract, parameterized deployment tool,
   DDL, transforms, fixture assertions, scheduled-query definitions, and runbook.
+- Bootstrap datasets/reference tables first, publish and validate the initial
+  auth snapshot, then apply auth-dependent transforms; full apply fails closed
+  when no initial auth snapshot exists.
 - Create auth-private/privacy-private/controls/curated/reporting datasets in the raw GA4
   location; keep export-job write access confined to auth-private and grant only
   authorized-view reads for internal exclusion; configure IAM, expiration,
@@ -1542,6 +1555,20 @@ directory name.
   reporting view without inspecting sensitive payloads.
 - Record dashboard owner, refresh schedule, metric definitions, and rollback/
   incident steps in the runbook.
+
+**Step 5 completion includes the cloud setup above.** Landing the standalone
+repository implementation delivers the reviewed automation and contracts, but
+does not complete Step 5 by itself. After the required security/privacy
+decisions are approved, the same
+Step 5 work must use the checked-in runbook and tools to create the service
+identities and dataset ACLs, authorize views, apply warehouse schemas, provision
+auth export and privacy jobs, apply transform/deletion schedules, run deployed
+assertions and deletion drills, build/restrict Looker, and record go-live
+evidence. These are tracked delivery tasks, not an out-of-band setup handed to
+the user. The user supplies approvals, restricted values, and any admin-only
+authorization that cannot be delegated; the implementing operator performs and
+verifies the setup. Keep Step 5 open until every applicable cloud and dashboard
+acceptance item passes.
 
 ### Deployability, compatibility, and rollback by step
 
@@ -1743,3 +1770,13 @@ The work is complete when:
 - The executive page can truthfully report new accounts, setup, full
   activation, WAU/growth, W1/W4 retention when mature, activity depth, and the
   selected feature-adoption metrics without manual spreadsheet logic.
+
+## Final Step — Archive The Completed Plan
+
+After every completion criterion above and every in-scope tracker item is done,
+record the final PR, cloud setup, access, deletion-drill, dashboard, and release
+evidence in `TRACKER.md`. Then, as the last action of this plan, move the entire
+plan directory (including its tracker and supporting files) from
+`.plan/active/user-analytics/` to `.plan/completed/user-analytics/` and commit
+that move. Do not copy it, leave an active duplicate, or archive it while any
+required Step 5 setup or acceptance work remains.

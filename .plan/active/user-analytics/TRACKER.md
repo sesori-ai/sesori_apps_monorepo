@@ -105,6 +105,43 @@
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
+  Partial preflight on 2026-07-31 found Firebase project `sesori-ai`, GA4
+  property `529377727`, and daily raw dataset `analytics_529377727` in
+  `europe-west3`, with tables beginning at `events_20260725`. Billing account
+  `Sesori Billing` is active and linked. A project-scoped USD 10 monthly alert
+  budget now covers all services at 50/80/100 percent actual and 100 percent
+  forecasted spend. The raw dataset defaults and all six existing daily tables
+  now expire after 90 days instead of 60. BigQuery on-demand query overrides are
+  10 GiB per project/day and 2 GiB per principal/day. Restricted IAM, GA4 privacy
+  settings, scheduler identities, exact start-time recording, and Looker
+  ownership remain blocked or unverified; do not enable additional export modes
+  or deploy transforms yet.
+- [x] Implement the local Step 5 warehouse, reporting, deployment, and privacy-
+  deletion assets. The final architecture pass approved neutral Google
+  credential ownership, Service-owned deletion sequencing, one-shot auth
+  readiness with external retry, and the layered API/Repository boundaries.
+  Focused Dart formatting/analyze/privacy tests, render-only validation of seven
+  SQL assets and five schedules, and `git diff --check` pass. The self-contained
+  BigQuery metric fixture passed in `europe-west3` on 2026-07-31. Deployed-schema
+  assertions remain deferred until an approved warehouse exists; no repository
+  SQL, schedules, IAM, or dashboards have been applied to cloud resources.
+- [x] Apply valid PR #641 review findings before migration: split first-run
+  bootstrap from
+  auth-dependent apply; make DDL dry-run limits explicit; bound schedule
+  inventory and move schedule SQL out of argv; harden metadata/API timeouts and
+  SQL boundaries; require fresh tombstone-aware request/sweep cleanup; serialize
+  tombstones with keyed publication; guard transform watermarks; enforce ordered
+  activation progression and schema-ready foundation; remove unsupported build
+  dimensions; and extend focused Dart/BigQuery fixtures. A two-pass architecture
+  review moved deployment policy to orchestration and freshness policy to the
+  deletion Service, then approved the revised boundaries. All 34 bot review
+  threads received `[Sesori reply]` assessments before the code moved.
+- [x] Move the complete Step 5 warehouse/reporting/deletion implementation and
+  its scoped Git history out of the apps monorepo into private repository
+  `sesori-ai/sesori_analytics_platform`. Commit `743e5330` is the current
+  standalone `main`. Root documentation is now a 72-line entry point with task
+  guides and deep references under `docs/`; standalone format, analyze, privacy
+  tests, render validation, and Markdown-link validation pass.
 
 ## Immediate Operational Action
 
@@ -121,6 +158,40 @@
   Export is not retroactive. Record `behavioral_schema_v1_start_at` separately
   only after production `analytics_activation_ready` appears; foundation-only
   and account-less login events do not qualify.
+
+## Step 5 Cloud Setup And Go-Live
+
+This setup is required Step 5 delivery work, not a prerequisite delegated to the
+user and not a separate future project. The private
+`sesori-ai/sesori_analytics_platform` repository supplies the reviewed
+automation and runbook; apps-monorepo PR #641 was closed as superseded by that
+repository.
+After the user approves the restricted values and security/privacy decisions,
+the implementing operator must execute and verify all unchecked work:
+
+- [ ] Record the approved GA4 privacy posture, exact raw/behavioral UTC start
+  timestamps, service identities, schedule owners, dashboard owner/viewer group,
+  and refresh policy in the restricted deployment record.
+- [ ] Create the separate deployment, auth-export, auth-suppression, transform,
+  privacy-deletion, and Looker identities; remove broad inherited data access;
+  apply the dataset/table IAM matrix and exact authorized-view ACLs; pass every
+  positive and expected-deny access probe.
+- [ ] Apply the same-location warehouse schemas and views with the checked-in
+  deployment tool, run the deployed-schema assertions, and reconcile the first
+  complete raw/auth/curated/reporting data.
+- [ ] Provision and smoke-test the isolated auth export and suppression jobs,
+  transform schedules, request deletion command, and recurring privacy sweep;
+  complete the non-production in-flight export and delayed-upload deletion drill.
+- [ ] Build the restricted three-page Looker report, verify its data sources,
+  maturity/coverage/freshness labels and sharing controls, then record asset IDs
+  and go-live evidence.
+- [ ] Keep Step 5 open until all setup, verification, deletion, access, and
+  dashboard acceptance items pass; creating the analytics repository alone does
+  not complete it.
+- [ ] **Final plan action:** after every completion criterion and tracker item is
+  complete, record final evidence and move the entire
+  `.plan/active/user-analytics/` directory to
+  `.plan/completed/user-analytics/`; commit the move and leave no active copy.
 
 ## Implementation Series
 
@@ -143,8 +214,8 @@ patches in one umbrella diff.
 | 4.A/5 | apps monorepo | `[user-analytics] Add bounded outcome analytics contracts [step 4.A/5]` | PR #632 merged as `e3e6b6e7` on 2026-07-31; oversized PR #629 remains closed as superseded | Step 3.D released |
 | 4.B/5 | apps monorepo | `[user-analytics] Instrument account-less login outcomes [step 4.B/5]` | PR #634 merged as `5223c27d` on 2026-07-31 | Step 4.A |
 | 4.C/5 | apps monorepo | `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]` | PR #633 merged as `c662a639` on 2026-07-31 | Step 4.B |
-| 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 open on `user-analytics-visible-engagement-outcomes`; verified and approved | Step 4.C |
-| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
+| 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 merged as `671c67ed` on 2026-07-31 | Step 4.C |
+| 5/5 | private `sesori_analytics_platform` + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Repository implementation and scoped history migrated to private `sesori-ai/sesori_analytics_platform` `main` at `743e5330`; apps-monorepo PR #641 was closed as superseded. Focused standalone checks and metric fixtures pass, and the review-fix architecture is approved. Required Step 5 cloud setup remains tracked above and blocked pending approved restricted values. Billing/budget and 90-day raw expiration are configured, while restricted IAM, GA4 privacy settings, identities, exact timestamps, deployed-schema assertions, jobs/schedules, deletion drill, and dashboard setup remain unresolved | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
 ## Release Evidence
 
