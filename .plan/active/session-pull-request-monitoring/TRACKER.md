@@ -135,6 +135,11 @@
   after its local Git snapshot. The plan now seals per-project request
   generations before local resolution and requires post-seal requests/waiters to
   use the coalesced follow-up generation.
+- **PR #649 route-visibility follow-up:** A later automated review correctly
+  identified that GoRouter shell providers can remain mounted under covered
+  child routes. Client claims now carry explicit visibility from `RouteSource`
+  plus actual wide split-pane presence; hidden claims clear before disposal and
+  are not reasserted on resume.
 - **PR guidance update:** Added the requested `🌱`–`🚨` title scale,
   required PR-body summaries, and feature cleanup assessment/execution rules to
   Plan Maker and Plan Worker, with matching title/body rules in root
@@ -165,6 +170,9 @@
 - **2026-07-31 — Explicit refresh generation:** Same-project requests arriving
   after cycle admission no longer share potentially stale local evidence; their
   waiter is bound to the immediate follow-up generation.
+- **2026-07-31 — Visible-route ownership:** Mounted list/detail cubits are not
+  sufficient evidence of viewing. Narrow covered routes clear claims, wide
+  visible list panes retain them, and detail child routes hide detail claims.
 - **2026-07-31 — Cleanup:** Step 2 replaces the unscoped cache shape; Step 3
   removes repository-wide PR source code and directly obsolete test support.
   Creation-branch storage and the empty compatibility wire field remain because

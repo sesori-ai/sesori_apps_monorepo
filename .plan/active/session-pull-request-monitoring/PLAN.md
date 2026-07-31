@@ -376,17 +376,28 @@ value. The listener consumes the repository/service stream and updates live.
 
 `ProjectViewApi -> ProjectViewRepository -> ProjectViewingService -> cubits`
 uses the shipped `RelayProjectView` contract. The service owns separate list and
-detail claims, one effective project, send ordering, lifecycle, reconnect, and
-late-clear protection. Unlike session viewing, project presence has no mark-seen
-side effect, so a foreground reconnect/resume reasserts immediately.
+detail claim records with explicit visibility, one effective visible project,
+send ordering, lifecycle, reconnect, and late-clear protection. Unlike session
+viewing, project presence has no mark-seen side effect, so a foreground
+reconnect/resume reasserts only the currently visible effective claim. The
+service consumes the existing pure-Dart `RouteSource`; the thin adaptive shell
+reports only whether the wide list pane is actually mounted.
 
-- `SessionListCubit` claims only after a successful list snapshot and clears on
-  close.
-- `SessionDetailCubit` claims its loaded root project's id and clears on close.
-  Child detail uses its root/project association; it does not create child PR
-  state.
-- List/detail claims for one navigation stack cannot transiently clear the same
-  project; detail precedence falls back to a still-mounted list.
+- `SessionListCubit` records its project only after a successful list snapshot.
+  The service treats the direct sessions route as visible and the list claim as
+  visible on child routes only while the shell reports the wide left pane.
+  Covered narrow routes such as new-session therefore clear the list claim
+  without waiting for cubit disposal.
+- `SessionDetailCubit` records its loaded root project's id. The service treats
+  only the direct session-detail route as detail-visible; while that claim loads,
+  it retains the same-project ready list claim as a transition handoff so
+  list -> detail sends no false null. A child diffs route hides the detail claim
+  even while the provider remains mounted. Child detail uses its root/project
+  association; it does not create child PR state.
+- Cubit close remains final cleanup, but route/pane transitions drive visibility
+  first. List/detail claims for one navigation stack cannot transiently clear the
+  same visible project; detail precedence falls back only to a currently visible
+  list pane or the same-project direct-detail transition handoff.
 - Old bridges ignore the additive control message; both existing request refresh
   paths remain as fallback.
 
@@ -732,13 +743,26 @@ Scope:
 - Own list/detail claim precedence, one effective project, serialized sends,
   background null, resume/reconnect reassertion, and stale-clear protection.
 - Integrate `SessionListCubit` after successful list render and
-  `SessionDetailCubit` after loaded session/project resolution.
+  `SessionDetailCubit` after loaded session/project resolution, with both claims
+  carrying readiness and generation ownership.
+- Inject the existing pure-Dart `RouteSource` into `ProjectViewingService` for
+  covered-route transitions. Add a thin app-shell signal for actual wide
+  split-list-pane presence; the service composes route, pane presence, and ready
+  claim records into one effective project.
 - Regenerate DI. Do not add `client/desktop` feature code.
 
 Acceptance:
 
 - List and detail each activate the project; list -> detail -> list does not
   send a false null.
+- Narrow list -> new-session clears the claim and returning reasserts it; a wide
+  split list remains claimed while its left pane is actually visible.
+- Detail -> diffs hides the detail claim despite the mounted provider; a visible
+  wide list may remain effective. Resume/reconnect under a covered route cannot
+  reassert a hidden claim.
+- Same-project list -> detail preserves one effective claim while detail data
+  loads; failed/cancelled detail routing then recomputes from the current route
+  and pane rather than retaining a stale handoff.
 - Cross-project navigation and late clear cannot erase the new claim.
 - Background clears once; foreground reconnect/resume reasserts.
 - Each physical device sends its own declaration; bridge tests from Step 5 prove
@@ -748,7 +772,8 @@ Acceptance:
 Verification:
 
 - API/repository/service lifecycle/reconnect/send-order tests
-- list/detail direct navigation, load failure, close, and race tests
+- list/detail direct navigation, narrow covered-route, wide split-pane,
+  detail/diffs, resume-under-cover, load failure, close, and race tests
 - module-core codegen, fatal-info analysis, and tests
 - mobile and desktop downstream analysis/tests required by shared changes
 
@@ -813,6 +838,7 @@ Verification:
 | Coworker PR is missed | No author filter; exact same-repository head branch is authoritative. |
 | Fork PR collides by branch name | Reject cross-repository heads and page past newer fork candidates until an eligible same-repository PR or exhaustion; fork support is deferred. |
 | Multiple devices view different projects | Per-connection tracker plus one active-set scheduler; batch/dedupe targets. |
+| Mounted but covered client routes keep polling | Claims carry explicit visibility from `RouteSource` plus actual split-pane presence; resume reasserts visible claims only. |
 | Refresh/timer/config races or duplicate work | Per-project request generations sealed before local resolution, one serialized drain with a coalesced pending set, one completion-based timer, and callback-scoped settings mutation. |
 | `gh auth switch` exposes prior private metadata | Fresh read-scoped identity gating, login-gated rows, per-chunk identity, final recheck, and fail-closed visibility suspension. |
 | GraphQL query becomes too large | Deterministic 20-target chunks in one refresh cycle; no per-project timers. |
