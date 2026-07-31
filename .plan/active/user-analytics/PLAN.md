@@ -1154,9 +1154,12 @@ not weaken the written privacy boundary to fit an unchecked property.
    outcome.
 5. **`activation_cohorts`**: account-cohort denominators only when activation-
    capable schema-v1 exposure occurs within 24 hours of account creation, with
-   ordered account -> bridge -> project -> message progression, 1/7/30-day
-   milestone flags, times to milestone, cohort maturity, and separate
+   order-validated bridge/project setup diagnostics, 1/7/30-day milestone flags,
+   times to milestone, cohort maturity, and separate
    preference/foundation/activation-capability coverage.
+   Headline activation, time-to-activation, and retention always use the
+   authoritative message-based `full_activation_at`; missing, delayed, or
+   out-of-order bridge/project milestones cannot omit or move that timestamp.
 6. **`retention_cohorts`**: activation-anchored W1/W4 eligibility and activity.
 
 Materialize partitioned daily/intermediate tables where repeated Looker scans

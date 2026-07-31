@@ -132,7 +132,10 @@
   Dart/BigQuery fixtures. A two-pass architecture
   review moved deployment policy to orchestration and freshness policy to the
   deletion Service, then approved the revised boundaries. All 34 bot review
-  threads received `[Sesori reply]` assessments before the code moved.
+  threads received `[Sesori reply]` assessments before the code moved. PR #650
+  follow-up review found that the resulting setup-order gate also reached
+  headline activation/retention; the required standalone correction is tracked
+  below and blocks warehouse apply.
 - [x] Move the complete Step 5 warehouse/reporting/deletion implementation and
   its scoped Git history out of the apps monorepo into private repository
   `sesori-ai/sesori_analytics_platform`. Commit `743e5330` is the current
@@ -149,9 +152,11 @@
 - [ ] Reuse that exact pseudonymization secret when the disabled export and
   suppression runtimes are created. Do not record the value or rotate it without
   a coordinated re-key migration.
-- [ ] Establish restricted project IAM, then enable or verify Firebase **daily-
-  only** BigQuery export; apply/verify raw dataset ACL and 90-day expiration
-  before the first daily table and record exact UTC `raw_export_start_at`.
+- [ ] Complete the existing-link contingency: establish restricted project IAM;
+  verify Firebase export is **daily-only**; audit and remediate ACL/90-day
+  expiration on every landed raw table; record the original preflight miss and
+  remediation evidence; and derive exact UTC `raw_export_start_at` from the first
+  qualified controlled daily table rather than backdating it to link creation.
   Export is not retroactive. Record `behavioral_schema_v1_start_at` separately
   only after production `analytics_activation_ready` appears; foundation-only
   and account-less login events do not qualify.
@@ -178,6 +183,10 @@ the implementing operator must execute and verify all unchecked work:
   privacy-deletion, and Looker identities; remove broad inherited data access;
   apply the dataset/table IAM matrix and exact authorized-view ACLs; pass every
   positive and expected-deny access probe.
+- [ ] Before warehouse apply, correct and verify the standalone activation-
+  cohort SQL/fixtures so headline activation, time-to-activation, and retention
+  use authoritative `full_activation_at` independently of bridge/project order;
+  reserve ordered bridge/project timestamps for setup diagnostics.
 - [ ] Run the checked-in bootstrap-only deployment to create the same-location
   datasets and reference schemas; do not apply auth-dependent transforms yet.
 - [ ] Provision and smoke-test the isolated auth export and suppression jobs,
