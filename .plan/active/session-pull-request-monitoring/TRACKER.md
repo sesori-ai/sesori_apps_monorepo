@@ -5,10 +5,11 @@
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
   `f969754bfa1ae8074ef24d4dbb248499abff79b1`
-- **Series state:** Step 1/9 merged; Step 2/9 implementation and verification complete
+- **Series state:** Step 1/9 merged; Step 2/9 PR open with verification complete
 - **Current step:** Step 2/9 — scoped PR persistence
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
-- **Next action:** commit, push, open, and monitor the Step 2/9 PR
+- **Step 2 PR:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659)
+- **Next action:** monitor Step 2/9 CI and review
 
 ## Existing Baseline
 
@@ -38,7 +39,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged as `f969754b` |
-| [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Implementation and verification complete; PR pending; generated migration overage recorded below |
+| [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | [PR #659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) open; verification complete; generated migration overage recorded below |
 | [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2 merge |
 | [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
 | [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
@@ -161,7 +162,7 @@
   the waited refresh/final mapping path fails. Per repository policy, these
   applied findings were not re-reviewed; no approval is claimed for the revised
   working tree.
-- **Step 2/9 line overage:** The implementation changes 6,392
+- **Step 2/9 line overage:** The implementation changes 6,394
   lines, including 3,646 generated Drift/Freezed/schema-fixture lines. The schema
   migration, generated artifacts, required internal contract updates, privacy
   read gates, and their migration/DAO/repository/routing regressions must land in
