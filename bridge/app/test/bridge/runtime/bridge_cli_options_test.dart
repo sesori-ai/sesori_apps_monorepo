@@ -3,6 +3,7 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:test/test.dart";
 
 void main() {
@@ -44,6 +45,22 @@ void main() {
         options.dataDirectory,
         path.normalize(path.absolute("relative-data")),
       );
+    });
+
+    test("expands a leading tilde to the user's home directory", () {
+      final options = _parseOptions(args: const ["--data-dir", "~/sesori-dev"]);
+      final homeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
+
+      expect(homeDirectory, isNotNull);
+      expect(options.dataDirectory, path.normalize(path.absolute(path.join(homeDirectory!, "sesori-dev"))));
+    });
+
+    test("expands a bare tilde to the user's home directory", () {
+      final options = _parseOptions(args: const ["--data-dir", "~"]);
+      final homeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
+
+      expect(homeDirectory, isNotNull);
+      expect(options.dataDirectory, path.normalize(path.absolute(homeDirectory!)));
     });
 
     test("rejects an empty explicit path", () {

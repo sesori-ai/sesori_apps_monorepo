@@ -1,7 +1,8 @@
-import "dart:io" show Directory, FileSystemEntity, FileSystemEntityType;
+import "dart:io" show Directory, FileSystemEntity, FileSystemEntityType, Platform;
 
 import "package:args/args.dart" show ArgParserException, ArgResults;
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 
 class BridgeCliOptions {
   final List<String> cliArgs;
@@ -78,7 +79,23 @@ class BridgeCliOptions {
     if (dataDirectoryFlag.trim().isEmpty) {
       throw ArgParserException("--data-dir must not be empty.");
     }
-    return path.normalize(path.absolute(dataDirectoryFlag));
+    final expandedDataDirectory = _expandHomeDirectory(dataDirectoryFlag);
+    return path.normalize(path.absolute(expandedDataDirectory));
+  }
+
+  static String _expandHomeDirectory(String dataDirectory) {
+    if (dataDirectory != "~" &&
+        !dataDirectory.startsWith("~/") &&
+        !dataDirectory.startsWith("~${Platform.pathSeparator}")) {
+      return dataDirectory;
+    }
+
+    final homeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
+    if (homeDirectory == null) {
+      throw ArgParserException("Cannot expand --data-dir: home directory is not set.");
+    }
+    if (dataDirectory == "~") return homeDirectory;
+    return path.join(homeDirectory, dataDirectory.substring(2));
   }
 
   static bool isDefaultDataDirectory({
