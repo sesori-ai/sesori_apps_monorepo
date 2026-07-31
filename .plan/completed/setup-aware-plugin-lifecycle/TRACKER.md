@@ -2,12 +2,11 @@
 
 ## Plan State
 
-- **Status:** Stages 10-12 are merged; Stage 13 remains
-- **Base:** `origin/main` at Stage 12 merge `6cedf5bd`
-- **Current branch:** `plan/stage-13-pr-sizing` plan update
-- **Current stage:** Stage 13 — redesigned mobile Harnesses settings
-- **Next action:** implement Step 1/7 from
-  `.plan/active/setup-aware-harness-settings` after this plan PR merges
+- **Status:** complete; Stages 10-13 merged and final Stage 13 simulator E2E passed
+- **Completion base:** `origin/main` at current-main Harnesses consolidation
+  `0da8ec7c`; final Stage 13 implementation merged as `a30b671b`
+- **Current stage:** complete
+- **Next action:** none; parent and completed child archived
 
 ## Frozen Oversized Stack
 
@@ -19,10 +18,10 @@ complete.
 | Old PR | State | Replacement |
 |---|---|---|
 | #507 | Merged | Redesigned Stage 10, merged as `4ef55675` |
-| #508 | Open, frozen | Oversized Stage 11-P01 reference at `f6cd675d`; replaced by P01A-P01D |
-| #509 | Open, frozen | Dormancy descendant; rebuild/retarget after P01D |
+| #508 | Closed, superseded | Oversized Stage 11-P01 reference at `f6cd675d`; replaced by P01A-P01D |
+| #509 | Closed, superseded | Replaced by the merged Stage 11-P02 dormant-runtime rebuild |
 | #510 | Closed, superseded | Replaced by the six-PR Stage 12 child series |
-| #511 | Open, frozen | Client descendant; rebuild/retarget after rebuilt management stage |
+| #511 | Closed, superseded | Replaced by the eight-PR Stage 13 child series |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -38,7 +37,7 @@ run their focused verification again.
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 merged as `41e03f12` |
 | [x] | Stage 12 — headless management | six-PR child series | #563, #567-#570, and #572 merged; recorded in `.plan/completed/setup-aware-plugin-management` |
-| [ ] | Stage 13 — redesigned mobile Harnesses settings | seven-PR `setup-aware-harness-settings` child series | child plan defines exact branches/titles, file boundaries, estimates, and E2E gates |
+| [x] | Stage 13 — redesigned mobile Harnesses settings | eight-PR `setup-aware-harness-settings` child series | #579, #583, #589, #590, #592-#595 merged; current-main E2E passed and is recorded in `.plan/completed/setup-aware-harness-settings/E2E.md` |
 
 ## Locked Redesign Deltas
 
@@ -342,3 +341,18 @@ run their focused verification again.
 - Required real simulator E2E with the source bridge running
   `--data-dir ~/.local/share/sesori-dev`, the existing login, and the
   `random stuff` project; the temporary E2E bridge must be stopped afterward.
+
+### 2026-07-31 — Stage 13 complete
+
+- The eight replacement PRs merged as #579, #583, #589, #590, and #592-#595;
+  final Step 8 merged as `a30b671b`. Frozen PR #511 closed as superseded.
+- PR #647 later consolidated the overview and management pages into the final
+  single Harnesses screen and merged as `0da8ec7c`.
+- Current-main simulator E2E verified navigation, live status and logos, setup
+  refresh, safe restart, safe disable/enable, timeout override/clear/apply-all
+  and persistence, busy safe-conflict/cancel/one-shot force behavior, retained
+  forced-disable session reconciliation, session creation and cleanup, and
+  OpenCode no-auto-start capability gating against a pre-existing server.
+- Restored the 10-minute/no-override/all-enabled baseline, deleted the test
+  session, left unrelated processes untouched, and left the ordinary source
+  bridge running. The full record is in the completed child plan's `E2E.md`.
