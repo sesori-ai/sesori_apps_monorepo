@@ -54,6 +54,7 @@ import 'package:sesori_mobile/core/platform/flutter_photo_library.dart'
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
+import 'package:sesori_mobile/core/platform/gal_client.dart' as _i227;
 import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
 import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
@@ -90,6 +91,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
+    gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
     gh.lazySingleton<_i948.ImageClipboard>(() => _i274.FlutterImageClipboard());
@@ -106,7 +108,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.RouteDispatcher>(
       () => _i610.GoRouterRouteDispatcher(),
     );
-    gh.lazySingleton<_i948.PhotoLibrary>(() => _i562.FlutterPhotoLibrary());
+    gh.lazySingleton<_i948.PhotoLibrary>(
+      () => _i562.FlutterPhotoLibrary(galClient: gh<_i227.GalClient>()),
+    );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
     );
