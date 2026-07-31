@@ -251,6 +251,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
               _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
             }
             logw("Failed to report project inventory analytics event", error, stackTrace);
+            if (isEmpty && !attemptedWhileActive && _productAnalyticsService.state.isActive) {
+              _retryCurrentInventoryAnalytics();
+            }
           }),
     );
   }

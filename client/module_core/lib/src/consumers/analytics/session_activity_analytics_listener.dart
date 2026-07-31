@@ -147,6 +147,9 @@ class SessionActivityAnalyticsListener {
     } on Object catch (error, stackTrace) {
       if (!_disposed) _emptyGuard = _ActivityAnalyticsGuard.ready;
       logw("Failed to report empty session activity analytics event", error, stackTrace);
+      if (!_disposed && !attemptedWhileActive && _productAnalyticsService.state.isActive) {
+        _evaluateCurrentState();
+      }
     }
   }
 

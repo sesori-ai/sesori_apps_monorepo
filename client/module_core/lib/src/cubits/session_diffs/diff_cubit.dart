@@ -136,6 +136,9 @@ class DiffCubit extends Cubit<DiffState> {
               _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
             }
             logw("Failed to report session diff analytics event", error, stackTrace);
+            if (isEmpty && !attemptedWhileActive && _productAnalyticsService.state.isActive) {
+              _retryCurrentDiffAnalytics();
+            }
           }),
     );
   }
