@@ -182,6 +182,48 @@ void main() {
       expect(repository.stored(key), fresh);
     });
 
+    test("matching-key expiry does not delete a new-path replacement with the same revision", () async {
+      const oldKey = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/old",
+      );
+      const newKey = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/new",
+      );
+      final expired = _entry(
+        key: oldKey,
+        response: _response(marker: "expired"),
+        capturedAt: now.subtract(const Duration(days: 31)),
+        revision: 1,
+      );
+      final fresh = _entry(
+        key: newKey,
+        response: _response(marker: "fresh"),
+        capturedAt: now,
+        revision: 1,
+      );
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/old"
+        ..put(expired);
+      repository.readHandler = (_) async {
+        repository
+          ..projectPaths["project-1"] = "/projects/new"
+          ..put(fresh)
+          ..readHandler = null;
+        return expired;
+      };
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
+      expect(repository.conditionalDeleteCalls, isEmpty);
+      expect(repository.stored(newKey), fresh);
+    });
+
     test("undecodable cache logging excludes the payload-bearing cause", () async {
       const key = SessionOptionsCacheKey.project(
         pluginId: "plugin-1",
@@ -220,6 +262,39 @@ void main() {
       expect(output, isNot(contains("private-cache-payload")));
       expect(repository.conditionalDeleteCalls.single.expectedRevision, 1);
       expect(repository.stored(key), fresh);
+    });
+
+    test("decode recovery does not delete a new-path replacement with the same revision", () async {
+      const newKey = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/new",
+      );
+      final fresh = _entry(
+        key: newKey,
+        response: _response(marker: "fresh"),
+        capturedAt: now,
+        revision: 1,
+      );
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/old";
+      repository.readHandler = (_) async {
+        repository
+          ..projectPaths["project-1"] = "/projects/new"
+          ..put(fresh)
+          ..readHandler = null;
+        throw SessionOptionsCacheDecodingException(
+          cause: const FormatException("corrupt"),
+          causeStackTrace: StackTrace.current,
+          revision: 1,
+        );
+      };
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
+      expect(repository.conditionalDeleteCalls, isEmpty);
+      expect(repository.stored(newKey), fresh);
     });
 
     test("decode failure without a revision preserves a concurrently replaced row", () async {

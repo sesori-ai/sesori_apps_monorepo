@@ -323,7 +323,9 @@ row. Only a row that still matches scope/project path and remains inside
 retention is eligible for last-good replay. A repository/plugin `failed` result
 with that valid row becomes refresh-failed-retained; the same failure after
 absence or invalidation becomes refresh-failed-unavailable. Invalid data is
-never resurrected by a failed capture.
+never resurrected by a failed capture. Every project-scoped invalidation
+re-resolves the authoritative path immediately before its revision-fenced delete
+so a stale reader cannot delete a same-revision row published for a moved path.
 
 The service permits only these production combinations:
 

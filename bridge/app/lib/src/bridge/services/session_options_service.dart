@@ -491,6 +491,7 @@ class SessionOptionsService {
         return null;
       }
       Log.w("Recovering from undecodable session options cache for plugin ${key.pluginId}");
+      if (!await _isCurrentCacheKey(key: key)) return null;
       final deleted = await _repository.deleteIfRevision(
         key: key,
         expectedRevision: revision,
@@ -505,10 +506,7 @@ class SessionOptionsService {
     final now = _clock.now().toUtc();
     final capturedAt = entry.capturedAt.toUtc();
     if (entry.key != key || capturedAt.isAfter(now) || now.difference(capturedAt) > _retention) {
-      if (entry.key != key && key is ProjectSessionOptionsCacheKey) {
-        final currentPath = await _repository.resolveProjectPath(projectId: key.projectId);
-        if (currentPath != key.projectPath) return null;
-      }
+      if (!await _isCurrentCacheKey(key: key)) return null;
       final deleted = await _repository.deleteIfRevision(
         key: key,
         expectedRevision: entry.revision,
@@ -519,6 +517,14 @@ class SessionOptionsService {
       return null;
     }
     return entry;
+  }
+
+  Future<bool> _isCurrentCacheKey({required SessionOptionsCacheKey key}) async {
+    return switch (key) {
+      PluginSessionOptionsCacheKey() => true,
+      ProjectSessionOptionsCacheKey(:final projectId, :final projectPath) =>
+        await _repository.resolveProjectPath(projectId: projectId) == projectPath,
+    };
   }
 
   Future<_ResolvedSessionOptions?> _resolve({
