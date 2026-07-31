@@ -51,7 +51,7 @@ class _FilePartContent extends StatelessWidget {
           mime: mime,
           actionFilename: actionFilename,
           originalUri: originalUri,
-          filename: _displayFilename(context: context, filename: _attachmentFilename),
+          filename: _loadedImageFilename(context: context, actionFilename: actionFilename),
         ),
       MessageImageUnsupported() => _buildFallbackAttachment(context: context, imageLoadFailed: false),
       MessageImageRejected() || MessageImageFailed() => _buildFallbackAttachment(
@@ -67,6 +67,14 @@ class _FilePartContent extends StatelessWidget {
     MessageAttachmentMetadata(:final filename) => filename,
     MessageAttachmentUnknown() => null,
   };
+
+  String _loadedImageFilename({required BuildContext context, required String actionFilename}) {
+    final filename = _attachmentFilename;
+    return _displayFilename(
+      context: context,
+      filename: filename == null || filename.trim().isEmpty ? actionFilename : filename,
+    );
+  }
 
   Widget _buildLoadingAttachment({required BuildContext context}) {
     final prego = context.prego;

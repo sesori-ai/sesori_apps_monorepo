@@ -1258,7 +1258,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailImageSaved.
   ///
   /// In en, this message translates to:
-  /// **'Image saved to Photos'**
+  /// **'Image saved'**
   String get sessionDetailImageSaved;
 
   /// No description provided for @sessionDetailImageSaveFailed.

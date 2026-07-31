@@ -22,8 +22,8 @@ final class ImageAttachmentCopied extends ImageAttachmentActionsState {
   const ImageAttachmentCopied();
 }
 
-final class ImageAttachmentPhotosAccessDenied extends ImageAttachmentActionsState {
-  const ImageAttachmentPhotosAccessDenied();
+final class ImageAttachmentSaveAccessDenied extends ImageAttachmentActionsState {
+  const ImageAttachmentSaveAccessDenied();
 }
 
 final class ImageAttachmentShareFailed extends ImageAttachmentActionsState {

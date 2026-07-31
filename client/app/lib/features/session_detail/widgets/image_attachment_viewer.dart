@@ -41,7 +41,7 @@ Future<void> showImageAttachmentViewer({
       reverseTransitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (_, _, _) => BlocProvider(
         create: (_) => ImageAttachmentActionsCubit(
-          photoLibrary: getIt<PhotoLibrary>(),
+          imageSaver: getIt<ImageSaver>(),
           imageClipboard: getIt<ImageClipboard>(),
           imageSharer: getIt<ImageSharer>(),
           bytes: image.bytes,
@@ -90,7 +90,7 @@ class ImageAttachmentViewer extends StatelessWidget {
     final message = switch (state) {
       ImageAttachmentSaved() => context.loc.sessionDetailImageSaved,
       ImageAttachmentCopied() => context.loc.sessionDetailImageCopied,
-      ImageAttachmentPhotosAccessDenied() => context.loc.sessionDetailImagePhotosPermissionDenied,
+      ImageAttachmentSaveAccessDenied() => context.loc.sessionDetailImagePhotosPermissionDenied,
       ImageAttachmentCopyFailed() => context.loc.sessionDetailImageCopyFailed,
       ImageAttachmentShareFailed() => context.loc.sessionDetailImageShareFailed,
       ImageAttachmentSaveFailed() => context.loc.sessionDetailImageSaveFailed,

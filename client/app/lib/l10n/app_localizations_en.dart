@@ -616,7 +616,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailImageOpenOriginal => 'Open original';
 
   @override
-  String get sessionDetailImageSaved => 'Image saved to Photos';
+  String get sessionDetailImageSaved => 'Image saved';
 
   @override
   String get sessionDetailImageSaveFailed => 'Couldn’t save image';

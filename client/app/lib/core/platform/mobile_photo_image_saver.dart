@@ -1,28 +1,27 @@
 import "dart:typed_data";
 
-import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "gal_client.dart";
 
-@LazySingleton(as: PhotoLibrary)
-class FlutterPhotoLibrary implements PhotoLibrary {
+class MobilePhotoImageSaver implements ImageSaver {
   final GalClient _galClient;
 
-  FlutterPhotoLibrary({required GalClient galClient}) : _galClient = galClient;
+  MobilePhotoImageSaver({required GalClient galClient}) : _galClient = galClient;
 
   @override
-  Future<PhotoLibrarySaveResult> saveImage({
+  Future<ImageSaveResult> saveImage({
     required Uint8List bytes,
+    required String mime,
     required String filename,
   }) async {
     final hasAccess = await _galClient.hasAccess() || await _galClient.requestAccess();
-    if (!hasAccess) return PhotoLibrarySaveResult.accessDenied;
+    if (!hasAccess) return ImageSaveResult.accessDenied;
     await _galClient.putImageBytes(
       bytes: bytes,
       name: _nameWithoutExtension(filename: filename),
     );
-    return PhotoLibrarySaveResult.saved;
+    return ImageSaveResult.saved;
   }
 
   String _nameWithoutExtension({required String filename}) {

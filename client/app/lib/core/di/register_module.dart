@@ -6,6 +6,12 @@ import "package:injectable/injectable.dart";
 import "package:record/record.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:universal_platform/universal_platform.dart";
+
+import "../platform/desktop_file_image_saver.dart";
+import "../platform/file_save_client.dart";
+import "../platform/gal_client.dart";
+import "../platform/mobile_photo_image_saver.dart";
 
 @module
 abstract class RegisterModule {
@@ -26,6 +32,12 @@ abstract class RegisterModule {
 
   @lazySingleton
   NotificationCanceller notificationCanceller(LocalNotificationClient client) => client;
+
+  @lazySingleton
+  ImageSaver imageSaver({required GalClient galClient, required FileSaveClient fileSaveClient}) =>
+      UniversalPlatform.isMacOS || UniversalPlatform.isLinux || UniversalPlatform.isWindows
+      ? DesktopFileImageSaver(fileSaveClient: fileSaveClient)
+      : MobilePhotoImageSaver(galClient: galClient);
 
   @lazySingleton
   FlutterSecureStorage get secureStorage => const FlutterSecureStorage(

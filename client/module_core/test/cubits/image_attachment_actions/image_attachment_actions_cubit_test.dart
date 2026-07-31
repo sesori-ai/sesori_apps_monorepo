@@ -3,18 +3,22 @@ import "dart:typed_data";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
-final class _FakePhotoLibrary implements PhotoLibrary {
+final class _FakeImageSaver implements ImageSaver {
   Uint8List? bytes;
+  String? mime;
   String? filename;
+  ImageSaveResult result = ImageSaveResult.saved;
 
   @override
-  Future<PhotoLibrarySaveResult> saveImage({
+  Future<ImageSaveResult> saveImage({
     required Uint8List bytes,
+    required String mime,
     required String filename,
   }) async {
     this.bytes = bytes;
+    this.mime = mime;
     this.filename = filename;
-    return PhotoLibrarySaveResult.saved;
+    return result;
   }
 }
 
@@ -52,19 +56,19 @@ final class _FakeImageSharer implements ImageSharer {
 
 void main() {
   late Uint8List bytes;
-  late _FakePhotoLibrary photoLibrary;
+  late _FakeImageSaver imageSaver;
   late _FakeImageClipboard imageClipboard;
   late _FakeImageSharer imageSharer;
 
   setUp(() {
     bytes = Uint8List.fromList(const [1, 2, 3]);
-    photoLibrary = _FakePhotoLibrary();
+    imageSaver = _FakeImageSaver();
     imageClipboard = _FakeImageClipboard();
     imageSharer = _FakeImageSharer();
   });
 
   ImageAttachmentActionsCubit buildCubit() => ImageAttachmentActionsCubit(
-    photoLibrary: photoLibrary,
+    imageSaver: imageSaver,
     imageClipboard: imageClipboard,
     imageSharer: imageSharer,
     bytes: bytes,
@@ -92,9 +96,30 @@ void main() {
 
     await cubit.save();
 
-    expect(identical(photoLibrary.bytes, bytes), isTrue);
-    expect(photoLibrary.filename, "unsafe.png");
+    expect(identical(imageSaver.bytes, bytes), isTrue);
+    expect(imageSaver.mime, "image/png");
+    expect(imageSaver.filename, "unsafe.png");
     expect(cubit.state, isA<ImageAttachmentSaved>());
+  });
+
+  test("returns to idle when desktop file saving is cancelled", () async {
+    imageSaver.result = ImageSaveResult.cancelled;
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+
+    await cubit.save();
+
+    expect(cubit.state, isA<ImageAttachmentActionsIdle>());
+  });
+
+  test("reports save access denial without naming a platform destination", () async {
+    imageSaver.result = ImageSaveResult.accessDenied;
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+
+    await cubit.save();
+
+    expect(cubit.state, isA<ImageAttachmentSaveAccessDenied>());
   });
 
   test("shares the retained bytes and platform origin", () async {

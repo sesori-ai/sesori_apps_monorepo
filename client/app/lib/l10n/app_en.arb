@@ -376,7 +376,7 @@
   "sessionDetailImageCopy": "Copy image",
   "sessionDetailImageSave": "Save image",
   "sessionDetailImageOpenOriginal": "Open original",
-  "sessionDetailImageSaved": "Image saved to Photos",
+  "sessionDetailImageSaved": "Image saved",
   "sessionDetailImageSaveFailed": "Couldn’t save image",
   "sessionDetailImageShareFailed": "Couldn’t share image",
   "sessionDetailImageCopied": "Image copied to clipboard",

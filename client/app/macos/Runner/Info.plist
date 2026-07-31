@@ -30,10 +30,6 @@
 		<string>MainMenu</string>
 		<key>NSPrincipalClass</key>
 		<string>NSApplication</string>
-		<key>NSPhotoLibraryAddUsageDescription</key>
-		<string>Photos access is needed to save images from coding sessions</string>
-		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Photos access is needed to save images from coding sessions</string>
 		<key>FLTEnableImpeller</key>
   		<true />
 		<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_ANALYTICS_STORAGE</key>

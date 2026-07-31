@@ -36,6 +36,7 @@ import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
     as _i875;
 import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
+import 'package:sesori_mobile/core/platform/file_save_client.dart' as _i223;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
     as _i178;
 import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
@@ -49,8 +50,6 @@ import 'package:sesori_mobile/core/platform/flutter_local_notification_client.da
     as _i636;
 import 'package:sesori_mobile/core/platform/flutter_oauth_device_descriptor_provider.dart'
     as _i363;
-import 'package:sesori_mobile/core/platform/flutter_photo_library.dart'
-    as _i562;
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
@@ -59,6 +58,8 @@ import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
 import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
+import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
+import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
 import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i901;
 import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -91,10 +92,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
+    gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
+    gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
+    gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
-    gh.lazySingleton<_i948.ImageClipboard>(() => _i274.FlutterImageClipboard());
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i636.FlutterLocalNotificationClient(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
@@ -108,16 +111,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.RouteDispatcher>(
       () => _i610.GoRouterRouteDispatcher(),
     );
-    gh.lazySingleton<_i948.PhotoLibrary>(
-      () => _i562.FlutterPhotoLibrary(galClient: gh<_i227.GalClient>()),
-    );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
     );
     gh.lazySingleton<_i62.RecordingFileProvider>(
       () => _i62.RecordingFileProvider(gh<_i430.AudioFormatConfig>()),
     );
-    gh.lazySingleton<_i948.ImageSharer>(() => _i617.FlutterImageSharer());
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
     );
@@ -164,6 +163,22 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i430.AudioFormatConfig>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i948.ImageSaver>(
+      () => registerModule.imageSaver(
+        galClient: gh<_i227.GalClient>(),
+        fileSaveClient: gh<_i223.FileSaveClient>(),
+      ),
+    );
+    gh.lazySingleton<_i948.ImageClipboard>(
+      () => _i274.FlutterImageClipboard(
+        pasteboardClient: gh<_i748.PasteboardClient>(),
+      ),
+    );
+    gh.lazySingleton<_i948.ImageSharer>(
+      () => _i617.FlutterImageSharer(
+        sharePlusClient: gh<_i1019.SharePlusClient>(),
+      ),
     );
     gh.lazySingleton<_i892.FirebaseMessaging>(
       () => firebaseRegisterModule.disabledFirebaseMessaging(
