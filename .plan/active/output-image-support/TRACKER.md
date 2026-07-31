@@ -30,7 +30,7 @@
 | [x] | 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639) merged as `17e0ecf1`; 680 changed lines |
 | [x] | 3/13 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/13]` | 900-1,350 | [PR #644](https://github.com/sesori-ai/sesori_apps_monorepo/pull/644) merged as `f78e1f69`; 1,075 changed lines |
 | [x] | 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | [PR #646](https://github.com/sesori-ai/sesori_apps_monorepo/pull/646) merged as `4be1e7bb`; 1,416 changed lines |
-| [ ] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | [PR #648](https://github.com/sesori-ai/sesori_apps_monorepo/pull/648) open; 1,470 changed lines |
+| [ ] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | [PR #648](https://github.com/sesori-ai/sesori_apps_monorepo/pull/648) open; 1,472 changed lines |
 | [ ] | 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | Blocked on Step 5 merge |
 | [ ] | 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | Blocked on Step 6 merge |
 | [ ] | 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | Blocked on Step 7 merge |
@@ -125,7 +125,7 @@
   parser/event tests, all 218 package tests, `dart pub get`,
   `dart analyze --fatal-infos`, and `git diff --cached --check` pass. The first
   architecture review moved output projection back to the event mapper; the
-  second `aristotle-impl-review` pass approved with no findings. The 1,470-line
+  second `aristotle-impl-review` pass approved with no findings. The 1,472-line
   diff is below the 1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas

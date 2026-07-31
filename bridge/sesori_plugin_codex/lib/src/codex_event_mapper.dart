@@ -358,7 +358,7 @@ class CodexEventMapper {
           tool: tool ?? "mcp",
           title: _mcpToolTitle(server: server, tool: tool),
           status: _parsedToolStatus(status: status, completed: completed),
-          output: _imageBearingToolOutput(content),
+          output: _imageBearingToolOutput(content: content),
           error: error,
         );
       case CodexDynamicToolCallItemDto(
@@ -385,7 +385,7 @@ class CodexEventMapper {
           output:
               canonical?.result.output ??
               _rolloutToolMapper.clipOutput(
-                _imageBearingToolOutput(content),
+                _imageBearingToolOutput(content: content),
               ),
         );
       case CodexUnknownImageBearingItemDto() || null:
@@ -621,7 +621,9 @@ class CodexEventMapper {
     return rendered.length > 120 ? rendered.substring(0, 120) : rendered;
   }
 
-  String? _imageBearingToolOutput(List<CodexImageBearingContentDto> content) {
+  String? _imageBearingToolOutput({
+    required List<CodexImageBearingContentDto> content,
+  }) {
     final texts = [
       for (final item in content)
         if (item case CodexMcpTextContentDto(:final text) || CodexDynamicTextContentDto(:final text)
