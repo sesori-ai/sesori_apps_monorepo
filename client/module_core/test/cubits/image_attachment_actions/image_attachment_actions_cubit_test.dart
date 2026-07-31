@@ -10,6 +10,9 @@ final class _FakeImageSaver implements ImageSaver {
   ImageSaveResult result = ImageSaveResult.saved;
 
   @override
+  bool isSupported = true;
+
+  @override
   Future<ImageSaveResult> saveImage({
     required Uint8List bytes,
     required String mime,

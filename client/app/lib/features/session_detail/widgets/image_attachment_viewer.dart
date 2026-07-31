@@ -90,7 +90,7 @@ class ImageAttachmentViewer extends StatelessWidget {
     final message = switch (state) {
       ImageAttachmentSaved() => context.loc.sessionDetailImageSaved,
       ImageAttachmentCopied() => context.loc.sessionDetailImageCopied,
-      ImageAttachmentSaveAccessDenied() => context.loc.sessionDetailImagePhotosPermissionDenied,
+      ImageAttachmentSaveAccessDenied() => context.loc.sessionDetailImageSaveAccessDenied,
       ImageAttachmentCopyFailed() => context.loc.sessionDetailImageCopyFailed,
       ImageAttachmentShareFailed() => context.loc.sessionDetailImageShareFailed,
       ImageAttachmentSaveFailed() => context.loc.sessionDetailImageSaveFailed,
@@ -106,7 +106,8 @@ class ImageAttachmentViewer extends StatelessWidget {
     final prego = context.prego;
     final originalUri = image.originalUri;
     final displayFilename = filename;
-    final isRunningAction = context.watch<ImageAttachmentActionsCubit>().state is ImageAttachmentActionRunning;
+    final actionsCubit = context.watch<ImageAttachmentActionsCubit>();
+    final isRunningAction = actionsCubit.state is ImageAttachmentActionRunning;
     return BlocListener<ImageAttachmentActionsCubit, ImageAttachmentActionsState>(
       listener: _handleActionState,
       child: Scaffold(
@@ -170,11 +171,12 @@ class ImageAttachmentViewer extends StatelessWidget {
                           icon: Icon(Icons.share_outlined, color: prego.colors.textPrimary),
                         ),
                       ),
-                      IconButton(
-                        tooltip: context.loc.sessionDetailImageSave,
-                        onPressed: () => unawaited(context.read<ImageAttachmentActionsCubit>().save()),
-                        icon: Icon(Icons.download_outlined, color: prego.colors.textPrimary),
-                      ),
+                      if (actionsCubit.canSave)
+                        IconButton(
+                          tooltip: context.loc.sessionDetailImageSave,
+                          onPressed: () => unawaited(context.read<ImageAttachmentActionsCubit>().save()),
+                          icon: Icon(Icons.download_outlined, color: prego.colors.textPrimary),
+                        ),
                     ],
                   ],
                 ),

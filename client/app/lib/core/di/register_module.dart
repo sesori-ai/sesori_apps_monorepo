@@ -12,6 +12,7 @@ import "../platform/desktop_file_image_saver.dart";
 import "../platform/file_save_client.dart";
 import "../platform/gal_client.dart";
 import "../platform/mobile_photo_image_saver.dart";
+import "../platform/unsupported_image_saver.dart";
 
 @module
 abstract class RegisterModule {
@@ -35,7 +36,9 @@ abstract class RegisterModule {
 
   @lazySingleton
   ImageSaver imageSaver({required GalClient galClient, required FileSaveClient fileSaveClient}) =>
-      UniversalPlatform.isMacOS || UniversalPlatform.isLinux || UniversalPlatform.isWindows
+      UniversalPlatform.isWeb
+      ? UnsupportedImageSaver()
+      : UniversalPlatform.isMacOS || UniversalPlatform.isLinux || UniversalPlatform.isWindows
       ? DesktopFileImageSaver(fileSaveClient: fileSaveClient)
       : MobilePhotoImageSaver(galClient: galClient);
 

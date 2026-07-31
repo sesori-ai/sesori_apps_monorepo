@@ -628,7 +628,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailImageCopyFailed => 'Couldn’t copy image';
 
   @override
-  String get sessionDetailImagePhotosPermissionDenied => 'Allow Photos access to save this image';
+  String get sessionDetailImageSaveAccessDenied => 'Permission denied while saving this image';
 
   @override
   String get sessionDetailToolPending => 'Pending';

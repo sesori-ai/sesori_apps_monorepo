@@ -35,6 +35,7 @@ void main() {
   setUp(() {
     galClient = _FakeGalClient();
     imageSaver = MobilePhotoImageSaver(galClient: galClient);
+    expect(imageSaver.isSupported, isTrue);
   });
 
   test("saves through the injected Gal client without requesting existing access", () async {

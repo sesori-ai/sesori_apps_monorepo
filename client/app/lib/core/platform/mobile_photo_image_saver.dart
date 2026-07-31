@@ -10,6 +10,9 @@ class MobilePhotoImageSaver implements ImageSaver {
   MobilePhotoImageSaver({required GalClient galClient}) : _galClient = galClient;
 
   @override
+  bool get isSupported => true;
+
+  @override
   Future<ImageSaveResult> saveImage({
     required Uint8List bytes,
     required String mime,

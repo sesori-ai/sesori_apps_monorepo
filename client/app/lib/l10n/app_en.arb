@@ -377,7 +377,7 @@
   "sessionDetailImageShareFailed": "Couldn’t share image",
   "sessionDetailImageCopied": "Image copied to clipboard",
   "sessionDetailImageCopyFailed": "Couldn’t copy image",
-  "sessionDetailImagePhotosPermissionDenied": "Allow Photos access to save this image",
+  "sessionDetailImageSaveAccessDenied": "Permission denied while saving this image",
   "sessionDetailToolPending": "Pending",
   "sessionDetailToolRunning": "Running",
   "sessionDetailToolCompleted": "Done",

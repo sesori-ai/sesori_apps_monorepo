@@ -1279,11 +1279,11 @@ abstract class AppLocalizations {
   /// **'Couldn’t copy image'**
   String get sessionDetailImageCopyFailed;
 
-  /// No description provided for @sessionDetailImagePhotosPermissionDenied.
+  /// No description provided for @sessionDetailImageSaveAccessDenied.
   ///
   /// In en, this message translates to:
-  /// **'Allow Photos access to save this image'**
-  String get sessionDetailImagePhotosPermissionDenied;
+  /// **'Permission denied while saving this image'**
+  String get sessionDetailImageSaveAccessDenied;
 
   /// No description provided for @sessionDetailToolPending.
   ///

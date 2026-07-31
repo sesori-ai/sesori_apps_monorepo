@@ -10,6 +10,9 @@ class DesktopFileImageSaver implements ImageSaver {
   DesktopFileImageSaver({required FileSaveClient fileSaveClient}) : _fileSaveClient = fileSaveClient;
 
   @override
+  bool get isSupported => true;
+
+  @override
   Future<ImageSaveResult> saveImage({
     required Uint8List bytes,
     required String mime,
