@@ -3,11 +3,11 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/session_api.dart";
+import "models/session_options_repository_result.dart";
 
 @lazySingleton
 class SessionRepository {
   final SessionApi _api;
-  final _providerCache = <({String pluginId, String projectId}), ProviderListResponse>{};
 
   SessionRepository({
     required SessionApi api,
@@ -104,36 +104,81 @@ class SessionRepository {
   Future<ApiResponse<ProviderListResponse>> listProviders({
     required String projectId,
     required String pluginId,
-  }) async {
-    final cacheKey = (pluginId: pluginId, projectId: projectId);
-    if (_providerCache[cacheKey] case final providersCache?) {
-      return ApiResponse.success(providersCache);
-    }
-
-    final response = await _api.listProviders(projectId: projectId, pluginId: pluginId);
-
-    // Only cache once every provider in the response actually carries models.
-    // Some backends build their model catalog asynchronously (e.g. the
-    // Cursor/ACP plugin warms it from an existing session after the agent
-    // connects), so an early fetch can succeed with an empty list — and in a
-    // multi-provider project one provider can still be warming up (empty
-    // `models`) while another is already populated. Caching such a partial
-    // result — permanently, since this repository is a lazy singleton — would
-    // leave the warming provider's picker blank forever. Requiring all providers
-    // to be populated (and the list to be non-empty, since `every` is vacuously
-    // true on an empty list) lets the next open retry until the full catalog is
-    // ready.
-    if (response is SuccessResponse<ProviderListResponse> &&
-        response.data.items.isNotEmpty &&
-        response.data.items.every((provider) => provider.models.isNotEmpty)) {
-      _providerCache[cacheKey] = response.data;
-    }
-
-    return response;
+  }) {
+    return _api.listProviders(projectId: projectId, pluginId: pluginId);
   }
 
   Future<ApiResponse<CommandListResponse>> listCommands({required String projectId, required String pluginId}) {
     return _api.listCommands(projectId: projectId, pluginId: pluginId);
+  }
+
+  Future<LegacySessionOptionsRepositoryResult> loadLegacySessionOptions({
+    required String projectId,
+    required String pluginId,
+  }) async {
+    final (agents, providers, commands) = await (
+      _api.listAgents(projectId: projectId, pluginId: pluginId),
+      _api.listProviders(projectId: projectId, pluginId: pluginId),
+      _api.listCommands(projectId: projectId, pluginId: pluginId),
+    ).wait;
+    return switch ((agents, providers, commands)) {
+      (
+        SuccessResponse(data: final agentData),
+        SuccessResponse(data: final providerData),
+        SuccessResponse(data: final commandData),
+      ) =>
+        LegacySessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: agentData.agents,
+            providers: providerData.items,
+            commands: commandData.items,
+          ),
+        ),
+      (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(error: error),
+      (_, ErrorResponse(:final error), _) => LegacySessionOptionsRepositoryFailure(error: error),
+      (_, _, ErrorResponse(:final error)) => LegacySessionOptionsRepositoryFailure(error: error),
+    };
+  }
+
+  Future<SessionOptionsRepositoryResult> loadSessionOptions({
+    required String projectId,
+    required String pluginId,
+    required bool refresh,
+  }) async {
+    final response = await _api.loadSessionOptions(
+      projectId: projectId,
+      pluginId: pluginId,
+      refresh: refresh,
+    );
+    return switch (response) {
+      SuccessResponse(:final data) => SessionOptionsRepositoryAvailable(
+        catalog: SessionOptionsCatalog(
+          agents: data.agents.agents,
+          providers: data.providers.items,
+          commands: data.commands.items,
+        ),
+      ),
+      ErrorResponse(:final error) => _mapSessionOptionsError(error: error),
+    };
+  }
+
+  SessionOptionsRepositoryResult _mapSessionOptionsError({required ApiError error}) {
+    if (error case NonSuccessCodeError(:final rawErrorString)) {
+      try {
+        if (rawErrorString == null) return SessionOptionsRepositoryFailure(error: error);
+        final response = SessionOptionsErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
+        return switch (response.code) {
+          SessionOptionsErrorCode.cacheUnavailable => const SessionOptionsRepositoryCacheUnavailable(),
+          SessionOptionsErrorCode.projectNotFound => SessionOptionsRepositoryProjectNotFound(error: error),
+          SessionOptionsErrorCode.refreshFailedRetained => const SessionOptionsRepositoryRefreshFailedRetained(),
+          SessionOptionsErrorCode.refreshFailedUnavailable => const SessionOptionsRepositoryRefreshFailedUnavailable(),
+          SessionOptionsErrorCode.unknown => SessionOptionsRepositoryFailure(error: error),
+        };
+      } on Object {
+        // The original transport error remains the explicit observable failure.
+      }
+    }
+    return SessionOptionsRepositoryFailure(error: error);
   }
 
   Future<ApiResponse<Session>> createSessionWithMessage({

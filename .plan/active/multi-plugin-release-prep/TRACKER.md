@@ -2,11 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `e25be863`
-- **Series state:** Steps 1/6 through 4.E/6 are merged; oversized PR #620 is
+- **Implementation base:** `origin/main` at `42f3bc44`
+- **Series state:** Steps 1/6 through 4.F/6 are merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
-- **Current step:** Step 4.F/6 — route, listeners, and lifecycle wiring
-- **Next action:** commit, push, and open the verified Step 4.F/6 implementation
+- **Current step:** Step 5.A/6 — cached session-option client layers
+- **Next action:** commit, push, and open the verified Step 5.A/6 implementation
 
 ## Delivery
 
@@ -20,9 +20,10 @@
 | [x] | Step 4.C/6 — migration and DAO verification | `multi-plugin-release-prep-cache-verification` | PR #625 merged |
 | [x] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | PR #626 merged |
 | [x] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | PR #627 merged |
-| [ ] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | Verified; ready to open |
-| [ ] | Step 5/6 — cached New Session client flow | `multi-plugin-release-prep-client-options` | Blocked on Step 4.F merge |
-| [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5 merge |
+| [x] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | PR #630 merged |
+| [ ] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | Verified; ready to open |
+| [ ] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | Implemented locally; blocked on Step 5.A delivery |
+| [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5.B merge |
 
 ## Locked Decisions
 
@@ -76,8 +77,9 @@
 7. `[multi-plugin-release-prep] feat(bridge): capture scoped session options [step 4.D/6]`
 8. `[multi-plugin-release-prep] feat(bridge): apply session option cache policy [step 4.E/6]`
 9. `[multi-plugin-release-prep] feat(bridge): expose cached session options [step 4.F/6]`
-10. `[multi-plugin-release-prep] feat(client): consume cached session options [step 5/6]`
-11. `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]`
+10. `[multi-plugin-release-prep] feat(client): add cached session option layers [step 5.A/6]`
+11. `[multi-plugin-release-prep] feat(client): use cached session options [step 5.B/6]`
+12. `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]`
 
 ## Verification Log
 
@@ -189,4 +191,30 @@
   rejects non-canonical or unknown plugin IDs at the route boundary, uses named
   DAO/private parameters, and synchronously starts local refresh listeners before
   debug mutation routes can become reachable. All 65 focused follow-up tests and
-  bridge-app fatal analysis passed.
+  bridge-app fatal analysis passed. PR #630 merged to `main` as `42f3bc44`.
+- Step 5 implementation preparation (2026-07-30): added aggregate session-options API and
+  repository mapping, removed the provider-only client cache, mapped plugin
+  discovery into a repository-owned snapshot, and added service-owned option
+  filtering, defaults, restoration, variants, command revalidation, aggregate
+  outcomes, and explicit old-bridge fallback. The New Session cubit now composes
+  sealed source-aware option state, preserves generation fencing, and records
+  agent/model/variant intent independently; mobile renders cached, unsupported,
+  unavailable, retained-failure, clearing-failure, and Refresh states while
+  keeping backend-default creation available. Generated Freezed, DI, and mobile
+  localization output. The 6 API boundary tests, 29 final repository/service
+  tests, 60 final cubit tests, and 27 mobile New Session tests passed, as did
+  fatal analysis in module-core, mobile, and desktop plus `git diff --check`.
+  Aristotle's first review found wire DTO leakage, capability ownership, intent
+  flattening, and invalid state cross-products; those were fixed. Its second and
+  final review found legacy mapping and source derivation still one layer too
+  high; both were moved into the repository/plugin service. Those final fixes
+  were not re-reviewed because implementation review is capped at two passes.
+  The completed 3,742-line diff materially exceeded the planned review size, so
+  the user split delivery at the architecture seam: Step 5.A contains the
+  API/repository/service layers and Step 5.B contains plugin-source propagation,
+  explicit intent tracking, cubit/state, and mobile UI.
+- Step 5.A/6 preparation (2026-07-30): isolated the aggregate API, repository
+  catalogs/error mapping, provider-cache removal, legacy three-route mapping,
+  option policy service, neutral source/intent models, and DI registration. All
+  22 focused API/repository/service tests passed, as did fatal analysis in
+  module-core, mobile, and desktop plus `git diff --check`.
