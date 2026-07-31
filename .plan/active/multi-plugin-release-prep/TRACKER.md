@@ -291,7 +291,7 @@
   before activation, while dynamic-load failures use load-specific client state
   and copy instead of explicit-Refresh guidance. Project-scoped invalidation also
   re-resolves the authoritative path before deleting expired or undecodable rows,
-  preserving same-revision replacements after a path move. All 34 service tests,
-  47 focused module-core tests, and 28 mobile New Session tests passed, as did
-  fatal analysis in bridge-app, module-core, mobile, and desktop plus
-  `git diff --check`.
+  preserving same-revision replacements after a path move; dynamic loading checks
+  that path again immediately before may-activate capture. All 34 service tests,
+  47 focused module-core tests, and 28 mobile New Session tests passed, as did fatal
+  analysis in bridge-app, module-core, mobile, and desktop plus `git diff --check`.

@@ -221,6 +221,7 @@ void main() {
 
       expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
       expect(repository.conditionalDeleteCalls, isEmpty);
+      expect(repository.captureCalls, isEmpty);
       expect(repository.stored(newKey), fresh);
     });
 
@@ -294,6 +295,7 @@ void main() {
 
       expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
       expect(repository.conditionalDeleteCalls, isEmpty);
+      expect(repository.captureCalls, isEmpty);
       expect(repository.stored(newKey), fresh);
     });
 

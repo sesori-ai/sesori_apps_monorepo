@@ -342,10 +342,12 @@ immediately, and otherwise enters the existing per-key coordinator with reuse
 intent, `mayActivate`, `PluginSessionOptionsDiscoveryMode.reuse`, no expected
 generation, and `automatic: false` so HTTP callers receive typed retained or
 unavailable failures rather than trigger-only no-op semantics. Project absence
-returns directly. Expired/path-invalid rows are deleted before capture. If a
+returns directly. Expired/path-invalid rows are deleted before capture, and the
+resolved project path is revalidated immediately before a may-activate capture
+so a moved project cannot start discovery against its stale directory. If a
 concurrent operation publishes a valid row while the dynamic capture fails,
-`loadDynamic` re-reads and returns that row as `available`; otherwise the
-existing retained/unavailable 502 mapping applies.
+`loadDynamic` re-reads and returns that row as `available`; otherwise the existing
+retained/unavailable 502 mapping applies.
 
 Coalescing is intent-aware per cache key:
 

@@ -99,8 +99,12 @@ class SessionOptionsService {
       generation: null,
       operation: () async {
         final newlyCached = await _readValid(key: resolved.key);
-        if (newlyCached != null && await _isCurrentResolution(resolved: resolved)) {
+        final isCurrentResolution = await _isCurrentResolution(resolved: resolved);
+        if (newlyCached != null && isCurrentResolution) {
           return SessionOptionsAvailable(response: newlyCached.response);
+        }
+        if (!isCurrentResolution) {
+          return _movedProjectOutcome(automatic: false);
         }
         return _refresh(
           resolved: resolved,
