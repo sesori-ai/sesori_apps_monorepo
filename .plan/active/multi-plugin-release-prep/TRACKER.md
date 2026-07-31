@@ -6,7 +6,7 @@
 - **Series state:** Steps 1/6 through 5.B/6 are merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
 - **Current step:** Step 5.C/6 — dynamic session-option cache misses
-- **Next action:** commit and open the verified Step 5.C PR against `main`
+- **Next action:** monitor Step 5.C PR #642 through review and CI
 
 ## Delivery
 
@@ -23,7 +23,7 @@
 | [x] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | PR #630 merged |
 | [x] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | PR #635 merged |
 | [x] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | PR #636 merged |
-| [ ] | Step 5.C/6 — dynamic session-option cache misses | `multi-plugin-release-prep-dynamic-options` | Ready for PR |
+| [ ] | Step 5.C/6 — dynamic session-option cache misses | `multi-plugin-release-prep-dynamic-options` | [PR #642](https://github.com/sesori-ai/sesori_apps_monorepo/pull/642) open against `main` |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5.C merge |
 
 ## Locked Decisions
@@ -284,3 +284,5 @@
   tests passed, as did fatal analysis in bridge-app, module-core, mobile, and
   desktop plus `git diff --check`. Aristotle approved the implementation
   architecture without findings.
+- Step 5.C/6 delivery (2026-07-31): committed as `d0be128e`, pushed, and opened
+  as PR #642 against `main`.
