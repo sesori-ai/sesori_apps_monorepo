@@ -176,11 +176,16 @@ class MessageImageRepository {
       _ => null,
     };
     final maxBasenameBytes = _maxFilenameBytes - (extension == null ? 0 : utf8.encode(extension).length);
-    final safeBasename = basename == null || basename.isEmpty
+    final safeBasename = basename == null || basename.isEmpty || _isReservedWindowsBasename(basename: basename)
         ? "image"
         : _truncateUtf8(value: basename, maxBytes: maxBasenameBytes);
     return extension == null ? safeBasename : "$safeBasename$extension";
   }
+
+  bool _isReservedWindowsBasename({required String basename}) => RegExp(
+    r"^(con|prn|aux|nul|com[1-9]|lpt[1-9])$",
+    caseSensitive: false,
+  ).hasMatch(basename);
 
   String _truncateUtf8({required String value, required int maxBytes}) {
     final result = StringBuffer();

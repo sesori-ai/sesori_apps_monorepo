@@ -1,6 +1,10 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:get_it/get_it.dart";
+import "package:http/http.dart" as http;
+import "package:http/testing.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/tool_part_widget.dart";
@@ -127,6 +131,17 @@ MessagePart _filePart({required String id}) {
 }
 
 void main() {
+  setUp(() async {
+    await GetIt.instance.reset();
+    GetIt.instance.registerSingleton<MessageImageRepository>(
+      MessageImageRepository(
+        api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+      ),
+    );
+  });
+
+  tearDown(() => GetIt.instance.reset());
+
   testWidgets("renders one SelectionArea and two markdown parts for assistant text", (tester) async {
     await tester.pumpWidget(
       _AssistantMessageCardHarness(

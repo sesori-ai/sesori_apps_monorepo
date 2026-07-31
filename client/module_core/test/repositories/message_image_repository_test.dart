@@ -157,4 +157,25 @@ void main() {
     expect(utf8.encode(filename).length, lessThanOrEqualTo(255));
     expect(filename, endsWith(".png"));
   });
+
+  test("replaces Windows device basenames used for action files", () async {
+    final repository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+    );
+    final bytes = base64Decode(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    );
+
+    for (final reservedName in ["CON.png", "aux.jpg", "NUL.gif", "COM1.webp", "lpt9.bmp"]) {
+      final result = await repository.load(
+        attachment: MessageAttachment.inlineImage(
+          mime: "image/png",
+          base64: base64Encode(bytes),
+          filename: reservedName,
+        ),
+      );
+
+      expect((result as MessageImageLoadSuccess).actionFilename, "image.png");
+    }
+  });
 }
