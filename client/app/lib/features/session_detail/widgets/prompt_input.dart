@@ -98,6 +98,7 @@ class _PromptInputState extends State<PromptInput> {
   /// The pointer that owns the current hold. Raw pointer events start the
   /// recorder on touch-down without Flutter's long-press recognition delay.
   int? _recordingPointer;
+  Offset? _recordingPointerPosition;
 
   /// Keeps the typing layout mounted after the keyboard affordance was tapped
   /// while the field wasn't in the tree yet (hold-to-talk / compact layouts),
@@ -346,17 +347,21 @@ class _PromptInputState extends State<PromptInput> {
   void _handleRecordPointerDown(PointerDownEvent event) {
     if (_recordingPointer != null) return;
     _recordingPointer = event.pointer;
+    _recordingPointerPosition = event.position;
     unawaited(_handleRecordStart());
   }
 
   void _handleRecordPointerMove(PointerMoveEvent event) {
     if (event.pointer != _recordingPointer) return;
+    _recordingPointerPosition = event.position;
     _handleRecordDragUpdate(globalPosition: event.position);
   }
 
   void _handleRecordPointerEnd(PointerEvent event) {
     if (event.pointer != _recordingPointer) return;
+    _handleRecordDragUpdate(globalPosition: event.position);
     _recordingPointer = null;
+    _recordingPointerPosition = null;
     unawaited(_handleRecordEnd());
   }
 
@@ -417,8 +422,21 @@ class _PromptInputState extends State<PromptInput> {
     try {
       await _voiceService.startRecording();
       if (!mounted) return;
-      setState(() => _voiceState = _VoiceState.recording);
       final interactionId = _voiceInteractionId;
+      setState(() => _voiceState = _VoiceState.recording);
+      // Startup can finish after the user has already dragged toward cancel.
+      // Reapply the latest position once the newly mounted target has layout.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final position = _recordingPointerPosition;
+        if (!mounted ||
+            _voiceState != _VoiceState.recording ||
+            interactionId != _voiceInteractionId ||
+            _recordingPointer == null ||
+            position == null) {
+          return;
+        }
+        _handleRecordDragUpdate(globalPosition: position);
+      });
       _minimumRecordingDurationTimer = Timer(_minimumRecordingDuration, () {
         if (_voiceState == _VoiceState.recording && interactionId == _voiceInteractionId) {
           _minimumRecordingDurationReached = true;

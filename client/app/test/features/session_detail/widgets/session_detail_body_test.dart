@@ -933,6 +933,36 @@ void main() {
     expect(find.byType(EditableText), findsNothing);
   });
 
+  testWidgets("dragging toward cancel during recorder startup is preserved", (tester) async {
+    final startCompleter = Completer<void>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final cancelPosition = tester.getCenter(find.byIcon(TablerRegular.chevron_right));
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await gesture.moveTo(cancelPosition);
+    await tester.pump();
+
+    // The recorder starts after the finger has already reached the future
+    // cancel target. No further movement should be needed to preserve that
+    // intent or update the drag feedback.
+    startCompleter.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.text("Release to cancel"), findsOneWidget);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+  });
+
   testWidgets("a hold during an in-flight cancel does not present a phantom recording", (tester) async {
     final cancelCompleter = Completer<void>();
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
