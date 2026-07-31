@@ -1,7 +1,8 @@
-import "dart:io" show Directory, FileSystemEntity, FileSystemEntityType;
+import "dart:io" show Directory, FileSystemEntity, FileSystemEntityType, Platform;
 
 import "package:args/args.dart" show ArgParserException, ArgResults;
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 
 class BridgeCliOptions {
   final List<String> cliArgs;
@@ -50,6 +51,7 @@ class BridgeCliOptions {
     final dataDirectory = resolveDataDirectory(
       dataDirectoryFlag: results["data-dir"] as String?,
       defaultDataDirectory: defaultDataDirectory,
+      environment: environment,
     );
 
     // Supervised-only option: trim and treat blank as absent. Do NOT validate
@@ -73,12 +75,35 @@ class BridgeCliOptions {
   static String resolveDataDirectory({
     required String? dataDirectoryFlag,
     required String defaultDataDirectory,
+    required Map<String, String> environment,
   }) {
     if (dataDirectoryFlag == null) return defaultDataDirectory;
     if (dataDirectoryFlag.trim().isEmpty) {
       throw ArgParserException("--data-dir must not be empty.");
     }
-    return path.normalize(path.absolute(dataDirectoryFlag));
+    final expandedDataDirectory = _expandHomeDirectory(
+      dataDirectory: dataDirectoryFlag,
+      environment: environment,
+    );
+    return path.normalize(path.absolute(expandedDataDirectory));
+  }
+
+  static String _expandHomeDirectory({
+    required String dataDirectory,
+    required Map<String, String> environment,
+  }) {
+    if (dataDirectory != "~" &&
+        !dataDirectory.startsWith("~/") &&
+        !dataDirectory.startsWith("~${Platform.pathSeparator}")) {
+      return dataDirectory;
+    }
+
+    final homeDirectory = resolveUserHomeDirectory(environment: environment);
+    if (homeDirectory == null) {
+      throw ArgParserException("Cannot expand --data-dir: home directory is not set.");
+    }
+    if (dataDirectory == "~") return homeDirectory;
+    return path.join(homeDirectory, dataDirectory.substring(2));
   }
 
   static bool isDefaultDataDirectory({

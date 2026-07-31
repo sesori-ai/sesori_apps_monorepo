@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/codex_app_server_api.dart";
 import "api/codex_rollout_api.dart";
+import "api/parsers/codex_image_bearing_item_parser.dart";
 import "approval_registry.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
@@ -18,6 +19,7 @@ import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
+import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
 import "runtime/codex_managed_api.dart";
@@ -126,6 +128,8 @@ class CodexPlugin implements CodexManagedApi {
     final resolvedProjectCwd = projectCwd ?? Directory.current.path;
     final configReader = CodexConfigReader();
     final rolloutApi = CodexRolloutApi();
+    const imageAttachmentMapper = CodexImageAttachmentMapper();
+    const imageBearingItemParser = CodexImageBearingItemParser();
     const rolloutToolMapper = CodexRolloutToolMapper();
     final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
     final rolloutTailer = CodexRolloutTailer(
@@ -154,6 +158,8 @@ class CodexPlugin implements CodexManagedApi {
       eventMapper: CodexEventMapper(
         pluginId: pluginId,
         projectCwd: resolvedProjectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         config: configReader.readDefaults(),
       ),
