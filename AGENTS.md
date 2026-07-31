@@ -73,15 +73,22 @@ eagerly "just in case."
 - Never hand-edit generated files. Change their source and run the generator.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
+- Every PR title includes one implementation-complexity tag: `C1 🟢` trivial,
+  `C2 🔵` straightforward, `C3 🟡` moderate, `C4 🟠` complex, or `C5 🔴` very
+  complex. Complexity is implementation/review difficulty, not the risk rating.
+  Single-PR tasks use `[C<n> <emoji>] <normal title>`.
+- Every PR body includes concise `## Complexity`, `## What`, `## Why`,
+  `## Risk and test focus`, and `## Expected result` sections. State explicitly
+  when there is no user-visible or database impact; keep verification as an
+  additional section.
 - Assume the user will not inspect local-only changes unless they explicitly say
   they will. Once a task is complete and ready for code review or implementation
   testing, commit, push, and open a PR by default. Leave changes local only when
   the user explicitly requests that.
 - When splitting any task across multiple PRs, title every PR
-  `[<slug>] <description> [step <x>/<y>]`. For planned work, `<slug>` is the
-  plan directory name under `.plan`; otherwise choose one stable, lowercase
-  kebab-case slug. Keep one total for the whole series. Single-PR tasks keep the
-  normal title style.
+  `[<slug>] [C<n> <emoji>] <description> [step <x>/<y>]`. For planned work,
+  `<slug>` is the plan directory name under `.plan`; otherwise choose one
+  stable, lowercase kebab-case slug. Keep one total for the whole series.
 - Backward and forward compatibility is required only for transport
   contracts exchanged between the client and bridge, because an older app can
   use a newer bridge and a newer app can use an older bridge. Preserve those

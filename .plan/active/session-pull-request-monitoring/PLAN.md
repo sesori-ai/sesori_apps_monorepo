@@ -475,10 +475,10 @@ settings screen analytics continue unchanged.
 
 - The series has exactly nine PRs. Every title uses the fixed
   `[session-pull-request-monitoring] [C<n> <emoji>] ... [step x/9]` form below.
-- Step 1 raises this complete plan and updates the Plan Maker/Plan Worker PR
-  communication rules. It changes `.plan/**` and the two agent definitions
-  only, so it runs documentation/config validation rather than Dart/Flutter
-  suites.
+- Step 1 raises this complete plan and updates the repository, Plan Maker, and
+  Plan Worker PR communication rules. It changes `.plan/**`, root `AGENTS.md`,
+  and the two agent definitions only, so it runs documentation/config validation
+  rather than Dart/Flutter suites.
 - Every PR body states complexity, what, why, risk/test focus, and expected
   user-visible/data/internal results; an absent impact is explicit rather than
   omitted.
@@ -510,7 +510,7 @@ settings screen analytics continue unchanged.
 
 | Step | Branch | Exact PR title | Complexity rationale | Changed-line target | Outcome |
 |---|---|---|---|---:|---|
-| 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] [C2 🔵] docs: plan current PR monitoring [step 1/9]` | Documentation/agent-definition changes only, with no runtime behavior. | 4,000–7,000 | Publish this reviewed plan/tracker and the reusable PR communication/cleanup rules. |
+| 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] [C2 🔵] docs: plan current PR monitoring [step 1/9]` | Documentation/instruction/agent-definition changes only, with no runtime behavior. | 4,000–7,000 | Publish this reviewed plan/tracker and the reusable PR communication/cleanup rules. |
 | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): persist scoped PR selections [step 2/9]` | Drift migration plus fail-closed account identity and cache visibility. | 1,300–2,000 | Migrate current branch/repository/login scope and repository-keyed ephemeral PR cache while preserving request-driven behavior. |
 | 3/9 | `session-pull-request-monitoring-graphql-selection` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): batch exact PR selection [step 3/9]` | Typed dynamic GraphQL batching/pagination, identity fencing, and deterministic selection. | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
 | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): refresh current session branches [step 4/9]` | Git/process resolution, persisted scope, cache races, and cross-layer rendering. | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |
@@ -531,16 +531,17 @@ Scope:
 - Record the fixed nine complexity-tagged titles, line budgets, existing PR
   #457 contract baseline, current code baseline, open-PR drift, and final
   retirement step.
-- Update Plan Maker and Plan Worker with the reusable complexity scale, required
-  PR summaries, and feature cleanup assessment/execution rules.
+- Update root repository guidance, Plan Maker, and Plan Worker with the reusable
+  complexity scale and required PR summaries; add feature cleanup
+  assessment/execution rules to the planning agents.
 - Run `aristotle-plan-review` against the complete production plan.
 
 Verification:
 
 - `git diff --check`
 - cross-check every title/step total/branch in `PLAN.md` and `TRACKER.md`
-- confirm only this plan directory and the two requested agent definitions
-  changed
+- confirm only this plan directory, root `AGENTS.md`, and the two requested
+  agent definitions changed
 
 ### Step 2/9 — Scoped PR persistence
 

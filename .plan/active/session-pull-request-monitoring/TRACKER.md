@@ -132,10 +132,11 @@
   suite applies.
 - **PR guidance update:** Added the requested `C1 🟢`–`C5 🔴` title scale,
   required PR-body summaries, and feature cleanup assessment/execution rules to
-  Plan Maker and Plan Worker. These non-production instructions do not change
-  the approved architecture. `git diff --check` passes, exact titles match
-  between plan/tracker, and change scope is limited to this plan plus those two
-  agent definitions.
+  Plan Maker and Plan Worker, with matching title/body rules in root
+  `AGENTS.md`. These non-production instructions do not change the approved
+  architecture. `git diff --check` passes, exact titles match between
+  plan/tracker, and change scope is limited to this plan plus the three
+  instruction/agent files.
 
 ## Findings and Plan Deltas
 
