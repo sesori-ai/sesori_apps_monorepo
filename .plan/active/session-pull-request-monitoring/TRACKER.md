@@ -130,6 +130,11 @@
   identity gating, named non-GitHub branch display, and the correct reviewed
   baseline SHA. Documentation validation remains `git diff --check`; no product
   suite applies.
+- **PR #649 refresh-generation follow-up:** A later automated review correctly
+  identified that a same-project explicit refresh could share an in-flight cycle
+  after its local Git snapshot. The plan now seals per-project request
+  generations before local resolution and requires post-seal requests/waiters to
+  use the coalesced follow-up generation.
 - **PR guidance update:** Added the requested `🌱`–`🚨` title scale,
   required PR-body summaries, and feature cleanup assessment/execution rules to
   Plan Maker and Plan Worker, with matching title/body rules in root
@@ -157,6 +162,9 @@
   candidate pagination past newer fork heads, read-time GitHub identity gating,
   a coalesced add-during-flight refresh, and independent branch display for
   named non-GitHub repositories.
+- **2026-07-31 — Explicit refresh generation:** Same-project requests arriving
+  after cycle admission no longer share potentially stale local evidence; their
+  waiter is bound to the immediate follow-up generation.
 - **2026-07-31 — Cleanup:** Step 2 replaces the unscoped cache shape; Step 3
   removes repository-wide PR source code and directly obsolete test support.
   Creation-branch storage and the empty compatibility wire field remain because

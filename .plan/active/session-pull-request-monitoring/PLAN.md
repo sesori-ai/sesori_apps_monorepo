@@ -335,13 +335,15 @@ ViewedProjectPrRefreshListener one-shot timer
 
 `PrSyncService` evolves in place into the single refresh owner; do not add a
 parallel dispatcher plus facade. It accepts a set of project ids and exposes
-typed completion/rendered-change results. One cycle runs at a time. A request
-whose projects are already covered shares that completion; project ids added
-during the cycle enter one coalesced pending set. Completion atomically drains
-that set into one immediate follow-up cycle, so a newly viewed project is not
-dropped and no cycles overlap. Explicit waiters complete only after a cycle
-that covered their requested project. The listener's next interval starts from
-the final drained completion.
+typed completion/rendered-change results. One cycle runs at a time. Before local
+target resolution begins, the service seals that cycle's per-project request
+generations. A later request advances its project's generation and enters one
+coalesced pending set even when the same project is already in flight. Completion
+atomically drains pending generations into one immediate follow-up cycle, so a
+newly viewed project or a same-project branch switch cannot be dropped and no
+cycles overlap. Explicit waiters complete only after a cycle whose sealed
+generation covers their request. The listener's next interval starts from the
+final drained completion.
 
 `ProjectViewTracker` owns `connectionId -> projectId?`, per-project counts, and
 typed active-set changes. `Orchestrator` routes `RelayProjectView`, releases one
@@ -623,6 +625,9 @@ Scope:
   current branch/repository scope before GitHub work.
 - Make one `PrSyncService` call accept a set of project ids and serialize its
   local/network/write phases.
+- Seal per-project request generations before local target resolution; queue
+  requests arriving after that seal for one coalesced follow-up even when their
+  project is already in the active cycle.
 - Gate joins on project id + repository + branch + project cache login + fresh
   read-scoped verified login; replace only complete current-target selections.
 - Map shared `Session.branchName` from the current field and keep cleanup paths
@@ -640,11 +645,15 @@ Acceptance:
 - Same branch with a transient same-identity GitHub failure may retain its
   selected row; changed branch/repo/login cannot.
 - Normal and explicit session loads preserve cache-first/five-second behavior.
+- An explicit refresh arriving after its project's cycle generation was sealed
+  waits for the follow-up generation and can observe a branch switch made during
+  the first cycle.
 
 Verification:
 
 - root/child/shared-directory/dedicated/detached/missing/path-move tests
-- request false/true timeout and SSE change-only tests
+- request false/true timeout, same-project post-seal branch-switch, generation
+  coalescing, and SSE change-only tests
 - account/repository/branch race and privacy-safe logging tests
 - bridge fatal-info analysis and focused/full tests
 
@@ -658,8 +667,8 @@ Scope:
 - Add one `ViewedProjectPrRefreshListener` with immediate activation and one
   completion-based fixed 30-second timer for the active union.
 - Batch different devices' projects through the same `PrSyncService` cycle.
-- Coalesce projects added during an in-flight cycle into one immediate
-  non-overlapping follow-up before rearming the interval.
+- Feed projects added during an in-flight cycle into the service's pending
+  generation drain before rearming the interval.
 - Cancel future work when the active set empties; integrate disposal.
 - Keep request-driven old-client triggers.
 
@@ -804,7 +813,7 @@ Verification:
 | Coworker PR is missed | No author filter; exact same-repository head branch is authoritative. |
 | Fork PR collides by branch name | Reject cross-repository heads and page past newer fork candidates until an eligible same-repository PR or exhaustion; fork support is deferred. |
 | Multiple devices view different projects | Per-connection tracker plus one active-set scheduler; batch/dedupe targets. |
-| Timer/config races or duplicate work | One completion-based timer, one serialized refresh with a coalesced pending-project set, callback-scoped settings mutation. |
+| Refresh/timer/config races or duplicate work | Per-project request generations sealed before local resolution, one serialized drain with a coalesced pending set, one completion-based timer, and callback-scoped settings mutation. |
 | `gh auth switch` exposes prior private metadata | Fresh read-scoped identity gating, login-gated rows, per-chunk identity, final recheck, and fail-closed visibility suspension. |
 | GraphQL query becomes too large | Deterministic 20-target chunks in one refresh cycle; no per-project timers. |
 | GraphQL/`gh` is unavailable | Local branch still commits; cache-first sessions continue without PR metadata when identity is unverifiable; typed failure never becomes empty success. |
