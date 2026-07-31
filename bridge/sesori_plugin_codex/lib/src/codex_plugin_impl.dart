@@ -19,6 +19,7 @@ import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
+import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
 import "runtime/codex_managed_api.dart";
@@ -127,6 +128,7 @@ class CodexPlugin implements CodexManagedApi {
     final resolvedProjectCwd = projectCwd ?? Directory.current.path;
     final configReader = CodexConfigReader();
     final rolloutApi = CodexRolloutApi();
+    const imageAttachmentMapper = CodexImageAttachmentMapper();
     const imageBearingItemParser = CodexImageBearingItemParser();
     const rolloutToolMapper = CodexRolloutToolMapper();
     final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
@@ -156,6 +158,7 @@ class CodexPlugin implements CodexManagedApi {
       eventMapper: CodexEventMapper(
         pluginId: pluginId,
         projectCwd: resolvedProjectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         config: configReader.readDefaults(),

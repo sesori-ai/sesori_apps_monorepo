@@ -7,6 +7,7 @@ import "api/models/codex_rollout_dto.dart";
 import "api/parsers/codex_image_bearing_item_parser.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
+import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
 
@@ -30,10 +31,12 @@ class CodexEventMapper {
   CodexEventMapper({
     required this.pluginId,
     required this.projectCwd,
+    required CodexImageAttachmentMapper imageAttachmentMapper,
     required CodexImageBearingItemParser imageBearingItemParser,
     required CodexRolloutToolMapper rolloutToolMapper,
     this.config = const CodexConfigDefaults.empty(),
-  }) : _imageBearingItemParser = imageBearingItemParser,
+  }) : _imageAttachmentMapper = imageAttachmentMapper,
+       _imageBearingItemParser = imageBearingItemParser,
        _rolloutToolMapper = rolloutToolMapper;
 
   final String pluginId;
@@ -60,6 +63,7 @@ class CodexEventMapper {
   /// global [config] default — making a model switch look like it never took
   /// effect even though codex honoured it. Falls back to [config] when unknown.
   final Map<String, String> _threadModel = {};
+  final CodexImageAttachmentMapper _imageAttachmentMapper;
   final CodexImageBearingItemParser _imageBearingItemParser;
   final CodexRolloutToolMapper _rolloutToolMapper;
 
@@ -285,6 +289,7 @@ class CodexEventMapper {
         tool: call.tool,
         title: call.title,
         status: PluginToolStatus.running,
+        attachments: const [],
       );
     }
     final result = _rolloutToolMapper.mapResult(payload);
@@ -300,6 +305,7 @@ class CodexEventMapper {
       title: originalCall.title,
       status: result.status,
       output: result.output,
+      attachments: const [],
     );
   }
 
@@ -343,8 +349,32 @@ class CodexEventMapper {
 
     final imageBearingItem = _imageBearingItemParser.parse(item: item);
     switch (imageBearingItem) {
-      case CodexImageGenerationItemDto():
-        return const [];
+      case CodexImageGenerationItemDto(
+        :final status,
+        :final result,
+        :final savedPath,
+      ):
+        final toolStatus = _imageGenerationToolStatus(
+          status: status,
+          completed: completed,
+        );
+        return _toolItemEvents(
+          threadId: threadId,
+          itemId: itemId,
+          tool: "image_generation",
+          status: toolStatus,
+          attachments: toolStatus == PluginToolStatus.completed
+              ? _imageAttachmentMapper.map(
+                  candidates: [
+                    CodexImageAttachmentCandidate.base64(
+                      data: result,
+                      mime: "image/png",
+                      filenameHint: savedPath,
+                    ),
+                  ],
+                )
+              : const [],
+        );
       case CodexMcpToolCallItemDto(
         :final server,
         :final tool,
@@ -360,6 +390,17 @@ class CodexEventMapper {
           status: _parsedToolStatus(status: status, completed: completed),
           output: _imageBearingToolOutput(content: content),
           error: error,
+          attachments: _imageAttachmentMapper.map(
+            candidates: [
+              for (final item in content)
+                if (item case CodexMcpImageContentDto(:final data, :final mimeType))
+                  CodexImageAttachmentCandidate.base64(
+                    data: data,
+                    mime: mimeType,
+                    filenameHint: null,
+                  ),
+            ],
+          ),
         );
       case CodexDynamicToolCallItemDto(
         :final tool,
@@ -387,6 +428,15 @@ class CodexEventMapper {
               _rolloutToolMapper.clipOutput(
                 _imageBearingToolOutput(content: content),
               ),
+          attachments: _imageAttachmentMapper.map(
+            candidates: [
+              for (final item in content)
+                if (item case CodexDynamicImageContentDto(:final imageUrl))
+                  CodexImageAttachmentCandidate.imageUrl(
+                    imageUrl: imageUrl,
+                  ),
+            ],
+          ),
         );
       case CodexUnknownImageBearingItemDto() || null:
         break;
@@ -453,6 +503,7 @@ class CodexEventMapper {
               _rolloutToolMapper.clipOutput(
                 item["aggregatedOutput"] as String?,
               ),
+          attachments: const [],
         );
       case "fileChange":
         return _toolItemEvents(
@@ -462,6 +513,7 @@ class CodexEventMapper {
           title: _fileChangeTitle(item["changes"]),
           status: _toolStatus(item["status"], completed: completed),
           output: _fileChangeOutput(item["changes"]),
+          attachments: const [],
         );
       case "webSearch":
         return _toolItemEvents(
@@ -471,6 +523,7 @@ class CodexEventMapper {
           title: item["query"] as String?,
           // webSearch items carry no status field.
           status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
+          attachments: const [],
         );
       case "contextCompaction":
         return [
@@ -480,6 +533,7 @@ class CodexEventMapper {
             tool: "compact",
             title: completed ? "Context compacted" : "Compacting context",
             status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
+            attachments: const [],
           ),
           if (completed) BridgeSseSessionCompacted(sessionID: threadId),
         ];
@@ -502,6 +556,7 @@ class CodexEventMapper {
     required String itemId,
     required String tool,
     required PluginToolStatus status,
+    required List<PluginMessageAttachment> attachments,
     String? title,
     String? output,
     String? error,
@@ -523,7 +578,7 @@ class CodexEventMapper {
             title: title,
             output: output,
             error: error ?? (status == PluginToolStatus.error ? output : null),
-            attachments: const [],
+            attachments: attachments,
           ),
           prompt: null,
           description: null,
@@ -562,6 +617,18 @@ class CodexEventMapper {
       CodexToolCallStatus.completed => PluginToolStatus.completed,
       CodexToolCallStatus.failed || CodexToolCallStatus.declined => PluginToolStatus.error,
       CodexToolCallStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
+    };
+  }
+
+  PluginToolStatus _imageGenerationToolStatus({
+    required CodexImageGenerationStatus status,
+    required bool completed,
+  }) {
+    return switch (status) {
+      CodexImageGenerationStatus.inProgress => PluginToolStatus.running,
+      CodexImageGenerationStatus.completed => PluginToolStatus.completed,
+      CodexImageGenerationStatus.failed => PluginToolStatus.error,
+      CodexImageGenerationStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
     };
   }
 

@@ -5,6 +5,7 @@ import "package:codex_plugin/src/api/codex_app_server_api.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -17,11 +18,13 @@ import "package:test/test.dart";
 void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
+    const imageAttachmentMapper = CodexImageAttachmentMapper();
     const imageBearingItemParser = CodexImageBearingItemParser();
     const rolloutToolMapper = CodexRolloutToolMapper();
     final mapper = CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
+      imageAttachmentMapper: imageAttachmentMapper,
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
     );
@@ -171,6 +174,7 @@ void main() {
       final scopedMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       )..setThreadDirectory("t-9", "/repo/app/packages/ui");
@@ -190,6 +194,7 @@ void main() {
       final activityMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       );
@@ -236,6 +241,7 @@ void main() {
       final activityMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       );
@@ -407,6 +413,7 @@ void main() {
       final richMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
@@ -446,6 +453,7 @@ void main() {
       final richMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
@@ -783,13 +791,13 @@ void main() {
       expect(part.state?.output, contains("+b"));
     });
 
-    test("imageGeneration items remain deliberately unrendered", () {
-      for (final (method, status) in [
-        ("item/started", "in_progress"),
-        ("item/completed", "completed"),
-        ("item/completed", "failed"),
-      ]) {
-        final events = mapper.map(
+    test("imageGeneration upserts one stable tool part across its lifecycle", () {
+      List<BridgeSseEvent> mapImage({
+        required String method,
+        required String status,
+        required String result,
+      }) {
+        return mapper.map(
           CodexServerNotification(
             method: method,
             params: {
@@ -799,15 +807,39 @@ void main() {
                 "id": "i-image",
                 "status": status,
                 "revisedPrompt": "private prompt",
-                "result": "private image payload",
+                "result": result,
                 "savedPath": "/private/output.png",
               },
             },
           ),
         );
-
-        expect(events, isEmpty);
       }
+
+      final started = mapImage(method: "item/started", status: "in_progress", result: "");
+      final completed = mapImage(method: "item/completed", status: "completed", result: "AA==");
+      final failed = mapImage(method: "item/completed", status: "failed", result: "AA==");
+
+      final runningPart = (started[1] as BridgeSseMessagePartUpdated).part;
+      final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
+      final failedPart = (failed[1] as BridgeSseMessagePartUpdated).part;
+      expect(started, hasLength(2));
+      expect(runningPart.id, "i-image-tool");
+      expect(runningPart.messageID, "i-image");
+      expect(runningPart.tool, "image_generation");
+      expect(runningPart.state?.status, PluginToolStatus.running);
+      expect(runningPart.state?.title, isNull);
+      expect(runningPart.state?.attachments, isEmpty);
+      expect(completedPart.id, runningPart.id);
+      expect(completedPart.state?.status, PluginToolStatus.completed);
+      final image = completedPart.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(image.mime, "image/png");
+      expect(image.base64, "AA==");
+      expect(image.filename, "output.png");
+      expect(completedPart.toString(), isNot(contains("private prompt")));
+      expect(completedPart.toString(), isNot(contains("/private/")));
+      expect(failedPart.id, runningPart.id);
+      expect(failedPart.state?.status, PluginToolStatus.error);
+      expect(failedPart.state?.attachments, isEmpty);
     });
 
     test("mcpToolCall (failed) → error tool part", () {
@@ -825,7 +857,11 @@ void main() {
               "result": {
                 "content": [
                   {"type": "text", "text": "before "},
-                  {"type": "image", "data": "encoded-image", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
+                  {"type": "image", "data": "AA==", "mimeType": "image/png"},
                   {"type": "text", "text": "after"},
                 ],
               },
@@ -841,7 +877,8 @@ void main() {
       expect(part.state?.title, "playwright/click");
       expect(part.state?.output, "before after");
       expect(part.state?.error, "element not found");
-      expect(part.state?.attachments, isEmpty);
+      expect(part.state?.attachments, hasLength(4));
+      expect(part.state?.attachments, everyElement(isA<PluginMessageAttachmentInlineImage>()));
     });
 
     test("dynamicToolCall streams a running tool and its completed output", () {
@@ -898,6 +935,7 @@ void main() {
               "contentItems": [
                 {"type": "inputText", "text": "wait completed"},
                 {"type": "inputImage", "imageUrl": "data:image/png;base64,AA=="},
+                {"type": "inputImage", "imageUrl": "https://example.com/private/remote.png?token=secret"},
                 {"type": "inputAudio", "audioUrl": "data:audio/wav;base64,AA=="},
               ],
               "durationMs": 2000,
@@ -912,7 +950,29 @@ void main() {
       expect(completedPart.id, runningPart.id);
       expect(completedPart.state?.status, PluginToolStatus.completed);
       expect(completedPart.state?.output, "wait completed");
-      expect(completedPart.state?.attachments, isEmpty);
+      expect(completedPart.state?.attachments, hasLength(2));
+      expect(completedPart.state?.attachments[0], isA<PluginMessageAttachmentInlineImage>());
+      final remote = completedPart.state!.attachments[1] as PluginMessageAttachmentMetadata;
+      expect(remote.mime, "application/octet-stream");
+      expect(remote.filename, "remote.png");
+    });
+
+    test("imageView local paths remain unsupported", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "item": {
+              "type": "imageView",
+              "id": "i-view",
+              "path": "/private/output.png",
+            },
+          },
+        ),
+      );
+
+      expect(events, isEmpty);
     });
 
     test("dynamicToolCall falls back for malformed or empty tool names", () {
