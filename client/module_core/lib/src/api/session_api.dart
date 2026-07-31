@@ -41,6 +41,19 @@ class SessionApi {
     );
   }
 
+  Future<ApiResponse<SessionOptionsResponse>> loadSessionOptions({
+    required String projectId,
+    required String pluginId,
+    required bool refresh,
+  }) {
+    return _client.post(
+      "/session/options",
+      fromJson: SessionOptionsResponse.fromJson,
+      body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
+      queryParameters: refresh ? const {"refresh": "true"} : null,
+    );
+  }
+
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
     required String pluginId,

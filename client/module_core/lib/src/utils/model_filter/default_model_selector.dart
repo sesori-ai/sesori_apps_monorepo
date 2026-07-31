@@ -1,3 +1,4 @@
+import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 /// Pure helper that selects a single representative [ProviderModel] from a
@@ -26,6 +27,7 @@ import "package:sesori_shared/sesori_shared.dart";
 /// models are already filtered out by [ProviderModel.isAvailable] in
 /// `bridge/sesori_plugin_opencode/lib/src/provider_mapper.dart`, and a
 /// hard cutoff can hide new models whose metadata is missing or stale.
+@lazySingleton
 class DefaultModelSelector {
   const DefaultModelSelector();
 
@@ -83,7 +85,8 @@ class DefaultModelSelector {
   ProviderModel _bestModel(List<ProviderModel> candidates) {
     assert(candidates.isNotEmpty, "_bestModel requires non-empty candidates");
 
-    final sorted = [...candidates]..sort((a, b) {
+    final sorted = [...candidates]
+      ..sort((a, b) {
         final dateA = a.releaseDate;
         final dateB = b.releaseDate;
         final int dateCompare;

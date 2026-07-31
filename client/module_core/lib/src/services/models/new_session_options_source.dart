@@ -1,0 +1,1 @@
+enum NewSessionOptionsSource { aggregate, legacy }

@@ -1,10 +1,15 @@
+import "dart:convert";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
+
+enum _LegacyOptionsFailureSource { agents, providers, commands }
 
 void main() {
   setUpAll(registerAllFallbackValues);
@@ -126,115 +131,210 @@ void main() {
     verify(() => api.rejectQuestion(requestId: "question-1", sessionId: "session-1")).called(1);
   });
 
-  test("listProviders does not cache an empty response but caches one with models", () async {
+  test("listProviders always delegates because the bridge owns option caching", () async {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
-
-    const emptyProviders = ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]);
-    const populatedProviders = ProviderListResponse(
-      connectedOnly: false,
-      items: [
-        ProviderInfo(
-          id: "cursor",
-          name: "Cursor",
-          defaultModelID: "auto",
-          models: {
-            "auto": ProviderModel(
-              id: "auto",
-              providerID: "cursor",
-              name: "Auto",
-              variants: <String>[],
-              family: null,
-              releaseDate: null,
-            ),
-          },
-        ),
-      ],
+    when(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).thenAnswer(
+      (_) async => ApiResponse.success(
+        const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]),
+      ),
     );
 
-    // First fetch returns an empty catalog (e.g. the ACP backend has not warmed
-    // its model list yet); later fetches return the populated catalog.
-    var calls = 0;
-    when(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).thenAnswer((_) async {
-      calls++;
-      return ApiResponse.success(calls == 1 ? emptyProviders : populatedProviders);
-    });
+    await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
+    await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
 
-    final first = await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
-    expect((first as SuccessResponse<ProviderListResponse>).data.items, isEmpty);
-
-    // The empty result must NOT be cached: the second fetch hits the API again
-    // and returns the now-populated catalog (the regression being guarded).
-    final second = await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
-    expect((second as SuccessResponse<ProviderListResponse>).data.items, isNotEmpty);
     verify(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).called(2);
-
-    // The populated result IS cached: the third fetch is served without the API.
-    final third = await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
-    expect((third as SuccessResponse<ProviderListResponse>).data.items, isNotEmpty);
-    verifyNever(() => api.listProviders(projectId: "p1", pluginId: "plugin-1"));
   });
 
-  test("listProviders does not cache a partially populated multi-provider response", () async {
+  test("loadLegacySessionOptions calls all three APIs and maps their catalogs", () async {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
+    const agent = AgentInfo(
+      name: "build",
+      description: "Build",
+      model: null,
+      mode: AgentMode.primary,
+    );
+    const provider = ProviderInfo(
+      id: "provider-1",
+      name: "Provider One",
+      models: <String, ProviderModel>{},
+      defaultModelID: null,
+    );
+    final command = testCommandInfo();
+    when(
+      () => api.listAgents(projectId: "p1", pluginId: "plugin-1"),
+    ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: [agent])));
+    when(
+      () => api.listProviders(projectId: "p1", pluginId: "plugin-1"),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const ProviderListResponse(connectedOnly: false, items: [provider]),
+      ),
+    );
+    when(
+      () => api.listCommands(projectId: "p1", pluginId: "plugin-1"),
+    ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
 
-    ProviderInfo provider({required String id, required bool withModels}) => ProviderInfo(
-      id: id,
-      name: id,
-      defaultModelID: withModels ? "$id-default" : null,
-      models: withModels
-          ? {
-              "$id-default": ProviderModel(
-                id: "$id-default",
-                providerID: id,
-                name: "$id default",
-                variants: <String>[],
-                family: null,
-                releaseDate: null,
-              ),
-            }
-          : const <String, ProviderModel>{},
+    final result = await repository.loadLegacySessionOptions(projectId: "p1", pluginId: "plugin-1");
+
+    expect(
+      result,
+      isA<LegacySessionOptionsRepositoryAvailable>()
+          .having((value) => value.catalog.agents, "agents", const [agent])
+          .having((value) => value.catalog.providers, "providers", const [provider])
+          .having((value) => value.catalog.commands, "commands", [command]),
+    );
+    verify(() => api.listAgents(projectId: "p1", pluginId: "plugin-1")).called(1);
+    verify(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).called(1);
+    verify(() => api.listCommands(projectId: "p1", pluginId: "plugin-1")).called(1);
+  });
+
+  test("loadLegacySessionOptions maps each API failure", () async {
+    for (final failureSource in _LegacyOptionsFailureSource.values) {
+      final api = MockSessionApi();
+      final repository = SessionRepository(api: api);
+      final error = ApiError.generic();
+      when(
+        () => api.listAgents(projectId: "p1", pluginId: "plugin-1"),
+      ).thenAnswer(
+        (_) async => failureSource == _LegacyOptionsFailureSource.agents
+            ? ApiResponse<Agents>.error(error)
+            : ApiResponse.success(const Agents(agents: [])),
+      );
+      when(
+        () => api.listProviders(projectId: "p1", pluginId: "plugin-1"),
+      ).thenAnswer(
+        (_) async => failureSource == _LegacyOptionsFailureSource.providers
+            ? ApiResponse<ProviderListResponse>.error(error)
+            : ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: [])),
+      );
+      when(
+        () => api.listCommands(projectId: "p1", pluginId: "plugin-1"),
+      ).thenAnswer(
+        (_) async => failureSource == _LegacyOptionsFailureSource.commands
+            ? ApiResponse<CommandListResponse>.error(error)
+            : ApiResponse.success(const CommandListResponse(items: [])),
+      );
+
+      final result = await repository.loadLegacySessionOptions(projectId: "p1", pluginId: "plugin-1");
+
+      expect(
+        result,
+        isA<LegacySessionOptionsRepositoryFailure>().having((value) => value.error, "error", error),
+        reason: "failed to map $failureSource",
+      );
+      verify(() => api.listAgents(projectId: "p1", pluginId: "plugin-1")).called(1);
+      verify(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).called(1);
+      verify(() => api.listCommands(projectId: "p1", pluginId: "plugin-1")).called(1);
+    }
+  });
+
+  test("loadSessionOptions maps a successful aggregate", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+    const response = SessionOptionsResponse(
+      agents: Agents(agents: <AgentInfo>[]),
+      providers: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
+      commands: CommandListResponse(items: <CommandInfo>[]),
+    );
+    when(
+      () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", refresh: false),
+    ).thenAnswer((_) async => ApiResponse.success(response));
+
+    final result = await repository.loadSessionOptions(
+      projectId: "p1",
+      pluginId: "plugin-1",
+      refresh: false,
     );
 
-    // A fast provider is already populated while a slow one (e.g. Cursor/ACP) is
-    // still warming up with an empty models map; once warmed, both are populated.
-    const connectedOnly = true;
-    final partialProviders = ProviderListResponse(
-      connectedOnly: connectedOnly,
-      items: [
-        provider(id: "openai", withModels: true),
-        provider(id: "cursor", withModels: false),
-      ],
+    expect(
+      result,
+      isA<SessionOptionsRepositoryAvailable>()
+          .having((value) => value.catalog.agents, "agents", response.agents.agents)
+          .having((value) => value.catalog.providers, "providers", response.providers.items)
+          .having((value) => value.catalog.commands, "commands", response.commands.items),
     );
-    final fullProviders = ProviderListResponse(
-      connectedOnly: connectedOnly,
-      items: [
-        provider(id: "openai", withModels: true),
-        provider(id: "cursor", withModels: true),
-      ],
+  });
+
+  test("loadSessionOptions maps every typed code independently of HTTP status", () async {
+    final cases = <(SessionOptionsErrorCode, int, Type)>[
+      (SessionOptionsErrorCode.cacheUnavailable, 400, SessionOptionsRepositoryCacheUnavailable),
+      (SessionOptionsErrorCode.projectNotFound, 503, SessionOptionsRepositoryProjectNotFound),
+      (SessionOptionsErrorCode.refreshFailedRetained, 502, SessionOptionsRepositoryRefreshFailedRetained),
+      (SessionOptionsErrorCode.refreshFailedUnavailable, 418, SessionOptionsRepositoryRefreshFailedUnavailable),
+    ];
+
+    for (final (code, status, expectedType) in cases) {
+      final api = MockSessionApi();
+      final repository = SessionRepository(api: api);
+      when(
+        () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", refresh: true),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(
+            errorCode: status,
+            rawErrorString: jsonEncode(SessionOptionsErrorResponse(code: code).toJson()),
+          ),
+        ),
+      );
+
+      final result = await repository.loadSessionOptions(
+        projectId: "p1",
+        pluginId: "plugin-1",
+        refresh: true,
+      );
+
+      expect(result.runtimeType, expectedType, reason: "failed to map $code from HTTP $status");
+      expect(result, isNot(isA<SessionOptionsRepositoryFailure>()));
+    }
+  });
+
+  test("normalized plugin authentication failure remains a typed refresh failure", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+    when(
+      () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", refresh: true),
+    ).thenAnswer(
+      (_) async => ApiResponse.error(
+        ApiError.nonSuccessCode(
+          errorCode: 502,
+          rawErrorString: jsonEncode(
+            const SessionOptionsErrorResponse(code: SessionOptionsErrorCode.refreshFailedRetained).toJson(),
+          ),
+        ),
+      ),
     );
 
-    var calls = 0;
-    when(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).thenAnswer((_) async {
-      calls++;
-      return ApiResponse.success(calls == 1 ? partialProviders : fullProviders);
-    });
+    final result = await repository.loadSessionOptions(
+      projectId: "p1",
+      pluginId: "plugin-1",
+      refresh: true,
+    );
 
-    // The partial response must NOT be cached, even though one provider has
-    // models — otherwise the warming provider's picker would stay blank forever.
-    final first = await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
-    final firstItems = (first as SuccessResponse<ProviderListResponse>).data.items;
-    expect(firstItems.firstWhere((p) => p.id == "cursor").models, isEmpty);
+    expect(result, isA<SessionOptionsRepositoryRefreshFailedRetained>());
+    expect(result, isNot(isA<NotAuthenticatedError>()));
+  });
 
-    // Next fetch hits the API again and returns the now-fully-populated catalog.
-    final second = await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
-    final secondItems = (second as SuccessResponse<ProviderListResponse>).data.items;
-    expect(secondItems.firstWhere((p) => p.id == "cursor").models, isNotEmpty);
-    verify(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).called(2);
+  test("unknown and malformed aggregate errors remain ordinary failures", () async {
+    for (final body in <String>[
+      jsonEncode(const {"code": "futureCode"}),
+      "not-json",
+    ]) {
+      final api = MockSessionApi();
+      final repository = SessionRepository(api: api);
+      final error = ApiError.nonSuccessCode(errorCode: 599, rawErrorString: body);
+      when(
+        () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", refresh: false),
+      ).thenAnswer((_) async => ApiResponse.error(error));
 
-    // The fully-populated result IS cached: the third fetch is served from cache.
-    await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
-    verifyNever(() => api.listProviders(projectId: "p1", pluginId: "plugin-1"));
+      final result = await repository.loadSessionOptions(
+        projectId: "p1",
+        pluginId: "plugin-1",
+        refresh: false,
+      );
+
+      expect(result, isA<SessionOptionsRepositoryFailure>().having((value) => value.error, "error", error));
+    }
   });
 }
