@@ -5,10 +5,10 @@
 - **Plan slug:** `output-image-support`
 - **Implementation base:** `origin/main` at
   `9d2c1e9e79ab80fa8824b9d803a74798eb71140d`
-- **Series state:** Step 6/13 ready for PR
+- **Series state:** Step 6/13 open as [PR #652](https://github.com/sesori-ai/sesori_apps_monorepo/pull/652)
 - **Current step:** Step 6/13 — surface live Codex images
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** open and monitor the Step 6/13 PR
+- **Next action:** monitor PR #652 and address CI or review findings
 
 ## Plan Review
 
@@ -31,7 +31,7 @@
 | [x] | 3/13 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/13]` | 900-1,350 | [PR #644](https://github.com/sesori-ai/sesori_apps_monorepo/pull/644) merged as `f78e1f69`; 1,075 changed lines |
 | [x] | 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | [PR #646](https://github.com/sesori-ai/sesori_apps_monorepo/pull/646) merged as `4be1e7bb`; 1,416 changed lines |
 | [x] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | [PR #648](https://github.com/sesori-ai/sesori_apps_monorepo/pull/648) merged as `e9a03363`; 1,472 changed lines |
-| [ ] | 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | Ready for PR; 830 changed lines |
+| [ ] | 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | [PR #652](https://github.com/sesori-ai/sesori_apps_monorepo/pull/652) open; 830 changed lines |
 | [ ] | 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | Blocked on Step 6 merge |
 | [ ] | 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | Blocked on Step 7 merge |
 | [ ] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | Blocked on Step 8 merge |
