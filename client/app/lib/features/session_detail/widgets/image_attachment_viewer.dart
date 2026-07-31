@@ -30,8 +30,9 @@ Future<void> showImageAttachmentViewer({
   required BuildContext context,
   required LoadedMessageImage image,
   required String filename,
-  required Object heroTag,
+  required Key heroTag,
 }) {
+  // ignore: no_slop_linter/avoid_navigator_of, no_slop_linter/avoid_raw_go_router, this transient root Hero route carries an in-memory ImageProvider that cannot be represented in a URL
   return Navigator.of(context, rootNavigator: true).push<void>(
     PageRouteBuilder<void>(
       opaque: true,
@@ -62,7 +63,7 @@ class ImageAttachmentViewer extends StatelessWidget {
 
   final LoadedMessageImage image;
   final String filename;
-  final Object heroTag;
+  final Key heroTag;
 
   const ImageAttachmentViewer({
     super.key,
@@ -83,6 +84,7 @@ class ImageAttachmentViewer extends StatelessWidget {
     );
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, callback signature is defined by BlocListener
   void _handleActionState(BuildContext context, ImageAttachmentActionsState state) {
     final message = switch (state) {
       ImageAttachmentSaved() => context.loc.sessionDetailImageSaved,
@@ -116,6 +118,7 @@ class ImageAttachmentViewer extends StatelessWidget {
                   children: [
                     IconButton(
                       tooltip: context.loc.sessionDetailImageClose,
+                      // ignore: no_slop_linter/avoid_navigator_of, closes the transient PageRouteBuilder used for the Hero transition
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(Icons.close, color: prego.colors.textPrimary),
                     ),

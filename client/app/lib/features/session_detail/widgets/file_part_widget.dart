@@ -205,8 +205,9 @@ class _LoadedImageAttachment extends StatefulWidget {
 class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
   static const _maxDecodedImageDimension = 2048;
 
-  final _heroTag = Object();
+  final _heroTag = UniqueKey();
   late LoadedMessageImage _image;
+  bool _isDecoded = false;
 
   @override
   void initState() {
@@ -226,6 +227,7 @@ class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
   }
 
   void _refreshImage() {
+    _isDecoded = false;
     _image = LoadedMessageImage(
       bytes: widget.bytes,
       provider: ResizeImage(
@@ -240,25 +242,34 @@ class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
     );
   }
 
+  void _markImageDecoded() {
+    if (_isDecoded) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isDecoded) setState(() => _isDecoded = true);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     return Padding(
       padding: EdgeInsets.symmetric(vertical: prego.spacing.md),
       child: Semantics(
-        button: true,
+        button: _isDecoded,
         label: context.loc.sessionDetailImageOpen,
         child: GestureDetector(
           key: FilePartWidget.previewTapTargetKey,
           behavior: HitTestBehavior.opaque,
-          onTap: () => unawaited(
-            showImageAttachmentViewer(
-              context: context,
-              image: _image,
-              filename: widget.filename,
-              heroTag: _heroTag,
-            ),
-          ),
+          onTap: !_isDecoded
+              ? null
+              : () => unawaited(
+                  showImageAttachmentViewer(
+                    context: context,
+                    image: _image,
+                    filename: widget.filename,
+                    heroTag: _heroTag,
+                  ),
+                ),
           child: Hero(
             tag: _heroTag,
             child: ClipRRect(
@@ -274,6 +285,10 @@ class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
                   image: _image.provider,
                   fit: BoxFit.contain,
                   semanticLabel: widget.filename,
+                  frameBuilder: (_, child, frame, _) {
+                    if (frame != null) _markImageDecoded();
+                    return child;
+                  },
                   errorBuilder: (_, _, _) => Icon(
                     Icons.broken_image,
                     size: prego.spacing.x6l,

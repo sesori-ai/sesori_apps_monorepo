@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:typed_data";
 
 import "package:http/http.dart" as http;
@@ -9,7 +10,9 @@ import "package:test/test.dart";
 void main() {
   test("downloads a bounded HTTPS raster image once", () async {
     var requests = 0;
-    final bytes = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    final bytes = base64Decode(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    );
     final repository = MessageImageRepository(
       api: MessageImageApi(
         client: MockClient((_) async {
@@ -132,5 +135,26 @@ void main() {
     );
 
     expect(result, isA<MessageImageLoadRejected>());
+  });
+
+  test("bounds action filenames by UTF-8 byte length", () async {
+    final repository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+    );
+    final bytes = base64Decode(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    );
+
+    final result = await repository.load(
+      attachment: MessageAttachment.inlineImage(
+        mime: "image/png",
+        base64: base64Encode(bytes),
+        filename: "${List.filled(200, "😀").join()}.png",
+      ),
+    );
+
+    final filename = (result as MessageImageLoadSuccess).actionFilename;
+    expect(utf8.encode(filename).length, lessThanOrEqualTo(255));
+    expect(filename, endsWith(".png"));
   });
 }

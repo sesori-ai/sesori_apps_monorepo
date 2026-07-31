@@ -55,6 +55,8 @@ final class MessageImageLoadFailure extends MessageImageLoadResult {
 /// Layer-2 policy and mapping for renderable message image attachments.
 @lazySingleton
 class MessageImageRepository {
+  static const _remoteFetchTimeout = Duration(seconds: 15);
+  static const _maxFilenameBytes = 255;
   static const _supportedRasterMimes = {
     "image/bmp",
     "image/gif",
@@ -125,7 +127,11 @@ class MessageImageRepository {
     required String? filename,
   }) async {
     if (uri == null) return const MessageImageLoadUnsupported();
-    final response = await _api.fetch(url: uri, maxBytes: maxInlineMessageAttachmentBytes);
+    final response = await _api.fetch(
+      url: uri,
+      maxBytes: maxInlineMessageAttachmentBytes,
+      timeout: _remoteFetchTimeout,
+    );
     return switch (response) {
       MessageImageApiSuccess(:final bytes) =>
         _hasExpectedSignature(bytes: bytes, mime: mime)
@@ -161,9 +167,6 @@ class MessageImageRepository {
               .replaceFirst(RegExp(r"^\.+"), "")
               .replaceFirst(RegExp(r"[. ]+$"), "")
               .trim();
-    final safeBasename = basename == null || basename.isEmpty
-        ? "image"
-        : String.fromCharCodes(basename.runes.take(200));
     final extension = switch (mime) {
       "image/bmp" => ".bmp",
       "image/gif" => ".gif",
@@ -172,7 +175,24 @@ class MessageImageRepository {
       "image/webp" => ".webp",
       _ => null,
     };
+    final maxBasenameBytes = _maxFilenameBytes - (extension == null ? 0 : utf8.encode(extension).length);
+    final safeBasename = basename == null || basename.isEmpty
+        ? "image"
+        : _truncateUtf8(value: basename, maxBytes: maxBasenameBytes);
     return extension == null ? safeBasename : "$safeBasename$extension";
+  }
+
+  String _truncateUtf8({required String value, required int maxBytes}) {
+    final result = StringBuffer();
+    var byteCount = 0;
+    for (final rune in value.runes) {
+      final character = String.fromCharCode(rune);
+      final characterBytes = utf8.encode(character).length;
+      if (byteCount + characterBytes > maxBytes) break;
+      result.write(character);
+      byteCount += characterBytes;
+    }
+    return result.isEmpty ? "image" : result.toString();
   }
 
   bool _hasExpectedSignature({required Uint8List bytes, required String mime}) => switch (mime) {

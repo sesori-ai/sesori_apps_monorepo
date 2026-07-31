@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:typed_data";
 
 import "package:flutter/material.dart";
@@ -102,7 +103,7 @@ void main() {
   testWidgets("renders a bounded inline image without a network request", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
-      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
       filename: "image.png",
     );
 
@@ -118,7 +119,7 @@ void main() {
   testWidgets("opens inline images in a zoomable Hero viewer using the same provider", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
-      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
       filename: "image.png",
     );
 
@@ -126,6 +127,18 @@ void main() {
     await _finishAsyncDecode(tester: tester);
 
     final preview = tester.widget<Image>(find.byKey(FilePartWidget.previewImageKey));
+    await tester.runAsync(
+      () => precacheImage(
+        preview.image,
+        tester.element(find.byKey(FilePartWidget.previewImageKey)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.broken_image), findsNothing);
+    expect(
+      tester.widget<GestureDetector>(find.byKey(FilePartWidget.previewTapTargetKey)).onTap,
+      isNotNull,
+    );
     await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey));
     await tester.pumpAndSettle();
 
@@ -171,7 +184,7 @@ void main() {
           child: ImageAttachmentViewer(
             image: image,
             filename: "../../unsafe.exe",
-            heroTag: Object(),
+            heroTag: UniqueKey(),
           ),
         ),
       ),
@@ -217,17 +230,8 @@ void main() {
           client: MockClient((_) async {
             requests++;
             return http.Response.bytes(
-              Uint8List.fromList(
-                const [
-                  0x89,
-                  0x50,
-                  0x4E,
-                  0x47,
-                  0x0D,
-                  0x0A,
-                  0x1A,
-                  0x0A,
-                ],
+              base64Decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
               ),
               200,
             );
@@ -248,6 +252,36 @@ void main() {
     expect(find.byKey(FilePartWidget.previewImageKey), findsOneWidget);
     expect(requests, 1);
     verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
+  });
+
+  testWidgets("does not open viewer actions for corrupt image bytes", (tester) async {
+    await GetIt.instance.unregister<MessageImageRepository>();
+    GetIt.instance.registerSingleton<MessageImageRepository>(
+      MessageImageRepository(
+        api: MessageImageApi(
+          client: MockClient(
+            (_) async => http.Response.bytes(
+              Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+              200,
+            ),
+          ),
+        ),
+      ),
+    );
+    const attachment = MessageAttachment.remoteUrl(
+      mime: "image/png",
+      url: "https://files.example.com/corrupt.png",
+      filename: "corrupt.png",
+    );
+
+    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await _finishAsyncDecode(tester: tester);
+    await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImageAttachmentViewer), findsNothing);
+    expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("does not launch unsafe remote schemes", (tester) async {

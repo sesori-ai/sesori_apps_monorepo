@@ -3,6 +3,7 @@ import "dart:async";
 import "package:bloc/bloc.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../logging/logging.dart";
 import "../../repositories/message_image_repository.dart";
 import "message_image_state.dart";
 
@@ -24,6 +25,9 @@ class MessageImageCubit extends Cubit<MessageImageState> {
   Future<void> _load() async {
     final result = await _repository.load(attachment: _attachment);
     if (isClosed) return;
+    if (result case MessageImageLoadFailure(:final cause, :final stackTrace)) {
+      logw("Failed to load a message image", cause, stackTrace);
+    }
     emit(
       switch (result) {
         MessageImageLoadSuccess(:final bytes, :final mime, :final actionFilename, :final originalUri) =>

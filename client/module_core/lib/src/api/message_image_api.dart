@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:typed_data";
 
 import "package:http/http.dart" as http;
@@ -50,13 +51,17 @@ class MessageImageApi {
   Future<MessageImageApiResult> fetch({
     required Uri url,
     required int maxBytes,
+    required Duration timeout,
   }) async {
+    final deadline = Completer<void>();
+    final timer = Timer(timeout, deadline.complete);
     try {
       var currentUrl = url;
       var redirectCount = 0;
       late http.StreamedResponse response;
       while (true) {
-        final request = http.Request("GET", currentUrl)..followRedirects = false;
+        final request = http.AbortableRequest("GET", currentUrl, abortTrigger: deadline.future)
+          ..followRedirects = false;
         response = await _client.send(request);
         if (!_isRedirect(statusCode: response.statusCode)) break;
 
@@ -93,6 +98,8 @@ class MessageImageApi {
       return MessageImageApiSuccess(bytes: bytes.takeBytes());
     } on Object catch (cause, stackTrace) {
       return MessageImageApiNetworkFailure(cause: cause, stackTrace: stackTrace);
+    } finally {
+      timer.cancel();
     }
   }
 
