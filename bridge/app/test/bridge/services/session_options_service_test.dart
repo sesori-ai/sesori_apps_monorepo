@@ -256,6 +256,98 @@ void main() {
     });
   });
 
+  group("SessionOptionsService dynamic loading", () {
+    test("valid cache returns immediately without plugin capture", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..put(
+          _entry(
+            key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
+            response: _response(marker: "cached"),
+            capturedAt: now,
+          ),
+        );
+      final service = _service(
+        repository: repository,
+        now: now,
+        scopes: const {"plugin-1": PluginSessionOptionsScope.plugin},
+      );
+
+      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "cached"));
+      expect(repository.captureCalls, isEmpty);
+    });
+
+    test("cache miss activates only the selected plugin with reuse discovery", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..captureResult = _observed(
+          marker: "dynamic",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        );
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "dynamic"));
+      expect(repository.captureCalls, hasLength(1));
+      expect(repository.captureCalls.single.activation, SessionOptionsCaptureActivation.mayActivate);
+      expect(repository.captureCalls.single.discoveryMode, PluginSessionOptionsDiscoveryMode.reuse);
+      expect(repository.captureCalls.single.expectedGeneration, isNull);
+    });
+
+    test("failed dynamic capture returns a concurrently published valid row", () async {
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.captureHandler = (_) async {
+        repository.put(
+          _entry(
+            key: key,
+            response: _response(marker: "concurrent"),
+            capturedAt: now,
+          ),
+        );
+        return const SessionOptionsCaptureFailed();
+      };
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "concurrent"));
+    });
+
+    test("failed dynamic capture without a cache returns unavailable", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..captureResult = const SessionOptionsCaptureFailed();
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsRefreshFailedUnavailable>());
+    });
+
+    test("project absence is returned without cache or plugin access", () async {
+      final repository = _FakeSessionOptionsRepository();
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "missing");
+
+      expect(outcome, isA<SessionOptionsProjectNotFound>());
+      expect(repository.readCalls, 0);
+      expect(repository.captureCalls, isEmpty);
+    });
+  });
+
   group("SessionOptionsService refresh policy", () {
     test("capture failure retains only a previously valid row", () async {
       final repository = _FakeSessionOptionsRepository()
@@ -777,6 +869,48 @@ void main() {
   });
 
   group("SessionOptionsService coalescing", () {
+    test("dynamic callers coalesce while a forced refresh queues one forced tail", () async {
+      final dynamicGate = Completer<SessionOptionsCaptureResult>();
+      final forcedGate = Completer<SessionOptionsCaptureResult>();
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.captureHandler = (call) {
+        return switch (call.discoveryMode) {
+          PluginSessionOptionsDiscoveryMode.reuse => dynamicGate.future,
+          PluginSessionOptionsDiscoveryMode.refresh => forcedGate.future,
+        };
+      };
+      final service = _service(repository: repository, now: now);
+
+      final dynamic = service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+      await _waitFor(condition: () => repository.captureCalls.length == 1);
+      final joinedDynamic = service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+      await Future<void>.delayed(Duration.zero);
+      final forced = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(repository.captureCalls, hasLength(1));
+      dynamicGate.complete(
+        _observed(
+          marker: "dynamic",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        ),
+      );
+      expect((await dynamic as SessionOptionsAvailable).response, _response(marker: "dynamic"));
+      expect((await joinedDynamic as SessionOptionsAvailable).response, _response(marker: "dynamic"));
+
+      await _waitFor(condition: () => repository.captureCalls.length == 2);
+      expect(repository.captureCalls[0].discoveryMode, PluginSessionOptionsDiscoveryMode.reuse);
+      expect(repository.captureCalls[1].discoveryMode, PluginSessionOptionsDiscoveryMode.refresh);
+      forcedGate.complete(
+        _observed(
+          marker: "forced",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        ),
+      );
+      expect((await forced as SessionOptionsAvailable).response, _response(marker: "forced"));
+    });
+
     test("forced callers during reuse share exactly one forced tail and await its result", () async {
       final reuseGate = Completer<SessionOptionsCaptureResult>();
       final forcedGate = Completer<SessionOptionsCaptureResult>();

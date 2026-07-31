@@ -143,12 +143,12 @@ class SessionRepository {
   Future<SessionOptionsRepositoryResult> loadSessionOptions({
     required String projectId,
     required String pluginId,
-    required bool refresh,
+    required bool forceRefresh,
   }) async {
     final response = await _api.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      refresh: refresh,
+      forceRefresh: forceRefresh,
     );
     return switch (response) {
       SuccessResponse(:final data) => SessionOptionsRepositoryAvailable(

@@ -29,7 +29,7 @@ sealed class NewSessionOptionsLoadResult {
   const NewSessionOptionsLoadResult();
 }
 
-enum NewSessionOptionsLoadMode { cached, refresh }
+enum NewSessionOptionsLoadMode { dynamicLoad, forcedRefresh }
 
 final class NewSessionOptionsLoaded extends NewSessionOptionsLoadResult {
   const NewSessionOptionsLoaded({required this.options, required this.source});
@@ -84,7 +84,7 @@ class NewSessionOptionsService {
     required NewSessionOptionsData? previousOptions,
   }) async {
     if (source == NewSessionOptionsSource.legacy) {
-      if (mode == NewSessionOptionsLoadMode.cached) {
+      if (mode == NewSessionOptionsLoadMode.dynamicLoad) {
         return previousOptions == null
             ? const NewSessionOptionsUnsupported()
             : NewSessionOptionsLoaded(options: previousOptions, source: NewSessionOptionsSource.legacy);
@@ -100,7 +100,7 @@ class NewSessionOptionsService {
     final result = await _sessionRepository.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      refresh: mode == NewSessionOptionsLoadMode.refresh,
+      forceRefresh: mode == NewSessionOptionsLoadMode.forcedRefresh,
     );
     return switch (result) {
       SessionOptionsRepositoryAvailable(:final catalog) => NewSessionOptionsLoaded(

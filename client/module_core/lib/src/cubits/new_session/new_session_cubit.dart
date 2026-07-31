@@ -158,7 +158,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             await _loadOptions(
               pluginId: selectedPlugin.id,
               generation: generation,
-              mode: NewSessionOptionsLoadMode.cached,
+              mode: NewSessionOptionsLoadMode.dynamicLoad,
               previousOptions: previousOptions,
               source: source,
             );
@@ -268,7 +268,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       _loadOptions(
         pluginId: pluginId,
         generation: generation,
-        mode: NewSessionOptionsLoadMode.cached,
+        mode: NewSessionOptionsLoadMode.dynamicLoad,
         previousOptions: null,
         source: source,
       ),
@@ -302,7 +302,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     await _loadOptions(
       pluginId: plugin.id,
       generation: generation,
-      mode: NewSessionOptionsLoadMode.refresh,
+      mode: NewSessionOptionsLoadMode.forcedRefresh,
       previousOptions: previousOptions,
       source: source,
     );

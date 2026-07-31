@@ -23,7 +23,7 @@ void main() {
       commands: CommandListResponse(items: <CommandInfo>[]),
     );
 
-    test("loadSessionOptions posts the aggregate request without a cache-only query", () async {
+    test("loadSessionOptions omits the query for dynamic loading", () async {
       when(
         () => client.post<SessionOptionsResponse>(
           any(),
@@ -39,7 +39,7 @@ void main() {
       final response = await api.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        refresh: false,
+        forceRefresh: false,
       );
 
       expect((response as SuccessResponse<SessionOptionsResponse>).data, options);
@@ -66,7 +66,7 @@ void main() {
       await api.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        refresh: true,
+        forceRefresh: true,
       );
 
       verify(

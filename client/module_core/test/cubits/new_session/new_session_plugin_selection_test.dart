@@ -498,7 +498,7 @@ void main() {
         () => sessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-a",
-          refresh: any(named: "refresh"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       ).thenAnswer((_) async {
         loadCalls++;
@@ -534,7 +534,7 @@ void main() {
         () => sessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-a",
-          refresh: any(named: "refresh"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       ).thenAnswer((_) async {
         loadCalls++;
@@ -602,7 +602,7 @@ void main() {
         () => sessionRepository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-          refresh: any(named: "refresh"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       );
     });
@@ -667,7 +667,7 @@ void main() {
         () => sessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-a",
-          refresh: any(named: "refresh"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       ).thenAnswer((_) async {
         loadCalls++;
@@ -805,7 +805,7 @@ void main() {
         () => sessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-a",
-          refresh: any(named: "refresh"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       ).thenAnswer(
         (_) async => SessionOptionsRepositoryAvailable(
@@ -847,7 +847,7 @@ void main() {
         () => sessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-a",
-          refresh: any(named: "refresh"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       ).thenAnswer((_) async {
         loadCalls++;
@@ -883,7 +883,7 @@ void main() {
         () => sessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "plugin-a",
-          refresh: any(named: "refresh"),
+          forceRefresh: any(named: "forceRefresh"),
         ),
       ).thenAnswer((_) async {
         loadCalls++;
@@ -1605,7 +1605,7 @@ void main() {
         () => sessionRepository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-          refresh: true,
+          forceRefresh: true,
         ),
       );
 

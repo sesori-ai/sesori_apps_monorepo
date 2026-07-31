@@ -44,13 +44,13 @@ class SessionApi {
   Future<ApiResponse<SessionOptionsResponse>> loadSessionOptions({
     required String projectId,
     required String pluginId,
-    required bool refresh,
+    required bool forceRefresh,
   }) {
     return _client.post(
       "/session/options",
       fromJson: SessionOptionsResponse.fromJson,
       body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
-      queryParameters: refresh ? const {"refresh": "true"} : null,
+      queryParameters: forceRefresh ? const {"refresh": "true"} : null,
     );
   }
 

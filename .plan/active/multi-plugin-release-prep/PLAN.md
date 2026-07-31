@@ -3,10 +3,9 @@
 ## Status
 
 - **Plan slug:** `multi-plugin-release-prep`
-- **Status:** Steps 1/6 through 3/6 merged; oversized PR #620 is frozen as a
-  draft and replaced by Steps 4.A/6 through 4.F/6
+- **Status:** Steps 1/6 through 5.B/6 merged; Step 5.C/6 is in progress
 - **Plan delivery:** this document and its tracker are Step 1/6
-- **Implementation base:** `origin/main` at `5eabfd0d`
+- **Implementation base:** `origin/main` at `6ffc9f39`
 - **Approved product direction:** Codex remains project-aware; Cursor and the
   ACP-backed option state use plugin-scoped caching; OpenCode remains
   project-scoped
@@ -14,10 +13,9 @@
 ## Goal
 
 Prepare the first multi-plugin release so that opening New Session and switching
-between harnesses does not start dormant backends merely to render agents,
-models, variants, or commands. The bridge owns a durable, scope-aware options
-cache and exposes one aggregate API that starts a harness only after explicit
-user refresh.
+between harnesses serves durable, scope-aware cached options when available. On
+cache miss, the aggregate API may start only the selected harness and populate
+the cache; explicit Refresh still forces fresh backend discovery.
 
 Complete the release preparation by consolidating the two mobile Harnesses
 settings screens into one capability-driven surface with Prego timeout and
@@ -93,12 +91,15 @@ There is one new route:
 
 ```http
 POST /session/options
+POST /session/options?refresh=false
 POST /session/options?refresh=true
 ```
 
 - The body is the existing shared `PluginProjectIdRequest`.
-- Missing `refresh` and exact `refresh=false` are cache-only and must never
-  acquire or start a dormant plugin.
+- Missing `refresh` is dynamic: return a valid cache row immediately, or acquire
+  only the selected plugin on cache miss and populate the cache.
+- Exact `refresh=false` is cache-only and must never acquire or start a dormant
+  plugin.
 - Exact `refresh=true` is an explicit user refresh and may start only the
   requested plugin. It also passes an internal force-discovery mode so a live
   plugin cannot satisfy user refresh from its own stale catalog tracker.
@@ -111,9 +112,10 @@ POST /session/options?refresh=true
   `PluginListResponse`, with the required dated compatibility comment. A new
   bridge publishes `true`; old bridge payloads and the existing discovery-404
   fallback decode `false`.
-- A cache-only miss, expired row, or invalidated project-path row returns HTTP
-  503 with typed `SessionOptionsErrorCode.cacheUnavailable`. It is never encoded
-  as three successful empty lists.
+- An explicit `refresh=false` cache-only miss, expired row, or invalidated
+  project-path row returns HTTP 503 with typed
+  `SessionOptionsErrorCode.cacheUnavailable`. A dynamic miss instead performs
+  one activating fetch and is never encoded as three successful empty lists.
 - Add shared `SessionOptionsErrorResponse` with required forward-safe
   `SessionOptionsErrorCode { cacheUnavailable, projectNotFound,
   refreshFailedRetained, refreshFailedUnavailable, unknown }`. Project absence
@@ -122,18 +124,18 @@ POST /session/options?refresh=true
   is never forwarded because relay HTTP reserves 401 for Sesori authentication
   and rewrites that response before a repository can parse its body. The client
   maps the typed code and never infers domain outcome from status alone.
-- An explicit refresh failure returns `refreshFailedRetained` only while the
-  prior row still passes scope, project-path, and retention validation. The app
-  may preserve that snapshot while reporting failure. A missing, expired, or
-  path-invalidated row is deleted and produces `refreshFailedUnavailable`; the
-  app must clear any previously rendered options before showing unavailable
-  state.
+- An activating fetch failure returns `refreshFailedRetained` only while a row
+  still passes scope, project-path, and retention validation. Dynamic loading
+  returns that concurrently available row as a successful response; explicit
+  refresh may preserve the client snapshot while reporting failure. A missing,
+  expired, or path-invalidated row is deleted and produces
+  `refreshFailedUnavailable`; the app clears any previously rendered options.
 
 ### Compatibility matrix
 
 | Client / bridge | Behavior |
 |---|---|
-| New client / new bridge | Initial load is cache-only. Refresh may start exactly the selected harness. A cache miss leaves session creation available with backend defaults. |
+| New client / new bridge | An omitted `refresh` query is dynamic: serve a valid cache row, or fetch from exactly the selected harness on cache miss. `refresh=false` remains cache-only and `refresh=true` forces discovery. |
 | Old client / new bridge | Existing `/agent`, `/provider`, and `/command` behavior is unchanged and can still start the requested harness. |
 | New client / old bridge | Missing/false discovery capability becomes an explicit unsupported state without calling the aggregate route. Create remains available with null agent/model/variant/command. Explicit Refresh explains that legacy live requests may start the harness, then invokes the existing three routes. |
 
@@ -157,7 +159,7 @@ clients without coupling legacy repositories to the new service.
   deletion.
 - Retention is 30 days, evaluated with injected `ServerClock`. Timestamps are
   never race tokens.
-- Refresh triggers are explicit aggregate refresh, successful session creation
+- Refresh triggers are dynamic aggregate cache miss, explicit aggregate refresh, successful session creation
   while that plugin generation is already active, and a dedicated
   generation-attributed `BridgeSseSessionOptionsChanged` plugin event. There is
   no all-project fanout, polling, or reinterpretation of generic session events.
@@ -175,8 +177,9 @@ clients without coupling legacy repositories to the new service.
   revalidation.
 - `NewSessionCubit` owns connection/plugin/project/user-intent orchestration,
   request-generation fencing, tracker writes, and state emission only.
-- When no cache exists, the UI offers Refresh and keeps Create usable with
-  backend defaults. It does not show an indefinite loading spinner.
+- When no cache exists, the bridge automatically fetches from the selected
+  harness. A failed fetch surfaces an explicit failure and keeps Create usable
+  with backend defaults rather than showing an indefinite loading spinner.
 
 ### Harness settings destination
 
@@ -310,7 +313,7 @@ snapshot. Runtime activation and plugin discovery freshness remain independent
 enums rather than one overloaded boolean.
 
 `SessionOptionsService` requires the repository, immutable descriptor scope map,
-`ServerClock`, and retention duration. It owns key resolution, cache-only read,
+`ServerClock`, and retention duration. It owns key resolution, dynamic/cache-only read,
 path/expiry invalidation, per-key refresh coalescing, capture-mode choice,
 completeness comparison, last-good retention, CAS retry policy, and recovered
 failure observability.
@@ -325,15 +328,27 @@ never resurrected by a failed capture.
 The service permits only these production combinations:
 
 ```text
+dynamic load            -> valid cache, otherwise may activate + PluginSessionOptionsDiscoveryMode.reuse
 explicit refresh        -> may activate + PluginSessionOptionsDiscoveryMode.refresh
 session-created trigger -> active only  + PluginSessionOptionsDiscoveryMode.reuse
 options-changed trigger -> active only  + PluginSessionOptionsDiscoveryMode.reuse
 cache-only read         -> no plugin capture
 ```
 
+`loadDynamic` resolves the cache key/project path once, returns a valid row
+immediately, and otherwise enters the existing per-key coordinator with reuse
+intent, `mayActivate`, `PluginSessionOptionsDiscoveryMode.reuse`, no expected
+generation, and `automatic: false` so HTTP callers receive typed retained or
+unavailable failures rather than trigger-only no-op semantics. Project absence
+returns directly. Expired/path-invalid rows are deleted before capture. If a
+concurrent operation publishes a valid row while the dynamic capture fails,
+`loadDynamic` re-reads and returns that row as `available`; otherwise the
+existing retained/unavailable 502 mapping applies.
+
 Coalescing is intent-aware per cache key:
 
 - reuse joins an in-flight reuse or forced refresh;
+- dynamic cache miss uses reuse intent with non-automatic HTTP failure outcomes;
 - explicit refresh joins an in-flight forced refresh;
 - explicit refresh arriving during reuse queues exactly one forced operation
   after reuse and awaits that forced result; and
@@ -416,7 +431,7 @@ The current codebase maps the Step 4 boundary to these source changes:
   Runtime tests extend the existing `plugin_runtime_test.dart` suite rather than
   creating a second runtime harness.
 - Add `SessionOptionsService` under `bridge/services/`. Its public operations
-  are cache-only load, explicit refresh, active-only refresh for a known
+  are dynamic load, cache-only load, explicit refresh, active-only refresh for a known
   project, and active-only refresh resolved from plugin/backend-session
   identity. Internal sealed outcomes distinguish available, cache unavailable,
   project not found, retained refresh failure, unavailable refresh failure, and
@@ -433,8 +448,10 @@ The current codebase maps the Step 4 boundary to these source changes:
   `RequestHandlerBase`, rather than `BodyRequestHandler`, so expected typed
   failures can return JSON bodies before generic plain-text normalization. It
   reuses `PluginProjectIdRequest.fromJson`, accepts only missing, exact `false`,
-  or exact `true` refresh values from the router's canonical query map, and maps
-  every service outcome to the locked 200/400/404/502/503 contract.
+  or exact `true` refresh values from the router's canonical query map, and
+  dispatches them to dynamic load, cache-only load, and explicit refresh,
+  respectively. It maps every service outcome to the locked
+  200/400/404/502/503 contract.
 - Add `projectId` to `SessionBindingsCommitted`; both current publication sites
   already have the stable value (`createSession`'s requested project and
   `_persistNativeRootSessions`' resolved project). Existing session-event
@@ -464,7 +481,10 @@ verification.
 
 ### Client layers
 
-`SessionApi` adds the aggregate POST and query parameter. `PluginRepository`
+`SessionApi` adds the aggregate POST and names its request intent
+`forceRefresh`: false omits the query for dynamic loading, while true sends
+`refresh=true`. `SessionRepository` and `NewSessionOptionsLoadMode` use the same
+dynamic/forced terminology. `PluginRepository`
 maps the additive `supportsSessionOptions` discovery fact, defaulting false for
 older bridges, and `NewSessionPluginDiscovery` carries that bridge-level fact to
 the composer. `SessionRepository` removes its provider-only cache, maps aggregate
@@ -476,6 +496,14 @@ ordinary failure. It retains the three legacy methods solely for explicit
 old-bridge refresh. `NewSessionOptionsService` receives the discovery capability:
 false returns unsupported without an aggregate call; true permits the aggregate
 call and never converts its typed project failure into legacy fallback.
+
+No aggregate-route 404 triggers legacy fallback. Old bridges are selected by
+the additive discovery capability (including its missing-field default and the
+plugin-discovery 404 compatibility snapshot). Old apps continue using the
+unchanged live POST `/agent`, `/provider`, and `/command` handlers on new
+bridges. Those POST routes are not deprecated because current Session Detail
+still consumes them; only the already-deprecated parameterless GET `/agent`
+route is legacy-only.
 
 `NewSessionOptionsService({required SessionRepository sessionRepository,
 required DefaultModelSelector defaultModelSelector})` owns:
@@ -495,7 +523,7 @@ user selections alone are written to `NewSessionSelectionTracker`; computed
 defaults are not persisted as intent. Existing connection and plugin-switch
 generation fencing remains in the cubit.
 
-The mobile screen renders cached options, cache-unavailable Refresh, old-bridge
+The mobile screen renders dynamically loaded or cached options, old-bridge
 guidance, and retained-data refresh errors. Backend plugin IDs, model names,
 agent names, commands, paths, and project identity never enter analytics or
 backend-neutral UI decisions.
@@ -515,6 +543,7 @@ backend-neutral UI decisions.
 | 4.F/6 | `multi-plugin-release-prep-cache-route` | `[multi-plugin-release-prep] feat(bridge): expose cached session options [step 4.F/6]` | 850-1,150 | Aggregate route/capability, stable binding attribution, automatic refresh listeners, and Orchestrator lifecycle wiring. |
 | 5.A/6 | `multi-plugin-release-prep-client-options` | `[multi-plugin-release-prep] feat(client): add cached session option layers [step 5.A/6]` | 1,350-1,750 | Aggregate API/repository mapping, provider-cache removal, repository-owned catalogs, and service-owned option policy including explicit old-bridge fallback. |
 | 5.B/6 | `multi-plugin-release-prep-client-options-ui` | `[multi-plugin-release-prep] feat(client): use cached session options [step 5.B/6]` | 1,650-2,150 | Repository-mapped plugin source, independent selection intent, composed cubit state, generation fencing, and New Session mobile UI. |
+| 5.C/6 | `multi-plugin-release-prep-dynamic-options` | `[multi-plugin-release-prep] feat(bridge): dynamically load missing session options [step 5.C/6]` | 180-320 | Tri-state aggregate query semantics, dynamic cache-miss fetch, client terminology, and compatibility verification without changing legacy routes. |
 | 6/6 | `multi-plugin-release-prep-harness-settings` | `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]` | 850-1,200 | One Harnesses screen/cubit, capability/setup-aware visibility, route removal, and Prego timeout/force sheets. |
 
 ## Per-Step Verification
@@ -614,6 +643,19 @@ backend-neutral UI decisions.
   clearing after expired/path-invalid cache refresh failure. Run
   module-core/mobile/desktop fatal analysis and Aristotle implementation review.
 
+### Step 5.C/6
+
+- Handler/service tests prove omitted `refresh` serves valid cache data and
+  fetches only on cache miss, `refresh=false` remains cache-only, and
+  `refresh=true` remains forced discovery.
+- Compatibility tests prove new-client/old-bridge capability fallback still
+  uses the legacy routes only after explicit Refresh, while old clients keep
+  using the unchanged live legacy handlers on new bridges.
+- Client API/repository terminology distinguishes dynamic load from forced
+  refresh without adding a transport field or changing old-peer parsing.
+- Run bridge-app and module-core focused tests plus fatal analysis in bridge-app,
+  module-core, mobile, and desktop.
+
 ### Step 6/6
 
 - Route tests prove the management sub-route is removed and Harnesses navigation
@@ -644,7 +686,8 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 
 | Risk | Treatment |
 |---|---|
-| Dormant plugin starts during ordinary rendering | Cache-only route reaches no runtime acquisition. Add an explicit no-start runtime test. |
+| A valid cache unexpectedly starts a dormant plugin | Dynamic load returns a valid row before runtime acquisition; explicit `refresh=false` remains covered by a no-start test. |
+| Concurrent cache fill is hidden behind dynamic fetch failure | Dynamic load re-reads a retained valid row after a failed coalesced capture and returns it as available. |
 | Project options served for a moved directory | Store captured path and invalidate on mismatch. |
 | Refresh failure leaves expired/path-invalid options visible | Validate and delete before capture; unavailable failure clears client options, while retained failure is reserved for a still-valid row. |
 | Old generation overwrites current data | Capture runtime generation and fence every CAS commit with `commitCurrentGeneration`. |
@@ -689,6 +732,7 @@ refresh-outcome reporting after the active user-analytics foundation lands.
 ## Completion
 
 The plan completes after all six PRs merge, New Session switching reads durable
-scope-correct options without starting dormant harnesses, explicit refresh and
-old-bridge degradation are verified, both cache scopes survive restart, and the
-single Harnesses settings page passes capability/setup-aware mobile verification.
+scope-correct options and dynamically starts only the selected harness on cache
+miss, explicit cache-only and forced-refresh semantics plus old-bridge
+degradation are verified, both cache scopes survive restart, and the single
+Harnesses settings page passes capability/setup-aware mobile verification.

@@ -332,7 +332,7 @@ void delegateSessionOptionsRepositoryToService({
     () => repository.loadSessionOptions(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
-      refresh: any(named: "refresh"),
+      forceRefresh: any(named: "forceRefresh"),
     ),
   ).thenAnswer((invocation) async {
     final projectId = invocation.namedArguments[#projectId]! as String;

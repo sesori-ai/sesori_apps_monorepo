@@ -82,6 +82,47 @@ class SessionOptionsService {
   final Duration _retention;
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
 
+  Future<SessionOptionsOutcome> loadDynamic({
+    required String pluginId,
+    required String projectId,
+  }) async {
+    final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
+    if (resolved == null) return const SessionOptionsProjectNotFound();
+    final cached = await _readValid(key: resolved.key);
+    if (cached != null && await _isCurrentResolution(resolved: resolved)) {
+      return SessionOptionsAvailable(response: cached.response);
+    }
+
+    final outcome = await _coalesce(
+      key: resolved.key,
+      intent: _RefreshIntent.reuse,
+      generation: null,
+      operation: () => _refresh(
+        resolved: resolved,
+        activation: SessionOptionsCaptureActivation.mayActivate,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+        expectedGeneration: null,
+        automatic: false,
+      ),
+    );
+    if (outcome case SessionOptionsRefreshFailedRetained(:final failure)) {
+      final concurrentlyAvailable = await _readValid(key: resolved.key);
+      if (concurrentlyAvailable != null && await _isCurrentResolution(resolved: resolved)) {
+        final message =
+            "Dynamic session options discovery failed for plugin ${resolved.key.pluginId}; using concurrently published cache";
+        switch (failure) {
+          case SessionOptionsKnownRefreshFailure():
+            Log.w(message);
+          case SessionOptionsCaughtRefreshFailure(:final cause, :final causeStackTrace):
+            Log.w(message, cause, causeStackTrace);
+        }
+        return SessionOptionsAvailable(response: concurrentlyAvailable.response);
+      }
+      return SessionOptionsRefreshFailedUnavailable(failure: failure);
+    }
+    return outcome;
+  }
+
   Future<SessionOptionsOutcome> loadCacheOnly({
     required String pluginId,
     required String projectId,
@@ -505,9 +546,6 @@ class SessionOptionsService {
     required int? generation,
     required Future<SessionOptionsOutcome> Function() operation,
   }) {
-    if (intent == _RefreshIntent.reuse && generation == null) {
-      throw StateError("reuse refresh requires a runtime generation");
-    }
     final existing = _refreshes[key];
     if (existing != null) {
       final forcedTail = existing.forcedTail;

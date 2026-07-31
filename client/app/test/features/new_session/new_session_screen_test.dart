@@ -191,7 +191,7 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
-        refresh: any(named: "refresh"),
+        forceRefresh: any(named: "forceRefresh"),
       ),
     ).thenAnswer((invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
@@ -363,7 +363,7 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
-        refresh: any(named: "refresh"),
+        forceRefresh: any(named: "forceRefresh"),
       ),
     );
 
@@ -377,12 +377,12 @@ void main() {
     expect(find.text(loc.newSessionOptionsLegacyBridge), findsOneWidget);
   });
 
-  testWidgets("cache miss keeps creation available with backend defaults", (tester) async {
+  testWidgets("unavailable dynamic load keeps creation available with backend defaults", (tester) async {
     when(
       () => sessionRepository.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        refresh: false,
+        forceRefresh: false,
       ),
     ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
     when(
@@ -429,11 +429,11 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        refresh: any(named: "refresh"),
+        forceRefresh: any(named: "forceRefresh"),
       ),
     ).thenAnswer((invocation) async {
-      final refresh = invocation.namedArguments[#refresh]! as bool;
-      return refresh
+      final forceRefresh = invocation.namedArguments[#forceRefresh]! as bool;
+      return forceRefresh
           ? const SessionOptionsRepositoryRefreshFailedRetained()
           : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
     });
@@ -456,11 +456,11 @@ void main() {
       () => sessionRepository.loadSessionOptions(
         projectId: "project-1",
         pluginId: "plugin-1",
-        refresh: any(named: "refresh"),
+        forceRefresh: any(named: "forceRefresh"),
       ),
     ).thenAnswer((invocation) async {
-      final refresh = invocation.namedArguments[#refresh]! as bool;
-      return refresh
+      final forceRefresh = invocation.namedArguments[#forceRefresh]! as bool;
+      return forceRefresh
           ? const SessionOptionsRepositoryRefreshFailedUnavailable()
           : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
     });
