@@ -53,6 +53,14 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   a separate series slug. Without a durable plan, choose one stable, lowercase
   kebab-case slug. Fix the step order/total for the whole series, and do not
   apply the wrapper to a single-PR task.
+- Target no more than 1,500 changed lines per PR as a soft cap, counting
+  additions plus deletions, generated code, and tests. Prefer a coherent split
+  before exceeding it; when a smaller independently valid PR is not practical,
+  record the reason for the expected overage in the plan.
+- For durable planned work, the first PR step always raises the plan under
+  `.plan/active/<slug>/` before implementation begins. The final PR step always
+  retires the plan after implementation by moving that directory to
+  `.plan/completed/<slug>/`. Include both lifecycle PRs in the fixed step total.
 
 For a new durable plan, `PLAN.md` should normally capture the goal, scope,
 relevant current behavior, concrete implementation steps, verification, and

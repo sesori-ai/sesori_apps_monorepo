@@ -3,14 +3,15 @@
 ## Status
 
 - **Plan slug:** `output-image-support`
-- **Status:** Step 1/12 plan delivery in progress
+- **Status:** Step 1/13 plan PR open
 - **Plan date:** 2026-07-31
-- **Plan delivery:** this document and `TRACKER.md` are Step 1/12
+- **Plan delivery:** this document, `TRACKER.md`, and the durable Plan Maker
+  delivery rules are Step 1/13
 - **Implementation base:** `origin/main` at
   `9d2c1e9e79ab80fa8824b9d803a74798eb71140d`
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Delivery:** one documentation PR followed by eleven sequential,
-  independently valid bridge-plugin PRs
+- **Delivery:** one planning PR, eleven sequential independently valid
+  bridge-plugin PRs, and one plan-retirement PR
 
 ## Goal
 
@@ -54,9 +55,9 @@ image content.
    did not already carry it.
 9. No Codex runtime bump and no shared wire, relay, database, client UI, or
    analytics change is required.
-10. Every implementation PR remains independently buildable and targets roughly
-    1,500 changed lines, counting additions plus deletions, generated output,
-    and tests against that PR's base.
+10. Every implementation PR remains independently buildable and targets no more
+    than 1,500 changed lines as a soft cap, counting additions plus deletions,
+    generated output, and tests against that PR's base.
 
 ## Current Behavior And Evidence
 
@@ -266,21 +267,25 @@ coverage; it does not introduce another interpretation of content.
 
 ## Delivery Rules
 
-- The series has exactly twelve steps. Every PR title uses the fixed
-  `[output-image-support] ... [step <x>/12]` form below.
-- Step 1 contains only this plan and tracker. It runs documentation validation,
-  not Dart or Flutter suites.
+- The series has exactly thirteen steps. Every PR title uses the fixed
+  `[output-image-support] ... [step <x>/13]` form below.
+- Step 1 raises this plan and tracker and codifies the Plan Maker's durable-plan
+  lifecycle and line-budget rules. It runs documentation validation, not Dart
+  or Flutter suites.
+- Step 13 retires the completed plan by moving
+  `.plan/active/output-image-support/` to
+  `.plan/completed/output-image-support/`. It contains no production changes.
 - Steps form one ordered dependency chain. A successor may target its immediate
   predecessor while both are open, but merges must occur in numeric order and
   every PR must be independently valid at its own base.
 - Count additions plus deletions from `git diff --numstat`, including generated
-  code and tests. Target 1,000-1,700 changed lines; reassess at 1,700 and keep a
-  soft ceiling of 1,900.
+  code and tests. Target no more than 1,500 changed lines per PR as a soft cap.
 - Do not combine neighboring steps because one lands below estimate. If a step
-  exceeds the ceiling after codegen, move a self-contained review boundary to an
-  adjacent existing step before opening the PR; never separate generated output,
-  constructor migrations, production behavior, and the tests required to prove
-  that behavior.
+  is projected to exceed the soft cap after codegen, first find a smaller
+  independently valid split and update this plan. If no coherent split is
+  practical, record the reason before opening the PR; never separate generated
+  output, constructor migrations, production behavior, and the tests required
+  to prove that behavior.
 - Generated Freezed/JSON files change only through code generation.
 - Internal plugin package contracts update every in-repository caller in
   lockstep. Do not add compatibility shims.
@@ -291,34 +296,38 @@ coverage; it does not introduce another interpretation of content.
 - Keep backend-specific image semantics inside the owning plugin. Do not add a
   shared abstraction solely to deduplicate two small backend adapters.
 - Run `aristotle-impl-review` for each architecture-bearing implementation step,
-  scoped to that PR's branch against its base. Do not use it for Step 1 docs.
+  scoped to that PR's branch against its base. Do not use it for the Step 1 or
+  Step 13 documentation-only lifecycle PRs.
 
 ## Delivery Sequence
 
 | Step | Branch | Exact PR title | Estimate | Review boundary |
 |---|---|---|---:|---|
-| 1/12 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/12]` | 450-700 | Durable plan and tracker only. |
-| 2/12 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/12]` | 1,200-1,650 | Content variants, mapper move, and explicit dependency wiring without image behavior. |
-| 3/12 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/12]` | 900-1,350 | Permanent outer rollout envelope; no behavior change. |
-| 4/12 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/12]` | 1,100-1,650 | Permanent nested response-item variants and exhaustive consumers. |
-| 5/12 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/12]` | 1,200-1,700 | Typed app-server boundary consumed by existing MCP/dynamic text mapping. |
-| 6/12 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/12]` | 900-1,400 | Secure image mapper and live first-class/MCP/dynamic attachments. |
-| 7/12 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/12]` | 1,100-1,600 | Rollout/history images and live/history convergence. |
-| 8/12 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/12]` | 1,400-1,900 | Content DTO/mapper, explicit composition, and live/replay text consumers. |
-| 9/12 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/12]` | 1,100-1,600 | Tool DTOs and one shared behavior-preserving content policy. |
-| 10/12 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/12]` | 1,100-1,600 | Message tracker adopted live/replay; live image materialization. |
-| 11/12 | `output-image-support-acp-tool-images` | `[output-image-support] feat(acp): surface live tool images [step 11/12]` | 1,200-1,700 | Tool tracker adopted live/replay; live attachment materialization. |
-| 12/12 | `output-image-support-acp-image-replay` | `[output-image-support] feat(acp): restore output image replay [step 12/12]` | 900-1,400 | Replay materialization and end-to-end parity proof only. |
+| 1/13 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/13]` | 450-700 | Durable plan/tracker plus Plan Maker delivery rules. |
+| 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | Content variants, mapper move, and explicit dependency wiring without image behavior. |
+| 3/13 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/13]` | 900-1,350 | Permanent outer rollout envelope; no behavior change. |
+| 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | Permanent nested response-item variants and exhaustive consumers. |
+| 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | Typed app-server boundary consumed by existing MCP/dynamic text mapping. |
+| 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | Secure image mapper and live first-class/MCP/dynamic attachments. |
+| 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | Rollout/history images and live/history convergence. |
+| 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | Content DTO/mapper, explicit composition, and live/replay text consumers. |
+| 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | Tool DTOs and one shared behavior-preserving content policy. |
+| 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | Message tracker adopted live/replay; live image materialization. |
+| 11/13 | `output-image-support-acp-tool-images` | `[output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | Tool tracker adopted live/replay; live attachment materialization. |
+| 12/13 | `output-image-support-acp-image-replay` | `[output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | Replay materialization and end-to-end parity proof only. |
+| 13/13 | `output-image-support-retire-plan` | `[output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | Record completion and move the plan tree from active to completed. |
 
 ## Step Details And Verification
 
-### Step 1/12 — Deliver The Plan
+### Step 1/13 — Deliver The Plan
 
-- Add only `.plan/active/output-image-support/PLAN.md` and `TRACKER.md`.
+- Add `.plan/active/output-image-support/PLAN.md` and `TRACKER.md`, and update
+  `.opencode/agents/sesori-plan-maker.md` with the durable-plan lifecycle and
+  1,500-line soft-cap rules requested for future plans.
 - Validate fixed slug, titles, totals, estimates, dependencies, and Markdown.
 - Run `git diff --check`. No Dart/Flutter suites or implementation review.
 
-### Step 2/12 — Seal Codex Rollout Content
+### Step 2/13 — Seal Codex Rollout Content
 
 - Replace `CodexRolloutContentType` plus flattened content fields with generated
   input/output/summary text, input-image, and unknown variants.
@@ -329,7 +338,7 @@ coverage; it does not introduce another interpretation of content.
 - Run Codex codegen, focused DTO/mapper/repository tests, full Codex tests, fatal
   analysis, and implementation architecture review.
 
-### Step 3/12 — Seal Codex Rollout Envelopes
+### Step 3/13 — Seal Codex Rollout Envelopes
 
 - Introduce the permanent sealed outer line/payload envelope for session
   metadata, turn context, response item, compacted, and unknown records.
@@ -339,7 +348,7 @@ coverage; it does not introduce another interpretation of content.
 - Run Codex codegen, structural/catalog/tailer tests, full Codex tests, fatal
   analysis, and implementation architecture review.
 
-### Step 4/12 — Seal Codex Response Items
+### Step 4/13 — Seal Codex Response Items
 
 - Replace the nested response-item representation with generated message,
   reasoning, function/custom call/output, web-search, and unknown variants.
@@ -349,7 +358,7 @@ coverage; it does not introduce another interpretation of content.
 - Run Codex codegen, exhaustive DTO/mapper/history tests, full Codex tests, fatal
   analysis, and implementation architecture review.
 
-### Step 5/12 — Type Codex Image-Bearing Events
+### Step 5/13 — Type Codex Image-Bearing Events
 
 - Add generated app-server DTOs and a zero-collaborator parser for first-class
   image generation, MCP text/image content, and dynamic text/image/audio output.
@@ -362,7 +371,7 @@ coverage; it does not introduce another interpretation of content.
 - Run codegen, parser/event regression tests, full Codex tests, fatal analysis,
   and implementation architecture review.
 
-### Step 6/12 — Surface Live Codex Images
+### Step 6/13 — Surface Live Codex Images
 
 - Add `CodexImageAttachmentMapper` under `repositories/mappers` with the locked
   security, MIME, count, byte, metadata, basename, and logging policy.
@@ -372,7 +381,7 @@ coverage; it does not introduce another interpretation of content.
 - Run focused mapper/event limits and privacy tests, full Codex tests, fatal
   analysis, and implementation architecture review.
 
-### Step 7/12 — Restore Codex Image History
+### Step 7/13 — Restore Codex Image History
 
 - Add typed rollout `image_generation_call` and map it through the same image
   mapper as live events.
@@ -383,7 +392,7 @@ coverage; it does not introduce another interpretation of content.
 - Run Codex codegen, rollout/history/convergence tests, full Codex tests, fatal
   analysis, and implementation architecture review.
 
-### Step 8/12 — Type ACP Content Blocks
+### Step 8/13 — Type ACP Content Blocks
 
 - Add generated text/image/unsupported/unknown ContentBlock DTOs under
   `api/models` and `AcpContentMapper` under `repositories/mappers`.
@@ -395,7 +404,7 @@ coverage; it does not introduce another interpretation of content.
 - Run ACP codegen, mapper/live/replay text regressions, ACP and affected Cursor
   tests, fatal analysis in both packages, and implementation architecture review.
 
-### Step 9/12 — Centralize ACP Tool Content Mapping
+### Step 9/13 — Centralize ACP Tool Content Mapping
 
 - Add typed content/diff/terminal/unknown tool-content DTOs.
 - Move existing root `acp_content.dart` behavior into `AcpContentMapper` and
@@ -406,7 +415,7 @@ coverage; it does not introduce another interpretation of content.
 - Run codegen, mapper/event/replay regressions, ACP and affected Cursor tests,
   fatal analysis, and implementation architecture review.
 
-### Step 10/12 — Surface Live ACP Message Images
+### Step 10/13 — Surface Live ACP Message Images
 
 - Add zero-collaborator `AcpContentTracker` and use it immediately in both
   `AcpEventMapper` and `AcpReplayCollector`, removing prior assistant content
@@ -420,7 +429,7 @@ coverage; it does not introduce another interpretation of content.
 - Run tracker/event/replay structural tests, ACP and Cursor suites, fatal
   analysis, and implementation architecture review.
 
-### Step 11/12 — Surface Live ACP Tool Images
+### Step 11/13 — Surface Live ACP Tool Images
 
 - Add zero-collaborator `AcpToolContentTracker`.
 - Make `AcpContentMapper` emit sealed replace/update-output/unchanged mutations.
@@ -433,7 +442,7 @@ coverage; it does not introduce another interpretation of content.
 - Run tracker/mapper/event/replay tests, ACP and Cursor suites, fatal analysis,
   and implementation architecture review.
 
-### Step 12/12 — Restore ACP Image Replay
+### Step 12/13 — Restore ACP Image Replay
 
 - Materialize the already-recorded assistant image mutations as ordered file
   parts and the already-tracked tool attachments in replay output.
@@ -444,6 +453,16 @@ coverage; it does not introduce another interpretation of content.
   the dedicated replay client.
 - Run focused replay/history tests, full ACP and Cursor tests, fatal analysis,
   and implementation architecture review.
+
+### Step 13/13 — Retire The Plan
+
+- After Step 12 merges and its verification is complete, update the tracker with
+  the final merged PR and verification evidence.
+- Move `.plan/active/output-image-support/` to
+  `.plan/completed/output-image-support/` in the same commit.
+- Confirm all thirteen PRs merged in order and run `git diff --check`. This
+  documentation-only lifecycle step requires no Dart/Flutter suites or
+  implementation architecture review.
 
 ## Compatibility
 
