@@ -416,6 +416,66 @@ void main() {
       expect(result.hasWorktree, isFalse);
     });
 
+    test("enrichSessions clears input PR metadata when no current visible PR is selected", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      const staleSession = Session(
+        branchName: "feature/old-account",
+        id: "s-stale-pr",
+        pluginId: "fake",
+        projectID: "p1",
+        directory: "/tmp/project",
+        parentID: "parent-1",
+        title: "Session",
+        time: SessionTime(created: 1, updated: 2, archived: null),
+        pullRequest: PullRequestInfo(
+          number: 17,
+          url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/17",
+          title: "Old account PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+        ),
+        pullRequestHistory: [
+          PullRequestInfo(
+            number: 16,
+            url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/16",
+            title: "Old account historical PR",
+            state: PrState.merged,
+            mergeableStatus: PrMergeableStatus.unknown,
+            reviewDecision: PrReviewDecision.approved,
+            checkStatus: PrCheckStatus.success,
+          ),
+        ],
+        promptDefaults: SessionPromptDefaults(agent: "agent-1", model: null),
+        hasWorktree: true,
+        unseen: true,
+      );
+
+      for (final currentLogin in <VerifiedGithubLogin?>[null, switchedGithubLogin]) {
+        final result = await repository.enrichSessions(
+          sessions: const [staleSession],
+          verifiedGithubLogin: currentLogin,
+        );
+
+        expect(
+          result.single,
+          staleSession.copyWith(
+            pullRequest: null,
+            pullRequestHistory: const <PullRequestInfo>[],
+          ),
+        );
+      }
+    });
+
     test("enrichSessions applies stored data only to matching sessions", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

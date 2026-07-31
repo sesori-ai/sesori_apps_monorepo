@@ -941,7 +941,10 @@ class SessionRepository {
     return [
       for (final session in sessions)
         enrichSharedSession(
-          session: session,
+          session: session.copyWith(
+            pullRequest: null,
+            pullRequestHistory: const <PullRequestInfo>[],
+          ),
           storedSession: dbSessions[session.id],
           pullRequest: pullRequestsBySessionId[session.id],
           unseenCalculator: _unseenCalculator,
