@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -134,6 +135,9 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       // (reversed) scroll, so the outer page must not scroll — otherwise a drag
       // that starts on the pinned composer overscrolls/bounces the whole page.
       scrollable: false,
+      // Toolbar navigation is explicit: unlike Android system back, it must
+      // not be vetoed by the composer's keyboard-dismissal PopScope.
+      onBack: showLeading ? () => context.pop() : null,
       automaticallyImplyLeading: showLeading,
       actions: actions.isEmpty ? null : actions,
       slivers: [

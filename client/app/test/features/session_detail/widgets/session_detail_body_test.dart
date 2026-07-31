@@ -505,6 +505,25 @@ void main() {
     expect(find.text("Open session"), findsOneWidget);
   });
 
+  testWidgets("toolbar back pops the route while the Android keyboard is visible", (tester) async {
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpWidget(_buildApp(cubit: cubit, startAtPreviousScreen: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Open session"));
+    await tester.pumpAndSettle();
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pump();
+    await enterTypingMode(tester);
+    expect(composerFocus(tester).hasFocus, isTrue);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SessionDetailBody), findsNothing);
+    expect(find.text("Open session"), findsOneWidget);
+  });
+
   testWidgets("iOS back navigation stays available while the composer is focused", (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     addTearDown(tester.view.resetViewInsets);

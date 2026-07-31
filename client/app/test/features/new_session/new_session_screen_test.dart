@@ -308,6 +308,20 @@ void main() {
     await connectionStatus.close();
   });
 
+  testWidgets("toolbar back pops the route while the Android keyboard is visible", (tester) async {
+    addTearDown(tester.view.resetViewInsets);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NewSessionScreen), findsNothing);
+  });
+
   testWidgets("known unsupported project never shows the worktree toggle while composer data loads", (tester) async {
     final projectResponse = Completer<ApiResponse<Project>>();
     when(

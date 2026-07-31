@@ -232,6 +232,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       },
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,
+        // Toolbar navigation is explicit: unlike Android system back, it must
+        // not be vetoed by the composer's keyboard-dismissal PopScope.
+        onBack: _dismissScreen,
         // The options own their scroll while the composer remains fixed, so
         // use the full viewport behind a fixed title just like session chat.
         titleMode: PregoTopNavigationTitleMode.inline,
