@@ -6,7 +6,7 @@
 - **Series state:** Steps 1/6 through 4.F/6 are merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
 - **Current step:** Step 5.B/6 — cached New Session composer
-- **Next action:** commit, push, and open the verified Step 5.B/6 implementation
+- **Next action:** monitor stacked PRs #635 and #636 through review and CI
 
 ## Delivery
 
@@ -22,7 +22,7 @@
 | [x] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | PR #627 merged |
 | [x] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | PR #630 merged |
 | [ ] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | PR #635 open |
-| [ ] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | Verified; ready to open stacked on PR #635 |
+| [ ] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | [PR #636](https://github.com/sesori-ai/sesori_apps_monorepo/pull/636) open, stacked on PR #635 |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5.B merge |
 
 ## Locked Decisions
@@ -219,9 +219,12 @@
   22 focused API/repository/service tests passed, as did fatal analysis in
   module-core, mobile, and desktop plus `git diff --check`. Committed as
   `cff67af4`, pushed, and opened as PR #635.
-- Step 5.B/6 preparation (2026-07-30): isolated repository-mapped plugin source,
+- Step 5.B/6 preparation (2026-07-31): isolated repository-mapped plugin source,
   independent agent/model/variant intent tracking, composed source-aware cubit
   state, reconnect/plugin-switch generation fencing, and cached/legacy/refresh
   mobile presentation. All 101 focused plugin/service/tracker/cubit tests and 27
   mobile New Session tests passed, as did fatal analysis in module-core, mobile,
   and desktop plus `git diff --check`.
+- Step 5.B/6 delivery (2026-07-31): committed as `e62e1d7a`, pushed, and opened
+  as stacked PR #636 against the Step 5.A branch. Initial CI is running; the PR
+  is mergeable with no unresolved review threads.
