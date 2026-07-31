@@ -4,6 +4,7 @@ import "package:flutter/gestures.dart" show kPrimaryButton;
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -618,10 +619,6 @@ class _PromptInputState extends State<PromptInput> {
     // The resting layout follows the settings choice live.
     context.watch<ChatInputModeCubit>();
     final prego = context.prego;
-    final shouldDismissKeyboardBeforePop =
-        Theme.of(context).platform == TargetPlatform.android &&
-        _focusNode.hasFocus &&
-        View.of(context).viewInsets.bottom > 0;
 
     return DecoratedBox(
       // Floating composer: no bar surface, no separator line. The scaffold
@@ -648,12 +645,18 @@ class _PromptInputState extends State<PromptInput> {
           ?widget.header,
           // A focused composer consumes the first route pop so Android back
           // dismisses the keyboard before a later back leaves the screen.
-          PopScope(
-            canPop: !shouldDismissKeyboardBeforePop,
-            onPopInvokedWithResult: (didPop, _) {
-              if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
+          KeyboardVisibilityBuilder(
+            builder: (context, isKeyboardVisible) {
+              final shouldDismissKeyboardBeforePop =
+                  Theme.of(context).platform == TargetPlatform.android && _focusNode.hasFocus && isKeyboardVisible;
+              return PopScope(
+                canPop: !shouldDismissKeyboardBeforePop,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
+                },
+                child: _buildComposerTopSlot(context),
+              );
             },
-            child: _buildComposerTopSlot(context),
           ),
 
           // Group only the input container with the text field via a

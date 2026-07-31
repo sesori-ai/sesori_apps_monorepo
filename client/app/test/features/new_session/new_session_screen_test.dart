@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
@@ -120,6 +121,7 @@ void main() {
   // renders its flat (cue) menu here — the menu rows are Material InkWells, not
   // GlassMenuItems. Finders below target those InkWells.
   setUp(() async {
+    KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
     sessionService = MockSessionService();
     sessionRepository = MockSessionRepository();
@@ -309,12 +311,12 @@ void main() {
   });
 
   testWidgets("toolbar back pops the route while the Android keyboard is visible", (tester) async {
-    addTearDown(tester.view.resetViewInsets);
-    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     await enterTypingMode(tester);
     expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
+    KeyboardVisibilityTesting.setVisibilityForTesting(true);
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pumpAndSettle();
