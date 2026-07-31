@@ -3,7 +3,6 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/session_api.dart";
-import "../foundation/models/composer/composer_attachment.dart";
 import "models/session_options_repository_result.dart";
 
 @lazySingleton
@@ -186,7 +185,6 @@ class SessionRepository {
     required String projectId,
     required String pluginId,
     required String text,
-    required List<ComposerAttachment> attachments,
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
@@ -197,7 +195,6 @@ class SessionRepository {
       projectId: projectId,
       pluginId: pluginId,
       text: text,
-      attachments: attachments,
       agent: agent,
       model: model,
       variant: variant,
@@ -209,7 +206,6 @@ class SessionRepository {
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
     required String text,
-    required List<ComposerAttachment> attachments,
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
@@ -218,7 +214,6 @@ class SessionRepository {
     return _api.sendMessage(
       sessionId: sessionId,
       text: text,
-      attachments: attachments,
       agent: agent,
       model: model,
       variant: variant,

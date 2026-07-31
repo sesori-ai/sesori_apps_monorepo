@@ -345,7 +345,7 @@ void main() {
 
     test("sendMessage forwards selectedAgentModel variant to repository", () async {
       when(
-        () => mockSessionRepository.sendMessage(attachments: const [],
+        () => mockSessionRepository.sendMessage(
           sessionId: sessionId,
           text: "hello",
           agent: "coder",
@@ -374,14 +374,14 @@ void main() {
       await _awaitLoaded(cubit);
       cubit.selectVariant(const SessionVariant(id: "low"));
 
-      await cubit.sendMessage(attachments: const [],
+      await cubit.sendMessage(
         text: "hello",
         command: null,
         inputMode: ComposerInputMode.typed,
       );
 
       verify(
-        () => mockSessionRepository.sendMessage(attachments: const [],
+        () => mockSessionRepository.sendMessage(
           sessionId: sessionId,
           text: "hello",
           agent: "coder",

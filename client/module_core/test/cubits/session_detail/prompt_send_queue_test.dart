@@ -3,17 +3,17 @@ import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submis
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:test/test.dart";
 
-const _first = QueuedSessionSubmission.text(attachments: [], text: "first", inputMode: ComposerInputMode.typed);
-const _second = QueuedSessionSubmission.text(attachments: [], text: "second", inputMode: ComposerInputMode.typed);
-const _same = QueuedSessionSubmission.text(attachments: [], text: "same", inputMode: ComposerInputMode.typed);
-const _other = QueuedSessionSubmission.text(attachments: [], text: "other", inputMode: ComposerInputMode.typed);
-const _a = QueuedSessionSubmission.text(attachments: [], text: "a", inputMode: ComposerInputMode.typed);
-const _b = QueuedSessionSubmission.text(attachments: [], text: "b", inputMode: ComposerInputMode.typed);
-const _c = QueuedSessionSubmission.text(attachments: [], text: "c", inputMode: ComposerInputMode.typed);
-const _existing = QueuedSessionSubmission.text(attachments: [], text: "existing", inputMode: ComposerInputMode.typed);
-const _retried = QueuedSessionSubmission.text(attachments: [], text: "retried", inputMode: ComposerInputMode.typed);
-const _msg1 = QueuedSessionSubmission.text(attachments: [], text: "msg1", inputMode: ComposerInputMode.typed);
-const _msg2 = QueuedSessionSubmission.text(attachments: [], text: "msg2", inputMode: ComposerInputMode.typed);
+const _first = QueuedSessionSubmission.text(text: "first", inputMode: ComposerInputMode.typed);
+const _second = QueuedSessionSubmission.text(text: "second", inputMode: ComposerInputMode.typed);
+const _same = QueuedSessionSubmission.text(text: "same", inputMode: ComposerInputMode.typed);
+const _other = QueuedSessionSubmission.text(text: "other", inputMode: ComposerInputMode.typed);
+const _a = QueuedSessionSubmission.text(text: "a", inputMode: ComposerInputMode.typed);
+const _b = QueuedSessionSubmission.text(text: "b", inputMode: ComposerInputMode.typed);
+const _c = QueuedSessionSubmission.text(text: "c", inputMode: ComposerInputMode.typed);
+const _existing = QueuedSessionSubmission.text(text: "existing", inputMode: ComposerInputMode.typed);
+const _retried = QueuedSessionSubmission.text(text: "retried", inputMode: ComposerInputMode.typed);
+const _msg1 = QueuedSessionSubmission.text(text: "msg1", inputMode: ComposerInputMode.typed);
+const _msg2 = QueuedSessionSubmission.text(text: "msg2", inputMode: ComposerInputMode.typed);
 
 void main() {
   group("PromptSendQueue", () {

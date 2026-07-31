@@ -9,7 +9,6 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
-import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
@@ -555,7 +554,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required bool dedicatedWorktree,
     required String? command,
     required ComposerInputMode inputMode,
-    required List<ComposerAttachment> attachments,
   }) async {
     final current = state;
     if (current is NewSessionSending || current is NewSessionCreated) return;
@@ -572,7 +570,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final normalizedCommand = command?.trim();
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
     final trimmed = text.trim();
-    if (trimmed.isEmpty && !hasCommand && attachments.isEmpty) return;
+    if (trimmed.isEmpty && !hasCommand) return;
     final analyticsSubmission = hasCommand
         ? const AnalyticsSubmission.command()
         : AnalyticsSubmission.text(inputMode: _analyticsInputMode(inputMode));
@@ -610,7 +608,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       projectId: _projectId,
       pluginId: pluginId,
       text: trimmed,
-      attachments: attachments,
       agent: options?.selectedAgent,
       providerID: selectedAgentModel?.providerID,
       modelID: selectedAgentModel?.modelID,

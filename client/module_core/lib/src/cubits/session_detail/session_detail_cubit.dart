@@ -9,7 +9,6 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
-import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
@@ -1025,16 +1024,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String text,
     required String? command,
     required ComposerInputMode inputMode,
-    required List<ComposerAttachment> attachments,
   }) async {
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
-    if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
+    if (trimmed.isEmpty && normalizedCommand == null) return;
 
     final submission = normalizedCommand == null
-        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode, attachments: attachments)
-        : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand, attachments: attachments);
+        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode)
+        : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);
     if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
       _promptQueue.enqueue(submission);
       _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
@@ -1047,7 +1045,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final result = await _sessionRepository.sendMessage(
       sessionId: _sessionId,
       text: trimmed,
-      attachments: attachments,
       agent: current.selectedAgent,
       model: _agentModelToPromptModel(current.selectedAgentModel),
       variant: switch (current.selectedAgentModel?.variant) {
@@ -1101,7 +1098,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       final result = await _sessionRepository.sendMessage(
         sessionId: _sessionId,
         text: submission.text,
-        attachments: submission.attachments,
         agent: current.selectedAgent,
         model: _agentModelToPromptModel(current.selectedAgentModel),
         variant: switch (current.selectedAgentModel?.variant) {

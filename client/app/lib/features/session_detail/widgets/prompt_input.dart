@@ -10,7 +10,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../capabilities/media/composer_image_picker.dart";
 import "../../../capabilities/voice/voice_transcription_service.dart";
 import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
@@ -32,7 +31,6 @@ typedef PromptSubmitCallback =
       required String text,
       required String? command,
       required ComposerInputMode inputMode,
-      required List<ComposerAttachment> attachments,
     });
 
 class PromptInput extends StatefulWidget {
@@ -143,13 +141,7 @@ class _PromptInputState extends State<PromptInput> {
   /// Locates the cancel target so the drag can measure its distance to it.
   final GlobalKey _cancelTargetKey = GlobalKey();
 
-  /// Images staged for the next submission. Not part of the persisted
-  /// draft — they live and die with this composer.
-  final List<ComposerAttachment> _attachments = [];
-
   VoiceTranscriptionService get _voiceService => getIt<VoiceTranscriptionService>();
-
-  ComposerImagePicker get _imagePicker => getIt<ComposerImagePicker>();
 
   @override
   void initState() {
@@ -235,8 +227,7 @@ class _PromptInputState extends State<PromptInput> {
 
   /// Whether the expanded typing container is showing (vs. the resting
   /// hold-to-talk / compact pills).
-  bool get _showsTypingLayout =>
-      _typingRequested || _focusNode.hasFocus || _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+  bool get _showsTypingLayout => _typingRequested || _focusNode.hasFocus || _hasText || widget.stagedCommand != null;
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
@@ -247,7 +238,7 @@ class _PromptInputState extends State<PromptInput> {
 
   _ComposerLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
 
-  bool get _hasSendableContent => _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+  bool get _hasSendableContent => _hasText || widget.stagedCommand != null;
 
   /// Switches to the typing layout and raises the keyboard. Focus is
   /// requested post-frame because the field only mounts with the typing
@@ -277,29 +268,19 @@ class _PromptInputState extends State<PromptInput> {
   void _handleSend() {
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
-    final attachments = List<ComposerAttachment>.unmodifiable(_attachments);
     if (stagedCommand != null) {
       widget.onSend(
         text: _controller.text,
         command: stagedCommand.name,
         inputMode: ComposerInputMode.typed,
-        attachments: attachments,
       );
       widget.onCommandCleared();
     } else {
       final submission = _draftCalculator.trim(draft: _draft);
-      if (submission.text.isEmpty && attachments.isEmpty) return;
-      widget.onSend(
-        text: submission.text,
-        command: null,
-        inputMode: submission.inputMode,
-        attachments: attachments,
-      );
+      if (submission.text.isEmpty) return;
+      widget.onSend(text: submission.text, command: null, inputMode: submission.inputMode);
     }
 
-    if (_attachments.isNotEmpty) {
-      setState(_attachments.clear);
-    }
     _controller.clear();
     widget.onDraftCleared();
     // Keep the keyboard up across a send only where it was already part of
@@ -317,9 +298,7 @@ class _PromptInputState extends State<PromptInput> {
     if (oldWidget.draftIdentity != widget.draftIdentity) {
       // The state was reused for another session without initState/dispose.
       // The owning Cubit already persisted each edit, so only restore the new
-      // immutable snapshot here. Staged attachments belong to the previous
-      // session and never carry across.
-      _attachments.clear();
+      // immutable snapshot here.
       _restoreDraft(draft: widget.initialDraft);
     }
     if (oldWidget.stagedCommand?.name != widget.stagedCommand?.name && widget.stagedCommand != null) {
@@ -411,7 +390,7 @@ class _PromptInputState extends State<PromptInput> {
       setState(() => _voiceState = _VoiceState.recording);
     } on MicrophonePermissionDeniedError {
       if (!mounted) return;
-      _showComposerNotice(context.loc.voiceErrorPermission);
+      _showVoiceError(context.loc.voiceErrorPermission);
     } catch (error) {
       // Typed voice errors and anything else the recorder throws (platform /
       // filesystem failures) both land here: an error escaping this method
@@ -419,7 +398,7 @@ class _PromptInputState extends State<PromptInput> {
       // killing voice input for the rest of the session.
       loge("Failed to start recording", error);
       if (!mounted) return;
-      _showComposerNotice(context.loc.voiceErrorRecording);
+      _showVoiceError(context.loc.voiceErrorRecording);
     }
   }
 
@@ -458,14 +437,14 @@ class _PromptInputState extends State<PromptInput> {
       // User cancelled — nothing to do, finally resets state.
     } on NotAuthenticatedVoiceError {
       if (!mounted || stale()) return;
-      _showComposerNotice(context.loc.voiceErrorNotAuthenticated);
+      _showVoiceError(context.loc.voiceErrorNotAuthenticated);
     } on NetworkVoiceError {
       if (!mounted || stale()) return;
-      _showComposerNotice(context.loc.voiceErrorNetwork);
+      _showVoiceError(context.loc.voiceErrorNetwork);
     } on VoiceTranscriptionError catch (error) {
       loge("Transcription failed", error);
       if (!mounted || stale()) return;
-      _showComposerNotice(context.loc.voiceErrorTranscription);
+      _showVoiceError(context.loc.voiceErrorTranscription);
     } finally {
       if (!stale()) {
         setState(() {
@@ -514,7 +493,7 @@ class _PromptInputState extends State<PromptInput> {
     }
   }
 
-  void _showComposerNotice(String message) {
+  void _showVoiceError(String message) {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
@@ -947,7 +926,6 @@ class _PromptInputState extends State<PromptInput> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: PregoSpacing.md,
         children: [
-          if (_attachments.isNotEmpty) _buildAttachmentStrip(context),
           Stack(
             children: [
               Padding(
@@ -1005,72 +983,6 @@ class _PromptInputState extends State<PromptInput> {
           if (voiceFirst) _buildTypingVoicePill(context) else _buildTypingActionRow(context),
         ],
       ),
-    );
-  }
-
-  /// The staged attachments' thumbnails, scrollable when they outgrow the
-  /// row, each with a remove badge.
-  Widget _buildAttachmentStrip(BuildContext context) {
-    return SizedBox(
-      height: _attachmentThumbnailSize,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xs),
-        child: Row(
-          spacing: PregoSpacing.sm,
-          children: [
-            for (var index = 0; index < _attachments.length; index++)
-              _buildAttachmentThumbnail(context, index: index),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static const double _attachmentThumbnailSize = 56;
-
-  Widget _buildAttachmentThumbnail(BuildContext context, {required int index}) {
-    final prego = context.prego;
-    final loc = context.loc;
-    final attachment = _attachments[index];
-
-    return Stack(
-      children: [
-        Semantics(
-          image: true,
-          label: attachment.filename ?? loc.sessionDetailAttachedImage,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(PregoRadius.md),
-            child: Image.memory(
-              attachment.bytes,
-              width: _attachmentThumbnailSize,
-              height: _attachmentThumbnailSize,
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
-            ),
-          ),
-        ),
-        PositionedDirectional(
-          top: PregoSpacing.xxs,
-          end: PregoSpacing.xxs,
-          child: Tooltip(
-            message: loc.sessionDetailRemoveAttachment,
-            child: PregoTappable(
-              onTap: () => setState(() => _attachments.removeAt(index)),
-              borderRadius: BorderRadius.circular(PregoRadius.full),
-              containerBuilder: (Widget child) => DecoratedBox(
-                decoration: BoxDecoration(
-                  color: prego.colors.bgSurface4,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: prego.colors.borderPrimary),
-                ),
-                child: SizedBox.square(dimension: 20, child: child),
-              ),
-              child: Icon(TablerRegular.x, size: 12, color: prego.colors.textPrimary),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1153,49 +1065,7 @@ class _PromptInputState extends State<PromptInput> {
     return ComposerOptionsAccordion(
       actionsEnabled: _voiceState == _VoiceState.idle,
       onSlashCommandsTap: _openCommandPicker,
-      onAttachImageTap: _handleAttachImage,
     );
-  }
-
-  /// Stages a gallery image for the next submission. Adding one switches the
-  /// composer to the typing layout (via [_showsTypingLayout]) so the preview
-  /// strip is visible, without raising the keyboard.
-  Future<void> _handleAttachImage() async {
-    // The pick can settle after this state was reused for another session
-    // (didUpdateWidget cleared the strip) — a late result must not leak into
-    // the new session's composer.
-    final draftIdentity = widget.draftIdentity;
-    try {
-      final attachment = await _imagePicker.pickImage();
-      if (!mounted || draftIdentity != widget.draftIdentity || attachment == null) return;
-      if (_attachmentsDecodedSizeWith(attachment: attachment) > maxInlineMessageAttachmentBytes) {
-        _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
-        return;
-      }
-      setState(() => _attachments.add(attachment));
-    } on AttachmentTooLargeError {
-      if (!mounted || draftIdentity != widget.draftIdentity) return;
-      _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
-    } on UnsupportedAttachmentImageError {
-      if (!mounted || draftIdentity != widget.draftIdentity) return;
-      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
-    } catch (error) {
-      loge("Failed to attach an image", error);
-      if (!mounted || draftIdentity != widget.draftIdentity) return;
-      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
-    }
-  }
-
-  /// Total decoded bytes the staged strip would carry with [attachment]
-  /// added. The per-message inline budget reuses the per-image transport
-  /// limit, so a many-image prompt cannot multiply relay frames past what a
-  /// single maximal image is allowed to cost.
-  int _attachmentsDecodedSizeWith({required ComposerAttachment attachment}) {
-    var total = attachment.bytes.length;
-    for (final staged in _attachments) {
-      total += staged.bytes.length;
-    }
-    return total;
   }
 
   /// The 44pt leading slot: the options accordion at rest, the drag-to-cancel
