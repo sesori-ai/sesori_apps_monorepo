@@ -1,7 +1,11 @@
+import "dart:convert";
+import "dart:typed_data";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -101,7 +105,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(session));
 
-      await api.createSessionWithMessage(
+      await api.createSessionWithMessage(attachments: const [],
         projectId: "project-1",
         pluginId: "plugin-1",
         text: "hello",
@@ -133,7 +137,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await api.sendMessage(
+      await api.sendMessage(attachments: const [],
         sessionId: "session-1",
         text: "hello",
         agent: "build",
@@ -151,6 +155,82 @@ void main() {
       )..called(1);
       final request = verification.captured.single as SendPromptRequest;
       expect(request.variant, isNull);
+    });
+
+    test("sendMessage appends attachments as inline file_data parts after the text part", () async {
+      when(
+        () => client.post<void>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      final attachment = ComposerAttachment(
+        mime: "image/png",
+        bytes: Uint8List.fromList(const [1, 2, 3]),
+        filename: "screenshot.png",
+      );
+      await api.sendMessage(
+        sessionId: "session-1",
+        text: "look at this",
+        attachments: [attachment],
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+      );
+
+      final verification = verify(
+        () => client.post<void>(
+          "/session/prompt_async",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      final request = verification.captured.single as SendPromptRequest;
+      expect(request.parts, [
+        const PromptPart.text(text: "look at this"),
+        PromptPart.fileData(
+          mime: "image/png",
+          base64: base64Encode(const [1, 2, 3]),
+          filename: "screenshot.png",
+        ),
+      ]);
+    });
+
+    test("an attachment-only prompt omits the empty text part", () async {
+      when(
+        () => client.post<void>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      await api.sendMessage(
+        sessionId: "session-1",
+        text: "",
+        attachments: [
+          ComposerAttachment(mime: "image/jpeg", bytes: Uint8List.fromList(const [7]), filename: null),
+        ],
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+      );
+
+      final verification = verify(
+        () => client.post<void>(
+          "/session/prompt_async",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      final request = verification.captured.single as SendPromptRequest;
+      expect(request.parts, [
+        PromptPart.fileData(mime: "image/jpeg", base64: base64Encode(const [7]), filename: null),
+      ]);
     });
 
     test("listCommands posts the project request body", () async {

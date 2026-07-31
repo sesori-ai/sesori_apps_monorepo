@@ -1135,7 +1135,7 @@ void main() {
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [degraded])),
       );
       when(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1151,7 +1151,7 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,
@@ -1162,7 +1162,7 @@ void main() {
       verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "degraded")).called(1);
       verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "degraded")).called(1);
       verify(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: "project-1",
           pluginId: "degraded",
           text: "hello",
@@ -1204,7 +1204,7 @@ void main() {
       expect(state.selectedPlugin, unavailable);
       cubit.selectPlugin(pluginId: "failed");
       cubit.selectPlugin(pluginId: "unknown");
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "blocked",
         dedicatedWorktree: true,
         command: null,
@@ -1214,7 +1214,7 @@ void main() {
       expect((cubit.state as NewSessionIdle).selectedPlugin, unavailable);
       _verifyNoComposerCalls(sessionService);
       verifyNever(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1237,7 +1237,7 @@ void main() {
       await _waitUntil(() => cubit.state.agentModelData?.isLoading == false);
 
       expect(cubit.state.agentModelData?.plugin, isNull);
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "blocked",
         dedicatedWorktree: true,
         command: null,
@@ -1379,7 +1379,7 @@ void main() {
         ..recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a")
         ..recordAgent(projectId: "project-1", pluginId: "plugin-b", agentName: "agent-b");
       when(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1395,7 +1395,7 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,
@@ -1411,7 +1411,7 @@ void main() {
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, pluginB])),
       );
       when(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1437,7 +1437,7 @@ void main() {
         ),
       );
 
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,
@@ -1528,7 +1528,7 @@ void main() {
       });
       final createCompleter = Completer<ApiResponse<Session>>();
       when(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1544,7 +1544,7 @@ void main() {
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
 
-      final send = cubit.createSession(
+      final send = cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,
@@ -1574,7 +1574,7 @@ void main() {
         return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
       });
       when(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1609,7 +1609,7 @@ void main() {
         ),
       );
 
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,
@@ -1624,7 +1624,7 @@ void main() {
       );
       expect(cubit.canCreateSession, isFalse);
       verifyNever(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1643,7 +1643,7 @@ void main() {
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])),
       );
       when(
-        () => sessionService.createSessionWithMessage(
+        () => sessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1659,7 +1659,7 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,

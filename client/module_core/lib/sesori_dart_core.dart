@@ -94,6 +94,7 @@ export "src/di/injection.dart";
 // Errors
 export "src/errors/remote_failure_reason.dart";
 // Analytics foundation
+export "src/foundation/models/composer/composer_attachment.dart";
 export "src/foundation/models/composer/composer_draft.dart";
 export "src/foundation/models/product_analytics/analytics_runtime_capability.dart";
 export "src/foundation/models/product_analytics/installation_analytics_event.dart";

@@ -174,7 +174,7 @@ void main() {
         }
       });
       when(
-        () => harness.sessionRepository.createSessionWithMessage(
+        () => harness.sessionRepository.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),

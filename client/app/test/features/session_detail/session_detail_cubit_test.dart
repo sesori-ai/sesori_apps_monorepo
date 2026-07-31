@@ -249,7 +249,7 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "  hi  ",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -260,7 +260,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "hi",
             agent: "coder",
@@ -299,7 +299,7 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "lib/main.dart",
           command: "review",
           inputMode: ComposerInputMode.voiceAssisted,
@@ -310,7 +310,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "lib/main.dart",
             agent: "coder",
@@ -384,7 +384,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Send message while busy — should send immediately (not queue).
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "hello",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -402,7 +402,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "hello",
             agent: "coder",
@@ -1281,7 +1281,7 @@ void main() {
             config: ServerConnectionConfig(relayHost: "fake.example.com"),
           ),
         );
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "hello",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -1297,7 +1297,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1333,7 +1333,7 @@ void main() {
             config: ServerConnectionConfig(relayHost: "fake.example.com"),
           ),
         );
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "hello",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -1349,7 +1349,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1366,7 +1366,7 @@ void main() {
       "sendMessage re-queues on send failure",
       build: () {
         when(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1394,7 +1394,7 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "hello",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -1411,7 +1411,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "hello",
             agent: "coder",
@@ -1469,7 +1469,7 @@ void main() {
         );
 
         // Send message while disconnected — queued.
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "queued msg",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -1501,7 +1501,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1541,7 +1541,7 @@ void main() {
         );
 
         // Send message — queued because disconnected.
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "retry me",
           command: null,
           inputMode: ComposerInputMode.voiceAssisted,
@@ -1580,7 +1580,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "retry me",
             agent: "coder",
@@ -1625,7 +1625,7 @@ void main() {
         ),
       );
 
-      await cubit.sendMessage(
+      await cubit.sendMessage(attachments: const [],
         text: "hello",
         command: "   ",
         inputMode: ComposerInputMode.typed,
@@ -1651,7 +1651,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       verify(
-        () => mockSessionService.sendMessage(
+        () => mockSessionService.sendMessage(attachments: const [],
           sessionId: sessionId,
           text: "hello",
           agent: "coder",
@@ -1713,7 +1713,7 @@ void main() {
           config: ServerConnectionConfig(relayHost: "fake.example.com"),
         ),
       );
-      await cubit.sendMessage(
+      await cubit.sendMessage(attachments: const [],
         text: "lib/main.dart",
         command: "review",
         inputMode: ComposerInputMode.typed,
@@ -1737,7 +1737,7 @@ void main() {
 
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
       verify(
-        () => mockSessionService.sendMessage(
+        () => mockSessionService.sendMessage(attachments: const [],
           sessionId: sessionId,
           text: "lib/main.dart",
           agent: "coder",
@@ -1755,7 +1755,7 @@ void main() {
       final sentTexts = <String>[];
 
       when(
-        () => mockSessionService.sendMessage(
+        () => mockSessionService.sendMessage(attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
@@ -1796,7 +1796,7 @@ void main() {
           config: ServerConnectionConfig(relayHost: "fake.example.com"),
         ),
       );
-      await cubit.sendMessage(
+      await cubit.sendMessage(attachments: const [],
         text: "first",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1816,7 +1816,7 @@ void main() {
       );
 
       await firstSendStarted.future;
-      await cubit.sendMessage(
+      await cubit.sendMessage(attachments: const [],
         text: "second",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1862,12 +1862,12 @@ void main() {
         );
 
         // Queue two messages while disconnected.
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "first",
           command: null,
           inputMode: ComposerInputMode.typed,
         );
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "second",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -1892,7 +1892,7 @@ void main() {
       },
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "first",
             agent: any(named: "agent"),
@@ -1903,7 +1903,7 @@ void main() {
           ),
         ).called(1);
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "second",
             agent: any(named: "agent"),
@@ -1922,7 +1922,7 @@ void main() {
         // Make sendMessage always fail — it is only called during drain,
         // not during initial load, so this is safe.
         when(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -1959,7 +1959,7 @@ void main() {
         );
 
         // Queue a message.
-        await cubit.sendMessage(
+        await cubit.sendMessage(attachments: const [],
           text: "will fail",
           command: null,
           inputMode: ComposerInputMode.typed,
@@ -2004,7 +2004,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSessionService.sendMessage(attachments: const [],
             sessionId: sessionId,
             text: "will fail",
             agent: any(named: "agent"),
@@ -2279,7 +2279,7 @@ void _stubAllDefaults(
   ).thenReturn(null);
 
   when(
-    () => sessionService.sendMessage(
+    () => sessionService.sendMessage(attachments: const [],
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
       agent: any(named: "agent"),

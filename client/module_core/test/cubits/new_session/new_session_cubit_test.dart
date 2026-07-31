@@ -267,7 +267,7 @@ void main() {
       skip: 1,
       build: () {
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
@@ -283,7 +283,7 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.createSession(attachments: const [],
           text: "hello",
           dedicatedWorktree: false,
           command: null,
@@ -297,7 +297,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(attachments: const [],
             projectId: "project-1",
             pluginId: "plugin-1",
             text: "hello",
@@ -326,7 +326,7 @@ void main() {
       skip: 1,
       build: () {
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
@@ -359,7 +359,7 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.createSession(attachments: const [],
           text: "",
           command: "review",
           dedicatedWorktree: true,
@@ -373,7 +373,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(attachments: const [],
             projectId: "project-1",
             pluginId: "plugin-1",
             text: "",
@@ -390,7 +390,7 @@ void main() {
 
     test("failed creation reports only a bounded failure outcome", () async {
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -410,7 +410,7 @@ void main() {
       addTearDown(cubit.close);
       await waitForComposer(cubit);
 
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "sensitive prompt",
         dedicatedWorktree: false,
         command: null,
@@ -459,7 +459,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -481,7 +481,7 @@ void main() {
       cubit.stageCommand(command);
       final modelBeforeSend = cubit.state.agentModelData?.agentModel;
 
-      final pendingCreate = cubit.createSession(
+      final pendingCreate = cubit.createSession(attachments: const [],
         text: "",
         command: command.name,
         dedicatedWorktree: true,
@@ -502,7 +502,7 @@ void main() {
       expect(cubit.state, isA<NewSessionError>());
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
 
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "retry",
         command: cubit.state.agentModelData?.stagedCommand?.name,
         dedicatedWorktree: true,
@@ -510,7 +510,7 @@ void main() {
       );
 
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -523,7 +523,7 @@ void main() {
         ),
       ).called(1);
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: "retry",
@@ -543,7 +543,7 @@ void main() {
         () => mockProjectRepository.getProject(projectId: any(named: "projectId")),
       ).thenAnswer((_) => projectResponse.future);
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -559,7 +559,7 @@ void main() {
       addTearDown(cubit.close);
       await waitForComposer(cubit);
 
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,
@@ -567,7 +567,7 @@ void main() {
       );
 
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: "project-1",
           pluginId: "plugin-1",
           text: "hello",
@@ -607,7 +607,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -624,7 +624,7 @@ void main() {
       await waitForComposer(cubit);
       expect(cubit.state.agentModelData?.supportsDedicatedWorktrees, isFalse);
 
-      await cubit.createSession(
+      await cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,
@@ -632,7 +632,7 @@ void main() {
       );
 
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: "project-1",
           pluginId: "plugin-1",
           text: "hello",
@@ -676,7 +676,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["xhigh"])));
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
@@ -693,7 +693,7 @@ void main() {
       act: (cubit) async {
         await waitForComposer(cubit);
         cubit.selectVariant(const SessionVariant(id: "xhigh"));
-        await cubit.createSession(
+        await cubit.createSession(attachments: const [],
           text: "hello",
           dedicatedWorktree: true,
           command: null,
@@ -720,7 +720,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(attachments: const [],
             projectId: "project-1",
             pluginId: "plugin-1",
             text: "hello",
@@ -1695,7 +1695,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
@@ -1711,7 +1711,7 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.createSession(attachments: const [],
           text: "hello",
           dedicatedWorktree: true,
           command: null,
@@ -1734,7 +1734,7 @@ void main() {
       );
       final completer = Completer<ApiResponse<Session>>();
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1750,7 +1750,7 @@ void main() {
       final cubit = buildCubit();
       await waitForComposer(cubit);
       // Kick off creation but don't await — the request is now in flight.
-      final pending = cubit.createSession(
+      final pending = cubit.createSession(attachments: const [],
         text: "hello",
         dedicatedWorktree: true,
         command: null,
@@ -1768,7 +1768,7 @@ void main() {
     test("a late background success only clears the snapshot it was sent with, not a newer one", () async {
       final completer = Completer<ApiResponse<Session>>();
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1792,7 +1792,7 @@ void main() {
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
-      final pending = cubit.createSession(
+      final pending = cubit.createSession(attachments: const [],
         text: "hi",
         dedicatedWorktree: true,
         command: null,
@@ -1828,7 +1828,7 @@ void main() {
     test("a late background success preserves an equal selection from a newer write", () async {
       final completer = Completer<ApiResponse<Session>>();
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockSessionService.createSessionWithMessage(attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -1849,7 +1849,7 @@ void main() {
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
-      final pending = cubit.createSession(
+      final pending = cubit.createSession(attachments: const [],
         text: "hi",
         dedicatedWorktree: true,
         command: null,
