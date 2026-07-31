@@ -116,7 +116,12 @@ final class AcpContentMapper {
       dto = AcpContentBlockDto.fromJson(content.cast<String, dynamic>());
     } on Object {
       _warnOnce(reason: _AcpContentWarning.malformed, warned: warned);
-      yield const AcpMappedUnknownContentBlock();
+      final fallback = _legacyMapContent(content: content, warned: warned);
+      if (fallback.isEmpty) {
+        yield const AcpMappedUnknownContentBlock();
+      } else {
+        yield* fallback;
+      }
       return;
     }
 
@@ -130,8 +135,26 @@ final class AcpContentMapper {
           AcpUnsupportedResourceLinkContentBlockDto():
         yield const AcpMappedUnsupportedContentBlock();
       case AcpUnknownContentBlockDto():
-        yield const AcpMappedUnknownContentBlock();
+        final fallback = _legacyMapContent(content: content, warned: warned);
+        if (fallback.isEmpty) {
+          yield const AcpMappedUnknownContentBlock();
+        } else {
+          yield* fallback;
+        }
     }
+  }
+
+  List<AcpMappedContentBlock> _legacyMapContent({
+    required Map<dynamic, dynamic> content,
+    required Set<_AcpContentWarning> warned,
+  }) {
+    final text = content["text"];
+    if (text is String && text.isNotEmpty) {
+      return [AcpMappedTextContentBlock(text: text)];
+    }
+    final nested = content["content"];
+    if (nested == null) return const [];
+    return _mapValue(content: nested, warned: warned).toList(growable: false);
   }
 
   AcpMappedImageContentBlock _mapImage({

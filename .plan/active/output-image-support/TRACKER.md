@@ -33,7 +33,7 @@
 | [x] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | [PR #648](https://github.com/sesori-ai/sesori_apps_monorepo/pull/648) merged as `e9a03363`; 1,472 changed lines |
 | [x] | 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | [PR #652](https://github.com/sesori-ai/sesori_apps_monorepo/pull/652) merged as `737226d8`; 830 changed lines |
 | [x] | 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | [PR #657](https://github.com/sesori-ai/sesori_apps_monorepo/pull/657) merged as `4ca1cb90`; 589 changed lines |
-| [ ] | 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | [PR #658](https://github.com/sesori-ai/sesori_apps_monorepo/pull/658) open; 1,034 changed lines |
+| [ ] | 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | [PR #658](https://github.com/sesori-ai/sesori_apps_monorepo/pull/658) open; 1,088 changed lines |
 | [ ] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | Blocked on Step 8 merge |
 | [ ] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | Blocked on Step 9 merge |
 | [ ] | 11/13 | `output-image-support-acp-tool-images` | `[output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | Blocked on Step 10 merge |
@@ -162,8 +162,11 @@
   mapper/live/replay tests, all 165 ACP tests, all 108 Cursor tests,
   `dart pub get`, fatal analysis in both packages, and
   `git diff --cached --check` pass. `aristotle-impl-review` approved with no
-  findings. The 1,034 changed-line diff is below the 1,500-line soft cap; no
-  neighboring scope was combined.
+  findings. The 1,088 changed-line diff is below the 1,500-line soft cap; no
+  neighboring scope was combined. PR review restored the prior fail-soft text
+  fallback for untyped, future, and nested-wrapper maps after known typed
+  variants are considered; all 68 focused ACP tests, 7 Cursor mapper tests, and
+  fatal analysis in both packages pass.
 
 ## Findings And Plan Deltas
 

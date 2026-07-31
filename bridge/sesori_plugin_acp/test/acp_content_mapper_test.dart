@@ -27,6 +27,34 @@ void main() {
       expect(mapper.text(content: {"type": "text", "text": ""}), isNull);
     });
 
+    test("preserves untyped, future, and wrapped text after known variant parsing", () {
+      expect(mapper.text(content: {"text": "untyped"}), "untyped");
+      expect(
+        mapper.text(content: {"type": "future_block", "text": "future"}),
+        "future",
+      );
+      expect(
+        mapper.text(
+          content: {
+            "type": "content",
+            "content": {"type": "text", "text": "wrapped"},
+          },
+        ),
+        "wrapped",
+      );
+
+      final knownImage = mapper.map(
+        content: {
+          "type": "image",
+          "data": "AA==",
+          "mimeType": "image/png",
+          "uri": null,
+          "text": "must not bypass image validation",
+        },
+      );
+      expect(knownImage.single, isA<AcpMappedInlineImageContentBlock>());
+    });
+
     test("allows the bounded raster MIME set and retains only a URI basename", () {
       for (final mime in [
         "image/bmp",
