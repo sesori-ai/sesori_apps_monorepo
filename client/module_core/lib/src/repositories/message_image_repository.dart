@@ -182,10 +182,13 @@ class MessageImageRepository {
     return extension == null ? safeBasename : "$safeBasename$extension";
   }
 
-  bool _isReservedWindowsBasename({required String basename}) => RegExp(
-    r"^(con|prn|aux|nul|com[1-9]|lpt[1-9])$",
-    caseSensitive: false,
-  ).hasMatch(basename);
+  bool _isReservedWindowsBasename({required String basename}) {
+    final stem = basename.split(".").first;
+    return RegExp(
+      r"^(con|prn|aux|nul|com[1-9]|lpt[1-9])$",
+      caseSensitive: false,
+    ).hasMatch(stem);
+  }
 
   String _truncateUtf8({required String value, required int maxBytes}) {
     final result = StringBuffer();

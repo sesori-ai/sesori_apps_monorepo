@@ -25,8 +25,8 @@ class MessageImageCubit extends Cubit<MessageImageState> {
   Future<void> _load() async {
     final result = await _repository.load(attachment: _attachment);
     if (isClosed) return;
-    if (result case MessageImageLoadFailure(:final cause, :final stackTrace)) {
-      logw("Failed to load a message image", cause, stackTrace);
+    if (result is MessageImageLoadFailure) {
+      logw("Failed to load a message image");
     }
     emit(
       switch (result) {

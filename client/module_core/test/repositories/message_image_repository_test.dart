@@ -166,7 +166,14 @@ void main() {
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
     );
 
-    for (final reservedName in ["CON.png", "aux.jpg", "NUL.gif", "COM1.webp", "lpt9.bmp"]) {
+    for (final reservedName in [
+      "CON.png",
+      "CON.preview.png",
+      "aux.jpg",
+      "NUL.backup.gif",
+      "COM1.webp",
+      "lpt9.bmp",
+    ]) {
       final result = await repository.load(
         attachment: MessageAttachment.inlineImage(
           mime: "image/png",

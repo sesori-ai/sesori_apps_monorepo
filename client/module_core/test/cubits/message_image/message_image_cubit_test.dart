@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -26,5 +28,40 @@ void main() {
     expect(loaded.mime, "image/png");
     expect(loaded.actionFilename, "image.png");
     expect(loaded.originalUri, isNull);
+  });
+
+  test("logs remote failures without exposing the attachment URL", () async {
+    final previousLogLevel = logLevel;
+    setLogLevel(LogLevel.warning);
+    addTearDown(() => setLogLevel(previousLogLevel));
+    final uri = Uri.parse("https://files.example.com/private/image.png?signature=secret");
+    final logs = <String>[];
+
+    late MessageImageFailed failed;
+    await runZoned(
+      () async {
+        final cubit = MessageImageCubit(
+          repository: MessageImageRepository(
+            api: MessageImageApi(
+              client: MockClient((_) async => throw http.ClientException("request failed", uri)),
+            ),
+          ),
+          attachment: MessageAttachment.remoteUrl(
+            mime: "image/png",
+            url: uri.toString(),
+            filename: "image.png",
+          ),
+        );
+        failed = await cubit.stream.firstWhere((state) => state is MessageImageFailed) as MessageImageFailed;
+        await cubit.close();
+      },
+      zoneSpecification: ZoneSpecification(
+        print: (_, _, _, line) => logs.add(line),
+      ),
+    );
+
+    expect(failed.cause, isA<http.ClientException>());
+    expect(logs, contains("Failed to load a message image"));
+    expect(logs.join("\n"), isNot(contains("signature=secret")));
   });
 }
