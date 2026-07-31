@@ -159,7 +159,7 @@ void main() {
     expect(find.text("Image copied to clipboard"), findsOneWidget);
   });
 
-  testWidgets("uses the generated image filename when attachment metadata has no filename", (tester) async {
+  testWidgets("omits the image title when attachment metadata has no filename", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -179,7 +179,7 @@ void main() {
     await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey));
     await tester.pumpAndSettle();
 
-    expect(find.text("image.png"), findsOneWidget);
+    expect(find.text("image.png"), findsNothing);
     expect(find.text("Unknown file"), findsNothing);
   });
 

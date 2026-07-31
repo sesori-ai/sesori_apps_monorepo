@@ -1213,12 +1213,6 @@ abstract class AppLocalizations {
   /// **'Tool'**
   String get sessionDetailToolUnknown;
 
-  /// Fallback label shown for a file attachment when the filename cannot be determined.
-  ///
-  /// In en, this message translates to:
-  /// **'Unknown file'**
-  String get sessionDetailFileUnknown;
-
   /// No description provided for @sessionDetailImageOpen.
   ///
   /// In en, this message translates to:

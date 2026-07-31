@@ -51,7 +51,7 @@ class _FilePartContent extends StatelessWidget {
           mime: mime,
           actionFilename: actionFilename,
           originalUri: originalUri,
-          filename: _loadedImageFilename(context: context, actionFilename: actionFilename),
+          filename: _displayFilename(filename: _attachmentFilename),
         ),
       MessageImageUnsupported() => _buildFallbackAttachment(context: context, imageLoadFailed: false),
       MessageImageRejected() || MessageImageFailed() => _buildFallbackAttachment(
@@ -68,27 +68,19 @@ class _FilePartContent extends StatelessWidget {
     MessageAttachmentUnknown() => null,
   };
 
-  String _loadedImageFilename({required BuildContext context, required String actionFilename}) {
-    final filename = _attachmentFilename;
-    return _displayFilename(
-      context: context,
-      filename: filename == null || filename.trim().isEmpty ? actionFilename : filename,
-    );
-  }
-
   Widget _buildLoadingAttachment({required BuildContext context}) {
     final prego = context.prego;
     return switch (attachment) {
       MessageAttachmentInlineImage(:final mime, :final filename) => _buildFileTile(
         prego: prego,
-        filename: _displayFilename(context: context, filename: filename),
+        filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: null,
         icon: Icons.image_outlined,
       ),
       MessageAttachmentRemoteUrl(:final mime, :final filename) => _buildFileTile(
         prego: prego,
-        filename: _displayFilename(context: context, filename: filename),
+        filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: attachment.safeRemoteUri,
         icon: Icons.image_outlined,
@@ -108,21 +100,21 @@ class _FilePartContent extends StatelessWidget {
     return switch (attachment) {
       MessageAttachmentRemoteUrl(:final mime, :final filename) => _buildFileTile(
         prego: prego,
-        filename: _displayFilename(context: context, filename: filename),
+        filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: attachment.safeRemoteUri,
         icon: imageLoadFailed ? Icons.broken_image : Icons.insert_drive_file,
       ),
       MessageAttachmentMetadata(:final mime, :final filename) => _buildFileTile(
         prego: prego,
-        filename: _displayFilename(context: context, filename: filename),
+        filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: null,
         icon: Icons.insert_drive_file,
       ),
       MessageAttachmentInlineImage(:final mime, :final filename) => _buildFileTile(
         prego: prego,
-        filename: _displayFilename(context: context, filename: filename),
+        filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: null,
         icon: Icons.broken_image,
@@ -131,9 +123,9 @@ class _FilePartContent extends StatelessWidget {
     };
   }
 
-  String _displayFilename({required BuildContext context, required String? filename}) {
+  String? _displayFilename({required String? filename}) {
     final normalized = filename?.trim();
-    if (normalized == null || normalized.isEmpty) return context.loc.sessionDetailFileUnknown;
+    if (normalized == null || normalized.isEmpty) return null;
     return String.fromCharCodes(normalized.runes.take(_maxMetadataCharacters));
   }
 
@@ -145,7 +137,7 @@ class _FilePartContent extends StatelessWidget {
 
   Widget _buildFileTile({
     required PregoDesignSystem prego,
-    required String filename,
+    required String? filename,
     required String? mime,
     required Uri? uri,
     required IconData icon,
@@ -171,7 +163,8 @@ class _FilePartContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(filename, style: prego.textTheme.textSm.regular, overflow: TextOverflow.ellipsis),
+                      if (filename != null)
+                        Text(filename, style: prego.textTheme.textSm.regular, overflow: TextOverflow.ellipsis),
                       if (mime != null)
                         Text(
                           mime,
@@ -196,7 +189,7 @@ class _LoadedImageAttachment extends StatefulWidget {
   final String mime;
   final String actionFilename;
   final Uri? originalUri;
-  final String filename;
+  final String? filename;
 
   const _LoadedImageAttachment({
     required this.bytes,
