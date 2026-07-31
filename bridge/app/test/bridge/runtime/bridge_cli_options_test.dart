@@ -3,7 +3,6 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:test/test.dart";
 
 void main() {
@@ -49,18 +48,14 @@ void main() {
 
     test("expands a leading tilde to the user's home directory", () {
       final options = _parseOptions(args: const ["--data-dir", "~/sesori-dev"]);
-      final homeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
 
-      expect(homeDirectory, isNotNull);
-      expect(options.dataDirectory, path.normalize(path.absolute(path.join(homeDirectory!, "sesori-dev"))));
+      expect(options.dataDirectory, "/test/home/sesori-dev");
     });
 
     test("expands a bare tilde to the user's home directory", () {
       final options = _parseOptions(args: const ["--data-dir", "~"]);
-      final homeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
 
-      expect(homeDirectory, isNotNull);
-      expect(options.dataDirectory, path.normalize(path.absolute(homeDirectory!)));
+      expect(options.dataDirectory, "/test/home");
     });
 
     test("rejects an empty explicit path", () {
@@ -75,8 +70,31 @@ void main() {
         BridgeCliOptions.resolveDataDirectory(
           dataDirectoryFlag: "relative-logout-data",
           defaultDataDirectory: "/default/sesori-data",
+          environment: const {},
         ),
         path.normalize(path.absolute("relative-logout-data")),
+      );
+    });
+
+    test("uses the injected environment when expanding a tilde", () {
+      expect(
+        BridgeCliOptions.resolveDataDirectory(
+          dataDirectoryFlag: "~/logout-data",
+          defaultDataDirectory: "/default/sesori-data",
+          environment: const {"HOME": "/injected/home"},
+        ),
+        "/injected/home/logout-data",
+      );
+    });
+
+    test("rejects a tilde when the home directory is unavailable", () {
+      expect(
+        () => BridgeCliOptions.resolveDataDirectory(
+          dataDirectoryFlag: "~/missing-home",
+          defaultDataDirectory: "/default/sesori-data",
+          environment: const {},
+        ),
+        throwsA(isA<ArgParserException>()),
       );
     });
 
@@ -167,7 +185,7 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
   return BridgeCliOptions.fromArgResults(
     cliArgs: args,
     results: results,
-    environment: const {},
+    environment: const {"HOME": "/test/home"},
     defaultAuthUrl: "https://api.sesori.com",
     defaultDataDirectory: "/default/sesori-data",
   );
