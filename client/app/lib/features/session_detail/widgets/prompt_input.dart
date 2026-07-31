@@ -618,6 +618,10 @@ class _PromptInputState extends State<PromptInput> {
     // The resting layout follows the settings choice live.
     context.watch<ChatInputModeCubit>();
     final prego = context.prego;
+    final shouldDismissKeyboardBeforePop =
+        Theme.of(context).platform == TargetPlatform.android &&
+        _focusNode.hasFocus &&
+        View.of(context).viewInsets.bottom > 0;
 
     return DecoratedBox(
       // Floating composer: no bar surface, no separator line. The scaffold
@@ -645,9 +649,9 @@ class _PromptInputState extends State<PromptInput> {
           // A focused composer consumes the first route pop so Android back
           // dismisses the keyboard before a later back leaves the screen.
           PopScope(
-            canPop: !_focusNode.hasFocus,
+            canPop: !shouldDismissKeyboardBeforePop,
             onPopInvokedWithResult: (didPop, _) {
-              if (!didPop && _focusNode.hasFocus) _focusNode.unfocus();
+              if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
             },
             child: _buildComposerTopSlot(context),
           ),

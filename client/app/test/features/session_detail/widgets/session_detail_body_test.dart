@@ -476,14 +476,20 @@ void main() {
   });
 
   testWidgets("system back dismisses the composer keyboard before popping the route", (tester) async {
+    addTearDown(tester.view.resetViewInsets);
     await tester.pumpWidget(_buildApp(cubit: cubit, startAtPreviousScreen: true));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Open session"));
     await tester.pumpAndSettle();
 
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pump();
     await enterTypingMode(tester);
     final focusNode = composerFocus(tester);
     expect(focusNode.hasFocus, isTrue);
+    final fieldContext = tester.element(find.byType(EditableText));
+    expect(Theme.of(fieldContext).platform, TargetPlatform.android);
+    expect(View.of(fieldContext).viewInsets.bottom, greaterThan(0));
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
@@ -497,6 +503,28 @@ void main() {
 
     expect(find.byType(SessionDetailBody), findsNothing);
     expect(find.text("Open session"), findsOneWidget);
+  });
+
+  testWidgets("iOS back navigation stays available while the composer is focused", (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(tester.view.resetViewInsets);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    try {
+      await tester.pumpWidget(_buildApp(cubit: cubit, startAtPreviousScreen: true));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Open session"));
+      await tester.pumpAndSettle();
+      await enterTypingMode(tester);
+      expect(composerFocus(tester).hasFocus, isTrue);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SessionDetailBody), findsNothing);
+      expect(find.text("Open session"), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets("opening a composer menu dismisses the keyboard (glass path)", (tester) async {
