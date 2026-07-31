@@ -2,7 +2,9 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "api/models/codex_image_bearing_item_dto.dart";
 import "api/models/codex_rollout_dto.dart";
+import "api/parsers/codex_image_bearing_item_parser.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
@@ -28,9 +30,11 @@ class CodexEventMapper {
   CodexEventMapper({
     required this.pluginId,
     required this.projectCwd,
+    required CodexImageBearingItemParser imageBearingItemParser,
     required CodexRolloutToolMapper rolloutToolMapper,
     this.config = const CodexConfigDefaults.empty(),
-  }) : _rolloutToolMapper = rolloutToolMapper;
+  }) : _imageBearingItemParser = imageBearingItemParser,
+       _rolloutToolMapper = rolloutToolMapper;
 
   final String pluginId;
 
@@ -56,6 +60,7 @@ class CodexEventMapper {
   /// global [config] default — making a model switch look like it never took
   /// effect even though codex honoured it. Falls back to [config] when unknown.
   final Map<String, String> _threadModel = {};
+  final CodexImageBearingItemParser _imageBearingItemParser;
   final CodexRolloutToolMapper _rolloutToolMapper;
 
   /// Raw rollout state keyed by the same `call_id` app-server uses as a
@@ -336,6 +341,57 @@ class CodexEventMapper {
     final itemId = item["id"] as String?;
     if (itemId == null || itemId.isEmpty) return const [];
 
+    final imageBearingItem = _imageBearingItemParser.parse(item: item);
+    switch (imageBearingItem) {
+      case CodexImageGenerationItemDto():
+        return const [];
+      case CodexMcpToolCallItemDto(
+        :final server,
+        :final tool,
+        :final status,
+        :final content,
+        :final error,
+      ):
+        return _toolItemEvents(
+          threadId: threadId,
+          itemId: itemId,
+          tool: tool ?? "mcp",
+          title: _mcpToolTitle(server: server, tool: tool),
+          status: _parsedToolStatus(status: status, completed: completed),
+          output: _imageBearingToolOutput(content),
+          error: error,
+        );
+      case CodexDynamicToolCallItemDto(
+        :final tool,
+        :final arguments,
+        :final status,
+        :final content,
+      ):
+        final canonical = _canonicalRolloutTool(
+          threadId: threadId,
+          itemId: itemId,
+        );
+        return _toolItemEvents(
+          threadId: threadId,
+          itemId: itemId,
+          tool: canonical?.call.tool ?? tool,
+          title: canonical?.call.title ?? _dynamicToolTitle(arguments),
+          status:
+              canonical?.result.status ??
+              _parsedToolStatus(
+                status: status,
+                completed: completed,
+              ),
+          output:
+              canonical?.result.output ??
+              _rolloutToolMapper.clipOutput(
+                _imageBearingToolOutput(content),
+              ),
+        );
+      case CodexUnknownImageBearingItemDto() || null:
+        break;
+    }
+
     switch (item["type"] as String?) {
       case "userMessage":
         return _messageEvents(
@@ -406,38 +462,6 @@ class CodexEventMapper {
           title: _fileChangeTitle(item["changes"]),
           status: _toolStatus(item["status"], completed: completed),
           output: _fileChangeOutput(item["changes"]),
-        );
-      case "mcpToolCall":
-        return _toolItemEvents(
-          threadId: threadId,
-          itemId: itemId,
-          tool: item["tool"] as String? ?? "mcp",
-          title: _mcpToolTitle(item),
-          status: _toolStatus(item["status"], completed: completed),
-          output: _mcpResultText(item["result"]),
-          error: _asMap(item["error"])?["message"] as String?,
-        );
-      case "dynamicToolCall":
-        final canonical = _canonicalRolloutTool(
-          threadId: threadId,
-          itemId: itemId,
-        );
-        return _toolItemEvents(
-          threadId: threadId,
-          itemId: itemId,
-          tool:
-              canonical?.call.tool ??
-              switch (item["tool"]) {
-                final String tool when tool.isNotEmpty => tool,
-                _ => "tool",
-              },
-          title: canonical?.call.title ?? _dynamicToolTitle(item["arguments"]),
-          status: canonical?.result.status ?? _toolStatus(item["status"], completed: completed),
-          output:
-              canonical?.result.output ??
-              _rolloutToolMapper.clipOutput(
-                _dynamicToolOutput(item["contentItems"]),
-              ),
         );
       case "webSearch":
         return _toolItemEvents(
@@ -529,6 +553,18 @@ class CodexEventMapper {
     return completed ? PluginToolStatus.completed : PluginToolStatus.running;
   }
 
+  PluginToolStatus _parsedToolStatus({
+    required CodexToolCallStatus status,
+    required bool completed,
+  }) {
+    return switch (status) {
+      CodexToolCallStatus.inProgress => PluginToolStatus.running,
+      CodexToolCallStatus.completed => PluginToolStatus.completed,
+      CodexToolCallStatus.failed || CodexToolCallStatus.declined => PluginToolStatus.error,
+      CodexToolCallStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
+    };
+  }
+
   ({CodexRolloutToolCall call, CodexRolloutToolResult result})? _canonicalRolloutTool({
     required String threadId,
     required String itemId,
@@ -567,25 +603,12 @@ class CodexEventMapper {
   }
 
   /// A short title for an `mcpToolCall` item (`server/tool`).
-  String? _mcpToolTitle(Map<String, dynamic> item) {
-    final server = item["server"] as String?;
-    final tool = item["tool"] as String?;
+  String? _mcpToolTitle({
+    required String? server,
+    required String? tool,
+  }) {
     if (server != null && tool != null) return "$server/$tool";
     return tool ?? server;
-  }
-
-  /// Best-effort text rendering of an `mcpToolCall` result
-  /// (`{content: [{type:text, text}, …]}`).
-  String? _mcpResultText(Object? result) {
-    final content = _asMap(result)?["content"];
-    if (content is! List) return null;
-    final buffer = StringBuffer();
-    for (final entry in content) {
-      final text = _asMap(entry)?["text"];
-      if (text is String) buffer.write(text);
-    }
-    final out = buffer.toString();
-    return out.isEmpty ? null : out;
   }
 
   /// A concise rendering of the JSON-compatible arguments attached to a
@@ -598,17 +621,14 @@ class CodexEventMapper {
     return rendered.length > 120 ? rendered.substring(0, 120) : rendered;
   }
 
-  /// Concatenates text outputs from a completed `dynamicToolCall`. Image
-  /// outputs have no bridge tool-state representation and are ignored.
-  String? _dynamicToolOutput(Object? contentItems) {
-    if (contentItems is! List) return null;
-    final buffer = StringBuffer();
-    for (final entry in contentItems) {
-      final text = _asMap(entry)?["text"];
-      if (text is String) buffer.write(text);
-    }
-    final output = buffer.toString();
-    return output.isEmpty ? null : output;
+  String? _imageBearingToolOutput(List<CodexImageBearingContentDto> content) {
+    final texts = [
+      for (final item in content)
+        if (item case CodexMcpTextContentDto(:final text) || CodexDynamicTextContentDto(:final text)
+            when text.isNotEmpty)
+          text,
+    ];
+    return texts.isEmpty ? null : texts.join();
   }
 
   /// Builds an assistant message stamped with codex's agent/model/provider.

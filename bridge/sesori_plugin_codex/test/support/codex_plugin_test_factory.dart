@@ -1,4 +1,5 @@
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
@@ -34,6 +35,7 @@ CodexPlugin createInjectedCodexPlugin({
     eventMapper: CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
+      imageBearingItemParser: const CodexImageBearingItemParser(),
       rolloutToolMapper: rolloutToolMapper,
       config: configReader.readDefaults(),
     ),

@@ -3,6 +3,7 @@ import "dart:io";
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/codex_app_server_api.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
+import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -16,10 +17,12 @@ import "package:test/test.dart";
 void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
+    const imageBearingItemParser = CodexImageBearingItemParser();
     const rolloutToolMapper = CodexRolloutToolMapper();
     final mapper = CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
+      imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
     );
     final appServerApi = CodexAppServerApi(
@@ -168,6 +171,7 @@ void main() {
       final scopedMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       )..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
@@ -186,6 +190,7 @@ void main() {
       final activityMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       );
       mapThreadStarted(
@@ -231,6 +236,7 @@ void main() {
       final activityMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
       );
       mapThreadStarted(
@@ -401,6 +407,7 @@ void main() {
       final richMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
@@ -439,6 +446,7 @@ void main() {
       final richMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
@@ -775,6 +783,33 @@ void main() {
       expect(part.state?.output, contains("+b"));
     });
 
+    test("imageGeneration items remain deliberately unrendered", () {
+      for (final (method, status) in [
+        ("item/started", "in_progress"),
+        ("item/completed", "completed"),
+        ("item/completed", "failed"),
+      ]) {
+        final events = mapper.map(
+          CodexServerNotification(
+            method: method,
+            params: {
+              "threadId": "t-1",
+              "item": {
+                "type": "imageGeneration",
+                "id": "i-image",
+                "status": status,
+                "revisedPrompt": "private prompt",
+                "result": "private image payload",
+                "savedPath": "/private/output.png",
+              },
+            },
+          ),
+        );
+
+        expect(events, isEmpty);
+      }
+    });
+
     test("mcpToolCall (failed) → error tool part", () {
       final events = mapper.map(
         const CodexServerNotification(
@@ -787,6 +822,13 @@ void main() {
               "server": "playwright",
               "tool": "click",
               "status": "failed",
+              "result": {
+                "content": [
+                  {"type": "text", "text": "before "},
+                  {"type": "image", "data": "encoded-image", "mimeType": "image/png"},
+                  {"type": "text", "text": "after"},
+                ],
+              },
               "error": {"message": "element not found"},
             },
           },
@@ -797,7 +839,9 @@ void main() {
       expect(part.tool, "click");
       expect(part.state?.status, PluginToolStatus.error);
       expect(part.state?.title, "playwright/click");
+      expect(part.state?.output, "before after");
       expect(part.state?.error, "element not found");
+      expect(part.state?.attachments, isEmpty);
     });
 
     test("dynamicToolCall streams a running tool and its completed output", () {
@@ -853,6 +897,8 @@ void main() {
               "status": "completed",
               "contentItems": [
                 {"type": "inputText", "text": "wait completed"},
+                {"type": "inputImage", "imageUrl": "data:image/png;base64,AA=="},
+                {"type": "inputAudio", "audioUrl": "data:audio/wav;base64,AA=="},
               ],
               "durationMs": 2000,
               "success": true,
@@ -866,13 +912,17 @@ void main() {
       expect(completedPart.id, runningPart.id);
       expect(completedPart.state?.status, PluginToolStatus.completed);
       expect(completedPart.state?.output, "wait completed");
+      expect(completedPart.state?.attachments, isEmpty);
     });
 
     test("dynamicToolCall falls back for malformed or empty tool names", () {
-      for (final rawTool in <Object?>[42, ""]) {
+      for (final (rawTool, method, status, expectedStatus) in <(Object?, String, Object?, PluginToolStatus)>[
+        (42, "item/started", "future_status", PluginToolStatus.running),
+        ("", "item/completed", null, PluginToolStatus.completed),
+      ]) {
         final events = mapper.map(
           CodexServerNotification(
-            method: "item/started",
+            method: method,
             params: {
               "threadId": "t-1",
               "item": {
@@ -880,7 +930,7 @@ void main() {
                 "id": "i-fallback",
                 "tool": rawTool,
                 "arguments": const <String, Object?>{},
-                "status": "inProgress",
+                "status": status,
               },
             },
           ),
@@ -888,7 +938,7 @@ void main() {
 
         final part = (events[1] as BridgeSseMessagePartUpdated).part;
         expect(part.tool, "tool");
-        expect(part.state?.status, PluginToolStatus.running);
+        expect(part.state?.status, expectedStatus);
       }
     });
 
