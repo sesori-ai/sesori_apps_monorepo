@@ -3,14 +3,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../codex_config_reader.dart";
-import "../codex_rollout_tool_mapper.dart";
+import "mappers/codex_rollout_tool_mapper.dart";
 
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
 class CodexMessageRepository {
-  CodexMessageRepository({required CodexRolloutApi rolloutApi}) : _rolloutApi = rolloutApi;
+  CodexMessageRepository({
+    required CodexRolloutApi rolloutApi,
+    required CodexRolloutToolMapper rolloutToolMapper,
+  }) : _rolloutApi = rolloutApi,
+       _rolloutToolMapper = rolloutToolMapper;
 
   final CodexRolloutApi _rolloutApi;
-  static const CodexRolloutToolMapper _toolMapper = CodexRolloutToolMapper();
+  final CodexRolloutToolMapper _rolloutToolMapper;
 
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
@@ -35,7 +39,7 @@ class CodexMessageRepository {
     for (final line in lines) {
       final payload = line.payload;
       if (payload == null) continue;
-      final result = _toolMapper.mapResult(payload);
+      final result = _rolloutToolMapper.mapResult(payload);
       if (result != null) toolOutputs[result.callId] = result;
     }
 
@@ -92,7 +96,7 @@ class CodexMessageRepository {
 
       if (payload.type == CodexRolloutPayloadType.functionCall ||
           payload.type == CodexRolloutPayloadType.customToolCall) {
-        final call = _toolMapper.mapCall(payload);
+        final call = _rolloutToolMapper.mapCall(payload);
         if (call == null) continue;
         final result = toolOutputs[call.id];
         messages.add(
@@ -133,10 +137,10 @@ class CodexMessageRepository {
       }
 
       if (payload.type == CodexRolloutPayloadType.reasoning) {
-        final reasoning = _contentTexts(
-          payload.summary,
-          acceptedTypes: const {CodexRolloutContentType.summaryText},
-        ).join();
+        final reasoning = [
+          for (final item in payload.summary ?? const <CodexRolloutContentDto>[])
+            if (item case CodexRolloutSummaryTextDto(:final text) when text.isNotEmpty) text,
+        ].join();
         if (reasoning.isEmpty) continue;
 
         messageCounter += 1;
@@ -173,13 +177,12 @@ class CodexMessageRepository {
       if (payload.role != CodexRolloutRole.user && payload.role != CodexRolloutRole.assistant) {
         continue;
       }
-      final texts = _contentTexts(
-        payload.content,
-        acceptedTypes: const {
-          CodexRolloutContentType.inputText,
-          CodexRolloutContentType.outputText,
-        },
-      );
+      final texts = [
+        for (final item in payload.content ?? const <CodexRolloutContentDto>[])
+          if (item case CodexRolloutInputTextDto(:final text) || CodexRolloutOutputTextDto(:final text)
+              when text.isNotEmpty)
+            text,
+      ];
       if (texts.isEmpty) continue;
 
       messageCounter += 1;
@@ -220,16 +223,6 @@ class CodexMessageRepository {
       );
     }
     return messages;
-  }
-
-  List<String> _contentTexts(
-    List<CodexRolloutContentDto>? content, {
-    required Set<CodexRolloutContentType> acceptedTypes,
-  }) {
-    return [
-      for (final item in content ?? const <CodexRolloutContentDto>[])
-        if (item.text case final text? when acceptedTypes.contains(item.type) && text.isNotEmpty) text,
-    ];
   }
 
   PluginMessageWithParts _toolMessage({

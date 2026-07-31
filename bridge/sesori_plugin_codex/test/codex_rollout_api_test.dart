@@ -26,7 +26,10 @@ void main() {
         environment: {"CODEX_HOME": codexHome.path},
       );
       catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
-      messageRepository = CodexMessageRepository(rolloutApi: rolloutApi);
+      messageRepository = CodexMessageRepository(
+        rolloutApi: rolloutApi,
+        rolloutToolMapper: const CodexRolloutToolMapper(),
+      );
     });
 
     tearDown(() {
@@ -374,6 +377,51 @@ void main() {
       );
     });
 
+    test("rollout content decodes closed text, image, and unknown variants", () {
+      final content = const CodexRolloutContentListConverter().fromJson([
+        {"type": "input_text", "text": "input"},
+        {"type": "output_text", "text": "output"},
+        {"type": "summary_text", "text": "summary"},
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,AA==",
+          "detail": "high",
+        },
+        {"type": "future_content", "payload": "not-rendered"},
+      ])!;
+
+      expect(content, hasLength(5));
+      expect(content[0], isA<CodexRolloutInputTextDto>());
+      expect((content[0] as CodexRolloutInputTextDto).text, "input");
+      expect(content[1], isA<CodexRolloutOutputTextDto>());
+      expect((content[1] as CodexRolloutOutputTextDto).text, "output");
+      expect(content[2], isA<CodexRolloutSummaryTextDto>());
+      expect((content[2] as CodexRolloutSummaryTextDto).text, "summary");
+      expect(content[3], isA<CodexRolloutInputImageDto>());
+      expect(
+        (content[3] as CodexRolloutInputImageDto).imageUrl,
+        "data:image/png;base64,AA==",
+      );
+      expect(content[4], isA<CodexRolloutUnknownContentDto>());
+    });
+
+    test("rollout content skips malformed known variants without exposing values", () {
+      late List<CodexRolloutContentDto>? content;
+      final output = _captureWarnings(() {
+        content = const CodexRolloutContentListConverter().fromJson([
+          {"type": "output_text", "text": "kept"},
+          {"type": "input_image", "image_url": 42},
+          {"type": "future_content", "secret": "not-logged"},
+        ]);
+      }, level: LogLevel.verbose);
+
+      expect(content, hasLength(2));
+      expect(content?.first, isA<CodexRolloutOutputTextDto>());
+      expect(content?.last, isA<CodexRolloutUnknownContentDto>());
+      expect(output, contains("skipping malformed rollout content item"));
+      expect(output, isNot(contains("not-logged")));
+    });
+
     test("turn_context scalar summary is not reported as malformed", () {
       final path = _writeRollout(
         codexHome,
@@ -609,6 +657,10 @@ void main() {
               "role": "user",
               "content": [
                 {"type": "input_text", "text": "hello, codex"},
+                {
+                  "type": "input_image",
+                  "image_url": "data:image/png;base64,AA==",
+                },
               ],
             },
           }),
@@ -637,6 +689,8 @@ void main() {
       expect(messages, hasLength(2));
       expect(messages[0].info, isA<PluginMessageUser>());
       expect(messages[0].parts.first.text, equals("hello, codex"));
+      expect(messages[0].parts, hasLength(1));
+      expect(messages[0].parts.single.attachment, isNull);
       expect(messages[1].info, isA<PluginMessageAssistant>());
       expect(messages[1].parts.first.text, equals("hello back!"));
       expect(messages[0].info.sessionID, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
@@ -830,6 +884,10 @@ void main() {
               "call_id": "call-1",
               "output": [
                 {"type": "input_text", "text": "total 0\n"},
+                {
+                  "type": "input_image",
+                  "image_url": "data:image/png;base64,AA==",
+                },
                 "schema-drifted item",
                 {"type": "input_text", "text": "foo.dart"},
               ],
@@ -873,6 +931,7 @@ void main() {
       expect(tool.state?.status, PluginToolStatus.completed);
       expect(tool.state?.title, "ls -la");
       expect(tool.state?.output, contains("foo.dart"));
+      expect(tool.state?.attachments, isEmpty);
 
       final assistant = messages[2];
       expect(assistant.parts.single.text, "Done");
@@ -1085,6 +1144,7 @@ void main() {
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
         ),
+        rolloutToolMapper: const CodexRolloutToolMapper(),
       );
       final path = _writeRollout(
         codexHome,
@@ -1140,6 +1200,7 @@ void main() {
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
         ),
+        rolloutToolMapper: const CodexRolloutToolMapper(),
       );
       final path = _writeRollout(
         codexHome,

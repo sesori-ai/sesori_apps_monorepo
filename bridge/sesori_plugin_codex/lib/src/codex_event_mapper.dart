@@ -5,7 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "api/models/codex_rollout_dto.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
-import "codex_rollout_tool_mapper.dart";
+import "repositories/mappers/codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
 
 /// Translates `codex app-server` `ServerNotification` frames into
@@ -28,8 +28,9 @@ class CodexEventMapper {
   CodexEventMapper({
     required this.pluginId,
     required this.projectCwd,
+    required CodexRolloutToolMapper rolloutToolMapper,
     this.config = const CodexConfigDefaults.empty(),
-  });
+  }) : _rolloutToolMapper = rolloutToolMapper;
 
   final String pluginId;
 
@@ -55,7 +56,7 @@ class CodexEventMapper {
   /// global [config] default — making a model switch look like it never took
   /// effect even though codex honoured it. Falls back to [config] when unknown.
   final Map<String, String> _threadModel = {};
-  static const CodexRolloutToolMapper _rolloutToolMapper = CodexRolloutToolMapper();
+  final CodexRolloutToolMapper _rolloutToolMapper;
 
   /// Raw rollout state keyed by the same `call_id` app-server uses as a
   /// command item id. It lets late normalized item notifications reuse the

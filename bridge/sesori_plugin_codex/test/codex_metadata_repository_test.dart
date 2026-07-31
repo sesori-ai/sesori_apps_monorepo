@@ -42,7 +42,10 @@ void main() {
         metadata: metadata,
         sessions: CodexSessionService(
           catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
-          messageRepository: CodexMessageRepository(rolloutApi: rolloutApi),
+          messageRepository: CodexMessageRepository(
+            rolloutApi: rolloutApi,
+            rolloutToolMapper: const CodexRolloutToolMapper(),
+          ),
           metadataRepository: metadata,
           launchDirectory: launchProject.path,
         ),

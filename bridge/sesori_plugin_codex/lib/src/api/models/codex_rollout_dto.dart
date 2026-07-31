@@ -42,16 +42,6 @@ enum CodexRolloutRole {
   unknown,
 }
 
-enum CodexRolloutContentType {
-  @JsonValue("input_text")
-  inputText,
-  @JsonValue("output_text")
-  outputText,
-  @JsonValue("summary_text")
-  summaryText,
-  unknown,
-}
-
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexSessionIndexEntryDto with _$CodexSessionIndexEntryDto {
   const factory CodexSessionIndexEntryDto({
@@ -100,12 +90,34 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
   factory CodexRolloutPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutPayloadDtoFromJson(json);
 }
 
-@Freezed(fromJson: true, toJson: false)
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
 sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
-  const factory CodexRolloutContentDto({
-    @JsonKey(unknownEnumValue: CodexRolloutContentType.unknown) required CodexRolloutContentType? type,
-    required String? text,
-  }) = _CodexRolloutContentDto;
+  @FreezedUnionValue("input_text")
+  const factory CodexRolloutContentDto.inputText({
+    required String text,
+  }) = CodexRolloutInputTextDto;
+
+  @FreezedUnionValue("output_text")
+  const factory CodexRolloutContentDto.outputText({
+    required String text,
+  }) = CodexRolloutOutputTextDto;
+
+  @FreezedUnionValue("summary_text")
+  const factory CodexRolloutContentDto.summaryText({
+    required String text,
+  }) = CodexRolloutSummaryTextDto;
+
+  @FreezedUnionValue("input_image")
+  const factory CodexRolloutContentDto.inputImage({
+    @JsonKey(name: "image_url") required String imageUrl,
+  }) = CodexRolloutInputImageDto;
+
+  const factory CodexRolloutContentDto.unknown() = CodexRolloutUnknownContentDto;
 
   factory CodexRolloutContentDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutContentDtoFromJson(json);
 }
@@ -142,15 +154,24 @@ class CodexRolloutContentListConverter implements JsonConverter<List<CodexRollou
     if (object == null) return null;
     return [
       for (final content in object)
-        {
-          "type": switch (content.type) {
-            CodexRolloutContentType.inputText => "input_text",
-            CodexRolloutContentType.outputText => "output_text",
-            CodexRolloutContentType.summaryText => "summary_text",
-            CodexRolloutContentType.unknown => "unknown",
-            null => null,
+        switch (content) {
+          CodexRolloutInputTextDto(:final text) => {
+            "type": "input_text",
+            "text": text,
           },
-          "text": content.text,
+          CodexRolloutOutputTextDto(:final text) => {
+            "type": "output_text",
+            "text": text,
+          },
+          CodexRolloutSummaryTextDto(:final text) => {
+            "type": "summary_text",
+            "text": text,
+          },
+          CodexRolloutInputImageDto(:final imageUrl) => {
+            "type": "input_image",
+            "image_url": imageUrl,
+          },
+          CodexRolloutUnknownContentDto() => {"type": "unknown"},
         },
     ];
   }
@@ -168,8 +189,7 @@ class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
   List<CodexRolloutContentDto>? fromJson(Object? json) {
     if (json is String) {
       return [
-        CodexRolloutContentDto(
-          type: CodexRolloutContentType.outputText,
+        CodexRolloutContentDto.outputText(
           text: json,
         ),
       ];

@@ -12,6 +12,7 @@ CodexPlugin createInjectedCodexPlugin({
   Duration rolloutPollInterval = const Duration(milliseconds: 10),
 }) {
   final rolloutApi = CodexRolloutApi(environment: environment);
+  const rolloutToolMapper = CodexRolloutToolMapper();
   final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
   final configReader = CodexConfigReader(environment: environment);
   final metadataRepository = CodexMetadataRepository(
@@ -23,13 +24,17 @@ CodexPlugin createInjectedCodexPlugin({
     clientFactory: clientFactory,
     sessionService: CodexSessionService(
       catalogRepository: catalogRepository,
-      messageRepository: CodexMessageRepository(rolloutApi: rolloutApi),
+      messageRepository: CodexMessageRepository(
+        rolloutApi: rolloutApi,
+        rolloutToolMapper: rolloutToolMapper,
+      ),
       metadataRepository: metadataRepository,
       launchDirectory: projectCwd,
     ),
     eventMapper: CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
+      rolloutToolMapper: rolloutToolMapper,
       config: configReader.readDefaults(),
     ),
     rolloutTailer: CodexRolloutTailer(

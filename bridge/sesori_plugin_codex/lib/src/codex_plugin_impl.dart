@@ -18,6 +18,7 @@ import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
+import "repositories/mappers/codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
 import "runtime/codex_managed_api.dart";
 import "services/codex_rollout_tailer.dart";
@@ -125,6 +126,7 @@ class CodexPlugin implements CodexManagedApi {
     final resolvedProjectCwd = projectCwd ?? Directory.current.path;
     final configReader = CodexConfigReader();
     final rolloutApi = CodexRolloutApi();
+    const rolloutToolMapper = CodexRolloutToolMapper();
     final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
     final rolloutTailer = CodexRolloutTailer(
       rolloutApi: rolloutApi,
@@ -142,13 +144,17 @@ class CodexPlugin implements CodexManagedApi {
       clientFactory: null,
       sessionService: CodexSessionService(
         catalogRepository: catalogRepository,
-        messageRepository: CodexMessageRepository(rolloutApi: rolloutApi),
+        messageRepository: CodexMessageRepository(
+          rolloutApi: rolloutApi,
+          rolloutToolMapper: rolloutToolMapper,
+        ),
         metadataRepository: metadataRepository,
         launchDirectory: resolvedProjectCwd,
       ),
       eventMapper: CodexEventMapper(
         pluginId: pluginId,
         projectCwd: resolvedProjectCwd,
+        rolloutToolMapper: rolloutToolMapper,
         config: configReader.readDefaults(),
       ),
       rolloutTailer: rolloutTailer,

@@ -16,7 +16,12 @@ import "package:test/test.dart";
 void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
-    final mapper = CodexEventMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd);
+    const rolloutToolMapper = CodexRolloutToolMapper();
+    final mapper = CodexEventMapper(
+      pluginId: CodexPlugin.pluginId,
+      projectCwd: projectCwd,
+      rolloutToolMapper: rolloutToolMapper,
+    );
     final appServerApi = CodexAppServerApi(
       client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
     );
@@ -160,8 +165,11 @@ void main() {
     test("thread/name/updated uses the plugin-fed directory for its project id", () {
       // A thread/name/updated notification carries no cwd, so the mapper relies
       // on the directory the plugin learned when the thread was started/resumed.
-      final scopedMapper = CodexEventMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd)
-        ..setThreadDirectory("t-9", "/repo/app/packages/ui");
+      final scopedMapper = CodexEventMapper(
+        pluginId: CodexPlugin.pluginId,
+        projectCwd: projectCwd,
+        rolloutToolMapper: rolloutToolMapper,
+      )..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
       final events = scopedMapper.map(
         const CodexServerNotification(
@@ -178,6 +186,7 @@ void main() {
       final activityMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        rolloutToolMapper: rolloutToolMapper,
       );
       mapThreadStarted(
         activityMapper,
@@ -222,6 +231,7 @@ void main() {
       final activityMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        rolloutToolMapper: rolloutToolMapper,
       );
       mapThreadStarted(
         activityMapper,
@@ -391,6 +401,7 @@ void main() {
       final richMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        rolloutToolMapper: rolloutToolMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       // thread/started carries the provider; the mapper remembers it per thread.
@@ -428,6 +439,7 @@ void main() {
       final richMapper = CodexEventMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
+        rolloutToolMapper: rolloutToolMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       mapThreadStarted(

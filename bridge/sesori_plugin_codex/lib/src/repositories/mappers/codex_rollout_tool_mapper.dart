@@ -3,7 +3,7 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
-import "api/models/codex_rollout_dto.dart";
+import "../../api/models/codex_rollout_dto.dart";
 
 class CodexRolloutToolCall {
   const CodexRolloutToolCall({
@@ -144,13 +144,20 @@ class CodexRolloutToolMapper {
 
   String? toolOutputText(List<CodexRolloutContentDto>? output) {
     final texts = [
-      for (final item in output ?? const <CodexRolloutContentDto>[])
-        if (item.text case final text?
-            when (item.type == CodexRolloutContentType.inputText || item.type == CodexRolloutContentType.outputText) &&
-                text.isNotEmpty)
-          text,
+      for (final item in output ?? const <CodexRolloutContentDto>[]) ?_toolContentText(content: item),
     ];
     return texts.isEmpty ? null : texts.join();
+  }
+
+  String? _toolContentText({required CodexRolloutContentDto content}) {
+    return switch (content) {
+      CodexRolloutInputTextDto(:final text) || CodexRolloutOutputTextDto(:final text) when text.isNotEmpty => text,
+      CodexRolloutInputTextDto() ||
+      CodexRolloutOutputTextDto() ||
+      CodexRolloutSummaryTextDto() ||
+      CodexRolloutInputImageDto() ||
+      CodexRolloutUnknownContentDto() => null,
+    };
   }
 
   /// Derives process failure from the executor envelope retained in rollout

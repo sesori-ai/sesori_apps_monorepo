@@ -5,10 +5,10 @@
 - **Plan slug:** `output-image-support`
 - **Implementation base:** `origin/main` at
   `9d2c1e9e79ab80fa8824b9d803a74798eb71140d`
-- **Series state:** Step 1/13 plan PR open
-- **Current step:** Step 1/13 — durable plan, tracker, and Plan Maker rules
+- **Series state:** Step 2/13 ready for PR delivery
+- **Current step:** Step 2/13 — seal Codex rollout content
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** monitor Step 1/13 CI and review
+- **Next action:** commit, push, open, and monitor the Step 2/13 PR
 
 ## Plan Review
 
@@ -26,8 +26,8 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/13 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/13]` | 450-700 | [PR #638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638) open |
-| [ ] | 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | Blocked on Step 1 merge |
+| [x] | 1/13 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/13]` | 450-700 | [PR #638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638) merged as `bfadd097` |
+| [ ] | 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | Ready for PR; 642 changed lines |
 | [ ] | 3/13 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/13]` | 900-1,350 | Blocked on Step 2 merge |
 | [ ] | 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | Blocked on Step 3 merge |
 | [ ] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | Blocked on Step 4 merge |
@@ -60,6 +60,8 @@
 
 - Merge in numeric order. A successor may target its immediate predecessor while
   both are open, but each step must remain independently buildable and valid.
+- After a PR merges, continue automatically with the next numbered step without
+  waiting for another user prompt. Stop only for a material decision or blocker.
 - Count additions plus deletions, including generated files and tests, against
   each PR base. Target no more than 1,500 changed lines per PR as a soft cap;
   split coherently first or record why an expected overage is unavoidable.
@@ -86,10 +88,21 @@
   [PR #638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638). The PR
   now also codifies the requested Plan Maker lifecycle and 1,500-line soft-cap
   rules; its current diff is 617 changed lines and `git diff --check` passes. No
-  Dart or Flutter suites were run for this documentation-only step.
+  Dart or Flutter suites were run for this documentation-only step. PR #638
+  merged as `bfadd097` on 2026-07-31.
+- Step 2/13 (2026-07-31): sealed rollout content into required text, image, and
+  unknown variants; moved the rollout tool mapper into the repository mapping
+  layer; and wired one instance from the production composition root into live
+  and history consumers. Codex codegen, focused tests, all 210 package tests,
+  `dart pub get`, `dart analyze --fatal-infos`, and `git diff --cached --check`
+  pass. `aristotle-impl-review` approved the staged architecture with no
+  findings. The 642-line diff is below the 1,500-line soft cap; no neighboring
+  scope was combined.
 
 ## Findings And Plan Deltas
 
+- **2026-07-31 — Automatic continuation:** After each merged PR, proceed with
+  the next numbered step without waiting for another explicit user request.
 - **2026-07-31 — Lifecycle and line budget:** Set a 1,500 changed-line soft cap,
   retained plan delivery as Step 1/13, kept the eleven implementation boundaries
   as Steps 2/13 through 12/13, and added plan retirement as Step 13/13.
