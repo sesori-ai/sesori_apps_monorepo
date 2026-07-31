@@ -129,7 +129,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
-  Widget? _buildOptionsStatus(AgentModelData? data) {
+  Widget? _buildOptionsStatus({required AgentModelData? data}) {
     final plugin = data?.plugin;
     if (data == null || plugin == null || !plugin.isRoutable || data.isLoading) return null;
 
@@ -276,7 +276,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                               pluginId: pluginId,
                             ),
                           ),
-                          ?_buildOptionsStatus(composerData),
+                          ?_buildOptionsStatus(data: composerData),
                           if (composerData?.plugins.isNotEmpty ?? false) SizedBox(height: prego.spacing.sm),
                           if (composerData?.supportsDedicatedWorktrees ?? false)
                             SwitchListTile(

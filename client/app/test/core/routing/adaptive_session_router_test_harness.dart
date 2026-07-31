@@ -227,6 +227,12 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
     getIt.registerSingleton<SessionService>(SessionService(repository: sessionRepository));
     getIt.registerSingleton<SessionRepository>(sessionRepository);
+    getIt.registerSingleton<NewSessionOptionsService>(
+      NewSessionOptionsService(
+        sessionRepository: sessionRepository,
+        defaultModelSelector: const DefaultModelSelector(),
+      ),
+    );
     getIt.registerSingleton<ConnectionService>(connectionService);
     getIt.registerSingleton<SseEventTracker>(sseEventTracker);
     getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());

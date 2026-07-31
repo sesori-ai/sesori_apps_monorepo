@@ -278,7 +278,12 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       );
     } on Object catch (error, stackTrace) {
       if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
-      loge("New session: failed to load options", error, stackTrace);
+      loge(
+        "New session: failed to load options for plugin $pluginId "
+        "(source: ${source.name}, refresh: ${refresh.toString()})",
+        error,
+        stackTrace,
+      );
       _emitStateUpdate(
         options: NewSessionOptionsFailureState(reason: RemoteFailureReason.unknown, source: source),
         isPluginDiscoveryInFlight: false,
