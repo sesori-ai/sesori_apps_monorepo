@@ -79,10 +79,7 @@ class PrSyncService {
       final storedSessions = await _sessionRepository.getStoredSessionsByProjectId(projectId: projectId);
       final githubRepositoryIdentity = await _prSource.getGithubRepositoryIdentity(projectPath: projectPath);
       if (githubRepositoryIdentity == null) {
-        await _pullRequestRepository.clearScopedRefresh(
-          projectId: projectId,
-          sessions: storedSessions,
-        );
+        await _pullRequestRepository.suspendProjectVisibility(projectId: projectId);
         return;
       }
 
@@ -139,34 +136,59 @@ class PrSyncService {
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<StoredSession> storedSessions,
   }) async {
-    try {
-      final (openPrs, activePrs) = await (
-        _prSource.listOpenPrs(workingDirectory: projectPath),
-        _pullRequestRepository.getActivePullRequestsByProjectId(
-          projectId: projectId,
-          githubRepositoryIdentity: githubRepositoryIdentity,
-          verifiedGithubLogin: verifiedGithubLogin,
-        ),
-      ).wait;
+    final (openPrs, activePrs) = await (
+      _prSource.listOpenPrs(workingDirectory: projectPath),
+      _pullRequestRepository.getActivePullRequestsByProjectId(
+        projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: verifiedGithubLogin,
+      ),
+    ).wait;
 
-      final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
+    final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
 
-      var hasChanges = false;
-      final nowEpochMs = _clock.now().millisecondsSinceEpoch;
+    var hasChanges = false;
+    final nowEpochMs = _clock.now().millisecondsSinceEpoch;
 
-      final matchedOpenPrs = openPrs
-          .where((pr) => !pr.isCrossRepository && sessionsByBranch.containsKey(pr.headRefName))
-          .toList(growable: false);
+    final matchedOpenPrs = openPrs
+        .where((pr) => !pr.isCrossRepository && sessionsByBranch.containsKey(pr.headRefName))
+        .toList(growable: false);
 
-      final activeByBranch = {
-        for (final activePr in activePrs) activePr.branchName: activePr,
-      };
+    final activeByBranch = {
+      for (final activePr in activePrs) activePr.branchName: activePr,
+    };
 
-      for (final pr in matchedOpenPrs) {
-        final existing = activeByBranch[pr.headRefName];
-        final createdAt = existing?.createdAt ?? nowEpochMs;
+    for (final pr in matchedOpenPrs) {
+      final existing = activeByBranch[pr.headRefName];
+      final createdAt = existing?.createdAt ?? nowEpochMs;
 
-        if (_pullRequestRepository.hasChangedFromExisting(existing: existing, pr: pr)) {
+      if (_pullRequestRepository.hasChangedFromExisting(existing: existing, pr: pr)) {
+        hasChanges = true;
+      }
+
+      await _pullRequestRepository.upsertFromGhPr(
+        projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: verifiedGithubLogin,
+        pr: pr,
+        createdAt: createdAt,
+        lastCheckedAt: nowEpochMs,
+      );
+    }
+
+    final openPrNumbers = openPrs.map((pr) => pr.number).toSet();
+    final disappearedActivePrs = activePrs
+        .where((activePr) => !openPrNumbers.contains(activePr.prNumber))
+        .toList(growable: false);
+
+    for (final disappeared in disappearedActivePrs) {
+      try {
+        final finalPr = await _prSource.getPrByNumber(
+          number: disappeared.prNumber,
+          workingDirectory: projectPath,
+        );
+
+        if (_pullRequestRepository.hasChangedFromExisting(existing: disappeared, pr: finalPr)) {
           hasChanges = true;
         }
 
@@ -174,55 +196,26 @@ class PrSyncService {
           projectId: projectId,
           githubRepositoryIdentity: githubRepositoryIdentity,
           verifiedGithubLogin: verifiedGithubLogin,
-          pr: pr,
-          createdAt: createdAt,
+          pr: finalPr,
+          createdAt: disappeared.createdAt,
           lastCheckedAt: nowEpochMs,
         );
+      } catch (e) {
+        Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e — removing stale record");
+        await _pullRequestRepository.deletePr(
+          projectId: projectId,
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          prNumber: disappeared.prNumber,
+        );
+        hasChanges = true;
       }
-
-      final openPrNumbers = openPrs.map((pr) => pr.number).toSet();
-      final disappearedActivePrs = activePrs
-          .where((activePr) => !openPrNumbers.contains(activePr.prNumber))
-          .toList(growable: false);
-
-      for (final disappeared in disappearedActivePrs) {
-        try {
-          final finalPr = await _prSource.getPrByNumber(
-            number: disappeared.prNumber,
-            workingDirectory: projectPath,
-          );
-
-          if (_pullRequestRepository.hasChangedFromExisting(existing: disappeared, pr: finalPr)) {
-            hasChanges = true;
-          }
-
-          await _pullRequestRepository.upsertFromGhPr(
-            projectId: projectId,
-            githubRepositoryIdentity: githubRepositoryIdentity,
-            verifiedGithubLogin: verifiedGithubLogin,
-            pr: finalPr,
-            createdAt: disappeared.createdAt,
-            lastCheckedAt: nowEpochMs,
-          );
-        } catch (e) {
-          Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e — removing stale record");
-          await _pullRequestRepository.deletePr(
-            projectId: projectId,
-            githubRepositoryIdentity: githubRepositoryIdentity,
-            prNumber: disappeared.prNumber,
-          );
-          hasChanges = true;
-        }
-      }
-
-      if (hasChanges) {
-        _prChangesController.add(projectId);
-      }
-
-      _lastRefreshTimes[projectId] = _clock.now();
-    } catch (e, st) {
-      Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
     }
+
+    if (hasChanges) {
+      _prChangesController.add(projectId);
+    }
+
+    _lastRefreshTimes[projectId] = _clock.now();
   }
 
   void dispose() {

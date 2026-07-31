@@ -74,26 +74,6 @@ class PullRequestRepository {
     });
   }
 
-  Future<void> clearScopedRefresh({
-    required String projectId,
-    required List<StoredSession> sessions,
-  }) async {
-    await _database.transaction(() async {
-      await _projectsDao.setPrCacheGithubLogin(projectId: projectId, githubLogin: null);
-      await _sessionDao.updatePullRequestScopes(
-        updates: [
-          for (final session in sessions)
-            (
-              sessionId: session.id,
-              currentBranchName: null,
-              currentGithubRepositoryIdentity: null,
-            ),
-        ],
-      );
-      await _pullRequestDao.deletePrsByProjectId(projectId: projectId);
-    });
-  }
-
   Future<void> suspendProjectVisibility({required String projectId}) async {
     await _projectsDao.setPrCacheGithubLogin(projectId: projectId, githubLogin: null);
   }

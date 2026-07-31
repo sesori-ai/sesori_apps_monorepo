@@ -106,6 +106,32 @@ void main() {
       expect(emittedProjectIds, isEmpty);
     });
 
+    test("propagates listOpenPrs failures from triggerRefresh", () async {
+      final refreshFailure = StateError("listOpenPrs failed");
+      final prSource = _FakePrSource(
+        listOpenPrsResult: const <GhPullRequest>[],
+        onListOpenPrs: () async => throw refreshFailure,
+      );
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: _FakePullRequestRepository(),
+        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      await expectLater(
+        service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
+        throwsA(
+          isA<ParallelWaitError<(List<GhPullRequest>?, List<PullRequestDto>?), (AsyncError?, AsyncError?)>>().having(
+            (error) => error.errors.$1?.error,
+            "source error",
+            same(refreshFailure),
+          ),
+        ),
+      );
+    });
+
     test("suspends cached PR visibility when fresh identity is unavailable", () async {
       final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[
@@ -151,7 +177,6 @@ void main() {
       expect(prSource.listOpenPrsCallCount, isZero);
       expect(pullRequestRepository.suspendedProjectIds, equals(<String>["project-1"]));
       expect(pullRequestRepository.prepareScopedRefreshCalls, isEmpty);
-      expect(pullRequestRepository.clearScopedRefreshCalls, isEmpty);
       expect(pullRequestRepository.activeReadCalls, isEmpty);
       expect(pullRequestRepository.upsertScopeCalls, isEmpty);
       expect(pullRequestRepository.deleteCalls, isEmpty);
@@ -165,7 +190,7 @@ void main() {
       );
     });
 
-    test("clears scoped refresh and suspends visibility when canonical repository is unavailable", () async {
+    test("suspends visibility without clearing scoped cache when canonical repository is unavailable", () async {
       final storedSessions = <StoredSession>[
         _storedSession(id: "session-1", branchName: "feature/private"),
       ];
@@ -201,16 +226,10 @@ void main() {
       expect(prSource.getAuthenticatedIdentityCallCount, equals(1));
       expect(prSource.getGithubRepositoryIdentityCalls, equals(<String>["/tmp/project-1"]));
       expect(prSource.listOpenPrsCallCount, isZero);
-      expect(pullRequestRepository.suspendedProjectIds, isEmpty);
+      expect(pullRequestRepository.suspendedProjectIds, equals(<String>["project-1"]));
       expect(pullRequestRepository.prepareScopedRefreshCalls, isEmpty);
-      expect(pullRequestRepository.clearScopedRefreshCalls, hasLength(1));
-      expect(pullRequestRepository.clearScopedRefreshCalls.single.projectId, equals("project-1"));
-      expect(
-        pullRequestRepository.clearScopedRefreshCalls.single.sessions.map((session) => session.id),
-        equals(<String>["session-1"]),
-      );
       expect(pullRequestRepository.activeReadCalls, isEmpty);
-      expect(pullRequestRepository.getByProjectId(projectId: "project-1"), isEmpty);
+      expect(pullRequestRepository.getByProjectId(projectId: "project-1"), hasLength(1));
       expect(
         pullRequestRepository.getVisibleByProjectId(
           projectId: "project-1",
@@ -719,8 +738,6 @@ class _FakePullRequestRepository implements PullRequestRepository {
           List<StoredSession> sessions,
         })
       >[];
-  final List<({String projectId, List<StoredSession> sessions})> clearScopedRefreshCalls =
-      <({String projectId, List<StoredSession> sessions})>[];
   final List<String> suspendedProjectIds = <String>[];
   final List<({String projectId, String githubRepositoryIdentity, String githubLogin, int prNumber})> upsertScopeCalls =
       <({String projectId, String githubRepositoryIdentity, String githubLogin, int prNumber})>[];
@@ -781,13 +798,6 @@ class _FakePullRequestRepository implements PullRequestRepository {
     _recordsByProject[projectId]?.removeWhere(
       (record) => record.githubRepositoryIdentity != githubRepositoryIdentity,
     );
-  }
-
-  @override
-  Future<void> clearScopedRefresh({required String projectId, required List<StoredSession> sessions}) async {
-    clearScopedRefreshCalls.add((projectId: projectId, sessions: sessions));
-    _visibleGithubLoginByProject[projectId] = null;
-    _recordsByProject.remove(projectId);
   }
 
   @override

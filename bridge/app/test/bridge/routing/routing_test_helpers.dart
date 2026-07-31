@@ -549,7 +549,6 @@ class FakePullRequestRepository implements PullRequestRepository {
     })
   >
   prepareScopedRefreshCalls = [];
-  final List<({String projectId, List<StoredSession> sessions})> clearScopedRefreshCalls = [];
   final List<String> suspendProjectVisibilityCalls = [];
 
   FakePullRequestRepository();
@@ -694,22 +693,6 @@ class FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<void> clearScopedRefresh({
-    required String projectId,
-    required List<StoredSession> sessions,
-  }) async {
-    clearScopedRefreshCalls.add((
-      projectId: projectId,
-      sessions: List<StoredSession>.unmodifiable(sessions),
-    ));
-    _visibleGithubLoginByProject.remove(projectId);
-    _prsByPrimaryKey.removeWhere((_, pullRequest) => pullRequest.projectId == projectId);
-    _prsBySessionId.updateAll(
-      (_, pullRequests) => pullRequests.where((pullRequest) => pullRequest.projectId != projectId).toList(),
-    );
-  }
-
-  @override
   Future<void> suspendProjectVisibility({required String projectId}) async {
     suspendProjectVisibilityCalls.add(projectId);
     _visibleGithubLoginByProject[projectId] = null;
@@ -752,9 +735,11 @@ class FakePullRequestRepository implements PullRequestRepository {
 class FakePrSyncService extends PrSyncService {
   final List<({String projectId, String projectPath})> calls = <({String projectId, String projectPath})>[];
   final Duration? delay;
+  final Object? refreshError;
 
   FakePrSyncService({
     this.delay,
+    this.refreshError,
     PrSourceRepository? prSource,
     PullRequestRepository? pullRequestRepository,
     SessionRepository? sessionRepository,
@@ -770,6 +755,9 @@ class FakePrSyncService extends PrSyncService {
     calls.add((projectId: projectId, projectPath: projectPath));
     if (delay != null) {
       await Future<void>.delayed(delay!);
+    }
+    if (refreshError case final error?) {
+      throw error;
     }
   }
 }
@@ -867,12 +855,6 @@ class _NoopPullRequestRepository implements PullRequestRepository {
     required String projectId,
     required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
-    required List<StoredSession> sessions,
-  }) async {}
-
-  @override
-  Future<void> clearScopedRefresh({
-    required String projectId,
     required List<StoredSession> sessions,
   }) async {}
 
@@ -1199,6 +1181,7 @@ class FakeSessionRepository implements SessionRepository {
   getSessionForProjectCalls = [];
   String? projectPathResult;
   Object? publicationError;
+  List<PullRequestInfo> pullRequestHistoryResult = const <PullRequestInfo>[];
 
   FakeSessionRepository({
     required FakeBridgePlugin plugin,
@@ -1334,8 +1317,10 @@ class FakeSessionRepository implements SessionRepository {
     final result = mergedSessions.map((session) {
       final prs = prsBySessionId[session.id];
       final pr = _selectBestPr(prs);
-      if (pr == null) return session;
-      return session.copyWith(pullRequest: pullRequestInfoFromDto(pr));
+      return session.copyWith(
+        pullRequest: pr == null ? session.pullRequest : pullRequestInfoFromDto(pr),
+        pullRequestHistory: pullRequestHistoryResult,
+      );
     }).toList();
     final database = _persistenceDatabase;
     if (database != null) {

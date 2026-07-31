@@ -69,7 +69,12 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 
     if (body.waitForPrData) {
       try {
-        await prRefreshFuture.timeout(_prRefreshTimeout);
+        final refreshSucceeded = await prRefreshFuture.timeout(_prRefreshTimeout);
+        if (!refreshSucceeded) {
+          return SessionListResponse(
+            items: _withoutPullRequestData(sessions: sessions),
+          );
+        }
         // Refresh succeeded within timeout — enrich the already-fetched sessions
         // with updated PR/CI metadata from the database (no extra plugin round-trip).
         final refreshedGithubLogin = await _prSyncService.verifyGithubIdentity();
@@ -108,7 +113,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     ];
   }
 
-  Future<void> _triggerPrRefresh({
+  Future<bool> _triggerPrRefresh({
     required String projectId,
     required List<Session> sessions,
   }) async {
@@ -116,16 +121,18 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       final projectPath = await _sessionRepository.getProjectPath(projectId: projectId);
       if (projectPath != null) {
         await _prSyncService.triggerRefresh(projectId: projectId, projectPath: projectPath);
-        return;
+        return true;
       }
 
       final fallbackDirectory = sessions.firstOrNull?.directory;
       if (fallbackDirectory == null || fallbackDirectory.isEmpty) {
-        return;
+        return true;
       }
       await _prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory);
+      return true;
     } on Object catch (e, st) {
-      Log.w("[GetSessionsHandler] PR refresh trigger failed for $projectId: $e\n$st");
+      Log.w("[GetSessionsHandler] PR refresh trigger failed for $projectId", e, st);
+      return false;
     }
   }
 }

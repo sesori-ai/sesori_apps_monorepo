@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
@@ -1191,6 +1192,96 @@ void main() {
       );
     });
 
+    test("strips PR metadata and history when a waited refresh fails", () async {
+      prSource.authenticatedIdentityResult = _octocatLogin;
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session one",
+          time: null,
+        ),
+      ];
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+          prNumber: 100,
+          branchName: "feature/failed-refresh",
+          url: "https://github.com/org/repo/pull/100",
+          title: "Stale PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      sessionRepository.pullRequestHistoryResult = const <PullRequestInfo>[
+        PullRequestInfo(
+          number: 99,
+          url: "https://github.com/org/repo/pull/99",
+          title: "Previous PR",
+          state: PrState.merged,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+        ),
+      ];
+      final refreshFailure = StateError("refresh failed");
+      final failingPrSyncService = FakePrSyncService(
+        prSource: prSource,
+        refreshError: refreshFailure,
+      );
+      final failingHandler = GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: failingPrSyncService,
+      );
+
+      final result = await failingHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.single.pullRequest, isNull);
+      expect(result.items.single.pullRequestHistory, isEmpty);
+      expect(failingPrSyncService.calls, hasLength(1));
+    });
+
+    test("logs and consumes PR refresh failures when not waiting", () async {
+      sessionRepository.projectPathResult = "/tmp/project";
+      final failingPrSyncService = FakePrSyncService(
+        prSource: prSource,
+        refreshError: StateError("refresh failed"),
+      );
+      final failingHandler = GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: failingPrSyncService,
+      );
+
+      final logOutput = await _captureStderr(() async {
+        await failingHandler.handle(
+          makeRequest("POST", "/sessions"),
+          body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      });
+
+      expect(logOutput, contains("PR refresh trigger failed for project-1"));
+      expect(failingPrSyncService.calls, hasLength(1));
+    });
+
     test("enriches sessions when PR refresh succeeds within timeout", () async {
       prSource.authenticatedIdentityResult = _octocatLogin;
       plugin.sessionsResult = const [
@@ -1242,4 +1333,28 @@ void main() {
       expect(sessionRepository.getSessionsCallCount, equals(1));
     });
   });
+}
+
+Future<String> _captureStderr(Future<void> Function() action) async {
+  final stderrBuffer = _BufferingStdout();
+  await IOOverrides.runZoned(
+    action,
+    stderr: () => stderrBuffer,
+  );
+  return stderrBuffer.text;
+}
+
+class _BufferingStdout implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
