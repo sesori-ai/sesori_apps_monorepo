@@ -82,7 +82,7 @@ silently compared with a mature one.
 | Bridge registered | First bridge registration (`ActivationState.bridgeSetupAt`) | Auth server |
 | Project available | First successful project inventory containing at least one project after instrumentation starts | App event |
 | Legacy session signal | First accepted `/sessions/generate-metadata` request (`ActivationState.firstSessionAt`) | Auth server |
-| Foundation analytics exposure | Earliest schema-v1 `analytics_schema_ready` or other accepted account-linked foundation event | App event; diagnostic coverage only |
+| Foundation analytics exposure | Earliest schema-v1 `analytics_schema_ready` | App event; diagnostic schema-readiness coverage only |
 | Activation-capable exposure | Earliest `analytics_activation_ready(activation_schema_version=1)` or accepted full-activation outcome, provided it occurs within 24 hours of account creation | App event from the outcome-instrumentation release |
 | Full activation | Earliest successful `session_message_sent` or `session_created_with_message` | App event |
 
@@ -943,12 +943,14 @@ Job acceptance checks before promotion:
 Use Application Default Credentials, Secret Manager for Mongo access, and an
 export service account limited to BigQuery Job User plus Data Editor on
 `sesori_analytics_auth_private` plus table-level Data Viewer on the one
-authorized permanent-internal-exclusion view. It has no controls dataset write/DDL
-role and no role on privacy-private, raw, curated, or reporting datasets, so it
-cannot mutate deletion targets, exclusions, or config. A separate scheduled-transform identity has read-only access to raw,
-auth-private, and controls plus write access to curated; the deployment identity
-alone owns schemas/IAM/control-table writes. The auth web runtime receives no
-BigQuery role.
+authorized permanent-internal-exclusion view. It has no controls dataset
+write/DDL role and no role on privacy-private, raw, curated, or reporting
+datasets, so it cannot mutate deletion targets, exclusions, or config. A
+separate scheduled-transform identity has read-only access to raw, auth-private,
+and controls, table-scoped update access only to the keyed-publication guard,
+and write access to curated; the deployment identity alone owns schemas, IAM,
+and every other control-table write. The auth web runtime receives no BigQuery
+role.
 
 ### Privacy deletion executable architecture
 
@@ -1042,9 +1044,9 @@ property/project IDs:
 | `analytics_<property_id>` | Raw restricted | Firebase-managed GA4 daily tables |
 | `sesori_analytics_auth_private` | Security/analytics admins, auth export job; transform identity read-only | Auth eligible-user snapshot/staging and aggregate setup cohorts only |
 | `sesori_analytics_privacy_private` | Security/privacy admins, auth suppression command limited writer, deletion job | Product-analytics deletion targets/status only; auth export identity has no access |
-| `sesori_analytics_controls` | Security/analytics admins and deployment identity; transform identity read-only; auth-export identity can read only an authorized permanent-internal-exclusion view | Internal-user and deletion exclusions, dual measurement timestamps, export freshness policy |
+| `sesori_analytics_controls` | Security/analytics admins and deployment identity; transform identity read-only except table-scoped keyed-publication-guard updates; auth-export identity can read only an authorized permanent-internal-exclusion view | Internal-user and deletion exclusions, dual measurement timestamps, export freshness policy, keyed-publication guard |
 | `sesori_analytics_curated` | Analytics engineers | Flattened allowlisted events, daily user activity, user milestones, scheduled intermediate tables |
-| `sesori_analytics_reporting` | Looker service account/product leadership | Identifier-free authorized views and dashboard tables |
+| `sesori_analytics_reporting` | Looker service account/product leadership | Identifier-free authorized reporting views only; no stored keyed or materialized dashboard tables |
 
 Version deployable assets in the private
 `sesori-ai/sesori_analytics_platform` repository: a data dictionary, templated
@@ -1229,8 +1231,9 @@ only three days.
 - Implement a privacy-request runbook/job that first calls the auth-source
   suppression operation, verifies preference disabled plus
   `productAnalyticsExportSuppressedAt`, and only then adds `user_key` to a
-  restricted deletion-exclusion control. It deletes matching auth-private/
-  curated/reporting rows and rebuilds identifier-free setup cohorts. It does not
+  restricted deletion-exclusion control. It deletes matching auth-private and
+  curated keyed rows and rebuilds identifier-free setup cohorts. Reporting is
+  view-only and therefore has no stored contribution to delete. It does not
   declare warehouse completion until an auth export with
   `runCutoff >= productAnalyticsExportSuppressedAt` has published, then performs
   one final delete/rebuild and verifies the key/contribution remains absent.

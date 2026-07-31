@@ -105,17 +105,14 @@
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
-  Partial preflight on 2026-07-31 found Firebase project `sesori-ai`, GA4
-  property `529377727`, and daily raw dataset `analytics_529377727` in
-  `europe-west3`, with tables beginning at `events_20260725`. Billing account
-  `Sesori Billing` is active and linked. A project-scoped USD 10 monthly alert
-  budget now covers all services at 50/80/100 percent actual and 100 percent
-  forecasted spend. The raw dataset defaults and all six existing daily tables
-  now expire after 90 days instead of 60. BigQuery on-demand query overrides are
-  10 GiB per project/day and 2 GiB per principal/day. Restricted IAM, GA4 privacy
-  settings, scheduler identities, exact start-time recording, and Looker
-  ownership remain blocked or unverified; do not enable additional export modes
-  or deploy transforms yet.
+  Partial preflight on 2026-07-31 verified active billing and an existing daily
+  raw export in the required same region. A project budget alert, 90-day raw
+  default/current-table expiration, and bounded on-demand query overrides are
+  configured. Exact project/property/dataset/location/table, billing, budget,
+  and quota values belong only in the restricted deployment record. Restricted
+  IAM, GA4 privacy settings, scheduler identities, exact start-time recording,
+  and Looker ownership remain blocked or unverified; do not enable additional
+  export modes or deploy transforms yet.
 - [x] Implement the local Step 5 warehouse, reporting, deployment, and privacy-
   deletion assets. The final architecture pass approved neutral Google
   credential ownership, Service-owned deletion sequencing, one-shot auth
@@ -173,16 +170,24 @@ the implementing operator must execute and verify all unchecked work:
 - [ ] Record the approved GA4 privacy posture, exact raw/behavioral UTC start
   timestamps, service identities, schedule owners, dashboard owner/viewer group,
   and refresh policy in the restricted deployment record.
+- [ ] Apply and verify two-month GA4 event/user-data retention, disabled Google
+  Signals, ad personalization, ad storage/user-data features, and disabled
+  Firebase native advertising identifiers; store the evidence in the restricted
+  deployment record.
 - [ ] Create the separate deployment, auth-export, auth-suppression, transform,
   privacy-deletion, and Looker identities; remove broad inherited data access;
   apply the dataset/table IAM matrix and exact authorized-view ACLs; pass every
   positive and expected-deny access probe.
-- [ ] Apply the same-location warehouse schemas and views with the checked-in
-  deployment tool, run the deployed-schema assertions, and reconcile the first
-  complete raw/auth/curated/reporting data.
+- [ ] Run the checked-in bootstrap-only deployment to create the same-location
+  datasets and reference schemas; do not apply auth-dependent transforms yet.
 - [ ] Provision and smoke-test the isolated auth export and suppression jobs,
-  transform schedules, request deletion command, and recurring privacy sweep;
-  complete the non-production in-flight export and delayed-upload deletion drill.
+  publish the initial auth snapshot, and verify its freshness and reconciliation.
+- [ ] Run the auth-dependent warehouse apply only after that snapshot exists;
+  apply schemas/views, run deployed-schema assertions, and reconcile the first
+  complete raw/auth/curated/reporting data.
+- [ ] Provision and smoke-test transform schedules, the request deletion command,
+  and recurring privacy sweep; complete the non-production in-flight export and
+  delayed-upload deletion drill.
 - [ ] Build the restricted three-page Looker report, verify its data sources,
   maturity/coverage/freshness labels and sharing controls, then record asset IDs
   and go-live evidence.
