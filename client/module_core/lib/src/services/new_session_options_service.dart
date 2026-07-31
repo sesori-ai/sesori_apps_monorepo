@@ -51,6 +51,13 @@ final class NewSessionOptionsLoadFailure extends NewSessionOptionsLoadResult {
   final NewSessionOptionsSource source;
 }
 
+final class NewSessionOptionsProjectNotFound extends NewSessionOptionsLoadResult {
+  const NewSessionOptionsProjectNotFound({required this.error, required this.source});
+
+  final ApiError error;
+  final NewSessionOptionsSource source;
+}
+
 final class NewSessionOptionsRefreshFailureRetained extends NewSessionOptionsLoadResult {
   const NewSessionOptionsRefreshFailureRetained({required this.options});
 
@@ -109,7 +116,7 @@ class NewSessionOptionsService {
         source: NewSessionOptionsSource.aggregate,
       ),
       SessionOptionsRepositoryCacheUnavailable() => const NewSessionOptionsUnavailable(),
-      SessionOptionsRepositoryProjectNotFound(:final error) => NewSessionOptionsLoadFailure(
+      SessionOptionsRepositoryProjectNotFound(:final error) => NewSessionOptionsProjectNotFound(
         error: error,
         source: NewSessionOptionsSource.aggregate,
       ),

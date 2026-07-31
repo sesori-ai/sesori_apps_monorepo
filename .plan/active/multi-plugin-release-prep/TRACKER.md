@@ -250,3 +250,8 @@
   rediscovery reuses its explicitly loaded snapshot without calling legacy
   routes again. All 44 affected core tests passed, as did fatal analysis in
   module-core, mobile, and desktop.
+- Step 5.B/6 affinity-fence follow-up (2026-07-31): retained options now require
+  a verified non-null bridge identity, matching option source, and a still-valid
+  project; failed rediscovery also disables creation in both the cubit and UI.
+  All 83 focused core tests and 27 mobile New Session tests passed, as did fatal
+  analysis in module-core, mobile, and desktop plus `git diff --check`.

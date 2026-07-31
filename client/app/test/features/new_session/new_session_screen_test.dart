@@ -883,7 +883,7 @@ void main() {
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
   });
 
-  testWidgets("refresh discovery failure keeps the chooser and composer usable", (tester) async {
+  testWidgets("refresh discovery failure keeps the chooser but disables creation", (tester) async {
     var discoveryCalls = 0;
     when(pluginRepository.listPlugins).thenAnswer((_) async {
       discoveryCalls++;
@@ -937,7 +937,7 @@ void main() {
         of: find.byType(PromptInput),
         matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
       ),
-      findsNothing,
+      findsOneWidget,
     );
   });
 

@@ -134,7 +134,7 @@ void main() {
 
       expect(
         result,
-        isA<NewSessionOptionsLoadFailure>()
+        isA<NewSessionOptionsProjectNotFound>()
             .having((value) => value.error, "error", error)
             .having((value) => value.source, "source", NewSessionOptionsSource.aggregate),
       );

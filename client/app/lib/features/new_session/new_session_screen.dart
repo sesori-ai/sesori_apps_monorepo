@@ -194,13 +194,13 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<NewSessionCubit>().state;
+    final cubit = context.watch<NewSessionCubit>();
+    final state = cubit.state;
     final loc = context.loc;
     final prego = context.prego;
     final isSending = state is NewSessionSending;
     final composerData = state.agentModelData;
-    final isComposerEnabled =
-        composerData != null && !composerData.isLoading && (composerData.plugin?.isRoutable ?? false) && !isSending;
+    final isComposerEnabled = cubit.canCreateSession && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
     // object stays stable, so `isCurrent` remains safe to read at event time.

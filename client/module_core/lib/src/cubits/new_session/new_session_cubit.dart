@@ -110,19 +110,21 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
       switch (response) {
         case SuccessResponse(:final data):
-          final bridgeIdentityChanged = _discoveryBridgeId != data.bridgeId;
+          final bridgeIdentityChanged =
+              _discoveryBridgeId == null || data.bridgeId == null || _discoveryBridgeId != data.bridgeId;
           _discoveryBridgeId = data.bridgeId;
           _hasDiscoveryAffinity = true;
           _selectionTracker.establishBridgeScope(bridgeId: data.bridgeId);
           final selectedPlugin = data.selected;
           final currentData = state.agentModelData;
+          final source = data.optionsSource;
           final isSamePlugin =
               !bridgeIdentityChanged &&
               currentData?.plugin?.id != null &&
-              selectedPlugin?.id == currentData?.plugin?.id;
+              selectedPlugin?.id == currentData?.plugin?.id &&
+              currentData?.optionsState.source == source;
           final previousOptions = isSamePlugin ? currentData?.optionsState.data : null;
           final canLoad = selectedPlugin?.isRoutable ?? false;
-          final source = data.optionsSource;
           emit(
             NewSessionState.idle(
               availablePlugins: data.plugins,
@@ -323,6 +325,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       NewSessionOptionsLoadFailure(:final error, :final source) => previousOptions != null
           ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions, source: source)
           : NewSessionOptionsFailureState(reason: error.remoteFailureReason, source: source),
+      NewSessionOptionsProjectNotFound(:final error, :final source) => NewSessionOptionsFailureState(
+        reason: error.remoteFailureReason,
+        source: source,
+      ),
       NewSessionOptionsRefreshFailureRetained(:final options) => NewSessionOptionsRefreshFailureRetainedState(
         options: options,
         source: source,
@@ -356,6 +362,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }
 
   bool get canRefreshOptions => _hasDiscoveryAffinity && _canEditComposer;
+
+  bool get canCreateSession => _hasDiscoveryAffinity && _canEditComposer;
 
   void _emitStateUpdate({
     required NewSessionOptionsLoadState? options,
@@ -516,7 +524,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (current is NewSessionSending || current is NewSessionCreated) return;
     final config = current.agentModelData;
     final selectedPlugin = config?.plugin;
-    if (config == null || config.isLoading || selectedPlugin == null || !selectedPlugin.isRoutable) return;
+    if (!_hasDiscoveryAffinity ||
+        config == null ||
+        config.isLoading ||
+        selectedPlugin == null ||
+        !selectedPlugin.isRoutable) {
+      return;
+    }
 
     final normalizedCommand = command?.trim();
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
