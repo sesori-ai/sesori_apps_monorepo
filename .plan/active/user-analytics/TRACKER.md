@@ -121,9 +121,10 @@
   credential ownership, Service-owned deletion sequencing, one-shot auth
   readiness with external retry, and the layered API/Repository boundaries.
   Focused Dart formatting/analyze/privacy tests, render-only validation of seven
-  SQL assets and five schedules, and `git diff --check` pass. BigQuery fixture
-  execution remains blocked by the current query-byte quota; no repository SQL,
-  schedules, IAM, or dashboards have been applied to cloud resources.
+  SQL assets and five schedules, and `git diff --check` pass. The self-contained
+  BigQuery metric fixture passed in `europe-west3` on 2026-07-31. Deployed-schema
+  assertions remain deferred until an approved warehouse exists; no repository
+  SQL, schedules, IAM, or dashboards have been applied to cloud resources.
 
 ## Immediate Operational Action
 
@@ -163,7 +164,7 @@ patches in one umbrella diff.
 | 4.B/5 | apps monorepo | `[user-analytics] Instrument account-less login outcomes [step 4.B/5]` | PR #634 merged as `5223c27d` on 2026-07-31 | Step 4.A |
 | 4.C/5 | apps monorepo | `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]` | PR #633 merged as `c662a639` on 2026-07-31 | Step 4.B |
 | 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 merged as `671c67ed` on 2026-07-31 | Step 4.C |
-| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Local repository assets implemented and architecture-approved; cloud application remains blocked. Billing/budget and 90-day raw expiration are configured, while restricted IAM, GA4 privacy settings, identities, exact timestamps, fixture execution, and dashboard ownership remain unresolved | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
+| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Local repository assets implemented, metric fixtures passed, and architecture approved; cloud application remains blocked. Billing/budget and 90-day raw expiration are configured, while restricted IAM, GA4 privacy settings, identities, exact timestamps, deployed-schema assertions, and dashboard ownership remain unresolved | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
 ## Release Evidence
 
