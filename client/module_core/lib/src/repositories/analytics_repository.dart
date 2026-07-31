@@ -1,31 +1,40 @@
 import "package:injectable/injectable.dart";
+import "package:meta/meta.dart";
 
 import "../api/analytics_api.dart";
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "models/analytics_delivery_result.dart";
 
+const _analyticsDeliveryDeadline = Duration(seconds: 10);
+
 @lazySingleton
 class AnalyticsRepository {
   final AnalyticsApi _api;
+  final Duration _deliveryDeadline;
 
-  AnalyticsRepository({required AnalyticsApi api}) : _api = api;
+  AnalyticsRepository({required AnalyticsApi api}) : _api = api, _deliveryDeadline = _analyticsDeliveryDeadline;
+
+  @visibleForTesting
+  AnalyticsRepository.withDeliveryDeadline({
+    required AnalyticsApi api,
+    required Duration deliveryDeadline,
+  }) : _api = api,
+       _deliveryDeadline = deliveryDeadline;
 
   Future<AnalyticsDeliveryResult> logProductEvent({
     required ProductAnalyticsEnvelope envelope,
     required String userKey,
-  }) async {
-    try {
-      await _api.logProductEvent(envelope: envelope, userKey: userKey);
-      return AnalyticsDeliveryResult.acceptedBySdk;
-    } on Object {
-      return AnalyticsDeliveryResult.failed;
-    }
-  }
+  }) => _deliver(
+    operation: () => _api.logProductEvent(envelope: envelope, userKey: userKey),
+  );
 
-  Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) async {
+  Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) =>
+      _deliver(operation: () => _api.logInstallationEvent(event: event));
+
+  Future<AnalyticsDeliveryResult> _deliver({required Future<void> Function() operation}) async {
     try {
-      await _api.logInstallationEvent(event: event);
+      await operation().timeout(_deliveryDeadline);
       return AnalyticsDeliveryResult.acceptedBySdk;
     } on Object {
       return AnalyticsDeliveryResult.failed;

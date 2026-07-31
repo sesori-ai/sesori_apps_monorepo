@@ -9,9 +9,11 @@ import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
@@ -19,7 +21,9 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/registered_bridges_store.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
+import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
+import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
@@ -120,6 +124,20 @@ class MockSessionApi extends Mock implements SessionApi {}
 class MockSessionService extends Mock implements SessionService {}
 
 class MockSessionRepository extends Mock implements SessionRepository {}
+
+class MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
+
+MockProductAnalyticsService stubbedProductAnalyticsService() {
+  final mock = MockProductAnalyticsService();
+  when(
+    () => mock.logEvent(
+      event: any(named: "event"),
+      occurredAtUtc: any(named: "occurredAtUtc"),
+    ),
+  ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+  when(() => mock.state).thenReturn(ProductAnalyticsState.initial);
+  return mock;
+}
 
 class MockBridgeRepository extends Mock implements BridgeRepository {}
 
@@ -350,6 +368,8 @@ void registerAllFallbackValues() {
   registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com"));
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+  registerFallbackValue(DateTime.utc(2026));
 }
 
 Project testProject({String? id, String? path, String? name}) {

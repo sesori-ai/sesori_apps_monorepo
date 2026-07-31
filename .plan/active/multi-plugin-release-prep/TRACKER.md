@@ -2,11 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `42f3bc44`
-- **Series state:** Steps 1/6 through 4.F/6 are merged; oversized PR #620 is
+- **Implementation base:** `origin/main` at `0352553d`
+- **Series state:** Steps 1/6 through 5.A/6 are merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
 - **Current step:** Step 5.B/6 — cached New Session composer
-- **Next action:** monitor stacked PRs #635 and #636 through review and CI
+- **Next action:** monitor PR #636 against `main` through review and CI
 
 ## Delivery
 
@@ -21,8 +21,8 @@
 | [x] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | PR #626 merged |
 | [x] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | PR #627 merged |
 | [x] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | PR #630 merged |
-| [ ] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | PR #635 open |
-| [ ] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | [PR #636](https://github.com/sesori-ai/sesori_apps_monorepo/pull/636) open, stacked on PR #635 |
+| [x] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | PR #635 merged |
+| [ ] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | [PR #636](https://github.com/sesori-ai/sesori_apps_monorepo/pull/636) open against `main` |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5.B merge |
 
 ## Locked Decisions
@@ -218,7 +218,7 @@
   option policy service, neutral source/intent models, and DI registration. All
   22 focused API/repository/service tests passed, as did fatal analysis in
   module-core, mobile, and desktop plus `git diff --check`. Committed as
-  `cff67af4`, pushed, and opened as PR #635.
+  `cff67af4`, pushed, opened as PR #635, and merged to `main` as `0352553d`.
 - Step 5.B/6 preparation (2026-07-31): isolated repository-mapped plugin source,
   independent agent/model/variant intent tracking, composed source-aware cubit
   state, reconnect/plugin-switch generation fencing, and cached/legacy/refresh
@@ -226,5 +226,5 @@
   mobile New Session tests passed, as did fatal analysis in module-core, mobile,
   and desktop plus `git diff --check`.
 - Step 5.B/6 delivery (2026-07-31): committed as `e62e1d7a`, pushed, and opened
-  as stacked PR #636 against the Step 5.A branch. Initial CI is running; the PR
-  is mergeable with no unresolved review threads.
+  as stacked PR #636 against the Step 5.A branch. After PR #635 merged, GitHub
+  retargeted PR #636 to `main`; the updated base is merged into the branch.

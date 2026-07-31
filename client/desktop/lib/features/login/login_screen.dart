@@ -16,7 +16,13 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<LoginCubit>(
-      create: (_) => LoginCubit(getIt(), getIt(), getIt(), getIt()),
+      create: (_) => LoginCubit(
+        oAuthFlowProvider: getIt(),
+        urlLauncher: getIt(),
+        authSession: getIt(),
+        lifecycleSource: getIt(),
+        installationAnalyticsService: getIt(),
+      ),
       child: const LoginView(),
     );
   }
@@ -56,12 +62,16 @@ class LoginView extends StatelessWidget {
                   const Text(_subtitle, textAlign: TextAlign.center),
                   const SizedBox(height: 32),
                   FilledButton(
-                    onPressed: isBusy ? null : () => unawaited(context.read<LoginCubit>().loginWithProvider(AuthProvider.github)),
+                    onPressed: isBusy
+                        ? null
+                        : () => unawaited(context.read<LoginCubit>().loginWithProvider(AuthProvider.github)),
                     child: const Text(_githubButton),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton(
-                    onPressed: isBusy ? null : () => unawaited(context.read<LoginCubit>().loginWithProvider(AuthProvider.google)),
+                    onPressed: isBusy
+                        ? null
+                        : () => unawaited(context.read<LoginCubit>().loginWithProvider(AuthProvider.google)),
                     child: const Text(_googleButton),
                   ),
                   const SizedBox(height: 24),
@@ -94,7 +104,11 @@ class _LoginStatus extends StatelessWidget {
       LoginIdle() || LoginSuccess() => const SizedBox.shrink(),
       LoginAuthenticating() => const _StatusRow(message: _authenticating),
       LoginPolling() => const _StatusRow(message: _polling),
-      LoginTimeout() => Text(_timeout, textAlign: TextAlign.center, style: TextStyle(color: colors.error)),
+      LoginTimeout() => Text(
+        _timeout,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: colors.error),
+      ),
       LoginFailed(:final reason) => Text(
         switch (reason) {
           LoginFailedReason.browserOpenFailed => _browserOpenFailed,
