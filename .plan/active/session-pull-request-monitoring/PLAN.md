@@ -7,19 +7,13 @@
 - **Plan revision date:** 2026-07-31
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main`
-- **Latest audited tip:** `0da8ec7cae9e23ac17569ab7a1069e815e16f8cf`
-- **Historical plan PR:** [#436](https://github.com/sesori-ai/sesori_apps_monorepo/pull/436)
-- **Historical prerequisite:** [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) shipped additive
+- **Latest audited tip:** `10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484`
+- **Existing contract baseline:** [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) shipped additive
   `RelayProjectView` and `Session.pullRequestHistory` contracts.
-- **Delivery:** one revised-plan PR, seven sequential implementation PRs, and
+- **Delivery:** one plan PR, seven sequential implementation PRs, and
   one plan-retirement PR.
 
-The earlier approved design retained every visited branch, stored multiple PRs
-per session, added terminal archive snapshots, and used adaptive per-project
-polling. The user explicitly replaced those requirements with a smaller
-current-branch-only feature after parallel plugins and the durable catalog
-merged. This document and `TRACKER.md` are the sole current authority. Removed
-stage files describe superseded work and must not guide implementation.
+This document and `TRACKER.md` are the sole current implementation authority.
 
 ## Goal
 
@@ -155,9 +149,8 @@ OpenCode, Codex, Cursor, ACP, or future backend behavior crosses
 ## Current Repository Baseline
 
 The audited `main` tip is
-`0da8ec7cae9e23ac17569ab7a1069e815e16f8cf` (2026-07-31). Parallel plugins are
-complete through PR #497. The durable catalog and later release-prep work
-materially invalidate the old plan:
+`10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484` (2026-07-31). Parallel plugins are
+complete through PR #497. Current implementation constraints are:
 
 - Drift is schema v12, not v10
   (`bridge/app/lib/src/api/database/database.dart`).
@@ -463,12 +456,32 @@ interval setting mutation alone does not yet drive a defined product or
 investor decision that justifies a warehouse/reporting surface. Existing
 settings screen analytics continue unchanged.
 
+## Cleanup Assessment
+
+- Step 2 replaces the unscoped ephemeral PR-cache key instead of carrying
+  unusable rows or compatibility columns forward; migration rebuilds that cache
+  empty because no valid repository/login backfill exists.
+- Step 3 removes the repository-wide open-list/per-disappeared-PR source path
+  and its directly obsolete tests, fakes, and comments once every consumer uses
+  exact-target GraphQL selection.
+- Keep `sessions_table.branch_name`: it still owns worktree cleanup and is not
+  made obsolete by the separate current-branch display field.
+- Keep the empty `Session.pullRequestHistory` wire field for released
+  client/bridge compatibility; no producer, storage, or UI is added for it.
+- No other data, generator, watcher, setting, or presentation path becomes
+  obsolete under the current scope.
+
 ## Delivery Rules
 
-- The revised series has exactly nine PRs. Every title uses the fixed
-  `[session-pull-request-monitoring] ... [step x/9]` form below.
-- Step 1 raises this complete revised plan. It changes `.plan/**` only and runs
-  documentation validation, not Dart/Flutter suites.
+- The series has exactly nine PRs. Every title uses the fixed
+  `[session-pull-request-monitoring] [C<n> <emoji>] ... [step x/9]` form below.
+- Step 1 raises this complete plan and updates the Plan Maker/Plan Worker PR
+  communication rules. It changes `.plan/**` and the two agent definitions
+  only, so it runs documentation/config validation rather than Dart/Flutter
+  suites.
+- Every PR body states complexity, what, why, risk/test focus, and expected
+  user-visible/data/internal results; an absent impact is explicit rather than
+  omitted.
 - Step 9 contains no production change. It records completion and moves
   `.plan/active/session-pull-request-monitoring/` to
   `.plan/completed/session-pull-request-monitoring/`.
@@ -478,9 +491,10 @@ settings screen analytics continue unchanged.
 - Target no more than 1,500 additions plus deletions per implementation PR,
   including generated code and tests. Do not combine adjacent steps because one
   is small.
-- Step 1 necessarily exceeds the soft cap because it atomically removes several
-  thousand lines of now-dangerous obsolete branch-history/archive step files.
-  Splitting the plan authority would leave an invalid implementation source.
+- Step 1 necessarily exceeds the soft cap because it consolidates the active
+  plan into three top-level documents while deleting several thousand lines of
+  redundant stage files in the same atomic change. Splitting those files would
+  leave more than one implementation authority during review.
 - Step 2 may modestly exceed 1,500 because one Drift table rekey, generated
   schema/steps, migration callback, writer adaptation, and migration tests must
   ship together. Record actual generated size and seek a coherent split before
@@ -494,35 +508,39 @@ settings screen analytics continue unchanged.
 
 ## Fixed PR Series
 
-| Step | Branch | Exact PR title | Changed-line target | Outcome |
-|---|---|---|---:|---|
-| 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] docs: replan current PR monitoring [step 1/9]` | 4,000–7,000 | Replace stale durable authority with this reviewed plan and tracker. |
-| 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `[session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Migrate current branch/repository/login scope and repository-keyed ephemeral PR cache while preserving request-driven behavior. |
-| 3/9 | `session-pull-request-monitoring-graphql-selection` | `[session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
-| 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `[session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |
-| 5/9 | `session-pull-request-monitoring-view-scheduler` | `[session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Route per-connection project presence and run one fixed 30-second aggregate scheduler. |
-| 6/9 | `session-pull-request-monitoring-bridge-settings` | `[session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Persist/validate interval settings, expose GET/PATCH, serialize settings writes, and rearm the live timer. |
-| 7/9 | `session-pull-request-monitoring-client-presence` | `[session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Add layered client project presence with list/detail, lifecycle, reconnect, and multi-device-safe bridge behavior. |
-| 8/9 | `session-pull-request-monitoring-client-settings` | `[session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Add shared client interval settings, compatibility UI, final integration verification, and current-branch/PR regressions. |
-| 9/9 | `session-pull-request-monitoring-retire-plan` | `[session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Record completion and move the plan directory from active to completed. |
+| Step | Branch | Exact PR title | Complexity rationale | Changed-line target | Outcome |
+|---|---|---|---|---:|---|
+| 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] [C2 🔵] docs: plan current PR monitoring [step 1/9]` | Documentation/agent-definition changes only, with no runtime behavior. | 4,000–7,000 | Publish this reviewed plan/tracker and the reusable PR communication/cleanup rules. |
+| 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): persist scoped PR selections [step 2/9]` | Drift migration plus fail-closed account identity and cache visibility. | 1,300–2,000 | Migrate current branch/repository/login scope and repository-keyed ephemeral PR cache while preserving request-driven behavior. |
+| 3/9 | `session-pull-request-monitoring-graphql-selection` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): batch exact PR selection [step 3/9]` | Typed dynamic GraphQL batching/pagination, identity fencing, and deterministic selection. | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
+| 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): refresh current session branches [step 4/9]` | Git/process resolution, persisted scope, cache races, and cross-layer rendering. | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |
+| 5/9 | `session-pull-request-monitoring-view-scheduler` | `[session-pull-request-monitoring] [C4 🟠] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | Multi-device connection lifecycle and serialized add-during-flight scheduling. | 900–1,400 | Route per-connection project presence and run one fixed 30-second aggregate scheduler. |
+| 6/9 | `session-pull-request-monitoring-bridge-settings` | `[session-pull-request-monitoring] [C3 🟡] feat(bridge): configure PR refresh cadence [step 6/9]` | Localized persisted settings flow with concurrent writes and live timer updates. | 1,000–1,500 | Persist/validate interval settings, expose GET/PATCH, serialize settings writes, and rearm the live timer. |
+| 7/9 | `session-pull-request-monitoring-client-presence` | `[session-pull-request-monitoring] [C4 🟠] feat(client): declare viewed projects [step 7/9]` | Shared list/detail lifecycle, reconnect ordering, and multi-device bridge behavior. | 1,000–1,500 | Add layered client project presence with list/detail, lifecycle, reconnect, and multi-device-safe bridge behavior. |
+| 8/9 | `session-pull-request-monitoring-client-settings` | `[session-pull-request-monitoring] [C4 🟠] feat(client): configure PR refresh cadence [step 8/9]` | Shared settings layers, compatibility UI, and end-to-end bridge/client regression coverage. | 1,000–1,500 | Add shared client interval settings, compatibility UI, final integration verification, and current-branch/PR regressions. |
+| 9/9 | `session-pull-request-monitoring-retire-plan` | `[session-pull-request-monitoring] [C1 🟢] docs: retire current PR monitoring plan [step 9/9]` | Mechanical documentation state/move after implementation completion. | 50–200 | Record completion and move the plan directory from active to completed. |
 
 ## Implementation Steps
 
-### Step 1/9 — Revised durable plan
+### Step 1/9 — Durable plan and PR guidance
 
 Scope:
 
-- Replace obsolete all-branch/history/archive architecture and tracker state.
-- Remove superseded stage/step files so there is one plan authority.
-- Record the fixed nine titles, line budgets, historical PR #457 prerequisite,
-  current baseline, open-PR drift, and final retirement step.
-- Run `aristotle-plan-review` against the complete revised plan.
+- Publish the current-branch architecture and tracker as one plan authority.
+- Consolidate execution guidance into the top-level plan files.
+- Record the fixed nine complexity-tagged titles, line budgets, existing PR
+  #457 contract baseline, current code baseline, open-PR drift, and final
+  retirement step.
+- Update Plan Maker and Plan Worker with the reusable complexity scale, required
+  PR summaries, and feature cleanup assessment/execution rules.
+- Run `aristotle-plan-review` against the complete production plan.
 
 Verification:
 
 - `git diff --check`
 - cross-check every title/step total/branch in `PLAN.md` and `TRACKER.md`
-- confirm only `.plan/**` changed
+- confirm only this plan directory and the two requested agent definitions
+  changed
 
 ### Step 2/9 — Scoped PR persistence
 
@@ -572,9 +590,9 @@ Scope:
   only until an eligible winner or exhaustion.
 - Extend `PrSourceRepository` with typed batch targets/outcomes.
 - Evolve request-driven `PrSyncService` to use the final batch API and replace
-  current selected rows; remove the old repository-wide open list and
-  per-disappeared-PR
-  finalization paths.
+  current selected rows; remove the repository-wide open-list and
+  per-disappeared-PR finalization paths plus their directly obsolete tests,
+  fakes, and comments.
 - Preserve the current `/sessions` trigger behavior.
 
 Acceptance:
@@ -738,8 +756,6 @@ Scope:
 - Keep current session row/`PrStatusRow` presentation; add no history UI.
 - Complete fake Git/GitHub/relay integration for view -> branch -> batch ->
   selected cache -> `sessionsUpdated` -> refetch -> shared row.
-- Remove obsolete tests/comments/fakes from the old repository-wide open-list
-  implementation that survived earlier transition steps.
 - Run final bridge/shared/client/mobile/desktop verification.
 
 Acceptance:
@@ -794,7 +810,7 @@ Verification:
 | Old clients never declare project view | Preserve both request-driven refresh modes and exact compatibility cleanup marker. |
 | Old bridges ignore project view/settings | Request refresh remains; settings UI reports unsupported 404. |
 | Settings paths continue evolving | Step 8 starts from current `main`; merged #647 is evidence, not a frozen path assumption. |
-| Plan PR exceeds line cap | Atomic removal of obsolete plan authority is safer than leaving executable stale stage files. |
+| Plan PR exceeds line cap | Atomic consolidation into the three authoritative plan files avoids competing active guidance during review. |
 | Schema PR exceeds line cap | Generated migration/table-rekey output stays with source, callback, and migration proof; split non-generated behavior first if needed. |
 
 ## Completion Conditions

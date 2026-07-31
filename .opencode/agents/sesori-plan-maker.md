@@ -48,11 +48,13 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
 - Do not invent stages, waves, PR boundaries, worktrees, or process artifacts
   unless they help the current work or the user asks for them.
 - When intentionally splitting any task across multiple PRs, require every PR
-  title to use `[<slug>] <description> [step <x>/<y>]`. For durable planned
+  title to use
+  `[<slug>] [C<n> <emoji>] <description> [step <x>/<y>]`. For durable planned
   work, `<slug>` is exactly the plan directory name under `.plan`; do not invent
   a separate series slug. Without a durable plan, choose one stable, lowercase
-  kebab-case slug. Fix the step order/total for the whole series, and do not
-  apply the wrapper to a single-PR task.
+  kebab-case slug. Fix the step order/total for the whole series, including each
+  step's complexity tag, and do not apply the slug/step wrapper to a single-PR
+  task.
 - Target no more than 1,500 changed lines per PR as a soft cap, counting
   additions plus deletions, generated code, and tests. Prefer a coherent split
   before exceeding it; when a smaller independently valid PR is not practical,
@@ -66,6 +68,74 @@ For a new durable plan, `PLAN.md` should normally capture the goal, scope,
 relevant current behavior, concrete implementation steps, verification, and
 material risks or decisions. Add a lightweight `TRACKER.md` or step files only
 when they will help execution.
+
+## PR Complexity and Communication
+
+Assign every planned or opened PR one implementation-complexity level. The
+number and emoji are a pair and must appear together:
+
+- `C1 🟢` — trivial: isolated documentation, copy, or mechanical work;
+- `C2 🔵` — straightforward: localized implementation with a small blast radius;
+- `C3 🟡` — moderate: several files or layers, meaningful state, or notable edge
+  cases;
+- `C4 🟠` — complex: cross-layer flow, persistence, concurrency, lifecycle,
+  compatibility, or security-sensitive behavior; and
+- `C5 🔴` — very complex: several coupled high-complexity concerns or a broad,
+  high-stakes migration.
+
+Complexity describes implementation and review difficulty, not risk by itself.
+Choose it from the actual coupling, state transitions, migration/codegen,
+concurrency, compatibility, privacy/security, and verification burden; do not
+rate every PR in a series identically by default.
+
+For a single-PR task, prefix the normal title with `[C<n> <emoji>]`. For a
+multi-PR task, place the tag after the required slug:
+`[<slug>] [C<n> <emoji>] <description> [step <x>/<y>]`. Treat the tag as part of
+the fixed exact title. If implementation evidence changes the estimate before
+the PR opens, update the plan/tracker title rather than knowingly publishing a
+stale rating.
+
+Make every planned PR concrete enough that its eventual PR body can briefly and
+clearly state:
+
+- **Complexity:** level plus a one-sentence rationale;
+- **What:** what the PR changes;
+- **Why:** why that change is needed now;
+- **Risk and test focus:** risk level, potentially impacted flows, screens,
+  data, integrations, or functionality, and the highest-value checks; and
+- **Expected result:** what a reviewer should observe after running it,
+  explicitly covering user-visible behavior, persisted/database changes, and
+  pure internal/refactor effects as applicable.
+
+Use an explicit `None` or `No user-visible/database change` rather than omitting
+a category. Keep these summaries proportional; they are an operational review
+aid, not a duplicate design document.
+
+Whenever you create or materially update a PR yourself, render those categories
+as `## Complexity`, `## What`, `## Why`, `## Risk and test focus`, and
+`## Expected result`, followed by the relevant verification section. Use real
+multiline Markdown through `--body-file` or stdin.
+
+## Cleanup Assessment
+
+For every feature plan, actively inspect what the new behavior makes obsolete.
+Consider calculations and data generation, model fields, database columns,
+transport fields, caches, flags/settings, jobs/watchers/listeners, compatibility
+paths, UI state, tests, and documentation. Look for causal cleanup such as data
+that no longer needs to be generated, persisted, transported, or rendered.
+
+Record one honest outcome in the plan:
+
+- include small, safe, directly caused cleanup in the appropriate feature PR;
+- place a larger but valuable cleanup in its own coherent planned PR;
+- defer cleanup when migration, compatibility, rollout, or risk requires it and
+  state the reason; or
+- state that no relevant cleanup was found.
+
+Do not keep obsolete artifacts solely for auditing when Git history already
+preserves them. Cleanup is still not permission for speculative scope growth:
+preserve required wire/data compatibility, and explain approximate size and ask
+the user before planning a considerable refactor.
 
 ## Plan Review
 
@@ -91,7 +161,5 @@ change that satisfies the request, keep unrelated work intact, verify what you
 change, and state clearly what remains unresolved. Include tests only when they
 provide meaningful confidence.
 
-Cleanup or refactoring is acceptable when its value is clear. Before planning a
-considerable refactor, explain its approximate size and ask the user to approve
-it. Prefer a dedicated PR without unrelated functionality changes when
-practical.
+Apply the cleanup assessment above without mixing unrelated refactors into a
+feature. Prefer a dedicated PR when a coherent cleanup is independently useful.

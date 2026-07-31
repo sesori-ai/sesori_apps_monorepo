@@ -2,18 +2,7 @@
 
 > **Non-authoritative.** Product and architecture decisions live in `PLAN.md`;
 > execution state lives in `TRACKER.md`. This file records intentionally
-> rejected alternatives and superseded context.
-
-## Superseded Historical Design
-
-The 2026-07-14 plan retained every named branch visited by a root session,
-stored all associated PRs, rendered collapsed history, watched git `HEAD`
-continuously, froze archive snapshots, and used adaptive per-project polling.
-
-Rejected after the durable multi-plugin catalog shipped and the user
-re-evaluated product value. Prior-branch history is noisy, has no approved
-qualitative presentation, and forced branch-history, archive, reconciliation,
-and lifecycle machinery that the current one-PR requirement does not need.
+> rejected alternatives for the current feature.
 
 ## Rejected Alternatives
 
