@@ -385,6 +385,14 @@
   "@sessionDetailAttachmentPickFailed": {
     "description": "Snackbar shown when the gallery picker fails for a reason other than the size limit."
   },
+  "sessionDetailAttachmentUnsupported": "That image format isn't supported.",
+  "@sessionDetailAttachmentUnsupported": {
+    "description": "Snackbar shown when the picked file is not a recognized image format and cannot be attached."
+  },
+  "sessionDetailAttachmentBudgetExceeded": "Attached images are limited to 5 MB per message.",
+  "@sessionDetailAttachmentBudgetExceeded": {
+    "description": "Snackbar shown when adding another image would push the message's combined attachment size past the inline limit."
+  },
   "sessionDetailExpandEditor": "Expand editor",
   "@sessionDetailExpandEditor": {
     "description": "Accessibility label of the button that opens the fullscreen message editor."

@@ -8,6 +8,10 @@ import "package:meta/meta.dart";
 /// Held in memory only: staged attachments are not part of the persisted
 /// composer draft, so they live exactly as long as the composer that staged
 /// them.
+///
+/// [bytes] is owned by this attachment. It is not defensively copied — the
+/// buffers are megabytes and come straight from the picker — so callers must
+/// treat it as read-only.
 @immutable
 final class ComposerAttachment {
   final String mime;

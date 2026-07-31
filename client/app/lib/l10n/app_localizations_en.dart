@@ -589,6 +589,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachmentPickFailed => 'Couldn\'t attach the image.';
 
   @override
+  String get sessionDetailAttachmentUnsupported => 'That image format isn\'t supported.';
+
+  @override
+  String get sessionDetailAttachmentBudgetExceeded => 'Attached images are limited to 5 MB per message.';
+
+  @override
   String get sessionDetailExpandEditor => 'Expand editor';
 
   @override

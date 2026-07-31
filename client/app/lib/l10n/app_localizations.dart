@@ -1201,6 +1201,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t attach the image.'**
   String get sessionDetailAttachmentPickFailed;
 
+  /// Snackbar shown when the picked file is not a recognized image format and cannot be attached.
+  ///
+  /// In en, this message translates to:
+  /// **'That image format isn\'t supported.'**
+  String get sessionDetailAttachmentUnsupported;
+
+  /// Snackbar shown when adding another image would push the message's combined attachment size past the inline limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached images are limited to 5 MB per message.'**
+  String get sessionDetailAttachmentBudgetExceeded;
+
   /// Accessibility label of the button that opens the fullscreen message editor.
   ///
   /// In en, this message translates to:
