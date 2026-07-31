@@ -1,28 +1,8 @@
-import "dart:convert";
-
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 part "codex_rollout_dto.freezed.dart";
 part "codex_rollout_dto.g.dart";
-
-enum CodexRolloutPayloadType {
-  @JsonValue("message")
-  message,
-  @JsonValue("reasoning")
-  reasoning,
-  @JsonValue("function_call")
-  functionCall,
-  @JsonValue("function_call_output")
-  functionCallOutput,
-  @JsonValue("custom_tool_call")
-  customToolCall,
-  @JsonValue("custom_tool_call_output")
-  customToolCallOutput,
-  @JsonValue("web_search_call")
-  webSearchCall,
-  unknown,
-}
 
 enum CodexRolloutRole {
   user,
@@ -63,7 +43,7 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
   @FreezedUnionValue("response_item")
   const factory CodexRolloutLineDto.responseItem({
     required String? timestamp,
-    required CodexRolloutPayloadDto payload,
+    required CodexRolloutResponseItemDto payload,
   }) = CodexRolloutResponseItemLineDto;
 
   @FreezedUnionValue("compacted")
@@ -75,9 +55,7 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
     required String? timestamp,
   }) = CodexRolloutUnknownLineDto;
 
-  factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(
-    _normalizeRolloutLineJson(json: json),
-  );
+  factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
@@ -104,28 +82,62 @@ sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPay
       _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 }
 
-@Freezed(fromJson: true, toJson: false)
-sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
-  const factory CodexRolloutPayloadDto({
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
+  const factory CodexRolloutResponseItemDto.message({
     required String? id,
-    required String? cwd,
-    required String? timestamp,
-    @JsonKey(name: "model_provider") required String? modelProvider,
-    @JsonKey(name: "cli_version") required String? cliVersion,
-    required String? model,
-    @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required CodexRolloutPayloadType? type,
-    @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole? role,
-    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? content,
-    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? summary,
-    @JsonKey(name: "call_id") required String? callId,
-    required String? name,
-    required String? arguments,
-    required String? input,
-    @CodexRolloutOutputConverter() required List<CodexRolloutContentDto>? output,
-    required CodexRolloutActionDto? action,
-  }) = _CodexRolloutPayloadDto;
+    @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole role,
+    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto> content,
+  }) = CodexRolloutMessageDto;
 
-  factory CodexRolloutPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutPayloadDtoFromJson(json);
+  const factory CodexRolloutResponseItemDto.reasoning({
+    required String? id,
+    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto> summary,
+  }) = CodexRolloutReasoningDto;
+
+  @FreezedUnionValue("function_call")
+  const factory CodexRolloutResponseItemDto.functionCall({
+    required String? id,
+    @JsonKey(name: "call_id") required String callId,
+    required String name,
+    required String arguments,
+  }) = CodexRolloutFunctionCallDto;
+
+  @FreezedUnionValue("function_call_output")
+  const factory CodexRolloutResponseItemDto.functionCallOutput({
+    @JsonKey(name: "call_id") required String callId,
+    @CodexRolloutOutputConverter() required List<CodexRolloutContentDto> output,
+  }) = CodexRolloutFunctionCallOutputDto;
+
+  @FreezedUnionValue("custom_tool_call")
+  const factory CodexRolloutResponseItemDto.customToolCall({
+    required String? id,
+    @JsonKey(name: "call_id") required String callId,
+    required String name,
+    required String input,
+  }) = CodexRolloutCustomToolCallDto;
+
+  @FreezedUnionValue("custom_tool_call_output")
+  const factory CodexRolloutResponseItemDto.customToolCallOutput({
+    @JsonKey(name: "call_id") required String callId,
+    @CodexRolloutOutputConverter() required List<CodexRolloutContentDto> output,
+  }) = CodexRolloutCustomToolCallOutputDto;
+
+  @FreezedUnionValue("web_search_call")
+  const factory CodexRolloutResponseItemDto.webSearchCall({
+    required String? id,
+    required CodexRolloutActionDto? action,
+  }) = CodexRolloutWebSearchCallDto;
+
+  const factory CodexRolloutResponseItemDto.unknown() = CodexRolloutUnknownResponseItemDto;
+
+  factory CodexRolloutResponseItemDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutResponseItemDtoFromJson(json);
 }
 
 @Freezed(
@@ -162,12 +174,12 @@ sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
 
 /// Decodes typed rollout content without dropping an otherwise valid record
 /// when one nested item has drifted.
-class CodexRolloutContentListConverter implements JsonConverter<List<CodexRolloutContentDto>?, Object?> {
+class CodexRolloutContentListConverter implements JsonConverter<List<CodexRolloutContentDto>, Object?> {
   const CodexRolloutContentListConverter();
 
   @override
-  List<CodexRolloutContentDto>? fromJson(Object? json) {
-    if (json == null) return null;
+  List<CodexRolloutContentDto> fromJson(Object? json) {
+    if (json == null) return const [];
     if (json is! List) {
       Log.w("[codex] skipping malformed rollout content list");
       return const [];
@@ -188,8 +200,7 @@ class CodexRolloutContentListConverter implements JsonConverter<List<CodexRollou
   }
 
   @override
-  Object? toJson(List<CodexRolloutContentDto>? object) {
-    if (object == null) return null;
+  Object toJson(List<CodexRolloutContentDto> object) {
     return [
       for (final content in object) content.toJson(),
     ];
@@ -205,7 +216,7 @@ class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
   const CodexRolloutOutputConverter();
 
   @override
-  List<CodexRolloutContentDto>? fromJson(Object? json) {
+  List<CodexRolloutContentDto> fromJson(Object? json) {
     if (json is String) {
       return [
         CodexRolloutContentDto.outputText(
@@ -215,27 +226,6 @@ class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
     }
     return super.fromJson(json);
   }
-}
-
-/// COMPATIBILITY 2026-07-23 (Codex 0.145.x): function calls persist arguments
-/// as JSON-encoded strings, while `tool_search_call` persists the decoded JSON
-/// value directly. Keep both forms until Codex converges the rollout schema or
-/// this DTO models each response-item variant separately.
-Map<String, dynamic> _normalizeRolloutLineJson({
-  required Map<String, dynamic> json,
-}) {
-  final payload = json["payload"];
-  if (json["type"] != "response_item" || payload is! Map) return json;
-  final arguments = payload["arguments"];
-  final normalizeArguments = arguments != null && arguments is! String;
-  if (!normalizeArguments) return json;
-  return {
-    ...json,
-    "payload": {
-      ...payload,
-      "arguments": jsonEncode(arguments),
-    },
-  };
 }
 
 @Freezed(fromJson: true, toJson: false)

@@ -38,29 +38,72 @@ class CodexRolloutToolResult {
 class CodexRolloutToolMapper {
   const CodexRolloutToolMapper();
 
-  CodexRolloutToolCall? mapCall(CodexRolloutPayloadDto payload) {
-    if (payload.type != CodexRolloutPayloadType.functionCall &&
-        payload.type != CodexRolloutPayloadType.customToolCall) {
-      return null;
-    }
-    final id = _usefulText(payload.callId) ?? _usefulText(payload.id);
-    if (id == null) return null;
-    final name = _usefulText(payload.name) ?? "tool";
+  CodexRolloutToolCall? mapCall(CodexRolloutResponseItemDto payload) {
+    return switch (payload) {
+      CodexRolloutFunctionCallDto(
+        :final id,
+        :final callId,
+        :final name,
+        :final arguments,
+      ) =>
+        _mapCall(
+          id: id,
+          callId: callId,
+          name: name,
+          input: arguments,
+        ),
+      CodexRolloutCustomToolCallDto(
+        :final id,
+        :final callId,
+        :final name,
+        :final input,
+      ) =>
+        _mapCall(
+          id: id,
+          callId: callId,
+          name: name,
+          input: input,
+        ),
+      CodexRolloutMessageDto() ||
+      CodexRolloutReasoningDto() ||
+      CodexRolloutFunctionCallOutputDto() ||
+      CodexRolloutCustomToolCallOutputDto() ||
+      CodexRolloutWebSearchCallDto() ||
+      CodexRolloutUnknownResponseItemDto() => null,
+    };
+  }
+
+  CodexRolloutToolCall? _mapCall({
+    required String? id,
+    required String callId,
+    required String name,
+    required String input,
+  }) {
+    final usefulId = _usefulText(callId) ?? _usefulText(id);
+    if (usefulId == null) return null;
+    final usefulName = _usefulText(name) ?? "tool";
     return CodexRolloutToolCall(
-      id: id,
-      tool: normalizeToolName(name),
-      title: toolCallTitle(payload.arguments ?? payload.input),
+      id: usefulId,
+      tool: normalizeToolName(usefulName),
+      title: toolCallTitle(input),
     );
   }
 
-  CodexRolloutToolResult? mapResult(CodexRolloutPayloadDto payload) {
-    if (payload.type != CodexRolloutPayloadType.functionCallOutput &&
-        payload.type != CodexRolloutPayloadType.customToolCallOutput) {
-      return null;
-    }
-    final callId = _usefulText(payload.callId);
+  CodexRolloutToolResult? mapResult(CodexRolloutResponseItemDto payload) {
+    final output = switch (payload) {
+      CodexRolloutFunctionCallOutputDto(:final callId, :final output) ||
+      CodexRolloutCustomToolCallOutputDto(:final callId, :final output) => (callId, output),
+      CodexRolloutMessageDto() ||
+      CodexRolloutReasoningDto() ||
+      CodexRolloutFunctionCallDto() ||
+      CodexRolloutCustomToolCallDto() ||
+      CodexRolloutWebSearchCallDto() ||
+      CodexRolloutUnknownResponseItemDto() => null,
+    };
+    if (output == null) return null;
+    final callId = _usefulText(output.$1);
     if (callId == null) return null;
-    final rawOutput = toolOutputText(payload.output);
+    final rawOutput = toolOutputText(output.$2);
     return CodexRolloutToolResult(
       callId: callId,
       status: toolOutputStatus(rawOutput),

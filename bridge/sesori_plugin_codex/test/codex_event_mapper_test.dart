@@ -704,6 +704,28 @@ void main() {
       mapper.clearRolloutTurn(threadId: "t-unicode");
     });
 
+    test("image-generation rollout items remain unknown and emit no events", () {
+      final line = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "image_generation_call",
+          "id": "image-1",
+          "status": "completed",
+          "result": "not-retained-in-step-4",
+        },
+      });
+
+      expect(
+        line,
+        isA<CodexRolloutResponseItemLineDto>().having(
+          (line) => line.payload,
+          "payload",
+          isA<CodexRolloutUnknownResponseItemDto>(),
+        ),
+      );
+      expect(mapper.mapRolloutLine(threadId: "t-image", line: line), isEmpty);
+    });
+
     test("commandExecution (started/inProgress) → running tool part", () {
       final events = mapper.map(
         const CodexServerNotification(

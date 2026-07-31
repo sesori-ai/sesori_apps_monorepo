@@ -88,7 +88,7 @@ void main() {
       expect(appends, hasLength(1));
       expect(appends.single.sessionId, "session-1");
       expect(
-        _responseItemPayload(line: appends.single.line).callId,
+        _responseItemCallId(line: appends.single.line),
         "current-call",
       );
     });
@@ -136,7 +136,7 @@ void main() {
       expect(appends, hasLength(1));
       expect(appends.single.sessionId, "session-1");
       expect(
-        _responseItemPayload(line: appends.single.line).callId,
+        _responseItemCallId(line: appends.single.line),
         "late-call",
       );
     });
@@ -196,18 +196,19 @@ void main() {
       expect(appends, hasLength(1));
       expect(appends.single.sessionId, "session-1");
       expect(
-        _responseItemPayload(line: appends.single.line).callId,
+        _responseItemCallId(line: appends.single.line),
         "late-existing-call",
       );
     });
   });
 }
 
-CodexRolloutPayloadDto _responseItemPayload({
-  required CodexRolloutLineDto line,
-}) {
+String _responseItemCallId({required CodexRolloutLineDto line}) {
   return switch (line) {
-    CodexRolloutResponseItemLineDto(payload: final payload) => payload,
+    CodexRolloutResponseItemLineDto(
+      payload: CodexRolloutFunctionCallOutputDto(:final callId),
+    ) =>
+      callId,
     _ => throw StateError("Expected response item rollout line"),
   };
 }
