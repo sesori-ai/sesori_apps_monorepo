@@ -303,7 +303,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         stackTrace,
       );
       _emitStateUpdate(
-        options: refresh && previousOptions != null
+        options: previousOptions != null
             ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions, source: source)
             : NewSessionOptionsFailureState(reason: RemoteFailureReason.unknown, source: source),
         isPluginDiscoveryInFlight: false,
@@ -320,7 +320,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       ),
       NewSessionOptionsUnsupported() => const NewSessionOptionsUnsupportedState(),
       NewSessionOptionsUnavailable() => const NewSessionOptionsUnavailableState(),
-      NewSessionOptionsLoadFailure(:final error, :final source) => refresh && previousOptions != null
+      NewSessionOptionsLoadFailure(:final error, :final source) => previousOptions != null
           ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions, source: source)
           : NewSessionOptionsFailureState(reason: error.remoteFailureReason, source: source),
       NewSessionOptionsRefreshFailureRetained(:final options) => NewSessionOptionsRefreshFailureRetainedState(

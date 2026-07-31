@@ -81,7 +81,11 @@ class NewSessionOptionsService {
     required NewSessionOptionsData? previousOptions,
   }) async {
     if (source == NewSessionOptionsSource.legacy) {
-      if (!refresh) return const NewSessionOptionsUnsupported();
+      if (!refresh) {
+        return previousOptions == null
+            ? const NewSessionOptionsUnsupported()
+            : NewSessionOptionsLoaded(options: previousOptions, source: NewSessionOptionsSource.legacy);
+      }
       return _loadLegacy(
         projectId: projectId,
         pluginId: pluginId,

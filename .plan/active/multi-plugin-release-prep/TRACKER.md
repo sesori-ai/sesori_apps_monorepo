@@ -245,3 +245,8 @@
   failures now retain prior options and staged commands while surfacing the
   refresh failure. All 34 plugin-selection tests passed, as did fatal analysis
   in module-core, mobile, and desktop.
+- Step 5.B/6 reconnect-retention follow-up (2026-07-31): same-bridge aggregate
+  reload failures retain the prior option snapshot, while same-bridge legacy
+  rediscovery reuses its explicitly loaded snapshot without calling legacy
+  routes again. All 44 affected core tests passed, as did fatal analysis in
+  module-core, mobile, and desktop.

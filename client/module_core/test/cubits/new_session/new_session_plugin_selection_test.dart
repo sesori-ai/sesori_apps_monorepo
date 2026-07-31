@@ -627,6 +627,100 @@ void main() {
       expect(cubit.state.agentModelData?.stagedCommand, command);
     });
 
+    test("same-bridge reconnect retains options when aggregate reload fails", () async {
+      final command = testCommandInfo();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge-a",
+            supportsSessionOptions: true,
+            plugins: const [pluginA],
+          ),
+        );
+      });
+      var loadCalls = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          refresh: any(named: "refresh"),
+        ),
+      ).thenAnswer((_) async {
+        loadCalls++;
+        return loadCalls == 1
+            ? SessionOptionsRepositoryAvailable(
+                catalog: SessionOptionsCatalog(
+                  agents: const [],
+                  providers: const [],
+                  commands: [command],
+                ),
+              )
+            : SessionOptionsRepositoryFailure(error: ApiError.generic());
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.stageCommand(command);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshFailureRetainedState>());
+      expect(cubit.state.agentModelData?.commands, [command]);
+      expect(cubit.state.agentModelData?.stagedCommand, command);
+    });
+
+    test("same-bridge reconnect reuses previously loaded legacy options", () async {
+      final command = testCommandInfo();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA]));
+      });
+      var legacyLoads = 0;
+      when(
+        () => sessionRepository.loadLegacySessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+        ),
+      ).thenAnswer((_) async {
+        legacyLoads++;
+        return LegacySessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const [],
+            providers: const [],
+            commands: [command],
+          ),
+        );
+      });
+      final cubit = buildCubit(
+        optionsService: NewSessionOptionsService(
+          sessionRepository: sessionRepository,
+          defaultModelSelector: const DefaultModelSelector(),
+        ),
+      );
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      await cubit.refreshOptions();
+      cubit.stageCommand(command);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
+      expect(cubit.state.agentModelData?.optionsState.source, NewSessionOptionsSource.legacy);
+      expect(cubit.state.agentModelData?.commands, [command]);
+      expect(cubit.state.agentModelData?.stagedCommand, command);
+      expect(legacyLoads, 1);
+    });
+
     test("typed unavailable refresh failure clears the prior option catalog", () async {
       when(
         pluginRepository.listPlugins,
