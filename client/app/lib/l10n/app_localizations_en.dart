@@ -598,6 +598,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailFileUnknown => 'Unknown file';
 
   @override
+  String get sessionDetailImageOpen => 'Open image';
+
+  @override
+  String get sessionDetailImageClose => 'Close image';
+
+  @override
+  String get sessionDetailImageShare => 'Share image';
+
+  @override
+  String get sessionDetailImageCopy => 'Copy image';
+
+  @override
+  String get sessionDetailImageSave => 'Save image';
+
+  @override
+  String get sessionDetailImageOpenOriginal => 'Open original';
+
+  @override
+  String get sessionDetailImageSaved => 'Image saved to Photos';
+
+  @override
+  String get sessionDetailImageSaveFailed => 'Couldn’t save image';
+
+  @override
+  String get sessionDetailImageShareFailed => 'Couldn’t share image';
+
+  @override
+  String get sessionDetailImageCopied => 'Image copied to clipboard';
+
+  @override
+  String get sessionDetailImageCopyFailed => 'Couldn’t copy image';
+
+  @override
+  String get sessionDetailImagePhotosPermissionDenied => 'Allow Photos access to save this image';
+
+  @override
   String get sessionDetailToolPending => 'Pending';
 
   @override

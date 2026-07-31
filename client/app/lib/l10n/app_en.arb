@@ -370,6 +370,18 @@
   "@sessionDetailFileUnknown": {
     "description": "Fallback label shown for a file attachment when the filename cannot be determined."
   },
+  "sessionDetailImageOpen": "Open image",
+  "sessionDetailImageClose": "Close image",
+  "sessionDetailImageShare": "Share image",
+  "sessionDetailImageCopy": "Copy image",
+  "sessionDetailImageSave": "Save image",
+  "sessionDetailImageOpenOriginal": "Open original",
+  "sessionDetailImageSaved": "Image saved to Photos",
+  "sessionDetailImageSaveFailed": "Couldn’t save image",
+  "sessionDetailImageShareFailed": "Couldn’t share image",
+  "sessionDetailImageCopied": "Image copied to clipboard",
+  "sessionDetailImageCopyFailed": "Couldn’t copy image",
+  "sessionDetailImagePhotosPermissionDenied": "Allow Photos access to save this image",
   "sessionDetailToolPending": "Pending",
   "sessionDetailToolRunning": "Running",
   "sessionDetailToolCompleted": "Done",

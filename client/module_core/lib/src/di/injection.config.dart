@@ -10,6 +10,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:get_it/get_it.dart' as _i174;
+import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_auth/sesori_auth.dart' as _i442;
 import 'package:sesori_dart_core/src/api/analytics_api.dart' as _i727;
@@ -18,6 +19,7 @@ import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
 import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
+import 'package:sesori_dart_core/src/api/message_image_api.dart' as _i938;
 import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
 import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
     as _i396;
@@ -62,6 +64,8 @@ import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart
     as _i198;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
+import 'package:sesori_dart_core/src/repositories/message_image_repository.dart'
+    as _i531;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
     as _i458;
 import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
@@ -183,6 +187,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i209.AppearanceStore>(
       () => _i209.AppearanceStore(secureStorage: gh<_i442.SecureStorage>()),
     );
+    gh.lazySingleton<_i938.MessageImageApi>(
+      () => _i938.MessageImageApi(client: gh<_i519.Client>()),
+    );
     gh.lazySingleton<_i835.LegalApi>(
       () => _i835.LegalApi(client: gh<_i442.HttpApiClient>()),
     );
@@ -240,6 +247,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
+    gh.lazySingleton<_i531.MessageImageRepository>(
+      () => _i531.MessageImageRepository(api: gh<_i938.MessageImageApi>()),
     );
     gh.lazySingleton<_i471.NotificationRepository>(
       () => _i471.NotificationRepository(api: gh<_i400.NotificationApi>()),

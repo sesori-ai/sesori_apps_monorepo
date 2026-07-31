@@ -1219,6 +1219,78 @@ abstract class AppLocalizations {
   /// **'Unknown file'**
   String get sessionDetailFileUnknown;
 
+  /// No description provided for @sessionDetailImageOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open image'**
+  String get sessionDetailImageOpen;
+
+  /// No description provided for @sessionDetailImageClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close image'**
+  String get sessionDetailImageClose;
+
+  /// No description provided for @sessionDetailImageShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share image'**
+  String get sessionDetailImageShare;
+
+  /// No description provided for @sessionDetailImageCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy image'**
+  String get sessionDetailImageCopy;
+
+  /// No description provided for @sessionDetailImageSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save image'**
+  String get sessionDetailImageSave;
+
+  /// No description provided for @sessionDetailImageOpenOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open original'**
+  String get sessionDetailImageOpenOriginal;
+
+  /// No description provided for @sessionDetailImageSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Image saved to Photos'**
+  String get sessionDetailImageSaved;
+
+  /// No description provided for @sessionDetailImageSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t save image'**
+  String get sessionDetailImageSaveFailed;
+
+  /// No description provided for @sessionDetailImageShareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t share image'**
+  String get sessionDetailImageShareFailed;
+
+  /// No description provided for @sessionDetailImageCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Image copied to clipboard'**
+  String get sessionDetailImageCopied;
+
+  /// No description provided for @sessionDetailImageCopyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t copy image'**
+  String get sessionDetailImageCopyFailed;
+
+  /// No description provided for @sessionDetailImagePhotosPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Photos access to save this image'**
+  String get sessionDetailImagePhotosPermissionDenied;
+
   /// No description provided for @sessionDetailToolPending.
   ///
   /// In en, this message translates to:
