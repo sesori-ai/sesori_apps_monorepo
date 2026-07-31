@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.events_flatten
 PARTITION BY source_export_date
 CLUSTER BY event_name, user_key
 OPTIONS (
-  description = 'Allowlisted account-linked product events; no installation, user_id, content, arbitrary parameter, geo, or device fields',
+  description = 'Allowlisted account-linked product events partitioned by UTC emission date; no installation, user_id, content, arbitrary parameter, geo, or device fields',
   partition_expiration_days = 426
 );
 
@@ -299,7 +299,7 @@ CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.installation_l
 PARTITION BY source_export_date
 CLUSTER BY event_name, provider
 OPTIONS (
-  description = 'Identifier-free direct event counts for the account-less login funnel',
+  description = 'Identifier-free direct account-less login event counts partitioned by UTC emission date',
   partition_expiration_days = 426
 );
 
@@ -417,9 +417,11 @@ CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.retention_coho
   activation_week_end DATE NOT NULL,
   data_as_of_at TIMESTAMP NOT NULL,
   activated_users INT64 NOT NULL,
+  w1_cohort_mature BOOL NOT NULL,
   w1_eligible_users INT64 NOT NULL,
   w1_retained_users INT64 NOT NULL,
   w1_retention_rate FLOAT64,
+  w4_cohort_mature BOOL NOT NULL,
   w4_eligible_users INT64 NOT NULL,
   w4_retained_users INT64 NOT NULL,
   w4_retention_rate FLOAT64,

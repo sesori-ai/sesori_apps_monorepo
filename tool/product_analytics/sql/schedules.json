@@ -1,0 +1,37 @@
+[
+  {
+    "queryFile": "10_events_flattened.sql",
+    "displayName": "Sesori Product Analytics - 10 Events Flattened",
+    "cadence": "every day 04:00",
+    "recentDateRecomputationWindow": 3,
+    "maxBytesBilled": 536870912
+  },
+  {
+    "queryFile": "15_installation_login_daily.sql",
+    "displayName": "Sesori Product Analytics - 15 Installation Login Daily",
+    "cadence": "every day 04:15",
+    "recentDateRecomputationWindow": 3,
+    "maxBytesBilled": 268435456
+  },
+  {
+    "queryFile": "20_user_activity_daily.sql",
+    "displayName": "Sesori Product Analytics - 20 User Activity Daily",
+    "cadence": "every day 04:30",
+    "recentDateRecomputationWindow": 3,
+    "maxBytesBilled": 268435456
+  },
+  {
+    "queryFile": "30_user_milestones.sql",
+    "displayName": "Sesori Product Analytics - 30 User Milestones",
+    "cadence": "every day 04:45",
+    "recentDateRecomputationWindow": 3,
+    "maxBytesBilled": 268435456
+  },
+  {
+    "queryFile": "40_activation_retention.sql",
+    "displayName": "Sesori Product Analytics - 40 Activation Retention",
+    "cadence": "every day 05:00",
+    "recentDateRecomputationWindow": 3,
+    "maxBytesBilled": 536870912
+  }
+]

@@ -15,9 +15,23 @@ DECLARE latest_auth_run STRUCT<
   milestone_rows_published INT64,
   cohort_rows_published INT64
 >;
+DECLARE measurement_config STRUCT<
+  raw_export_start_at TIMESTAMP,
+  behavioral_schema_v1_start_at TIMESTAMP
+>;
 DECLARE events_source_end_date DATE;
+DECLARE events_completed_at TIMESTAMP;
 DECLARE retained_start_date DATE;
+DECLARE deletion_exclusion_count INT64;
+DECLARE deletion_exclusion_max_updated_at TIMESTAMP;
 DECLARE rows_inserted INT64 DEFAULT 0;
+
+SET measurement_config = (
+  SELECT AS STRUCT raw_export_start_at, behavioral_schema_v1_start_at
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.analytics_measurement_config`
+  WHERE config_key = 'singleton'
+);
+ASSERT measurement_config IS NOT NULL AS 'The singleton analytics measurement config is required';
 
 SET latest_auth_run = (
   SELECT AS STRUCT
@@ -82,16 +96,21 @@ ASSERT latest_auth_run.control_updated_at = (
 )
   AS 'Auth snapshot predates the current permanent internal exclusion control';
 
-SET events_source_end_date = (
-  SELECT source_end_date
+SET (events_source_end_date, events_completed_at) = (
+  SELECT AS STRUCT source_end_date, completed_at
   FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
   WHERE model_name = 'events_flattened'
   LIMIT 1
 );
-ASSERT events_source_end_date IS NOT NULL AS 'events_flattened has no successful watermark';
+ASSERT events_source_end_date IS NOT NULL AND events_completed_at IS NOT NULL
+  AS 'events_flattened has no successful watermark';
 SET retained_start_date = GREATEST(
-  DATE(TIMESTAMP('{{RAW_EXPORT_START_AT}}')),
+  DATE(measurement_config.raw_export_start_at),
   DATE_SUB(events_source_end_date, INTERVAL 425 DAY)
+);
+SET (deletion_exclusion_count, deletion_exclusion_max_updated_at) = (
+  SELECT AS STRUCT COUNT(*), MAX(updated_at)
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_deletion_exclusions`
 );
 
 CREATE TEMP TABLE gated_event_stage AS
@@ -245,6 +264,21 @@ ASSERT latest_auth_run.control_updated_at = (
   FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.internal_exclusion_control_state`
   WHERE state_key = 'singleton'
 ) AS 'Internal exclusion control changed while user milestones were staged';
+ASSERT (
+  SELECT COUNTIF(
+    source_end_date = events_source_end_date
+    AND completed_at = events_completed_at
+  )
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
+  WHERE model_name = 'events_flattened'
+) = 1 AS 'events_flattened changed while user milestones were staged';
+ASSERT deletion_exclusion_count = (
+  SELECT COUNT(*)
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_deletion_exclusions`
+) AND deletion_exclusion_max_updated_at IS NOT DISTINCT FROM (
+  SELECT MAX(updated_at)
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_deletion_exclusions`
+) AS 'Permanent deletion exclusions changed while user milestones were staged';
 
 BEGIN TRANSACTION;
 

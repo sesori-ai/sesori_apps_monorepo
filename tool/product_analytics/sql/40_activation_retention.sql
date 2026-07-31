@@ -15,12 +15,29 @@ DECLARE latest_auth_run STRUCT<
   milestone_rows_published INT64,
   cohort_rows_published INT64
 >;
+DECLARE measurement_config STRUCT<
+  raw_export_start_at TIMESTAMP,
+  behavioral_schema_v1_start_at TIMESTAMP
+>;
 DECLARE events_source_end_date DATE;
+DECLARE events_completed_at TIMESTAMP;
 DECLARE activity_source_end_date DATE;
+DECLARE activity_completed_at TIMESTAMP;
 DECLARE milestone_source_end_date DATE;
+DECLARE milestone_completed_at TIMESTAMP;
 DECLARE data_as_of_date DATE;
 DECLARE data_as_of_at TIMESTAMP;
 DECLARE retained_start_date DATE;
+DECLARE first_complete_behavioral_week DATE;
+DECLARE deletion_exclusion_count INT64;
+DECLARE deletion_exclusion_max_updated_at TIMESTAMP;
+
+SET measurement_config = (
+  SELECT AS STRUCT raw_export_start_at, behavioral_schema_v1_start_at
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.analytics_measurement_config`
+  WHERE config_key = 'singleton'
+);
+ASSERT measurement_config IS NOT NULL AS 'The singleton analytics measurement config is required';
 
 SET latest_auth_run = (
   SELECT AS STRUCT
@@ -85,11 +102,21 @@ ASSERT latest_auth_run.control_updated_at = (
 )
   AS 'Auth snapshot predates the current permanent internal exclusion control';
 
-SET (events_source_end_date, activity_source_end_date, milestone_source_end_date) = (
+SET (
+  events_source_end_date,
+  events_completed_at,
+  activity_source_end_date,
+  activity_completed_at,
+  milestone_source_end_date,
+  milestone_completed_at
+) = (
   SELECT AS STRUCT
     MAX(IF(model_name = 'events_flattened', source_end_date, NULL)),
+    MAX(IF(model_name = 'events_flattened', completed_at, NULL)),
     MAX(IF(model_name = 'user_activity_daily', source_end_date, NULL)),
-    MAX(IF(model_name = 'user_milestones', source_end_date, NULL))
+    MAX(IF(model_name = 'user_activity_daily', completed_at, NULL)),
+    MAX(IF(model_name = 'user_milestones', source_end_date, NULL)),
+    MAX(IF(model_name = 'user_milestones', completed_at, NULL))
   FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
   WHERE model_name IN ('events_flattened', 'user_activity_daily', 'user_milestones')
 );
@@ -97,6 +124,11 @@ ASSERT events_source_end_date IS NOT NULL
   AND activity_source_end_date IS NOT NULL
   AND milestone_source_end_date IS NOT NULL
   AS 'Required upstream transforms have no successful watermark';
+ASSERT activity_source_end_date = events_source_end_date
+  AND milestone_source_end_date = events_source_end_date
+  AND activity_completed_at >= events_completed_at
+  AND milestone_completed_at >= events_completed_at
+  AS 'User-level upstream transforms are stale relative to events_flattened';
 ASSERT (
   SELECT COUNTIF(
     model_name IN ('user_activity_daily', 'user_milestones')
@@ -105,11 +137,24 @@ ASSERT (
   FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
 ) = 2 AS 'User-level upstream transforms were not built from the current auth snapshot';
 
-SET data_as_of_date = LEAST(events_source_end_date, activity_source_end_date, milestone_source_end_date);
+SET data_as_of_date = events_source_end_date;
 SET data_as_of_at = TIMESTAMP(DATE_ADD(data_as_of_date, INTERVAL 1 DAY));
 SET retained_start_date = GREATEST(
-  DATE(TIMESTAMP('{{RAW_EXPORT_START_AT}}')),
+  DATE(measurement_config.raw_export_start_at),
   DATE_SUB(data_as_of_date, INTERVAL 425 DAY)
+);
+SET first_complete_behavioral_week = CASE
+  WHEN measurement_config.behavioral_schema_v1_start_at = TIMESTAMP(
+    DATE_TRUNC(DATE(measurement_config.behavioral_schema_v1_start_at), WEEK(MONDAY))
+  ) THEN DATE(measurement_config.behavioral_schema_v1_start_at)
+  ELSE DATE_ADD(
+    DATE_TRUNC(DATE(measurement_config.behavioral_schema_v1_start_at), WEEK(MONDAY)),
+    INTERVAL 7 DAY
+  )
+END;
+SET (deletion_exclusion_count, deletion_exclusion_max_updated_at) = (
+  SELECT AS STRUCT COUNT(*), MAX(updated_at)
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_deletion_exclusions`
 );
 
 CREATE TEMP TABLE current_user_stage AS
@@ -166,84 +211,84 @@ SELECT
   COUNT(*) AS enabled_current_accounts,
   COUNTIF(foundation_exposed_at IS NOT NULL) AS foundation_exposed_accounts,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
   ) AS behavioral_window_mature_accounts,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
   ) AS activation_capable_accounts,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
     AND project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 1 DAY)
   ) AS project_available_within_1_day,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 7 DAY)
     AND project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 7 DAY)
   ) AS project_available_within_7_days,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 30 DAY)
     AND project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 30 DAY)
   ) AS project_available_within_30_days,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
   ) AS activation_eligible_1_day_accounts,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
     AND full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 1 DAY)
   ) AS activated_within_1_day,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 7 DAY)
   ) AS activation_eligible_7_day_accounts,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 7 DAY)
     AND full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 7 DAY)
   ) AS activated_within_7_days,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 30 DAY)
   ) AS activation_eligible_30_day_accounts,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 30 DAY)
     AND full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 30 DAY)
   ) AS activated_within_30_days,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND full_activation_at IS NOT NULL
     AND full_activation_source = 'existing_session'
   ) AS existing_session_activations,
   COUNTIF(
-    account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+    account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND full_activation_at IS NOT NULL
@@ -264,7 +309,7 @@ SELECT
     100
   )[OFFSET(75)] AS time_to_activation_p75_seconds
 FROM current_user_stage
-WHERE account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+WHERE account_created_at >= measurement_config.behavioral_schema_v1_start_at
   AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
     AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
   AND full_activation_at IS NOT NULL
@@ -282,7 +327,7 @@ SELECT
     100
   )[OFFSET(75)] AS time_to_project_p75_seconds
 FROM current_user_stage
-WHERE account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+WHERE account_created_at >= measurement_config.behavioral_schema_v1_start_at
   AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
     AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
   AND project_available_at IS NOT NULL
@@ -369,7 +414,7 @@ SELECT
 FROM current_user_stage AS user
 LEFT JOIN meaningful_event_stage AS event USING (user_key)
 WHERE user.full_activation_at IS NOT NULL
-  AND user.account_created_at >= TIMESTAMP('{{BEHAVIORAL_SCHEMA_V1_START_AT}}')
+  AND user.account_created_at >= measurement_config.behavioral_schema_v1_start_at
   AND user.activation_capable_at BETWEEN TIMESTAMP_SUB(user.account_created_at, INTERVAL 300 SECOND)
     AND TIMESTAMP_ADD(user.account_created_at, INTERVAL 24 HOUR)
 GROUP BY user.user_key, user.full_activation_at, activation_week, w1_eligible, w4_eligible;
@@ -380,9 +425,11 @@ SELECT
   DATE_ADD(activation_week, INTERVAL 6 DAY) AS activation_week_end,
   data_as_of_at AS data_as_of_at,
   COUNT(*) AS activated_users,
+  COUNTIF(w1_eligible) = COUNT(*) AS w1_cohort_mature,
   COUNTIF(w1_eligible) AS w1_eligible_users,
   COUNTIF(w1_eligible AND w1_retained) AS w1_retained_users,
   SAFE_DIVIDE(COUNTIF(w1_eligible AND w1_retained), COUNTIF(w1_eligible)) AS w1_retention_rate,
+  COUNTIF(w4_eligible) = COUNT(*) AS w4_cohort_mature,
   COUNTIF(w4_eligible) AS w4_eligible_users,
   COUNTIF(w4_eligible AND w4_retained) AS w4_retained_users,
   SAFE_DIVIDE(COUNTIF(w4_eligible AND w4_retained), COUNTIF(w4_eligible)) AS w4_retention_rate,
@@ -414,7 +461,7 @@ SELECT
   SUM(activity.project_available_count) > 0 AS had_project_available
 FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.user_activity_daily` AS activity
 INNER JOIN `{{PROJECT_ID}}.{{AUTH_DATASET_ID}}.auth_user_milestones` AS auth USING (user_key)
-WHERE activity.activity_date BETWEEN retained_start_date AND data_as_of_date
+WHERE activity.activity_date BETWEEN first_complete_behavioral_week AND data_as_of_date
   AND DATE_ADD(DATE_TRUNC(activity.activity_date, WEEK(MONDAY)), INTERVAL 6 DAY) <= data_as_of_date
   AND NOT EXISTS (
     SELECT 1 FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_internal_user_exclusions` AS internal
@@ -466,13 +513,19 @@ LEFT JOIN active_day_quantile_stage AS quantiles USING (week_start)
 GROUP BY weekly.week_start, quantiles.active_days_p50, quantiles.active_days_p75;
 
 CREATE TEMP TABLE weekly_engagement_stage AS
-WITH boundaries AS (
+WITH first_week_candidates AS (
   SELECT
     CASE
       WHEN retained_start_date = DATE_TRUNC(retained_start_date, WEEK(MONDAY)) THEN retained_start_date
       ELSE DATE_ADD(DATE_TRUNC(retained_start_date, WEEK(MONDAY)), INTERVAL 7 DAY)
-    END AS first_complete_week,
+    END AS first_retained_complete_week,
+    first_complete_behavioral_week AS first_behavioral_complete_week
+),
+boundaries AS (
+  SELECT
+    GREATEST(first_retained_complete_week, first_behavioral_complete_week) AS first_complete_week,
     DATE_TRUNC(DATE_SUB(data_as_of_date, INTERVAL 6 DAY), WEEK(MONDAY)) AS last_complete_week
+  FROM first_week_candidates
 ),
 week_spine AS (
   SELECT week_start
@@ -520,6 +573,7 @@ SELECT
   CURRENT_TIMESTAMP() AS refreshed_at
 FROM eligible_event_stage
 WHERE event_name = 'product_screen_viewed'
+  AND occurred_at >= TIMESTAMP(first_complete_behavioral_week)
   AND DATE_ADD(DATE_TRUNC(DATE(occurred_at), WEEK(MONDAY)), INTERVAL 6 DAY) <= data_as_of_date
 GROUP BY week_start, week_end, platform, app_version, app_build, screen;
 
@@ -572,6 +626,7 @@ SELECT
   CURRENT_TIMESTAMP() AS refreshed_at
 FROM classified
 WHERE metric_name IS NOT NULL
+  AND week_start >= first_complete_behavioral_week
   AND DATE_ADD(week_start, INTERVAL 6 DAY) <= data_as_of_date
 GROUP BY
   week_start,
@@ -614,6 +669,33 @@ ASSERT latest_auth_run.control_updated_at = (
   FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.internal_exclusion_control_state`
   WHERE state_key = 'singleton'
 ) AS 'Internal exclusion control changed while activation and retention aggregates were staged';
+ASSERT (
+  SELECT
+    COUNTIF(
+      model_name = 'events_flattened'
+      AND source_end_date = events_source_end_date
+      AND completed_at = events_completed_at
+    ) = 1
+    AND COUNTIF(
+      model_name = 'user_activity_daily'
+      AND source_end_date = events_source_end_date
+      AND completed_at = activity_completed_at
+    ) = 1
+    AND COUNTIF(
+      model_name = 'user_milestones'
+      AND source_end_date = events_source_end_date
+      AND completed_at = milestone_completed_at
+    ) = 1
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
+  WHERE model_name IN ('events_flattened', 'user_activity_daily', 'user_milestones')
+) AS 'Upstream transform state changed while activation and retention aggregates were staged';
+ASSERT deletion_exclusion_count = (
+  SELECT COUNT(*)
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_deletion_exclusions`
+) AND deletion_exclusion_max_updated_at IS NOT DISTINCT FROM (
+  SELECT MAX(updated_at)
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_deletion_exclusions`
+) AS 'Permanent deletion exclusions changed while activation and retention aggregates were staged';
 
 BEGIN TRANSACTION;
 

@@ -1,7 +1,7 @@
--- BigQuery Standard SQL. This transform intentionally never reads or carries an
--- installation identifier; its unit is an account-less login event count.
+-- BigQuery Standard SQL. user_pseudo_id is used only as transient duplicate
+-- identity; no installation identifier is persisted or grouped.
 DECLARE raw_start_date DATE DEFAULT DATE(TIMESTAMP('{{RAW_EXPORT_START_AT}}'));
-DECLARE latest_available_source_date DATE DEFAULT (
+DECLARE latest_available_suffix_date DATE DEFAULT (
   SELECT MAX(PARSE_DATE('%Y%m%d', SUBSTR(table_name, 8)))
   FROM `{{PROJECT_ID}}.{{RAW_DATASET_ID}}.INFORMATION_SCHEMA.TABLES`
   WHERE table_type = 'BASE TABLE'
@@ -9,7 +9,7 @@ DECLARE latest_available_source_date DATE DEFAULT (
 );
 DECLARE scan_end_date DATE DEFAULT LEAST(
   DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 1 DAY),
-  latest_available_source_date
+  DATE_SUB(latest_available_suffix_date, INTERVAL 1 DAY)
 );
 DECLARE previous_source_end_date DATE DEFAULT (
   SELECT source_end_date
@@ -39,22 +39,107 @@ ASSERT scan_start_date >= DATE_SUB(scan_end_date, INTERVAL 89 DAY)
   AS 'The login watermark gap exceeds the recoverable 90-day raw window';
 
 CREATE TEMP TABLE login_candidate_stage AS
-SELECT
-  PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) AS source_export_date,
-  DATE(TIMESTAMP_MICROS(event_timestamp)) AS event_date,
-  TIMESTAMP_MICROS(event_timestamp) AS emitted_at,
-  event_name,
-  platform,
-  app_info.version AS app_version,
-  (SELECT ANY_VALUE(COALESCE(value.string_value, CAST(value.int_value AS STRING))) FROM UNNEST(event_params) WHERE key = 'app_build') AS app_build,
-  (SELECT ANY_VALUE(COALESCE(value.int_value, SAFE_CAST(value.string_value AS INT64))) FROM UNNEST(event_params) WHERE key = 'schema_version') AS schema_version,
-  (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'provider') AS provider,
-  (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'failure_kind') AS failure_kind
-FROM `{{PROJECT_ID}}.{{RAW_DATASET_ID}}.events_*`
-WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', scan_start_date) AND FORMAT_DATE('%Y%m%d', scan_end_date)
-  AND REGEXP_CONTAINS(_TABLE_SUFFIX, r'^\d{8}$')
-  AND event_timestamp >= UNIX_MICROS(TIMESTAMP('{{RAW_EXPORT_START_AT}}'))
-  AND event_name IN ('login_attempt_started', 'login_attempt_completed', 'login_attempt_failed');
+WITH raw_events AS (
+  SELECT
+    DATE(TIMESTAMP_MICROS(event_timestamp)) AS source_export_date,
+    DATE(TIMESTAMP_MICROS(event_timestamp)) AS event_date,
+    TIMESTAMP_MICROS(event_timestamp) AS emitted_at,
+    event_timestamp,
+    user_pseudo_id,
+    event_bundle_sequence_id,
+    batch_event_index,
+    event_name,
+    platform,
+    app_info.version AS app_version,
+    event_params,
+    CASE
+      WHEN event_name = 'login_attempt_failed' THEN ['schema_version', 'provider', 'failure_kind']
+      ELSE ['schema_version', 'provider']
+    END AS required_parameter_names
+  FROM `{{PROJECT_ID}}.{{RAW_DATASET_ID}}.events_*`
+  WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(scan_start_date, INTERVAL 1 DAY))
+    AND FORMAT_DATE('%Y%m%d', DATE_ADD(scan_end_date, INTERVAL 1 DAY))
+    AND REGEXP_CONTAINS(_TABLE_SUFFIX, r'^\d{8}$')
+    AND event_timestamp >= UNIX_MICROS(TIMESTAMP('{{RAW_EXPORT_START_AT}}'))
+    AND DATE(TIMESTAMP_MICROS(event_timestamp)) BETWEEN scan_start_date AND scan_end_date
+    AND event_name IN ('login_attempt_started', 'login_attempt_completed', 'login_attempt_failed')
+),
+parameterized AS (
+  SELECT
+    raw.* EXCEPT (event_params),
+    (
+      SELECT AS STRUCT
+        MAX(IF(parameter.key = 'app_build', COALESCE(parameter.value.string_value, CAST(parameter.value.int_value AS STRING)), NULL)) AS app_build,
+        MAX(IF(parameter.key = 'schema_version', parameter.value.int_value, NULL)) AS schema_version,
+        MAX(IF(parameter.key = 'provider', parameter.value.string_value, NULL)) AS provider,
+        MAX(IF(parameter.key = 'failure_kind', parameter.value.string_value, NULL)) AS failure_kind,
+        COUNTIF(parameter.key = 'failure_kind') AS failure_kind_parameter_count,
+        COUNTIF(parameter.key IN UNNEST(raw.required_parameter_names)) AS required_parameter_count,
+        COUNT(DISTINCT IF(parameter.key IN UNNEST(raw.required_parameter_names), parameter.key, NULL)) AS distinct_required_parameter_count,
+        COUNTIF(
+          parameter.key IN UNNEST(raw.required_parameter_names)
+          AND (
+            (
+              parameter.key = 'schema_version'
+              AND parameter.value.int_value IS NOT NULL
+              AND parameter.value.string_value IS NULL
+              AND parameter.value.float_value IS NULL
+              AND parameter.value.double_value IS NULL
+            )
+            OR (
+              parameter.key != 'schema_version'
+              AND parameter.value.string_value IS NOT NULL
+              AND parameter.value.int_value IS NULL
+              AND parameter.value.float_value IS NULL
+              AND parameter.value.double_value IS NULL
+            )
+          )
+        ) AS correctly_typed_required_parameter_count
+      FROM UNNEST(raw.event_params) AS parameter
+    ) AS parameters
+  FROM raw_events AS raw
+),
+contract_checked AS (
+  SELECT
+    parameterized.* EXCEPT (parameters),
+    parameters.*,
+    parameters.required_parameter_count = ARRAY_LENGTH(required_parameter_names)
+      AND parameters.distinct_required_parameter_count = ARRAY_LENGTH(required_parameter_names)
+      AND parameters.correctly_typed_required_parameter_count = ARRAY_LENGTH(required_parameter_names)
+      AS parameter_shape_valid,
+    event_name = 'login_attempt_failed' OR parameters.failure_kind_parameter_count = 0
+      AS parameter_semantics_valid,
+    parameters.provider IN ('github', 'google', 'apple', 'email')
+      AND (
+        event_name != 'login_attempt_failed'
+        OR parameters.failure_kind IN ('authentication', 'launch', 'cancelled', 'timeout', 'unknown')
+      ) AS bounded_enum_valid
+  FROM parameterized
+),
+deduplicated AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (
+      PARTITION BY
+        user_pseudo_id,
+        event_name,
+        event_timestamp,
+        event_bundle_sequence_id,
+        batch_event_index,
+        schema_version,
+        platform,
+        app_version,
+        app_build,
+        provider,
+        failure_kind,
+        parameter_shape_valid,
+        parameter_semantics_valid,
+        bounded_enum_valid
+      ORDER BY event_timestamp
+    ) AS duplicate_rank
+  FROM contract_checked
+)
+SELECT * FROM deduplicated;
 
 CREATE TEMP TABLE login_stage AS
 SELECT
@@ -71,30 +156,33 @@ SELECT
   TRUE AS includes_internal_test_traffic,
   CURRENT_TIMESTAMP() AS refreshed_at
 FROM login_candidate_stage
-WHERE schema_version = 1
-  AND provider IN ('github', 'google', 'apple', 'email')
-  AND (
-    (event_name IN ('login_attempt_started', 'login_attempt_completed') AND failure_kind IS NULL)
-    OR (event_name = 'login_attempt_failed' AND failure_kind IN ('authentication', 'launch', 'cancelled', 'timeout', 'unknown'))
-  )
+WHERE duplicate_rank = 1
+  AND schema_version = 1
+  AND parameter_shape_valid
+  AND parameter_semantics_valid
+  AND bounded_enum_valid
 GROUP BY source_export_date, event_date, event_name, schema_version, platform, app_version, app_build, provider, failure_kind;
 
 CREATE TEMP TABLE quality_stage AS
 SELECT
   COUNT(*) AS source_rows,
+  COUNTIF(duplicate_rank = 1) AS deduplicated_rows,
   COALESCE((SELECT SUM(event_count) FROM login_stage), 0) AS published_rows,
-  COUNTIF(schema_version IS NULL) AS missing_schema_rows,
-  COUNTIF(schema_version IS NOT NULL AND schema_version != 1) AS unsupported_schema_rows,
+  COUNTIF(duplicate_rank = 1 AND schema_version IS NULL) AS missing_schema_rows,
+  COUNTIF(duplicate_rank = 1 AND schema_version IS NOT NULL AND schema_version != 1) AS unsupported_schema_rows,
   COUNTIF(
-    schema_version = 1
-    AND COALESCE((
-      provider IN ('github', 'google', 'apple', 'email')
-      AND (
-        (event_name IN ('login_attempt_started', 'login_attempt_completed') AND failure_kind IS NULL)
-        OR (event_name = 'login_attempt_failed' AND failure_kind IN ('authentication', 'launch', 'cancelled', 'timeout', 'unknown'))
-      )
-    ), FALSE) = FALSE
+    duplicate_rank = 1
+    AND (
+      parameter_shape_valid IS NOT TRUE
+      OR parameter_semantics_valid IS NOT TRUE
+    )
   ) AS invalid_parameter_rows,
+  COUNTIF(
+    duplicate_rank = 1
+    AND parameter_shape_valid
+    AND parameter_semantics_valid
+    AND bounded_enum_valid IS NOT TRUE
+  ) AS unknown_enum_rows,
   MAX(emitted_at) AS latest_emitted_at
 FROM login_candidate_stage;
 
@@ -131,7 +219,7 @@ WHEN MATCHED THEN UPDATE SET
   completed_at = CURRENT_TIMESTAMP(),
   auth_snapshot_published_at = NULL,
   source_rows = source.source_rows,
-  deduplicated_rows = source.source_rows,
+  deduplicated_rows = source.deduplicated_rows,
   published_rows = source.published_rows,
   missing_identity_rows = 0,
   malformed_identity_rows = 0,
@@ -141,7 +229,7 @@ WHEN MATCHED THEN UPDATE SET
   future_occurrence_rows = 0,
   before_account_rows = 0,
   invalid_parameter_rows = source.invalid_parameter_rows,
-  unknown_enum_rows = source.invalid_parameter_rows,
+  unknown_enum_rows = source.unknown_enum_rows,
   internal_excluded_rows = 0,
   deletion_excluded_rows = 0,
   ineligible_user_rows = 0,
@@ -177,7 +265,7 @@ WHEN NOT MATCHED THEN INSERT (
   CURRENT_TIMESTAMP(),
   NULL,
   source.source_rows,
-  source.source_rows,
+  source.deduplicated_rows,
   source.published_rows,
   0,
   0,
@@ -187,7 +275,7 @@ WHEN NOT MATCHED THEN INSERT (
   0,
   0,
   source.invalid_parameter_rows,
-  source.invalid_parameter_rows,
+  source.unknown_enum_rows,
   0,
   0,
   0,

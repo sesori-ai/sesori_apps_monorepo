@@ -280,11 +280,155 @@ ASSERT NOT EXISTS (
   WHERE table_type = 'VIEW'
 ) AS 'Every required identifier-free reporting view must exist';
 
+ASSERT NOT EXISTS (
+  SELECT required_column
+  FROM UNNEST([
+    'account_week_start',
+    'account_week_end',
+    'engagement_week_start',
+    'engagement_week_end',
+    'activation_cohort_week',
+    'activation_cohort_week_end',
+    'account_data_as_of_at',
+    'engagement_data_as_of_at',
+    'activation_data_as_of_at'
+  ]) AS required_column
+  EXCEPT DISTINCT
+  SELECT column_name
+  FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.INFORMATION_SCHEMA.COLUMNS`
+  WHERE table_name = 'investor_snapshot'
+) AND NOT EXISTS (
+  SELECT 1
+  FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.INFORMATION_SCHEMA.COLUMNS`
+  WHERE table_name = 'investor_snapshot'
+    AND column_name IN ('week_start', 'week_end', 'data_as_of_at')
+) AS 'Investor snapshot must expose explicit account, engagement, and mature activation periods';
+
+ASSERT NOT EXISTS (
+  SELECT cohort_week
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.activation_cohorts`
+  WHERE cohort_week_end < CURRENT_DATE('UTC')
+    AND cohort_week_end < DATE(data_as_of_at)
+  EXCEPT DISTINCT
+  SELECT week_start
+  FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.weekly_kpis`
+) AS 'weekly_kpis must preserve complete account weeks even without engagement rows';
+
+ASSERT NOT EXISTS (
+  SELECT 1
+  FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.activation_funnel`
+  WHERE (
+      NOT setup_1_day_mature
+      AND COALESCE(
+        project_available_within_1_day,
+        activation_eligible_1_day_accounts,
+        activated_within_1_day,
+        notification_registered_within_1_day,
+        bridge_registered_within_1_day,
+        legacy_metadata_request_within_1_day
+      ) IS NOT NULL
+    ) OR (
+      NOT setup_7_day_mature
+      AND COALESCE(
+        project_available_within_7_days,
+        activation_eligible_7_day_accounts,
+        activated_within_7_days,
+        notification_registered_within_7_days,
+        bridge_registered_within_7_days,
+        legacy_metadata_request_within_7_days
+      ) IS NOT NULL
+    ) OR (
+      NOT setup_30_day_mature
+      AND COALESCE(
+        project_available_within_30_days,
+        activation_eligible_30_day_accounts,
+        activated_within_30_days,
+        notification_registered_within_30_days,
+        bridge_registered_within_30_days,
+        legacy_metadata_request_within_30_days
+      ) IS NOT NULL
+    )
+) AS 'Immature activation-funnel windows must expose null counts rather than partial values';
+
+ASSERT NOT EXISTS (
+  SELECT 1
+  FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.activation_funnel`
+  WHERE cohort_week_end >= DATE(data_as_of_at)
+) AS 'Activation funnel must not expose a week incomplete at its published data watermark';
+
+ASSERT NOT EXISTS (
+  SELECT 1
+  FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.retention`
+  WHERE (
+      NOT w1_cohort_mature
+      AND COALESCE(w1_eligible_users, w1_retained_users) IS NOT NULL
+    ) OR (
+      NOT w4_cohort_mature
+      AND COALESCE(w4_eligible_users, w4_retained_users) IS NOT NULL
+    ) OR (NOT w1_cohort_mature AND w1_retention_rate IS NOT NULL)
+      OR (NOT w4_cohort_mature AND w4_retention_rate IS NOT NULL)
+) AS 'Partially mature activation weeks must not expose W1 or W4 retention results';
+
+ASSERT NOT EXISTS (
+  WITH expected AS (
+    SELECT week_start, week_end, new_accounts
+    FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.weekly_kpis`
+    WHERE week_end < DATE(data_as_of_at)
+      AND week_end < CURRENT_DATE('UTC')
+    ORDER BY week_start DESC
+    LIMIT 1
+  ),
+  actual AS (
+    SELECT account_week_start, account_week_end, new_accounts
+    FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.investor_snapshot`
+  )
+  SELECT 1
+  FROM expected
+  FULL OUTER JOIN actual ON TRUE
+  WHERE expected.week_start IS DISTINCT FROM actual.account_week_start
+    OR expected.week_end IS DISTINCT FROM actual.account_week_end
+    OR expected.new_accounts IS DISTINCT FROM actual.new_accounts
+) AS 'Investor account headline must use the latest complete weekly spine even when signups are zero';
+
+ASSERT NOT EXISTS (
+  SELECT 1
+  FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.weekly_kpis` AS weekly
+  CROSS JOIN `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.analytics_measurement_config` AS config
+  WHERE config.config_key = 'singleton'
+    AND TIMESTAMP(weekly.week_start) < config.behavioral_schema_v1_start_at
+    AND weekly.meaningful_wau IS NOT NULL
+) AS 'Pre-behavior account weeks must retain null engagement rather than a synthetic zero';
+
+ASSERT NOT EXISTS (
+  SELECT 1
+  FROM `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.data_quality`
+  WHERE category = 'auth_snapshot'
+    AND status = 'ok'
+    AND (
+      SELECT control_updated_at
+      FROM `{{PROJECT_ID}}.{{AUTH_DATASET_ID}}.product_analytics_export_runs`
+      ORDER BY published_at DESC, run_cutoff DESC
+      LIMIT 1
+    ) IS DISTINCT FROM (
+      SELECT control_updated_at
+      FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.internal_exclusion_control_state`
+      WHERE state_key = 'singleton'
+    )
+) AS 'An internal exclusion control mismatch must never be reported as healthy';
+
 ASSERT (
   SELECT COUNTIF(is_partitioning_column = 'YES')
   FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.INFORMATION_SCHEMA.COLUMNS`
   WHERE table_name = 'events_flattened' AND column_name = 'source_export_date'
-) = 1 AS 'events_flattened must remain partitioned by its bounded GA4 source suffix date';
+) = 1 AS 'events_flattened must remain partitioned by its UTC emission date';
+
+ASSERT NOT EXISTS (
+  SELECT 1
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.events_flattened`
+  WHERE source_export_date BETWEEN DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 425 DAY)
+    AND DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 1 DAY)
+    AND source_export_date != DATE(emitted_at)
+) AS 'events_flattened source_export_date must be the UTC emission date';
 
 ASSERT (
   SELECT COUNTIF(clustering_ordinal_position IS NOT NULL)
@@ -367,12 +511,54 @@ ASSERT NOT EXISTS (
       OR (failure_reason IS NOT NULL AND event_name != 'session_creation_failed')
       OR (decision IS NOT NULL AND event_name != 'session_permission_answered')
       OR (change_state IS NOT NULL AND event_name != 'session_diff_viewed')
+      OR (surface IS NOT NULL AND event_name NOT IN (
+        'onboarding_need_help_opened',
+        'onboarding_support_link_opened',
+        'onboarding_why_bridge_opened',
+        'bridge_install_command_copied',
+        'bridge_install_command_shared',
+        'bridge_run_command_copied',
+        'bridge_run_command_shared'
+      ))
       OR (channel IS NOT NULL AND event_name != 'onboarding_support_link_opened')
       OR (method IS NOT NULL AND event_name NOT IN ('bridge_install_command_copied', 'bridge_install_command_shared'))
       OR (os IS NOT NULL AND event_name NOT IN ('bridge_install_command_copied', 'bridge_install_command_shared'))
       OR (screen IS NOT NULL AND event_name != 'product_screen_viewed')
     )
 ) AS 'Event-specific flattened parameter columns must be null outside their exact wire events';
+
+ASSERT NOT EXISTS (
+  SELECT 1
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.events_flattened`
+  WHERE source_export_date BETWEEN DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 425 DAY)
+    AND DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 1 DAY)
+    AND (
+      (event_name = 'analytics_activation_ready' AND activation_schema_version IS NULL)
+      OR (event_name = 'project_inventory_loaded' AND inventory_state IS NULL)
+      OR (event_name = 'session_activity_viewed' AND activity_state IS NULL)
+      OR (event_name = 'session_message_sent' AND (submission_kind IS NULL OR input_mode IS NULL))
+      OR (event_name = 'session_created_with_message' AND (
+        submission_kind IS NULL OR input_mode IS NULL OR workspace_kind IS NULL
+      ))
+      OR (event_name = 'session_creation_failed' AND (failure_reason IS NULL OR workspace_kind IS NULL))
+      OR (event_name = 'session_permission_answered' AND decision IS NULL)
+      OR (event_name = 'session_diff_viewed' AND change_state IS NULL)
+      OR (event_name IN (
+        'onboarding_need_help_opened',
+        'onboarding_support_link_opened',
+        'onboarding_why_bridge_opened',
+        'bridge_install_command_copied',
+        'bridge_install_command_shared',
+        'bridge_run_command_copied',
+        'bridge_run_command_shared'
+      ) AND surface IS NULL)
+      OR (event_name = 'onboarding_support_link_opened' AND channel IS NULL)
+      OR (event_name IN ('bridge_install_command_copied', 'bridge_install_command_shared') AND (
+        method IS NULL OR os IS NULL
+      ))
+      OR (event_name = 'product_screen_viewed' AND screen IS NULL)
+    )
+) AS 'Every event-specific parameter required by the wire event must be present';
 
 ASSERT NOT EXISTS (
   SELECT 1
@@ -411,11 +597,16 @@ ASSERT NOT EXISTS (
 ASSERT NOT EXISTS (
   SELECT 1
   FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.installation_login_daily`
-  WHERE event_name NOT IN ('login_attempt_started', 'login_attempt_completed', 'login_attempt_failed')
+  WHERE source_export_date != event_date
+    OR event_name NOT IN ('login_attempt_started', 'login_attempt_completed', 'login_attempt_failed')
     OR schema_version != 1
     OR provider NOT IN ('github', 'google', 'apple', 'email')
-    OR (event_name = 'login_attempt_failed' AND failure_kind NOT IN ('authentication', 'launch', 'cancelled', 'timeout', 'unknown'))
+    OR (event_name = 'login_attempt_failed' AND (
+      failure_kind IS NULL
+      OR failure_kind NOT IN ('authentication', 'launch', 'cancelled', 'timeout', 'unknown')
+    ))
     OR (event_name != 'login_attempt_failed' AND failure_kind IS NOT NULL)
+    OR event_count <= 0
     OR NOT includes_internal_test_traffic
 ) AS 'Installation login aggregates must retain only the exact bounded diagnostic contract';
 

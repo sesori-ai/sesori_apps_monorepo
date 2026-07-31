@@ -105,6 +105,25 @@
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
+  Partial preflight on 2026-07-31 found Firebase project `sesori-ai`, GA4
+  property `529377727`, and daily raw dataset `analytics_529377727` in
+  `europe-west3`, with tables beginning at `events_20260725`. Billing account
+  `Sesori Billing` is active and linked. A project-scoped USD 10 monthly alert
+  budget now covers all services at 50/80/100 percent actual and 100 percent
+  forecasted spend. The raw dataset defaults and all six existing daily tables
+  now expire after 90 days instead of 60. BigQuery on-demand query overrides are
+  10 GiB per project/day and 2 GiB per principal/day. Restricted IAM, GA4 privacy
+  settings, scheduler identities, exact start-time recording, and Looker
+  ownership remain blocked or unverified; do not enable additional export modes
+  or deploy transforms yet.
+- [x] Implement the local Step 5 warehouse, reporting, deployment, and privacy-
+  deletion assets. The final architecture pass approved neutral Google
+  credential ownership, Service-owned deletion sequencing, one-shot auth
+  readiness with external retry, and the layered API/Repository boundaries.
+  Focused Dart formatting/analyze/privacy tests, render-only validation of seven
+  SQL assets and five schedules, and `git diff --check` pass. BigQuery fixture
+  execution remains blocked by the current query-byte quota; no repository SQL,
+  schedules, IAM, or dashboards have been applied to cloud resources.
 
 ## Immediate Operational Action
 
@@ -143,8 +162,8 @@ patches in one umbrella diff.
 | 4.A/5 | apps monorepo | `[user-analytics] Add bounded outcome analytics contracts [step 4.A/5]` | PR #632 merged as `e3e6b6e7` on 2026-07-31; oversized PR #629 remains closed as superseded | Step 3.D released |
 | 4.B/5 | apps monorepo | `[user-analytics] Instrument account-less login outcomes [step 4.B/5]` | PR #634 merged as `5223c27d` on 2026-07-31 | Step 4.A |
 | 4.C/5 | apps monorepo | `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]` | PR #633 merged as `c662a639` on 2026-07-31 | Step 4.B |
-| 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 open on `user-analytics-visible-engagement-outcomes`; verified and approved | Step 4.C |
-| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
+| 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 merged as `671c67ed` on 2026-07-31 | Step 4.C |
+| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Local repository assets implemented and architecture-approved; cloud application remains blocked. Billing/budget and 90-day raw expiration are configured, while restricted IAM, GA4 privacy settings, identities, exact timestamps, fixture execution, and dashboard ownership remain unresolved | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
 ## Release Evidence
 

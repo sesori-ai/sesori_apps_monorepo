@@ -153,6 +153,48 @@ ASSERT NOT (account_created_at <= TIMESTAMP_SUB(
   INTERVAL 7 DAY
 )) AS 'A seven-day activation cohort is immature one microsecond before its boundary';
 
+CREATE TEMP TABLE retention_maturity_fixture (
+  activation_week DATE,
+  w1_eligible BOOL,
+  w1_retained BOOL,
+  w4_eligible BOOL,
+  w4_retained BOOL
+);
+INSERT INTO retention_maturity_fixture VALUES
+  (DATE '2026-07-06', TRUE, TRUE, TRUE, FALSE),
+  (DATE '2026-07-06', TRUE, FALSE, TRUE, TRUE),
+  (DATE '2026-07-13', TRUE, TRUE, FALSE, FALSE),
+  (DATE '2026-07-13', FALSE, FALSE, FALSE, FALSE);
+
+CREATE TEMP TABLE retention_maturity_result AS
+SELECT
+  activation_week,
+  COUNTIF(w1_eligible) = COUNT(*) AS w1_cohort_mature,
+  COUNTIF(w1_eligible) AS w1_eligible_users,
+  COUNTIF(w1_eligible AND w1_retained) AS w1_retained_users,
+  COUNTIF(w4_eligible) = COUNT(*) AS w4_cohort_mature,
+  COUNTIF(w4_eligible) AS w4_eligible_users,
+  COUNTIF(w4_eligible AND w4_retained) AS w4_retained_users
+FROM retention_maturity_fixture
+GROUP BY activation_week;
+
+ASSERT (
+  SELECT w1_cohort_mature AND w4_cohort_mature
+  FROM retention_maturity_result
+  WHERE activation_week = DATE '2026-07-06'
+) AS 'Retention cohort maturity requires every activated user window to elapse';
+ASSERT (
+  SELECT
+    NOT w1_cohort_mature
+    AND NOT w4_cohort_mature
+    AND IF(w1_cohort_mature, w1_eligible_users, NULL) IS NULL
+    AND IF(w1_cohort_mature, w1_retained_users, NULL) IS NULL
+    AND IF(w4_cohort_mature, w4_eligible_users, NULL) IS NULL
+    AND IF(w4_cohort_mature, w4_retained_users, NULL) IS NULL
+  FROM retention_maturity_result
+  WHERE activation_week = DATE '2026-07-13'
+) AS 'A partially mature activation week exposes null retention counts';
+
 ASSERT (
   SELECT COUNTIF(
     event_name = 'session_activity_viewed'
@@ -285,3 +327,297 @@ INSERT INTO replacement_fixture VALUES (DATE '2026-07-24', 'session_message_sent
 ASSERT (
   SELECT COUNT(*) = 1 AND SUM(event_count) = 2 FROM replacement_fixture
 ) AS 'Late-arrival recomputation replaces rather than appends mutable source dates';
+
+ASSERT LEAST(
+  DATE_SUB(DATE(fixture_now), INTERVAL 1 DAY),
+  DATE_SUB(DATE '2026-07-26', INTERVAL 1 DAY)
+) = DATE '2026-07-25'
+  AS 'Complete UTC coverage ends no later than one day before the latest property-local suffix';
+
+CREATE TEMP TABLE timezone_scan_fixture (
+  case_name STRING,
+  suffix_date DATE,
+  emitted_at TIMESTAMP
+);
+INSERT INTO timezone_scan_fixture VALUES
+  ('previous_suffix', DATE '2026-07-19', TIMESTAMP '2026-07-20 00:15:00+00'),
+  ('matching_suffix', DATE '2026-07-20', TIMESTAMP '2026-07-20 12:00:00+00'),
+  ('next_suffix', DATE '2026-07-21', TIMESTAMP '2026-07-20 23:45:00+00'),
+  ('suffix_too_early', DATE '2026-07-18', TIMESTAMP '2026-07-20 00:30:00+00'),
+  ('utc_date_outside_range', DATE '2026-07-20', TIMESTAMP '2026-07-19 23:45:00+00');
+
+CREATE TEMP TABLE timezone_scan_result AS
+SELECT
+  case_name,
+  DATE(emitted_at) AS source_export_date
+FROM timezone_scan_fixture
+WHERE suffix_date BETWEEN DATE_SUB(DATE '2026-07-20', INTERVAL 1 DAY)
+    AND DATE_ADD(DATE '2026-07-20', INTERVAL 1 DAY)
+  AND DATE(emitted_at) BETWEEN DATE '2026-07-20' AND DATE '2026-07-20';
+
+ASSERT TO_JSON_STRING(ARRAY(
+  SELECT case_name FROM timezone_scan_result ORDER BY case_name
+)) = TO_JSON_STRING(['matching_suffix', 'next_suffix', 'previous_suffix'])
+  AS 'One-day suffix bounds retain both timezone edges and the UTC date filter removes adjacent UTC dates';
+ASSERT NOT EXISTS (
+  SELECT 1 FROM timezone_scan_result WHERE source_export_date != DATE '2026-07-20'
+) AS 'source_export_date is always derived from the UTC emission timestamp';
+
+CREATE TEMP TABLE raw_duplicate_fixture (
+  event_scope STRING,
+  user_pseudo_id STRING,
+  user_key STRING,
+  event_name STRING,
+  event_timestamp INT64,
+  event_bundle_sequence_id INT64,
+  batch_event_index INT64,
+  bounded_payload STRING
+);
+INSERT INTO raw_duplicate_fixture VALUES
+  ('account', 'account-installation-a', REPEAT('a', 64), 'session_message_sent', 100, 7, 0, 'typed'),
+  ('account', 'account-installation-a', REPEAT('a', 64), 'session_message_sent', 100, 7, 0, 'typed'),
+  ('account', 'account-installation-a', REPEAT('b', 64), 'session_message_sent', 100, 7, 0, 'typed'),
+  ('account', 'account-installation-b', REPEAT('a', 64), 'session_message_sent', 100, 7, 0, 'typed'),
+  ('login', 'login-installation-a', NULL, 'login_attempt_started', 200, 8, 0, 'github'),
+  ('login', 'login-installation-a', NULL, 'login_attempt_started', 200, 8, 0, 'github');
+
+CREATE TEMP TABLE deduplicated_fixture AS
+SELECT * EXCEPT (user_pseudo_id, user_key, duplicate_rank)
+FROM (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (
+      PARTITION BY
+        user_pseudo_id,
+        user_key,
+        event_name,
+        event_timestamp,
+        event_bundle_sequence_id,
+        batch_event_index,
+        bounded_payload
+      ORDER BY event_timestamp
+    ) AS duplicate_rank
+  FROM raw_duplicate_fixture
+)
+WHERE duplicate_rank = 1;
+
+ASSERT (SELECT COUNT(*) FROM raw_duplicate_fixture WHERE event_scope = 'account') = 4
+  AND (SELECT COUNT(*) FROM deduplicated_fixture WHERE event_scope = 'account') = 3
+  AS 'Account duplicate identity includes transient installation identity, user key, bounded payload, bundle, batch, and timestamp';
+ASSERT (SELECT COUNT(*) FROM raw_duplicate_fixture WHERE event_scope = 'login') = 2
+  AND (SELECT COUNT(*) FROM deduplicated_fixture WHERE event_scope = 'login') = 1
+  AS 'Login counts remove equivalent transient Firebase export duplicates';
+ASSERT NOT REGEXP_CONTAINS(
+  TO_JSON_STRING(ARRAY(SELECT AS STRUCT * FROM deduplicated_fixture)),
+  r'(?i)user_pseudo_id|installation-a|installation-b'
+) AS 'Transient duplicate identity never survives into deduplicated output';
+
+CREATE TEMP TABLE parameter_contract_fixture (
+  case_name STRING,
+  required_parameter_names ARRAY<STRING>
+);
+INSERT INTO parameter_contract_fixture VALUES
+  ('valid', ['user_key', 'schema_version', 'occurred_at_micros', 'submission_kind', 'input_mode']),
+  ('duplicate_required', ['user_key', 'schema_version', 'occurred_at_micros', 'submission_kind', 'input_mode']),
+  ('wrong_typed_slot', ['user_key', 'schema_version', 'occurred_at_micros', 'submission_kind', 'input_mode']),
+  ('unknown_enum', ['user_key', 'schema_version', 'occurred_at_micros', 'submission_kind', 'input_mode']);
+
+CREATE TEMP TABLE parameter_value_fixture (
+  case_name STRING,
+  parameter_name STRING,
+  string_value STRING,
+  int_value INT64,
+  float_value FLOAT64,
+  double_value FLOAT64
+);
+INSERT INTO parameter_value_fixture VALUES
+  ('valid', 'user_key', REPEAT('a', 64), NULL, NULL, NULL),
+  ('valid', 'schema_version', NULL, 1, NULL, NULL),
+  ('valid', 'occurred_at_micros', NULL, 100, NULL, NULL),
+  ('valid', 'submission_kind', 'text', NULL, NULL, NULL),
+  ('valid', 'input_mode', 'typed', NULL, NULL, NULL),
+  ('duplicate_required', 'user_key', REPEAT('a', 64), NULL, NULL, NULL),
+  ('duplicate_required', 'schema_version', NULL, 1, NULL, NULL),
+  ('duplicate_required', 'occurred_at_micros', NULL, 100, NULL, NULL),
+  ('duplicate_required', 'submission_kind', 'text', NULL, NULL, NULL),
+  ('duplicate_required', 'input_mode', 'typed', NULL, NULL, NULL),
+  ('duplicate_required', 'input_mode', 'typed', NULL, NULL, NULL),
+  ('wrong_typed_slot', 'user_key', REPEAT('a', 64), NULL, NULL, NULL),
+  ('wrong_typed_slot', 'schema_version', '1', NULL, NULL, NULL),
+  ('wrong_typed_slot', 'occurred_at_micros', NULL, 100, NULL, NULL),
+  ('wrong_typed_slot', 'submission_kind', 'text', NULL, NULL, NULL),
+  ('wrong_typed_slot', 'input_mode', 'typed', NULL, NULL, NULL),
+  ('unknown_enum', 'user_key', REPEAT('a', 64), NULL, NULL, NULL),
+  ('unknown_enum', 'schema_version', NULL, 1, NULL, NULL),
+  ('unknown_enum', 'occurred_at_micros', NULL, 100, NULL, NULL),
+  ('unknown_enum', 'submission_kind', 'text', NULL, NULL, NULL),
+  ('unknown_enum', 'input_mode', 'unbounded', NULL, NULL, NULL);
+
+CREATE TEMP TABLE parameter_validation_fixture AS
+SELECT
+  contract.case_name,
+  (
+    SELECT
+      COUNT(*) = ARRAY_LENGTH(contract.required_parameter_names)
+      AND COUNT(DISTINCT parameter.parameter_name) = ARRAY_LENGTH(contract.required_parameter_names)
+      AND COUNTIF(
+        (
+          parameter.parameter_name IN ('schema_version', 'occurred_at_micros')
+          AND parameter.int_value IS NOT NULL
+          AND parameter.string_value IS NULL
+          AND parameter.float_value IS NULL
+          AND parameter.double_value IS NULL
+        )
+        OR (
+          parameter.parameter_name NOT IN ('schema_version', 'occurred_at_micros')
+          AND parameter.string_value IS NOT NULL
+          AND parameter.int_value IS NULL
+          AND parameter.float_value IS NULL
+          AND parameter.double_value IS NULL
+        )
+      ) = ARRAY_LENGTH(contract.required_parameter_names)
+    FROM parameter_value_fixture AS parameter
+    WHERE parameter.case_name = contract.case_name
+      AND parameter.parameter_name IN UNNEST(contract.required_parameter_names)
+  ) AS parameter_shape_valid,
+  (
+    SELECT MAX(IF(parameter_name = 'input_mode', string_value, NULL)) IN ('typed', 'voice_assisted')
+    FROM parameter_value_fixture AS parameter
+    WHERE parameter.case_name = contract.case_name
+  ) AS bounded_enum_valid
+FROM parameter_contract_fixture AS contract;
+
+ASSERT (SELECT parameter_shape_valid FROM parameter_validation_fixture WHERE case_name = 'valid')
+  AS 'Exactly one correctly typed value for every required parameter is accepted';
+ASSERT NOT (SELECT parameter_shape_valid FROM parameter_validation_fixture WHERE case_name = 'duplicate_required')
+  AS 'A duplicate required parameter is rejected even when both values agree';
+ASSERT NOT (SELECT parameter_shape_valid FROM parameter_validation_fixture WHERE case_name = 'wrong_typed_slot')
+  AS 'Integer shared parameters are rejected when supplied through a string slot';
+ASSERT (
+  SELECT parameter_shape_valid AND NOT bounded_enum_valid
+  FROM parameter_validation_fixture
+  WHERE case_name = 'unknown_enum'
+) AS 'Unknown bounded values remain distinct from invalid parameter shape rows';
+
+CREATE TEMP TABLE login_nullability_fixture (
+  case_name STRING,
+  event_name STRING,
+  failure_kind STRING,
+  expected_valid BOOL
+);
+INSERT INTO login_nullability_fixture VALUES
+  ('failed_with_kind', 'login_attempt_failed', 'timeout', TRUE),
+  ('failed_without_kind', 'login_attempt_failed', NULL, FALSE),
+  ('started_without_kind', 'login_attempt_started', NULL, TRUE),
+  ('started_with_kind', 'login_attempt_started', 'timeout', FALSE);
+
+ASSERT NOT EXISTS (
+  SELECT 1
+  FROM login_nullability_fixture
+  WHERE expected_valid != COALESCE(
+    (event_name = 'login_attempt_failed' AND failure_kind IN ('authentication', 'launch', 'cancelled', 'timeout', 'unknown'))
+      OR (event_name IN ('login_attempt_started', 'login_attempt_completed') AND failure_kind IS NULL),
+    FALSE
+  )
+) AS 'Login failures require one bounded failure kind and non-failures require none';
+
+CREATE TEMP TABLE snapshot_period_fixture (
+  week_start DATE,
+  account_period_available BOOL,
+  complete_engagement_available BOOL,
+  mature_7_day_activation_available BOOL
+);
+INSERT INTO snapshot_period_fixture VALUES
+  (DATE '2026-07-06', TRUE, TRUE, TRUE),
+  (DATE '2026-07-13', TRUE, TRUE, FALSE),
+  (DATE '2026-07-20', TRUE, FALSE, FALSE);
+
+ASSERT (SELECT MAX(IF(account_period_available, week_start, NULL)) FROM snapshot_period_fixture) = DATE '2026-07-20'
+  AND (SELECT MAX(IF(complete_engagement_available, week_start, NULL)) FROM snapshot_period_fixture) = DATE '2026-07-13'
+  AND (SELECT MAX(IF(mature_7_day_activation_available, week_start, NULL)) FROM snapshot_period_fixture) = DATE '2026-07-06'
+  AS 'Investor snapshot periods are selected independently by account, engagement, and 7-day maturity';
+
+ASSERT (
+  SELECT COUNT(*)
+  FROM (SELECT 1 AS singleton) AS base
+  LEFT JOIN (
+    SELECT 1 AS recency_rank
+    FROM snapshot_period_fixture
+    WHERE mature_7_day_activation_available AND FALSE
+  ) AS no_mature_activation
+    ON no_mature_activation.recency_rank = base.singleton
+) = 1 AS 'Investor snapshot keeps one null-capable row before any activation cohort matures';
+
+CREATE TEMP TABLE zero_account_week_fixture (
+  week_start DATE,
+  week_end DATE,
+  new_accounts INT64
+);
+INSERT INTO zero_account_week_fixture VALUES
+  (DATE '2026-07-06', DATE '2026-07-12', 4),
+  (DATE '2026-07-13', DATE '2026-07-19', 0);
+
+CREATE TEMP TABLE zero_account_week_compared AS
+SELECT
+  *,
+  LAG(new_accounts) OVER (ORDER BY week_start) AS prior_week_new_accounts,
+  ROW_NUMBER() OVER (ORDER BY week_start DESC) AS recency_rank
+FROM zero_account_week_fixture;
+
+ASSERT (
+  SELECT
+    week_start = DATE '2026-07-13'
+    AND new_accounts = 0
+    AND prior_week_new_accounts = 4
+  FROM zero_account_week_compared
+  WHERE recency_rank = 1
+) AS 'Investor account periods retain and compare a complete zero-signup week';
+
+CREATE TEMP TABLE publication_gate_fixture (
+  case_name STRING,
+  auth_published_at TIMESTAMP,
+  staged_control_updated_at TIMESTAMP,
+  current_control_updated_at TIMESTAMP,
+  staged_value INT64
+);
+INSERT INTO publication_gate_fixture VALUES
+  (
+    'stale_auth',
+    TIMESTAMP_SUB(TIMESTAMP_SUB(fixture_now, INTERVAL 36 HOUR), INTERVAL 1 MICROSECOND),
+    TIMESTAMP '2026-07-26 00:00:00+00',
+    TIMESTAMP '2026-07-26 00:00:00+00',
+    9
+  ),
+  (
+    'control_mismatch',
+    fixture_now,
+    TIMESTAMP '2026-07-25 00:00:00+00',
+    TIMESTAMP '2026-07-26 00:00:00+00',
+    9
+  ),
+  (
+    'current',
+    fixture_now,
+    TIMESTAMP '2026-07-26 00:00:00+00',
+    TIMESTAMP '2026-07-26 00:00:00+00',
+    9
+  );
+
+CREATE TEMP TABLE publication_target_fixture (case_name STRING, published_value INT64);
+INSERT INTO publication_target_fixture VALUES
+  ('stale_auth', 7),
+  ('control_mismatch', 7),
+  ('current', 7);
+
+UPDATE publication_target_fixture AS target
+SET published_value = gate.staged_value
+FROM publication_gate_fixture AS gate
+WHERE target.case_name = gate.case_name
+  AND gate.auth_published_at BETWEEN TIMESTAMP_SUB(fixture_now, INTERVAL 36 HOUR)
+    AND TIMESTAMP_ADD(fixture_now, INTERVAL 300 SECOND)
+  AND gate.staged_control_updated_at = gate.current_control_updated_at;
+
+ASSERT (
+  SELECT COUNTIF(published_value = 7) = 2 AND COUNTIF(case_name = 'current' AND published_value = 9) = 1
+  FROM publication_target_fixture
+) AS 'Stale auth or a changed control sentinel leaves the previously published target unmodified';

@@ -972,18 +972,19 @@ only raw-ID-to-`user_key` handoff, and raw account ID never crosses it.
 
 | Class/file | Layer/dependencies | Responsibility |
 | --- | --- | --- |
-| `bigquery_privacy_deletion_client.dart` and `ga_user_deletion_client.dart` | Foundation clients | Typed BigQuery operations within allowlisted datasets and typed GA User Deletion API submission; no orchestration or raw account ID. |
+| `google_api_foundation.dart`, `bigquery_privacy_deletion_client.dart`, and `ga_user_deletion_client.dart` | Neutral Google credential/transport foundation plus peer Foundation clients | Shared metadata-first credential acquisition and bounded Google API failures live in the neutral file. The peer clients own typed BigQuery operations within allowlisted datasets and typed GA User Deletion API submission; neither client depends on the other, orchestrates deletion, or receives a raw account ID. |
 | `privacy_deletion_api.dart` | Layer 1; requires both clients | Loads pending privacy-private targets for request processing; upserts/reads the permanent deletion-exclusion control; range-joins the overlapping raw window against **all** permanent tombstones for sweeps; discovers currently linkable installation IDs, deletes matching warehouse rows, submits app-instance/legacy-user deletion, rebuilds aggregates, and updates target status through typed operations. |
-| `privacy_deletion_repository.dart` | Layer 2; requires API | Owns idempotent request status, target validation, run checkpoints, tombstone-aware auth-export cutoff checks, and explicit result mapping. It never persists discovered installation IDs. |
-| `privacy_deletion_service.dart` | Layer 3; requires repository | Orchestrates exclusion-before-delete, waits for a successful auth export with `runCutoff >= suppressedAt`, performs final delete/rebuild/verification, and marks the request complete or retryable. |
-| `run_privacy_deletion.dart` / `sweep_privacy_deletions.dart` | Manual and scheduled composition roots | Construct with ADC/config, process one request or a checkpointed raw-partition range, return only aggregate status, and close clients. Each daily sweep starts from the earlier of the last-success watermark continuation and the latest three UTC event dates, matching GA4 late-arrival recomputation; it joins every scanned version against all permanent deletion tombstones regardless of target completion/age. Submission/deletion is idempotent and acts only on future **keyed** uploads. |
+| `privacy_deletion_repository.dart` | Layer 2; requires API | Owns idempotent request status, target validation, run checkpoints, one-shot tombstone-aware auth-export cutoff reads, and explicit operation/result mapping. It never orchestrates cross-system cleanup or persists discovered installation IDs. |
+| `privacy_deletion_service.dart` | Layer 3; requires repository | Orchestrates exclusion-before-delete, one readiness check, upstream/raw/keyed deletion, fixed rebuild, verification, and completion. When no successful auth export has `runCutoff >= suppressedAt`, it returns retryable and relies on the external job/operator to invoke the idempotent command again rather than polling in-process. |
+| `run_privacy_deletion.dart` / `sweep_privacy_deletions.dart` | Manual and scheduled composition roots | Construct with the attached metadata-server identity by default (with explicit local ADC fallback only for approved operator runs), process one request or a checkpointed raw-partition range, return only aggregate status, and close clients. Each daily sweep starts from the earlier of the last-success watermark continuation and the latest three UTC event dates, matching GA4 late-arrival recomputation; it joins every scanned version against all permanent deletion tombstones regardless of target completion/age. Submission/deletion is idempotent and acts only on future **keyed** uploads. |
 
 Use a dedicated deletion service account with BigQuery Job User, read of the
 restricted privacy-target/raw datasets, write only to the deletion-exclusion
-control and privacy-target status, delete/rebuild permission on auth-private/curated/
-reporting (and matching retained raw rows), plus the minimum GA deletion API
-role. It has no Mongo access and no general controls/deployment role. Secret
-Manager/ADC supply credentials; no service-account key enters Git.
+control, sweep checkpoint, and privacy-target status, delete/rebuild permission
+on auth-private/curated (and matching retained raw rows), metadata-only reporting
+inventory access, plus the minimum GA deletion API role. It has no Mongo access,
+reporting mutation, or general controls/deployment role. The attached identity
+supplies production credentials; no service-account key enters Git.
 
 No persistent account-to-installation map is created. Once currently linkable
 app-instance IDs are submitted and raw keyed rows are deleted/expired, later

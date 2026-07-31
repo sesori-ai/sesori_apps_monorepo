@@ -1,6 +1,6 @@
--- BigQuery Standard SQL. Rebuild mutable GA4 daily exports plus any watermark gap.
+-- BigQuery Standard SQL. Rebuild mutable UTC emission dates plus any watermark gap.
 DECLARE raw_start_date DATE DEFAULT DATE(TIMESTAMP('{{RAW_EXPORT_START_AT}}'));
-DECLARE latest_available_source_date DATE DEFAULT (
+DECLARE latest_available_suffix_date DATE DEFAULT (
   SELECT MAX(PARSE_DATE('%Y%m%d', SUBSTR(table_name, 8)))
   FROM `{{PROJECT_ID}}.{{RAW_DATASET_ID}}.INFORMATION_SCHEMA.TABLES`
   WHERE table_type = 'BASE TABLE'
@@ -8,7 +8,7 @@ DECLARE latest_available_source_date DATE DEFAULT (
 );
 DECLARE scan_end_date DATE DEFAULT LEAST(
   DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 1 DAY),
-  latest_available_source_date
+  DATE_SUB(latest_available_suffix_date, INTERVAL 1 DAY)
 );
 DECLARE previous_source_end_date DATE DEFAULT (
   SELECT source_end_date
@@ -38,40 +38,50 @@ ASSERT previous_source_end_date IS NULL OR scan_end_date >= previous_source_end_
 ASSERT scan_start_date >= DATE_SUB(scan_end_date, INTERVAL 89 DAY)
   AS 'The flattened-event watermark gap exceeds the recoverable 90-day raw window';
 
--- Only approved scalar metadata is materialized. Bundle fields are transiently
--- used for duplicate removal and never enter a curated table.
+-- Property-local suffixes can straddle UTC dates. Scan one suffix day around
+-- the UTC range, then retain and partition only by the UTC emission date.
+-- Raw identity fields are transiently used for duplicate removal and never
+-- enter a curated table.
 CREATE TEMP TABLE candidate_stage AS
-WITH extracted AS (
+WITH raw_events AS (
   SELECT
     event_name,
-    PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) AS source_export_date,
+    DATE(TIMESTAMP_MICROS(event_timestamp)) AS source_export_date,
     event_timestamp,
+    user_pseudo_id,
     event_bundle_sequence_id,
     batch_event_index,
     platform,
     app_info.version AS app_version,
-    (SELECT ANY_VALUE(COALESCE(value.string_value, CAST(value.int_value AS STRING))) FROM UNNEST(event_params) WHERE key = 'app_build') AS app_build,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'user_key') AS user_key,
-    (SELECT ANY_VALUE(COALESCE(value.int_value, SAFE_CAST(value.string_value AS INT64))) FROM UNNEST(event_params) WHERE key = 'schema_version') AS schema_version,
-    (SELECT ANY_VALUE(COALESCE(value.int_value, SAFE_CAST(value.string_value AS INT64))) FROM UNNEST(event_params) WHERE key = 'occurred_at_micros') AS occurred_at_micros,
-    (SELECT ANY_VALUE(COALESCE(value.int_value, SAFE_CAST(value.string_value AS INT64))) FROM UNNEST(event_params) WHERE key = 'activation_schema_version') AS activation_schema_version,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'inventory_state') AS inventory_state,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'activity_state') AS activity_state,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'submission_kind') AS submission_kind,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'input_mode') AS input_mode,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'workspace_kind') AS workspace_kind,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'failure_reason') AS failure_reason,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'decision') AS decision,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'change_state') AS change_state,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'surface') AS surface,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'channel') AS channel,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'method') AS method,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'os') AS os,
-    (SELECT ANY_VALUE(value.string_value) FROM UNNEST(event_params) WHERE key = 'screen') AS screen
+    event_params,
+    ARRAY_CONCAT(
+      ['user_key', 'schema_version', 'occurred_at_micros'],
+      CASE event_name
+        WHEN 'analytics_activation_ready' THEN ['activation_schema_version']
+        WHEN 'project_inventory_loaded' THEN ['inventory_state']
+        WHEN 'session_activity_viewed' THEN ['activity_state']
+        WHEN 'session_message_sent' THEN ['submission_kind', 'input_mode']
+        WHEN 'session_created_with_message' THEN ['submission_kind', 'input_mode', 'workspace_kind']
+        WHEN 'session_creation_failed' THEN ['failure_reason', 'workspace_kind']
+        WHEN 'session_permission_answered' THEN ['decision']
+        WHEN 'session_diff_viewed' THEN ['change_state']
+        WHEN 'onboarding_need_help_opened' THEN ['surface']
+        WHEN 'onboarding_support_link_opened' THEN ['surface', 'channel']
+        WHEN 'onboarding_why_bridge_opened' THEN ['surface']
+        WHEN 'bridge_install_command_copied' THEN ['surface', 'method', 'os']
+        WHEN 'bridge_install_command_shared' THEN ['surface', 'method', 'os']
+        WHEN 'bridge_run_command_copied' THEN ['surface']
+        WHEN 'bridge_run_command_shared' THEN ['surface']
+        WHEN 'product_screen_viewed' THEN ['screen']
+        ELSE ARRAY<STRING>[]
+      END
+    ) AS required_parameter_names
   FROM `{{PROJECT_ID}}.{{RAW_DATASET_ID}}.events_*`
-  WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', scan_start_date) AND FORMAT_DATE('%Y%m%d', scan_end_date)
+  WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(scan_start_date, INTERVAL 1 DAY))
+    AND FORMAT_DATE('%Y%m%d', DATE_ADD(scan_end_date, INTERVAL 1 DAY))
     AND REGEXP_CONTAINS(_TABLE_SUFFIX, r'^\d{8}$')
     AND event_timestamp >= UNIX_MICROS(TIMESTAMP('{{RAW_EXPORT_START_AT}}'))
+    AND DATE(TIMESTAMP_MICROS(event_timestamp)) BETWEEN scan_start_date AND scan_end_date
     AND event_name IN (
       'analytics_schema_ready',
       'analytics_activation_ready',
@@ -96,6 +106,64 @@ WITH extracted AS (
       'product_screen_viewed'
     )
 ),
+parameterized AS (
+  SELECT
+    raw.* EXCEPT (event_params),
+    (
+      SELECT AS STRUCT
+        MAX(IF(parameter.key = 'app_build', COALESCE(parameter.value.string_value, CAST(parameter.value.int_value AS STRING)), NULL)) AS app_build,
+        MAX(IF(parameter.key = 'user_key', parameter.value.string_value, NULL)) AS user_key,
+        MAX(IF(parameter.key = 'schema_version', parameter.value.int_value, NULL)) AS schema_version,
+        MAX(IF(parameter.key = 'occurred_at_micros', parameter.value.int_value, NULL)) AS occurred_at_micros,
+        MAX(IF(parameter.key = 'activation_schema_version', parameter.value.string_value, NULL)) AS activation_schema_version_raw,
+        MAX(IF(parameter.key = 'inventory_state', parameter.value.string_value, NULL)) AS inventory_state,
+        MAX(IF(parameter.key = 'activity_state', parameter.value.string_value, NULL)) AS activity_state,
+        MAX(IF(parameter.key = 'submission_kind', parameter.value.string_value, NULL)) AS submission_kind,
+        MAX(IF(parameter.key = 'input_mode', parameter.value.string_value, NULL)) AS input_mode,
+        MAX(IF(parameter.key = 'workspace_kind', parameter.value.string_value, NULL)) AS workspace_kind,
+        MAX(IF(parameter.key = 'failure_reason', parameter.value.string_value, NULL)) AS failure_reason,
+        MAX(IF(parameter.key = 'decision', parameter.value.string_value, NULL)) AS decision,
+        MAX(IF(parameter.key = 'change_state', parameter.value.string_value, NULL)) AS change_state,
+        MAX(IF(parameter.key = 'surface', parameter.value.string_value, NULL)) AS surface,
+        MAX(IF(parameter.key = 'channel', parameter.value.string_value, NULL)) AS channel,
+        MAX(IF(parameter.key = 'method', parameter.value.string_value, NULL)) AS method,
+        MAX(IF(parameter.key = 'os', parameter.value.string_value, NULL)) AS os,
+        MAX(IF(parameter.key = 'screen', parameter.value.string_value, NULL)) AS screen,
+        COUNTIF(parameter.key IN UNNEST(raw.required_parameter_names)) AS required_parameter_count,
+        COUNT(DISTINCT IF(parameter.key IN UNNEST(raw.required_parameter_names), parameter.key, NULL)) AS distinct_required_parameter_count,
+        COUNTIF(
+          parameter.key IN UNNEST(raw.required_parameter_names)
+          AND (
+            (
+              parameter.key IN ('schema_version', 'occurred_at_micros')
+              AND parameter.value.int_value IS NOT NULL
+              AND parameter.value.string_value IS NULL
+              AND parameter.value.float_value IS NULL
+              AND parameter.value.double_value IS NULL
+            )
+            OR (
+              parameter.key NOT IN ('schema_version', 'occurred_at_micros')
+              AND parameter.value.string_value IS NOT NULL
+              AND parameter.value.int_value IS NULL
+              AND parameter.value.float_value IS NULL
+              AND parameter.value.double_value IS NULL
+            )
+          )
+        ) AS correctly_typed_required_parameter_count
+      FROM UNNEST(raw.event_params) AS parameter
+    ) AS parameters
+  FROM raw_events AS raw
+),
+extracted AS (
+  SELECT
+    parameterized.* EXCEPT (parameters),
+    parameters.*,
+    parameters.required_parameter_count = ARRAY_LENGTH(required_parameter_names)
+      AND parameters.distinct_required_parameter_count = ARRAY_LENGTH(required_parameter_names)
+      AND parameters.correctly_typed_required_parameter_count = ARRAY_LENGTH(required_parameter_names)
+      AS parameter_shape_valid
+  FROM parameterized
+),
 timestamped AS (
   SELECT
     *,
@@ -108,22 +176,20 @@ timestamped AS (
     END AS occurred_at
   FROM extracted
 ),
-contract_checked AS (
+value_checked AS (
   SELECT
     *,
     CASE event_name
       WHEN 'analytics_schema_ready' THEN TRUE
-      WHEN 'analytics_activation_ready' THEN activation_schema_version = 1
+      WHEN 'analytics_activation_ready' THEN TRUE
       WHEN 'project_inventory_loaded' THEN inventory_state IN ('empty', 'non_empty')
       WHEN 'session_activity_viewed' THEN activity_state IN ('empty', 'non_empty')
       WHEN 'session_message_sent' THEN
         submission_kind IN ('text', 'command')
         AND input_mode IN ('typed', 'voice_assisted')
-        AND (submission_kind != 'command' OR input_mode = 'typed')
       WHEN 'session_created_with_message' THEN
         submission_kind IN ('text', 'command')
         AND input_mode IN ('typed', 'voice_assisted')
-        AND (submission_kind != 'command' OR input_mode = 'typed')
         AND workspace_kind IN ('project', 'dedicated_worktree')
       WHEN 'session_creation_failed' THEN
         failure_reason IN ('not_authenticated', 'server_rejected', 'network_down', 'bad_response', 'unknown')
@@ -161,16 +227,30 @@ contract_checked AS (
         'session_diffs'
       )
       ELSE FALSE
-    END AS contract_valid
+    END AS bounded_enum_valid,
+    CASE
+      WHEN event_name = 'analytics_activation_ready' THEN activation_schema_version_raw = '1'
+      WHEN event_name IN ('session_message_sent', 'session_created_with_message') THEN
+        submission_kind != 'command' OR input_mode = 'typed'
+      ELSE TRUE
+    END AS parameter_semantics_valid
   FROM timestamped
+),
+contract_checked AS (
+  SELECT
+    *,
+    parameter_shape_valid
+      AND bounded_enum_valid
+      AND parameter_semantics_valid AS contract_valid
+  FROM value_checked
 ),
 deduplicated AS (
   SELECT
     *,
     ROW_NUMBER() OVER (
       PARTITION BY
+        user_pseudo_id,
         event_name,
-        source_export_date,
         event_timestamp,
         event_bundle_sequence_id,
         batch_event_index,
@@ -180,7 +260,7 @@ deduplicated AS (
         platform,
         app_version,
         app_build,
-        activation_schema_version,
+        activation_schema_version_raw,
         inventory_state,
         activity_state,
         submission_kind,
@@ -193,7 +273,10 @@ deduplicated AS (
         channel,
         method,
         os,
-        screen
+        screen,
+        parameter_shape_valid,
+        bounded_enum_valid,
+        parameter_semantics_valid
       ORDER BY event_timestamp
     ) AS duplicate_rank
   FROM contract_checked
@@ -226,7 +309,11 @@ SELECT
   platform,
   app_version,
   app_build,
-  IF(event_name = 'analytics_activation_ready', activation_schema_version, NULL) AS activation_schema_version,
+  IF(
+    event_name = 'analytics_activation_ready',
+    SAFE_CAST(activation_schema_version_raw AS INT64),
+    NULL
+  ) AS activation_schema_version,
   IF(event_name = 'project_inventory_loaded', inventory_state, NULL) AS inventory_state,
   IF(event_name = 'session_activity_viewed', activity_state, NULL) AS activity_state,
   IF(event_name IN ('session_message_sent', 'session_created_with_message'), submission_kind, NULL) AS submission_kind,
@@ -277,19 +364,16 @@ SELECT
   COUNTIF(duplicate_rank = 1 AND occurred_at > TIMESTAMP_ADD(emitted_at, INTERVAL 300 SECOND)) AS future_occurrence_rows,
   COUNTIF(
     duplicate_rank = 1
-    AND schema_version = 1
-    AND REGEXP_CONTAINS(user_key, r'^[a-f0-9]{64}$')
-    AND occurred_at IS NOT NULL
-    AND occurred_at <= TIMESTAMP_ADD(emitted_at, INTERVAL 300 SECOND)
-    AND contract_valid IS NOT TRUE
+    AND (
+      parameter_shape_valid IS NOT TRUE
+      OR parameter_semantics_valid IS NOT TRUE
+    )
   ) AS invalid_parameter_rows,
   COUNTIF(
     duplicate_rank = 1
-    AND schema_version = 1
-    AND REGEXP_CONTAINS(user_key, r'^[a-f0-9]{64}$')
-    AND occurred_at IS NOT NULL
-    AND occurred_at <= TIMESTAMP_ADD(emitted_at, INTERVAL 300 SECOND)
-    AND contract_valid IS NOT TRUE
+    AND parameter_shape_valid
+    AND parameter_semantics_valid
+    AND bounded_enum_valid IS NOT TRUE
   ) AS unknown_enum_rows,
   COUNTIF(duplicate_rank = 1 AND is_internal_excluded) AS internal_excluded_rows,
   COUNTIF(duplicate_rank = 1 AND is_deletion_excluded) AS deletion_excluded_rows,
