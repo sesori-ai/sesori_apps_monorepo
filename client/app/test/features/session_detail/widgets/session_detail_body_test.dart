@@ -1243,6 +1243,38 @@ void main() {
     ).called(1);
   });
 
+  testWidgets("an image pushing the strip past the per-message budget is rejected", (tester) async {
+    // Two picks: a tiny renderable image, then one whose size alone nearly
+    // fills the shared inline budget — staging it would push the combined
+    // strip past the limit, so it is refused with a notice instead.
+    final huge = Uint8List(maxInlineMessageAttachmentBytes - 32);
+    huge.setAll(0, const [0xFF, 0xD8, 0xFF]);
+    final answers = <ComposerAttachment>[
+      ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "small.png"),
+      ComposerAttachment(mime: "image/jpeg", bytes: huge, filename: "huge.jpg"),
+    ];
+    when(imagePicker.pickImage).thenAnswer((_) async => answers.removeAt(0));
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+    expect(semanticsWithLabel("small.png"), findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Attached images are limited to 5 MB per message."), findsOneWidget);
+    // The refused image was never staged; the first one is untouched.
+    expect(semanticsWithLabel("small.png"), findsOneWidget);
+    expect(semanticsWithLabel("huge.jpg"), findsNothing);
+  });
+
   testWidgets("an oversized image is rejected with a notice", (tester) async {
     when(imagePicker.pickImage).thenAnswer((_) async => throw const AttachmentTooLargeError());
 

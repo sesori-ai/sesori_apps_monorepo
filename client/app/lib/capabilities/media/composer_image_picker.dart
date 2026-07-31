@@ -11,6 +11,12 @@ final class AttachmentTooLargeError implements Exception {
   const AttachmentTooLargeError();
 }
 
+/// The picked file's content is not a recognized image format, so it cannot
+/// be labeled with an honest mime type for the backend.
+final class UnsupportedAttachmentImageError implements Exception {
+  const UnsupportedAttachmentImageError();
+}
+
 /// Stages gallery images as inline composer attachments.
 ///
 /// Picks are re-encoded down to a bounded longest edge and JPEG quality so a
@@ -43,13 +49,20 @@ class ComposerImagePicker {
     if (file == null) return null;
 
     final bytes = await file.readAsBytes();
-    if (bytes.length > maxInlineMessageAttachmentBytes) {
+    // Judge size by the conservative decoded estimate of the base64 form the
+    // wire carries, so anything accepted here also passes receivers using the
+    // shared [isInlineMessageAttachmentWithinSizeLimit] check.
+    final base64Length = 4 * ((bytes.length + 2) ~/ 3);
+    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64Length)) {
       throw const AttachmentTooLargeError();
     }
 
+    final mime = _sniffImageMime(bytes: bytes);
+    if (mime == null) throw const UnsupportedAttachmentImageError();
+
     final name = file.name.trim();
     return ComposerAttachment(
-      mime: _sniffImageMime(bytes: bytes),
+      mime: mime,
       bytes: bytes,
       filename: name.isEmpty ? null : name,
     );
@@ -57,8 +70,10 @@ class ComposerImagePicker {
 
   /// Content sniffing beats the picker's metadata: `XFile.mimeType` is
   /// platform-dependent (usually null on iOS/Android) and file extensions
-  /// lie after the picker's JPEG re-encode.
-  static String _sniffImageMime({required Uint8List bytes}) {
+  /// lie after the picker's JPEG re-encode. Null means the content is not a
+  /// recognized image format — labeling it with a guessed mime would make
+  /// receivers decode it with the wrong codec.
+  static String? _sniffImageMime({required Uint8List bytes}) {
     bool startsWith(List<int> signature, {int offset = 0}) {
       if (bytes.length < offset + signature.length) return false;
       for (var i = 0; i < signature.length; i++) {
@@ -77,6 +92,6 @@ class ComposerImagePicker {
     if (startsWith(const [0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69], offset: 4)) {
       return "image/heic";
     }
-    return "image/jpeg";
+    return null;
   }
 }

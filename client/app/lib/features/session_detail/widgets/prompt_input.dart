@@ -1161,18 +1161,41 @@ class _PromptInputState extends State<PromptInput> {
   /// composer to the typing layout (via [_showsTypingLayout]) so the preview
   /// strip is visible, without raising the keyboard.
   Future<void> _handleAttachImage() async {
+    // The pick can settle after this state was reused for another session
+    // (didUpdateWidget cleared the strip) — a late result must not leak into
+    // the new session's composer.
+    final draftIdentity = widget.draftIdentity;
     try {
       final attachment = await _imagePicker.pickImage();
-      if (!mounted || attachment == null) return;
+      if (!mounted || draftIdentity != widget.draftIdentity || attachment == null) return;
+      if (_attachmentsDecodedSizeWith(attachment: attachment) > maxInlineMessageAttachmentBytes) {
+        _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
+        return;
+      }
       setState(() => _attachments.add(attachment));
     } on AttachmentTooLargeError {
-      if (!mounted) return;
+      if (!mounted || draftIdentity != widget.draftIdentity) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
+    } on UnsupportedAttachmentImageError {
+      if (!mounted || draftIdentity != widget.draftIdentity) return;
+      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
     } catch (error) {
       loge("Failed to attach an image", error);
-      if (!mounted) return;
+      if (!mounted || draftIdentity != widget.draftIdentity) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
     }
+  }
+
+  /// Total decoded bytes the staged strip would carry with [attachment]
+  /// added. The per-message inline budget reuses the per-image transport
+  /// limit, so a many-image prompt cannot multiply relay frames past what a
+  /// single maximal image is allowed to cost.
+  int _attachmentsDecodedSizeWith({required ComposerAttachment attachment}) {
+    var total = attachment.bytes.length;
+    for (final staged in _attachments) {
+      total += staged.bytes.length;
+    }
+    return total;
   }
 
   /// The 44pt leading slot: the options accordion at rest, the drag-to-cancel
