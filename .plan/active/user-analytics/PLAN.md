@@ -983,10 +983,9 @@ only raw-ID-to-`user_key` handoff, and raw account ID never crosses it.
 Use a dedicated deletion service account with BigQuery Job User, read of the
 restricted privacy-target/raw datasets, write only to the deletion-exclusion
 control, keyed-publication guard, sweep checkpoint, and privacy-target status,
-delete/rebuild permission on auth-private/curated (and matching retained raw
-rows), metadata-only reporting
-inventory access, plus the minimum GA deletion API role. It has no Mongo
-access,
+delete/rebuild permission on auth-private/curated and matching retained raw
+rows, metadata-only reporting inventory access, plus the minimum GA deletion
+API role. It has no Mongo access,
 reporting mutation, or general controls/deployment role. The attached identity
 supplies production credentials; no service-account key enters Git.
 
@@ -1561,8 +1560,8 @@ directory name.
 repository implementation delivers the reviewed automation and contracts, but
 does not complete Step 5 by itself. After the required security/privacy
 decisions are approved, the same Step 5 work must use the checked-in runbook and
-tools to create the service
-identities and dataset ACLs, authorize views, apply warehouse schemas, provision
+tools to create service identities and dataset ACLs, authorize views, apply
+warehouse schemas, provision
 auth export and privacy jobs, apply transform/deletion schedules, run deployed
 assertions and deletion drills, build/restrict Looker, and record go-live
 evidence. These are tracked delivery tasks, not an out-of-band setup handed to

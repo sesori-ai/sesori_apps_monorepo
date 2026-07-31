@@ -130,9 +130,9 @@
   schedule inventory and move schedule SQL out of argv; harden metadata/API
   timeouts and SQL boundaries; require fresh tombstone-aware request/sweep
   cleanup; serialize tombstones with keyed publication; guard transform
-  watermarks; enforce ordered activation progression and schema-ready foundation;
-  remove unsupported build
-  dimensions; and extend focused Dart/BigQuery fixtures. A two-pass architecture
+  watermarks; enforce ordered activation progression and schema-ready
+  foundation; remove unsupported build dimensions; and extend focused
+  Dart/BigQuery fixtures. A two-pass architecture
   review moved deployment policy to orchestration and freshness policy to the
   deletion Service, then approved the revised boundaries. All 34 bot review
   threads received `[Sesori reply]` assessments before the code moved.
