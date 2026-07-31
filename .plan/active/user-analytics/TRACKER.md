@@ -142,7 +142,7 @@ patches in one umbrella diff.
 | 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 merged as `fb8cd0e8`; focused account-page UX follow-up PR #628 merged as `5e42bedc` on 2026-07-30 | Step 3.C |
 | 4.A/5 | apps monorepo | `[user-analytics] Add bounded outcome analytics contracts [step 4.A/5]` | PR #632 merged as `e3e6b6e7` on 2026-07-31; oversized PR #629 remains closed as superseded | Step 3.D released |
 | 4.B/5 | apps monorepo | `[user-analytics] Instrument account-less login outcomes [step 4.B/5]` | PR #634 merged as `5223c27d` on 2026-07-31 | Step 4.A |
-| 4.C/5 | apps monorepo | `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]` | PR #633 open on `user-analytics-activation-voice-outcomes`; verified and approved | Step 4.B |
+| 4.C/5 | apps monorepo | `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]` | PR #633 merged as `c662a639` on 2026-07-31 | Step 4.B |
 | 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 open on `user-analytics-visible-engagement-outcomes`; verified and approved | Step 4.C |
 | 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
