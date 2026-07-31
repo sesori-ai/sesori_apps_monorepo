@@ -239,13 +239,13 @@ void main() {
       commands: CommandListResponse(items: <CommandInfo>[]),
     );
     when(
-      () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", refresh: false),
+      () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", forceRefresh: false),
     ).thenAnswer((_) async => ApiResponse.success(response));
 
     final result = await repository.loadSessionOptions(
       projectId: "p1",
       pluginId: "plugin-1",
-      refresh: false,
+      forceRefresh: false,
     );
 
     expect(
@@ -269,7 +269,7 @@ void main() {
       final api = MockSessionApi();
       final repository = SessionRepository(api: api);
       when(
-        () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", refresh: true),
+        () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", forceRefresh: true),
       ).thenAnswer(
         (_) async => ApiResponse.error(
           ApiError.nonSuccessCode(
@@ -282,7 +282,7 @@ void main() {
       final result = await repository.loadSessionOptions(
         projectId: "p1",
         pluginId: "plugin-1",
-        refresh: true,
+        forceRefresh: true,
       );
 
       expect(result.runtimeType, expectedType, reason: "failed to map $code from HTTP $status");
@@ -294,7 +294,7 @@ void main() {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
     when(
-      () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", refresh: true),
+      () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", forceRefresh: true),
     ).thenAnswer(
       (_) async => ApiResponse.error(
         ApiError.nonSuccessCode(
@@ -309,7 +309,7 @@ void main() {
     final result = await repository.loadSessionOptions(
       projectId: "p1",
       pluginId: "plugin-1",
-      refresh: true,
+      forceRefresh: true,
     );
 
     expect(result, isA<SessionOptionsRepositoryRefreshFailedRetained>());
@@ -325,13 +325,13 @@ void main() {
       final repository = SessionRepository(api: api);
       final error = ApiError.nonSuccessCode(errorCode: 599, rawErrorString: body);
       when(
-        () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", refresh: false),
+        () => api.loadSessionOptions(projectId: "p1", pluginId: "plugin-1", forceRefresh: false),
       ).thenAnswer((_) async => ApiResponse.error(error));
 
       final result = await repository.loadSessionOptions(
         projectId: "p1",
         pluginId: "plugin-1",
-        refresh: false,
+        forceRefresh: false,
       );
 
       expect(result, isA<SessionOptionsRepositoryFailure>().having((value) => value.error, "error", error));

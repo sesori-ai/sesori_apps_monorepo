@@ -50,9 +50,12 @@ class PostSessionOptionsHandler extends RequestHandlerBase {
 
     final SessionOptionsOutcome outcome;
     try {
-      outcome = refresh == "true"
-          ? await _service.refreshExplicit(pluginId: pluginId, projectId: projectId)
-          : await _service.loadCacheOnly(pluginId: pluginId, projectId: projectId);
+      outcome = switch (refresh) {
+        null => await _service.loadDynamic(pluginId: pluginId, projectId: projectId),
+        "false" => await _service.loadCacheOnly(pluginId: pluginId, projectId: projectId),
+        "true" => await _service.refreshExplicit(pluginId: pluginId, projectId: projectId),
+        _ => throw StateError("validated refresh query has an unsupported value"),
+      };
     } on Object catch (error, stackTrace) {
       Log.w("Session options request failed", error, stackTrace);
       return _error(request: request, status: 500, code: SessionOptionsErrorCode.unknown);

@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-management`
-- **Parent plan:** `.plan/active/setup-aware-plugin-lifecycle`
+- **Parent plan:** `.plan/completed/setup-aware-plugin-lifecycle`
 - **Status:** complete; P01-P06 merged and frozen PR #510 closed as superseded
 - **Completion base:** `origin/main` at final Stage 12 merge `6cedf5bd`
 - **Reference only:** PR #510, substantive commit `c4104e73`, fixture follow-up

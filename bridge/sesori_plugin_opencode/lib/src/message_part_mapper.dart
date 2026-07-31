@@ -33,12 +33,12 @@ class MessagePartMapper {
   static const int _maxRemoteUrlCharacters = 4096;
   static const int _maxMimeCharacters = 255;
   static const int _maxToolAttachmentCount = 4;
-  static const Set<String> _supportedInlineRasterMimes = {
-    "image/bmp",
-    "image/gif",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
+  static const Map<String, Set<String>> _supportedInlineRasterExtensions = {
+    "image/bmp": {"bmp"},
+    "image/gif": {"gif"},
+    "image/jpeg": {"jpg", "jpeg"},
+    "image/png": {"png"},
+    "image/webp": {"webp"},
   };
 
   /// Maps a generated [Part] union to the plugin-facing [PluginMessagePart].
@@ -227,17 +227,20 @@ class MessagePartMapper {
     sessionID: raw.sessionID,
     messageID: raw.messageID,
     type: PluginMessagePartType.file,
-    attachment: _mapAttachment(raw: raw),
+    attachment: _mapAttachment(raw: raw, fallbackFilename: null),
   );
 
-  PluginMessageAttachment _mapAttachment({required FilePart raw}) {
+  PluginMessageAttachment _mapAttachment({required FilePart raw, required String? fallbackFilename}) {
     final isDataUrl = _isDataUrl(url: raw.url);
     final canParseUri = !isDataUrl && raw.url.length <= _maxRemoteUrlCharacters;
     if (!isDataUrl && !canParseUri) {
       Log.w("OpenCode attachment URL exceeds the transport limit; forwarding metadata only");
     }
     final uri = canParseUri ? Uri.tryParse(raw.url) : null;
-    final filename = normalizePluginMessageAttachmentFilename(filename: raw.filename) ?? _filenameFromUri(uri: uri);
+    final filename =
+        normalizePluginMessageAttachmentFilename(filename: raw.filename) ??
+        _filenameFromUri(uri: uri) ??
+        fallbackFilename;
     if (isDataUrl) {
       return _mapDataAttachment(raw: raw, filename: filename);
     }
@@ -268,7 +271,7 @@ class MessagePartMapper {
         ? null
         : _normalizedValue(value: headerParts.first, maxCharacters: _maxMimeCharacters);
     final mime = _normalizedMime(mime: raw.mime, fallback: headerMime);
-    if (!_supportedInlineRasterMimes.contains(mime.split(";").first.trim())) {
+    if (!_supportedInlineRasterExtensions.containsKey(mime.split(";").first.trim())) {
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
 
@@ -363,7 +366,10 @@ class MessagePartMapper {
       _ => null,
     };
     final attachments = switch (state) {
-      ToolStateCompleted(:final attachments) => _mapToolAttachments(attachments: attachments),
+      ToolStateCompleted(:final attachments, :final title) => _mapToolAttachments(
+        attachments: attachments,
+        title: title,
+      ),
       _ => const <PluginMessageAttachment>[],
     };
     return PluginToolState(
@@ -377,14 +383,30 @@ class MessagePartMapper {
     );
   }
 
-  List<PluginMessageAttachment> _mapToolAttachments({required List<FilePart>? attachments}) {
+  List<PluginMessageAttachment> _mapToolAttachments({
+    required List<FilePart>? attachments,
+    required String? title,
+  }) {
     final rawAttachments = attachments ?? const <FilePart>[];
     if (rawAttachments.length > _maxToolAttachmentCount) {
       Log.w("OpenCode tool returned too many attachments; forwarding only the bounded prefix");
     }
+    final titleFilename = rawAttachments.length == 1
+        ? _filenameFromToolTitle(title: title, mime: rawAttachments.single.mime)
+        : null;
     return rawAttachments
         .take(_maxToolAttachmentCount)
-        .map((attachment) => _mapAttachment(raw: attachment))
+        .map((attachment) => _mapAttachment(raw: attachment, fallbackFilename: titleFilename))
         .toList(growable: false);
+  }
+
+  String? _filenameFromToolTitle({required String? title, required String mime}) {
+    final filename = normalizePluginMessageAttachmentFilename(filename: title);
+    if (filename == null) return null;
+    final extensionStart = filename.lastIndexOf(".");
+    if (extensionStart <= 0 || extensionStart == filename.length - 1) return null;
+    final extension = filename.substring(extensionStart + 1).toLowerCase();
+    final normalizedMime = _normalizedMime(mime: mime, fallback: null).split(";").first.trim();
+    return (_supportedInlineRasterExtensions[normalizedMime]?.contains(extension) ?? false) ? filename : null;
   }
 }

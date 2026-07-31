@@ -26,7 +26,10 @@ void main() {
         environment: {"CODEX_HOME": codexHome.path},
       );
       catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
-      messageRepository = CodexMessageRepository(rolloutApi: rolloutApi);
+      messageRepository = CodexMessageRepository(
+        rolloutApi: rolloutApi,
+        rolloutToolMapper: const CodexRolloutToolMapper(),
+      );
     });
 
     tearDown(() {
@@ -117,11 +120,84 @@ void main() {
         timestamp: "2026-04-17T10:00:00Z",
         cliVersion: "0.121.0",
       );
-      final meta = rolloutApi.readHeader(rolloutPath: path).first.payload;
-      expect(meta?.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
-      expect(meta?.cwd, equals("/repo/app"));
-      expect(meta?.timestamp, equals("2026-04-17T10:00:00Z"));
-      expect(meta?.cliVersion, equals("0.121.0"));
+      final line = rolloutApi.readHeader(rolloutPath: path).first;
+      expect(line, isA<CodexRolloutSessionMetadataLineDto>());
+      final meta = _sessionMetadataPayload(line: line);
+      expect(meta.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
+      expect(meta.cwd, equals("/repo/app"));
+      expect(meta.timestamp, equals("2026-04-17T10:00:00Z"));
+      expect(meta.cliVersion, equals("0.121.0"));
+    });
+
+    test("rollout records decode to closed outer variants", () {
+      final lines = [
+        CodexRolloutLineDto.fromJson({
+          "type": "session_meta",
+          "payload": {"id": "session-id"},
+        }),
+        CodexRolloutLineDto.fromJson({
+          "type": "turn_context",
+          "payload": {"model": "gpt-5.4"},
+        }),
+        CodexRolloutLineDto.fromJson({
+          "type": "response_item",
+          "payload": {
+            "type": "message",
+            "role": "assistant",
+            "content": <Object?>[],
+          },
+        }),
+        CodexRolloutLineDto.fromJson({
+          "type": "compacted",
+          "payload": {"replacement_history": <Object?>[]},
+        }),
+        CodexRolloutLineDto.fromJson({
+          "type": "future_line",
+          "payload": "ignored unknown payload",
+        }),
+      ];
+
+      expect(lines[0], isA<CodexRolloutSessionMetadataLineDto>());
+      expect(lines[1], isA<CodexRolloutTurnContextLineDto>());
+      expect(lines[2], isA<CodexRolloutResponseItemLineDto>());
+      expect(lines[3], isA<CodexRolloutCompactedLineDto>());
+      expect(lines[4], isA<CodexRolloutUnknownLineDto>());
+      expect(_sessionMetadataPayload(line: lines[0]).id, "session-id");
+      expect(_turnContextPayload(line: lines[1]).model, "gpt-5.4");
+      expect(_responseItemPayload(line: lines[2]), isA<CodexRolloutMessageDto>());
+    });
+
+    test("response items decode to closed inner variants", () {
+      CodexRolloutResponseItemDto decode(Map<String, Object?> payload) {
+        return _responseItemPayload(
+          line: CodexRolloutLineDto.fromJson({
+            "type": "response_item",
+            "payload": payload,
+          }),
+        );
+      }
+
+      final items = [
+        decode({"type": "message", "role": "assistant", "content": <Object?>[]}),
+        decode({"type": "reasoning", "summary": <Object?>[]}),
+        decode({"type": "function_call", "call_id": "c1", "name": "exec", "arguments": "{}"}),
+        decode({"type": "function_call_output", "call_id": "c1", "output": "done"}),
+        decode({"type": "custom_tool_call", "call_id": "c2", "name": "exec", "input": "code"}),
+        decode({"type": "custom_tool_call_output", "call_id": "c2", "output": <Object?>[]}),
+        decode({"type": "web_search_call", "action": null}),
+        decode({"type": "future_item", "secret": "ignored"}),
+        decode({"type": "image_generation_call", "result": "ignored"}),
+      ];
+
+      expect(items[0], isA<CodexRolloutMessageDto>());
+      expect(items[1], isA<CodexRolloutReasoningDto>());
+      expect(items[2], isA<CodexRolloutFunctionCallDto>());
+      expect(items[3], isA<CodexRolloutFunctionCallOutputDto>());
+      expect(items[4], isA<CodexRolloutCustomToolCallDto>());
+      expect(items[5], isA<CodexRolloutCustomToolCallOutputDto>());
+      expect(items[6], isA<CodexRolloutWebSearchCallDto>());
+      expect(items[7], isA<CodexRolloutUnknownResponseItemDto>());
+      expect(items[8], isA<CodexRolloutUnknownResponseItemDto>());
     });
 
     test("readHeader does not read beyond its bounded scan window", () {
@@ -137,7 +213,10 @@ void main() {
 
       final lines = rolloutApi.readHeader(rolloutPath: path);
 
-      expect(lines.first.payload?.id, "session-id");
+      expect(
+        _sessionMetadataPayload(line: lines.first).id,
+        "session-id",
+      );
     });
 
     test("readTranscript warns for malformed non-final rows", () {
@@ -164,6 +243,7 @@ void main() {
         "payload": {
           "type": "function_call",
           "name": "secret-tool-name",
+          "call_id": 42,
           "arguments": {
             "type": "secret-token",
             "ghp_secretCredential": "secret-credential",
@@ -184,12 +264,12 @@ void main() {
         output,
         contains(
           'schema={type:enum("response_item"),payload:{'
-          'type:enum("function_call"),name:String,arguments:{type:String,'
+          'type:enum("function_call"),name:String,call_id:int,arguments:{type:String,'
           '<redacted-key>:String,query:String},'
           "action:String}}",
         ),
       );
-      expect(output, contains("error=type 'String'"));
+      expect(output, contains("error=type 'int'"));
       expect(output, isNot(contains("secret-tool-name")));
       expect(output, isNot(contains("secret-token")));
       expect(output, isNot(contains("secret-credential")));
@@ -253,7 +333,10 @@ void main() {
       );
 
       expect(initial.lines, hasLength(1));
-      expect(initial.lines.single.payload?.callId, "call-1");
+      expect(
+        _responseItemCallId(line: initial.lines.single),
+        "call-1",
+      );
       expect(initial.trailingBytes, isNotEmpty);
 
       File(path).writeAsStringSync(
@@ -267,10 +350,7 @@ void main() {
       );
 
       expect(completed.lines, hasLength(1));
-      expect(
-        completed.lines.single.payload?.type,
-        CodexRolloutPayloadType.functionCallOutput,
-      );
+      expect(_responseItemPayload(line: completed.lines.single), isA<CodexRolloutFunctionCallOutputDto>());
       expect(completed.trailingBytes, isEmpty);
     });
 
@@ -319,7 +399,10 @@ void main() {
       );
 
       expect(completed.lines, hasLength(1));
-      expect(completed.lines.single.payload?.callId, "current-call");
+      expect(
+        _responseItemCallId(line: completed.lines.single),
+        "current-call",
+      );
       expect(completed.trailingBytes, isEmpty);
     });
 
@@ -364,14 +447,65 @@ void main() {
       expect(output, isNot(contains("malformed rollout")));
       expect(header, hasLength(3));
       expect(transcript, hasLength(3));
+      expect(transcript[1], isA<CodexRolloutResponseItemLineDto>());
+      expect(_responseItemPayload(line: transcript[1]), isA<CodexRolloutCustomToolCallOutputDto>());
+      expect(transcript[2], isA<CodexRolloutResponseItemLineDto>());
+      expect(_responseItemPayload(line: transcript[2]), isA<CodexRolloutReasoningDto>());
+    });
+
+    test("rollout content decodes closed text, image, and unknown variants", () {
+      final content = const CodexRolloutContentListConverter().fromJson([
+        {"type": "input_text", "text": "input"},
+        {"type": "output_text", "text": "output"},
+        {"type": "summary_text", "text": "summary"},
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,AA==",
+          "detail": "high",
+        },
+        {"type": "future_content", "payload": "not-rendered"},
+      ]);
+
+      expect(content, hasLength(5));
+      expect(content[0], isA<CodexRolloutInputTextDto>());
+      expect((content[0] as CodexRolloutInputTextDto).text, "input");
+      expect(content[1], isA<CodexRolloutOutputTextDto>());
+      expect((content[1] as CodexRolloutOutputTextDto).text, "output");
+      expect(content[2], isA<CodexRolloutSummaryTextDto>());
+      expect((content[2] as CodexRolloutSummaryTextDto).text, "summary");
+      expect(content[3], isA<CodexRolloutInputImageDto>());
       expect(
-        transcript[1].payload?.type,
-        CodexRolloutPayloadType.customToolCallOutput,
+        (content[3] as CodexRolloutInputImageDto).imageUrl,
+        "data:image/png;base64,AA==",
       );
-      expect(
-        transcript[2].payload?.type,
-        CodexRolloutPayloadType.reasoning,
-      );
+      expect(content[4], isA<CodexRolloutUnknownContentDto>());
+      expect(const CodexRolloutContentListConverter().toJson(content), [
+        {"type": "input_text", "text": "input"},
+        {"type": "output_text", "text": "output"},
+        {"type": "summary_text", "text": "summary"},
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,AA==",
+        },
+        {"type": "future_content"},
+      ]);
+    });
+
+    test("rollout content skips malformed known variants without exposing values", () {
+      late List<CodexRolloutContentDto> content;
+      final output = _captureWarnings(() {
+        content = const CodexRolloutContentListConverter().fromJson([
+          {"type": "output_text", "text": "kept"},
+          {"type": "input_image", "image_url": 42},
+          {"type": "future_content", "secret": "not-logged"},
+        ]);
+      }, level: LogLevel.verbose);
+
+      expect(content, hasLength(2));
+      expect(content.first, isA<CodexRolloutOutputTextDto>());
+      expect(content.last, isA<CodexRolloutUnknownContentDto>());
+      expect(output, contains("skipping malformed rollout content item"));
+      expect(output, isNot(contains("not-logged")));
     });
 
     test("turn_context scalar summary is not reported as malformed", () {
@@ -398,9 +532,11 @@ void main() {
       }, level: LogLevel.verbose);
 
       expect(output, isNot(contains("malformed rollout content list")));
-      expect(transcript.last.type, CodexRolloutLineType.turnContext);
-      expect(transcript.last.payload?.model, "gpt-5.4");
-      expect(transcript.last.payload?.summary, isNull);
+      expect(transcript.last, isA<CodexRolloutTurnContextLineDto>());
+      expect(
+        _turnContextPayload(line: transcript.last).model,
+        "gpt-5.4",
+      );
     });
 
     test("response_item scalar summary remains observable as malformed", () {
@@ -430,8 +566,11 @@ void main() {
         "malformed rollout content list".allMatches(output),
         hasLength(1),
       );
-      expect(transcript.last.type, CodexRolloutLineType.responseItem);
-      expect(transcript.last.payload?.summary, isEmpty);
+      expect(transcript.last, isA<CodexRolloutResponseItemLineDto>());
+      expect(
+        _reasoningSummary(line: transcript.last),
+        isEmpty,
+      );
     });
 
     test("object-form tool search arguments do not invalidate the record", () {
@@ -460,11 +599,8 @@ void main() {
       }, level: LogLevel.verbose);
 
       expect(output, isNot(contains("malformed rollout transcript record")));
-      expect(transcript.last.payload?.type, CodexRolloutPayloadType.unknown);
-      expect(
-        transcript.last.payload?.arguments,
-        jsonEncode({"query": "available tools"}),
-      );
+      expect(transcript.last, isA<CodexRolloutResponseItemLineDto>());
+      expect(_responseItemPayload(line: transcript.last), isA<CodexRolloutUnknownResponseItemDto>());
     });
 
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
@@ -605,16 +741,22 @@ void main() {
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "type": "message",
               "id": "user-1",
               "role": "user",
               "content": [
                 {"type": "input_text", "text": "hello, codex"},
+                {
+                  "type": "input_image",
+                  "image_url": "data:image/png;base64,AA==",
+                },
               ],
             },
           }),
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "type": "message",
               "id": "assistant-1",
               "role": "assistant",
               "content": [
@@ -637,6 +779,8 @@ void main() {
       expect(messages, hasLength(2));
       expect(messages[0].info, isA<PluginMessageUser>());
       expect(messages[0].parts.first.text, equals("hello, codex"));
+      expect(messages[0].parts, hasLength(1));
+      expect(messages[0].parts.single.attachment, isNull);
       expect(messages[1].info, isA<PluginMessageAssistant>());
       expect(messages[1].parts.first.text, equals("hello back!"));
       expect(messages[0].info.sessionID, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
@@ -830,6 +974,10 @@ void main() {
               "call_id": "call-1",
               "output": [
                 {"type": "input_text", "text": "total 0\n"},
+                {
+                  "type": "input_image",
+                  "image_url": "data:image/png;base64,AA==",
+                },
                 "schema-drifted item",
                 {"type": "input_text", "text": "foo.dart"},
               ],
@@ -873,6 +1021,7 @@ void main() {
       expect(tool.state?.status, PluginToolStatus.completed);
       expect(tool.state?.title, "ls -la");
       expect(tool.state?.output, contains("foo.dart"));
+      expect(tool.state?.attachments, isEmpty);
 
       final assistant = messages[2];
       expect(assistant.parts.single.text, "Done");
@@ -893,6 +1042,7 @@ void main() {
               "type": "function_call",
               "name": "exec_command",
               "call_id": "c1",
+              "arguments": "{}",
             },
           }),
           jsonEncode({
@@ -1019,6 +1169,7 @@ void main() {
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "type": "message",
               "role": "user",
               "content": [
                 {"type": "input_text", "text": "ping"},
@@ -1028,6 +1179,7 @@ void main() {
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "type": "message",
               "role": "assistant",
               "content": [
                 {"type": "output_text", "text": "pong"},
@@ -1085,6 +1237,7 @@ void main() {
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
         ),
+        rolloutToolMapper: const CodexRolloutToolMapper(),
       );
       final path = _writeRollout(
         codexHome,
@@ -1099,6 +1252,7 @@ void main() {
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "type": "message",
               "role": "assistant",
               "content": [
                 {"type": "output_text", "text": "first"},
@@ -1113,6 +1267,7 @@ void main() {
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "type": "message",
               "role": "assistant",
               "content": [
                 {"type": "output_text", "text": "second"},
@@ -1140,6 +1295,7 @@ void main() {
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
         ),
+        rolloutToolMapper: const CodexRolloutToolMapper(),
       );
       final path = _writeRollout(
         codexHome,
@@ -1150,6 +1306,7 @@ void main() {
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "type": "message",
               "role": "assistant",
               "content": [
                 {"type": "output_text", "text": "hi"},
@@ -1172,6 +1329,50 @@ void main() {
       expect(assistant.providerID, equals("openai"));
     });
   });
+}
+
+CodexRolloutSessionMetadataPayloadDto _sessionMetadataPayload({
+  required CodexRolloutLineDto line,
+}) {
+  return switch (line) {
+    CodexRolloutSessionMetadataLineDto(payload: final payload) => payload,
+    _ => throw StateError("Expected session metadata rollout line"),
+  };
+}
+
+CodexRolloutTurnContextPayloadDto _turnContextPayload({
+  required CodexRolloutLineDto line,
+}) {
+  return switch (line) {
+    CodexRolloutTurnContextLineDto(payload: final payload) => payload,
+    _ => throw StateError("Expected turn context rollout line"),
+  };
+}
+
+CodexRolloutResponseItemDto _responseItemPayload({
+  required CodexRolloutLineDto line,
+}) {
+  return switch (line) {
+    CodexRolloutResponseItemLineDto(payload: final payload) => payload,
+    _ => throw StateError("Expected response item rollout line"),
+  };
+}
+
+String _responseItemCallId({required CodexRolloutLineDto line}) {
+  return switch (_responseItemPayload(line: line)) {
+    CodexRolloutFunctionCallDto(:final callId) ||
+    CodexRolloutFunctionCallOutputDto(:final callId) ||
+    CodexRolloutCustomToolCallDto(:final callId) ||
+    CodexRolloutCustomToolCallOutputDto(:final callId) => callId,
+    _ => throw StateError("Expected tool response item"),
+  };
+}
+
+List<CodexRolloutContentDto> _reasoningSummary({required CodexRolloutLineDto line}) {
+  return switch (_responseItemPayload(line: line)) {
+    CodexRolloutReasoningDto(:final summary) => summary,
+    _ => throw StateError("Expected reasoning response item"),
+  };
 }
 
 String _captureWarnings(

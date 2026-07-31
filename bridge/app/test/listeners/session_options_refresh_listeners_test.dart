@@ -168,6 +168,11 @@ class _FakeSessionOptionsService implements SessionOptionsService {
   final List<String> successfulBackendSessions = [];
 
   @override
+  Future<SessionOptionsOutcome> loadDynamic({required String pluginId, required String projectId}) async {
+    return const SessionOptionsCacheUnavailable();
+  }
+
+  @override
   Future<SessionOptionsOutcome> refreshActiveOnly({
     required String pluginId,
     required String projectId,

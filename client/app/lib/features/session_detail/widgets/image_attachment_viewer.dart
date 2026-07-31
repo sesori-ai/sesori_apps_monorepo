@@ -30,7 +30,7 @@ final class LoadedMessageImage {
 Future<void> showImageAttachmentViewer({
   required BuildContext context,
   required LoadedMessageImage image,
-  required String filename,
+  required String? filename,
   required Key heroTag,
 }) {
   // ignore: no_slop_linter/avoid_navigator_of, no_slop_linter/avoid_raw_go_router, this transient root Hero route carries an in-memory ImageProvider that cannot be represented in a URL
@@ -41,7 +41,7 @@ Future<void> showImageAttachmentViewer({
       reverseTransitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (_, _, _) => BlocProvider(
         create: (_) => ImageAttachmentActionsCubit(
-          photoLibrary: getIt<PhotoLibrary>(),
+          imageSaver: getIt<ImageSaver>(),
           imageClipboard: getIt<ImageClipboard>(),
           imageSharer: getIt<ImageSharer>(),
           bytes: image.bytes,
@@ -63,7 +63,7 @@ class ImageAttachmentViewer extends StatelessWidget {
   static const imageKey = ValueKey("imageAttachmentViewer.image");
 
   final LoadedMessageImage image;
-  final String filename;
+  final String? filename;
   final Key heroTag;
 
   const ImageAttachmentViewer({
@@ -90,7 +90,7 @@ class ImageAttachmentViewer extends StatelessWidget {
     final message = switch (state) {
       ImageAttachmentSaved() => context.loc.sessionDetailImageSaved,
       ImageAttachmentCopied() => context.loc.sessionDetailImageCopied,
-      ImageAttachmentPhotosAccessDenied() => context.loc.sessionDetailImagePhotosPermissionDenied,
+      ImageAttachmentSaveAccessDenied() => context.loc.sessionDetailImageSaveAccessDenied,
       ImageAttachmentCopyFailed() => context.loc.sessionDetailImageCopyFailed,
       ImageAttachmentShareFailed() => context.loc.sessionDetailImageShareFailed,
       ImageAttachmentSaveFailed() => context.loc.sessionDetailImageSaveFailed,
@@ -105,6 +105,7 @@ class ImageAttachmentViewer extends StatelessWidget {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final originalUri = image.originalUri;
+    final displayFilename = filename;
     final isRunningAction = context.watch<ImageAttachmentActionsCubit>().state is ImageAttachmentActionRunning;
     return BlocListener<ImageAttachmentActionsCubit, ImageAttachmentActionsState>(
       listener: _handleActionState,
@@ -124,12 +125,14 @@ class ImageAttachmentViewer extends StatelessWidget {
                     ),
                     SizedBox(width: prego.spacing.xs),
                     Expanded(
-                      child: Text(
-                        filename,
-                        style: prego.textTheme.textSm.bold,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: displayFilename == null
+                          ? const SizedBox.shrink()
+                          : Text(
+                              displayFilename,
+                              style: prego.textTheme.textSm.bold,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                     ),
                     if (isRunningAction)
                       Padding(

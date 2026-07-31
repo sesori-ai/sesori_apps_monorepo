@@ -19,18 +19,19 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockUrlLauncher extends Mock implements UrlLauncher {}
 
-class _FakePhotoLibrary implements PhotoLibrary {
+class _FakeImageSaver implements ImageSaver {
   Uint8List? savedBytes;
   String? savedFilename;
 
   @override
-  Future<PhotoLibrarySaveResult> saveImage({
+  Future<ImageSaveResult> saveImage({
     required Uint8List bytes,
+    required String mime,
     required String filename,
   }) async {
     savedBytes = bytes;
     savedFilename = filename;
-    return PhotoLibrarySaveResult.saved;
+    return ImageSaveResult.saved;
   }
 }
 
@@ -69,7 +70,7 @@ Future<void> _finishAsyncDecode({required WidgetTester tester}) async {
 
 void main() {
   late _MockUrlLauncher urlLauncher;
-  late _FakePhotoLibrary photoLibrary;
+  late _FakeImageSaver imageSaver;
   late _FakeImageClipboard imageClipboard;
   late _FakeImageSharer imageSharer;
 
@@ -81,12 +82,12 @@ void main() {
   setUp(() async {
     await GetIt.instance.reset();
     urlLauncher = _MockUrlLauncher();
-    photoLibrary = _FakePhotoLibrary();
+    imageSaver = _FakeImageSaver();
     imageClipboard = _FakeImageClipboard();
     imageSharer = _FakeImageSharer();
     when(() => urlLauncher.launch(any(), mode: any(named: "mode"))).thenAnswer((_) async => true);
     GetIt.instance.registerSingleton<UrlLauncher>(urlLauncher);
-    GetIt.instance.registerSingleton<PhotoLibrary>(photoLibrary);
+    GetIt.instance.registerSingleton<ImageSaver>(imageSaver);
     GetIt.instance.registerSingleton<ImageClipboard>(imageClipboard);
     GetIt.instance.registerSingleton<ImageSharer>(imageSharer);
     GetIt.instance.registerSingleton<MessageImageRepository>(
@@ -120,7 +121,7 @@ void main() {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
-      filename: "image.png",
+      filename: "why-needed.png",
     );
 
     await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
@@ -147,6 +148,7 @@ void main() {
     expect(find.byIcon(Icons.content_copy), findsOneWidget);
     expect(find.byIcon(Icons.share_outlined), findsOneWidget);
     expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.text("why-needed.png"), findsOneWidget);
     final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
     expect(identical(fullscreen.image, preview.image), isTrue);
     final memoryImage = (preview.image as ResizeImage).imageProvider as MemoryImage;
@@ -156,6 +158,34 @@ void main() {
 
     expect(identical(imageClipboard.copiedBytes, memoryImage.bytes), isTrue);
     expect(find.text("Image copied to clipboard"), findsOneWidget);
+  });
+
+  testWidgets("omits the image title when attachment metadata has no filename", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      filename: null,
+    );
+
+    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await _finishAsyncDecode(tester: tester);
+    final preview = tester.widget<Image>(find.byKey(FilePartWidget.previewImageKey));
+    await tester.runAsync(
+      () => precacheImage(
+        preview.image,
+        tester.element(find.byKey(FilePartWidget.previewImageKey)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text("image.png"), findsNothing);
+    expect(find.text("Unknown file"), findsNothing);
+    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.pump();
+
+    expect(imageSaver.savedFilename, "image.png");
   });
 
   testWidgets("keeps display and action filenames separate when saving", (tester) async {
@@ -174,7 +204,7 @@ void main() {
       _app(
         child: BlocProvider(
           create: (_) => ImageAttachmentActionsCubit(
-            photoLibrary: photoLibrary,
+            imageSaver: imageSaver,
             imageClipboard: imageClipboard,
             imageSharer: imageSharer,
             bytes: bytes,
@@ -197,8 +227,8 @@ void main() {
     await tester.tap(find.byIcon(Icons.download_outlined));
     await tester.pump();
 
-    expect(photoLibrary.savedFilename, "unsafe.png");
-    expect(identical(photoLibrary.savedBytes, bytes), isTrue);
+    expect(imageSaver.savedFilename, "unsafe.png");
+    expect(identical(imageSaver.savedBytes, bytes), isTrue);
   });
 
   testWidgets("opens a safe remote attachment only after a tap", (tester) async {

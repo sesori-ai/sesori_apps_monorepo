@@ -2,11 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `c662a639`
-- **Series state:** Steps 1/6 through 5.A/6 are merged; oversized PR #620 is
+- **Completion base:** `origin/main` at final Step 6 merge `0da8ec7c`
+- **Series state:** complete; Steps 1/6 through 6/6 merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
-- **Current step:** Step 5.B/6 — cached New Session composer
-- **Next action:** monitor PR #636 against `main` through review and CI
+- **Current step:** complete
+- **Next action:** none; plan archived after the final implementation merge
 
 ## Delivery
 
@@ -22,14 +22,16 @@
 | [x] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | PR #627 merged |
 | [x] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | PR #630 merged |
 | [x] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | PR #635 merged |
-| [ ] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | [PR #636](https://github.com/sesori-ai/sesori_apps_monorepo/pull/636) open against `main` |
-| [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5.B merge |
+| [x] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | PR #636 merged |
+| [x] | Step 5.C/6 — dynamic session-option cache misses | `multi-plugin-release-prep-dynamic-options` | PR #642 merged |
+| [x] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | [PR #647](https://github.com/sesori-ai/sesori_apps_monorepo/pull/647) merged as `0da8ec7c` |
 
 ## Locked Decisions
 
-- One endpoint: `POST /session/options`; `refresh=true` is the only activating
-  aggregate read and also forces backend catalog discovery instead of reusing a
-  plugin's tracker snapshot.
+- One endpoint: `POST /session/options`; omitted `refresh` serves cache when
+  available and activates the selected harness only on cache miss,
+  `refresh=false` is cache-only, and `refresh=true` forces backend catalog
+  discovery instead of reusing a plugin tracker snapshot.
 - OpenCode and Codex cache per project. Cursor caches once per plugin. Codex
   stays project-aware because defaults and skills depend on project context.
 - Cache-only miss is explicit unavailable, not an empty successful catalog.
@@ -79,7 +81,8 @@
 9. `[multi-plugin-release-prep] feat(bridge): expose cached session options [step 4.F/6]`
 10. `[multi-plugin-release-prep] feat(client): add cached session option layers [step 5.A/6]`
 11. `[multi-plugin-release-prep] feat(client): use cached session options [step 5.B/6]`
-12. `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]`
+12. `[multi-plugin-release-prep] feat(bridge): dynamically load missing session options [step 5.C/6]`
+13. `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]`
 
 ## Verification Log
 
@@ -271,3 +274,43 @@
   use mode-neutral “couldn’t update” guidance so automatic cached reload failures
   are not presented as failed user refreshes. The focused widget test, fatal
   mobile analysis, and `git diff --check` passed.
+- Step 5.C/6 preparation (2026-07-31): omitted `refresh` now serves valid cache
+  data or dynamically activates only the selected harness on miss; exact false
+  remains cache-only and exact true remains forced discovery. Client API,
+  repository, service, and cubit terminology now distinguishes dynamic loading
+  from forced refresh while old-bridge capability fallback and all three live
+  legacy POST routes remain unchanged. The 82 focused bridge-app tests, 90
+  module-core tests, 9 shared compatibility tests, and 27 mobile New Session
+  tests passed, as did fatal analysis in bridge-app, module-core, mobile, and
+  desktop plus `git diff --check`. Aristotle approved the implementation
+  architecture without findings.
+- Step 5.C/6 delivery (2026-07-31): committed as `d0be128e`, pushed, and opened
+  as PR #642 against `main`.
+- Step 5.C/6 review hardening (2026-07-31): dynamic loads queued behind an
+  automatic reuse refresh now avoid null-tail coordination and recheck the cache
+  before activation, while dynamic-load failures use load-specific client state
+  and copy instead of explicit-Refresh guidance. Project-scoped invalidation also
+  re-resolves the authoritative path before deleting expired or undecodable rows,
+  preserving same-revision replacements after a path move; dynamic loading checks
+  that path again immediately before may-activate capture. All 34 service tests,
+  47 focused module-core tests, and 28 mobile New Session tests passed, as did fatal
+  analysis in bridge-app, module-core, mobile, and desktop plus `git diff --check`.
+- Step 5.C/6 merge (2026-07-31): PR #642 merged to `main` as `cd6d3caa`; Step
+  6/6 now proceeds from that base.
+- Step 6/6 preparation (2026-07-31): consolidated overview and management into
+  one Harnesses screen with one screen-owned cubit; removed the nested route;
+  made facts and actions setup-, eligibility-, capability-, and unknown-state
+  aware; modeled no-timeout versus strictly-positive custom input explicitly;
+  and replaced Material timeout/force dialogs with Prego sheets. Generated
+  localization output. All 55 focused module-core tests and 66 focused mobile
+  tests passed, as did `dart pub get`, fatal analysis in module-core, mobile,
+  module-desktop-core, and desktop, plus `git diff --check`. Aristotle approved
+  the implementation architecture without findings. The final diff is 2,801
+  changed lines because it deletes the redundant screen/test while folding their
+  coverage into the surviving surface; the user approved one cohesive PR rather
+  than transitional stacked delivery.
+- Step 6/6 delivery (2026-07-31): committed as `f300d958`, pushed, and opened as
+  PR #647 against `main`.
+- Step 6/6 merge (2026-07-31): PR #647 merged to `main` as `0da8ec7c`. All
+  planned release-preparation steps are complete, and the plan moved to the
+  completed archive.

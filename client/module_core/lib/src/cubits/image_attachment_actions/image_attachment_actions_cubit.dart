@@ -3,13 +3,13 @@ import "dart:typed_data";
 import "package:bloc/bloc.dart";
 
 import "../../foundation/platform/image_clipboard.dart";
+import "../../foundation/platform/image_saver.dart";
 import "../../foundation/platform/image_sharer.dart";
-import "../../foundation/platform/photo_library.dart";
 import "../../logging/logging.dart";
 import "image_attachment_actions_state.dart";
 
 class ImageAttachmentActionsCubit extends Cubit<ImageAttachmentActionsState> {
-  final PhotoLibrary _photoLibrary;
+  final ImageSaver _imageSaver;
   final ImageClipboard _imageClipboard;
   final ImageSharer _imageSharer;
   final Uint8List _bytes;
@@ -17,13 +17,13 @@ class ImageAttachmentActionsCubit extends Cubit<ImageAttachmentActionsState> {
   final String _filename;
 
   ImageAttachmentActionsCubit({
-    required PhotoLibrary photoLibrary,
+    required ImageSaver imageSaver,
     required ImageClipboard imageClipboard,
     required ImageSharer imageSharer,
     required Uint8List bytes,
     required String mime,
     required String actionFilename,
-  }) : _photoLibrary = photoLibrary,
+  }) : _imageSaver = imageSaver,
        _imageClipboard = imageClipboard,
        _imageSharer = imageSharer,
        _bytes = bytes,
@@ -72,12 +72,13 @@ class ImageAttachmentActionsCubit extends Cubit<ImageAttachmentActionsState> {
     if (state is ImageAttachmentActionRunning) return;
     emit(const ImageAttachmentActionRunning(action: ImageAttachmentAction.save));
     try {
-      final result = await _photoLibrary.saveImage(bytes: _bytes, filename: _filename);
+      final result = await _imageSaver.saveImage(bytes: _bytes, mime: _mime, filename: _filename);
       if (isClosed) return;
       emit(
         switch (result) {
-          PhotoLibrarySaveResult.saved => const ImageAttachmentSaved(),
-          PhotoLibrarySaveResult.accessDenied => const ImageAttachmentPhotosAccessDenied(),
+          ImageSaveResult.saved => const ImageAttachmentSaved(),
+          ImageSaveResult.accessDenied => const ImageAttachmentSaveAccessDenied(),
+          ImageSaveResult.cancelled => const ImageAttachmentActionsIdle(),
         },
       );
     } on Object catch (cause, stackTrace) {
@@ -92,7 +93,7 @@ class ImageAttachmentActionsCubit extends Cubit<ImageAttachmentActionsState> {
   void outcomeHandled() {
     if (state is ImageAttachmentCopied ||
         state is ImageAttachmentSaved ||
-        state is ImageAttachmentPhotosAccessDenied ||
+        state is ImageAttachmentSaveAccessDenied ||
         state is ImageAttachmentCopyFailed ||
         state is ImageAttachmentShareFailed ||
         state is ImageAttachmentSaveFailed) {

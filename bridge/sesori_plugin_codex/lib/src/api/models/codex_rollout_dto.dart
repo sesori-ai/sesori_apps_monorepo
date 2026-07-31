@@ -1,54 +1,12 @@
-import "dart:convert";
-
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 part "codex_rollout_dto.freezed.dart";
 part "codex_rollout_dto.g.dart";
 
-enum CodexRolloutLineType {
-  @JsonValue("session_meta")
-  sessionMeta,
-  @JsonValue("turn_context")
-  turnContext,
-  @JsonValue("response_item")
-  responseItem,
-  @JsonValue("compacted")
-  compacted,
-  unknown,
-}
-
-enum CodexRolloutPayloadType {
-  @JsonValue("message")
-  message,
-  @JsonValue("reasoning")
-  reasoning,
-  @JsonValue("function_call")
-  functionCall,
-  @JsonValue("function_call_output")
-  functionCallOutput,
-  @JsonValue("custom_tool_call")
-  customToolCall,
-  @JsonValue("custom_tool_call_output")
-  customToolCallOutput,
-  @JsonValue("web_search_call")
-  webSearchCall,
-  unknown,
-}
-
 enum CodexRolloutRole {
   user,
   assistant,
-  unknown,
-}
-
-enum CodexRolloutContentType {
-  @JsonValue("input_text")
-  inputText,
-  @JsonValue("output_text")
-  outputText,
-  @JsonValue("summary_text")
-  summaryText,
   unknown,
 }
 
@@ -63,61 +21,165 @@ sealed class CodexSessionIndexEntryDto with _$CodexSessionIndexEntryDto {
   factory CodexSessionIndexEntryDto.fromJson(Map<String, dynamic> json) => _$CodexSessionIndexEntryDtoFromJson(json);
 }
 
-@Freezed(fromJson: true, toJson: false)
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
 sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
-  const factory CodexRolloutLineDto({
+  @FreezedUnionValue("session_meta")
+  const factory CodexRolloutLineDto.sessionMetadata({
     required String? timestamp,
-    @JsonKey(unknownEnumValue: CodexRolloutLineType.unknown) required CodexRolloutLineType? type,
-    required CodexRolloutPayloadDto? payload,
-  }) = _CodexRolloutLineDto;
+    required CodexRolloutSessionMetadataPayloadDto payload,
+  }) = CodexRolloutSessionMetadataLineDto;
 
-  factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(
-    _normalizeRolloutLineJson(json: json),
-  );
+  @FreezedUnionValue("turn_context")
+  const factory CodexRolloutLineDto.turnContext({
+    required String? timestamp,
+    required CodexRolloutTurnContextPayloadDto payload,
+  }) = CodexRolloutTurnContextLineDto;
+
+  @FreezedUnionValue("response_item")
+  const factory CodexRolloutLineDto.responseItem({
+    required String? timestamp,
+    required CodexRolloutResponseItemDto payload,
+  }) = CodexRolloutResponseItemLineDto;
+
+  @FreezedUnionValue("compacted")
+  const factory CodexRolloutLineDto.compacted({
+    required String? timestamp,
+  }) = CodexRolloutCompactedLineDto;
+
+  const factory CodexRolloutLineDto.unknown({
+    required String? timestamp,
+  }) = CodexRolloutUnknownLineDto;
+
+  factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
-sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
-  const factory CodexRolloutPayloadDto({
+sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMetadataPayloadDto {
+  const factory CodexRolloutSessionMetadataPayloadDto({
     required String? id,
     required String? cwd,
     required String? timestamp,
     @JsonKey(name: "model_provider") required String? modelProvider,
     @JsonKey(name: "cli_version") required String? cliVersion,
-    required String? model,
-    @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required CodexRolloutPayloadType? type,
-    @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole? role,
-    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? content,
-    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? summary,
-    @JsonKey(name: "call_id") required String? callId,
-    required String? name,
-    required String? arguments,
-    required String? input,
-    @CodexRolloutOutputConverter() required List<CodexRolloutContentDto>? output,
-    required CodexRolloutActionDto? action,
-  }) = _CodexRolloutPayloadDto;
+  }) = _CodexRolloutSessionMetadataPayloadDto;
 
-  factory CodexRolloutPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutPayloadDtoFromJson(json);
+  factory CodexRolloutSessionMetadataPayloadDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutSessionMetadataPayloadDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
+sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPayloadDto {
+  const factory CodexRolloutTurnContextPayloadDto({
+    required String? model,
+  }) = _CodexRolloutTurnContextPayloadDto;
+
+  factory CodexRolloutTurnContextPayloadDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutTurnContextPayloadDtoFromJson(json);
+}
+
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
+  const factory CodexRolloutResponseItemDto.message({
+    required String? id,
+    @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole role,
+    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto> content,
+  }) = CodexRolloutMessageDto;
+
+  const factory CodexRolloutResponseItemDto.reasoning({
+    required String? id,
+    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto> summary,
+  }) = CodexRolloutReasoningDto;
+
+  @FreezedUnionValue("function_call")
+  const factory CodexRolloutResponseItemDto.functionCall({
+    required String? id,
+    @JsonKey(name: "call_id") required String callId,
+    required String name,
+    required String arguments,
+  }) = CodexRolloutFunctionCallDto;
+
+  @FreezedUnionValue("function_call_output")
+  const factory CodexRolloutResponseItemDto.functionCallOutput({
+    @JsonKey(name: "call_id") required String callId,
+    @CodexRolloutOutputConverter() required List<CodexRolloutContentDto> output,
+  }) = CodexRolloutFunctionCallOutputDto;
+
+  @FreezedUnionValue("custom_tool_call")
+  const factory CodexRolloutResponseItemDto.customToolCall({
+    required String? id,
+    @JsonKey(name: "call_id") required String callId,
+    required String name,
+    required String input,
+  }) = CodexRolloutCustomToolCallDto;
+
+  @FreezedUnionValue("custom_tool_call_output")
+  const factory CodexRolloutResponseItemDto.customToolCallOutput({
+    @JsonKey(name: "call_id") required String callId,
+    @CodexRolloutOutputConverter() required List<CodexRolloutContentDto> output,
+  }) = CodexRolloutCustomToolCallOutputDto;
+
+  @FreezedUnionValue("web_search_call")
+  const factory CodexRolloutResponseItemDto.webSearchCall({
+    required String? id,
+    required CodexRolloutActionDto? action,
+  }) = CodexRolloutWebSearchCallDto;
+
+  const factory CodexRolloutResponseItemDto.unknown() = CodexRolloutUnknownResponseItemDto;
+
+  factory CodexRolloutResponseItemDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutResponseItemDtoFromJson(json);
+}
+
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: true,
+)
 sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
-  const factory CodexRolloutContentDto({
-    @JsonKey(unknownEnumValue: CodexRolloutContentType.unknown) required CodexRolloutContentType? type,
-    required String? text,
-  }) = _CodexRolloutContentDto;
+  @FreezedUnionValue("input_text")
+  const factory CodexRolloutContentDto.inputText({
+    required String text,
+  }) = CodexRolloutInputTextDto;
+
+  @FreezedUnionValue("output_text")
+  const factory CodexRolloutContentDto.outputText({
+    required String text,
+  }) = CodexRolloutOutputTextDto;
+
+  @FreezedUnionValue("summary_text")
+  const factory CodexRolloutContentDto.summaryText({
+    required String text,
+  }) = CodexRolloutSummaryTextDto;
+
+  @FreezedUnionValue("input_image")
+  const factory CodexRolloutContentDto.inputImage({
+    @JsonKey(name: "image_url") required String imageUrl,
+  }) = CodexRolloutInputImageDto;
+
+  const factory CodexRolloutContentDto.unknown() = CodexRolloutUnknownContentDto;
 
   factory CodexRolloutContentDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutContentDtoFromJson(json);
 }
 
 /// Decodes typed rollout content without dropping an otherwise valid record
 /// when one nested item has drifted.
-class CodexRolloutContentListConverter implements JsonConverter<List<CodexRolloutContentDto>?, Object?> {
+class CodexRolloutContentListConverter implements JsonConverter<List<CodexRolloutContentDto>, Object?> {
   const CodexRolloutContentListConverter();
 
   @override
-  List<CodexRolloutContentDto>? fromJson(Object? json) {
-    if (json == null) return null;
+  List<CodexRolloutContentDto> fromJson(Object? json) {
+    if (json == null) return const [];
     if (json is! List) {
       Log.w("[codex] skipping malformed rollout content list");
       return const [];
@@ -138,20 +200,9 @@ class CodexRolloutContentListConverter implements JsonConverter<List<CodexRollou
   }
 
   @override
-  Object? toJson(List<CodexRolloutContentDto>? object) {
-    if (object == null) return null;
+  Object toJson(List<CodexRolloutContentDto> object) {
     return [
-      for (final content in object)
-        {
-          "type": switch (content.type) {
-            CodexRolloutContentType.inputText => "input_text",
-            CodexRolloutContentType.outputText => "output_text",
-            CodexRolloutContentType.summaryText => "summary_text",
-            CodexRolloutContentType.unknown => "unknown",
-            null => null,
-          },
-          "text": content.text,
-        },
+      for (final content in object) content.toJson(),
     ];
   }
 }
@@ -165,46 +216,16 @@ class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
   const CodexRolloutOutputConverter();
 
   @override
-  List<CodexRolloutContentDto>? fromJson(Object? json) {
+  List<CodexRolloutContentDto> fromJson(Object? json) {
     if (json is String) {
       return [
-        CodexRolloutContentDto(
-          type: CodexRolloutContentType.outputText,
+        CodexRolloutContentDto.outputText(
           text: json,
         ),
       ];
     }
     return super.fromJson(json);
   }
-}
-
-/// Normalizes overloaded payload fields before generated DTO decoding.
-///
-/// Reasoning response items use a typed content list, while `turn_context`
-/// records legitimately use a scalar string. The latter is context metadata,
-/// not a renderable reasoning part, so only that line type drops the field.
-///
-/// COMPATIBILITY 2026-07-23 (Codex 0.145.x): function calls persist arguments
-/// as JSON-encoded strings, while `tool_search_call` persists the decoded JSON
-/// value directly. Keep both forms until Codex converges the rollout schema or
-/// this DTO models each response-item variant separately.
-Map<String, dynamic> _normalizeRolloutLineJson({
-  required Map<String, dynamic> json,
-}) {
-  final payload = json["payload"];
-  if (payload is! Map) return json;
-  final normalizeSummary = json["type"] == "turn_context" && payload["summary"] is String;
-  final arguments = payload["arguments"];
-  final normalizeArguments = arguments != null && arguments is! String;
-  if (!normalizeSummary && !normalizeArguments) return json;
-  return {
-    ...json,
-    "payload": {
-      ...payload,
-      if (normalizeSummary) "summary": null,
-      if (normalizeArguments) "arguments": jsonEncode(arguments),
-    },
-  };
 }
 
 @Freezed(fromJson: true, toJson: false)

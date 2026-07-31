@@ -403,12 +403,6 @@ abstract class AppLocalizations {
   /// **'Harnesses'**
   String get settingsHarnessesTitle;
 
-  /// No description provided for @settingsHarnessManagementTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Manage Harnesses'**
-  String get settingsHarnessManagementTitle;
-
   /// No description provided for @harnessManagementDescription.
   ///
   /// In en, this message translates to:
@@ -493,10 +487,28 @@ abstract class AppLocalizations {
   /// **'Minutes'**
   String get harnessManagementTimeoutMinutesLabel;
 
+  /// No description provided for @harnessManagementTimeoutUseDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Use bridge default'**
+  String get harnessManagementTimeoutUseDefault;
+
+  /// No description provided for @harnessManagementTimeoutNoTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'No timeout'**
+  String get harnessManagementTimeoutNoTimeout;
+
+  /// No description provided for @harnessManagementTimeoutCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get harnessManagementTimeoutCustom;
+
   /// No description provided for @harnessManagementTimeoutHelp.
   ///
   /// In en, this message translates to:
-  /// **'Use zero or a negative value to keep the harness running.'**
+  /// **'Custom timeouts must be a whole number greater than zero.'**
   String get harnessManagementTimeoutHelp;
 
   /// No description provided for @harnessManagementCancel.
@@ -550,7 +562,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessManagementInvalidTimeout.
   ///
   /// In en, this message translates to:
-  /// **'Enter a whole number of minutes.'**
+  /// **'Enter a whole number greater than zero.'**
   String get harnessManagementInvalidTimeout;
 
   /// No description provided for @harnessManagementNotFound.
@@ -576,12 +588,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check your connection and try again.'**
   String get harnessManagementRequestFailed;
-
-  /// No description provided for @harnessesDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'View the coding harnesses registered by your connected bridge.'**
-  String get harnessesDescription;
 
   /// No description provided for @harnessesRegisteredSection.
   ///
@@ -678,12 +684,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Work'**
   String get harnessesWorkStatus;
-
-  /// No description provided for @harnessesEffectiveIdleTimeout.
-  ///
-  /// In en, this message translates to:
-  /// **'Idle timeout'**
-  String get harnessesEffectiveIdleTimeout;
 
   /// No description provided for @harnessesCustomIdleTimeout.
   ///
@@ -1279,12 +1279,6 @@ abstract class AppLocalizations {
   /// **'Tool'**
   String get sessionDetailToolUnknown;
 
-  /// Fallback label shown for a file attachment when the filename cannot be determined.
-  ///
-  /// In en, this message translates to:
-  /// **'Unknown file'**
-  String get sessionDetailFileUnknown;
-
   /// No description provided for @sessionDetailImageOpen.
   ///
   /// In en, this message translates to:
@@ -1324,7 +1318,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailImageSaved.
   ///
   /// In en, this message translates to:
-  /// **'Image saved to Photos'**
+  /// **'Image saved'**
   String get sessionDetailImageSaved;
 
   /// No description provided for @sessionDetailImageSaveFailed.
@@ -1351,11 +1345,11 @@ abstract class AppLocalizations {
   /// **'Couldn’t copy image'**
   String get sessionDetailImageCopyFailed;
 
-  /// No description provided for @sessionDetailImagePhotosPermissionDenied.
+  /// No description provided for @sessionDetailImageSaveAccessDenied.
   ///
   /// In en, this message translates to:
-  /// **'Allow Photos access to save this image'**
-  String get sessionDetailImagePhotosPermissionDenied;
+  /// **'Permission denied while saving this image'**
+  String get sessionDetailImageSaveAccessDenied;
 
   /// No description provided for @sessionDetailToolPending.
   ///
@@ -2310,6 +2304,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No cached options are available. You can create with defaults or refresh now.'**
   String get newSessionOptionsUnavailable;
+
+  /// No description provided for @newSessionOptionsLoadFailedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load options. You can create with defaults or try again.'**
+  String get newSessionOptionsLoadFailedUnavailable;
 
   /// No description provided for @newSessionOptionsLegacyBridge.
   ///

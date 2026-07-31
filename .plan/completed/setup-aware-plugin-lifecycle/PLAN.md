@@ -3,12 +3,13 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Status:** Stages 10-12 are merged; Stage 13 remains
-- **Implementation base:** `origin/main` at Stage 12 merge `6cedf5bd`
+- **Status:** complete; Stages 10-13 merged and final Stage 13 simulator E2E passed
+- **Completion base:** `origin/main` at current-main Harnesses consolidation
+  `0da8ec7c`; final Stage 13 implementation merged as `a30b671b`
 - **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
 - **Delivery:** Completed Stage 12 is recorded in
-  `.plan/completed/setup-aware-plugin-management`; Stage 13 is the remaining
-  client-settings stage
+  `.plan/completed/setup-aware-plugin-management`; completed Stage 13 is
+  recorded in `.plan/completed/setup-aware-harness-settings`
 
 This plan replaces the first unmerged implementation. Nothing introduced only
 by that implementation needs compatibility handling. Released contracts still
@@ -679,8 +680,8 @@ the listed source files and committed with their stage.
 ### Stage 13 / former PR #511 files
 
 The concrete Stage 13 replacement delivery is owned by
-`.plan/active/setup-aware-harness-settings`. That child plan contains the
-current seven-PR sequence, exact branches/titles, file boundaries, size
+`.plan/completed/setup-aware-harness-settings`. That child plan contains the
+completed eight-PR sequence, exact branches/titles, file boundaries, size
 estimates, compatibility handling, and verification gates. The original frozen
 PR #511 inventory remains source material only; reconstruct behavior against
 current main rather than porting its generated output, unordered revision
@@ -749,8 +750,8 @@ closed as superseded and remains source material only.
 
 ### Stage 13 / former PR #511 — redesigned mobile Harnesses settings
 
-The concrete replacement is the seven-PR child series in
-`.plan/active/setup-aware-harness-settings`:
+The concrete replacement is the eight-PR child series in
+`.plan/completed/setup-aware-harness-settings`:
 
 1. per-bridge last-submitted harness preference;
 2. management transport and typed repository results;
@@ -760,7 +761,9 @@ The concrete replacement is the seven-PR child series in
 5. Notifications-consistent read-only Harnesses page directly below the
    Notifications settings entry;
 6. mutation cubit actions over service-owned safe/force policy;
-7. dedicated Harness management controls page.
+7. backend-neutral management capability declaration and bridge enforcement;
+8. capability-gated Harness management controls, later folded into the current
+   single-screen destination by PR #647.
 
 The child plan records exact branches, PR titles, production files, estimates,
 wire compatibility, race handling, focused tests, and real-simulator E2E using
@@ -780,6 +783,13 @@ remain reference material and are not rewritten.
 - Client stage runs focused module-core and Flutter settings/new-session tests,
   then mobile and desktop fatal analysis.
 - Do not rerun unchanged passing commands. CI supplies the full repository matrix.
+
+## Completion
+
+Stages 10-13 are complete. The Stage 13 child merged all eight replacement PRs,
+frozen PR #511 closed as superseded, and final current-main simulator E2E passed
+on 2026-07-31. The durable action-by-action record and cleanup state are in
+`.plan/completed/setup-aware-harness-settings/E2E.md`.
 
 ## Deferred Installation
 

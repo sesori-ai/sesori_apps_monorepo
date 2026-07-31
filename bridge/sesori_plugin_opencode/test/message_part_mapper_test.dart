@@ -192,6 +192,84 @@ void main() {
     );
   });
 
+  test("derives a single image tool attachment filename from its path title", () {
+    final part = mapper.mapPart(
+      ToolPart(
+        id: "part-tool",
+        sessionID: "session-1",
+        messageID: "message-1",
+        callID: "call-1",
+        tool: "read",
+        state: ToolStateCompleted(
+          input: const {},
+          output: "Image read successfully",
+          title: r"client\assets\images\why-needed.png",
+          metadata: const {},
+          time: const ToolStateCompletedTime(start: 0, end: 1, compacted: null),
+          attachments: [
+            _filePart(
+              url: "data:image/png;base64,aGVsbG8=",
+              mime: "image/png",
+              filename: null,
+              source: null,
+            ),
+          ],
+        ),
+        metadata: null,
+      ),
+    );
+
+    expect(
+      part.state?.attachments.single,
+      equals(
+        const PluginMessageAttachment.inlineImage(
+          mime: "image/png",
+          base64: "aGVsbG8=",
+          filename: "why-needed.png",
+        ),
+      ),
+    );
+  });
+
+  test("does not treat a non-filename tool title as attachment metadata", () {
+    final part = mapper.mapPart(
+      ToolPart(
+        id: "part-tool",
+        sessionID: "session-1",
+        messageID: "message-1",
+        callID: "call-1",
+        tool: "webfetch",
+        state: ToolStateCompleted(
+          input: const {},
+          output: "Image fetched successfully",
+          title: "https://files.example.com/image.png (image/png)",
+          metadata: const {},
+          time: const ToolStateCompletedTime(start: 0, end: 1, compacted: null),
+          attachments: [
+            _filePart(
+              url: "data:image/png;base64,aGVsbG8=",
+              mime: "image/png",
+              filename: null,
+              source: null,
+            ),
+          ],
+        ),
+        metadata: null,
+      ),
+    );
+
+    expect(
+      part.state?.attachments.single,
+      equals(
+        const PluginMessageAttachment.inlineImage(
+          mime: "image/png",
+          base64: "aGVsbG8=",
+          filename: null,
+        ),
+      ),
+    );
+  });
+
   test("bounds total inline bytes in completed tool attachments", () {
     final threeMegabyteImage = base64Encode(Uint8List(3 * 1024 * 1024));
     final part = mapper.mapPart(

@@ -27,6 +27,8 @@ sealed class NewSessionOptionsLoadState with _$NewSessionOptionsLoadState {
 
   const factory NewSessionOptionsLoadState.unavailable() = NewSessionOptionsUnavailableState;
 
+  const factory NewSessionOptionsLoadState.loadFailureUnavailable() = NewSessionOptionsLoadFailureUnavailableState;
+
   const factory NewSessionOptionsLoadState.failure({
     required RemoteFailureReason reason,
     required NewSessionOptionsSource source,
@@ -49,6 +51,7 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
     NewSessionOptionsLoadingState() ||
     NewSessionOptionsUnsupportedState() ||
     NewSessionOptionsUnavailableState() ||
+    NewSessionOptionsLoadFailureUnavailableState() ||
     NewSessionOptionsFailureState() ||
     NewSessionOptionsRefreshFailureUnavailableState() => null,
   };
@@ -63,6 +66,7 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
     NewSessionOptionsFailureRetainedState(:final source) => source,
     NewSessionOptionsUnsupportedState() => NewSessionOptionsSource.legacy,
     NewSessionOptionsUnavailableState() ||
+    NewSessionOptionsLoadFailureUnavailableState() ||
     NewSessionOptionsRefreshFailureUnavailableState() => NewSessionOptionsSource.aggregate,
   };
 }

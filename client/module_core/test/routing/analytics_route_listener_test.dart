@@ -104,7 +104,6 @@ void main() {
       AppRouteDef.settings,
       AppRouteDef.settingsNotifications,
       AppRouteDef.settingsHarnesses,
-      AppRouteDef.settingsHarnessManagement,
       AppRouteDef.settingsProfile,
       AppRouteDef.sessions,
       AppRouteDef.newSession,

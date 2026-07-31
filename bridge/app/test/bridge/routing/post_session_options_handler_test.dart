@@ -43,21 +43,34 @@ void main() {
       });
     }
 
-    test("missing and exact false refresh load cache only", () async {
-      for (final path in ["/session/options", "/session/options?refresh=false"]) {
-        service.calls.clear();
+    test("missing refresh loads dynamically", () async {
+      final response = await _send(handler: handler, body: _requestBody);
 
-        final response = await _send(handler: handler, path: path, body: _requestBody);
+      expect(response.status, 200);
+      expect(service.calls, [
+        const (
+          operation: _SessionOptionsOperation.loadDynamic,
+          pluginId: "plugin",
+          projectId: "project",
+        ),
+      ]);
+    });
 
-        expect(response.status, 200);
-        expect(service.calls, [
-          const (
-            operation: _SessionOptionsOperation.loadCacheOnly,
-            pluginId: "plugin",
-            projectId: "project",
-          ),
-        ]);
-      }
+    test("exact false refresh loads cache only", () async {
+      final response = await _send(
+        handler: handler,
+        path: "/session/options?refresh=false",
+        body: _requestBody,
+      );
+
+      expect(response.status, 200);
+      expect(service.calls, [
+        const (
+          operation: _SessionOptionsOperation.loadCacheOnly,
+          pluginId: "plugin",
+          projectId: "project",
+        ),
+      ]);
     });
 
     test("exact true refreshes explicitly", () async {
@@ -194,7 +207,7 @@ void _expectError(
   );
 }
 
-enum _SessionOptionsOperation { loadCacheOnly, refreshExplicit }
+enum _SessionOptionsOperation { loadDynamic, loadCacheOnly, refreshExplicit }
 
 typedef _SessionOptionsCall = ({
   _SessionOptionsOperation operation,
@@ -206,6 +219,18 @@ class _FakeSessionOptionsService implements SessionOptionsService {
   SessionOptionsOutcome outcome = const SessionOptionsAvailable(response: _optionsResponse);
   Object? error;
   final List<_SessionOptionsCall> calls = [];
+
+  @override
+  Future<SessionOptionsOutcome> loadDynamic({required String pluginId, required String projectId}) {
+    calls.add(
+      (
+        operation: _SessionOptionsOperation.loadDynamic,
+        pluginId: pluginId,
+        projectId: projectId,
+      ),
+    );
+    return _complete();
+  }
 
   @override
   Future<SessionOptionsOutcome> loadCacheOnly({required String pluginId, required String projectId}) {

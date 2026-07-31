@@ -29,7 +29,7 @@ sealed class NewSessionOptionsLoadResult {
   const NewSessionOptionsLoadResult();
 }
 
-enum NewSessionOptionsLoadMode { cached, refresh }
+enum NewSessionOptionsLoadMode { dynamicLoad, forcedRefresh }
 
 final class NewSessionOptionsLoaded extends NewSessionOptionsLoadResult {
   const NewSessionOptionsLoaded({required this.options, required this.source});
@@ -44,6 +44,10 @@ final class NewSessionOptionsUnsupported extends NewSessionOptionsLoadResult {
 
 final class NewSessionOptionsUnavailable extends NewSessionOptionsLoadResult {
   const NewSessionOptionsUnavailable();
+}
+
+final class NewSessionOptionsLoadFailureUnavailable extends NewSessionOptionsLoadResult {
+  const NewSessionOptionsLoadFailureUnavailable();
 }
 
 final class NewSessionOptionsFailureRetained extends NewSessionOptionsLoadResult {
@@ -84,7 +88,7 @@ class NewSessionOptionsService {
     required NewSessionOptionsData? previousOptions,
   }) async {
     if (source == NewSessionOptionsSource.legacy) {
-      if (mode == NewSessionOptionsLoadMode.cached) {
+      if (mode == NewSessionOptionsLoadMode.dynamicLoad) {
         return previousOptions == null
             ? const NewSessionOptionsUnsupported()
             : NewSessionOptionsLoaded(options: previousOptions, source: NewSessionOptionsSource.legacy);
@@ -100,7 +104,7 @@ class NewSessionOptionsService {
     final result = await _sessionRepository.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      refresh: mode == NewSessionOptionsLoadMode.refresh,
+      forceRefresh: mode == NewSessionOptionsLoadMode.forcedRefresh,
     );
     return switch (result) {
       SessionOptionsRepositoryAvailable(:final catalog) => NewSessionOptionsLoaded(
@@ -123,7 +127,10 @@ class NewSessionOptionsService {
                 options: previousOptions,
                 source: NewSessionOptionsSource.aggregate,
               ),
-      SessionOptionsRepositoryRefreshFailedUnavailable() => const NewSessionOptionsRefreshFailureUnavailable(),
+      SessionOptionsRepositoryRefreshFailedUnavailable() => switch (mode) {
+        NewSessionOptionsLoadMode.dynamicLoad => const NewSessionOptionsLoadFailureUnavailable(),
+        NewSessionOptionsLoadMode.forcedRefresh => const NewSessionOptionsRefreshFailureUnavailable(),
+      },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
         source: NewSessionOptionsSource.aggregate,

@@ -17,18 +17,9 @@ void main() {
       );
     });
 
-    test("settings Harness management route round-trips without extra state", () {
-      const route = AppRoute.settingsHarnessManagement();
-
-      expect(route.buildPath(), "/settings/harnesses/manage");
-      expect(
-        AppRoute.fromDef(
-          def: AppRouteDef.settingsHarnessManagement,
-          pathParams: const {},
-          queryParams: const {},
-        ),
-        isA<AppRouteSettingsHarnessManagement>(),
-      );
+    test("settings Harness management route is removed", () {
+      expect(AppRouteDef.values.map((def) => def.name), isNot(contains("settingsHarnessManagement")));
+      expect(AppRouteDef.values.map((def) => def.path), isNot(contains("/settings/harnesses/manage")));
     });
 
     test("sessions round-trips the known worktree capability", () {

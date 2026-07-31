@@ -107,8 +107,8 @@ export "src/foundation/models/product_analytics/product_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_preference.dart";
 export "src/foundation/platform/analytics_client.dart";
 export "src/foundation/platform/image_clipboard.dart";
+export "src/foundation/platform/image_saver.dart";
 export "src/foundation/platform/image_sharer.dart";
-export "src/foundation/platform/photo_library.dart";
 // Logging
 export "src/logging/logging.dart";
 // Platform interfaces
