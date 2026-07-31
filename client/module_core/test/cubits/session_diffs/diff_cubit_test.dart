@@ -2,9 +2,14 @@ import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/session_diffs/diff_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_diffs/diff_state.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -16,12 +21,14 @@ void main() {
   group("DiffCubit", () {
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
+    late MockProductAnalyticsService mockProductAnalyticsService;
     late StreamController<SesoriSessionEvent> sessionEvents;
     const sessionId = "session-1";
 
     setUp(() {
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
+      mockProductAnalyticsService = stubbedProductAnalyticsService();
       sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
       when(() => mockConnectionService.sessionEvents(sessionId)).thenAnswer((_) => sessionEvents.stream);
     });
@@ -33,6 +40,7 @@ void main() {
     DiffCubit buildCubit() => DiffCubit(
       sessionRepository: mockSessionRepository,
       connectionService: mockConnectionService,
+      productAnalyticsService: mockProductAnalyticsService,
       sessionId: sessionId,
     );
 
@@ -44,6 +52,110 @@ void main() {
       deletions: 0,
       status: FileDiffStatus.modified,
     );
+
+    test("reports each successful empty and non-empty diff classification once", () async {
+      var diffs = const <FileDiff>[];
+      when(
+        () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+      ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: diffs)));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      diffs = [testFileDiff()];
+      await cubit.refresh();
+      await cubit.refresh();
+      await Future<void>.delayed(Duration.zero);
+
+      final events = verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: captureAny(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).captured.cast<ProductAnalyticsEvent>();
+      expect(events, [
+        const ProductAnalyticsEvent.sessionDiffViewed(changeState: AnalyticsChangeState.empty),
+        const ProductAnalyticsEvent.sessionDiffViewed(changeState: AnalyticsChangeState.nonEmpty),
+      ]);
+    });
+
+    test("a deferred non-empty diff consumes the cubit lifetime guard", () async {
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.deferredUntilPreference);
+      when(
+        () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+      ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: [testFileDiff()])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.refresh();
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionDiffViewed(
+            changeState: AnalyticsChangeState.nonEmpty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+    });
+
+    test("an empty diff retries when its pre-activation delivery settles after the active edge", () async {
+      final analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
+      addTearDown(analyticsStates.close);
+      when(() => mockProductAnalyticsService.state).thenAnswer((_) => analyticsStates.value);
+      when(() => mockProductAnalyticsService.stateStream).thenAnswer((_) => analyticsStates.stream);
+      final firstDelivery = Completer<AnalyticsDeliveryResult>();
+      var deliveryCount = 0;
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) {
+        deliveryCount++;
+        return deliveryCount == 1 ? firstDelivery.future : Future.value(AnalyticsDeliveryResult.acceptedBySdk);
+      });
+      when(
+        () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+      ).thenAnswer((_) async => ApiResponse.success(const SessionDiffsResponse(diffs: <FileDiff>[])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await untilCalled(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+
+      analyticsStates.add(
+        const ProductAnalyticsState(
+          preference: ProductAnalyticsPreferenceKnown(
+            preference: ProductAnalyticsPreference.enabled,
+          ),
+          synchronization: ProductAnalyticsSynchronized(),
+          availability: ProductAnalyticsActive(),
+        ),
+      );
+      firstDelivery.complete(AnalyticsDeliveryResult.failed);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionDiffViewed(
+            changeState: AnalyticsChangeState.empty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(2);
+    });
 
     // -------------------------------------------------------------------------
     // 1. init → loading → loaded

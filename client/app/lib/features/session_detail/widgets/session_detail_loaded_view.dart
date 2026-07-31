@@ -68,6 +68,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = widget.state;
+    final editableSessionId = widget.readOnly ? null : widget.sessionId;
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
 
     // The scaffold lets this view fill the full height behind the transparent
@@ -153,7 +154,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
         // are measured as one cluster so the chat insets its newest message
         // clear of the whole stack — and so the tasks bar/queued stay tappable
         // above the composer instead of hidden behind it.
-        if (!widget.readOnly)
+        if (editableSessionId != null)
           Positioned(
             bottom: 0,
             left: 0,
@@ -177,7 +178,8 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: PromptInput(
-                      draftKey: widget.sessionId,
+                      draftIdentity: editableSessionId,
+                      initialDraft: context.read<SessionDetailCubit>().composerDraft,
                       // Queued messages count: the user has already "sent"
                       // something, so the composer should rest as a follow-up
                       // field even before the first message lands in the list.
@@ -186,10 +188,19 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                         sessionStatus: state.sessionStatus,
                         childStatuses: state.childStatuses,
                       ),
-                      onSend: (text, command) => context.read<SessionDetailCubit>().sendMessage(
-                        text: text,
-                        command: command,
+                      onSend: ({required text, required command, required inputMode}) =>
+                          context.read<SessionDetailCubit>().sendMessage(
+                            text: text,
+                            command: command,
+                            inputMode: inputMode,
+                          ),
+                      onVoiceTranscriptionCompleted: context
+                          .read<SessionDetailCubit>()
+                          .reportVoiceTranscriptionCompleted,
+                      onDraftChanged: (draft) => context.read<SessionDetailCubit>().saveComposerDraft(
+                        draft: draft,
                       ),
+                      onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
                       onAbort: () => context.read<SessionDetailCubit>().abort(),
                       header: null,
                       composerHeader: AgentModelButtons(

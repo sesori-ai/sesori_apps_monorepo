@@ -8,8 +8,15 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/errors/remote_failure_reason.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
+import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
+import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
+import "package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -34,9 +41,46 @@ const connectedStatus = ConnectionStatus.connected(
   health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
 );
 
+PluginDiscoverySnapshot _pluginSnapshot({
+  required String? bridgeId,
+  required List<PluginMetadata> plugins,
+}) => PluginDiscoverySnapshot(
+  bridgeId: bridgeId,
+  supportsSessionOptions: false,
+  plugins: plugins,
+);
+
+final class _AggregateTestOptionsService extends NewSessionOptionsService {
+  _AggregateTestOptionsService({required MockSessionRepository sessionRepository})
+    : super(
+        sessionRepository: sessionRepository,
+        defaultModelSelector: const DefaultModelSelector(),
+      );
+
+  @override
+  Future<NewSessionOptionsLoadResult> load({
+    required String projectId,
+    required String pluginId,
+    required NewSessionOptionsSource source,
+    required NewSessionOptionsLoadMode mode,
+    required NewSessionSelectionIntent? restoredSelection,
+    required NewSessionOptionsData? previousOptions,
+  }) {
+    return super.load(
+      projectId: projectId,
+      pluginId: pluginId,
+      source: NewSessionOptionsSource.aggregate,
+      mode: mode,
+      restoredSelection: restoredSelection,
+      previousOptions: previousOptions,
+    );
+  }
+}
+
 void main() {
   group("NewSessionCubit plugin selection", () {
     late MockSessionService sessionService;
+    late MockSessionRepository sessionRepository;
     late MockPluginRepository pluginRepository;
     late MockPluginPreferenceRepository pluginPreferenceRepository;
     late MockProjectRepository projectRepository;
@@ -44,8 +88,11 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late NewSessionSelectionTracker selectionTracker;
 
+    setUpAll(registerAllFallbackValues);
+
     setUp(() {
       sessionService = MockSessionService();
+      sessionRepository = MockSessionRepository();
       pluginRepository = MockPluginRepository();
       pluginPreferenceRepository = MockPluginPreferenceRepository();
       projectRepository = MockProjectRepository();
@@ -77,22 +124,35 @@ void main() {
         ),
       );
       _stubEmptyResources(sessionService);
+      delegateSessionOptionsRepositoryToService(
+        repository: sessionRepository,
+        service: sessionService,
+      );
     });
 
     tearDown(() => connectionStatus.close());
 
-    NewSessionCubit buildCubit() => NewSessionCubit(
+    NewSessionCubit buildCubit({NewSessionOptionsService? optionsService}) => NewSessionCubit(
       connectionService: connectionService,
       sessionService: sessionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: pluginRepository,
         pluginPreferenceRepository: pluginPreferenceRepository,
       ),
+      newSessionOptionsService: optionsService ?? _AggregateTestOptionsService(sessionRepository: sessionRepository),
       projectRepository: projectRepository,
       selectionTracker: selectionTracker,
+      composerDraftRepository: inMemoryComposerDraftRepository(),
+      productAnalyticsService: stubbedProductAnalyticsService(),
       projectId: "project-1",
       initialSupportsDedicatedWorktrees: true,
     );
+
+    void establishSelectionScope({required String bridgeId}) {
+      selectionTracker.applyBackendScopeTransition(
+        transition: selectionTracker.backendScope.transitionToDiscovered(bridgeId: bridgeId),
+      );
+    }
 
     test("discovery error recovers after a reconnect", () async {
       var discoveryCalls = 0;
@@ -101,7 +161,7 @@ void main() {
         if (discoveryCalls == 1) {
           return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null));
         }
-        return ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA]));
+        return ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA]));
       });
 
       final cubit = buildCubit();
@@ -127,7 +187,7 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         if (discoveryCalls == 1) {
-          return ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA]));
+          return ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB]));
         }
         return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
       });
@@ -171,6 +231,10 @@ void main() {
       expect(afterRefresh.isLoading, isFalse);
       expect(afterRefresh.isPluginDiscoveryInFlight, isFalse);
 
+      cubit.selectPlugin(pluginId: "plugin-b");
+      expect(cubit.state, isA<NewSessionError>());
+      expect(cubit.state.agentModelData?.plugin, pluginA);
+
       cubit.clearStagedCommand();
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
     });
@@ -199,7 +263,7 @@ void main() {
       });
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])));
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
@@ -242,12 +306,12 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         return switch (discoveryCalls) {
-          1 => ApiResponse.success(const PluginListResponse(bridgeId: "br_test", plugins: [pluginA, pluginB])),
+          1 => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, pluginB])),
           2 => ApiResponse.success(
-            const PluginListResponse(bridgeId: "br_test", plugins: [refreshedDefault, refreshedB]),
+            _pluginSnapshot(bridgeId: "br_test", plugins: [refreshedDefault, refreshedB]),
           ),
           _ => ApiResponse.success(
-            const PluginListResponse(bridgeId: "br_test", plugins: [refreshedDefault, unavailableB]),
+            _pluginSnapshot(bridgeId: "br_test", plugins: [refreshedDefault, unavailableB]),
           ),
         };
       });
@@ -290,12 +354,14 @@ void main() {
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
       );
-      final reconnectDiscovery = Completer<ApiResponse<PluginListResponse>>();
+      final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) {
         discoveryCalls++;
         if (discoveryCalls == 1) {
-          return Future.value(ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])));
+          return Future.value(
+            ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
+          );
         }
         return reconnectDiscovery.future;
       });
@@ -315,7 +381,7 @@ void main() {
       expect(cubit.state.agentModelData?.plugin, pluginA);
 
       reconnectDiscovery.complete(
-        ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, unavailableB])),
+        ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, unavailableB])),
       );
       await _waitUntil(() {
         final data = cubit.state.agentModelData;
@@ -343,7 +409,11 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         return ApiResponse.success(
-          PluginListResponse(bridgeId: null, plugins: [discoveryCalls == 1 ? pluginA : refreshedA]),
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge-a",
+            supportsSessionOptions: true,
+            plugins: [discoveryCalls == 1 ? pluginA : refreshedA],
+          ),
         );
       });
       when(
@@ -381,7 +451,15 @@ void main() {
       var commandCalls = 0;
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])));
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge-a",
+            supportsSessionOptions: true,
+            plugins: const [pluginA],
+          ),
+        ),
+      );
       when(
         () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) {
@@ -410,20 +488,198 @@ void main() {
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
     });
 
-    test("failed command refresh preserves the staged command and prior catalog", () async {
+    test("typed retained refresh failure preserves the staged command and prior catalog", () async {
       final command = testCommandInfo();
-      final error = ApiError.generic();
-      var commandCalls = 0;
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])));
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      var loadCalls = 0;
       when(
-        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          refresh: any(named: "refresh"),
+        ),
       ).thenAnswer((_) async {
-        commandCalls++;
-        return commandCalls == 1
-            ? ApiResponse.success(CommandListResponse(items: [command]))
-            : ApiResponse.error(error);
+        loadCalls++;
+        return loadCalls == 1
+            ? SessionOptionsRepositoryAvailable(
+                catalog: SessionOptionsCatalog(
+                  agents: const [],
+                  providers: const [],
+                  commands: [command],
+                ),
+              )
+            : const SessionOptionsRepositoryRefreshFailedRetained();
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.stageCommand(command);
+
+      await cubit.refreshOptions();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
+      expect(cubit.state.agentModelData?.commands, [command]);
+      expect(cubit.state.agentModelData?.stagedCommand, command);
+    });
+
+    test("unexpected refresh exception preserves the prior catalog", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      var loadCalls = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          refresh: any(named: "refresh"),
+        ),
+      ).thenAnswer((_) async {
+        loadCalls++;
+        if (loadCalls > 1) throw StateError("unexpected refresh failure");
+        return SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const [],
+            providers: _providerResponse().items,
+            commands: const [],
+          ),
+        );
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      final previousModel = cubit.state.agentModelData?.agentModel;
+
+      await cubit.refreshOptions();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
+      expect(cubit.state.agentModelData?.agentModel, previousModel);
+      expect(cubit.state.agentModelData?.providers, isNotEmpty);
+    });
+
+    test("caught legacy refresh failure preserves the legacy source", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      var legacyLoads = 0;
+      when(
+        () => sessionRepository.loadLegacySessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+        ),
+      ).thenAnswer((_) async {
+        legacyLoads++;
+        if (legacyLoads == 2) throw StateError("unexpected legacy refresh failure");
+        return LegacySessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const [],
+            providers: _providerResponse().items,
+            commands: const [],
+          ),
+        );
+      });
+      final cubit = buildCubit(
+        optionsService: NewSessionOptionsService(
+          sessionRepository: sessionRepository,
+          defaultModelSelector: const DefaultModelSelector(),
+        ),
+      );
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      await cubit.refreshOptions();
+      await cubit.refreshOptions();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
+      expect(cubit.state.agentModelData?.optionsState.source, NewSessionOptionsSource.legacy);
+
+      await cubit.refreshOptions();
+      expect(legacyLoads, 3);
+      verifyNever(
+        () => sessionRepository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          refresh: any(named: "refresh"),
+        ),
+      );
+    });
+
+    test("typed legacy refresh failure preserves prior options", () async {
+      final command = testCommandInfo();
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      var legacyLoads = 0;
+      when(
+        () => sessionRepository.loadLegacySessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+        ),
+      ).thenAnswer((_) async {
+        legacyLoads++;
+        return legacyLoads == 1
+            ? LegacySessionOptionsRepositoryAvailable(
+                catalog: SessionOptionsCatalog(
+                  agents: const [],
+                  providers: const [],
+                  commands: [command],
+                ),
+              )
+            : LegacySessionOptionsRepositoryFailure(error: ApiError.generic());
+      });
+      final cubit = buildCubit(
+        optionsService: NewSessionOptionsService(
+          sessionRepository: sessionRepository,
+          defaultModelSelector: const DefaultModelSelector(),
+        ),
+      );
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      await cubit.refreshOptions();
+      cubit.stageCommand(command);
+      await cubit.refreshOptions();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
+      expect(cubit.state.agentModelData?.optionsState.source, NewSessionOptionsSource.legacy);
+      expect(cubit.state.agentModelData?.commands, [command]);
+      expect(cubit.state.agentModelData?.stagedCommand, command);
+    });
+
+    test("same-bridge reconnect retains options when aggregate reload fails", () async {
+      final command = testCommandInfo();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge-a",
+            supportsSessionOptions: true,
+            plugins: const [pluginA],
+          ),
+        );
+      });
+      var loadCalls = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          refresh: any(named: "refresh"),
+        ),
+      ).thenAnswer((_) async {
+        loadCalls++;
+        return loadCalls == 1
+            ? SessionOptionsRepositoryAvailable(
+                catalog: SessionOptionsCatalog(
+                  agents: const [],
+                  providers: const [],
+                  commands: [command],
+                ),
+              )
+            : SessionOptionsRepositoryFailure(error: ApiError.generic());
       });
 
       final cubit = buildCubit();
@@ -434,44 +690,230 @@ void main() {
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
         ..add(connectedStatus);
-      await _waitUntil(() => commandCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
 
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
       expect(cubit.state.agentModelData?.commands, [command]);
       expect(cubit.state.agentModelData?.stagedCommand, command);
     });
 
-    test("failed provider refresh preserves the same plugin catalog and model variant", () async {
-      var providerCalls = 0;
+    test("same-bridge reconnect reuses previously loaded legacy options", () async {
+      final command = testCommandInfo();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA]));
+      });
+      var legacyLoads = 0;
+      when(
+        () => sessionRepository.loadLegacySessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+        ),
+      ).thenAnswer((_) async {
+        legacyLoads++;
+        return LegacySessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const [],
+            providers: const [],
+            commands: [command],
+          ),
+        );
+      });
+      final cubit = buildCubit(
+        optionsService: NewSessionOptionsService(
+          sessionRepository: sessionRepository,
+          defaultModelSelector: const DefaultModelSelector(),
+        ),
+      );
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      await cubit.refreshOptions();
+      cubit.stageCommand(command);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
+      expect(cubit.state.agentModelData?.optionsState.source, NewSessionOptionsSource.legacy);
+      expect(cubit.state.agentModelData?.commands, [command]);
+      expect(cubit.state.agentModelData?.stagedCommand, command);
+      expect(legacyLoads, 1);
+    });
+
+    test("reconnect with an unidentified bridge drops legacy options", () async {
+      final command = testCommandInfo();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA]));
+      });
+      var legacyLoads = 0;
+      when(
+        () => sessionRepository.loadLegacySessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+        ),
+      ).thenAnswer((_) async {
+        legacyLoads++;
+        return LegacySessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const [],
+            providers: const [],
+            commands: [command],
+          ),
+        );
+      });
+      final cubit = buildCubit(
+        optionsService: NewSessionOptionsService(
+          sessionRepository: sessionRepository,
+          defaultModelSelector: const DefaultModelSelector(),
+        ),
+      );
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      await cubit.refreshOptions();
+      cubit.stageCommand(command);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsUnsupportedState>());
+      expect(cubit.state.agentModelData?.commands, isEmpty);
+      expect(cubit.state.agentModelData?.stagedCommand, isNull);
+      expect(legacyLoads, 1);
+    });
+
+    test("same-bridge capability downgrade drops aggregate options", () async {
+      final command = testCommandInfo();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge-a",
+            supportsSessionOptions: discoveryCalls == 1,
+            plugins: const [pluginA],
+          ),
+        );
+      });
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          refresh: any(named: "refresh"),
+        ),
+      ).thenAnswer(
+        (_) async => SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const [],
+            providers: const [],
+            commands: [command],
+          ),
+        ),
+      );
+
+      final cubit = buildCubit(
+        optionsService: NewSessionOptionsService(
+          sessionRepository: sessionRepository,
+          defaultModelSelector: const DefaultModelSelector(),
+        ),
+      );
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.stageCommand(command);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsUnsupportedState>());
+      expect(cubit.state.agentModelData?.commands, isEmpty);
+      expect(cubit.state.agentModelData?.stagedCommand, isNull);
+    });
+
+    test("project-not-found refresh clears prior options", () async {
+      final command = testCommandInfo();
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])));
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA])));
+      var loadCalls = 0;
       when(
-        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          refresh: any(named: "refresh"),
+        ),
       ).thenAnswer((_) async {
-        providerCalls++;
-        return providerCalls == 1 ? ApiResponse.success(_providerResponse()) : ApiResponse.error(ApiError.generic());
+        loadCalls++;
+        return loadCalls == 1
+            ? SessionOptionsRepositoryAvailable(
+                catalog: SessionOptionsCatalog(
+                  agents: const [],
+                  providers: const [],
+                  commands: [command],
+                ),
+              )
+            : SessionOptionsRepositoryProjectNotFound(error: ApiError.generic());
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.stageCommand(command);
+
+      await cubit.refreshOptions();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureState>());
+      expect(cubit.state.agentModelData?.commands, isEmpty);
+      expect(cubit.state.agentModelData?.stagedCommand, isNull);
+    });
+
+    test("typed unavailable refresh failure clears the prior option catalog", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      var loadCalls = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          refresh: any(named: "refresh"),
+        ),
+      ).thenAnswer((_) async {
+        loadCalls++;
+        return loadCalls == 1
+            ? SessionOptionsRepositoryAvailable(
+                catalog: SessionOptionsCatalog(
+                  agents: const [],
+                  providers: _providerResponse().items,
+                  commands: const [],
+                ),
+              )
+            : const SessionOptionsRepositoryRefreshFailedUnavailable();
       });
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
       cubit.selectVariant(const SessionVariant(id: "high"));
-      final beforeRefresh = cubit.state.agentModelData!;
-
-      connectionStatus
-        ..add(const ConnectionStatus.disconnected())
-        ..add(connectedStatus);
-      await _waitUntil(() => providerCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+      await cubit.refreshOptions();
 
       final afterRefresh = cubit.state.agentModelData!;
-      expect(afterRefresh.providers, beforeRefresh.providers);
-      expect(afterRefresh.agentModel, beforeRefresh.agentModel);
-      expect(afterRefresh.availableVariants, beforeRefresh.availableVariants);
+      expect(afterRefresh.optionsState, isA<NewSessionOptionsRefreshFailureUnavailableState>());
+      expect(afterRefresh.providers, isEmpty);
+      expect(afterRefresh.agentModel, isNull);
+      expect(afterRefresh.availableVariants, isEmpty);
     });
 
     test("failed provider load after a plugin switch does not restore the prior plugin catalog", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
       );
       when(
         () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
@@ -498,7 +940,7 @@ void main() {
       var providerCalls = 0;
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])));
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
       when(
         () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async {
@@ -544,8 +986,8 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         return discoveryCalls == 1
-            ? ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [initialB]))
-            : ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, unavailableB]));
+            ? ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [initialB]))
+            : ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, unavailableB]));
       });
       when(
         () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-b"),
@@ -575,7 +1017,7 @@ void main() {
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
-        return ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA]));
+        return ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA]));
       });
       final cubit = buildCubit();
       await _waitForComposer(cubit);
@@ -594,7 +1036,9 @@ void main() {
     });
 
     test("initial state has no synthetic selection and waits for discovery", () {
-      when(pluginRepository.listPlugins).thenAnswer((_) => Completer<ApiResponse<PluginListResponse>>().future);
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) => Completer<ApiResponse<PluginDiscoverySnapshot>>().future);
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
@@ -622,7 +1066,11 @@ void main() {
       expect(state.reason, RemoteFailureReason.serverRejected);
       expect(state.availablePlugins, isEmpty);
       expect(state.selectedPlugin, isNull);
-      expect(state.isComposerDataLoading, isFalse);
+      expect(
+        state.options,
+        isA<NewSessionOptionsLoadingState>().having((options) => options.source, "source", isNull),
+      );
+      expect(state.isComposerDataLoading, isTrue);
       expect(state.isPluginDiscoveryInFlight, isFalse);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
@@ -631,12 +1079,12 @@ void main() {
     });
 
     test("closed cubit ignores a late discovery completion", () async {
-      final discovery = Completer<ApiResponse<PluginListResponse>>();
+      final discovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
       when(pluginRepository.listPlugins).thenAnswer((_) => discovery.future);
       final cubit = buildCubit();
 
       await cubit.close();
-      discovery.complete(ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])));
+      discovery.complete(ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
       await discovery.future;
       await Future<void>.delayed(Duration.zero);
 
@@ -660,7 +1108,7 @@ void main() {
         actionHint: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [first, second])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [first, second])),
       );
 
       final cubit = buildCubit();
@@ -684,7 +1132,7 @@ void main() {
         actionHint: "Check the bridge console.",
       );
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [degraded])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [degraded])),
       );
       when(
         () => sessionService.createSessionWithMessage(
@@ -703,7 +1151,12 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
 
       verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "degraded")).called(1);
       verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "degraded")).called(1);
@@ -739,7 +1192,7 @@ void main() {
         actionHint: "Restart the bridge.",
       );
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [unavailable, failed])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [unavailable, failed])),
       );
 
       final cubit = buildCubit();
@@ -751,7 +1204,12 @@ void main() {
       expect(state.selectedPlugin, unavailable);
       cubit.selectPlugin(pluginId: "failed");
       cubit.selectPlugin(pluginId: "unknown");
-      await cubit.createSession(text: "blocked", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "blocked",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
 
       expect((cubit.state as NewSessionIdle).selectedPlugin, unavailable);
       _verifyNoComposerCalls(sessionService);
@@ -772,14 +1230,19 @@ void main() {
 
     test("absent default does not load or create until the user selects a plugin", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginB])),
       );
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitUntil(() => cubit.state.agentModelData?.isLoading == false);
 
       expect(cubit.state.agentModelData?.plugin, isNull);
-      await cubit.createSession(text: "blocked", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "blocked",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
       _verifyNoComposerCalls(sessionService);
 
       cubit.selectPlugin(pluginId: "plugin-b");
@@ -789,7 +1252,7 @@ void main() {
 
     test("plugin switch clears backend-local composer state synchronously", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
       );
       final bAgents = Completer<ApiResponse<Agents>>();
       when(
@@ -826,7 +1289,7 @@ void main() {
 
     test("A-B rejects late A resource completion", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
       );
       final a = Completer<ApiResponse<Agents>>();
       final b = Completer<ApiResponse<Agents>>();
@@ -853,7 +1316,7 @@ void main() {
 
     test("A-B-A rejects both late original A and B completions", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
       );
       final firstA = Completer<ApiResponse<Agents>>();
       final secondA = Completer<ApiResponse<Agents>>();
@@ -884,11 +1347,12 @@ void main() {
 
     test("restores selection only from the matching project-plugin key", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA, pluginB])),
       );
+      establishSelectionScope(bridgeId: "bridge-a");
       selectionTracker
-        ..write(projectId: "project-1", pluginId: "plugin-a", agent: "agent-a", agentModel: null)
-        ..write(projectId: "project-1", pluginId: "plugin-b", agent: "agent-b", agentModel: null);
+        ..recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a")
+        ..recordAgent(projectId: "project-1", pluginId: "plugin-b", agentName: "agent-b");
       when(
         () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-a")])));
@@ -908,11 +1372,12 @@ void main() {
 
     test("successful creation clears only its matching plugin snapshot", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA, pluginB])),
       );
+      establishSelectionScope(bridgeId: "bridge-a");
       selectionTracker
-        ..write(projectId: "project-1", pluginId: "plugin-a", agent: "agent-a", agentModel: null)
-        ..write(projectId: "project-1", pluginId: "plugin-b", agent: "agent-b", agentModel: null);
+        ..recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a")
+        ..recordAgent(projectId: "project-1", pluginId: "plugin-b", agentName: "agent-b");
       when(
         () => sessionService.createSessionWithMessage(
           projectId: any(named: "projectId"),
@@ -930,15 +1395,20 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
 
       expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
-      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-b")?.agent, "agent-b");
+      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-b")?.agentName, "agent-b");
     });
 
     test("records the submitted plugin against the discovery bridge only when sending", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: "br_test", plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, pluginB])),
       );
       when(
         () => sessionService.createSessionWithMessage(
@@ -967,7 +1437,12 @@ void main() {
         ),
       );
 
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
 
       verify(
         () => pluginPreferenceRepository.writePluginId(bridgeId: "br_test", pluginId: "plugin-b"),
@@ -980,8 +1455,8 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         return discoveryCalls == 1
-            ? ApiResponse.success(const PluginListResponse(bridgeId: "br_a", plugins: [pluginA]))
-            : ApiResponse.success(const PluginListResponse(bridgeId: "br_b", plugins: [pluginA]));
+            ? ApiResponse.success(_pluginSnapshot(bridgeId: "br_a", plugins: [pluginA]))
+            : ApiResponse.success(_pluginSnapshot(bridgeId: "br_b", plugins: [pluginA]));
       });
       when(
         () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
@@ -1016,12 +1491,85 @@ void main() {
       expect(data.agentModel, isNull);
     });
 
+    test("reconnect to a different bridge does not restore the prior bridge selection", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(
+          _pluginSnapshot(bridgeId: discoveryCalls == 1 ? "br_a" : "br_b", plugins: [pluginA]),
+        );
+      });
+      when(
+        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async => ApiResponse.success(_providerResponse()));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectVariant(const SessionVariant(id: "high"));
+      expect(cubit.state.agentModelData?.agentModel?.variant, "high");
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.agentModel?.variant, isNull);
+    });
+
+    test("reconnect during a failed send invalidates affinity and rediscovers afterward", () async {
+      final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) {
+        discoveryCalls++;
+        return discoveryCalls == 1
+            ? Future.value(ApiResponse.success(_pluginSnapshot(bridgeId: "br_a", plugins: [pluginA])))
+            : rediscovery.future;
+      });
+      final createCompleter = Completer<ApiResponse<Session>>();
+      when(
+        () => sessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) => createCompleter.future);
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      final send = cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
+      await _waitUntil(() => cubit.state is NewSessionSending);
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      createCompleter.complete(ApiResponse.error(ApiError.generic()));
+      await send;
+
+      expect(cubit.canRefreshOptions, isFalse);
+      await _waitUntil(() => discoveryCalls == 2);
+      rediscovery.complete(ApiResponse.success(_pluginSnapshot(bridgeId: "br_b", plugins: [pluginA])));
+      await _waitForComposer(cubit);
+      expect(cubit.canRefreshOptions, isTrue);
+    });
+
     test("failed rediscovery does not record under the stale bridge key", () async {
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         if (discoveryCalls == 1) {
-          return ApiResponse.success(const PluginListResponse(bridgeId: "br_test", plugins: [pluginA]));
+          return ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA]));
         }
         return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
       });
@@ -1051,7 +1599,22 @@ void main() {
         return cubit.state is NewSessionError && !(data?.isLoading ?? true);
       });
 
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      clearInteractions(sessionRepository);
+      await cubit.refreshOptions();
+      verifyNever(
+        () => sessionRepository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          refresh: true,
+        ),
+      );
+
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
 
       verifyNever(
         () => pluginPreferenceRepository.writePluginId(
@@ -1059,11 +1622,25 @@ void main() {
           pluginId: any(named: "pluginId"),
         ),
       );
+      expect(cubit.canCreateSession, isFalse);
+      verifyNever(
+        () => sessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      );
     });
 
     test("skips preference recording when discovery carried no bridge identity", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])),
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])),
       );
       when(
         () => sessionService.createSessionWithMessage(
@@ -1082,7 +1659,12 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
 
       verifyNever(
         () => pluginPreferenceRepository.writePluginId(

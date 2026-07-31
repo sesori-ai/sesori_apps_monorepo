@@ -8,6 +8,15 @@ part "plugin_message.g.dart";
 /// Mobile truncates to this length anyway, so we truncate at the source.
 const maxToolOutputLength = 500;
 
+/// Normalizes untrusted attachment metadata to a display-safe basename.
+String? normalizePluginMessageAttachmentFilename({required String? filename}) {
+  const maxCharacters = 255;
+  final normalized = filename?.trim().replaceAll(r"\", "/");
+  if (normalized == null || normalized.isEmpty) return null;
+  final segments = normalized.split("/").where((segment) => segment.isNotEmpty);
+  return segments.isEmpty ? null : String.fromCharCodes(segments.last.runes.take(maxCharacters));
+}
+
 @JsonEnum()
 enum PluginMessagePartType {
   @JsonValue("text")
@@ -38,7 +47,7 @@ enum PluginMessagePartType {
   unknown;
 
   /// Whether this part type is visible to mobile (rendered in the UI).
-  bool get isVisible => this != file && this != snapshot && this != patch && this != compaction && this != unknown;
+  bool get isVisible => this != snapshot && this != patch && this != compaction && this != unknown;
 }
 
 @freezed
@@ -70,7 +79,32 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     // retry
     required int? attempt,
     required String? retryError,
+    // file
+    required PluginMessageAttachment? attachment,
   }) = _PluginMessagePart;
+}
+
+/// A backend-normalized attachment that is safe to expose outside the plugin.
+@Freezed(unionKey: "source", toStringOverride: false)
+sealed class PluginMessageAttachment with _$PluginMessageAttachment {
+  @FreezedUnionValue("inline_image")
+  const factory PluginMessageAttachment.inlineImage({
+    required String mime,
+    required String base64,
+    required String? filename,
+  }) = PluginMessageAttachmentInlineImage;
+
+  @FreezedUnionValue("remote_url")
+  const factory PluginMessageAttachment.remoteUrl({
+    required String mime,
+    required Uri url,
+    required String? filename,
+  }) = PluginMessageAttachmentRemoteUrl;
+
+  const factory PluginMessageAttachment.metadata({
+    required String mime,
+    required String? filename,
+  }) = PluginMessageAttachmentMetadata;
 }
 
 /// Lifecycle status of a tool invocation. Mirrors the OpenCode `ToolState`
@@ -98,6 +132,7 @@ sealed class PluginToolState with _$PluginToolState {
     required String? title,
     required String? output,
     required String? error,
+    required List<PluginMessageAttachment> attachments,
   }) = _PluginToolState;
 }
 

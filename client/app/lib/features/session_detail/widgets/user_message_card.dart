@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+import "file_part_widget.dart";
 
 class UserMessageCard extends StatelessWidget {
   final MessageWithParts message;
@@ -14,6 +15,11 @@ class UserMessageCard extends StatelessWidget {
         .where((part) => part.type == MessagePartType.text)
         .map((part) => part.text ?? "")
         .join("\n");
+    final attachments = message.parts
+        .where((part) => part.type == MessagePartType.file)
+        .map((part) => part.attachment)
+        .whereType<MessageAttachment>()
+        .toList();
 
     return Align(
       alignment: .centerRight,
@@ -27,15 +33,21 @@ class UserMessageCard extends StatelessWidget {
           color: prego.colors.bgBrandPrimary,
           borderRadius: BorderRadius.circular(16),
         ),
-        // SelectionArea (not SelectableText) to match the assistant card's
-        // selection model, so text selection behaves the same on every bubble.
-        child: SelectionArea(
-          child: Text(
-            text,
-            style: prego.textTheme.textSm.regular.copyWith(
-              color: prego.colors.textBrandPrimary,
-            ),
-          ),
+        child: Column(
+          crossAxisAlignment: .end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (attachments.isNotEmpty) ...attachments.map((attachment) => FilePartWidget(attachment: attachment)),
+            if (text.isNotEmpty)
+              SelectionArea(
+                child: Text(
+                  text,
+                  style: prego.textTheme.textSm.regular.copyWith(
+                    color: prego.colors.textBrandPrimary,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

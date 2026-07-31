@@ -61,6 +61,7 @@ void main() {
     );
     // Default: the machine-identity fetch resolves empty (the fail-soft error
     // shape), hiding the machine row; tests that show it override this.
+    when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
@@ -135,8 +136,14 @@ void main() {
     await pumpConnectedEmpty(tester);
 
     expect(find.textContaining("Connected"), findsNothing);
-    expect(find.text("Macbook-Pro.local"), findsNothing);
-    expect(find.byIcon(TablerRegular.device_laptop), findsNothing);
+    // Named once, in the bar's title block — the body itself says nothing about
+    // the connection or the machine behind it.
+    expect(
+      find.descendant(of: find.byType(PregoNavLeadingTitle), matching: find.text("Macbook-Pro.local")),
+      findsOneWidget,
+    );
+    expect(find.text("Macbook-Pro.local"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
   });
 
   testWidgets("tapping the CTA opens the Add Project sheet", (tester) async {

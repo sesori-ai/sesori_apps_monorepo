@@ -81,6 +81,7 @@ MessagePart _subtaskPart({String? description}) {
     agentName: null,
     attempt: null,
     retryError: null,
+    attachment: null,
   );
 }
 

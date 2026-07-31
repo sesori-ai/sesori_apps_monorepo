@@ -42,6 +42,7 @@ void main() {
         agentName: "my-agent",
         attempt: null,
         retryError: null,
+        attachment: null,
       );
 
       final shared = part.toShared(sessionId: "stable-session");
@@ -65,6 +66,7 @@ void main() {
         agentName: null,
         attempt: 3,
         retryError: null,
+        attachment: null,
       );
 
       final shared = part.toShared(sessionId: "stable-session");
@@ -87,6 +89,7 @@ void main() {
         agentName: null,
         attempt: 1,
         retryError: "connection timeout",
+        attachment: null,
       );
 
       final shared = part.toShared(sessionId: "stable-session");
@@ -109,6 +112,7 @@ void main() {
         agentName: null,
         attempt: null,
         retryError: null,
+        attachment: null,
       );
 
       final shared = part.toShared(sessionId: "stable-session");
@@ -116,6 +120,95 @@ void main() {
       expect(shared.agentName, isNull);
       expect(shared.attempt, isNull);
       expect(shared.retryError, isNull);
+    });
+
+    test("maps normalized remote attachment data", () {
+      final part = PluginMessagePart(
+        id: "p1",
+        sessionID: "s1",
+        messageID: "m1",
+        type: PluginMessagePartType.file,
+        text: null,
+        tool: null,
+        state: null,
+        prompt: null,
+        description: null,
+        agent: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: PluginMessageAttachment.remoteUrl(
+          mime: "application/pdf",
+          url: Uri.parse("https://files.example.com/report.pdf"),
+          filename: "report.pdf",
+        ),
+      );
+
+      expect(
+        part.toShared(sessionId: "s1").attachment,
+        equals(
+          const MessageAttachment.remoteUrl(
+            mime: "application/pdf",
+            url: "https://files.example.com/report.pdf",
+            filename: "report.pdf",
+          ),
+        ),
+      );
+    });
+
+    test("degrades a plugin remote attachment outside HTTP(S) to metadata", () {
+      final part = PluginMessagePart(
+        id: "p1",
+        sessionID: "s1",
+        messageID: "m1",
+        type: PluginMessagePartType.file,
+        text: null,
+        tool: null,
+        state: null,
+        prompt: null,
+        description: null,
+        agent: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: PluginMessageAttachment.remoteUrl(
+          mime: "text/plain",
+          url: Uri.parse("file:///private/secret.txt"),
+          filename: "secret.txt",
+        ),
+      );
+
+      expect(
+        part.toShared(sessionId: "s1").attachment,
+        equals(const MessageAttachment.metadata(mime: "text/plain", filename: "secret.txt")),
+      );
+    });
+
+    test("strips path components from plugin-provided filenames", () {
+      const part = PluginMessagePart(
+        id: "p1",
+        sessionID: "s1",
+        messageID: "m1",
+        type: PluginMessagePartType.file,
+        text: null,
+        tool: null,
+        state: null,
+        prompt: null,
+        description: null,
+        agent: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: PluginMessageAttachment.metadata(
+          mime: "text/plain",
+          filename: "/Users/alice/private/project/secret.txt",
+        ),
+      );
+
+      expect(
+        part.toShared(sessionId: "s1").attachment,
+        equals(const MessageAttachment.metadata(mime: "text/plain", filename: "secret.txt")),
+      );
     });
   });
 
@@ -138,6 +231,9 @@ void main() {
         title: "Read file",
         output: "contents",
         error: null,
+        attachments: [
+          PluginMessageAttachment.metadata(mime: "image/png", filename: "screenshot.png"),
+        ],
       );
 
       final shared = state.toShared();
@@ -146,6 +242,10 @@ void main() {
       expect(shared.title, equals("Read file"));
       expect(shared.output, equals("contents"));
       expect(shared.error, isNull);
+      expect(
+        shared.attachments,
+        equals([const MessageAttachment.metadata(mime: "image/png", filename: "screenshot.png")]),
+      );
     });
 
     test("round-trips status through JSON using the unchanged wire value", () {
@@ -154,6 +254,7 @@ void main() {
         title: null,
         output: null,
         error: null,
+        attachments: [],
       );
 
       final json = state.toShared().toJson();

@@ -31,6 +31,7 @@ final class ProductAnalyticsDeliveryContext {
 
 @lazySingleton
 class ProductAnalyticsPreferenceService {
+  final AnalyticsRuntimeCapability _capability;
   final AuthSession _authSession;
   final ProductAnalyticsPreferenceRepository _preferenceRepository;
   final ProductAnalyticsPreferenceStateMapper _stateMapper;
@@ -52,7 +53,8 @@ class ProductAnalyticsPreferenceService {
     required AnalyticsRuntimeCapability capability,
     required AuthSession authSession,
     required ProductAnalyticsPreferenceRepository preferenceRepository,
-  }) : _authSession = authSession,
+  }) : _capability = capability,
+       _authSession = authSession,
        _preferenceRepository = preferenceRepository,
        _stateMapper = ProductAnalyticsPreferenceStateMapper(capability: capability);
 
@@ -83,6 +85,22 @@ class ProductAnalyticsPreferenceService {
 
   bool isCurrentDeliveryContext({required ProductAnalyticsDeliveryContext context}) =>
       !_disposed && _matches(generation: context.generation, userId: context.userId);
+
+  int? get authenticatedGeneration {
+    if (_disposed) return null;
+    final userId = _userId;
+    return userId != null && _authSessionMatches(userId: userId) ? _generation : null;
+  }
+
+  int? get deferrableGeneration {
+    if (!_capability.isEnabled ||
+        _isPreparingLogout ||
+        state.preference is! ProductAnalyticsPreferenceUnknown ||
+        state.synchronization is ProductAnalyticsSynchronizationFailed) {
+      return null;
+    }
+    return authenticatedGeneration;
+  }
 
   Future<void> start() {
     if (_disposed) return Future<void>.value();

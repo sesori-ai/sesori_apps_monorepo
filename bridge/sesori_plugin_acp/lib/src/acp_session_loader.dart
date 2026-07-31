@@ -143,6 +143,7 @@ class AcpReplayCollector {
             title: tool.title,
             output: tool.output,
             error: tool.status == PluginToolStatus.error ? tool.output : null,
+            attachments: const [],
           ),
           prompt: null,
           description: null,
@@ -150,6 +151,7 @@ class AcpReplayCollector {
           agentName: null,
           attempt: null,
           retryError: null,
+          attachment: null,
         ),
       );
     });
@@ -195,6 +197,7 @@ class AcpReplayCollector {
       agentName: null,
       attempt: null,
       retryError: null,
+      attachment: null,
     );
   }
 

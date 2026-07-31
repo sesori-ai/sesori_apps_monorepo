@@ -1,4 +1,8 @@
+import "dart:convert";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart"
+    show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
 import "models/openapi/agent_part.g.dart";
 import "models/openapi/compaction_part.g.dart";
@@ -25,6 +29,17 @@ class MessagePartMapper {
   // OpenCode emits compaction as a user message without text, so restore the
   // equivalent built-in command for both manual and automatic compaction.
   static const String _compactionCommandText = "/compact";
+  static const int _maxDataUrlHeaderCharacters = 256;
+  static const int _maxRemoteUrlCharacters = 4096;
+  static const int _maxMimeCharacters = 255;
+  static const int _maxToolAttachmentCount = 4;
+  static const Set<String> _supportedInlineRasterMimes = {
+    "image/bmp",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  };
 
   /// Maps a generated [Part] union to the plugin-facing [PluginMessagePart].
   ///
@@ -32,58 +47,154 @@ class MessagePartMapper {
   /// is exposed as distinct Dart types, so there is no string matching on a
   /// `type` field and the common `id`/`sessionID`/`messageID` are read as
   /// strongly-typed, non-null fields (no `?? ""` fallbacks).
-  PluginMessagePart mapPart(Part raw) => switch (raw) {
-    TextPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.text, text: raw.text),
-    ReasoningPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.reasoning, text: raw.text),
+  PluginMessagePart mapPart(Part raw) {
+    final part = _mapPart(raw);
+    if (part.attachment == null && (part.state?.attachments.isEmpty ?? true)) return part;
+    return applyAttachmentBudget(parts: [part], maxInlineAttachmentBytes: maxInlineMessageAttachmentBytes).single;
+  }
+
+  PluginMessagePart _mapPart(Part raw) => switch (raw) {
+    TextPart() => _part(
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.text,
+      text: raw.text,
+      attachment: null,
+    ),
+    ReasoningPart() => _part(
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.reasoning,
+      text: raw.text,
+      attachment: null,
+    ),
     ToolPart() => _part(
-      raw.id,
-      raw.sessionID,
-      raw.messageID,
-      PluginMessagePartType.tool,
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.tool,
       tool: raw.tool,
       state: _mapToolState(raw.state),
+      attachment: null,
     ),
     SubtaskPart() => _part(
-      raw.id,
-      raw.sessionID,
-      raw.messageID,
-      PluginMessagePartType.subtask,
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.subtask,
       prompt: raw.prompt,
       description: raw.description,
       agent: raw.agent,
+      attachment: null,
     ),
-    AgentPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.agent, agentName: raw.name),
+    AgentPart() => _part(
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.agent,
+      agentName: raw.name,
+      attachment: null,
+    ),
     RetryPart() => _part(
-      raw.id,
-      raw.sessionID,
-      raw.messageID,
-      PluginMessagePartType.retry,
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.retry,
       attempt: raw.attempt,
       retryError: raw.error.data.message,
+      attachment: null,
     ),
-    FilePart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.file),
-    SnapshotPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.snapshot),
-    PatchPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.patch),
+    FilePart() => _mapFilePart(raw: raw),
+    SnapshotPart() => _part(
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.snapshot,
+      attachment: null,
+    ),
+    PatchPart() => _part(
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.patch,
+      attachment: null,
+    ),
     CompactionPart() => _part(
-      raw.id,
-      raw.sessionID,
-      raw.messageID,
-      PluginMessagePartType.text,
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.text,
       text: _compactionCommandText,
+      attachment: null,
     ),
-    StepStartPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.stepStart),
-    StepFinishPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.stepFinish),
+    StepStartPart() => _part(
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.stepStart,
+      attachment: null,
+    ),
+    StepFinishPart() => _part(
+      id: raw.id,
+      sessionID: raw.sessionID,
+      messageID: raw.messageID,
+      type: PluginMessagePartType.stepFinish,
+      attachment: null,
+    ),
     // `Part` is an `abstract interface` (not `sealed`), so a default arm is
     // required. `PartUnknown` and any future variant fall through here and
     // become an `unknown` part, which downstream mapping filters out.
     _ => _unknownPart(raw),
   };
 
-  PluginMessagePart _part(
-    String id,
-    String sessionID,
-    String messageID,
-    PluginMessagePartType type, {
+  List<PluginMessagePart> applyAttachmentBudget({
+    required List<PluginMessagePart> parts,
+    required int maxInlineAttachmentBytes,
+  }) {
+    var remainingBytes = maxInlineAttachmentBytes;
+    var didLogOverflow = false;
+
+    PluginMessageAttachment bound({required PluginMessageAttachment attachment}) {
+      if (attachment case PluginMessageAttachmentInlineImage(:final mime, :final base64, :final filename)) {
+        final decodedBytes = decodedBase64Length(base64Data: base64);
+        if (decodedBytes <= remainingBytes) {
+          remainingBytes -= decodedBytes;
+          return attachment;
+        }
+        if (!didLogOverflow) {
+          Log.w("OpenCode message attachments exceed the aggregate transport limit; forwarding metadata only");
+          didLogOverflow = true;
+        }
+        return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+      }
+      return attachment;
+    }
+
+    PluginMessagePart boundPart({required PluginMessagePart part}) {
+      final attachment = part.attachment;
+      final state = part.state;
+      return part.copyWith(
+        attachment: attachment == null ? null : bound(attachment: attachment),
+        state: state == null
+            ? null
+            : state.copyWith(
+                attachments: state.attachments
+                    .map((attachment) => bound(attachment: attachment))
+                    .toList(growable: false),
+              ),
+      );
+    }
+
+    return parts.map((part) => boundPart(part: part)).toList(growable: false);
+  }
+
+  PluginMessagePart _part({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    required PluginMessagePartType type,
     String? text,
     String? tool,
     PluginToolState? state,
@@ -93,6 +204,7 @@ class MessagePartMapper {
     String? agentName,
     int? attempt,
     String? retryError,
+    required PluginMessageAttachment? attachment,
   }) => PluginMessagePart(
     id: id,
     sessionID: sessionID,
@@ -107,7 +219,109 @@ class MessagePartMapper {
     agentName: agentName,
     attempt: attempt,
     retryError: retryError,
+    attachment: attachment,
   );
+
+  PluginMessagePart _mapFilePart({required FilePart raw}) => _part(
+    id: raw.id,
+    sessionID: raw.sessionID,
+    messageID: raw.messageID,
+    type: PluginMessagePartType.file,
+    attachment: _mapAttachment(raw: raw),
+  );
+
+  PluginMessageAttachment _mapAttachment({required FilePart raw}) {
+    final isDataUrl = _isDataUrl(url: raw.url);
+    final canParseUri = !isDataUrl && raw.url.length <= _maxRemoteUrlCharacters;
+    if (!isDataUrl && !canParseUri) {
+      Log.w("OpenCode attachment URL exceeds the transport limit; forwarding metadata only");
+    }
+    final uri = canParseUri ? Uri.tryParse(raw.url) : null;
+    final filename = normalizePluginMessageAttachmentFilename(filename: raw.filename) ?? _filenameFromUri(uri: uri);
+    if (isDataUrl) {
+      return _mapDataAttachment(raw: raw, filename: filename);
+    }
+
+    final mime = _normalizedMime(mime: raw.mime, fallback: null);
+    if (uri != null) {
+      final scheme = uri.scheme.toLowerCase();
+      if ((scheme == "http" || scheme == "https") && uri.host.isNotEmpty && uri.userInfo.isEmpty) {
+        return PluginMessageAttachment.remoteUrl(mime: mime, url: uri, filename: filename);
+      }
+    }
+    return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+  }
+
+  PluginMessageAttachment _mapDataAttachment({required FilePart raw, required String? filename}) {
+    final separator = raw.url.indexOf(",");
+    if (separator < 5 || separator - 5 > _maxDataUrlHeaderCharacters) {
+      Log.w("OpenCode returned a malformed inline image attachment; forwarding metadata only");
+      return PluginMessageAttachment.metadata(
+        mime: _normalizedMime(mime: raw.mime, fallback: null),
+        filename: filename,
+      );
+    }
+
+    final header = raw.url.substring(5, separator);
+    final headerParts = header.split(";");
+    final headerMime = headerParts.isEmpty
+        ? null
+        : _normalizedValue(value: headerParts.first, maxCharacters: _maxMimeCharacters);
+    final mime = _normalizedMime(mime: raw.mime, fallback: headerMime);
+    if (!_supportedInlineRasterMimes.contains(mime.split(";").first.trim())) {
+      return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+    }
+
+    final isBase64 = headerParts.skip(1).any((part) => part.trim().toLowerCase() == "base64");
+    if (!isBase64) {
+      Log.w("OpenCode returned a malformed inline image attachment; forwarding metadata only");
+      return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+    }
+
+    final encodedLength = raw.url.length - separator - 1;
+    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: encodedLength)) {
+      Log.w("OpenCode inline image attachment exceeds the transport limit; forwarding metadata only");
+      return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+    }
+
+    final normalized = _tryNormalizeBase64(encoded: raw.url.substring(separator + 1));
+    if (normalized == null) {
+      Log.w("OpenCode returned an invalid base64 image attachment; forwarding metadata only");
+      return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+    }
+    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: normalized.length)) {
+      Log.w("OpenCode inline image attachment exceeds the transport limit; forwarding metadata only");
+      return PluginMessageAttachment.metadata(mime: mime, filename: filename);
+    }
+    return PluginMessageAttachment.inlineImage(mime: mime, base64: normalized, filename: filename);
+  }
+
+  String? _tryNormalizeBase64({required String encoded}) {
+    try {
+      return base64.normalize(encoded);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  bool _isDataUrl({required String url}) => url.length >= 5 && url.substring(0, 5).toLowerCase() == "data:";
+
+  String _normalizedMime({required String mime, required String? fallback}) =>
+      (_normalizedValue(value: mime, maxCharacters: _maxMimeCharacters) ??
+              _normalizedValue(value: fallback, maxCharacters: _maxMimeCharacters) ??
+              "application/octet-stream")
+          .toLowerCase();
+
+  String? _normalizedValue({required String? value, required int maxCharacters}) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) return null;
+    return String.fromCharCodes(normalized.runes.take(maxCharacters));
+  }
+
+  String? _filenameFromUri({required Uri? uri}) {
+    if (uri == null || uri.pathSegments.isEmpty) return null;
+    return normalizePluginMessageAttachmentFilename(filename: uri.pathSegments.last);
+  }
 
   /// An unrecognized part shape. Every OpenCode part carries `id`,
   /// `sessionID` and `messageID` on the base schema, so they are read back
@@ -117,10 +331,11 @@ class MessagePartMapper {
     final json = raw.toJson();
     final map = json is Map<String, dynamic> ? json : const <String, dynamic>{};
     return _part(
-      map["id"] as String,
-      map["sessionID"] as String,
-      map["messageID"] as String,
-      PluginMessagePartType.unknown,
+      id: map["id"] as String,
+      sessionID: map["sessionID"] as String,
+      messageID: map["messageID"] as String,
+      type: PluginMessagePartType.unknown,
+      attachment: null,
     );
   }
 
@@ -147,6 +362,10 @@ class MessagePartMapper {
       ToolStateError(:final error) => error,
       _ => null,
     };
+    final attachments = switch (state) {
+      ToolStateCompleted(:final attachments) => _mapToolAttachments(attachments: attachments),
+      _ => const <PluginMessageAttachment>[],
+    };
     return PluginToolState(
       status: status,
       title: title,
@@ -154,6 +373,18 @@ class MessagePartMapper {
           ? String.fromCharCodes(output.runes.take(maxToolOutputLength))
           : output,
       error: error,
+      attachments: attachments,
     );
+  }
+
+  List<PluginMessageAttachment> _mapToolAttachments({required List<FilePart>? attachments}) {
+    final rawAttachments = attachments ?? const <FilePart>[];
+    if (rawAttachments.length > _maxToolAttachmentCount) {
+      Log.w("OpenCode tool returned too many attachments; forwarding only the bounded prefix");
+    }
+    return rawAttachments
+        .take(_maxToolAttachmentCount)
+        .map((attachment) => _mapAttachment(raw: attachment))
+        .toList(growable: false);
   }
 }

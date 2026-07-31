@@ -6,15 +6,18 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../logging/logging.dart";
 import "../repositories/plugin_preference_repository.dart";
 import "../repositories/plugin_repository.dart";
+import "models/new_session_options_source.dart";
 
 final class NewSessionPluginDiscovery {
   const NewSessionPluginDiscovery({
     required this.bridgeId,
+    required this.optionsSource,
     required this.plugins,
     required this.selected,
   });
 
   final String? bridgeId;
+  final NewSessionOptionsSource optionsSource;
   final List<PluginMetadata> plugins;
   final PluginMetadata? selected;
 }
@@ -51,7 +54,14 @@ class NewSessionPluginService {
             await _savedSelection(bridgeId: bridgeId, plugins: plugins) ??
             plugins.where((plugin) => plugin.isDefault).singleOrNull;
         return ApiResponse.success(
-          NewSessionPluginDiscovery(bridgeId: bridgeId, plugins: plugins, selected: selected),
+          NewSessionPluginDiscovery(
+            bridgeId: bridgeId,
+            optionsSource: data.supportsSessionOptions
+                ? NewSessionOptionsSource.aggregate
+                : NewSessionOptionsSource.legacy,
+            plugins: plugins,
+            selected: selected,
+          ),
         );
     }
   }

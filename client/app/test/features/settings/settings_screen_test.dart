@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -9,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/support_links.dart";
+import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:theme_prego/module_prego.dart";
@@ -50,7 +53,10 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
       ),
       GoRoute(
         path: "/settings/profile",
-        builder: (context, state) => const Scaffold(body: Text("profile-route")),
+        builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
+          value: StubConnectionOverlayCubit(),
+          child: const ProfileScreen(),
+        ),
       ),
       GoRoute(
         path: "/settings/harnesses",
@@ -86,6 +92,8 @@ void _useTallSurface(WidgetTester tester) {
 
 void main() {
   late AppearanceCubit appearance;
+  late _StubAuthSession authSession;
+  late _MockNotificationRegistrationService notificationRegistrationService;
   late _MockUrlLauncher urlLauncher;
   late _MockLegalRepository legalRepository;
   late MockProductAnalyticsService productAnalyticsService;
@@ -110,10 +118,14 @@ void main() {
     );
 
     await GetIt.instance.reset();
-    GetIt.instance.registerSingleton<AuthSession>(_StubAuthSession());
-    GetIt.instance.registerSingleton<NotificationRegistrationService>(
-      _MockNotificationRegistrationService(),
-    );
+    authSession = _StubAuthSession();
+    when(authSession.logoutCurrentDevice).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<AuthSession>(authSession);
+
+    notificationRegistrationService = _MockNotificationRegistrationService();
+    when(notificationRegistrationService.unregisterCurrentDevice).thenAnswer((_) async {});
+    when(notificationRegistrationService.resumeRegistrationAfterFailedLogout).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<NotificationRegistrationService>(notificationRegistrationService);
 
     productAnalyticsStates = BehaviorSubject.seeded(
       const ProductAnalyticsState(
@@ -133,6 +145,7 @@ void main() {
     when(productAnalyticsService.refreshPreference).thenAnswer((_) async {});
     when(productAnalyticsService.retryPendingDisable).thenAnswer((_) async {});
     when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
+    when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
 
     final store = _MockAppearanceStore();
@@ -161,7 +174,7 @@ void main() {
     await tester.tap(find.text("Profile"));
     await tester.pumpAndSettle();
 
-    expect(find.text("profile-route"), findsOneWidget);
+    expect(find.text("Basic Usage Analytics"), findsOneWidget);
   });
 
   testWidgets("Harnesses follows Notifications and navigates without changing other sections", (tester) async {
@@ -332,20 +345,25 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("analytics setting discloses scope and delegates the opt-out", (tester) async {
+  testWidgets("basic usage analytics lives on Profile with concise copy", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Share pseudonymous product usage from this device"), findsOneWidget);
-    expect(find.textContaining("never sends source code, prompts, responses, transcripts"), findsOneWidget);
-    expect(find.textContaining("automatic installation events"), findsOneWidget);
-    expect(find.textContaining("approximate-location processing"), findsOneWidget);
-    expect(find.textContaining("upstream analytics retention is two months"), findsOneWidget);
-    expect(find.textContaining("expires after 90 days"), findsOneWidget);
-    expect(find.textContaining("retained for 14 months"), findsOneWidget);
+    expect(find.text("Basic Usage Analytics"), findsNothing);
 
-    await tester.tap(find.text("Share pseudonymous product usage from this device"));
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(
+      find.text("Share basic feature usage — never your code or messages."),
+      findsOneWidget,
+    );
+    expect(find.textContaining("automatic installation events"), findsNothing);
+    expect(find.textContaining("retention"), findsNothing);
+
+    await tester.tap(find.text("Basic Usage Analytics"));
     await tester.pump();
 
     verify(
@@ -353,32 +371,94 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("pending disable exposes an explicit retry action", (tester) async {
+  testWidgets("a failed analytics preference shows one inline retry action", (tester) async {
     _useTallSurface(tester);
-    await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-
     productAnalyticsStates.add(
       const ProductAnalyticsState(
-        preference: ProductAnalyticsPreferenceKnown(
-          preference: ProductAnalyticsPreference.disabled,
-        ),
-        synchronization: ProductAnalyticsDisablePending(),
+        preference: ProductAnalyticsPreferenceUnknown(),
+        synchronization: ProductAnalyticsSynchronizationFailed(),
         availability: ProductAnalyticsInactive(
-          reason: ProductAnalyticsInactiveReason.synchronizationPending,
+          reason: ProductAnalyticsInactiveReason.storageFailure,
         ),
       ),
     );
+    await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining("Disabled on this device. Account sync is pending."), findsOneWidget);
-    await tester.tap(find.text("Retry analytics preference sync"));
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Analytics preference failed to load."), findsOneWidget);
+    expect(find.byKey(const Key("analytics_preference_retry")), findsOneWidget);
+    expect(find.bySemanticsLabel("Retry preference sync"), findsOneWidget);
+    expect(find.text("Refresh analytics preference"), findsNothing);
+
+    await tester.tap(find.byKey(const Key("analytics_preference_retry")));
     await tester.pump();
 
     verify(productAnalyticsService.refreshPreference).called(1);
   });
 
-  testWidgets("runtime unavailability is visible beside a synchronized enabled preference", (tester) async {
+  testWidgets("a known preference remains editable when synchronization fails", (tester) async {
+    _useTallSurface(tester);
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(
+          preference: ProductAnalyticsPreference.enabled,
+        ),
+        synchronization: ProductAnalyticsSynchronizationFailed(),
+        availability: ProductAnalyticsInactive(
+          reason: ProductAnalyticsInactiveReason.requestFailure,
+        ),
+      ),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't sync preference."), findsOneWidget);
+    expect(find.byType(PregoSwitch), findsOneWidget);
+    expect(find.byKey(const Key("analytics_preference_retry")), findsOneWidget);
+
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+
+    verify(
+      () => productAnalyticsService.setPreference(preference: ProductAnalyticsPreference.disabled),
+    ).called(1);
+
+    await tester.tap(find.byKey(const Key("analytics_preference_retry")));
+    await tester.pump();
+
+    verify(productAnalyticsService.refreshPreference).called(1);
+  });
+
+  testWidgets("analytics actions are blocked while logout is in progress", (tester) async {
+    _useTallSurface(tester);
+    final logoutPreparation = Completer<void>();
+    when(productAnalyticsService.prepareForLogout).thenAnswer((_) => logoutPreparation.future);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Log Out"));
+    await tester.pump();
+
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
+    await tester.tap(find.text("Basic Usage Analytics"));
+    await tester.pump();
+    verifyNever(
+      () => productAnalyticsService.setPreference(preference: any(named: "preference")),
+    );
+
+    logoutPreparation.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("runtime unavailability does not add alarming session copy", (tester) async {
     _useTallSurface(tester);
     productAnalyticsStates.add(
       const ProductAnalyticsState(
@@ -395,6 +475,10 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining("custom product usage is unavailable for this app run"), findsOneWidget);
+    await tester.tap(find.text("Profile"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(find.textContaining("unavailable for this app run"), findsNothing);
   });
 }

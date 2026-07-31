@@ -16,13 +16,17 @@ import "question_info_mapper.dart";
 class PluginModelMapper {
   const PluginModelMapper({
     required MessagePartMapper messagePartMapper,
+    required int maxInlineAttachmentBytes,
     QuestionInfoMapper questionInfoMapper = const QuestionInfoMapper(),
     AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper(),
   }) : _messagePartMapper = messagePartMapper,
+       _maxInlineAttachmentBytes = maxInlineAttachmentBytes,
        _questionInfoMapper = questionInfoMapper,
-       _assistantMessageMapper = assistantMessageMapper;
+       _assistantMessageMapper = assistantMessageMapper,
+       assert(maxInlineAttachmentBytes >= 0);
 
   final MessagePartMapper _messagePartMapper;
+  final int _maxInlineAttachmentBytes;
   final QuestionInfoMapper _questionInfoMapper;
   final AssistantMessageMapper _assistantMessageMapper;
 
@@ -128,9 +132,13 @@ class PluginModelMapper {
       MessageUnknown(:final raw) => throw FormatException("Unknown message role: $raw"),
       _ => throw FormatException("Unknown message role: $info"),
     };
+    final parts = raw.parts.map(_messagePartMapper.mapPart).where((part) => part.type.isVisible).toList();
     return PluginMessageWithParts(
       info: pluginInfo,
-      parts: raw.parts.map(_messagePartMapper.mapPart).where((part) => part.type.isVisible).toList(),
+      parts: _messagePartMapper.applyAttachmentBudget(
+        parts: parts,
+        maxInlineAttachmentBytes: _maxInlineAttachmentBytes,
+      ),
     );
   }
 

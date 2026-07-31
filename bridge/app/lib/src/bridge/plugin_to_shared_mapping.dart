@@ -38,6 +38,39 @@ extension PluginToolStatusMapping on PluginToolStatus {
   };
 }
 
+/// Maps a plugin-normalized attachment into the shared wire contract.
+extension PluginMessageAttachmentMapping on PluginMessageAttachment {
+  MessageAttachment toShared() => switch (this) {
+    PluginMessageAttachmentInlineImage(:final mime, :final base64, :final filename) => MessageAttachment.inlineImage(
+      mime: mime,
+      base64: base64,
+      filename: normalizePluginMessageAttachmentFilename(filename: filename),
+    ),
+    PluginMessageAttachmentRemoteUrl(:final mime, :final url, :final filename) => _mapRemoteAttachment(
+      mime: mime,
+      url: url,
+      filename: normalizePluginMessageAttachmentFilename(filename: filename),
+    ),
+    PluginMessageAttachmentMetadata(:final mime, :final filename) => MessageAttachment.metadata(
+      mime: mime,
+      filename: normalizePluginMessageAttachmentFilename(filename: filename),
+    ),
+  };
+
+  static MessageAttachment _mapRemoteAttachment({
+    required String mime,
+    required Uri url,
+    required String? filename,
+  }) {
+    final scheme = url.scheme.toLowerCase();
+    if ((scheme != "http" && scheme != "https") || url.host.isEmpty || url.userInfo.isNotEmpty) {
+      Log.w("Plugin returned an invalid remote attachment URL; forwarding metadata only");
+      return MessageAttachment.metadata(mime: mime, filename: filename);
+    }
+    return MessageAttachment.remoteUrl(mime: mime, url: url.toString(), filename: filename);
+  }
+}
+
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
   ToolState toShared() => ToolState(
@@ -45,6 +78,7 @@ extension PluginToolStateMapping on PluginToolState {
     title: title,
     output: output,
     error: error,
+    attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
   );
 }
 
@@ -77,5 +111,6 @@ extension PluginMessagePartMapping on PluginMessagePart {
     agentName: agentName,
     attempt: attempt,
     retryError: retryError,
+    attachment: attachment?.toShared(),
   );
 }

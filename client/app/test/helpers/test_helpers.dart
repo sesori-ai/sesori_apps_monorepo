@@ -18,10 +18,12 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         OnboardingSurface,
         ProductAnalyticsEvent,
         ProductAnalyticsService,
+        ProductAnalyticsState,
         RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
+import "package:sesori_dart_core/src/api/storage/composer_draft_storage.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
@@ -37,6 +39,7 @@ import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/chat_input_mode_store.dart";
+import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
@@ -157,13 +160,19 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 class MockProductAnalyticsService extends Mock implements ProductAnalyticsService {}
 
 void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
+  final states = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
+  addTearDown(states.close);
   when(
     () => service.logEvent(
       event: any(named: "event"),
       occurredAtUtc: any(named: "occurredAtUtc"),
     ),
   ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
+  when(() => service.state).thenAnswer((_) => states.value);
+  when(() => service.stateStream).thenAnswer((_) => states.stream);
 }
+
+ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(storage: ComposerDraftStorage());
 
 void registerListServices({
   required MockProjectRepository projectRepository,
@@ -195,9 +204,7 @@ void _registerListServices({
     getIt.unregister<ProductAnalyticsService>();
   }
   final analyticsService = productAnalyticsService ?? MockProductAnalyticsService();
-  if (productAnalyticsService != null) {
-    stubProductAnalyticsService(service: analyticsService);
-  }
+  stubProductAnalyticsService(service: analyticsService);
   getIt.registerSingleton<ProjectListService>(
     ProjectListService(
       repository: projectRepository,
@@ -562,6 +569,7 @@ MessageWithParts testMessageWithParts({String? id}) {
         agentName: null,
         attempt: null,
         retryError: null,
+        attachment: null,
       ),
     ],
   );

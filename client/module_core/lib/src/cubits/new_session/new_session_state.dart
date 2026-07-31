@@ -2,38 +2,88 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
+import "../../services/models/new_session_backend_scope.dart";
+import "../../services/models/new_session_options_source.dart";
+import "../../services/new_session_options_service.dart";
 
 part "new_session_state.freezed.dart";
+
+@Freezed()
+sealed class NewSessionOptionsLoadState with _$NewSessionOptionsLoadState {
+  const factory NewSessionOptionsLoadState.loading({required NewSessionOptionsSource? source}) =
+      NewSessionOptionsLoadingState;
+
+  const factory NewSessionOptionsLoadState.refreshing({
+    required NewSessionOptionsData options,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsRefreshingState;
+
+  const factory NewSessionOptionsLoadState.available({
+    required NewSessionOptionsData options,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsAvailableState;
+
+  const factory NewSessionOptionsLoadState.unsupported() = NewSessionOptionsUnsupportedState;
+
+  const factory NewSessionOptionsLoadState.unavailable() = NewSessionOptionsUnavailableState;
+
+  const factory NewSessionOptionsLoadState.failure({
+    required RemoteFailureReason reason,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsFailureState;
+
+  const factory NewSessionOptionsLoadState.failureRetained({
+    required NewSessionOptionsData options,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsFailureRetainedState;
+
+  const factory NewSessionOptionsLoadState.refreshFailureUnavailable() =
+      NewSessionOptionsRefreshFailureUnavailableState;
+}
+
+extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
+  NewSessionOptionsData? get data => switch (this) {
+    NewSessionOptionsRefreshingState(:final options) ||
+    NewSessionOptionsAvailableState(:final options) ||
+    NewSessionOptionsFailureRetainedState(:final options) => options,
+    NewSessionOptionsLoadingState() ||
+    NewSessionOptionsUnsupportedState() ||
+    NewSessionOptionsUnavailableState() ||
+    NewSessionOptionsFailureState() ||
+    NewSessionOptionsRefreshFailureUnavailableState() => null,
+  };
+
+  bool get isLoading => this is NewSessionOptionsLoadingState || this is NewSessionOptionsRefreshingState;
+
+  NewSessionOptionsSource? get source => switch (this) {
+    NewSessionOptionsLoadingState(:final source) => source,
+    NewSessionOptionsRefreshingState(:final source) ||
+    NewSessionOptionsAvailableState(:final source) ||
+    NewSessionOptionsFailureState(:final source) ||
+    NewSessionOptionsFailureRetainedState(:final source) => source,
+    NewSessionOptionsUnsupportedState() => NewSessionOptionsSource.legacy,
+    NewSessionOptionsUnavailableState() ||
+    NewSessionOptionsRefreshFailureUnavailableState() => NewSessionOptionsSource.aggregate,
+  };
+}
 
 @Freezed()
 sealed class NewSessionState with _$NewSessionState {
   const factory NewSessionState.idle({
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
-    required bool isComposerDataLoading,
+    required NewSessionOptionsLoadState options,
+    required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
-    required List<AgentInfo> availableAgents,
-    required List<ProviderInfo> availableProviders,
-    required List<CommandInfo> availableCommands,
-    required String? selectedAgent,
-    required AgentModel? selectedAgentModel,
-    required CommandInfo? stagedCommand,
-    @Default([]) List<SessionVariant> availableVariants,
     required bool supportsDedicatedWorktrees,
   }) = NewSessionIdle;
 
   const factory NewSessionState.sending({
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
-    required bool isComposerDataLoading,
+    required NewSessionOptionsLoadState options,
+    required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
-    required List<AgentInfo> availableAgents,
-    required List<ProviderInfo> availableProviders,
-    required List<CommandInfo> availableCommands,
-    required String? selectedAgent,
-    required AgentModel? selectedAgentModel,
-    required CommandInfo? stagedCommand,
-    @Default([]) List<SessionVariant> availableVariants,
     required bool supportsDedicatedWorktrees,
   }) = NewSessionSending;
 
@@ -41,27 +91,20 @@ sealed class NewSessionState with _$NewSessionState {
     required RemoteFailureReason reason,
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
-    required bool isComposerDataLoading,
+    required NewSessionOptionsLoadState options,
+    required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
-    required List<AgentInfo> availableAgents,
-    required List<ProviderInfo> availableProviders,
-    required List<CommandInfo> availableCommands,
-    required String? selectedAgent,
-    required AgentModel? selectedAgentModel,
-    required CommandInfo? stagedCommand,
-    @Default([]) List<SessionVariant> availableVariants,
     required bool supportsDedicatedWorktrees,
   }) = NewSessionError;
 
   const factory NewSessionState.created({required Session session}) = NewSessionCreated;
 }
 
-/// Convenience accessor for agent/model selection data shared across
-/// the [NewSessionIdle], [NewSessionSending], and [NewSessionError] variants.
-/// Returns `null` for [NewSessionCreated] (where the data is irrelevant).
 typedef AgentModelData = ({
   List<PluginMetadata> plugins,
   PluginMetadata? plugin,
+  NewSessionOptionsLoadState optionsState,
+  NewSessionBackendScope backendScope,
   bool isLoading,
   bool isPluginDiscoveryInFlight,
   List<AgentInfo> agents,
@@ -79,87 +122,87 @@ extension NewSessionStateAgentModel on NewSessionState {
     NewSessionIdle(
       :final availablePlugins,
       :final selectedPlugin,
-      :final isComposerDataLoading,
+      :final options,
+      :final backendScope,
       :final isPluginDiscoveryInFlight,
-      :final availableAgents,
-      :final availableProviders,
-      :final availableCommands,
-      :final selectedAgent,
-      :final selectedAgentModel,
-      :final stagedCommand,
-      :final availableVariants,
       :final supportsDedicatedWorktrees,
     ) =>
-      (
+      _agentModelData(
         plugins: availablePlugins,
         plugin: selectedPlugin,
-        isLoading: isComposerDataLoading,
+        options: options,
+        backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        agents: availableAgents,
-        providers: availableProviders,
-        commands: availableCommands,
-        agent: selectedAgent,
-        agentModel: selectedAgentModel,
-        stagedCommand: stagedCommand,
-        availableVariants: availableVariants,
         supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionSending(
       :final availablePlugins,
       :final selectedPlugin,
-      :final isComposerDataLoading,
+      :final options,
+      :final backendScope,
       :final isPluginDiscoveryInFlight,
-      :final availableAgents,
-      :final availableProviders,
-      :final availableCommands,
-      :final selectedAgent,
-      :final selectedAgentModel,
-      :final stagedCommand,
-      :final availableVariants,
       :final supportsDedicatedWorktrees,
     ) =>
-      (
+      _agentModelData(
         plugins: availablePlugins,
         plugin: selectedPlugin,
-        isLoading: isComposerDataLoading,
+        options: options,
+        backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        agents: availableAgents,
-        providers: availableProviders,
-        commands: availableCommands,
-        agent: selectedAgent,
-        agentModel: selectedAgentModel,
-        stagedCommand: stagedCommand,
-        availableVariants: availableVariants,
         supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionError(
       :final availablePlugins,
       :final selectedPlugin,
-      :final isComposerDataLoading,
+      :final options,
+      :final backendScope,
       :final isPluginDiscoveryInFlight,
-      :final availableAgents,
-      :final availableProviders,
-      :final availableCommands,
-      :final selectedAgent,
-      :final selectedAgentModel,
-      :final stagedCommand,
-      :final availableVariants,
       :final supportsDedicatedWorktrees,
     ) =>
-      (
+      _agentModelData(
         plugins: availablePlugins,
         plugin: selectedPlugin,
-        isLoading: isComposerDataLoading,
+        options: options,
+        backendScope: backendScope,
         isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        agents: availableAgents,
-        providers: availableProviders,
-        commands: availableCommands,
-        agent: selectedAgent,
-        agentModel: selectedAgentModel,
-        stagedCommand: stagedCommand,
-        availableVariants: availableVariants,
         supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionCreated() => null,
   };
+
+  bool get isComposerDataLoading => agentModelData?.isLoading ?? false;
+  List<AgentInfo> get availableAgents => agentModelData?.agents ?? const [];
+  List<ProviderInfo> get availableProviders => agentModelData?.providers ?? const [];
+  List<CommandInfo> get availableCommands => agentModelData?.commands ?? const [];
+  String? get selectedAgent => agentModelData?.agent;
+  AgentModel? get selectedAgentModel => agentModelData?.agentModel;
+  CommandInfo? get stagedCommand => agentModelData?.stagedCommand;
+  List<SessionVariant> get availableVariants => agentModelData?.availableVariants ?? const [];
+}
+
+AgentModelData _agentModelData({
+  required List<PluginMetadata> plugins,
+  required PluginMetadata? plugin,
+  required NewSessionOptionsLoadState options,
+  required NewSessionBackendScope backendScope,
+  required bool isPluginDiscoveryInFlight,
+  required bool supportsDedicatedWorktrees,
+}) {
+  final data = options.data;
+  return (
+    plugins: plugins,
+    plugin: plugin,
+    optionsState: options,
+    backendScope: backendScope,
+    isLoading: options.isLoading,
+    isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
+    agents: data?.agents ?? const [],
+    providers: data?.providers ?? const [],
+    commands: data?.commands ?? const [],
+    agent: data?.selectedAgent,
+    agentModel: data?.selectedAgentModel,
+    stagedCommand: data?.stagedCommand,
+    availableVariants: data?.availableVariants ?? const [],
+    supportsDedicatedWorktrees: supportsDedicatedWorktrees,
+  );
 }

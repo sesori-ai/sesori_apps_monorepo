@@ -96,6 +96,12 @@
   storage-read failure, split lifecycle ownership, and pass-through DI; all
   findings were applied directly. Per the two-pass cap, do not describe the
   final correction as reviewer-approved.
+- [x] Apply the post-Step-3.D analytics preference UX decision: move the
+  `Basic Usage Analytics` switch to the account/profile page, replace dense
+  control disclosure with a short code/messages privacy hint, hide runtime
+  implementation status, remove the permanent refresh row, and show one inline
+  retry action only when preference loading or saving fails. Detailed limits
+  remain in the privacy/legal/store disclosures.
 - [ ] Confirm cloud preflight facts: Firebase/GA4 BigQuery link, property ID,
   billing, dataset location, existing raw tables/IAM/expiration, GA4 retention/
   deletion configuration, scheduler connectivity, and dashboard access group.
@@ -119,9 +125,12 @@
 ## Implementation Series
 
 The total remains fixed at five rollout steps. Titles retain this slug and step
-count across both repositories; Step 3 is delivered as stacked PR substeps
-3.A-3.D. The former combined apps PR #610 was frozen and closed as superseded by
-PRs #611-#614 so each review stays near 1,500 added lines.
+count across both repositories; Steps 3 and 4 are delivered as stacked PR
+substeps. The former combined apps PR #610 was frozen and closed as superseded by
+PRs #611-#614. Oversized outcome PR #629 was likewise closed and preserved as a
+reference before rebuilding Step 4 as 4.A-4.D. Each replacement targets a
+coherent review below roughly 1,200 added lines rather than accumulating review
+patches in one umbrella diff.
 
 | Step | Repository | Required title | Status | Depends on |
 | --- | --- | --- | --- | --- |
@@ -130,9 +139,12 @@ PRs #611-#614 so each review stays near 1,500 added lines.
 | 3.A/5 | apps monorepo | `[user-analytics] Add client analytics contracts and delivery [step 3.A/5]` | PR #611 merged as `3a181ee3` on 2026-07-30; frozen PR #610 remains superseded | Step 2 deployed |
 | 3.B/5 | apps monorepo | `[user-analytics] Add durable analytics preference sync [step 3.B/5]` | PR #612 merged as `a792481b` on 2026-07-30 | Step 3.A |
 | 3.C/5 | apps monorepo | `[user-analytics] Add account-linked analytics lifecycle [step 3.C/5]` | PR #613 merged as `53e9453f` on 2026-07-30, including supplemental lifecycle decomposition PR #619 | Step 3.B |
-| 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 open and approved; latest `main` merged after Step 3.C with propagated core/app/desktop verification passing | Step 3.C |
-| 4/5 | apps monorepo | `[user-analytics] Instrument activation and engagement outcomes [step 4/5]` | Not started | Step 3.D released |
-| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4, controlled Firebase export, split auth-private/privacy-private/control IAM |
+| 3.D/5 | apps monorepo | `[user-analytics] Integrate analytics settings and routing [step 3.D/5]` | PR #614 merged as `fb8cd0e8`; focused account-page UX follow-up PR #628 merged as `5e42bedc` on 2026-07-30 | Step 3.C |
+| 4.A/5 | apps monorepo | `[user-analytics] Add bounded outcome analytics contracts [step 4.A/5]` | PR #632 merged as `e3e6b6e7` on 2026-07-31; oversized PR #629 remains closed as superseded | Step 3.D released |
+| 4.B/5 | apps monorepo | `[user-analytics] Instrument account-less login outcomes [step 4.B/5]` | PR #634 merged as `5223c27d` on 2026-07-31 | Step 4.A |
+| 4.C/5 | apps monorepo | `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]` | PR #633 merged as `c662a639` on 2026-07-31 | Step 4.B |
+| 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 open on `user-analytics-visible-engagement-outcomes`; verified and approved | Step 4.C |
+| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Not started | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
 ## Release Evidence
 

@@ -1,11 +1,158 @@
 import "dart:async";
 import "dart:io";
 
+import "package:drift/drift.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sqlite3/sqlite3.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
+
 void main() {
+  test("current schema creates the session options cache with its project cascade", () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+
+    final definition = await database
+        .customSelect(
+          "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'session_options_cache_table'",
+        )
+        .getSingle();
+    expect(database.schemaVersion, 12);
+    expect(definition.read<String>("sql").toUpperCase(), contains("WITHOUT ROWID"));
+
+    final foreignKeys = await database.customSelect("PRAGMA foreign_key_list('session_options_cache_table')").get();
+    expect(foreignKeys, hasLength(1));
+    expect(foreignKeys.single.read<String>("table"), "projects_table");
+    expect(foreignKeys.single.read<String>("from"), "project_id");
+    expect(foreignKeys.single.read<String>("to"), "project_id");
+    expect(foreignKeys.single.read<String>("on_delete").toUpperCase(), "CASCADE");
+  });
+
+  test("session options CAS requires the exact next revision", () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final dao = SessionOptionsCacheDao(database: database);
+    const row = SessionOptionsCacheTableData(
+      pluginId: "plugin",
+      scope: PluginSessionOptionsScope.plugin,
+      ownerId: "plugin",
+      projectId: null,
+      capturedProjectPath: null,
+      revision: 1,
+      capturedAt: 1,
+      completeness: PluginSessionOptionsCompleteness.complete,
+      agentsJson: "{}",
+      providersJson: "{}",
+      commandsJson: "{}",
+    );
+
+    expect(await dao.compareAndSet(row: row.copyWith(revision: 0), expectedRevision: null), isFalse);
+    expect(await dao.compareAndSet(row: row, expectedRevision: null), isTrue);
+    expect(await dao.compareAndSet(row: row, expectedRevision: 1), isFalse);
+    expect(await dao.compareAndSet(row: row.copyWith(revision: 3), expectedRevision: 1), isFalse);
+    expect(await dao.compareAndSet(row: row.copyWith(revision: 2), expectedRevision: 1), isTrue);
+  });
+
+  test("current schema enforces session options cache scope shapes", () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    await database.projectsDao.recordOpenedProject(
+      projectId: "project",
+      path: "/projects/one",
+      displayName: null,
+      createdAt: 1,
+      updatedAt: 1,
+    );
+
+    Future<void> insert({
+      required String pluginId,
+      required PluginSessionOptionsScope scope,
+      required String ownerId,
+      required String? projectId,
+      required String? projectPath,
+    }) async {
+      await database
+          .into(database.sessionOptionsCacheTable)
+          .insert(
+            SessionOptionsCacheTableCompanion.insert(
+              pluginId: pluginId,
+              scope: scope,
+              ownerId: ownerId,
+              projectId: Value(projectId),
+              capturedProjectPath: Value(projectPath),
+              revision: 1,
+              capturedAt: 1,
+              completeness: PluginSessionOptionsCompleteness.complete,
+              agentsJson: "{}",
+              providersJson: "{}",
+              commandsJson: "{}",
+            ),
+          );
+    }
+
+    await insert(
+      pluginId: "cursor",
+      scope: PluginSessionOptionsScope.plugin,
+      ownerId: "cursor",
+      projectId: null,
+      projectPath: null,
+    );
+    await insert(
+      pluginId: "opencode",
+      scope: PluginSessionOptionsScope.project,
+      ownerId: "project",
+      projectId: "project",
+      projectPath: "/projects/one",
+    );
+
+    for (final invalid in [
+      (
+        pluginId: "empty-owner",
+        scope: PluginSessionOptionsScope.plugin,
+        ownerId: "",
+        projectId: null,
+        projectPath: null,
+      ),
+      (
+        pluginId: "plugin-with-project",
+        scope: PluginSessionOptionsScope.plugin,
+        ownerId: "plugin-with-project",
+        projectId: "project",
+        projectPath: "/projects/one",
+      ),
+      (
+        pluginId: "project-owner-mismatch",
+        scope: PluginSessionOptionsScope.project,
+        ownerId: "other",
+        projectId: "project",
+        projectPath: "/projects/one",
+      ),
+      (
+        pluginId: "project-without-path",
+        scope: PluginSessionOptionsScope.project,
+        ownerId: "project",
+        projectId: "project",
+        projectPath: null,
+      ),
+    ]) {
+      await expectLater(
+        insert(
+          pluginId: invalid.pluginId,
+          scope: invalid.scope,
+          ownerId: invalid.ownerId,
+          projectId: invalid.projectId,
+          projectPath: invalid.projectPath,
+        ),
+        throwsA(isA<SqliteException>()),
+      );
+    }
+    expect(await database.select(database.sessionOptionsCacheTable).get(), hasLength(2));
+  });
+
   test("file-backed readers observe the committed snapshot during a writer transaction", () async {
     final directory = await Directory.systemTemp.createTemp("sesori-database-test-");
     final database = AppDatabase.openFile(file: File(p.join(directory.path, "catalog.sqlite")));

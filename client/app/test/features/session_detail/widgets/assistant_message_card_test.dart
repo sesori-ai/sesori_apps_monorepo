@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
+import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/tool_part_widget.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -83,6 +84,7 @@ MessagePart _textPart({required String id, required String text}) {
     agentName: null,
     attempt: null,
     retryError: null,
+    attachment: null,
   );
 }
 
@@ -101,6 +103,26 @@ MessagePart _toolPart({required String id, required String toolName}) {
     agentName: null,
     attempt: null,
     retryError: null,
+    attachment: null,
+  );
+}
+
+MessagePart _filePart({required String id}) {
+  return MessagePart(
+    id: id,
+    sessionID: "session-1",
+    messageID: "assistant-1",
+    type: MessagePartType.file,
+    text: null,
+    tool: null,
+    state: null,
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: const MessageAttachment.metadata(mime: "application/pdf", filename: "report.pdf"),
   );
 }
 
@@ -175,5 +197,17 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data, "updated draft text");
+  });
+
+  testWidgets("renders normalized assistant file attachments", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(parts: [_filePart(id: "file-1")]),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.byType(FilePartWidget), findsOneWidget);
+    expect(find.text("report.pdf"), findsOneWidget);
   });
 }

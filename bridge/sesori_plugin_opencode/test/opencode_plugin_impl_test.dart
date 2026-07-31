@@ -389,7 +389,7 @@ void main() {
       expect((assistant.info as PluginMessageAssistant).providerID, equals("openai"));
     });
 
-    test("getSessionMessages filters file and snapshot parts", () async {
+    test("getSessionMessages exposes normalized file parts and filters snapshots", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       final messages = await plugin.getSessionMessages("ses-filter");
@@ -398,7 +398,22 @@ void main() {
       final parts = messages.last.parts;
       expect(
         parts.map((part) => part.type).toList(),
-        equals([PluginMessagePartType.text, PluginMessagePartType.tool, PluginMessagePartType.reasoning]),
+        equals([
+          PluginMessagePartType.text,
+          PluginMessagePartType.tool,
+          PluginMessagePartType.file,
+          PluginMessagePartType.reasoning,
+        ]),
+      );
+      expect(
+        parts[2].attachment,
+        equals(
+          PluginMessageAttachment.remoteUrl(
+            mime: "text/plain",
+            url: Uri.parse("https://example.com/file.txt"),
+            filename: "file.txt",
+          ),
+        ),
       );
     });
 

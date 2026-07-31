@@ -26,6 +26,13 @@ enum _VoiceState { idle, recording, transcribing }
 /// and the expanded typing container.
 enum _ComposerLayout { holdToTalk, compact, typing }
 
+typedef PromptSubmitCallback =
+    void Function({
+      required String text,
+      required String? command,
+      required ComposerInputMode inputMode,
+    });
+
 class PromptInput extends StatefulWidget {
   final bool isBusy;
 
@@ -33,7 +40,10 @@ class PromptInput extends StatefulWidget {
   /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
   /// text-first mode, which prompt the compact pill invites.
   final bool hasMessages;
-  final void Function(String text, String? command) onSend;
+  final PromptSubmitCallback onSend;
+  final VoidCallback onVoiceTranscriptionCompleted;
+  final ValueChanged<ComposerDraft> onDraftChanged;
+  final VoidCallback onDraftCleared;
   final VoidCallback onAbort;
   final Widget? composerHeader;
   final List<CommandInfo> availableCommands;
@@ -44,24 +54,28 @@ class PromptInput extends StatefulWidget {
   /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header;
 
-  /// Key under which the in-progress draft is persisted across navigation /
-  /// backgrounding (the session id). Null disables draft persistence, e.g. on
-  /// the new-session screen where there is no session id yet.
-  final String? draftKey;
+  /// Stable identity used only to detect when this widget state is reused for
+  /// another composer. Persistence remains owned by the parent Cubit.
+  final String draftIdentity;
+  final ComposerDraft initialDraft;
 
   const PromptInput({
     super.key,
     required this.isBusy,
     required this.hasMessages,
     required this.onSend,
+    required this.onVoiceTranscriptionCompleted,
+    required this.onDraftChanged,
+    required this.onDraftCleared,
     required this.onAbort,
     required this.composerHeader,
     required this.availableCommands,
     required this.stagedCommand,
     required this.onCommandSelected,
     required this.onCommandCleared,
+    required this.draftIdentity,
+    required this.initialDraft,
     this.header,
-    this.draftKey,
   });
 
   @override
@@ -69,8 +83,12 @@ class PromptInput extends StatefulWidget {
 }
 
 class _PromptInputState extends State<PromptInput> {
+  static const _draftCalculator = ComposerDraftCalculator();
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+  late ComposerDraft _draft;
+  late TextEditingValue _previousEditingValue;
+  bool _isApplyingDraft = false;
   _VoiceState _voiceState = _VoiceState.idle;
   StreamSubscription<void>? _maxDurationSub;
 
@@ -128,7 +146,7 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void initState() {
     super.initState();
-    _restoreDraft();
+    _restoreDraft(draft: widget.initialDraft);
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
@@ -142,11 +160,6 @@ class _PromptInputState extends State<PromptInput> {
 
   @override
   void dispose() {
-    // Persist the in-progress draft so it survives leaving and returning to
-    // the session. Sent messages clear the draft in [_handleSend], so this
-    // only saves genuinely unsent text. Must run before disposing the
-    // controller.
-    _saveDraft();
     _maxDurationSub?.cancel();
     // Fire-and-forget cancel if the widget is disposed mid-recording or mid-transcription.
     if (_voiceState != _VoiceState.idle) {
@@ -158,44 +171,40 @@ class _PromptInputState extends State<PromptInput> {
     super.dispose();
   }
 
-  /// The draft store, or null when it isn't registered. Guarded because
-  /// [dispose] can run during teardown after the service locator has already
-  /// been reset (e.g. in widget tests).
-  DraftStore? get _draftStore => getIt.isRegistered<DraftStore>() ? getIt<DraftStore>() : null;
-
-  void _restoreDraft() => _restoreDraftFor(widget.draftKey);
-
-  /// Loads the draft for [key] into the controller. Clears the controller when
-  /// there is no draft (or no [key]/store) so text never leaks across a
-  /// session switch when the state is reused (see [didUpdateWidget]).
-  void _restoreDraftFor(String? key) {
-    final store = _draftStore;
-    if (key == null || store == null) {
-      _controller.clear();
-      return;
-    }
-    final draft = store.read(key);
-    _controller.text = draft;
-    _controller.selection = TextSelection.collapsed(offset: draft.length);
-  }
-
-  void _saveDraft() => _saveDraftFor(widget.draftKey);
-
-  void _saveDraftFor(String? key) {
-    final store = _draftStore;
-    if (key == null || store == null) return;
-    store.write(key, text: _controller.text);
-  }
-
-  void _clearDraft() {
-    final key = widget.draftKey;
-    final store = _draftStore;
-    if (key == null || store == null) return;
-    store.clear(key);
+  void _restoreDraft({required ComposerDraft draft}) {
+    _isApplyingDraft = true;
+    _draft = draft;
+    final value = TextEditingValue(
+      text: draft.text,
+      selection: TextSelection.collapsed(offset: draft.text.length),
+    );
+    _controller.value = value;
+    _previousEditingValue = value;
+    _isApplyingDraft = false;
+    _hasText = draft.text.trim().isNotEmpty;
   }
 
   void _handleTextChanged() {
-    final hasText = _controller.text.trim().isNotEmpty;
+    final currentValue = _controller.value;
+    if (!_isApplyingDraft && currentValue.text != _previousEditingValue.text) {
+      final previousSelection = _previousEditingValue.selection;
+      final nextDraft = _draftCalculator.applyTypedEdit(
+        draft: _draft,
+        newText: currentValue.text,
+        previousSelection: previousSelection.isValid
+            ? (start: previousSelection.start, end: previousSelection.end)
+            : null,
+        currentSelection: currentValue.selection.isValid
+            ? (start: currentValue.selection.start, end: currentValue.selection.end)
+            : null,
+      );
+      if (nextDraft != _draft) {
+        _draft = nextDraft;
+        widget.onDraftChanged(nextDraft);
+      }
+    }
+    _previousEditingValue = currentValue;
+    final hasText = currentValue.text.trim().isNotEmpty;
     if (hasText != _hasText && mounted) {
       setState(() => _hasText = hasText);
     }
@@ -260,16 +269,20 @@ class _PromptInputState extends State<PromptInput> {
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
     if (stagedCommand != null) {
-      widget.onSend(_controller.text, stagedCommand.name);
+      widget.onSend(
+        text: _controller.text,
+        command: stagedCommand.name,
+        inputMode: ComposerInputMode.typed,
+      );
       widget.onCommandCleared();
     } else {
-      final text = _controller.text.trim();
-      if (text.isEmpty) return;
-      widget.onSend(text, null);
+      final submission = _draftCalculator.trim(draft: _draft);
+      if (submission.text.isEmpty) return;
+      widget.onSend(text: submission.text, command: null, inputMode: submission.inputMode);
     }
 
     _controller.clear();
-    _clearDraft();
+    widget.onDraftCleared();
     // Keep the keyboard up across a send only where it was already part of
     // the flow: always in text-first, and in voice-first when the field was
     // focused. Sending a reviewed voice transcript stays keyboard-free — the
@@ -282,13 +295,11 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void didUpdateWidget(covariant PromptInput oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.draftKey != widget.draftKey) {
-      // The state was reused for a different session (e.g. split-view swap
-      // or a parent rebuild with a new session) without initState/dispose.
-      // Persist the previous session's draft and load the new one so text
-      // never leaks between sessions.
-      _saveDraftFor(oldWidget.draftKey);
-      _restoreDraftFor(widget.draftKey);
+    if (oldWidget.draftIdentity != widget.draftIdentity) {
+      // The state was reused for another session without initState/dispose.
+      // The owning Cubit already persisted each edit, so only restore the new
+      // immutable snapshot here.
+      _restoreDraft(draft: widget.initialDraft);
     }
     if (oldWidget.stagedCommand?.name != widget.stagedCommand?.name && widget.stagedCommand != null) {
       _focusComposerField();
@@ -406,16 +417,14 @@ class _PromptInputState extends State<PromptInput> {
     try {
       final transcript = await _voiceService.stopAndTranscribe();
       if (stale()) return;
+      if (transcript.trim().isEmpty) return;
 
-      // Append transcript to the text field, preserving any existing text.
-      final currentText = _controller.text;
-      if (currentText.isNotEmpty && !currentText.endsWith(" ")) {
-        _controller.text = "$currentText $transcript";
-      } else {
-        _controller.text = "$currentText$transcript";
-      }
-      // Move cursor to end.
-      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      final nextDraft = _draftCalculator.appendVoiceTranscript(
+        draft: _draft,
+        transcript: transcript,
+      );
+      _applyDraft(draft: nextDraft);
+      widget.onVoiceTranscriptionCompleted();
       // Text-first raises the keyboard so the transcript can be extended
       // right away. Voice-first rests the transcript in the typing container
       // unfocused — the design's reviewed-before-send state — unless the
@@ -445,6 +454,20 @@ class _PromptInputState extends State<PromptInput> {
         });
       }
     }
+  }
+
+  void _applyDraft({required ComposerDraft draft}) {
+    _isApplyingDraft = true;
+    _draft = draft;
+    final value = TextEditingValue(
+      text: draft.text,
+      selection: TextSelection.collapsed(offset: draft.text.length),
+    );
+    _controller.value = value;
+    _previousEditingValue = value;
+    _isApplyingDraft = false;
+    _hasText = draft.text.trim().isNotEmpty;
+    widget.onDraftChanged(draft);
   }
 
   /// Discards the running voice interaction: a drag released on the cancel

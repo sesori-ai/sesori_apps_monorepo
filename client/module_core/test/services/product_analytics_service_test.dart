@@ -121,6 +121,8 @@ class _FakePreferenceRepository extends Mock implements ProductAnalyticsPreferen
 class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository {
   final calls = <({ProductAnalyticsEnvelope envelope, String userKey})>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
+  Queue<AnalyticsDeliveryResult>? results;
+  final deliveryFutures = Queue<Future<AnalyticsDeliveryResult>>();
   Completer<AnalyticsDeliveryResult>? deliveryCompleter;
 
   @override
@@ -129,9 +131,11 @@ class _RecordingAnalyticsRepository extends Mock implements AnalyticsRepository 
     required String userKey,
   }) async {
     calls.add((envelope: envelope, userKey: userKey));
+    if (deliveryFutures.isNotEmpty) return deliveryFutures.removeFirst();
     final completer = deliveryCompleter;
     if (completer != null) return completer.future;
-    return result;
+    final queuedResults = results;
+    return queuedResults == null || queuedResults.isEmpty ? result : queuedResults.removeFirst();
   }
 }
 
@@ -170,6 +174,13 @@ void main() {
       analyticsRepository: analyticsRepository,
       preferenceService: preferenceService,
     );
+  }
+
+  Future<void> waitForAnalyticsCalls({required int count}) async {
+    for (var i = 0; i < 20 && analyticsRepository.calls.length < count; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(analyticsRepository.calls.length, greaterThanOrEqualTo(count));
   }
 
   tearDown(() async {
@@ -301,15 +312,207 @@ void main() {
 
     reconciliation.complete(ProductAnalyticsPreferenceSynchronized(record: record));
     await readinessFuture;
+    await waitForAnalyticsCalls(count: 2);
 
     expect(preferenceRepository.reconcileCalls, hasLength(1));
     expect(service.state.isActive, isTrue);
-    expect(analyticsRepository.calls, hasLength(1));
-    expect(analyticsRepository.calls.single.envelope.event, isA<AnalyticsSchemaReadyEvent>());
-    expect(analyticsRepository.calls.single.userKey, _userKeyA);
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+      ],
+    );
+    expect(analyticsRepository.calls.map((call) => call.userKey), everyElement(_userKeyA));
 
     await service.markPostSplashReady();
     expect(preferenceRepository.reconcileCalls, hasLength(1));
+  });
+
+  test("schema readiness precedes a deferred first-message outcome and preserves occurrence time", () async {
+    createService();
+    final occurredAt = DateTime.utc(2026, 7, 30, 10, 15);
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: occurredAt,
+      ),
+      AnalyticsDeliveryResult.deferredUntilPreference,
+    );
+    expect(analyticsRepository.calls, isEmpty);
+
+    await service.markPostSplashReady();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+      ],
+    );
+    expect(analyticsRepository.calls.last.envelope.occurredAtUtc, occurredAt);
+  });
+
+  test("retains deferred outcomes until schema readiness is accepted", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled))
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled));
+    analyticsRepository.results = Queue.of([AnalyticsDeliveryResult.failed]);
+    await service.start();
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.deferredUntilPreference,
+    );
+
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 1);
+    expect(analyticsRepository.calls, hasLength(1));
+
+    analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
+    await service.refreshPreference();
+    await waitForAnalyticsCalls(count: 4);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+      ],
+    );
+  });
+
+  test("failed deferred outcome delivery remains operationally observable", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    analyticsRepository.results = Queue.of([
+      AnalyticsDeliveryResult.acceptedBySdk,
+      AnalyticsDeliveryResult.acceptedBySdk,
+      AnalyticsDeliveryResult.failed,
+    ]);
+    final logLines = <String>[];
+
+    await runZoned(
+      () async {
+        await service.start();
+        await service.logEvent(
+          event: const ProductAnalyticsEvent.sessionMessageSent(
+            submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          ),
+          occurredAtUtc: DateTime.utc(2026, 7, 30),
+        );
+        await service.markPostSplashReady();
+        await waitForAnalyticsCalls(count: 3);
+      },
+      zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logLines.add(line)),
+    );
+
+    expect(logLines, contains("Failed to deliver deferred product analytics event"));
+  });
+
+  test("retains unattempted fixed slots across a same-generation inactive refresh", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    final refreshResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
+    preferenceRepository.reconcileHandlers
+      ..add((_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled))
+      ..add((_, _) => refreshResult.future);
+    final firstCandidateResult = Completer<AnalyticsDeliveryResult>();
+    analyticsRepository.deliveryFutures
+      ..add(Future.value(AnalyticsDeliveryResult.acceptedBySdk))
+      ..add(Future.value(AnalyticsDeliveryResult.acceptedBySdk))
+      ..add(firstCandidateResult.future);
+
+    await service.start();
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30, 10),
+      ),
+      AnalyticsDeliveryResult.deferredUntilPreference,
+    );
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.projectInventoryLoaded(
+          inventoryState: AnalyticsInventoryState.nonEmpty,
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30, 11),
+      ),
+      AnalyticsDeliveryResult.deferredUntilPreference,
+    );
+
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 3);
+    final refreshFuture = service.refreshPreference();
+    while (preferenceRepository.reconcileCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(service.state.isActive, isFalse);
+
+    firstCandidateResult.complete(AnalyticsDeliveryResult.acceptedBySdk);
+    await Future<void>.delayed(Duration.zero);
+    expect(analyticsRepository.calls, hasLength(3));
+
+    refreshResult.complete(ProductAnalyticsPreferenceSynchronized(record: enabled));
+    await refreshFuture;
+    await waitForAnalyticsCalls(count: 4);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        const ProductAnalyticsEvent.projectInventoryLoaded(
+          inventoryState: AnalyticsInventoryState.nonEmpty,
+        ),
+      ],
+    );
   });
 
   test("disabled runtime retains preference truth but never emits custom events", () async {
@@ -335,7 +538,7 @@ void main() {
     expect(analyticsRepository.calls, isEmpty);
   });
 
-  test("schema readiness retries after SDK rejection in the same auth generation", () async {
+  test("readiness events retry after SDK rejection in the same auth generation", () async {
     createService();
     final record = _record(
       userId: _userA.id,
@@ -349,15 +552,173 @@ void main() {
 
     await service.start();
     await service.markPostSplashReady();
-    expect(analyticsRepository.calls, hasLength(1));
+    await waitForAnalyticsCalls(count: 1);
 
     analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
     await service.refreshPreference();
+    await waitForAnalyticsCalls(count: 3);
 
-    expect(analyticsRepository.calls, hasLength(2));
     expect(
       analyticsRepository.calls.map((call) => call.envelope.event),
-      everyElement(isA<AnalyticsSchemaReadyEvent>()),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+      ],
+    );
+  });
+
+  test("later analytics activity retries activation readiness and deferred candidates", () async {
+    createService();
+    final record = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: record),
+    );
+    analyticsRepository.results = Queue.of([
+      AnalyticsDeliveryResult.acceptedBySdk,
+      AnalyticsDeliveryResult.failed,
+    ]);
+
+    await service.start();
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionDiffViewed(
+          changeState: AnalyticsChangeState.nonEmpty,
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.deferredUntilPreference,
+    );
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 2);
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+      ],
+    );
+
+    analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    await waitForAnalyticsCalls(count: 5);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionDiffViewed(
+          changeState: AnalyticsChangeState.nonEmpty,
+        ),
+      ],
+    );
+  });
+
+  test("later analytics activity retries activation readiness without deferred candidates", () async {
+    createService();
+    final record = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: record),
+    );
+    analyticsRepository.results = Queue.of([
+      AnalyticsDeliveryResult.acceptedBySdk,
+      AnalyticsDeliveryResult.failed,
+    ]);
+
+    await service.start();
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 2);
+
+    analyticsRepository.result = AnalyticsDeliveryResult.acceptedBySdk;
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    await waitForAnalyticsCalls(count: 4);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+      ],
+    );
+  });
+
+  test("analytics activity queues one readiness retry behind an in-flight attempt", () async {
+    createService();
+    final record = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: record),
+    );
+    final activationResult = Completer<AnalyticsDeliveryResult>();
+    analyticsRepository.deliveryFutures.addAll([
+      Future.value(AnalyticsDeliveryResult.acceptedBySdk),
+      activationResult.future,
+      Future.value(AnalyticsDeliveryResult.acceptedBySdk),
+      Future.value(AnalyticsDeliveryResult.acceptedBySdk),
+    ]);
+
+    await service.start();
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 2);
+
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    activationResult.complete(AnalyticsDeliveryResult.failed);
+    await waitForAnalyticsCalls(count: 4);
+
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+        const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+      ],
     );
   });
 
@@ -379,13 +740,29 @@ void main() {
     expect(preferenceRepository.reconcileCalls, isEmpty);
     expect(service.state.availability, isA<ProductAnalyticsInactive>());
     expect(analyticsRepository.calls, isEmpty);
+    expect(
+      await service.logEvent(
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        ),
+        occurredAtUtc: DateTime.utc(2026, 7, 30),
+      ),
+      AnalyticsDeliveryResult.failed,
+    );
 
     preferenceRepository.throwOnLoad = false;
     await service.refreshPreference();
+    await waitForAnalyticsCalls(count: 2);
 
     expect(preferenceRepository.reconcileCalls, hasLength(1));
     expect(service.state.isActive, isTrue);
-    expect(analyticsRepository.calls.single.envelope.event, isA<AnalyticsSchemaReadyEvent>());
+    expect(
+      analyticsRepository.calls.map((call) => call.envelope.event),
+      [
+        const ProductAnalyticsEvent.analyticsSchemaReady(),
+        const ProductAnalyticsEvent.analyticsActivationReady(),
+      ],
+    );
   });
 
   test("a retried local read cannot overwrite a newer preference request", () async {
@@ -446,6 +823,7 @@ void main() {
     );
     await service.start();
     await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 1);
     analyticsRepository.calls.clear();
 
     final pendingCompleter = Completer<ProductAnalyticsPreferenceRepositoryResult>();
@@ -1409,6 +1787,7 @@ void main() {
     );
     await service.start();
     await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 1);
     analyticsRepository.calls.clear();
 
     final refreshResult = Completer<ProductAnalyticsPreferenceRepositoryResult>();
@@ -1668,6 +2047,7 @@ void main() {
     );
     await service.start();
     await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 1);
     analyticsRepository.calls.clear();
 
     authSession.emit(state: const AuthState.authenticated(user: _userB));
@@ -1692,6 +2072,7 @@ void main() {
     );
     await service.start();
     await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 1);
     analyticsRepository.calls.clear();
 
     final loadB = Completer<LocalProductAnalyticsPreference?>();

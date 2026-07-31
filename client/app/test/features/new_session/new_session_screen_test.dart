@@ -15,6 +15,7 @@ import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -33,6 +34,12 @@ AgentInfo _testAgent({required String name, required String description, require
     mode: AgentMode.primary,
   );
 }
+
+SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
+  agents: [_testAgent(name: "coder", description: "A coding assistant", variant: "xhigh")],
+  providers: testProviderListResponse().items,
+  commands: const [],
+);
 
 Widget _buildApp({
   ThemeMode themeMode = ThemeMode.light,
@@ -97,12 +104,17 @@ Future<void> enterTypingMode(WidgetTester tester) async {
 
 void main() {
   late MockSessionService sessionService;
+  late MockSessionRepository sessionRepository;
   late MockPluginRepository pluginRepository;
   late MockPluginPreferenceRepository pluginPreferenceRepository;
   late MockConnectionService connectionService;
   late BehaviorSubject<ConnectionStatus> connectionStatus;
   late MockProjectRepository projectRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
+  late ComposerDraftRepository composerDraftRepository;
+  late MockProductAnalyticsService productAnalyticsService;
+
+  setUpAll(registerAllFallbackValues);
 
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
   // renders its flat (cue) menu here — the menu rows are Material InkWells, not
@@ -110,6 +122,7 @@ void main() {
   setUp(() async {
     await GetIt.instance.reset();
     sessionService = MockSessionService();
+    sessionRepository = MockSessionRepository();
     pluginRepository = MockPluginRepository();
     pluginPreferenceRepository = MockPluginPreferenceRepository();
     connectionService = MockConnectionService();
@@ -121,15 +134,19 @@ void main() {
     );
     projectRepository = MockProjectRepository();
     voiceTranscriptionService = MockVoiceTranscriptionService();
+    composerDraftRepository = inMemoryComposerDraftRepository();
+    productAnalyticsService = MockProductAnalyticsService();
+    stubProductAnalyticsService(service: productAnalyticsService);
 
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
 
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        const PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
-          plugins: [
+          supportsSessionOptions: true,
+          plugins: const [
             PluginMetadata(
               id: "plugin-1",
               displayName: "Plugin One",
@@ -174,6 +191,69 @@ void main() {
       (_) async => ApiResponse.success(const CommandListResponse(items: [])),
     );
     when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        refresh: any(named: "refresh"),
+      ),
+    ).thenAnswer((invocation) async {
+      final projectId = invocation.namedArguments[#projectId]! as String;
+      final pluginId = invocation.namedArguments[#pluginId]! as String;
+      final (agents, providers, commands) = await (
+        sessionService.listAgents(projectId: projectId, pluginId: pluginId),
+        sessionService.listProviders(projectId: projectId, pluginId: pluginId),
+        sessionService.listCommands(projectId: projectId, pluginId: pluginId),
+      ).wait;
+      return switch ((agents, providers, commands)) {
+        (
+          SuccessResponse(data: final agentData),
+          SuccessResponse(data: final providerData),
+          SuccessResponse(data: final commandData),
+        ) =>
+          SessionOptionsRepositoryAvailable(
+            catalog: SessionOptionsCatalog(
+              agents: agentData.agents,
+              providers: providerData.items,
+              commands: commandData.items,
+            ),
+          ),
+        (ErrorResponse(:final error), _, _) => SessionOptionsRepositoryFailure(error: error),
+        (_, ErrorResponse(:final error), _) => SessionOptionsRepositoryFailure(error: error),
+        (_, _, ErrorResponse(:final error)) => SessionOptionsRepositoryFailure(error: error),
+      };
+    });
+    when(
+      () => sessionRepository.loadLegacySessionOptions(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer((invocation) async {
+      final projectId = invocation.namedArguments[#projectId]! as String;
+      final pluginId = invocation.namedArguments[#pluginId]! as String;
+      final (agents, providers, commands) = await (
+        sessionService.listAgents(projectId: projectId, pluginId: pluginId),
+        sessionService.listProviders(projectId: projectId, pluginId: pluginId),
+        sessionService.listCommands(projectId: projectId, pluginId: pluginId),
+      ).wait;
+      return switch ((agents, providers, commands)) {
+        (
+          SuccessResponse(data: final agentData),
+          SuccessResponse(data: final providerData),
+          SuccessResponse(data: final commandData),
+        ) =>
+          LegacySessionOptionsRepositoryAvailable(
+            catalog: SessionOptionsCatalog(
+              agents: agentData.agents,
+              providers: providerData.items,
+              commands: commandData.items,
+            ),
+          ),
+        (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(error: error),
+        (_, ErrorResponse(:final error), _) => LegacySessionOptionsRepositoryFailure(error: error),
+        (_, _, ErrorResponse(:final error)) => LegacySessionOptionsRepositoryFailure(error: error),
+      };
+    });
+    when(
       () => projectRepository.getProject(projectId: any(named: "projectId")),
     ).thenAnswer(
       (_) async => ApiResponse.success(
@@ -209,10 +289,18 @@ void main() {
         pluginPreferenceRepository: pluginPreferenceRepository,
       ),
     );
+    GetIt.instance.registerSingleton<NewSessionOptionsService>(
+      NewSessionOptionsService(
+        sessionRepository: sessionRepository,
+        defaultModelSelector: const DefaultModelSelector(),
+      ),
+    );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
+    GetIt.instance.registerSingleton<ComposerDraftRepository>(composerDraftRepository);
+    GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
   });
 
   tearDown(() async {
@@ -245,6 +333,153 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: false,
+          plugins: const [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "Plugin One",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    expect(find.text(loc.newSessionOptionsLegacyBridge), findsOneWidget);
+    expect(find.byKey(const Key("new_session_options_refresh")), findsOneWidget);
+    final composerPointer = tester.widget<IgnorePointer>(
+      find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
+    );
+    expect(composerPointer.ignoring, isFalse);
+    verifyNever(
+      () => sessionRepository.loadSessionOptions(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        refresh: any(named: "refresh"),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
+    await tester.pumpAndSettle();
+
+    verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.text(loc.newSessionOptionsLegacyBridge), findsOneWidget);
+  });
+
+  testWidgets("cache miss keeps creation available with backend defaults", (tester) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        refresh: false,
+      ),
+    ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(testSession(id: "session-cache-miss")));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text(loc.newSessionOptionsUnavailable), findsOneWidget);
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "use backend defaults");
+    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    verify(
+      () => sessionService.createSessionWithMessage(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        text: "use backend defaults",
+        agent: null,
+        providerID: null,
+        modelID: null,
+        variant: null,
+        command: null,
+        dedicatedWorktree: true,
+      ),
+    ).called(1);
+  });
+
+  testWidgets("retained refresh failure keeps cached options visible", (tester) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        refresh: any(named: "refresh"),
+      ),
+    ).thenAnswer((invocation) async {
+      final refresh = invocation.namedArguments[#refresh]! as bool;
+      return refresh
+          ? const SessionOptionsRepositoryRefreshFailedRetained()
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text(loc.newSessionOptionsCached), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
+    await tester.pumpAndSettle();
+
+    expect(find.text(loc.newSessionOptionsUpdateFailedRetained), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+  });
+
+  testWidgets("unavailable refresh failure clears options immediately", (tester) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        refresh: any(named: "refresh"),
+      ),
+    ).thenAnswer((invocation) async {
+      final refresh = invocation.namedArguments[#refresh]! as bool;
+      return refresh
+          ? const SessionOptionsRepositoryRefreshFailedUnavailable()
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
+    await tester.pumpAndSettle();
+
+    expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "coder"), findsNothing);
+  });
+
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
@@ -268,9 +503,10 @@ void main() {
   testWidgets("renders bridge order with generic degraded and blocked presentation", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        const PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
-          plugins: [
+          supportsSessionOptions: true,
+          plugins: const [
             PluginMetadata(
               id: "failed-id",
               displayName: "First Tool",
@@ -339,9 +575,10 @@ void main() {
   testWidgets("uses on-brand foreground tokens for a selected plugin in dark mode", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        const PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
-          plugins: [
+          supportsSessionOptions: true,
+          plugins: const [
             PluginMetadata(
               id: "degraded-id",
               displayName: "Selected Tool",
@@ -389,8 +626,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
+          supportsSessionOptions: true,
           plugins: [
             for (var index = 0; index < 8; index++)
               PluginMetadata(
@@ -488,7 +726,13 @@ void main() {
       actionHint: "Check the bridge console.",
     );
     when(pluginRepository.listPlugins).thenAnswer(
-      (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])),
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: const [toolA, toolB],
+        ),
+      ),
     );
     final toolBAgents = Completer<ApiResponse<Agents>>();
     when(
@@ -561,12 +805,20 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
     );
-    final reconnectDiscovery = Completer<ApiResponse<PluginListResponse>>();
+    final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
     var discoveryCalls = 0;
     when(pluginRepository.listPlugins).thenAnswer((_) {
       discoveryCalls++;
       if (discoveryCalls == 1) {
-        return Future.value(ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])));
+        return Future.value(
+          ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: null,
+              supportsSessionOptions: true,
+              plugins: const [toolA, toolB],
+            ),
+          ),
+        );
       }
       return reconnectDiscovery.future;
     });
@@ -606,7 +858,15 @@ void main() {
     );
     verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
 
-    reconnectDiscovery.complete(ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])));
+    reconnectDiscovery.complete(
+      ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: const [toolA, toolB],
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isTrue);
@@ -626,15 +886,16 @@ void main() {
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
   });
 
-  testWidgets("refresh discovery failure keeps the chooser and composer usable", (tester) async {
+  testWidgets("refresh discovery failure keeps prior context but disables backend actions", (tester) async {
     var discoveryCalls = 0;
     when(pluginRepository.listPlugins).thenAnswer((_) async {
       discoveryCalls++;
       if (discoveryCalls == 1) {
         return ApiResponse.success(
-          const PluginListResponse(
+          PluginDiscoverySnapshot(
             bridgeId: null,
-            plugins: [
+            supportsSessionOptions: true,
+            plugins: const [
               PluginMetadata(
                 id: "plugin-1",
                 displayName: "Plugin One",
@@ -670,12 +931,18 @@ void main() {
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsOneWidget);
+    expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
+    expect(tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_plugin-1"))).onTap, isNull);
+    expect(
+      tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_options_refresh"))).onPressed,
+      isNull,
+    );
     expect(
       find.ancestor(
         of: find.byType(PromptInput),
         matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
       ),
-      findsNothing,
+      findsOneWidget,
     );
   });
 
@@ -842,9 +1109,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "reviewer"), findsOneWidget);
-    // Changing the agent seeds the variant from the agent's default.
-    // Reviewer has variant: null, so the pill shows "Default".
-    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
+    // Variant intent is independent, so the explicit xhigh choice survives the
+    // agent change while that variant remains valid for the selected model.
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("shows the loading overlay with accessible message during sending", (tester) async {
@@ -1141,9 +1408,6 @@ void main() {
   });
 
   testWidgets("persists and restores the per-project new-session draft", (tester) async {
-    final draftStore = DraftStore();
-    GetIt.instance.registerSingleton<DraftStore>(draftStore);
-
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
@@ -1152,10 +1416,13 @@ void main() {
     await tester.pump();
 
     // Tear the screen down (e.g. the user navigates away) before creating a
-    // session — PromptInput.dispose() should persist the unsent prompt.
+    // session. The owning Cubit has already persisted the immutable draft.
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
-    expect(draftStore.read("new-session:project-1"), "half-written idea");
+    expect(
+      composerDraftRepository.readForNewSession(projectId: "project-1"),
+      ComposerDraft.typed(text: "half-written idea"),
+    );
 
     // Re-open the new-session screen — the per-project draft is restored.
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));

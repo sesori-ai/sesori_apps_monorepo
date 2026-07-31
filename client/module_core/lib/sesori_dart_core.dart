@@ -39,6 +39,7 @@ export "src/api/notification_preferences_api.dart";
 export "src/api/plugin_preference_api.dart";
 export "src/api/product_analytics_preference_api.dart";
 export "src/api/project_api.dart";
+export "src/api/storage/composer_draft_storage.dart";
 export "src/api/storage/product_analytics_preference_storage.dart";
 export "src/capabilities/notifications/register_token_request.dart";
 export "src/capabilities/relay/relay_client.dart";
@@ -51,8 +52,12 @@ export "src/capabilities/server_connection/server_connection_config.dart";
 export "src/capabilities/session/session_service.dart";
 // Capabilities
 export "src/capabilities/voice/voice_api.dart";
+// Consumers
+export "src/consumers/analytics/session_activity_analytics_listener.dart";
 // Cubits
 export "src/cubits/appearance/appearance_cubit.dart";
+export "src/cubits/bridge_identity/bridge_identity_cubit.dart";
+export "src/cubits/bridge_identity/bridge_identity_state.dart";
 export "src/cubits/chat_input_mode/chat_input_mode_cubit.dart";
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/connection_overlay/connection_overlay_state.dart";
@@ -89,6 +94,7 @@ export "src/di/injection.dart";
 // Errors
 export "src/errors/remote_failure_reason.dart";
 // Analytics foundation
+export "src/foundation/models/composer/composer_draft.dart";
 export "src/foundation/models/product_analytics/analytics_runtime_capability.dart";
 export "src/foundation/models/product_analytics/installation_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_event.dart";
@@ -111,11 +117,14 @@ export "src/repositories/analytics_repository.dart";
 export "src/repositories/appearance_store.dart";
 export "src/repositories/bridge_repository.dart";
 export "src/repositories/chat_input_mode_store.dart";
+export "src/repositories/composer_draft_repository.dart";
 export "src/repositories/legal_repository.dart";
 export "src/repositories/models/analytics_delivery_result.dart";
+export "src/repositories/models/plugin_discovery_snapshot.dart";
 export "src/repositories/models/plugin_management_result.dart";
 export "src/repositories/models/product_analytics_preference_models.dart";
 export "src/repositories/models/repo_provider.dart";
+export "src/repositories/models/session_options_repository_result.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
@@ -130,11 +139,15 @@ export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
 // Services
-export "src/services/draft_store.dart";
+export "src/services/composer_draft_calculator.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";
+export "src/services/models/new_session_backend_scope.dart";
+export "src/services/models/new_session_options_source.dart";
+export "src/services/models/new_session_selection_intent.dart";
 export "src/services/models/product_analytics_state.dart";
 export "src/services/models/session_activity_info.dart";
+export "src/services/new_session_options_service.dart";
 export "src/services/new_session_plugin_service.dart";
 export "src/services/new_session_selection_tracker.dart";
 export "src/services/notification_registration_service.dart";

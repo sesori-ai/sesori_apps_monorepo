@@ -23,13 +23,14 @@ class MockPermissionRepository extends Mock implements PermissionRepository {}
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
-Widget _buildApp({required String? sessionTitle}) {
+Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
       BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
     ],
     child: MaterialApp(
+      navigatorKey: navigatorKey,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -86,6 +87,34 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
   );
 }
 
+SessionDetailLoadResult _loadedResultWithPendingQuestion() {
+  return const SessionDetailLoadResult.loaded(
+    snapshot: SessionDetailSnapshot(
+      projectId: "project-1",
+      messages: [],
+      pendingQuestions: [
+        PendingQuestion(
+          id: "question-1",
+          sessionID: "session-1",
+          displaySessionId: null,
+          questions: [],
+        ),
+      ],
+      pendingPermissions: [],
+      childSessions: [],
+      statuses: {},
+      agents: [],
+      providerData: null,
+      commands: [],
+      canonicalSessionTitle: null,
+      promptDefaults: null,
+      isRootSession: true,
+      isArchived: false,
+    ),
+    isBridgeConnected: true,
+  );
+}
+
 void _registerDependencies({
   required MockSessionDetailLoadService loadService,
   required MockConnectionService connectionService,
@@ -94,6 +123,7 @@ void _registerDependencies({
   required MockNotificationCanceller notificationCanceller,
   required MockFailureReporter failureReporter,
   required MockVoiceTranscriptionService voiceTranscriptionService,
+  required MockProductAnalyticsService productAnalyticsService,
 }) {
   final getIt = GetIt.instance;
 
@@ -106,7 +136,8 @@ void _registerDependencies({
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
-  getIt.registerLazySingleton<DraftStore>(DraftStore.new);
+  getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
+  getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
 }
 
 void main() {
@@ -120,6 +151,7 @@ void main() {
   late MockNotificationCanceller notificationCanceller;
   late MockFailureReporter failureReporter;
   late MockVoiceTranscriptionService voiceTranscriptionService;
+  late MockProductAnalyticsService productAnalyticsService;
   late StreamController<SesoriSessionEvent> sessionEvents;
   late StreamController<SseEvent> globalEvents;
   late BehaviorSubject<ConnectionStatus> connectionStatus;
@@ -135,6 +167,8 @@ void main() {
     notificationCanceller = MockNotificationCanceller();
     failureReporter = MockFailureReporter();
     voiceTranscriptionService = MockVoiceTranscriptionService();
+    productAnalyticsService = MockProductAnalyticsService();
+    stubProductAnalyticsService(service: productAnalyticsService);
     sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     globalEvents = StreamController<SseEvent>.broadcast();
     connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(
@@ -179,6 +213,7 @@ void main() {
       notificationCanceller: notificationCanceller,
       failureReporter: failureReporter,
       voiceTranscriptionService: voiceTranscriptionService,
+      productAnalyticsService: productAnalyticsService,
     );
   });
 
@@ -198,7 +233,7 @@ void main() {
       ),
     ).thenAnswer((_) => loadCompleter.future);
 
-    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
+    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pump();
 
     expect(find.text("Carried title"), findsOneWidget);
@@ -218,7 +253,7 @@ void main() {
       ),
     ).thenAnswer((_) async => const SessionDetailLoadResult.failed(error: Object(), stackTrace: null));
 
-    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
+    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pumpAndSettle();
 
     expect(find.text("Carried title"), findsOneWidget);
@@ -243,7 +278,7 @@ void main() {
       ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
 
-    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
+    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pumpAndSettle();
 
     expect(find.text("Canonical title"), findsOneWidget);
@@ -258,7 +293,7 @@ void main() {
       ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
 
-    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
+    await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pumpAndSettle();
 
     sessionEvents.add(
@@ -273,9 +308,56 @@ void main() {
   });
 
   testWidgets("falls back to the localized title when both titles are null", (tester) async {
-    await tester.pumpWidget(_buildApp(sessionTitle: null));
+    await tester.pumpWidget(_buildApp(sessionTitle: null, navigatorKey: null));
     await tester.pumpAndSettle();
 
     expect(find.text("Session"), findsOneWidget);
+  });
+
+  testWidgets("covered detail routes do not report activity until visible again", (tester) async {
+    final loadCompleter = Completer<SessionDetailLoadResult>();
+    when(
+      () => loadService.load(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer((_) => loadCompleter.future);
+    final navigatorKey = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      _buildApp(
+        sessionTitle: "Carried title",
+        navigatorKey: navigatorKey,
+      ),
+    );
+    await tester.pump();
+
+    unawaited(
+      navigatorKey.currentState!.push<void>(
+        MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text("Covering route"))),
+      ),
+    );
+    await tester.pumpAndSettle();
+    clearInteractions(productAnalyticsService);
+
+    loadCompleter.complete(_loadedResultWithPendingQuestion());
+    await tester.pumpAndSettle();
+    verifyNever(
+      () => productAnalyticsService.logEvent(
+        event: any(named: "event"),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    );
+
+    navigatorKey.currentState!.pop();
+    await tester.pumpAndSettle();
+
+    verify(
+      () => productAnalyticsService.logEvent(
+        event: const ProductAnalyticsEvent.sessionActivityViewed(
+          activityState: AnalyticsActivityState.nonEmpty,
+        ),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).called(1);
   });
 }

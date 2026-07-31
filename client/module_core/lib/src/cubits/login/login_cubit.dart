@@ -8,15 +8,33 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../../platform/url_launcher.dart";
+import "../../repositories/models/analytics_delivery_result.dart";
+import "../../services/installation_analytics_service.dart";
 import "login_failed_reason.dart";
 import "login_state.dart";
+
+enum _LoginAnalyticsOutcome { open, terminal }
+
+final class _LoginAttempt {
+  final AuthProvider provider;
+  _LoginAnalyticsOutcome analyticsOutcome = _LoginAnalyticsOutcome.open;
+  _LoginAttempt({required this.provider});
+}
+
+/// Opaque ownership token for one native Apple sign-in operation.
+final class AppleLoginAttempt {
+  final _LoginAttempt _attempt;
+  AppleLoginAttempt._({required _LoginAttempt attempt}) : _attempt = attempt;
+}
 
 class LoginCubit extends Cubit<LoginState> {
   final OAuthFlowProvider _oAuthFlowProvider;
   final UrlLauncher _urlLauncher;
   final AuthSession _authSession;
   final LifecycleSource _lifecycleSource;
+  final InstallationAnalyticsService _installationAnalyticsService;
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
+  _LoginAttempt? _loginAttempt;
   bool _isPolling = false;
 
   /// Whether the app is currently backgrounded. While backgrounded, the OS can
@@ -31,17 +49,18 @@ class LoginCubit extends Cubit<LoginState> {
   /// app has already returned to the foreground before the Future completes.
   bool _didActivePollEnterBackground = false;
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  LoginCubit(
-    OAuthFlowProvider oAuthFlowProvider,
-    UrlLauncher urlLauncher,
-    AuthSession authSession,
-    LifecycleSource lifecycleSource,
-  ) : _oAuthFlowProvider = oAuthFlowProvider,
-      _urlLauncher = urlLauncher,
-      _authSession = authSession,
-      _lifecycleSource = lifecycleSource,
-      super(const LoginState.idle()) {
+  LoginCubit({
+    required OAuthFlowProvider oAuthFlowProvider,
+    required UrlLauncher urlLauncher,
+    required AuthSession authSession,
+    required LifecycleSource lifecycleSource,
+    required InstallationAnalyticsService installationAnalyticsService,
+  }) : _oAuthFlowProvider = oAuthFlowProvider,
+       _urlLauncher = urlLauncher,
+       _authSession = authSession,
+       _lifecycleSource = lifecycleSource,
+       _installationAnalyticsService = installationAnalyticsService,
+       super(const LoginState.idle()) {
     _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen((state) {
       switch (state) {
         case LifecycleState.paused:
@@ -56,9 +75,6 @@ class LoginCubit extends Cubit<LoginState> {
           _isInBackground = false;
           _onAppResumed().catchError((Object e, StackTrace st) {
             loge("OAuth resume check failed", e, st);
-            if (!isClosed) {
-              emit(const LoginState.failed(reason: LoginFailedReason.unknown));
-            }
           });
       }
     });
@@ -66,6 +82,7 @@ class LoginCubit extends Cubit<LoginState> {
 
   @override
   Future<void> close() async {
+    _loginAttempt = null;
     await _lifecycleSubscription?.cancel();
     return super.close();
   }
@@ -73,13 +90,29 @@ class LoginCubit extends Cubit<LoginState> {
   Future<void> _onAppResumed() async {
     if (_isPolling) return;
     if (state is LoginPolling || state is LoginTimeout) {
-      final hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
+      final attempt = _currentAttempt;
+      if (attempt == null) return;
+      late final bool hasActiveSession;
+      try {
+        hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
+      } on Object catch (error, stackTrace) {
+        loge("OAuth active-session check failed", error, stackTrace);
+        if (!_ownsAttempt(attempt: attempt) || state is! LoginPolling && state is! LoginTimeout) {
+          return;
+        }
+        _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
+        emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+        return;
+      }
+      if (!_ownsAttempt(attempt: attempt) || state is! LoginPolling && state is! LoginTimeout) {
+        return;
+      }
       if (!hasActiveSession) {
         // A background interruption parks the flow in LoginPolling. If the
         // session has since expired/cleared, reset to idle instead of leaving
         // a permanently stuck spinner.
         if (state is LoginPolling) {
-          if (isClosed) return;
+          _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.timeout);
           emit(const LoginState.idle());
         }
         return;
@@ -91,16 +124,19 @@ class LoginCubit extends Cubit<LoginState> {
       emit(const LoginState.polling());
       try {
         await _oAuthFlowProvider.resumeOAuthFlow();
-        if (isClosed) return;
+        if (!_ownsAttempt(attempt: attempt)) return;
+        _reportCompletedAttempt(attempt: attempt);
         emit(const LoginState.success());
       } on TimeoutException catch (e, st) {
         loge("OAuth resumed but timed out", e, st);
-        if (isClosed) return;
+        if (!_ownsAttempt(attempt: attempt)) return;
+        _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.timeout);
         emit(const LoginState.timeout());
       } catch (e, st) {
-        if (_handlePollInterruption(error: e)) return;
+        if (_handlePollInterruption(error: e, attempt: attempt)) return;
         loge("OAuth resumed but failed", e, st);
-        if (isClosed) return;
+        if (!_ownsAttempt(attempt: attempt)) return;
+        _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
         emit(const LoginState.failed(reason: LoginFailedReason.unknown));
       } finally {
         _isPolling = false;
@@ -116,7 +152,11 @@ class LoginCubit extends Cubit<LoginState> {
   ///
   /// Returns true when the error was handled as a recoverable interruption, in
   /// which case the caller must stop and not emit a failure state.
-  bool _handlePollInterruption({required Object error}) {
+  bool _handlePollInterruption({
+    required Object error,
+    required _LoginAttempt attempt,
+  }) {
+    if (!_ownsAttempt(attempt: attempt)) return false;
     if (!_isRecoverablePollInterruption(error)) return false;
     if (!_isInBackground && !_didActivePollEnterBackground) return false;
     final alreadyForeground = !_isInBackground;
@@ -132,7 +172,8 @@ class LoginCubit extends Cubit<LoginState> {
         if (isClosed) return;
         _onAppResumed().catchError((Object e, StackTrace st) {
           loge("OAuth retry after interruption failed", e, st);
-          if (!isClosed) {
+          if (_ownsAttempt(attempt: attempt)) {
+            _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
             emit(const LoginState.failed(reason: LoginFailedReason.unknown));
           }
         });
@@ -148,11 +189,12 @@ class LoginCubit extends Cubit<LoginState> {
   bool _isRecoverablePollInterruption(Object error) => error is ClientException;
 
   Future<bool> loginWithProvider(OAuthProvider provider) async {
+    final attempt = _beginAttempt(provider: provider);
     emit(const LoginState.authenticating());
 
     try {
       final initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
-      if (isClosed) return false;
+      if (!_ownsAttempt(attempt: attempt)) return false;
 
       // Show the resumable polling UI and ARM the poll guard BEFORE launching
       // the browser. Opening the browser can suspend the app before launch()
@@ -168,9 +210,10 @@ class LoginCubit extends Cubit<LoginState> {
         logd("Opening ${provider.label} auth URL in browser");
 
         final launched = await _urlLauncher.launch(Uri.parse(initResponse.authUrl));
-        if (isClosed) return false;
+        if (!_ownsAttempt(attempt: attempt)) return false;
 
         if (!launched) {
+          _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.launch);
           emit(const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
           return false;
         }
@@ -180,18 +223,21 @@ class LoginCubit extends Cubit<LoginState> {
         _isPolling = false;
       }
 
-      if (isClosed) return false;
+      if (!_ownsAttempt(attempt: attempt)) return false;
+      _reportCompletedAttempt(attempt: attempt);
       emit(const LoginState.success());
       return true;
     } on TimeoutException catch (e, st) {
       loge("${provider.label} login timed out", e, st);
-      if (isClosed) return false;
+      if (!_ownsAttempt(attempt: attempt)) return false;
+      _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.timeout);
       emit(const LoginState.timeout());
       return false;
     } catch (e, st) {
-      if (_handlePollInterruption(error: e)) return false;
+      if (_handlePollInterruption(error: e, attempt: attempt)) return false;
       loge("${provider.label} login failed", e, st);
-      if (isClosed) return false;
+      if (!_ownsAttempt(attempt: attempt)) return false;
+      _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
       emit(const LoginState.failed(reason: LoginFailedReason.unknown));
       return false;
     }
@@ -209,28 +255,55 @@ class LoginCubit extends Cubit<LoginState> {
     }
   }
 
-  void onMissingAppleIdToken() {
+  void onMissingAppleIdToken({required AppleLoginAttempt attempt}) {
+    final loginAttempt = _ownedOpenAppleAttempt(attempt: attempt);
+    if (loginAttempt == null) return;
+    _reportFailedAttempt(
+      attempt: loginAttempt,
+      cause: LoginAttemptFailureCause.authentication,
+    );
     emit(const LoginState.failed(reason: LoginFailedReason.appleIdTokenMissing));
   }
 
-  void onAppleSignInError() {
+  AppleLoginAttempt beginAppleLoginAttempt() {
+    final attempt = AppleLoginAttempt._(attempt: _beginAttempt(provider: AuthProvider.apple));
+    emit(const LoginState.authenticating());
+    return attempt;
+  }
+
+  void onAppleSignInCancelled({required AppleLoginAttempt attempt}) {
+    final loginAttempt = _ownedOpenAppleAttempt(attempt: attempt);
+    if (loginAttempt == null) return;
+    _reportFailedAttempt(attempt: loginAttempt, cause: LoginAttemptFailureCause.cancelled);
+    emit(const LoginState.idle());
+  }
+
+  void onAppleSignInError({required AppleLoginAttempt attempt}) {
+    final loginAttempt = _ownedOpenAppleAttempt(attempt: attempt);
+    if (loginAttempt == null) return;
+    _reportFailedAttempt(attempt: loginAttempt, cause: LoginAttemptFailureCause.unknown);
     emit(const LoginState.failed(reason: LoginFailedReason.unknown));
   }
 
   Future<bool> loginWithApple({
+    required AppleLoginAttempt attempt,
     required String idToken,
     required String nonce,
   }) async {
+    final loginAttempt = _ownedOpenAppleAttempt(attempt: attempt);
+    if (loginAttempt == null) return false;
     emit(const LoginState.authenticating());
 
     try {
       await _authSession.loginWithApple(idToken: idToken, nonce: nonce);
-      if (isClosed) return false;
+      if (!_ownsAttempt(attempt: loginAttempt)) return false;
+      _reportCompletedAttempt(attempt: loginAttempt);
       emit(const LoginState.success());
       return true;
     } catch (e, st) {
       loge("Apple login failed", e, st);
-      if (isClosed) return false;
+      if (!_ownsAttempt(attempt: loginAttempt)) return false;
+      _reportFailedAttempt(attempt: loginAttempt, cause: LoginAttemptFailureCause.authentication);
       emit(const LoginState.failed(reason: LoginFailedReason.unknown));
       return false;
     }
@@ -250,18 +323,81 @@ class LoginCubit extends Cubit<LoginState> {
       return false;
     }
 
+    final attempt = _beginAttempt(provider: AuthProvider.email);
     emit(const LoginState.authenticating());
 
     try {
       await _authSession.loginWithEmail(email: email.trim(), password: password);
-      if (isClosed) return false;
+      if (!_ownsAttempt(attempt: attempt)) return false;
+      _reportCompletedAttempt(attempt: attempt);
       emit(const LoginState.success());
       return true;
     } catch (e, st) {
       loge("Email login failed", e, st);
-      if (isClosed) return false;
+      if (!_ownsAttempt(attempt: attempt)) return false;
+      _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.authentication);
       emit(const LoginState.failed(reason: LoginFailedReason.unknown));
       return false;
     }
+  }
+
+  _LoginAttempt _beginAttempt({required AuthProvider provider}) {
+    _reportFailedAttempt(
+      attempt: _loginAttempt,
+      cause: LoginAttemptFailureCause.unknown,
+    );
+    final attempt = _LoginAttempt(provider: provider);
+    _loginAttempt = attempt;
+    _report(
+      operation: _installationAnalyticsService.loginAttemptStarted(provider: provider),
+      description: "login attempt start",
+    );
+    return attempt;
+  }
+
+  _LoginAttempt? get _currentAttempt => _loginAttempt;
+
+  bool _ownsAttempt({required _LoginAttempt attempt}) => !isClosed && identical(_loginAttempt, attempt);
+
+  _LoginAttempt? _ownedOpenAppleAttempt({required AppleLoginAttempt attempt}) {
+    final loginAttempt = attempt._attempt;
+    if (loginAttempt.provider != AuthProvider.apple || !_ownsAttempt(attempt: loginAttempt)) {
+      return null;
+    }
+    return loginAttempt.analyticsOutcome == _LoginAnalyticsOutcome.open ? loginAttempt : null;
+  }
+
+  void _reportCompletedAttempt({required _LoginAttempt attempt}) {
+    if (!_ownsAttempt(attempt: attempt)) return;
+    if (attempt.analyticsOutcome != _LoginAnalyticsOutcome.open) return;
+    attempt.analyticsOutcome = _LoginAnalyticsOutcome.terminal;
+    _report(
+      operation: _installationAnalyticsService.loginAttemptCompleted(provider: attempt.provider),
+      description: "login attempt completion",
+    );
+  }
+
+  void _reportFailedAttempt({
+    required _LoginAttempt? attempt,
+    required LoginAttemptFailureCause cause,
+  }) {
+    if (attempt == null || !_ownsAttempt(attempt: attempt)) return;
+    if (attempt.analyticsOutcome != _LoginAnalyticsOutcome.open) return;
+    attempt.analyticsOutcome = _LoginAnalyticsOutcome.terminal;
+    _report(
+      operation: _installationAnalyticsService.loginAttemptFailed(provider: attempt.provider, cause: cause),
+      description: "login attempt failure",
+    );
+  }
+
+  void _report({
+    required Future<AnalyticsDeliveryResult> operation,
+    required String description,
+  }) {
+    unawaited(
+      operation.then<void>((_) {}).catchError((Object error, StackTrace stackTrace) {
+        logw("Failed to report $description", error, stackTrace);
+      }),
+    );
   }
 }

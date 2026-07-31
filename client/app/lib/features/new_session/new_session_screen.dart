@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
@@ -33,8 +34,11 @@ class NewSessionScreen extends StatelessWidget {
         connectionService: getIt<ConnectionService>(),
         sessionService: getIt<SessionService>(),
         newSessionPluginService: getIt<NewSessionPluginService>(),
+        newSessionOptionsService: getIt<NewSessionOptionsService>(),
         projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
+        composerDraftRepository: getIt<ComposerDraftRepository>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
         projectId: projectId,
         initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
       ),
@@ -127,15 +131,76 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
+  Widget? _buildOptionsStatus({required AgentModelData? data}) {
+    final plugin = data?.plugin;
+    if (data == null || plugin == null || !plugin.isRoutable || data.isLoading) return null;
+
+    final loc = context.loc;
+    final prego = context.prego;
+    final cubit = context.read<NewSessionCubit>();
+    final optionsState = data.optionsState;
+    final String message;
+    final bool isFailure;
+    switch (optionsState) {
+      case NewSessionOptionsFailureState(:final reason):
+        message = reason.localizedMessage(loc);
+        isFailure = true;
+      case NewSessionOptionsFailureRetainedState():
+        message = loc.newSessionOptionsUpdateFailedRetained;
+        isFailure = true;
+      case NewSessionOptionsRefreshFailureUnavailableState():
+        message = loc.newSessionOptionsRefreshFailedUnavailable;
+        isFailure = true;
+      case NewSessionOptionsUnavailableState():
+        message = loc.newSessionOptionsUnavailable;
+        isFailure = false;
+      case NewSessionOptionsUnsupportedState() ||
+          NewSessionOptionsAvailableState(source: NewSessionOptionsSource.legacy):
+        message = loc.newSessionOptionsLegacyBridge;
+        isFailure = false;
+      case NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate):
+        message = loc.newSessionOptionsCached;
+        isFailure = false;
+      case NewSessionOptionsLoadingState() || NewSessionOptionsRefreshingState():
+        return null;
+    }
+
+    return Padding(
+      padding: EdgeInsetsDirectional.only(top: prego.spacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              style: prego.textTheme.textXs.regular.copyWith(
+                color: isFailure ? prego.colors.fgErrorPrimary : prego.colors.textSecondary,
+              ),
+            ),
+          ),
+          SizedBox(width: prego.spacing.sm),
+          PregoButtonsSolid(
+            key: const Key("new_session_options_refresh"),
+            label: loc.newSessionOptionsRefresh,
+            hierarchy: PregoButtonsSolidHierarchy.link,
+            size: PregoButtonsSolidSize.sm,
+            leadingIcon: TablerRegular.refresh,
+            onPressed: cubit.canRefreshOptions ? cubit.refreshOptions : null,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<NewSessionCubit>().state;
+    final cubit = context.watch<NewSessionCubit>();
+    final state = cubit.state;
     final loc = context.loc;
     final prego = context.prego;
     final isSending = state is NewSessionSending;
     final composerData = state.agentModelData;
-    final isComposerEnabled =
-        composerData != null && !composerData.isLoading && (composerData.plugin?.isRoutable ?? false) && !isSending;
+    final isComposerEnabled = cubit.canCreateSession && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
     // object stays stable, so `isCurrent` remains safe to read at event time.
@@ -209,11 +274,14 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             plugins: composerData?.plugins ?? const [],
                             selectedPluginId: composerData?.plugin?.id,
                             isComposerDataLoading: composerData?.isLoading ?? false,
-                            isSelectionEnabled: !(composerData?.isPluginDiscoveryInFlight ?? false),
+                            isSelectionEnabled:
+                                (composerData?.backendScope.isVerified ?? false) &&
+                                !(composerData?.isPluginDiscoveryInFlight ?? false),
                             onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(
                               pluginId: pluginId,
                             ),
                           ),
+                          ?_buildOptionsStatus(data: composerData),
                           if (composerData?.plugins.isNotEmpty ?? false) SizedBox(height: prego.spacing.sm),
                           if (composerData?.supportsDedicatedWorktrees ?? false)
                             SwitchListTile(
@@ -240,19 +308,27 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                         child: IgnorePointer(
                           ignoring: !isComposerEnabled,
                           child: PromptInput(
-                            // Persist the unsent prompt per project so it survives
-                            // leaving and returning to the new-session screen before
-                            // a session exists; cleared once the session is created.
-                            draftKey: "new-session:${widget.projectId}",
+                            draftIdentity: ComposerDraftRepository.newSessionIdentity(
+                              projectId: widget.projectId,
+                            ),
+                            initialDraft: context.read<NewSessionCubit>().composerDraft,
                             hasMessages: false,
                             isBusy: state is NewSessionSending,
-                            onSend: (String text, String? command) {
+                            onSend: ({required text, required command, required inputMode}) {
                               context.read<NewSessionCubit>().createSession(
                                 text: text,
                                 command: command,
+                                inputMode: inputMode,
                                 dedicatedWorktree: _dedicatedWorktree,
                               );
                             },
+                            onVoiceTranscriptionCompleted: context
+                                .read<NewSessionCubit>()
+                                .reportVoiceTranscriptionCompleted,
+                            onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
+                              draft: draft,
+                            ),
+                            onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
                             onAbort: _dismissScreen,
                             header: _buildErrorBanner(state),
                             composerHeader: _buildComposerHeader(state),

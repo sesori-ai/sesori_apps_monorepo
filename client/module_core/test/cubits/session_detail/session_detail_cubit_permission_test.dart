@@ -8,10 +8,12 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -287,8 +289,158 @@ void main() {
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: "plugin-1",
+        ),
+      ).called(1);
+      verify(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: "plugin-1",
+        ),
+      ).called(1);
+    });
+
+    test("replyToPermission rejects a non-throwing error response without reporting success", () async {
+      when(
+        () => mockPermissionRepository.replyToPermission(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+          reply: any(named: "reply"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.error(ApiError.generic()));
+      final analyticsService = stubbedProductAnalyticsService();
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+        productAnalyticsService: analyticsService,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      final success = await cubit.replyToPermission(
+        requestId: "perm-123",
+        sessionId: sessionId,
+        reply: PermissionReply.always,
+      );
+
+      expect(success, isFalse);
+      verifyNever(
+        () => analyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
+
+    test("successful permission replies report only their bounded decisions", () async {
+      final analyticsService = stubbedProductAnalyticsService();
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+        productAnalyticsService: analyticsService,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      for (final reply in PermissionReply.values) {
+        expect(
+          await cubit.replyToPermission(
+            requestId: "perm-${reply.name}",
+            sessionId: sessionId,
+            reply: reply,
+          ),
+          isTrue,
+        );
+      }
+
+      final events = verify(
+        () => analyticsService.logEvent(
+          event: captureAny(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).captured.cast<ProductAnalyticsEvent>();
+      expect(events, [
+        const ProductAnalyticsEvent.sessionPermissionAnswered(
+          decision: AnalyticsPermissionDecision.once,
+        ),
+        const ProductAnalyticsEvent.sessionPermissionAnswered(
+          decision: AnalyticsPermissionDecision.always,
+        ),
+        const ProductAnalyticsEvent.sessionPermissionAnswered(
+          decision: AnalyticsPermissionDecision.reject,
+        ),
+      ]);
+    });
+
+    test("successful question controls and abort report content-free outcomes", () async {
+      when(
+        () => mockSessionService.replyToQuestion(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+          answers: any(named: "answers"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      when(
+        () => mockSessionService.rejectQuestion(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      when(
+        () => mockSessionService.abortSession(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      final analyticsService = stubbedProductAnalyticsService();
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+        productAnalyticsService: analyticsService,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      expect(
+        await cubit.replyToQuestion(
+          requestId: "question-1",
+          sessionId: sessionId,
+          answers: const <ReplyAnswer>[],
+        ),
+        isTrue,
+      );
+      expect(await cubit.rejectQuestion("question-2"), isTrue);
+      await cubit.abort();
+
+      final events = verify(
+        () => analyticsService.logEvent(
+          event: captureAny(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).captured.cast<ProductAnalyticsEvent>();
+      expect(events, [
+        const ProductAnalyticsEvent.sessionQuestionAnswered(),
+        const ProductAnalyticsEvent.sessionQuestionRejected(),
+        const ProductAnalyticsEvent.sessionAbortSucceeded(),
+      ]);
     });
 
     test("non-loaded state buffers permission events and replays after loaded", () async {
@@ -495,6 +647,7 @@ SessionDetailCubit _buildCubit({
   required MockNotificationCanceller notificationCanceller,
   required MockPermissionRepository permissionRepository,
   required MockFailureReporter failureReporter,
+  ProductAnalyticsService? productAnalyticsService,
 }) {
   return SessionDetailCubit(
     connectionService,
@@ -503,6 +656,8 @@ SessionDetailCubit _buildCubit({
     permissionRepository: permissionRepository,
     sessionViewingService: stubbedSessionViewingService(),
     lifecycleSource: FakeLifecycleSource(),
+    composerDraftRepository: inMemoryComposerDraftRepository(),
+    productAnalyticsService: productAnalyticsService ?? stubbedProductAnalyticsService(),
     sessionId: sessionId,
     projectId: projectId,
     notificationCanceller: notificationCanceller,

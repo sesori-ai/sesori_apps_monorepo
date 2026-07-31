@@ -1,5 +1,7 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -51,7 +53,13 @@ void main() {
       );
 
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: "br_test", plugins: plugins)),
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "br_test",
+            supportsSessionOptions: true,
+            plugins: plugins,
+          ),
+        ),
       );
       when(
         () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
@@ -83,6 +91,7 @@ void main() {
       final discovery = await discover();
 
       expect(discovery.bridgeId, "br_test");
+      expect(discovery.optionsSource, NewSessionOptionsSource.aggregate);
       expect(discovery.plugins, plugins);
       expect(discovery.selected, otherPlugin);
     });
@@ -146,7 +155,13 @@ void main() {
 
     test("missing bridge identity selects the default without reading preferences", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: plugins)),
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: null,
+            supportsSessionOptions: false,
+            plugins: plugins,
+          ),
+        ),
       );
 
       final discovery = await discover(currentSelectedPluginId: "plugin-b", currentSelectionBridgeId: null);
@@ -154,6 +169,22 @@ void main() {
       expect(discovery.bridgeId, isNull);
       expect(discovery.selected, defaultPlugin);
       verifyNever(() => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")));
+    });
+
+    test("maps an old bridge's unsupported capability to the legacy options source", () async {
+      when(pluginRepository.listPlugins).thenAnswer(
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "br_test",
+            supportsSessionOptions: false,
+            plugins: plugins,
+          ),
+        ),
+      );
+
+      final discovery = await discover();
+
+      expect(discovery.optionsSource, NewSessionOptionsSource.legacy);
     });
 
     test("passes discovery errors through unchanged", () async {

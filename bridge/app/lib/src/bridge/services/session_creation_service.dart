@@ -252,9 +252,9 @@ class SessionCreationService {
     if (dedicatedWorktree) {
       return (worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
     }
-    final startCommit = await _worktreeService.resolveCleanHeadCommit(projectId: projectId);
-    // A null branch distinguishes exact start snapshots from released
-    // in-place rows, which stored the project base as a branch/commit pair.
+    final startCommit = await _worktreeService.resolveHeadCommit(projectId: projectId);
+    // In-place sessions have no branch baseline. The immutable HEAD commit is
+    // their exact comparison point even when local changes already exist.
     return (
       worktreePath: null,
       branchName: null,

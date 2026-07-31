@@ -88,6 +88,8 @@ void main() {
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         sessionId: _sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,

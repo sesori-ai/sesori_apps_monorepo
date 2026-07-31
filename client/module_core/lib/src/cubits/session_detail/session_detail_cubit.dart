@@ -9,11 +9,16 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
+import "../../foundation/models/composer/composer_draft.dart";
+import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
+import "../../repositories/composer_draft_repository.dart";
+import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/product_analytics_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_viewing_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
@@ -29,11 +34,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final PermissionRepository _permissionRepository;
   final SessionViewingService _sessionViewingService;
   final LifecycleSource _lifecycleSource;
+  final ComposerDraftRepository _composerDraftRepository;
+  final ProductAnalyticsService _productAnalyticsService;
   static const _defaultModelSelector = DefaultModelSelector();
   final String _sessionId;
   final String _projectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
+  ComposerDraft _composerDraft;
   final PromptSendQueue _promptQueue = PromptSendQueue();
   bool _isSending = false;
 
@@ -93,6 +101,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required PermissionRepository permissionRepository,
     required SessionViewingService sessionViewingService,
     required LifecycleSource lifecycleSource,
+    required ComposerDraftRepository composerDraftRepository,
+    required ProductAnalyticsService productAnalyticsService,
     required String sessionId,
     required String projectId,
     required NotificationCanceller notificationCanceller,
@@ -104,10 +114,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _permissionRepository = permissionRepository,
        _sessionViewingService = sessionViewingService,
        _lifecycleSource = lifecycleSource,
+       _composerDraftRepository = composerDraftRepository,
+       _productAnalyticsService = productAnalyticsService,
        _sessionId = sessionId,
        _projectId = projectId,
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
+       _composerDraft = composerDraftRepository.readForSession(sessionId: sessionId),
        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     // Seed the connection state so the BehaviorSubject's immediate replay isn't
@@ -523,16 +536,26 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriSessionUpdated(:final info) => info.parentID == _sessionId,
       // Permission/question events for a descendant (sub-agent) session that
       // surfaces on this session must be buffered so they replay after load.
-      SesoriPermissionAsked(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriPermissionReplied(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionAsked(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionReplied(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
-      SesoriQuestionRejected(:final sessionID, :final displaySessionId) =>
-        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
+      SesoriPermissionAsked(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriPermissionReplied(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionAsked(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionReplied(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
+      SesoriQuestionRejected(:final sessionID, :final displaySessionId) => _surfacesChildRequestHere(
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+      ),
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -997,13 +1020,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     unawaited(_drainQueuedMessages());
   }
 
-  Future<void> sendMessage({required String text, required String? command}) async {
+  Future<void> sendMessage({
+    required String text,
+    required String? command,
+    required ComposerInputMode inputMode,
+  }) async {
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
     if (trimmed.isEmpty && normalizedCommand == null) return;
 
-    final submission = QueuedSessionSubmission(text: trimmed, command: normalizedCommand);
+    final submission = normalizedCommand == null
+        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode)
+        : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);
     if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
       _promptQueue.enqueue(submission);
       _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
@@ -1025,9 +1054,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       command: normalizedCommand,
     );
 
-    if (result case ErrorResponse()) {
-      _promptQueue.requeue(submission);
-      _emitQueueUpdate(_latestLoadedState());
+    switch (result) {
+      case SuccessResponse():
+        _reportAcceptedSubmission(submission: submission);
+      case ErrorResponse():
+        _promptQueue.requeue(submission);
+        _emitQueueUpdate(_latestLoadedState());
     }
   }
 
@@ -1080,6 +1112,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _emitQueueUpdate(_latestLoadedState());
       } else {
         sendSucceeded = true;
+        _reportAcceptedSubmission(submission: submission);
       }
     } finally {
       _isSending = false;
@@ -1092,6 +1125,54 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         unawaited(_drainQueuedMessages());
       }
     }
+  }
+
+  ComposerDraft get composerDraft => _composerDraft;
+
+  void saveComposerDraft({required ComposerDraft draft}) {
+    _composerDraft = draft;
+    _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: draft);
+  }
+
+  void clearComposerDraft() {
+    _composerDraft = ComposerDraft.typed(text: "");
+    _composerDraftRepository.clearForSession(sessionId: _sessionId);
+  }
+
+  void reportVoiceTranscriptionCompleted() {
+    _reportProductEvent(event: const ProductAnalyticsEvent.voiceTranscriptionCompleted());
+  }
+
+  void _reportAcceptedSubmission({required QueuedSessionSubmission submission}) {
+    final analyticsSubmission = switch (submission) {
+      QueuedTextSubmission(:final inputMode) => AnalyticsSubmission.text(
+        inputMode: _analyticsInputMode(inputMode),
+      ),
+      QueuedCommandSubmission() => const AnalyticsSubmission.command(),
+    };
+    _reportProductEvent(
+      event: ProductAnalyticsEvent.sessionMessageSent(submission: analyticsSubmission),
+    );
+  }
+
+  AnalyticsInputMode _analyticsInputMode(ComposerInputMode inputMode) => switch (inputMode) {
+    ComposerInputMode.typed => AnalyticsInputMode.typed,
+    ComposerInputMode.voiceAssisted => AnalyticsInputMode.voiceAssisted,
+  };
+
+  void _reportProductEvent({required ProductAnalyticsEvent event}) {
+    unawaited(
+      _productAnalyticsService
+          .logEvent(event: event, occurredAtUtc: DateTime.now().toUtc())
+          .then<void>((result) {
+            if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+              logw("Failed to deliver session outcome analytics event");
+            }
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            logw("Failed to report session outcome analytics event", error, stackTrace);
+          }),
+    );
   }
 
   SessionDetailLoaded? _latestLoadedState() {
@@ -1206,6 +1287,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       if (result case ErrorResponse(:final error)) {
         throw error;
       }
+      _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionAnswered());
       return true;
     } on Object catch (e, st) {
       loge("Failed to reply to question $requestId", e, st);
@@ -1229,6 +1311,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       if (result case ErrorResponse(:final error)) {
         throw error;
       }
+      _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionRejected());
       return true;
     } on Object catch (e, st) {
       loge("Failed to reject question $requestId", e, st);
@@ -1245,18 +1328,34 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _onPermissionResolved(requestId);
     _notificationCanceller.cancelForSession(sessionId: sessionId);
     try {
-      await _permissionRepository.replyToPermission(
+      final result = await _permissionRepository.replyToPermission(
         requestId: requestId,
         sessionId: sessionId,
         reply: reply,
       );
-      return true;
+      switch (result) {
+        case SuccessResponse():
+          _reportProductEvent(
+            event: ProductAnalyticsEvent.sessionPermissionAnswered(
+              decision: _analyticsPermissionDecision(reply: reply),
+            ),
+          );
+          return true;
+        case ErrorResponse(:final error):
+          throw error;
+      }
     } on Object catch (e, st) {
       loge("Failed to reply to permission $requestId", e, st);
       await _loadMessages(isReload: true);
       return false;
     }
   }
+
+  AnalyticsPermissionDecision _analyticsPermissionDecision({required PermissionReply reply}) => switch (reply) {
+    PermissionReply.once => AnalyticsPermissionDecision.once,
+    PermissionReply.always => AnalyticsPermissionDecision.always,
+    PermissionReply.reject => AnalyticsPermissionDecision.reject,
+  };
 
   // ---------------------------------------------------------------------------
   // Settings & control
@@ -1360,6 +1459,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           throw error;
         }
       }
+      _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
     } on Object catch (e, st) {
       loge("Failed to abort session(s)", e, st);
     }

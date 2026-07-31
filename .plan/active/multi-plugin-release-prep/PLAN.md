@@ -513,7 +513,8 @@ backend-neutral UI decisions.
 | 4.D/6 | `multi-plugin-release-prep-cache-repository` | `[multi-plugin-release-prep] feat(bridge): capture scoped session options [step 4.D/6]` | 800-1,050 | Cache key, typed JSON mapping, project/binding lookup, plugin capture, and generation-fenced CAS repository. |
 | 4.E/6 | `multi-plugin-release-prep-cache-service` | `[multi-plugin-release-prep] feat(bridge): apply session option cache policy [step 4.E/6]` | 1,100-1,300 | Retention/path validation, completeness replacement, failure retention, CAS retry, and intent-aware coalescing service. |
 | 4.F/6 | `multi-plugin-release-prep-cache-route` | `[multi-plugin-release-prep] feat(bridge): expose cached session options [step 4.F/6]` | 850-1,150 | Aggregate route/capability, stable binding attribution, automatic refresh listeners, and Orchestrator lifecycle wiring. |
-| 5/6 | `multi-plugin-release-prep-client-options` | `[multi-plugin-release-prep] feat(client): consume cached session options [step 5/6]` | 900-1,300 | Aggregate client layers, service-owned option resolution, explicit refresh/old-bridge degradation, cubit state, and New Session UI. |
+| 5.A/6 | `multi-plugin-release-prep-client-options` | `[multi-plugin-release-prep] feat(client): add cached session option layers [step 5.A/6]` | 1,350-1,750 | Aggregate API/repository mapping, provider-cache removal, repository-owned catalogs, and service-owned option policy including explicit old-bridge fallback. |
+| 5.B/6 | `multi-plugin-release-prep-client-options-ui` | `[multi-plugin-release-prep] feat(client): use cached session options [step 5.B/6]` | 1,650-2,150 | Repository-mapped plugin source, independent selection intent, composed cubit state, generation fencing, and New Session mobile UI. |
 | 6/6 | `multi-plugin-release-prep-harness-settings` | `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]` | 850-1,200 | One Harnesses screen/cubit, capability/setup-aware visibility, route removal, and Prego timeout/force sheets. |
 
 ## Per-Step Verification
@@ -588,17 +589,24 @@ backend-neutral UI decisions.
 - Run handler/listener/Orchestrator suites, full bridge-app tests, fatal analysis,
   and Aristotle review.
 
-### Step 5/6
+### Step 5.A/6
 
 - API path/body/query and response parsing tests.
 - Repository mapping covers supported and every typed error code independently
   of HTTP status, including normalized plugin-auth failure without
-  `ApiError.notAuthenticated`, with no provider-only cache remaining. Service
-  tests prove discovery capability false returns unsupported without an
-  aggregate call.
+  `ApiError.notAuthenticated`, with no provider-only cache remaining.
 - Service tests for filtering, default precedence, unavailable models, variant
   preservation/drop, command revalidation, cache miss, retained refresh failure,
   and explicit old-bridge fallback.
+- Run module-core fatal analysis and Aristotle implementation review for the new
+  API/repository/service ownership.
+
+### Step 5.B/6
+
+- Plugin repository/service tests prove capability-to-source mapping and old
+  discovery fallback without exposing the wire response above Layer 2.
+- Service/cubit tests prove discovery source false returns unsupported without
+  an aggregate call.
 - Cubit tests preserve reconnect, bridge/plugin switch, stale-completion fencing,
   user selection tracking, and default-backed session creation.
 - Mobile tests cover Refresh, unsupported guidance, cache-miss creation, and

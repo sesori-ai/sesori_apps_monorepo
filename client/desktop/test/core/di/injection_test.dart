@@ -15,7 +15,13 @@ void main() {
 
     // Acceptance for the platform-adapter slice: every LoginCubit dependency
     // resolves through getIt, while the cubit itself stays out of DI.
-    final LoginCubit cubit = LoginCubit(getIt(), getIt(), getIt(), getIt());
+    final LoginCubit cubit = LoginCubit(
+      oAuthFlowProvider: getIt(),
+      urlLauncher: getIt(),
+      authSession: getIt(),
+      lifecycleSource: getIt(),
+      installationAnalyticsService: getIt(),
+    );
     addTearDown(cubit.close);
 
     expect(getIt.isRegistered<LoginCubit>(), isFalse);

@@ -417,13 +417,17 @@ mixed `src/analytics/` bucket. The concrete dependency direction is:
 | `ProductAnalyticsPreferenceApi` in `module_core/lib/src/api/product_analytics_preference_api.dart` | Layer 1; constructor requires `AuthenticatedHttpApiClient` | Calls authenticated GET/PUT `/product-analytics/preference` under a fixed 10-second operation deadline. GET parses `{preference, revision, userKey}`; PUT requires `{preference, expectedRevision, operationId}` and parses the same key on success/conflict. It validates the key as 64-character lowercase hex, serializes closed values, parses external strings at the boundary, and returns explicit success/conflict/timeout/failure. A timed-out transport may finish, but server compare-and-set prevents it from overwriting a newer committed revision. |
 | `ProductAnalyticsPreferenceStorage` in `module_core/lib/src/api/storage/` | Layer 1 data source; constructor requires `SecureStorage` | Reads/writes/deletes only closed preference synchronization records. It does not reconcile accounts, call APIs, hash IDs, or emit analytics. |
 | `AnalyticsDeliveryResult`, `ProductAnalyticsPreference`, versioned synchronized/pending preference records, and explicit repository results under `module_core/lib/src/repositories/models/` | Layer-2 contracts | Delivery is `acceptedBySdk`, `deferredUntilPreference`, or `failed`, never an untruthful “reported” boolean. Preference records carry the last server revision and validated server-derived `userKey` required for ordered compare-and-set updates and event delivery. |
-| `AnalyticsRepository` in `module_core/lib/src/repositories/analytics_repository.dart` | Layer 2; constructor requires `AnalyticsApi` | Exposes distinct typed product and installation delivery methods and maps API exceptions to explicit `AnalyticsDeliveryResult` without redundant logging. Product delivery accepts only the already-validated server-derived pseudonymous key, never a raw account ID, while installation delivery accepts only `InstallationAnalyticsEvent` and cannot receive a `user_key`. Each event contract adds its pinned schema version during typed serialization. |
+| `AnalyticsRepository` in `module_core/lib/src/repositories/analytics_repository.dart` | Layer 2; constructor requires `AnalyticsApi` | Exposes distinct typed product and installation delivery methods, applies the shared bounded SDK deadline, and maps API exceptions/timeouts to explicit `AnalyticsDeliveryResult` without redundant logging. Product delivery accepts only the already-validated server-derived pseudonymous key, never a raw account ID, while installation delivery accepts only `InstallationAnalyticsEvent` and cannot receive a `user_key`. Each event contract adds its pinned schema version during typed serialization. |
 | `ProductAnalyticsPreferenceRepository` in `module_core/lib/src/repositories/product_analytics_preference_repository.dart` | Layer 2; requires `ProductAnalyticsPreferenceApi` and `ProductAnalyticsPreferenceStorage` | Fetch/update server preference, scope local records to one account, and persist only versioned `synced`, `pendingDisable`, or `pendingEnable` records. Every PUT uses the last observed revision plus stable operation ID. Conflict on disable triggers one bounded GET/retry against the new revision; conflict on enable remains inactive and returns explicit refresh-required state so an older enable cannot automatically override a newer disable. `pendingEnable` is never permission to emit. |
 | `ProductAnalyticsState`, independent preference/synchronization variants, and closed fixed-capacity `DeferredProductAnalyticsCandidates` under `module_core/lib/src/services/models/` | Layer-3 service state | Represents active/inactive/pending/failure truth plus only activation/project-available/diff-adoption/current-date-session-activity deferred slots without nullable coordination fields or a generic queue; it is not part of the Foundation sink contract. |
-| `ProductAnalyticsService` in `module_core/lib/src/services/product_analytics_service.dart` | Layer 3, `@lazySingleton`; requires immutable `AnalyticsRuntimeCapability`, read-only `AuthSession`, `AnalyticsRepository`, and `ProductAnalyticsPreferenceRepository` | Sole owner of preference/custom-event lifecycle and Consumer `logEvent`. Exposes a replaying state stream plus `start`, `markPostSplashReady`, explicit `refreshPreference`, `setPreference`, `retryPendingDisable`, bounded `prepareForLogout`, and `dispose`. It performs one server read per post-readiness auth generation plus explicit Settings refresh/actions—no lifecycle timer/polling—and sends no product event unless active. While same-generation preference is unknown, a closed fixed-capacity deferred model may retain one activation candidate, first non-empty project availability, first non-empty diff adoption, and one authoritative session-activity occurrence; there is no generic event queue. |
+| `ProductAnalyticsPreferenceService` in `module_core/lib/src/services/product_analytics_preference_service.dart` | Layer 3, injected collaborator; requires immutable `AnalyticsRuntimeCapability`, read-only `AuthSession`, and `ProductAnalyticsPreferenceRepository` | Sole owner of authenticated generation, preference reconciliation, local/runtime snapshots, logout preparation, and the replaying `ProductAnalyticsState`. `ProductAnalyticsService` is its single disposal owner. It exposes only validated current/deferrable delivery-generation context to the facade. |
+| `ProductAnalyticsService` in `module_core/lib/src/services/product_analytics_service.dart` | Layer 3 delivery facade, `@lazySingleton`; requires `AnalyticsRepository` and `ProductAnalyticsPreferenceService` | Owns Consumer `logEvent`, generation readiness dispatchers, the fixed same-generation deferred candidate slots, ordered one-shot draining, delivery observability, and facade disposal. Preference/account lifecycle stays in its injected collaborator. It delegates preference commands/state, never polls, never owns raw auth state, and sends no product event without a validated active delivery context. |
 | `InstallationAnalyticsService` in `module_core/lib/src/services/installation_analytics_service.dart` | Layer 3, `@lazySingleton`; requires immutable `AnalyticsRuntimeCapability` and `AnalyticsRepository` | Accepts only typed login-attempt lifecycle methods, maps the sealed auth provider exhaustively to `AnalyticsLoginProvider`, classifies timeout versus bounded authentication/launch failure, and reports best-effort. It has no account/preference state, buffers nothing, and remains inactive in debug/profile/unsupported builds or when legacy-ID cleanup failed. |
 | `AnalyticsRouteListener` in `module_core/lib/src/routing/analytics_route_listener.dart` | Layer-4 routing listener, `@lazySingleton`; requires `RouteSource` and `ProductAnalyticsService` | Owns route subscription, maps `AppRouteDef` exhaustively to `AnalyticsScreen`, signals readiness on the first non-splash route, and reports stable screens only while active. It never passes a route model/path to Foundation. |
-| `SessionActivityAnalyticsConsumer` in `module_core/lib/src/consumers/analytics/session_activity_analytics_consumer.dart` | Explicit Consumer layer above Layer-4 state; constructed/owned by `SessionDetailScreen`, requires its `SessionDetailCubit`, `RouteSource`, `LifecycleSource`, and `ProductAnalyticsService` | Combines bounded loaded-state classification with actual `sessionDetail` route visibility and resumed lifecycle. It emits first empty once and non-empty at most once per UTC date only while the detail route is topmost; nested diffs/background SSE cannot create false monitoring activity. The service, not this consumer, owns any deferred envelope after `deferredUntilPreference`. |
+| `SessionActivityAnalyticsListener` in `module_core/lib/src/consumers/analytics/session_activity_analytics_listener.dart` | Explicit stream listener above Layer-4 state; constructed/owned by one `SessionDetailScreen`, requires its `SessionDetailCubit`, `LifecycleSource`, `ProductAnalyticsService`, and an initial per-instance visibility value | Combines bounded loaded-state classification with resumed lifecycle and a typed `setRouteVisible` intent supplied by the owning Flutter route instance. It never infers visibility from global `AppRouteDef`. It emits first empty once and non-empty at most once per UTC date only while that exact detail page is current; covered parents, nested diffs, and background SSE cannot create false monitoring activity. The service owns any envelope after `deferredUntilPreference`. |
+| `ComposerDraftStorage` in `module_core/lib/src/api/storage/composer_draft_storage.dart` | Layer 1 in-memory data source | Stores only immutable `ComposerDraft` values by existing/session-new-session key for the current process. Whitespace clear removes the row; it owns no edit or analytics decisions. |
+| `ComposerDraftRepository` in `module_core/lib/src/repositories/composer_draft_repository.dart` | Layer 2; requires `ComposerDraftStorage` | Provides typed read/write/clear operations to existing- and new-session Cubits. Product shells and widgets never resolve storage directly. |
+| `ComposerDraft`, half-open `VoiceOriginSpan(start, end)`, and `ComposerDraftCalculator` under `module_core/lib/src/services/models/` and `services/` | Layer-3 immutable state plus pure shared business transformation | Draft state contains text plus normalized, ordered, non-overlapping voice-origin spans. The calculator applies explicit typed replacement and voice insertion transforms; the model validates data but owns no edit policy. `inputMode` is derived from whether any voice span survives. |
 | `ProductAnalyticsPreferenceCubit` in `module_core/lib/src/cubits/product_analytics_preference/` | Consumer; constructor requires `ProductAnalyticsService` | Subscribes to service state and exposes toggle/retry intents. Mobile Settings constructs it; it is not in DI. |
 | `FirebaseAnalyticsClient` in `app/lib/core/platform/firebase_analytics_client.dart` | Thin mobile Foundation adapter, `@LazySingleton(as: AnalyticsClient)`; requires `FirebaseAnalytics` and immutable `AnalyticsRuntimeCapability` | Rejects all operations unless capability is enabled, serializes only typed product/installation events plus their permitted shared fields, and throws canonical-event failures upward. For `product_screen_viewed`, after the canonical custom event is accepted it also best-effort calls `FirebaseAnalytics.logScreenView` with the same pinned screen name and stable `GoRouter` screen class; mirror failure is logged but does not rewrite canonical delivery. It never applies global identity/collection overrides and contains no route/preference/hash business logic. Firebase-disabled environments use the no-op client plus disabled capability. |
 | `FirebaseAnalyticsIdentityMigration` in `app/lib/core/platform/firebase_analytics_identity_migration.dart` | Mobile-only reusable pre-DI helper; constructed directly with `FirebaseAnalytics.instance` after Firebase initialization in foreground `main` and the FCM background entry point | Awaits `setUserId(id: null)`. Foreground maps concrete Firebase cleanup failure to the surface-neutral `AnalyticsRuntimeCapability.disabled(identitySafetyPreconditionFailed)` for phase-1 DI; Firebase-specific cause and logging stay in the shell. The background handler runs the same idempotent clear immediately after its independent `Firebase.initializeApp` and before handler work; failure logs and ends/classifies that whole background execution as potentially legacy-keyed. Automatic initialization can still precede either clear, so recurring legacy deletion covers that unavoidable window. Keep both calls through minimum-supported-version adoption plus the 90-day raw window, then remove explicitly. |
@@ -622,12 +626,13 @@ without duplicate framework-generated names. Foundation sees neither
 provider intent is accepted, then exactly one completed or failed terminal event
 for that attempt. Apple is the exception to Cubit-owned platform execution: the
 mobile call site first calls typed `LoginCubit.beginAppleLoginAttempt()` before
-opening `SignInWithApple.getAppleIDCredential`; native cancellation/failure calls
-the Cubit's terminal failure method, while a credential continues the already-
+opening `SignInWithApple.getAppleIDCredential`; its opaque attempt handle is
+carried through every native callback so stale work cannot terminate a replacement
+attempt. Native cancellation stays distinct, missing-token/server-auth failures
+map to authentication, and other SDK exceptions map to platform-neutral unknown
+without translating SDK codes in the widget. A credential continues the already-
 started attempt through its server login method without a second start. OAuth
-polling timeout maps to bounded `timeout`; native cancellation, launch,
-authentication, and unknown failures remain separate closed values only where
-the current state distinguishes them. No exception text, OAuth user, account
+polling timeout maps to bounded `timeout`. No exception text, OAuth user, account
 key, or random attempt ID is emitted. Installation events are not buffered or
 joined to later accounts; BigQuery reports aggregate provider completion rates
 and excludes them from account-level funnel/retention tables.
@@ -639,19 +644,23 @@ for the eventual completion/failure and then clears it. Logout/cubit close or a
 new validated attempt clears/replaces it without emitting a fabricated terminal
 event. The context is never persisted or sent as an identifier.
 
-**Voice flow:** A successful non-empty transcription sets the composer input
-classification to `voice_assisted`; the widget dispatches a typed completion to
-its owning Cubit, which emits one content-free
-`voice_transcription_completed` through `ProductAnalyticsService`. The flag
-remains voice-assisted through subsequent manual edits, resets when the composer
-is cleared/reset, and is captured with the submission. Existing-session queued
-items retain only the enum alongside their existing content/command; successful
-send is reported later with that enum. New-session creation threads the same
-enum into its successful outcome. Change in-memory `DraftStore` from raw string
-values to typed `ComposerDraft(text, inputMode)` for both session and
-`new-session:<projectId>` keys, so navigation/disposal/restoration preserves
-voice contribution. Whitespace clear removes the whole draft/origin. No
-transcript, duration, audio metadata, or text length is emitted or persisted.
+**Voice flow:** A successful non-empty transcription adds one half-open
+voice-origin span for the inserted transcript and dispatches a typed completion
+to the owning Cubit, which emits one content-free
+`voice_transcription_completed` through `ProductAnalyticsService`. A pure
+`ComposerDraftCalculator` transforms normalized spans for typed insertion,
+deletion, partial/full replacement, and identical selected-text replacement.
+Untouched voice fragments preserve contribution; replaced/deleted fragments do
+not. `inputMode` is derived as `voice_assisted` only while at least one voice
+span survives and resets to typed when none remains or the composer clears.
+Existing-session queued items retain only that derived enum alongside their
+existing content/command; successful send is reported later with the enum.
+New-session creation threads the same enum into its successful outcome.
+`ComposerDraftRepository` stores immutable `ComposerDraft(text, voiceSpans)` for
+both session and `new-session:<projectId>` keys through `ComposerDraftStorage`,
+so disposal/restoration preserves exact mixed attribution. Whitespace clear
+removes the whole draft/origin. No transcript, duration, audio metadata, or text
+length is emitted or durably persisted.
 
 ### Outcome event catalog
 
@@ -709,9 +718,10 @@ used as account creation or activation evidence.
   OAuth timeout terminal state, through `InstallationAnalyticsService`.
 - `ProjectListCubit`: first successful empty and first successful non-empty
   inventory states.
-- `SessionActivityAnalyticsConsumer` combining `SessionDetailCubit` state,
-  `RouteSource`, and `LifecycleSource`: first empty diagnostic and one actually
-  visible/foreground non-empty activity per UTC date.
+- `SessionActivityAnalyticsListener` combining `SessionDetailCubit` state,
+  `LifecycleSource`, and the owning Flutter route instance's typed visibility
+  intent: first empty diagnostic and one actually visible/foreground non-empty
+  activity per UTC date.
 - `SessionDetailCubit.sendMessage` and `_drainQueuedMessages`: accepted
   existing-session messages with the captured input-mode enum.
 - `NewSessionCubit.createSession`: accepted created session/message and bounded
@@ -739,15 +749,15 @@ merely to avoid updating tests.
 | Owner change | Exact flow and deduplication |
 | --- | --- |
 | `ProjectListCubit` | Add required `ProductAnalyticsService`. Empty diagnostic advances only after SDK acceptance and is not buffered. First non-empty is submitted to the service's fixed project-available slot while preference is unknown; the cubit consumes its lifetime guard only after `acceptedBySdk` or `deferredUntilPreference`, because the service owns that deferred semantic. Refreshes never repeat an accepted/deferred classification. The warehouse milestone uses only earliest non-empty. |
-| `SessionActivityAnalyticsConsumer` | `SessionDetailScreen` constructs this explicit higher-layer consumer with the screen-owned cubit plus `RouteSource`, `LifecycleSource`, and product analytics service. It retains only accepted/deferred visibility/date guards. The service exclusively retains a deferred envelope across route/date changes for the same generation; the consumer never stores a second candidate. Background/nested-diffs SSE never creates a candidate; disable/auth change drops service-held state. |
+| `SessionActivityAnalyticsListener` | Each `SessionDetailScreen` constructs this explicit higher-layer listener with the screen-owned cubit, `LifecycleSource`, product analytics service, and `ModalRoute.of(context)?.isCurrent` as initial visibility. `didChangeDependencies` sends later visibility edges through `setRouteVisible`; core never imports Flutter or infers instance visibility from global route type. The listener retains only accepted/deferred visibility/date guards. The service exclusively retains a deferred envelope across route/date changes for the same generation. Background/covered-parent SSE never creates a candidate; disable/auth change drops service-held state. |
 | `LoginCubit` / Apple mobile call site | Add required `InstallationAnalyticsService` and one closed `ActiveLoginAnalyticsAttempt`. Cubit intents pass the sealed `AuthProvider` and typed terminal cause; `InstallationAnalyticsService` solely owns exhaustive provider/failure mapping to analytics enums. Report one start after input validation and exactly one terminal completion/failure; interrupted OAuth polling retains provider through `_onAppResumed`, and timeout is failed. For Apple, the UI invokes the Cubit begin intent before the native sheet, then exactly one credential continuation or cancelled/failure terminal intent. Desktop resolves shared methods through its no-op client. |
 | `SessionDetailCubit` send paths | Direct `sendMessage` and `_drainQueuedMessages` call one private `_reportAcceptedSubmission` only on `SuccessResponse`. The queued item retains its existing text/command plus the closed input-mode enum; analytics derives text/command classification without reading content. Error/requeue emits nothing, and each dequeued successful item reports once. |
 | `NewSessionCubit` | Add required product analytics service and required input-mode argument on creation. Capture workspace/submission/input classifications before awaiting. `SuccessResponse` makes one `session_created_with_message` call; `ErrorResponse` emits only bounded `session_creation_failed`. It never also emits the existing-session event. |
-| Mobile composer call sites / owning Cubits / `DraftStore` | After `stopAndTranscribe()` returns a non-empty transcript, the widget dispatches a typed transcription-completed intent to its owning Cubit; that Cubit reports `voice_transcription_completed` through the service and carries `voice_assisted` into existing/new-session submit methods. Replace draft strings with typed `ComposerDraft` so dispose/restore for either key preserves the enum. Manual edits do not erase contribution; clearing/resetting the composer removes text+origin. Product behavior does not await analytics delivery. |
+| Mobile composer call sites / owning Cubits / draft layers | `PromptInput` sends typed edit, voice insertion, save, restore, and clear intents through its owning Cubit; it does not resolve storage. Existing- and new-session Cubits require `ComposerDraftRepository` and share `ComposerDraftCalculator`. The calculator updates half-open spans for insertion, deletion, partial/full replacement, and identical selected replacement; restoration uses the exact saved spans. After `stopAndTranscribe()` returns non-empty, the owning Cubit reports completion and returns the transformed draft. Product behavior does not await analytics delivery. |
 | `SessionDetailCubit` question/permission/abort | Report after each verified success branch. Question answers/rejections carry no answer data. Change `replyToPermission` to pattern-match `SuccessResponse`/`ErrorResponse` instead of treating every non-throwing response as true; only success maps the existing `PermissionReply` enum and reports. Abort reports only after every root/active-child response succeeds. |
 | `DiffCubit` | Add required product analytics service. Empty diagnostic advances only after SDK acceptance and is not buffered. First non-empty may occupy the service's fixed diff-adoption slot while preference is unknown; consume its guard only after accepted/deferred result. Only non-empty defines adoption, and SSE refreshes do not repeat accepted/deferred state. |
 | `AnalyticsRouteListener` / `FirebaseAnalyticsClient` | Listener maps every `AppRouteDef` to pinned `AnalyticsScreen`, deduplicates unchanged routes, and reports only after product analytics activates. The adapter logs canonical `product_screen_viewed`, then best-effort calls `logScreenView` with the same name. Native automatic screen reporting is disabled and standard rows are excluded from account-level models. |
-| Screen constructors/tests | `ProjectListScreen`, `NewSessionScreen`, `SessionDetailScreen`, and `SessionDiffsScreen` pass the phase-3 product analytics service from GetIt into required cubit constructors. `SessionDetailScreen` also owns/disposes `SessionActivityAnalyticsConsumer`. Core tests inject recording services/routes/lifecycle and assert event count/shape. |
+| Screen constructors/tests | `ProjectListScreen`, `NewSessionScreen`, `SessionDetailScreen`, and `SessionDiffsScreen` pass phase-3 services/repositories from GetIt into required cubit constructors. `SessionDetailScreen` also owns/disposes its per-route `SessionActivityAnalyticsListener` and supplies visibility edges. Core tests inject recording services/lifecycle and assert event count/shape. |
 
 ## Deferred Extensions
 
@@ -1416,9 +1426,10 @@ directory name.
   to post-splash authenticated enabled release builds, while allowing only the separately
   typed, release-only, account-less login catalog; add schema-ready and stable
   GoRouter-backed screen reporting.
-- Add the Settings toggle, explanatory/localized copy, pending/error behavior,
-  explicit installation/login-funnel/automatic-event limitations, and privacy/
-  legal/store-disclosure updates.
+- Add a concise `Basic Usage Analytics` toggle to the account/profile page with
+  inline pending/error state and a failure-only retry action. Keep detailed
+  installation/login-funnel/automatic-event and retention limitations in the
+  privacy/legal/store disclosures rather than dense control copy.
 - Move the existing seven-event onboarding contract to confirmed platform
   outcomes through explicit `ProjectListCubit` intents backed by
   `ProductAnalyticsService`: widgets dispatch links after successful launch,
@@ -1434,56 +1445,73 @@ directory name.
   subsequent client fixes must preserve it or suppress all account-linked
   Sesori product events.
 
-### PR 4/5 — Outcome, voice, and login instrumentation
+### PR 4.A/5 — Bounded outcome contracts and delivery
 
-**Title:** `[user-analytics] Instrument activation and engagement outcomes [step 4/5]`
+**Title:** `[user-analytics] Add bounded outcome analytics contracts [step 4.A/5]`
 
 **Repository:** apps monorepo
 
-- Add the event catalog variants and bounded enum serialization.
-- Add `analytics_activation_ready(activation_schema_version=1)` to this outcome
-  release and emit it on first active transition. PR-3.D
-  `analytics_schema_ready` remains foundation diagnostics only; set
-  `behavioral_schema_v1_start_at` and admit activation cohorts only after this
-  PR-4 capability appears in production export.
+- Add the closed outcome event catalog, bounded enum serialization, and privacy
+  contract tests without wiring product consumers yet.
+- Put one bounded SDK deadline at the analytics repository boundary and keep
+  explicit accepted/deferred/failed delivery results.
+- Add generation-scoped fixed candidate slots for activation, project
+  availability, diff adoption, and visible session activity while preference is
+  genuinely unresolved. This is not a generic queue: schema-readiness failure
+  retains the bounded slots for a later explicit preference-state trigger;
+  accepted readiness drains each retained outcome once, and an SDK rejection is
+  observable but does not create hidden retry or duplicate-delivery semantics.
+- Keep `analytics_schema_ready` as the existing foundation diagnostic. Define
+  but do not emit `analytics_activation_ready` in this substep.
+
+### PR 4.B/5 — Account-less login outcomes
+
+**Title:** `[user-analytics] Instrument account-less login outcomes [step 4.B/5]`
+
+**Repository:** apps monorepo
+
 - Instrument `LoginCubit` through `InstallationAnalyticsService` with one start
-  and one terminal completion/failure (including timeout) per valid attempt;
-  the Cubit passes sealed auth providers/typed causes and the service owns their
-  exhaustive analytics-enum mapping. Events remain account-less and carry only
-  pinned provider/failure enums. Add
-  the mobile Apple begin/failure intents before/after the native authorization
-  sheet so cancellation/launch failures share the same honest denominator.
-- Instrument the authoritative core/app seams listed above, including both
-  direct and queued message success, while keeping analytics best-effort and
-  non-blocking.
+  and one terminal completion/failure (including timeout) per valid attempt.
+- Keep provider and failure mapping exhaustive and account-less. Starting Apple
+  sign-in is an explicit new login intent that leaves resumable OAuth before the
+  native sheet; an opaque handle ensures cancellation, unknown native failure,
+  missing-token authentication failure, and server authentication outcomes
+  terminate only that Apple attempt.
+- Wire mobile Apple and desktop no-op consumers and add focused lifecycle tests.
+
+### PR 4.C/5 — Activation and voice outcomes
+
+**Title:** `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]`
+
+**Repository:** apps monorepo
+
+- Instrument authoritative direct/queued message and session-creation outcomes,
+  plus successful content-free voice transcription completion.
 - Thread `input_mode=typed/voice_assisted` through existing/new-session sends and
-  queued submissions; store typed text+input mode in `DraftStore` across composer
-  disposal/restoration; after successful Flutter transcription, dispatch a typed
-  outcome to the owning Cubit, which reports the content-free event through the
-  service.
-- Retain only the fixed activation/project-available/diff-adoption candidates
-  while same-generation preference is unknown, preserving their occurrence
-  times. The route-visible activity consumer submits one current-date candidate,
-  but `ProductAnalyticsService` solely owns it after `deferredUntilPreference`,
-  then emits on active or drops it under the declared disabled/auth rules.
-- Regenerate only source-generated outputs.
-- Add focused tests that failures/taps/queued-only operations do not activate,
-  each successful message path makes one service call, new-session success is not
-  double counted, a non-throwing permission `ErrorResponse` returns failure and
-  emits no success, sensitive inputs cannot enter parameter maps, bounded
-  milestone candidates survive preference-unknown without consuming guards,
-  deferred envelopes preserve authoritative occurrence time and invalid clock
-  values are excluded from time-bound warehouse metrics,
-  activation-ready exposure excludes foundation-only binaries, first-message
-  deferral survives preference resolution,
-  empty-to-non-empty transitions report once, resumed/later-date monitoring can
-  report again without SSE inflation, voice-assisted origin survives queueing
-  and both existing/new-session draft restoration without transcript data,
-  interrupted/resumed OAuth retains its provider, and login timeout/failure
-  makes one bounded terminal installation event without an account key. Widget
-  tests verify Apple start is
-  emitted before opening the native sheet and cancellation/failure terminates
-  that attempt without calling the Cubit start twice.
+  queues. Immutable `ComposerDraft` contains validated compact half-open spans;
+  `ComposerDraftCalculator` owns pure edit transformations, and owning Cubits
+  persist through `ComposerDraftRepository`. Widgets do not resolve storage,
+  maintain a per-code-unit bitmap, or infer restored mixed attribution from one
+  aggregate flag.
+- Verify full/partial/identical replacement, mixed-draft restoration, queueing,
+  creation deduplication, and content-free parameters.
+
+### PR 4.D/5 — Visible engagement outcomes and capability marker
+
+**Title:** `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]`
+
+**Repository:** apps monorepo
+
+- Instrument project inventory, questions, permissions, abort, diffs, and the
+  route-instance-visible foreground `SessionActivityAnalyticsListener`.
+- Emit `analytics_activation_ready(activation_schema_version=1)` only here, once
+  the complete behavioral schema and authoritative consumers exist. Gate bounded
+  candidate draining behind accepted schema and activation readiness.
+- Verify empty/non-empty lifetime guards, resumed/later-UTC-date activity,
+  hidden parent routes, non-throwing permission failures, bounded deferral, and
+  sensitive-input exclusion.
+- Do not release the partial 4.A-4.C state. Set `behavioral_schema_v1_start_at`
+  and admit activation cohorts only after 4.D appears in production export.
 
 ### PR 5/5 — Warehouse models and dashboards
 

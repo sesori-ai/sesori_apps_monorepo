@@ -8,8 +8,16 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/services/models/new_session_backend_scope.dart";
+import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
+import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
+import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
+import "package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -18,12 +26,14 @@ import "../../helpers/test_helpers.dart";
 void main() {
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
     late MockPluginPreferenceRepository mockPluginPreferenceRepository;
     late MockConnectionService mockConnectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late MockProjectRepository mockProjectRepository;
     late NewSessionSelectionTracker selectionTracker;
+    late MockProductAnalyticsService mockProductAnalyticsService;
 
     const defaultPlugin = PluginMetadata(
       id: "plugin-1",
@@ -33,8 +43,11 @@ void main() {
       actionHint: null,
     );
 
+    setUpAll(registerAllFallbackValues);
+
     setUp(() {
       mockSessionService = MockSessionService();
+      mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
       mockPluginPreferenceRepository = MockPluginPreferenceRepository();
       mockConnectionService = MockConnectionService();
@@ -46,12 +59,22 @@ void main() {
       );
       mockProjectRepository = MockProjectRepository();
       selectionTracker = NewSessionSelectionTracker();
+      selectionTracker.applyBackendScopeTransition(
+        transition: selectionTracker.backendScope.transitionToDiscovered(bridgeId: "bridge-1"),
+      );
+      mockProductAnalyticsService = stubbedProductAnalyticsService();
 
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
 
       when(mockPluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [defaultPlugin])),
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge-1",
+            supportsSessionOptions: true,
+            plugins: [defaultPlugin],
+          ),
+        ),
       );
       when(
         () => mockPluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
@@ -78,6 +101,10 @@ void main() {
         (_) async => ApiResponse<ProviderListResponse>.success(
           const ProviderListResponse(items: [], connectedOnly: false),
         ),
+      );
+      delegateSessionOptionsRepositoryToService(
+        repository: mockSessionRepository,
+        service: mockSessionService,
       );
       when(
         () => mockSessionService.listCommands(
@@ -111,8 +138,14 @@ void main() {
         pluginRepository: mockPluginRepository,
         pluginPreferenceRepository: mockPluginPreferenceRepository,
       ),
+      newSessionOptionsService: NewSessionOptionsService(
+        sessionRepository: mockSessionRepository,
+        defaultModelSelector: const DefaultModelSelector(),
+      ),
       projectRepository: mockProjectRepository,
       selectionTracker: selectionTracker,
+      composerDraftRepository: inMemoryComposerDraftRepository(),
+      productAnalyticsService: mockProductAnalyticsService,
       projectId: "project-1",
       initialSupportsDedicatedWorktrees: true,
     );
@@ -133,6 +166,34 @@ void main() {
       );
     });
 
+    test("option payloads participate in structural NewSessionState equality", () {
+      NewSessionState buildState() => const NewSessionState.idle(
+        availablePlugins: [defaultPlugin],
+        selectedPlugin: defaultPlugin,
+        options: NewSessionOptionsAvailableState(
+          options: NewSessionOptionsData(
+            agents: [],
+            providers: [],
+            commands: [],
+            selectedAgent: null,
+            selectedAgentModel: null,
+            stagedCommand: null,
+            availableVariants: [],
+          ),
+          source: NewSessionOptionsSource.aggregate,
+        ),
+        backendScope: NewSessionBackendScope.verified(bridgeId: "bridge-1"),
+        isPluginDiscoveryInFlight: false,
+        supportsDedicatedWorktrees: true,
+      );
+
+      final first = buildState();
+      final second = buildState();
+
+      expect(first, second);
+      expect(first.hashCode, second.hashCode);
+    });
+
     test("uses a known unsupported capability in the initial state", () {
       final cubit = NewSessionCubit(
         connectionService: mockConnectionService,
@@ -141,8 +202,14 @@ void main() {
           pluginRepository: mockPluginRepository,
           pluginPreferenceRepository: mockPluginPreferenceRepository,
         ),
+        newSessionOptionsService: NewSessionOptionsService(
+          sessionRepository: mockSessionRepository,
+          defaultModelSelector: const DefaultModelSelector(),
+        ),
         projectRepository: mockProjectRepository,
         selectionTracker: selectionTracker,
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
         projectId: "project-1",
         initialSupportsDedicatedWorktrees: false,
       );
@@ -220,6 +287,7 @@ void main() {
           text: "hello",
           dedicatedWorktree: false,
           command: null,
+          inputMode: ComposerInputMode.voiceAssisted,
         );
       },
       expect: () => [
@@ -239,6 +307,15 @@ void main() {
             variant: null,
             command: null,
             dedicatedWorktree: false,
+          ),
+        ).called(1);
+        verify(
+          () => mockProductAnalyticsService.logEvent(
+            event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+              submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.voiceAssisted),
+              workspaceKind: AnalyticsWorkspaceKind.project,
+            ),
+            occurredAtUtc: any(named: "occurredAtUtc"),
           ),
         ).called(1);
       },
@@ -268,8 +345,14 @@ void main() {
             pluginRepository: mockPluginRepository,
             pluginPreferenceRepository: mockPluginPreferenceRepository,
           ),
+          newSessionOptionsService: NewSessionOptionsService(
+            sessionRepository: mockSessionRepository,
+            defaultModelSelector: const DefaultModelSelector(),
+          ),
           projectRepository: mockProjectRepository,
           selectionTracker: selectionTracker,
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
           projectId: "project-1",
           initialSupportsDedicatedWorktrees: true,
         );
@@ -280,6 +363,7 @@ void main() {
           text: "",
           command: "review",
           dedicatedWorktree: true,
+          inputMode: ComposerInputMode.typed,
         );
       },
       expect: () => [
@@ -303,6 +387,66 @@ void main() {
         ).called(1);
       },
     );
+
+    test("failed creation reports only a bounded failure outcome", () async {
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.dartHttpClient(Exception("private transport detail")),
+        ),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      await cubit.createSession(
+        text: "sensitive prompt",
+        dedicatedWorktree: false,
+        command: null,
+        inputMode: ComposerInputMode.voiceAssisted,
+      );
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionCreationFailed(
+            failureReason: AnalyticsSessionCreationFailureReason.networkDown,
+            workspaceKind: AnalyticsWorkspaceKind.project,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event", that: isA<SessionCreatedWithMessageEvent>()),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
+
+    test("voice completion reports a content-free outcome", () async {
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      cubit.reportVoiceTranscriptionCompleted();
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.voiceTranscriptionCompleted(),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+    });
 
     test("send-owned command clear survives an error and retry", () async {
       final firstCreate = Completer<ApiResponse<Session>>();
@@ -341,6 +485,7 @@ void main() {
         text: "",
         command: command.name,
         dedicatedWorktree: true,
+        inputMode: ComposerInputMode.typed,
       );
       expect(cubit.state, isA<NewSessionSending>());
 
@@ -361,6 +506,7 @@ void main() {
         text: "retry",
         command: cubit.state.agentModelData?.stagedCommand?.name,
         dedicatedWorktree: true,
+        inputMode: ComposerInputMode.typed,
       );
 
       verify(
@@ -417,6 +563,7 @@ void main() {
         text: "hello",
         dedicatedWorktree: true,
         command: null,
+        inputMode: ComposerInputMode.typed,
       );
 
       verify(
@@ -481,6 +628,7 @@ void main() {
         text: "hello",
         dedicatedWorktree: true,
         command: null,
+        inputMode: ComposerInputMode.typed,
       );
 
       verify(
@@ -549,6 +697,7 @@ void main() {
           text: "hello",
           dedicatedWorktree: true,
           command: null,
+          inputMode: ComposerInputMode.typed,
         );
       },
       expect: () => [
@@ -758,6 +907,116 @@ void main() {
         ),
       ],
     );
+
+    test("selectModel preserves an explicit Default variant intent", () async {
+      selectionTracker.recordVariant(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        variant: const NewSessionDefaultVariantIntent(),
+      );
+      when(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Agents(
+            agents: [
+              AgentInfo(
+                name: "build",
+                description: "Build",
+                model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+                mode: AgentMode.primary,
+              ),
+              AgentInfo(
+                name: "build",
+                description: "Build",
+                model: AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+                mode: AgentMode.primary,
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
+
+      expect(
+        cubit.state.agentModelData?.agentModel,
+        const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: null),
+      );
+      expect(
+        selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.variant,
+        isA<NewSessionDefaultVariantIntent>(),
+      );
+    });
+
+    test("selectAgent preserves an independent explicit model intent", () async {
+      selectionTracker.recordModel(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        providerId: "openai",
+        modelId: "gpt-4",
+      );
+      when(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Agents(
+            agents: [
+              AgentInfo(
+                name: "build",
+                description: "Build",
+                model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+                mode: AgentMode.primary,
+              ),
+              AgentInfo(
+                name: "plan",
+                description: "Plan",
+                model: AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+                mode: AgentMode.primary,
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      cubit.selectAgent("plan");
+
+      expect(cubit.state.agentModelData?.agent, "plan");
+      expect(
+        cubit.state.agentModelData?.agentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
+      );
+      expect(
+        selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.model,
+        isA<NewSessionModelIntent>()
+            .having((intent) => intent.providerId, "providerId", "openai")
+            .having((intent) => intent.modelId, "modelId", "gpt-4"),
+      );
+    });
 
     blocTest<NewSessionCubit, NewSessionState>(
       "selectModel leaves provider-only model variant at Default",
@@ -1012,8 +1271,52 @@ void main() {
 
     // --- Selection persistence across navigation (NewSessionSelectionTracker) ---
 
+    test("selectAgent persists only the deliberate agent dimension", () async {
+      when(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Agents(
+            agents: [
+              AgentInfo(
+                name: "build",
+                description: "Build",
+                model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+                mode: AgentMode.primary,
+              ),
+              AgentInfo(
+                name: "plan",
+                description: "Plan",
+                model: AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+                mode: AgentMode.primary,
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      cubit.selectAgent("plan");
+
+      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      expect(saved?.agentName, "plan");
+      expect(saved?.model, isNull);
+      expect(saved?.variant, isNull);
+    });
+
     blocTest<NewSessionCubit, NewSessionState>(
-      "persists the chosen variant to the selection store",
+      "persists only the deliberate variant dimension",
       skip: 1,
       build: () {
         when(
@@ -1049,16 +1352,17 @@ void main() {
       },
       verify: (_) {
         final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
-        expect(saved?.agent, "build");
+        expect(saved?.agentName, isNull);
+        expect(saved?.model, isNull);
         expect(
-          saved?.agentModel,
-          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+          saved?.variant,
+          isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "xhigh"),
         );
       },
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "persists the chosen model to the selection store",
+      "persists only the deliberate model dimension",
       skip: 1,
       build: () {
         when(
@@ -1099,10 +1403,11 @@ void main() {
         cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
       },
       verify: (_) {
-        expect(
-          selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentModel,
-          const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
-        );
+        final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+        expect(saved?.agentName, isNull);
+        expect(saved?.model?.providerId, "anthropic");
+        expect(saved?.model?.modelId, "claude-3");
+        expect(saved?.variant, isNull);
       },
     );
 
@@ -1113,8 +1418,10 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: null,
-          agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+          selection: _selectionIntentFromSnapshot(
+            agentName: null,
+            agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+          ),
         );
         when(
           () => mockSessionService.listProviders(
@@ -1182,8 +1489,10 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: null,
-          agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "legacy"),
+          selection: _selectionIntentFromSnapshot(
+            agentName: null,
+            agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "legacy"),
+          ),
         );
         when(
           () => mockSessionService.listProviders(
@@ -1248,8 +1557,7 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: "plan",
-          agentModel: null,
+          selection: _selectionIntentFromSnapshot(agentName: "plan", agentModel: null),
         );
         when(
           () => mockSessionService.listAgents(
@@ -1294,8 +1602,7 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: "ghost",
-          agentModel: null,
+          selection: _selectionIntentFromSnapshot(agentName: "ghost", agentModel: null),
         );
         when(
           () => mockSessionService.listAgents(
@@ -1334,8 +1641,10 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: null,
-          agentModel: const AgentModel(providerID: "ghost", modelID: "gone", variant: null),
+          selection: _selectionIntentFromSnapshot(
+            agentName: null,
+            agentModel: const AgentModel(providerID: "ghost", modelID: "gone", variant: null),
+          ),
         );
         when(
           () => mockSessionService.listAgents(
@@ -1356,6 +1665,12 @@ void main() {
             ),
           ),
         );
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
         return buildCubit();
       },
       expect: () => [
@@ -1374,8 +1689,10 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: "build",
-          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+          selection: _selectionIntentFromSnapshot(
+            agentName: "build",
+            agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+          ),
         );
         when(
           () => mockSessionService.createSessionWithMessage(
@@ -1394,7 +1711,12 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+        await cubit.createSession(
+          text: "hello",
+          dedicatedWorktree: true,
+          command: null,
+          inputMode: ComposerInputMode.typed,
+        );
       },
       verify: (_) {
         expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
@@ -1405,8 +1727,10 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+        selection: _selectionIntentFromSnapshot(
+          agentName: "build",
+          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+        ),
       );
       final completer = Completer<ApiResponse<Session>>();
       when(
@@ -1426,7 +1750,12 @@ void main() {
       final cubit = buildCubit();
       await waitForComposer(cubit);
       // Kick off creation but don't await — the request is now in flight.
-      final pending = cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      final pending = cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
       // The user backs out while sending; the screen disposes the cubit.
       await cubit.close();
       // The launch still succeeds in the background after the cubit is gone.
@@ -1456,12 +1785,19 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "low"),
+        selection: _selectionIntentFromSnapshot(
+          agentName: "build",
+          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "low"),
+        ),
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
-      final pending = cubit.createSession(text: "hi", dedicatedWorktree: true, command: null);
+      final pending = cubit.createSession(
+        text: "hi",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
       // User backs out; the screen disposes this cubit.
       await cubit.close();
       // A reopened composer writes a newer selection V2 for the same project
@@ -1469,17 +1805,23 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+        selection: _selectionIntentFromSnapshot(
+          agentName: "build",
+          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+        ),
       );
       // The first launch now succeeds in the background.
       completer.complete(ApiResponse.success(testSession(id: "s-late")));
       await pending;
 
       // V2 must survive — the late success only owned V1.
+      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      expect(saved?.agentName, "build");
+      expect(saved?.model?.providerId, "openai");
+      expect(saved?.model?.modelId, "gpt-4");
       expect(
-        selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentModel,
-        const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+        saved?.variant,
+        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "high"),
       );
     });
 
@@ -1503,26 +1845,57 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: model,
+        selection: _selectionIntentFromSnapshot(agentName: "build", agentModel: model),
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
-      final pending = cubit.createSession(text: "hi", dedicatedWorktree: true, command: null);
+      final pending = cubit.createSession(
+        text: "hi",
+        dedicatedWorktree: true,
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
       await cubit.close();
 
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: model,
+        selection: _selectionIntentFromSnapshot(agentName: "build", agentModel: model),
       );
       completer.complete(ApiResponse.success(testSession(id: "s-late-equal")));
       await pending;
 
-      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentModel, model);
+      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      expect(saved?.agentName, "build");
+      expect(saved?.model?.providerId, model.providerID);
+      expect(saved?.model?.modelId, model.modelID);
+      expect(
+        saved?.variant,
+        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", model.variant),
+      );
     });
   });
+}
+
+NewSessionSelectionIntent _selectionIntentFromSnapshot({
+  required String? agentName,
+  required AgentModel? agentModel,
+}) {
+  final variant = agentModel?.variant;
+  return NewSessionSelectionIntent(
+    agentName: agentName,
+    model: agentModel == null
+        ? null
+        : NewSessionModelIntent(
+            providerId: agentModel.providerID,
+            modelId: agentModel.modelID,
+          ),
+    variant: agentModel == null
+        ? null
+        : variant == null
+        ? const NewSessionDefaultVariantIntent()
+        : NewSessionNamedVariantIntent(id: variant),
+  );
 }
 
 const _modelSelectionProviders = ProviderListResponse(

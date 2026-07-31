@@ -36,6 +36,7 @@ void main() {
         agentName: null,
         attempt: null,
         retryError: null,
+        attachment: null,
       );
       final cases = <({String name, BridgeSseEvent event, Set<String> expectedBackendIds})>[
         (

@@ -936,6 +936,7 @@ void main() {
       }
       final commits = await commitsFuture;
       expect(commits.map((commit) => commit.kind), everyElement(SessionBindingCommitKind.sessionCreation));
+      expect(commits.map((commit) => commit.projectId), everyElement("/repo"));
       expect(commits.map((commit) => commit.generation), everyElement(1));
     });
 
@@ -1251,6 +1252,7 @@ void main() {
               agentName: null,
               attempt: null,
               retryError: null,
+              attachment: null,
             ),
           ],
         ),
@@ -1352,6 +1354,7 @@ void main() {
       expect(plugin.lastGetProjectDirectory, directory);
       expect(plugin.lastGetSessionsWorktree, directory);
       expect(commit.pluginId, plugin.id);
+      expect(commit.projectId, directory);
       expect(commit.backendSessionIds, ["backend-root"]);
       expect(commit.kind, SessionBindingCommitKind.catalogSync);
       expect(commit.generation, 1);

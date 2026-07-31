@@ -801,6 +801,7 @@ class BridgeRuntimeRunner {
         legacyMissingPluginId: legacyMissingPluginId,
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
+        clock: serverClock,
         database: database,
         httpClient: httpClient,
         processRunner: processRunner,
@@ -839,12 +840,17 @@ class BridgeRuntimeRunner {
         );
       }
 
+      registerSignalHandlers(session: activeRuntime.session, subscriptions: subscriptions);
+      // start() synchronously subscribes local route-trigger listeners before
+      // the debug server can expose mutation routes.
+      final sessionStart = activeRuntime.session.start();
+      sessionStart.ignore();
+      sessionRun = activeRuntime.session.waitUntilStopped();
       debugServer = await startDebugServerIfRequested(
         debugPort: options.debugPort,
         runtime: activeRuntime,
         shutdownCoordinator: shutdownCoordinator,
       );
-      registerSignalHandlers(session: activeRuntime.session, subscriptions: subscriptions);
       // Background: check + download + stage + apply-in-place on a 4h cadence.
       // The swap takes effect on the next launch (or a phone-triggered restart).
       shutdownCoordinator.add(disposable: updateLifecycle.dispose);
@@ -876,8 +882,6 @@ class BridgeRuntimeRunner {
       }
 
       try {
-        final sessionStart = activeRuntime.session.start();
-        sessionRun = activeRuntime.session.waitUntilStopped();
         final startResult = await sessionStart;
         if (startResult == OrchestratorSessionStartResult.ready) {
           if (onboardingPreparation case final preparation?) {

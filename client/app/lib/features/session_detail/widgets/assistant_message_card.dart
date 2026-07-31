@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "agent_part_widget.dart";
+import "file_part_widget.dart";
 import "reasoning_part_card.dart";
 import "retry_part_widget.dart";
 import "subtask_part_widget.dart";
@@ -50,6 +51,7 @@ class AssistantMessageCard extends StatelessWidget {
       MessagePartType.stepFinish,
       MessagePartType.agent,
       MessagePartType.retry,
+      MessagePartType.file,
     ].contains(part.type);
   }
 
@@ -88,7 +90,10 @@ class AssistantMessageCard extends StatelessWidget {
       ),
       MessagePartType.stepStart => const SizedBox.shrink(),
       MessagePartType.stepFinish => const SizedBox.shrink(),
-      MessagePartType.file => const SizedBox.shrink(),
+      MessagePartType.file => switch (part.attachment) {
+        final attachment? => FilePartWidget(key: ValueKey(part.id), attachment: attachment),
+        null => const SizedBox.shrink(),
+      },
       MessagePartType.snapshot => const SizedBox.shrink(),
       MessagePartType.patch => const SizedBox.shrink(),
       MessagePartType.compaction => const SizedBox.shrink(),

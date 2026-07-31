@@ -29,6 +29,8 @@ import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
+import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
+    as _i64;
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
     as _i197;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
@@ -58,6 +60,8 @@ import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
 import 'package:sesori_dart_core/src/repositories/chat_input_mode_store.dart'
     as _i901;
+import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart'
+    as _i198;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
@@ -84,11 +88,12 @@ import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
-import 'package:sesori_dart_core/src/services/draft_store.dart' as _i1002;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
+import 'package:sesori_dart_core/src/services/new_session_options_service.dart'
+    as _i74;
 import 'package:sesori_dart_core/src/services/new_session_plugin_service.dart'
     as _i177;
 import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart'
@@ -116,6 +121,8 @@ import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
 import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
     as _i18;
 import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
+import 'package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart'
+    as _i895;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -125,16 +132,21 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
+    gh.lazySingleton<_i64.ComposerDraftStorage>(
+      () => _i64.ComposerDraftStorage(),
+    );
     gh.lazySingleton<_i369.ClockProvider>(() => const _i369.ClockProvider());
     gh.lazySingleton<_i369.RelayClientFactory>(
       () => const _i369.RelayClientFactory(),
     );
-    gh.lazySingleton<_i1002.DraftStore>(() => _i1002.DraftStore());
     gh.lazySingleton<_i913.NewSessionSelectionTracker>(
       () => _i913.NewSessionSelectionTracker(),
     );
     gh.lazySingleton<_i84.SessionActivityCalculator>(
       () => const _i84.SessionActivityCalculator(),
+    );
+    gh.lazySingleton<_i895.DefaultModelSelector>(
+      () => const _i895.DefaultModelSelector(),
     );
     gh.lazySingleton<_i895.RoomKeyStorage>(
       () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
@@ -163,6 +175,11 @@ extension GetItInjectableX on _i174.GetIt {
         pushMessagingSource: gh<_i330.PushMessagingSource>(),
         localNotificationClient: gh<_i1037.LocalNotificationClient>(),
         routeDispatcher: gh<_i951.RouteDispatcher>(),
+      ),
+    );
+    gh.lazySingleton<_i198.ComposerDraftRepository>(
+      () => _i198.ComposerDraftRepository(
+        storage: gh<_i64.ComposerDraftStorage>(),
       ),
     );
     gh.lazySingleton<_i209.AppearanceStore>(
@@ -358,6 +375,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i763.SessionListService(
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
+    );
+    gh.lazySingleton<_i74.NewSessionOptionsService>(
+      () => _i74.NewSessionOptionsService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        defaultModelSelector: gh<_i895.DefaultModelSelector>(),
       ),
     );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(

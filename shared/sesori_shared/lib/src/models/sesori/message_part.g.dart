@@ -22,6 +22,7 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   agentName: json['agentName'] as String?,
   attempt: (json['attempt'] as num?)?.toInt(),
   retryError: json['retryError'] as String?,
+  attachment: _messageAttachmentFromJson(json['attachment']),
 );
 
 Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
@@ -39,6 +40,7 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'agentName': ?instance.agentName,
       'attempt': ?instance.attempt,
       'retryError': ?instance.retryError,
+      'attachment': ?instance.attachment?.toJson(),
     };
 
 const _$MessagePartTypeEnumMap = {
@@ -56,6 +58,62 @@ const _$MessagePartTypeEnumMap = {
   MessagePartType.compaction: 'compaction',
 };
 
+MessageAttachmentInlineImage _$MessageAttachmentInlineImageFromJson(Map json) =>
+    MessageAttachmentInlineImage(
+      mime: json['mime'] as String,
+      base64: json['base64'] as String,
+      filename: json['filename'] as String?,
+      $type: json['source'] as String?,
+    );
+
+Map<String, dynamic> _$MessageAttachmentInlineImageToJson(
+  MessageAttachmentInlineImage instance,
+) => <String, dynamic>{
+  'mime': instance.mime,
+  'base64': instance.base64,
+  'filename': ?instance.filename,
+  'source': instance.$type,
+};
+
+MessageAttachmentRemoteUrl _$MessageAttachmentRemoteUrlFromJson(Map json) =>
+    MessageAttachmentRemoteUrl(
+      mime: json['mime'] as String,
+      url: json['url'] as String,
+      filename: json['filename'] as String?,
+      $type: json['source'] as String?,
+    );
+
+Map<String, dynamic> _$MessageAttachmentRemoteUrlToJson(
+  MessageAttachmentRemoteUrl instance,
+) => <String, dynamic>{
+  'mime': instance.mime,
+  'url': instance.url,
+  'filename': ?instance.filename,
+  'source': instance.$type,
+};
+
+MessageAttachmentMetadata _$MessageAttachmentMetadataFromJson(Map json) =>
+    MessageAttachmentMetadata(
+      mime: json['mime'] as String,
+      filename: json['filename'] as String?,
+      $type: json['source'] as String?,
+    );
+
+Map<String, dynamic> _$MessageAttachmentMetadataToJson(
+  MessageAttachmentMetadata instance,
+) => <String, dynamic>{
+  'mime': instance.mime,
+  'filename': ?instance.filename,
+  'source': instance.$type,
+};
+
+MessageAttachmentUnknown _$MessageAttachmentUnknownFromJson(Map json) =>
+    MessageAttachmentUnknown($type: json['source'] as String?);
+
+Map<String, dynamic> _$MessageAttachmentUnknownToJson(
+  MessageAttachmentUnknown instance,
+) => <String, dynamic>{'source': instance.$type};
+
 _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   status: $enumDecode(
     _$ToolStatusEnumMap,
@@ -65,6 +123,9 @@ _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   title: json['title'] as String?,
   output: json['output'] as String?,
   error: json['error'] as String?,
+  attachments: json['attachments'] == null
+      ? const <MessageAttachment>[]
+      : _messageAttachmentsFromJson(json['attachments']),
 );
 
 Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
@@ -73,6 +134,7 @@ Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
       'title': ?instance.title,
       'output': ?instance.output,
       'error': ?instance.error,
+      'attachments': instance.attachments.map((e) => e.toJson()).toList(),
     };
 
 const _$ToolStatusEnumMap = {

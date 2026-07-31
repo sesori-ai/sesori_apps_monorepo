@@ -28,6 +28,7 @@ Map<String, dynamic> _$PluginMessagePartToJson(_PluginMessagePart instance) =>
       'agentName': ?instance.agentName,
       'attempt': ?instance.attempt,
       'retryError': ?instance.retryError,
+      'attachment': ?instance.attachment?.toJson(),
     };
 
 const _$PluginMessagePartTypeEnumMap = {
@@ -46,12 +47,39 @@ const _$PluginMessagePartTypeEnumMap = {
   PluginMessagePartType.unknown: 'unknown',
 };
 
+Map<String, dynamic> _$PluginMessageAttachmentInlineImageToJson(
+  PluginMessageAttachmentInlineImage instance,
+) => <String, dynamic>{
+  'mime': instance.mime,
+  'base64': instance.base64,
+  'filename': ?instance.filename,
+  'source': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessageAttachmentRemoteUrlToJson(
+  PluginMessageAttachmentRemoteUrl instance,
+) => <String, dynamic>{
+  'mime': instance.mime,
+  'url': instance.url.toString(),
+  'filename': ?instance.filename,
+  'source': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessageAttachmentMetadataToJson(
+  PluginMessageAttachmentMetadata instance,
+) => <String, dynamic>{
+  'mime': instance.mime,
+  'filename': ?instance.filename,
+  'source': instance.$type,
+};
+
 Map<String, dynamic> _$PluginToolStateToJson(_PluginToolState instance) =>
     <String, dynamic>{
       'status': _$PluginToolStatusEnumMap[instance.status]!,
       'title': ?instance.title,
       'output': ?instance.output,
       'error': ?instance.error,
+      'attachments': instance.attachments.map((e) => e.toJson()).toList(),
     };
 
 const _$PluginToolStatusEnumMap = {

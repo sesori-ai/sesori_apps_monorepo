@@ -17,6 +17,68 @@ void main() {
   });
 
   group("SessionApi", () {
+    const options = SessionOptionsResponse(
+      agents: Agents(agents: <AgentInfo>[]),
+      providers: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
+      commands: CommandListResponse(items: <CommandInfo>[]),
+    );
+
+    test("loadSessionOptions posts the aggregate request without a cache-only query", () async {
+      when(
+        () => client.post<SessionOptionsResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+          queryParameters: any(named: "queryParameters"),
+        ),
+      ).thenAnswer((invocation) async {
+        final parser = invocation.namedArguments[#fromJson]! as SessionOptionsResponse Function(Map<String, dynamic>);
+        return ApiResponse.success(parser(options.toJson()));
+      });
+
+      final response = await api.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        refresh: false,
+      );
+
+      expect((response as SuccessResponse<SessionOptionsResponse>).data, options);
+      verify(
+        () => client.post<SessionOptionsResponse>(
+          "/session/options",
+          fromJson: any(named: "fromJson"),
+          body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
+          queryParameters: null,
+        ),
+      ).called(1);
+    });
+
+    test("loadSessionOptions sends refresh=true only for an explicit refresh", () async {
+      when(
+        () => client.post<SessionOptionsResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+          queryParameters: any(named: "queryParameters"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(options));
+
+      await api.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        refresh: true,
+      );
+
+      verify(
+        () => client.post<SessionOptionsResponse>(
+          "/session/options",
+          fromJson: any(named: "fromJson"),
+          body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
+          queryParameters: const {"refresh": "true"},
+        ),
+      ).called(1);
+    });
+
     test("createSessionWithMessage builds a request body with null variant when omitted", () async {
       const session = Session(
         branchName: null,

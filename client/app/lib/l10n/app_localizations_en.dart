@@ -395,56 +395,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionAppearance => 'Appearance';
 
   @override
-  String get settingsSectionProductAnalytics => 'Product Analytics';
+  String get settingsSectionAnalytics => 'Analytics';
 
   @override
-  String get settingsProductAnalyticsTitle => 'Share pseudonymous product usage from this device';
+  String get settingsBasicUsageAnalyticsTitle => 'Basic Usage Analytics';
 
   @override
-  String get settingsProductAnalyticsDescription =>
-      'Shares bounded feature and screen outcomes linked by a pseudonymous account key. Sesori never sends source code, prompts, responses, transcripts, paths, project or session names, or raw account identifiers.';
+  String get settingsBasicUsageAnalyticsDescription => 'Share basic feature usage — never your code or messages.';
 
   @override
-  String get settingsProductAnalyticsLimitations =>
-      'This switch does not control Firebase automatic installation events or its pseudonymous installation/device and approximate-location processing, the bounded account-less sign-in funnel, operational account and bridge records, older app versions, or another supported device until it next synchronizes.';
+  String get settingsBasicUsageAnalyticsLoading => 'Loading preference…';
 
   @override
-  String get settingsProductAnalyticsRetention =>
-      'Google\'s upstream analytics retention is two months. Sesori\'s restricted exported raw copy expires after 90 days. Minimized pseudonymous curated event facts are retained for 14 months.';
+  String get settingsBasicUsageAnalyticsSaving => 'Saving preference…';
 
   @override
-  String get settingsProductAnalyticsLoading => 'Checking your saved preference…';
+  String get settingsBasicUsageAnalyticsLoadFailed => 'Analytics preference failed to load.';
 
   @override
-  String get settingsProductAnalyticsDisablePending => 'Disabled on this device. Account sync is pending.';
+  String get settingsBasicUsageAnalyticsSyncFailed => 'Couldn\'t sync preference.';
 
   @override
-  String get settingsProductAnalyticsEnablePending =>
-      'Account enablement or local finalization is pending. Product usage remains off here.';
-
-  @override
-  String get settingsProductAnalyticsDisableRetryRequired =>
-      'Product usage is off for this run, but the local preference and account sync could not be saved. Retry before leaving.';
-
-  @override
-  String get settingsProductAnalyticsSyncFailed =>
-      'Could not synchronize. Product usage remains off on this device; refresh to retry.';
-
-  @override
-  String get settingsProductAnalyticsNotSynchronized => 'This device has not synchronized the account preference yet.';
-
-  @override
-  String get settingsProductAnalyticsSynchronized => 'Preference synchronized.';
-
-  @override
-  String get settingsProductAnalyticsRuntimeUnavailable =>
-      'Your preference is enabled, but custom product usage is unavailable for this app run.';
-
-  @override
-  String get settingsProductAnalyticsRefresh => 'Refresh analytics preference';
-
-  @override
-  String get settingsProductAnalyticsRetry => 'Retry analytics preference sync';
+  String get settingsBasicUsageAnalyticsRetry => 'Retry preference sync';
 
   @override
   String get settingsAppearanceLight => 'Light';
@@ -633,6 +605,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailToolUnknown => 'Tool';
+
+  @override
+  String get sessionDetailFileUnknown => 'Unknown file';
 
   @override
   String get sessionDetailToolPending => 'Pending';
@@ -1142,6 +1117,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionPluginLoading => 'Loading coding tool options';
+
+  @override
+  String get newSessionOptionsRefresh => 'Refresh';
+
+  @override
+  String get newSessionOptionsCached => 'Using cached coding tool options.';
+
+  @override
+  String get newSessionOptionsUnavailable =>
+      'No cached options are available. You can create with defaults or refresh now.';
+
+  @override
+  String get newSessionOptionsLegacyBridge =>
+      'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.';
+
+  @override
+  String get newSessionOptionsUpdateFailedRetained =>
+      'Couldn’t update options. Previously cached options are still available.';
+
+  @override
+  String get newSessionOptionsRefreshFailedUnavailable =>
+      'Refresh failed and no valid cached options remain. You can create with defaults.';
 
   @override
   String get sessionListDeleteWorktreeCheckbox => 'Delete worktree';
