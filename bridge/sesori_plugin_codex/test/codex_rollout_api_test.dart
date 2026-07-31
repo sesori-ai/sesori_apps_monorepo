@@ -120,11 +120,50 @@ void main() {
         timestamp: "2026-04-17T10:00:00Z",
         cliVersion: "0.121.0",
       );
-      final meta = rolloutApi.readHeader(rolloutPath: path).first.payload;
-      expect(meta?.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
-      expect(meta?.cwd, equals("/repo/app"));
-      expect(meta?.timestamp, equals("2026-04-17T10:00:00Z"));
-      expect(meta?.cliVersion, equals("0.121.0"));
+      final line = rolloutApi.readHeader(rolloutPath: path).first;
+      expect(line, isA<CodexRolloutSessionMetadataLineDto>());
+      final meta = _sessionMetadataPayload(line: line);
+      expect(meta.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
+      expect(meta.cwd, equals("/repo/app"));
+      expect(meta.timestamp, equals("2026-04-17T10:00:00Z"));
+      expect(meta.cliVersion, equals("0.121.0"));
+    });
+
+    test("rollout records decode to closed outer variants", () {
+      final lines = [
+        CodexRolloutLineDto.fromJson({
+          "type": "session_meta",
+          "payload": {"id": "session-id"},
+        }),
+        CodexRolloutLineDto.fromJson({
+          "type": "turn_context",
+          "payload": {"model": "gpt-5.4"},
+        }),
+        CodexRolloutLineDto.fromJson({
+          "type": "response_item",
+          "payload": {"type": "message", "role": "assistant"},
+        }),
+        CodexRolloutLineDto.fromJson({
+          "type": "compacted",
+          "payload": {"replacement_history": <Object?>[]},
+        }),
+        CodexRolloutLineDto.fromJson({
+          "type": "future_line",
+          "payload": "ignored unknown payload",
+        }),
+      ];
+
+      expect(lines[0], isA<CodexRolloutSessionMetadataLineDto>());
+      expect(lines[1], isA<CodexRolloutTurnContextLineDto>());
+      expect(lines[2], isA<CodexRolloutResponseItemLineDto>());
+      expect(lines[3], isA<CodexRolloutCompactedLineDto>());
+      expect(lines[4], isA<CodexRolloutUnknownLineDto>());
+      expect(_sessionMetadataPayload(line: lines[0]).id, "session-id");
+      expect(_turnContextPayload(line: lines[1]).model, "gpt-5.4");
+      expect(
+        _responseItemPayload(line: lines[2]).type,
+        CodexRolloutPayloadType.message,
+      );
     });
 
     test("readHeader does not read beyond its bounded scan window", () {
@@ -140,7 +179,10 @@ void main() {
 
       final lines = rolloutApi.readHeader(rolloutPath: path);
 
-      expect(lines.first.payload?.id, "session-id");
+      expect(
+        _sessionMetadataPayload(line: lines.first).id,
+        "session-id",
+      );
     });
 
     test("readTranscript warns for malformed non-final rows", () {
@@ -256,7 +298,10 @@ void main() {
       );
 
       expect(initial.lines, hasLength(1));
-      expect(initial.lines.single.payload?.callId, "call-1");
+      expect(
+        _responseItemPayload(line: initial.lines.single).callId,
+        "call-1",
+      );
       expect(initial.trailingBytes, isNotEmpty);
 
       File(path).writeAsStringSync(
@@ -271,7 +316,7 @@ void main() {
 
       expect(completed.lines, hasLength(1));
       expect(
-        completed.lines.single.payload?.type,
+        _responseItemPayload(line: completed.lines.single).type,
         CodexRolloutPayloadType.functionCallOutput,
       );
       expect(completed.trailingBytes, isEmpty);
@@ -322,7 +367,10 @@ void main() {
       );
 
       expect(completed.lines, hasLength(1));
-      expect(completed.lines.single.payload?.callId, "current-call");
+      expect(
+        _responseItemPayload(line: completed.lines.single).callId,
+        "current-call",
+      );
       expect(completed.trailingBytes, isEmpty);
     });
 
@@ -367,12 +415,14 @@ void main() {
       expect(output, isNot(contains("malformed rollout")));
       expect(header, hasLength(3));
       expect(transcript, hasLength(3));
+      expect(transcript[1], isA<CodexRolloutResponseItemLineDto>());
       expect(
-        transcript[1].payload?.type,
+        _responseItemPayload(line: transcript[1]).type,
         CodexRolloutPayloadType.customToolCallOutput,
       );
+      expect(transcript[2], isA<CodexRolloutResponseItemLineDto>());
       expect(
-        transcript[2].payload?.type,
+        _responseItemPayload(line: transcript[2]).type,
         CodexRolloutPayloadType.reasoning,
       );
     });
@@ -456,9 +506,11 @@ void main() {
       }, level: LogLevel.verbose);
 
       expect(output, isNot(contains("malformed rollout content list")));
-      expect(transcript.last.type, CodexRolloutLineType.turnContext);
-      expect(transcript.last.payload?.model, "gpt-5.4");
-      expect(transcript.last.payload?.summary, isNull);
+      expect(transcript.last, isA<CodexRolloutTurnContextLineDto>());
+      expect(
+        _turnContextPayload(line: transcript.last).model,
+        "gpt-5.4",
+      );
     });
 
     test("response_item scalar summary remains observable as malformed", () {
@@ -488,8 +540,11 @@ void main() {
         "malformed rollout content list".allMatches(output),
         hasLength(1),
       );
-      expect(transcript.last.type, CodexRolloutLineType.responseItem);
-      expect(transcript.last.payload?.summary, isEmpty);
+      expect(transcript.last, isA<CodexRolloutResponseItemLineDto>());
+      expect(
+        _responseItemPayload(line: transcript.last).summary,
+        isEmpty,
+      );
     });
 
     test("object-form tool search arguments do not invalidate the record", () {
@@ -518,9 +573,13 @@ void main() {
       }, level: LogLevel.verbose);
 
       expect(output, isNot(contains("malformed rollout transcript record")));
-      expect(transcript.last.payload?.type, CodexRolloutPayloadType.unknown);
+      expect(transcript.last, isA<CodexRolloutResponseItemLineDto>());
       expect(
-        transcript.last.payload?.arguments,
+        _responseItemPayload(line: transcript.last).type,
+        CodexRolloutPayloadType.unknown,
+      );
+      expect(
+        _responseItemPayload(line: transcript.last).arguments,
         jsonEncode({"query": "available tools"}),
       );
     });
@@ -1243,6 +1302,33 @@ void main() {
       expect(assistant.providerID, equals("openai"));
     });
   });
+}
+
+CodexRolloutSessionMetadataPayloadDto _sessionMetadataPayload({
+  required CodexRolloutLineDto line,
+}) {
+  return switch (line) {
+    CodexRolloutSessionMetadataLineDto(payload: final payload) => payload,
+    _ => throw StateError("Expected session metadata rollout line"),
+  };
+}
+
+CodexRolloutTurnContextPayloadDto _turnContextPayload({
+  required CodexRolloutLineDto line,
+}) {
+  return switch (line) {
+    CodexRolloutTurnContextLineDto(payload: final payload) => payload,
+    _ => throw StateError("Expected turn context rollout line"),
+  };
+}
+
+CodexRolloutPayloadDto _responseItemPayload({
+  required CodexRolloutLineDto line,
+}) {
+  return switch (line) {
+    CodexRolloutResponseItemLineDto(payload: final payload) => payload,
+    _ => throw StateError("Expected response item rollout line"),
+  };
 }
 
 String _captureWarnings(

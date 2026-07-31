@@ -5,10 +5,10 @@
 - **Plan slug:** `output-image-support`
 - **Implementation base:** `origin/main` at
   `9d2c1e9e79ab80fa8824b9d803a74798eb71140d`
-- **Series state:** Step 2/13 PR open
-- **Current step:** Step 2/13 — seal Codex rollout content
+- **Series state:** Step 3/13 ready for PR
+- **Current step:** Step 3/13 — seal Codex rollout envelopes
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** monitor Step 2/13 CI and review
+- **Next action:** open and monitor the Step 3/13 PR
 
 ## Plan Review
 
@@ -27,8 +27,8 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/13 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/13]` | 450-700 | [PR #638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638) merged as `bfadd097` |
-| [ ] | 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639) open; 680 changed lines |
-| [ ] | 3/13 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/13]` | 900-1,350 | Blocked on Step 2 merge |
+| [x] | 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639) merged as `17e0ecf1`; 680 changed lines |
+| [ ] | 3/13 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/13]` | 900-1,350 | Ready for PR; 1,075 changed lines |
 | [ ] | 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | Blocked on Step 3 merge |
 | [ ] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | Blocked on Step 4 merge |
 | [ ] | 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | Blocked on Step 5 merge |
@@ -96,8 +96,18 @@
   and history consumers. Codex codegen, focused tests, all 210 package tests,
   `dart pub get`, `dart analyze --fatal-infos`, and `git diff --cached --check`
   pass. `aristotle-impl-review` approved the staged architecture with no
-  findings. Commit `3b18da2d` is open as [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639).
-  The 680-line diff is below the 1,500-line soft cap; no neighboring scope was combined.
+  findings. Commit `3b18da2d` was opened as [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639).
+  The 680-line diff is below the 1,500-line soft cap; no neighboring scope was combined. PR #639
+  merged as `17e0ecf1` on 2026-07-31.
+- Step 3/13 (2026-07-31): sealed the outer rollout envelope into session
+  metadata, turn context, response item, compacted, and unknown variants;
+  retained the existing response-item payload representation for Step 4; and
+  migrated catalog, tailer, live-event, and history consumers atomically. Codex
+  codegen, focused structural/catalog/tailer/mapper/repository tests, all 211
+  package tests, `dart pub get`, `dart analyze --fatal-infos`, and
+  `git diff --cached --check` pass. `aristotle-impl-review` approved the staged
+  architecture with no findings. The 1,075-line diff is within the 900-1,350
+  target and below the 1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas
 

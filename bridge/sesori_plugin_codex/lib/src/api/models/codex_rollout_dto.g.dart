@@ -13,28 +13,61 @@ _CodexSessionIndexEntryDto _$CodexSessionIndexEntryDtoFromJson(Map json) =>
       updatedAt: json['updated_at'] as String?,
     );
 
-_CodexRolloutLineDto _$CodexRolloutLineDtoFromJson(Map json) =>
-    _CodexRolloutLineDto(
+CodexRolloutSessionMetadataLineDto _$CodexRolloutSessionMetadataLineDtoFromJson(
+  Map json,
+) => CodexRolloutSessionMetadataLineDto(
+  timestamp: json['timestamp'] as String?,
+  payload: CodexRolloutSessionMetadataPayloadDto.fromJson(
+    Map<String, dynamic>.from(json['payload'] as Map),
+  ),
+  $type: json['type'] as String?,
+);
+
+CodexRolloutTurnContextLineDto _$CodexRolloutTurnContextLineDtoFromJson(
+  Map json,
+) => CodexRolloutTurnContextLineDto(
+  timestamp: json['timestamp'] as String?,
+  payload: CodexRolloutTurnContextPayloadDto.fromJson(
+    Map<String, dynamic>.from(json['payload'] as Map),
+  ),
+  $type: json['type'] as String?,
+);
+
+CodexRolloutResponseItemLineDto _$CodexRolloutResponseItemLineDtoFromJson(
+  Map json,
+) => CodexRolloutResponseItemLineDto(
+  timestamp: json['timestamp'] as String?,
+  payload: CodexRolloutPayloadDto.fromJson(
+    Map<String, dynamic>.from(json['payload'] as Map),
+  ),
+  $type: json['type'] as String?,
+);
+
+CodexRolloutCompactedLineDto _$CodexRolloutCompactedLineDtoFromJson(Map json) =>
+    CodexRolloutCompactedLineDto(
       timestamp: json['timestamp'] as String?,
-      type: $enumDecodeNullable(
-        _$CodexRolloutLineTypeEnumMap,
-        json['type'],
-        unknownValue: CodexRolloutLineType.unknown,
-      ),
-      payload: json['payload'] == null
-          ? null
-          : CodexRolloutPayloadDto.fromJson(
-              Map<String, dynamic>.from(json['payload'] as Map),
-            ),
+      $type: json['type'] as String?,
     );
 
-const _$CodexRolloutLineTypeEnumMap = {
-  CodexRolloutLineType.sessionMeta: 'session_meta',
-  CodexRolloutLineType.turnContext: 'turn_context',
-  CodexRolloutLineType.responseItem: 'response_item',
-  CodexRolloutLineType.compacted: 'compacted',
-  CodexRolloutLineType.unknown: 'unknown',
-};
+CodexRolloutUnknownLineDto _$CodexRolloutUnknownLineDtoFromJson(Map json) =>
+    CodexRolloutUnknownLineDto(
+      timestamp: json['timestamp'] as String?,
+      $type: json['type'] as String?,
+    );
+
+_CodexRolloutSessionMetadataPayloadDto
+_$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
+    _CodexRolloutSessionMetadataPayloadDto(
+      id: json['id'] as String?,
+      cwd: json['cwd'] as String?,
+      timestamp: json['timestamp'] as String?,
+      modelProvider: json['model_provider'] as String?,
+      cliVersion: json['cli_version'] as String?,
+    );
+
+_CodexRolloutTurnContextPayloadDto _$CodexRolloutTurnContextPayloadDtoFromJson(
+  Map json,
+) => _CodexRolloutTurnContextPayloadDto(model: json['model'] as String?);
 
 _CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(
   Map json,

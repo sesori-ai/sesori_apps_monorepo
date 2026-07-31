@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/src/api/codex_rollout_api.dart";
+import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/services/codex_rollout_tailer.dart";
 import "package:path/path.dart" as p;
@@ -86,7 +87,10 @@ void main() {
 
       expect(appends, hasLength(1));
       expect(appends.single.sessionId, "session-1");
-      expect(appends.single.line.payload?.callId, "current-call");
+      expect(
+        _responseItemPayload(line: appends.single.line).callId,
+        "current-call",
+      );
     });
 
     test("finish waits for a rollout created after completion begins", () async {
@@ -131,7 +135,10 @@ void main() {
 
       expect(appends, hasLength(1));
       expect(appends.single.sessionId, "session-1");
-      expect(appends.single.line.payload?.callId, "late-call");
+      expect(
+        _responseItemPayload(line: appends.single.line).callId,
+        "late-call",
+      );
     });
 
     test("finish waits for a late append to an existing rollout", () async {
@@ -188,9 +195,21 @@ void main() {
 
       expect(appends, hasLength(1));
       expect(appends.single.sessionId, "session-1");
-      expect(appends.single.line.payload?.callId, "late-existing-call");
+      expect(
+        _responseItemPayload(line: appends.single.line).callId,
+        "late-existing-call",
+      );
     });
   });
+}
+
+CodexRolloutPayloadDto _responseItemPayload({
+  required CodexRolloutLineDto line,
+}) {
+  return switch (line) {
+    CodexRolloutResponseItemLineDto(payload: final payload) => payload,
+    _ => throw StateError("Expected response item rollout line"),
+  };
 }
 
 class _ThrowingPositionApi extends CodexRolloutApi {

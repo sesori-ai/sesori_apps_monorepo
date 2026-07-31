@@ -180,27 +180,23 @@ class CodexCatalogRepository {
     String? cliVersion;
     String? model;
     for (final line in lines) {
-      switch (line.type) {
-        case CodexRolloutLineType.sessionMeta:
+      switch (line) {
+        case CodexRolloutSessionMetadataLineDto(:final payload):
           // Forked/subagent rollouts begin with their own metadata and then
           // include the parent's copied session metadata. The leading header
           // remains authoritative for the file.
           if (id != null) continue;
-          final payload = line.payload;
-          final metadataId = payload?.id;
+          final metadataId = payload.id;
           if (metadataId == null || metadataId.isEmpty) continue;
           id = metadataId;
-          cwd = payload?.cwd;
-          timestamp = _tryParseDate(payload?.timestamp);
-          modelProvider = payload?.modelProvider;
-          cliVersion = payload?.cliVersion;
-        case CodexRolloutLineType.turnContext:
-          final candidate = line.payload?.model;
+          cwd = payload.cwd;
+          timestamp = _tryParseDate(payload.timestamp);
+          modelProvider = payload.modelProvider;
+          cliVersion = payload.cliVersion;
+        case CodexRolloutTurnContextLineDto(:final payload):
+          final candidate = payload.model;
           if (candidate != null && candidate.isNotEmpty) model = candidate;
-        case CodexRolloutLineType.responseItem:
-        case CodexRolloutLineType.compacted:
-        case CodexRolloutLineType.unknown:
-        case null:
+        case CodexRolloutResponseItemLineDto() || CodexRolloutCompactedLineDto() || CodexRolloutUnknownLineDto():
           break;
       }
     }

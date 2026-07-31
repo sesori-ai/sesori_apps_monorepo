@@ -6,18 +6,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 part "codex_rollout_dto.freezed.dart";
 part "codex_rollout_dto.g.dart";
 
-enum CodexRolloutLineType {
-  @JsonValue("session_meta")
-  sessionMeta,
-  @JsonValue("turn_context")
-  turnContext,
-  @JsonValue("response_item")
-  responseItem,
-  @JsonValue("compacted")
-  compacted,
-  unknown,
-}
-
 enum CodexRolloutPayloadType {
   @JsonValue("message")
   message,
@@ -53,17 +41,67 @@ sealed class CodexSessionIndexEntryDto with _$CodexSessionIndexEntryDto {
   factory CodexSessionIndexEntryDto.fromJson(Map<String, dynamic> json) => _$CodexSessionIndexEntryDtoFromJson(json);
 }
 
-@Freezed(fromJson: true, toJson: false)
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
 sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
-  const factory CodexRolloutLineDto({
+  @FreezedUnionValue("session_meta")
+  const factory CodexRolloutLineDto.sessionMetadata({
     required String? timestamp,
-    @JsonKey(unknownEnumValue: CodexRolloutLineType.unknown) required CodexRolloutLineType? type,
-    required CodexRolloutPayloadDto? payload,
-  }) = _CodexRolloutLineDto;
+    required CodexRolloutSessionMetadataPayloadDto payload,
+  }) = CodexRolloutSessionMetadataLineDto;
+
+  @FreezedUnionValue("turn_context")
+  const factory CodexRolloutLineDto.turnContext({
+    required String? timestamp,
+    required CodexRolloutTurnContextPayloadDto payload,
+  }) = CodexRolloutTurnContextLineDto;
+
+  @FreezedUnionValue("response_item")
+  const factory CodexRolloutLineDto.responseItem({
+    required String? timestamp,
+    required CodexRolloutPayloadDto payload,
+  }) = CodexRolloutResponseItemLineDto;
+
+  @FreezedUnionValue("compacted")
+  const factory CodexRolloutLineDto.compacted({
+    required String? timestamp,
+  }) = CodexRolloutCompactedLineDto;
+
+  const factory CodexRolloutLineDto.unknown({
+    required String? timestamp,
+  }) = CodexRolloutUnknownLineDto;
 
   factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(
     _normalizeRolloutLineJson(json: json),
   );
+}
+
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMetadataPayloadDto {
+  const factory CodexRolloutSessionMetadataPayloadDto({
+    required String? id,
+    required String? cwd,
+    required String? timestamp,
+    @JsonKey(name: "model_provider") required String? modelProvider,
+    @JsonKey(name: "cli_version") required String? cliVersion,
+  }) = _CodexRolloutSessionMetadataPayloadDto;
+
+  factory CodexRolloutSessionMetadataPayloadDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutSessionMetadataPayloadDtoFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPayloadDto {
+  const factory CodexRolloutTurnContextPayloadDto({
+    required String? model,
+  }) = _CodexRolloutTurnContextPayloadDto;
+
+  factory CodexRolloutTurnContextPayloadDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
@@ -179,12 +217,6 @@ class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
   }
 }
 
-/// Normalizes overloaded payload fields before generated DTO decoding.
-///
-/// Reasoning response items use a typed content list, while `turn_context`
-/// records legitimately use a scalar string. The latter is context metadata,
-/// not a renderable reasoning part, so only that line type drops the field.
-///
 /// COMPATIBILITY 2026-07-23 (Codex 0.145.x): function calls persist arguments
 /// as JSON-encoded strings, while `tool_search_call` persists the decoded JSON
 /// value directly. Keep both forms until Codex converges the rollout schema or
@@ -193,17 +225,15 @@ Map<String, dynamic> _normalizeRolloutLineJson({
   required Map<String, dynamic> json,
 }) {
   final payload = json["payload"];
-  if (payload is! Map) return json;
-  final normalizeSummary = json["type"] == "turn_context" && payload["summary"] is String;
+  if (json["type"] != "response_item" || payload is! Map) return json;
   final arguments = payload["arguments"];
   final normalizeArguments = arguments != null && arguments is! String;
-  if (!normalizeSummary && !normalizeArguments) return json;
+  if (!normalizeArguments) return json;
   return {
     ...json,
     "payload": {
       ...payload,
-      if (normalizeSummary) "summary": null,
-      if (normalizeArguments) "arguments": jsonEncode(arguments),
+      "arguments": jsonEncode(arguments),
     },
   };
 }

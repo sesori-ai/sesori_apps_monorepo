@@ -263,8 +263,13 @@ class CodexEventMapper {
     required String threadId,
     required CodexRolloutLineDto line,
   }) {
-    if (line.type != CodexRolloutLineType.responseItem) return const [];
-    final payload = line.payload;
+    final payload = switch (line) {
+      CodexRolloutResponseItemLineDto(payload: final payload) => payload,
+      CodexRolloutSessionMetadataLineDto() ||
+      CodexRolloutTurnContextLineDto() ||
+      CodexRolloutCompactedLineDto() ||
+      CodexRolloutUnknownLineDto() => null,
+    };
     if (payload == null) return const [];
     final call = _rolloutToolMapper.mapCall(payload);
     if (call != null) {

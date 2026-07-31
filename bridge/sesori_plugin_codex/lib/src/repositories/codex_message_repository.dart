@@ -37,10 +37,10 @@ class CodexMessageRepository {
 
     final toolOutputs = <String, CodexRolloutToolResult>{};
     for (final line in lines) {
-      final payload = line.payload;
-      if (payload == null) continue;
-      final result = _rolloutToolMapper.mapResult(payload);
-      if (result != null) toolOutputs[result.callId] = result;
+      if (line case CodexRolloutResponseItemLineDto(payload: final payload)) {
+        final result = _rolloutToolMapper.mapResult(payload);
+        if (result != null) toolOutputs[result.callId] = result;
+      }
     }
 
     final messages = <PluginMessageWithParts>[];
@@ -58,16 +58,17 @@ class CodexMessageRepository {
     );
 
     for (final line in lines) {
-      final payload = line.payload;
-      switch (line.type) {
-        case CodexRolloutLineType.sessionMeta:
-          sessionProvider ??= payload?.modelProvider;
+      final CodexRolloutPayloadDto payload;
+      final String? lineTimestamp;
+      switch (line) {
+        case CodexRolloutSessionMetadataLineDto(payload: final metadata):
+          sessionProvider ??= metadata.modelProvider;
           continue;
-        case CodexRolloutLineType.turnContext:
-          final model = payload?.model;
+        case CodexRolloutTurnContextLineDto(payload: final context):
+          final model = context.model;
           if (model != null && model.isNotEmpty) currentModel = model;
           continue;
-        case CodexRolloutLineType.compacted:
+        case CodexRolloutCompactedLineDto(timestamp: final timestamp):
           messageCounter += 1;
           final messageId = "codex-compaction-$messageCounter";
           messages.add(
@@ -76,7 +77,7 @@ class CodexMessageRepository {
               sessionId: sessionId,
               info: assistantInfo(
                 messageId,
-                _messageTimeFrom(line.timestamp),
+                _messageTimeFrom(timestamp),
               ),
               tool: "compact",
               title: "Context compacted",
@@ -85,14 +86,16 @@ class CodexMessageRepository {
             ),
           );
           continue;
-        case CodexRolloutLineType.responseItem:
-          break;
-        case CodexRolloutLineType.unknown:
-        case null:
+        case CodexRolloutResponseItemLineDto(
+          payload: final responseItem,
+          timestamp: final timestamp,
+        ):
+          payload = responseItem;
+          lineTimestamp = timestamp;
+        case CodexRolloutUnknownLineDto():
           continue;
       }
-      if (payload == null) continue;
-      final messageTime = _messageTimeFrom(line.timestamp);
+      final messageTime = _messageTimeFrom(lineTimestamp);
 
       if (payload.type == CodexRolloutPayloadType.functionCall ||
           payload.type == CodexRolloutPayloadType.customToolCall) {
