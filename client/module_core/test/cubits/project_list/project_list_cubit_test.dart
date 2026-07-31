@@ -288,6 +288,53 @@ void main() {
       verify(() => mockProjectRepository.listProjects()).called(1);
     });
 
+    test("an empty inventory retries when its pre-activation delivery settles after the active edge", () async {
+      final firstDelivery = Completer<AnalyticsDeliveryResult>();
+      var deliveryCount = 0;
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) {
+        deliveryCount++;
+        return deliveryCount == 1 ? firstDelivery.future : Future.value(AnalyticsDeliveryResult.acceptedBySdk);
+      });
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <Project>[])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await untilCalled(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+
+      analyticsStateController.add(
+        const ProductAnalyticsState(
+          preference: ProductAnalyticsPreferenceKnown(
+            preference: ProductAnalyticsPreference.enabled,
+          ),
+          synchronization: ProductAnalyticsSynchronized(),
+          availability: ProductAnalyticsActive(),
+        ),
+      );
+      firstDelivery.complete(AnalyticsDeliveryResult.failed);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.projectInventoryLoaded(
+            inventoryState: AnalyticsInventoryState.empty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(2);
+    });
+
     // -------------------------------------------------------------------------
     // Test 1: constructor triggers load — success with projects
     // -------------------------------------------------------------------------

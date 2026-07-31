@@ -211,6 +211,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   void _reportInventoryLoaded({required bool isEmpty}) {
     final guard = isEmpty ? _emptyInventoryAnalytics : _nonEmptyInventoryAnalytics;
     if (guard != _InventoryAnalyticsGuard.ready) return;
+    final attemptedWhileActive = _productAnalyticsService.state.isActive;
     if (isEmpty) {
       _emptyInventoryAnalytics = _InventoryAnalyticsGuard.inFlight;
     } else {
@@ -235,8 +236,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
             } else {
               _nonEmptyInventoryAnalytics = next;
             }
-            if (!consumed && _productAnalyticsService.state.isActive) {
+            final isActive = _productAnalyticsService.state.isActive;
+            if (!consumed && isActive) {
               logw("Failed to deliver project inventory analytics event");
+            }
+            if (!consumed && isEmpty && !attemptedWhileActive && isActive) {
+              _retryCurrentInventoryAnalytics();
             }
           })
           .catchError((Object error, StackTrace stackTrace) {

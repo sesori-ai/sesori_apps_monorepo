@@ -2,11 +2,14 @@ import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/session_diffs/diff_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_diffs/diff_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -101,6 +104,57 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(1);
+    });
+
+    test("an empty diff retries when its pre-activation delivery settles after the active edge", () async {
+      final analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
+      addTearDown(analyticsStates.close);
+      when(() => mockProductAnalyticsService.state).thenAnswer((_) => analyticsStates.value);
+      when(() => mockProductAnalyticsService.stateStream).thenAnswer((_) => analyticsStates.stream);
+      final firstDelivery = Completer<AnalyticsDeliveryResult>();
+      var deliveryCount = 0;
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) {
+        deliveryCount++;
+        return deliveryCount == 1 ? firstDelivery.future : Future.value(AnalyticsDeliveryResult.acceptedBySdk);
+      });
+      when(
+        () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+      ).thenAnswer((_) async => ApiResponse.success(const SessionDiffsResponse(diffs: <FileDiff>[])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await untilCalled(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+
+      analyticsStates.add(
+        const ProductAnalyticsState(
+          preference: ProductAnalyticsPreferenceKnown(
+            preference: ProductAnalyticsPreference.enabled,
+          ),
+          synchronization: ProductAnalyticsSynchronized(),
+          availability: ProductAnalyticsActive(),
+        ),
+      );
+      firstDelivery.complete(AnalyticsDeliveryResult.failed);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionDiffViewed(
+            changeState: AnalyticsChangeState.empty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(2);
     });
 
     // -------------------------------------------------------------------------

@@ -96,6 +96,7 @@ class DiffCubit extends Cubit<DiffState> {
   void _reportDiffLoaded({required bool isEmpty}) {
     final guard = isEmpty ? _emptyDiffAnalytics : _nonEmptyDiffAnalytics;
     if (guard != _DiffAnalyticsGuard.ready) return;
+    final attemptedWhileActive = _productAnalyticsService.state.isActive;
     if (isEmpty) {
       _emptyDiffAnalytics = _DiffAnalyticsGuard.inFlight;
     } else {
@@ -120,8 +121,12 @@ class DiffCubit extends Cubit<DiffState> {
             } else {
               _nonEmptyDiffAnalytics = next;
             }
-            if (!consumed && _productAnalyticsService.state.isActive) {
+            final isActive = _productAnalyticsService.state.isActive;
+            if (!consumed && isActive) {
               logw("Failed to deliver session diff analytics event");
+            }
+            if (!consumed && isEmpty && !attemptedWhileActive && isActive) {
+              _retryCurrentDiffAnalytics();
             }
           })
           .catchError((Object error, StackTrace stackTrace) {

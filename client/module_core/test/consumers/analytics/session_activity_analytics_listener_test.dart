@@ -258,4 +258,41 @@ void main() {
       ),
     ]);
   });
+
+  test("empty activity retries when its pre-activation delivery settles after the active edge", () async {
+    final firstDelivery = Completer<AnalyticsDeliveryResult>();
+    var deliveryCount = 0;
+    when(
+      () => analyticsService.logEvent(
+        event: any(named: "event"),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).thenAnswer((_) {
+      deliveryCount++;
+      return deliveryCount == 1 ? firstDelivery.future : Future.value(AnalyticsDeliveryResult.acceptedBySdk);
+    });
+    currentAnalyticsState = ProductAnalyticsState.initial;
+    analyticsStates.add(currentAnalyticsState);
+    listener = buildListener(initialRouteVisible: true);
+    await untilCalled(
+      () => analyticsService.logEvent(
+        event: any(named: "event"),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    );
+
+    currentAnalyticsState = _activeAnalyticsState;
+    analyticsStates.add(currentAnalyticsState);
+    firstDelivery.complete(AnalyticsDeliveryResult.failed);
+    await settle();
+
+    verify(
+      () => analyticsService.logEvent(
+        event: const ProductAnalyticsEvent.sessionActivityViewed(
+          activityState: AnalyticsActivityState.empty,
+        ),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).called(2);
+  });
 }

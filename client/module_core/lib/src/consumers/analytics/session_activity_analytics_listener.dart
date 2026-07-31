@@ -114,10 +114,18 @@ class SessionActivityAnalyticsListener {
   void _reportEmpty({required DateTime occurredAtUtc}) {
     if (_emptyGuard != _ActivityAnalyticsGuard.ready) return;
     _emptyGuard = _ActivityAnalyticsGuard.inFlight;
-    unawaited(_deliverEmpty(occurredAtUtc: occurredAtUtc));
+    unawaited(
+      _deliverEmpty(
+        occurredAtUtc: occurredAtUtc,
+        attemptedWhileActive: _productAnalyticsService.state.isActive,
+      ),
+    );
   }
 
-  Future<void> _deliverEmpty({required DateTime occurredAtUtc}) async {
+  Future<void> _deliverEmpty({
+    required DateTime occurredAtUtc,
+    required bool attemptedWhileActive,
+  }) async {
     try {
       final result = await _productAnalyticsService.logEvent(
         event: const ProductAnalyticsEvent.sessionActivityViewed(
@@ -130,9 +138,11 @@ class SessionActivityAnalyticsListener {
         _emptyGuard = _ActivityAnalyticsGuard.consumed;
       } else {
         _emptyGuard = _ActivityAnalyticsGuard.ready;
-        if (_productAnalyticsService.state.isActive) {
+        final isActive = _productAnalyticsService.state.isActive;
+        if (isActive) {
           logw("Failed to deliver empty session activity analytics event");
         }
+        if (!attemptedWhileActive && isActive) _evaluateCurrentState();
       }
     } on Object catch (error, stackTrace) {
       if (!_disposed) _emptyGuard = _ActivityAnalyticsGuard.ready;
