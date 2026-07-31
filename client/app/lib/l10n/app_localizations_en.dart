@@ -1144,6 +1144,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No cached options are available. You can create with defaults or refresh now.';
 
   @override
+  String get newSessionOptionsLoadFailedUnavailable =>
+      'Couldn’t load options. You can create with defaults or try again.';
+
+  @override
   String get newSessionOptionsLegacyBridge =>
       'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.';
 

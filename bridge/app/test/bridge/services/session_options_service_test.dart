@@ -869,6 +869,35 @@ void main() {
   });
 
   group("SessionOptionsService coalescing", () {
+    test("dynamic load queued behind automatic reuse returns its newly cached row", () async {
+      final automaticGate = Completer<SessionOptionsCaptureResult>();
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..captureHandler = (_) => automaticGate.future;
+      final service = _service(repository: repository, now: now);
+
+      final automatic = service.refreshActiveOnly(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        generation: 7,
+      );
+      await _waitFor(condition: () => repository.captureCalls.length == 1);
+      final dynamic = service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+      await Future<void>.delayed(Duration.zero);
+
+      automaticGate.complete(
+        _observed(
+          marker: "automatic",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        ),
+      );
+
+      expect((await automatic as SessionOptionsAvailable).response, _response(marker: "automatic"));
+      expect((await dynamic as SessionOptionsAvailable).response, _response(marker: "automatic"));
+      expect(repository.captureCalls, hasLength(1));
+    });
+
     test("dynamic callers coalesce while a forced refresh queues one forced tail", () async {
       final dynamicGate = Completer<SessionOptionsCaptureResult>();
       final forcedGate = Completer<SessionOptionsCaptureResult>();

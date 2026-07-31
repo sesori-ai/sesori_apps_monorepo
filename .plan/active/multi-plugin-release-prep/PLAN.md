@@ -524,9 +524,11 @@ defaults are not persisted as intent. Existing connection and plugin-switch
 generation fencing remains in the cubit.
 
 The mobile screen renders dynamically loaded or cached options, old-bridge
-guidance, and retained-data refresh errors. Backend plugin IDs, model names,
-agent names, commands, paths, and project identity never enter analytics or
-backend-neutral UI decisions.
+guidance, and retained-data refresh errors. An unavailable dynamic load uses
+load-specific state and guidance, while an unavailable forced refresh retains
+explicit Refresh guidance. Backend plugin IDs, model names, agent names,
+commands, paths, and project identity never enter analytics or backend-neutral
+UI decisions.
 
 ## Delivery Sequence
 

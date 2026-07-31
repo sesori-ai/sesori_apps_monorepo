@@ -151,6 +151,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       case NewSessionOptionsRefreshFailureUnavailableState():
         message = loc.newSessionOptionsRefreshFailedUnavailable;
         isFailure = true;
+      case NewSessionOptionsLoadFailureUnavailableState():
+        message = loc.newSessionOptionsLoadFailedUnavailable;
+        isFailure = true;
       case NewSessionOptionsUnavailableState():
         message = loc.newSessionOptionsUnavailable;
         isFailure = false;

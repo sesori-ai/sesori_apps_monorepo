@@ -286,3 +286,9 @@
   architecture without findings.
 - Step 5.C/6 delivery (2026-07-31): committed as `d0be128e`, pushed, and opened
   as PR #642 against `main`.
+- Step 5.C/6 review hardening (2026-07-31): dynamic loads queued behind an
+  automatic reuse refresh now avoid null-tail coordination and recheck the cache
+  before activation, while dynamic-load failures use load-specific client state
+  and copy instead of explicit-Refresh guidance. All 32 service tests, 47 focused
+  module-core tests, and 28 mobile New Session tests passed, as did fatal analysis
+  in bridge-app, module-core, mobile, and desktop plus `git diff --check`.

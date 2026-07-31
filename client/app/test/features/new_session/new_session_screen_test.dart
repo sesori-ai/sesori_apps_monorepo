@@ -424,6 +424,23 @@ void main() {
     ).called(1);
   });
 
+  testWidgets("failed dynamic load uses load guidance instead of refresh guidance", (tester) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        forceRefresh: false,
+      ),
+    ).thenAnswer((_) async => const SessionOptionsRepositoryRefreshFailedUnavailable());
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    expect(find.text(loc.newSessionOptionsLoadFailedUnavailable), findsOneWidget);
+    expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsNothing);
+  });
+
   testWidgets("retained refresh failure keeps cached options visible", (tester) async {
     when(
       () => sessionRepository.loadSessionOptions(

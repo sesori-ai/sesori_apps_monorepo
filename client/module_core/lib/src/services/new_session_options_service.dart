@@ -46,6 +46,10 @@ final class NewSessionOptionsUnavailable extends NewSessionOptionsLoadResult {
   const NewSessionOptionsUnavailable();
 }
 
+final class NewSessionOptionsLoadFailureUnavailable extends NewSessionOptionsLoadResult {
+  const NewSessionOptionsLoadFailureUnavailable();
+}
+
 final class NewSessionOptionsFailureRetained extends NewSessionOptionsLoadResult {
   const NewSessionOptionsFailureRetained({required this.options, required this.source});
 
@@ -123,7 +127,10 @@ class NewSessionOptionsService {
                 options: previousOptions,
                 source: NewSessionOptionsSource.aggregate,
               ),
-      SessionOptionsRepositoryRefreshFailedUnavailable() => const NewSessionOptionsRefreshFailureUnavailable(),
+      SessionOptionsRepositoryRefreshFailedUnavailable() => switch (mode) {
+        NewSessionOptionsLoadMode.dynamicLoad => const NewSessionOptionsLoadFailureUnavailable(),
+        NewSessionOptionsLoadMode.forcedRefresh => const NewSessionOptionsRefreshFailureUnavailable(),
+      },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
         source: NewSessionOptionsSource.aggregate,

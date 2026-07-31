@@ -329,6 +329,38 @@ String toString() {
 /// @nodoc
 
 
+class NewSessionOptionsLoadFailureUnavailableState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsLoadFailureUnavailableState();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadFailureUnavailableState);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.loadFailureUnavailable()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class NewSessionOptionsFailureState implements NewSessionOptionsLoadState {
   const NewSessionOptionsFailureState({required this.reason, required this.source});
   

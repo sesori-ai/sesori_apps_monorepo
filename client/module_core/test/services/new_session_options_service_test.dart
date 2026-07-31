@@ -273,6 +273,23 @@ void main() {
       );
       expect(unavailable, isA<NewSessionOptionsUnavailable>());
 
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          forceRefresh: false,
+        ),
+      ).thenAnswer((_) async => const SessionOptionsRepositoryRefreshFailedUnavailable());
+      final dynamicFailure = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.dynamicLoad,
+        restoredSelection: null,
+        previousOptions: null,
+      );
+      expect(dynamicFailure, isA<NewSessionOptionsLoadFailureUnavailable>());
+
       const previous = NewSessionOptionsData(
         agents: [],
         providers: [],

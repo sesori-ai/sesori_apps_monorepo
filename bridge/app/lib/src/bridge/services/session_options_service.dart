@@ -97,13 +97,19 @@ class SessionOptionsService {
       key: resolved.key,
       intent: _RefreshIntent.reuse,
       generation: null,
-      operation: () => _refresh(
-        resolved: resolved,
-        activation: SessionOptionsCaptureActivation.mayActivate,
-        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
-        expectedGeneration: null,
-        automatic: false,
-      ),
+      operation: () async {
+        final newlyCached = await _readValid(key: resolved.key);
+        if (newlyCached != null && await _isCurrentResolution(resolved: resolved)) {
+          return SessionOptionsAvailable(response: newlyCached.response);
+        }
+        return _refresh(
+          resolved: resolved,
+          activation: SessionOptionsCaptureActivation.mayActivate,
+          discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+          expectedGeneration: null,
+          automatic: false,
+        );
+      },
     );
     if (outcome case SessionOptionsRefreshFailedRetained(:final failure)) {
       final concurrentlyAvailable = await _readValid(key: resolved.key);
@@ -556,7 +562,9 @@ class SessionOptionsService {
 
       if (intent == _RefreshIntent.reuse) {
         if (existing.generation == generation) return existing.running;
-        if (existing.reuseTailGeneration == generation) return existing.reuseTail!;
+        if (existing.reuseTail != null && existing.reuseTailGeneration == generation) {
+          return existing.reuseTail!;
+        }
 
         final predecessor = existing.reuseTail ?? existing.running;
         late final Future<SessionOptionsOutcome> tail;

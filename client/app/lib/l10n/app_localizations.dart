@@ -2227,6 +2227,12 @@ abstract class AppLocalizations {
   /// **'No cached options are available. You can create with defaults or refresh now.'**
   String get newSessionOptionsUnavailable;
 
+  /// No description provided for @newSessionOptionsLoadFailedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load options. You can create with defaults or try again.'**
+  String get newSessionOptionsLoadFailedUnavailable;
+
   /// No description provided for @newSessionOptionsLegacyBridge.
   ///
   /// In en, this message translates to:

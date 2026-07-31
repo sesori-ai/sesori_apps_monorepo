@@ -628,6 +628,7 @@
   "newSessionOptionsRefresh": "Refresh",
   "newSessionOptionsCached": "Using cached coding tool options.",
   "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",
+  "newSessionOptionsLoadFailedUnavailable": "Couldn’t load options. You can create with defaults or try again.",
   "newSessionOptionsLegacyBridge": "This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.",
   "newSessionOptionsUpdateFailedRetained": "Couldn’t update options. Previously cached options are still available.",
   "newSessionOptionsRefreshFailedUnavailable": "Refresh failed and no valid cached options remain. You can create with defaults.",
