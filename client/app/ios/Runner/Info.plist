@@ -90,6 +90,8 @@
 		<string>Microphone access is needed for voice-to-text transcription</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Photos access is needed to save images from coding sessions</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Sesori uses photo library access only to save images from coding sessions when you choose Save</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
