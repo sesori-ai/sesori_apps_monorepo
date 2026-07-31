@@ -64,6 +64,8 @@ dependencies:
   app_links: ^7.2.1
   url_launcher: ^6.3.2
   share_plus: ^13.3.0
+  gal: ^2.3.3
+  pasteboard: ^0.5.0
   universal_platform: ^1.1.0
   device_info_plus: ^13.2.0
   package_info_plus: ^10.2.1

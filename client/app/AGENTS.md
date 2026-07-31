@@ -92,6 +92,10 @@ The only exception is reading `Theme.of(context).brightness` for light/dark chec
 
 This package provides concrete implementations of `sesori_dart_core` platform interfaces:
 
+Third-party static plugin APIs are hidden dependencies. Always wrap them in an
+injectable client or service and inject that wrapper into the platform adapter,
+so the dependency is explicit and the adapter can be tested in isolation.
+
 | Interface | Implementation | Wraps |
 |-----------|---------------|-------|
 | `SecureStorage` | `FlutterSecureStorageAdapter` | `flutter_secure_storage` |

@@ -125,8 +125,9 @@ sealed class MessagePart with _$MessagePart {
 
 /// A client-safe attachment source normalized by the owning backend plugin.
 ///
-/// Local host paths never cross this contract. Remote URLs require an explicit
-/// user action, while bounded inline image data may be rendered directly.
+/// Local host paths never cross this contract. Clients may render bounded
+/// inline image data and auto-load HTTPS raster image URLs; other remote URLs
+/// require an explicit user action.
 @Freezed(
   unionKey: "source",
   fallbackUnion: "unknown",
