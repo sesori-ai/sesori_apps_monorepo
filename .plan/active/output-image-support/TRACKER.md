@@ -5,10 +5,10 @@
 - **Plan slug:** `output-image-support`
 - **Implementation base:** `origin/main` at
   `9d2c1e9e79ab80fa8824b9d803a74798eb71140d`
-- **Series state:** Step 4/13 ready for PR
+- **Series state:** Step 4/13 PR open
 - **Current step:** Step 4/13 — seal Codex response items
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** open and monitor the Step 4/13 PR
+- **Next action:** monitor Step 4/13 CI and review
 
 ## Plan Review
 
@@ -29,7 +29,7 @@
 | [x] | 1/13 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/13]` | 450-700 | [PR #638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638) merged as `bfadd097` |
 | [x] | 2/13 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/13]` | 1,200-1,500 | [PR #639](https://github.com/sesori-ai/sesori_apps_monorepo/pull/639) merged as `17e0ecf1`; 680 changed lines |
 | [x] | 3/13 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/13]` | 900-1,350 | [PR #644](https://github.com/sesori-ai/sesori_apps_monorepo/pull/644) merged as `f78e1f69`; 1,075 changed lines |
-| [ ] | 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | Ready for PR; 1,416 changed lines |
+| [ ] | 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | [PR #646](https://github.com/sesori-ai/sesori_apps_monorepo/pull/646) open; 1,416 changed lines |
 | [ ] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | Blocked on Step 4 merge |
 | [ ] | 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | Blocked on Step 5 merge |
 | [ ] | 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | Blocked on Step 6 merge |
