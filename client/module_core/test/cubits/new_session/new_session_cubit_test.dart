@@ -8,8 +8,12 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
+import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
+import "package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -18,6 +22,7 @@ import "../../helpers/test_helpers.dart";
 void main() {
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
     late MockPluginPreferenceRepository mockPluginPreferenceRepository;
     late MockConnectionService mockConnectionService;
@@ -35,6 +40,7 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
+      mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
       mockPluginPreferenceRepository = MockPluginPreferenceRepository();
       mockConnectionService = MockConnectionService();
@@ -51,7 +57,13 @@ void main() {
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
 
       when(mockPluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [defaultPlugin])),
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: null,
+            supportsSessionOptions: true,
+            plugins: [defaultPlugin],
+          ),
+        ),
       );
       when(
         () => mockPluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
@@ -78,6 +90,10 @@ void main() {
         (_) async => ApiResponse<ProviderListResponse>.success(
           const ProviderListResponse(items: [], connectedOnly: false),
         ),
+      );
+      delegateSessionOptionsRepositoryToService(
+        repository: mockSessionRepository,
+        service: mockSessionService,
       );
       when(
         () => mockSessionService.listCommands(
@@ -111,6 +127,10 @@ void main() {
         pluginRepository: mockPluginRepository,
         pluginPreferenceRepository: mockPluginPreferenceRepository,
       ),
+      newSessionOptionsService: NewSessionOptionsService(
+        sessionRepository: mockSessionRepository,
+        defaultModelSelector: const DefaultModelSelector(),
+      ),
       projectRepository: mockProjectRepository,
       selectionTracker: selectionTracker,
       projectId: "project-1",
@@ -140,6 +160,10 @@ void main() {
         newSessionPluginService: NewSessionPluginService(
           pluginRepository: mockPluginRepository,
           pluginPreferenceRepository: mockPluginPreferenceRepository,
+        ),
+        newSessionOptionsService: NewSessionOptionsService(
+          sessionRepository: mockSessionRepository,
+          defaultModelSelector: const DefaultModelSelector(),
         ),
         projectRepository: mockProjectRepository,
         selectionTracker: selectionTracker,
@@ -267,6 +291,10 @@ void main() {
           newSessionPluginService: NewSessionPluginService(
             pluginRepository: mockPluginRepository,
             pluginPreferenceRepository: mockPluginPreferenceRepository,
+          ),
+          newSessionOptionsService: NewSessionOptionsService(
+            sessionRepository: mockSessionRepository,
+            defaultModelSelector: const DefaultModelSelector(),
           ),
           projectRepository: mockProjectRepository,
           selectionTracker: selectionTracker,
@@ -1012,8 +1040,52 @@ void main() {
 
     // --- Selection persistence across navigation (NewSessionSelectionTracker) ---
 
+    test("selectAgent persists only the deliberate agent dimension", () async {
+      when(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Agents(
+            agents: [
+              AgentInfo(
+                name: "build",
+                description: "Build",
+                model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+                mode: AgentMode.primary,
+              ),
+              AgentInfo(
+                name: "plan",
+                description: "Plan",
+                model: AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+                mode: AgentMode.primary,
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      cubit.selectAgent("plan");
+
+      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      expect(saved?.agentName, "plan");
+      expect(saved?.model, isNull);
+      expect(saved?.variant, isNull);
+    });
+
     blocTest<NewSessionCubit, NewSessionState>(
-      "persists the chosen variant to the selection store",
+      "persists only the deliberate variant dimension",
       skip: 1,
       build: () {
         when(
@@ -1049,16 +1121,17 @@ void main() {
       },
       verify: (_) {
         final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
-        expect(saved?.agent, "build");
+        expect(saved?.agentName, isNull);
+        expect(saved?.model, isNull);
         expect(
-          saved?.agentModel,
-          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+          saved?.variant,
+          isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "xhigh"),
         );
       },
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "persists the chosen model to the selection store",
+      "persists only the deliberate model dimension",
       skip: 1,
       build: () {
         when(
@@ -1099,10 +1172,11 @@ void main() {
         cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
       },
       verify: (_) {
-        expect(
-          selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentModel,
-          const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
-        );
+        final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+        expect(saved?.agentName, isNull);
+        expect(saved?.model?.providerId, "anthropic");
+        expect(saved?.model?.modelId, "claude-3");
+        expect(saved?.variant, isNull);
       },
     );
 
@@ -1113,8 +1187,10 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: null,
-          agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+          selection: _selectionIntentFromSnapshot(
+            agentName: null,
+            agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+          ),
         );
         when(
           () => mockSessionService.listProviders(
@@ -1182,8 +1258,10 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: null,
-          agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "legacy"),
+          selection: _selectionIntentFromSnapshot(
+            agentName: null,
+            agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "legacy"),
+          ),
         );
         when(
           () => mockSessionService.listProviders(
@@ -1248,8 +1326,7 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: "plan",
-          agentModel: null,
+          selection: _selectionIntentFromSnapshot(agentName: "plan", agentModel: null),
         );
         when(
           () => mockSessionService.listAgents(
@@ -1294,8 +1371,7 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: "ghost",
-          agentModel: null,
+          selection: _selectionIntentFromSnapshot(agentName: "ghost", agentModel: null),
         );
         when(
           () => mockSessionService.listAgents(
@@ -1334,8 +1410,10 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: null,
-          agentModel: const AgentModel(providerID: "ghost", modelID: "gone", variant: null),
+          selection: _selectionIntentFromSnapshot(
+            agentName: null,
+            agentModel: const AgentModel(providerID: "ghost", modelID: "gone", variant: null),
+          ),
         );
         when(
           () => mockSessionService.listAgents(
@@ -1356,6 +1434,12 @@ void main() {
             ),
           ),
         );
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
         return buildCubit();
       },
       expect: () => [
@@ -1374,8 +1458,10 @@ void main() {
         selectionTracker.write(
           projectId: "project-1",
           pluginId: "plugin-1",
-          agent: "build",
-          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+          selection: _selectionIntentFromSnapshot(
+            agentName: "build",
+            agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+          ),
         );
         when(
           () => mockSessionService.createSessionWithMessage(
@@ -1405,8 +1491,10 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+        selection: _selectionIntentFromSnapshot(
+          agentName: "build",
+          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+        ),
       );
       final completer = Completer<ApiResponse<Session>>();
       when(
@@ -1456,8 +1544,10 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "low"),
+        selection: _selectionIntentFromSnapshot(
+          agentName: "build",
+          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "low"),
+        ),
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
@@ -1469,17 +1559,23 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+        selection: _selectionIntentFromSnapshot(
+          agentName: "build",
+          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+        ),
       );
       // The first launch now succeeds in the background.
       completer.complete(ApiResponse.success(testSession(id: "s-late")));
       await pending;
 
       // V2 must survive — the late success only owned V1.
+      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      expect(saved?.agentName, "build");
+      expect(saved?.model?.providerId, "openai");
+      expect(saved?.model?.modelId, "gpt-4");
       expect(
-        selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentModel,
-        const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+        saved?.variant,
+        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "high"),
       );
     });
 
@@ -1503,8 +1599,7 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: model,
+        selection: _selectionIntentFromSnapshot(agentName: "build", agentModel: model),
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
@@ -1514,15 +1609,42 @@ void main() {
       selectionTracker.write(
         projectId: "project-1",
         pluginId: "plugin-1",
-        agent: "build",
-        agentModel: model,
+        selection: _selectionIntentFromSnapshot(agentName: "build", agentModel: model),
       );
       completer.complete(ApiResponse.success(testSession(id: "s-late-equal")));
       await pending;
 
-      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentModel, model);
+      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      expect(saved?.agentName, "build");
+      expect(saved?.model?.providerId, model.providerID);
+      expect(saved?.model?.modelId, model.modelID);
+      expect(
+        saved?.variant,
+        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", model.variant),
+      );
     });
   });
+}
+
+NewSessionSelectionIntent _selectionIntentFromSnapshot({
+  required String? agentName,
+  required AgentModel? agentModel,
+}) {
+  final variant = agentModel?.variant;
+  return NewSessionSelectionIntent(
+    agentName: agentName,
+    model: agentModel == null
+        ? null
+        : NewSessionModelIntent(
+            providerId: agentModel.providerID,
+            modelId: agentModel.modelID,
+          ),
+    variant: agentModel == null
+        ? null
+        : variant == null
+        ? const NewSessionDefaultVariantIntent()
+        : NewSessionNamedVariantIntent(id: variant),
+  );
 }
 
 const _modelSelectionProviders = ProviderListResponse(

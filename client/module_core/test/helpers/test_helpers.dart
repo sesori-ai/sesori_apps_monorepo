@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -293,6 +294,46 @@ void delegateSessionRepositoryToService({
       command: invocation.namedArguments[#command] as String?,
     ),
   );
+}
+
+/// Adapts existing new-session tests that stub the three legacy service calls
+/// to the aggregate repository seam used by the modern client flow.
+void delegateSessionOptionsRepositoryToService({
+  required MockSessionRepository repository,
+  required MockSessionService service,
+}) {
+  when(
+    () => repository.loadSessionOptions(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+      refresh: any(named: "refresh"),
+    ),
+  ).thenAnswer((invocation) async {
+    final projectId = invocation.namedArguments[#projectId]! as String;
+    final pluginId = invocation.namedArguments[#pluginId]! as String;
+    final (agents, providers, commands) = await (
+      service.listAgents(projectId: projectId, pluginId: pluginId),
+      service.listProviders(projectId: projectId, pluginId: pluginId),
+      service.listCommands(projectId: projectId, pluginId: pluginId),
+    ).wait;
+    return switch ((agents, providers, commands)) {
+      (
+        SuccessResponse(data: final agentData),
+        SuccessResponse(data: final providerData),
+        SuccessResponse(data: final commandData),
+      ) =>
+        SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: agentData.agents,
+            providers: providerData.items,
+            commands: commandData.items,
+          ),
+        ),
+      (ErrorResponse(:final error), _, _) => SessionOptionsRepositoryFailure(error: error),
+      (_, ErrorResponse(:final error), _) => SessionOptionsRepositoryFailure(error: error),
+      (_, _, ErrorResponse(:final error)) => SessionOptionsRepositoryFailure(error: error),
+    };
+  });
 }
 
 void stubSessionRepositoryGetSession({

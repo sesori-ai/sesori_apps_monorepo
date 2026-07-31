@@ -111,6 +111,7 @@ export "src/repositories/appearance_store.dart";
 export "src/repositories/bridge_repository.dart";
 export "src/repositories/legal_repository.dart";
 export "src/repositories/models/analytics_delivery_result.dart";
+export "src/repositories/models/plugin_discovery_snapshot.dart";
 export "src/repositories/models/plugin_management_result.dart";
 export "src/repositories/models/product_analytics_preference_models.dart";
 export "src/repositories/models/repo_provider.dart";

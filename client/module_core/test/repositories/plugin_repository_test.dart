@@ -5,6 +5,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/plugin_api.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -26,9 +27,10 @@ void main() {
     repository = PluginRepository(api: api);
   });
 
-  test("returns the backend-neutral plugin response unchanged", () async {
+  test("maps the plugin API response to a backend-neutral snapshot", () async {
     const response = PluginListResponse(
       bridgeId: "br_abc12345",
+      supportsSessionOptions: true,
       plugins: [
         PluginMetadata(
           id: "plugin-b",
@@ -48,7 +50,19 @@ void main() {
     );
     when(api.listPlugins).thenAnswer((_) async => ApiResponse.success(response));
 
-    expect(await repository.listPlugins(), ApiResponse<PluginListResponse>.success(response));
+    final result = await repository.listPlugins();
+
+    expect(
+      result,
+      isA<SuccessResponse<PluginDiscoverySnapshot>>()
+          .having((value) => value.data.bridgeId, "bridgeId", response.bridgeId)
+          .having(
+            (value) => value.data.supportsSessionOptions,
+            "supportsSessionOptions",
+            response.supportsSessionOptions,
+          )
+          .having((value) => value.data.plugins, "plugins", response.plugins),
+    );
   });
 
   test("maps an unsupported discovery route to the legacy OpenCode plugin", () async {
@@ -58,20 +72,22 @@ void main() {
 
     expect(
       await repository.listPlugins(),
-      ApiResponse<PluginListResponse>.success(
-        const PluginListResponse(
-          bridgeId: null,
-          plugins: [
-            PluginMetadata(
-              id: legacyMissingPluginId,
-              displayName: "OpenCode",
-              isDefault: true,
-              state: PluginLifecycleState.ready,
-              actionHint: null,
-            ),
-          ],
-        ),
-      ),
+      isA<SuccessResponse<PluginDiscoverySnapshot>>()
+          .having((value) => value.data.bridgeId, "bridgeId", isNull)
+          .having((value) => value.data.supportsSessionOptions, "supportsSessionOptions", isFalse)
+          .having(
+            (value) => value.data.plugins,
+            "plugins",
+            const [
+              PluginMetadata(
+                id: legacyMissingPluginId,
+                displayName: "OpenCode",
+                isDefault: true,
+                state: PluginLifecycleState.ready,
+                actionHint: null,
+              ),
+            ],
+          ),
     );
   });
 
@@ -79,7 +95,7 @@ void main() {
     final error = ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null);
     when(api.listPlugins).thenAnswer((_) async => ApiResponse.error(error));
 
-    expect(await repository.listPlugins(), ApiResponse<PluginListResponse>.error(error));
+    expect(await repository.listPlugins(), ApiResponse<PluginDiscoverySnapshot>.error(error));
   });
 
   group("getManagement", () {

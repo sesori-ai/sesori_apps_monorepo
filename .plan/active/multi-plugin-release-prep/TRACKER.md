@@ -5,8 +5,8 @@
 - **Implementation base:** `origin/main` at `42f3bc44`
 - **Series state:** Steps 1/6 through 4.F/6 are merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
-- **Current step:** Step 5.A/6 — cached session-option client layers
-- **Next action:** commit, push, and open the verified Step 5.A/6 implementation
+- **Current step:** Step 5.B/6 — cached New Session composer
+- **Next action:** commit, push, and open the verified Step 5.B/6 implementation
 
 ## Delivery
 
@@ -21,8 +21,8 @@
 | [x] | Step 4.D/6 — capture/persistence repository | `multi-plugin-release-prep-cache-repository` | PR #626 merged |
 | [x] | Step 4.E/6 — cache policy/coalescing service | `multi-plugin-release-prep-cache-service` | PR #627 merged |
 | [x] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | PR #630 merged |
-| [ ] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | Verified; ready to open |
-| [ ] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | Implemented locally; blocked on Step 5.A delivery |
+| [ ] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | PR #635 open |
+| [ ] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | Verified; ready to open stacked on PR #635 |
 | [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5.B merge |
 
 ## Locked Decisions
@@ -217,4 +217,11 @@
   catalogs/error mapping, provider-cache removal, legacy three-route mapping,
   option policy service, neutral source/intent models, and DI registration. All
   22 focused API/repository/service tests passed, as did fatal analysis in
-  module-core, mobile, and desktop plus `git diff --check`.
+  module-core, mobile, and desktop plus `git diff --check`. Committed as
+  `cff67af4`, pushed, and opened as PR #635.
+- Step 5.B/6 preparation (2026-07-30): isolated repository-mapped plugin source,
+  independent agent/model/variant intent tracking, composed source-aware cubit
+  state, reconnect/plugin-switch generation fencing, and cached/legacy/refresh
+  mobile presentation. All 101 focused plugin/service/tracker/cubit tests and 27
+  mobile New Session tests passed, as did fatal analysis in module-core, mobile,
+  and desktop plus `git diff --check`.

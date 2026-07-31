@@ -88,9 +88,10 @@ class AdaptiveSessionRouterTestHarness {
     when(() => projectRepository.listProjects()).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        const PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
-          plugins: [
+          supportsSessionOptions: false,
+          plugins: const [
             PluginMetadata(
               id: "plugin-1",
               displayName: "Plugin One",

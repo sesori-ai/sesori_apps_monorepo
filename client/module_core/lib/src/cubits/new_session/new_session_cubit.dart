@@ -11,30 +11,19 @@ import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../repositories/project_repository.dart";
+import "../../services/models/new_session_options_source.dart";
+import "../../services/models/new_session_selection_intent.dart";
+import "../../services/new_session_options_service.dart";
 import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
-import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
-  final ConnectionService _connectionService;
-  final SessionService _sessionService;
-  final NewSessionPluginService _newSessionPluginService;
-  final ProjectRepository _projectRepository;
-  final NewSessionSelectionTracker _selectionTracker;
-  final String _projectId;
-  late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
-  late bool _wasConnected;
-  int _loadGeneration = 0;
-  int _projectLoadGeneration = 0;
-  String? _discoveryBridgeId;
-
-  static const _defaultModelSelector = DefaultModelSelector();
-
   NewSessionCubit({
     required ConnectionService connectionService,
     required SessionService sessionService,
     required NewSessionPluginService newSessionPluginService,
+    required NewSessionOptionsService newSessionOptionsService,
     required ProjectRepository projectRepository,
     required NewSessionSelectionTracker selectionTracker,
     required String projectId,
@@ -42,6 +31,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }) : _connectionService = connectionService,
        _sessionService = sessionService,
        _newSessionPluginService = newSessionPluginService,
+       _newSessionOptionsService = newSessionOptionsService,
        _projectRepository = projectRepository,
        _selectionTracker = selectionTracker,
        _projectId = projectId,
@@ -49,15 +39,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
          NewSessionState.idle(
            availablePlugins: const [],
            selectedPlugin: null,
-           isComposerDataLoading: true,
+           options: const NewSessionOptionsLoadingState(source: null),
            isPluginDiscoveryInFlight: false,
-           availableAgents: [],
-           availableProviders: [],
-           availableCommands: [],
-           selectedAgent: null,
-           selectedAgentModel: null,
-           stagedCommand: null,
-           availableVariants: [],
            // Notification/deep-link entry lacks project-list context; retain
            // the prior visible behavior until the project fetch completes.
            supportsDedicatedWorktrees: initialSupportsDedicatedWorktrees ?? true,
@@ -68,6 +51,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
   }
+
+  final ConnectionService _connectionService;
+  final SessionService _sessionService;
+  final NewSessionPluginService _newSessionPluginService;
+  final NewSessionOptionsService _newSessionOptionsService;
+  final ProjectRepository _projectRepository;
+  final NewSessionSelectionTracker _selectionTracker;
+  final String _projectId;
+  late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
+  late bool _wasConnected;
+  int _loadGeneration = 0;
+  int _projectLoadGeneration = 0;
+  String? _discoveryBridgeId;
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
@@ -81,59 +77,55 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   Future<void> _discoverPlugins() async {
     final generation = ++_loadGeneration;
-    _emitAgentModelUpdate(
-      availableAgents: null,
-      availableProviders: null,
-      availableCommands: null,
-      selectedAgent: null,
-      selectedAgentModel: null,
-      isComposerDataLoading: true,
+    final beforeDiscovery = state.agentModelData;
+    _emitStateUpdate(
+      options: _loadingState(
+        previousOptions: beforeDiscovery?.optionsState.data,
+        source: beforeDiscovery?.optionsState.source,
+      ),
       isPluginDiscoveryInFlight: true,
       supportsDedicatedWorktrees: null,
     );
     try {
       final response = await _newSessionPluginService.discover(
-        currentSelectedPluginId: state.agentModelData?.plugin?.id,
+        currentSelectedPluginId: beforeDiscovery?.plugin?.id,
         currentSelectionBridgeId: _discoveryBridgeId,
       );
       if (!_canApplyLoad(generation: generation, pluginId: null)) return;
 
       switch (response) {
         case SuccessResponse(:final data):
-          final plugins = data.plugins;
-          final selectedPlugin = data.selected;
-          // The same plugin ID on a different bridge is a different backend:
-          // its staged command and catalogs must not survive the switch.
           final bridgeIdentityChanged = _discoveryBridgeId != data.bridgeId;
           _discoveryBridgeId = data.bridgeId;
+          final selectedPlugin = data.selected;
           final currentData = state.agentModelData;
-          final currentPluginId = currentData?.plugin?.id;
-          final canLoad = selectedPlugin?.isRoutable ?? false;
           final isSamePlugin =
-              !bridgeIdentityChanged && currentPluginId != null && selectedPlugin?.id == currentPluginId;
-          final stagedCommand = isSamePlugin ? currentData?.stagedCommand : null;
+              !bridgeIdentityChanged &&
+              currentData?.plugin?.id != null &&
+              selectedPlugin?.id == currentData?.plugin?.id;
+          final previousOptions = isSamePlugin ? currentData?.optionsState.data : null;
+          final canLoad = selectedPlugin?.isRoutable ?? false;
+          final source = data.optionsSource;
           emit(
             NewSessionState.idle(
-              availablePlugins: plugins,
+              availablePlugins: data.plugins,
               selectedPlugin: selectedPlugin,
-              isComposerDataLoading: canLoad,
+              options: canLoad
+                  ? _loadingState(previousOptions: previousOptions, source: source)
+                  : source == NewSessionOptionsSource.aggregate
+                  ? const NewSessionOptionsUnavailableState()
+                  : const NewSessionOptionsUnsupportedState(),
               isPluginDiscoveryInFlight: false,
-              availableAgents: const [],
-              availableProviders: const [],
-              availableCommands: isSamePlugin ? currentData?.commands ?? const [] : const [],
-              selectedAgent: null,
-              selectedAgentModel: null,
-              stagedCommand: stagedCommand,
-              availableVariants: const [],
               supportsDedicatedWorktrees: currentData?.supportsDedicatedWorktrees ?? false,
             ),
           );
           if (selectedPlugin != null && canLoad) {
-            await _loadComposerData(
+            await _loadOptions(
               pluginId: selectedPlugin.id,
               generation: generation,
-              providerFailureFallback: isSamePlugin ? currentData?.providers ?? const [] : const [],
-              modelFailureFallback: isSamePlugin ? currentData?.agentModel : null,
+              refresh: false,
+              previousOptions: previousOptions,
+              source: source,
             );
           }
         case ErrorResponse(:final error):
@@ -149,24 +141,29 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
     if (isClosed) return;
     // A failed discovery cannot identify the connected bridge (it may have
-    // changed), so retained composer data must not record a preference under
-    // the previous bridge's key.
+    // changed), so a later creation must not save a plugin preference under the
+    // previous bridge's key.
     _discoveryBridgeId = null;
     final data = state.agentModelData;
+    final options = switch (data?.optionsState) {
+      NewSessionOptionsRefreshingState(:final options, :final source) => NewSessionOptionsAvailableState(
+        options: options,
+        source: source,
+      ),
+      NewSessionOptionsLoadingState(source: final source?) => NewSessionOptionsFailureState(
+        reason: reason,
+        source: source,
+      ),
+      NewSessionOptionsLoadingState(source: null) || null => const NewSessionOptionsLoadingState(source: null),
+      final current => current,
+    };
     emit(
       NewSessionState.error(
         reason: reason,
         availablePlugins: data?.plugins ?? const [],
         selectedPlugin: data?.plugin,
-        isComposerDataLoading: false,
+        options: options,
         isPluginDiscoveryInFlight: false,
-        availableAgents: data?.agents ?? const [],
-        availableProviders: data?.providers ?? const [],
-        availableCommands: data?.commands ?? const [],
-        selectedAgent: data?.agent,
-        selectedAgentModel: data?.agentModel,
-        stagedCommand: data?.stagedCommand,
-        availableVariants: data?.availableVariants ?? const [],
         supportsDedicatedWorktrees: data?.supportsDedicatedWorktrees ?? false,
       ),
     );
@@ -177,25 +174,18 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     try {
       final response = await _projectRepository.getProject(projectId: _projectId);
       if (isClosed || generation != _projectLoadGeneration || state is NewSessionCreated) return;
-      final bool supportsDedicatedWorktrees;
       switch (response) {
         case SuccessResponse(:final data):
-          supportsDedicatedWorktrees = data.supportsDedicatedWorktrees;
+          if (state.agentModelData?.supportsDedicatedWorktrees != data.supportsDedicatedWorktrees) {
+            _emitStateUpdate(
+              options: null,
+              isPluginDiscoveryInFlight: null,
+              supportsDedicatedWorktrees: data.supportsDedicatedWorktrees,
+            );
+          }
         case ErrorResponse(:final error):
           loge("New session: failed to load project $_projectId", error);
-          return;
       }
-      if (state.agentModelData?.supportsDedicatedWorktrees == supportsDedicatedWorktrees) return;
-      _emitAgentModelUpdate(
-        availableAgents: null,
-        availableProviders: null,
-        availableCommands: null,
-        selectedAgent: null,
-        selectedAgentModel: null,
-        isComposerDataLoading: null,
-        isPluginDiscoveryInFlight: null,
-        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
-      );
     } on Object catch (error, stackTrace) {
       if (isClosed || generation != _projectLoadGeneration) return;
       loge("New session: failed to load project $_projectId", error, stackTrace);
@@ -214,268 +204,124 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
 
     final selectedPlugin = data.plugins.firstWhereOrNull((plugin) => plugin.id == pluginId);
-    if (selectedPlugin == null || !selectedPlugin.isRoutable) return;
+    final source = data.optionsState.source;
+    if (selectedPlugin == null || !selectedPlugin.isRoutable || source == null) return;
 
     final generation = ++_loadGeneration;
     emit(
       NewSessionState.idle(
         availablePlugins: data.plugins,
         selectedPlugin: selectedPlugin,
-        isComposerDataLoading: true,
+        options: NewSessionOptionsLoadingState(source: source),
         isPluginDiscoveryInFlight: false,
-        availableAgents: const [],
-        availableProviders: const [],
-        availableCommands: const [],
-        selectedAgent: null,
-        selectedAgentModel: null,
-        stagedCommand: null,
-        availableVariants: const [],
         supportsDedicatedWorktrees: data.supportsDedicatedWorktrees,
       ),
     );
-    _loadComposerData(
-      pluginId: pluginId,
-      generation: generation,
-      providerFailureFallback: const [],
-      modelFailureFallback: null,
+    unawaited(
+      _loadOptions(
+        pluginId: pluginId,
+        generation: generation,
+        refresh: false,
+        previousOptions: null,
+        source: source,
+      ),
     );
   }
 
-  Future<void> _loadComposerData({
-    required String pluginId,
-    required int generation,
-    required List<ProviderInfo> providerFailureFallback,
-    required AgentModel? modelFailureFallback,
-  }) async {
-    final (agents, loadedProviders, commands) = await (
-      _loadAgents(pluginId: pluginId),
-      _loadProviders(pluginId: pluginId),
-      _loadCommands(pluginId: pluginId),
-    ).wait;
-
-    if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
-    final providers = loadedProviders ?? providerFailureFallback;
-
-    final defaultAgent = agents.firstOrNull?.name;
-    final agentModel = agents.firstOrNull?.model;
-    final AgentModel? defaultAgentModel;
-    if (agentModel != null) {
-      defaultAgentModel = agentModel;
-    } else {
-      AgentModel? pickedModel;
-      for (final provider in providers) {
-        final picked = _defaultModelSelector.pickFromProvider(
-          models: provider.models,
-          defaultModelID: provider.defaultModelID,
-        );
-        if (picked != null) {
-          pickedModel = AgentModel(providerID: provider.id, modelID: picked.id, variant: null);
-          break;
-        }
-      }
-      defaultAgentModel = pickedModel;
+  Future<void> refreshOptions() async {
+    final current = state;
+    final data = current.agentModelData;
+    final plugin = data?.plugin;
+    final source = data?.optionsState.source;
+    if (current is NewSessionSending ||
+        current is NewSessionCreated ||
+        data == null ||
+        data.isLoading ||
+        source == null ||
+        plugin == null ||
+        !plugin.isRoutable) {
+      return;
     }
 
-    final (:selectedAgent, selectedAgentModel: resolvedAgentModel) = _resolveInitialSelection(
-      pluginId: pluginId,
-      defaultAgent: defaultAgent,
-      defaultAgentModel: defaultAgentModel,
-      agents: agents,
-      providers: providers,
+    final generation = ++_loadGeneration;
+    final previousOptions = data.optionsState.data;
+    _emitStateUpdate(
+      options: _loadingState(previousOptions: previousOptions, source: source),
+      isPluginDiscoveryInFlight: false,
+      supportsDedicatedWorktrees: null,
     );
-    final selectedAgentModel = loadedProviders == null ? modelFailureFallback : resolvedAgentModel;
+    await _loadOptions(
+      pluginId: plugin.id,
+      generation: generation,
+      refresh: true,
+      previousOptions: previousOptions,
+      source: source,
+    );
+  }
 
-    _emitAgentModelUpdate(
-      availableAgents: agents,
-      availableProviders: providers,
-      availableCommands: commands,
-      selectedAgent: selectedAgent,
-      selectedAgentModel: selectedAgentModel,
-      isComposerDataLoading: false,
+  Future<void> _loadOptions({
+    required String pluginId,
+    required int generation,
+    required bool refresh,
+    required NewSessionOptionsData? previousOptions,
+    required NewSessionOptionsSource source,
+  }) async {
+    final NewSessionOptionsLoadResult result;
+    try {
+      result = await _newSessionOptionsService.load(
+        projectId: _projectId,
+        pluginId: pluginId,
+        source: source,
+        refresh: refresh,
+        restoredSelection: _selectionTracker.read(projectId: _projectId, pluginId: pluginId),
+        previousOptions: previousOptions,
+      );
+    } on Object catch (error, stackTrace) {
+      if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
+      loge("New session: failed to load options", error, stackTrace);
+      _emitStateUpdate(
+        options: NewSessionOptionsFailureState(reason: RemoteFailureReason.unknown, source: source),
+        isPluginDiscoveryInFlight: false,
+        supportsDedicatedWorktrees: null,
+      );
+      return;
+    }
+
+    if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
+    final options = switch (result) {
+      NewSessionOptionsLoaded(:final options, :final source) => NewSessionOptionsAvailableState(
+        options: options,
+        source: source,
+      ),
+      NewSessionOptionsUnsupported() => const NewSessionOptionsUnsupportedState(),
+      NewSessionOptionsUnavailable() => const NewSessionOptionsUnavailableState(),
+      NewSessionOptionsLoadFailure(:final error, :final source) => NewSessionOptionsFailureState(
+        reason: error.remoteFailureReason,
+        source: source,
+      ),
+      NewSessionOptionsRefreshFailureRetained(:final options) => NewSessionOptionsRefreshFailureRetainedState(
+        options: options,
+      ),
+      NewSessionOptionsRefreshFailureUnavailable() => const NewSessionOptionsRefreshFailureUnavailableState(),
+    };
+    _emitStateUpdate(
+      options: options,
       isPluginDiscoveryInFlight: false,
       supportsDedicatedWorktrees: null,
     );
   }
 
-  Future<List<AgentInfo>> _loadAgents({required String pluginId}) async {
-    try {
-      final response = await _sessionService.listAgents(projectId: _projectId, pluginId: pluginId);
-      _logComposerDataError(resource: "agents", pluginId: pluginId, response: response);
-      return switch (response) {
-        SuccessResponse(:final data) =>
-          data.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList(),
-        ErrorResponse() => <AgentInfo>[],
-      };
-    } on Object catch (error, stackTrace) {
-      loge("New session: failed to load agents for project $_projectId and plugin $pluginId", error, stackTrace);
-      return <AgentInfo>[];
-    }
-  }
-
-  Future<List<ProviderInfo>?> _loadProviders({required String pluginId}) async {
-    try {
-      final response = await _sessionService.listProviders(projectId: _projectId, pluginId: pluginId);
-      _logComposerDataError(resource: "providers", pluginId: pluginId, response: response);
-      return switch (response) {
-        SuccessResponse(:final data) => data.items,
-        ErrorResponse() => null,
-      };
-    } on Object catch (error, stackTrace) {
-      loge("New session: failed to load providers for project $_projectId and plugin $pluginId", error, stackTrace);
-      return null;
-    }
-  }
-
-  Future<List<CommandInfo>?> _loadCommands({required String pluginId}) async {
-    try {
-      final response = await _sessionService.listCommands(projectId: _projectId, pluginId: pluginId);
-      _logComposerDataError(resource: "commands", pluginId: pluginId, response: response);
-      return switch (response) {
-        SuccessResponse(:final data) => data.items,
-        ErrorResponse() => null,
-      };
-    } on Object catch (error, stackTrace) {
-      loge("New session: failed to load commands for project $_projectId and plugin $pluginId", error, stackTrace);
-      return null;
-    }
-  }
+  NewSessionOptionsLoadState _loadingState({
+    required NewSessionOptionsData? previousOptions,
+    required NewSessionOptionsSource? source,
+  }) => previousOptions == null || source == null
+      ? NewSessionOptionsLoadingState(source: source)
+      : NewSessionOptionsRefreshingState(options: previousOptions, source: source);
 
   bool _canApplyLoad({required int generation, required String? pluginId}) {
     if (isClosed || generation != _loadGeneration) return false;
     if (pluginId == null && (state is NewSessionSending || state is NewSessionCreated)) return false;
     return pluginId == null || state.agentModelData?.plugin?.id == pluginId;
-  }
-
-  void _logComposerDataError<T>({
-    required String resource,
-    required String pluginId,
-    required ApiResponse<T> response,
-  }) {
-    if (response case ErrorResponse(:final error)) {
-      loge("New session: failed to load $resource for project $_projectId and plugin $pluginId", error);
-    }
-  }
-
-  void _emitAgentModelUpdate({
-    required List<AgentInfo>? availableAgents,
-    required List<ProviderInfo>? availableProviders,
-    required List<CommandInfo>? availableCommands,
-    required String? selectedAgent,
-    required AgentModel? selectedAgentModel,
-    required bool? isComposerDataLoading,
-    required bool? isPluginDiscoveryInFlight,
-    required bool? supportsDedicatedWorktrees,
-  }) {
-    if (isClosed) return;
-    final current = state;
-    final data = current.agentModelData;
-    if (data == null) return;
-    final stagedCommand = data.stagedCommand;
-    final revalidatedStagedCommand = availableCommands == null || stagedCommand == null
-        ? stagedCommand
-        : availableCommands.firstWhereOrNull((command) => command.name == stagedCommand.name);
-    final derivedVariants = _deriveAvailableVariants(
-      providers: availableProviders ?? data.providers,
-      model: selectedAgentModel ?? data.agentModel,
-    );
-    switch (current) {
-      case NewSessionIdle():
-        emit(
-          current.copyWith(
-            availableAgents: availableAgents ?? current.availableAgents,
-            availableProviders: availableProviders ?? current.availableProviders,
-            availableCommands: availableCommands ?? current.availableCommands,
-            selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
-            stagedCommand: revalidatedStagedCommand,
-            availableVariants: derivedVariants,
-            isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
-            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
-            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
-          ),
-        );
-      case NewSessionSending():
-        emit(
-          current.copyWith(
-            availableAgents: availableAgents ?? current.availableAgents,
-            availableProviders: availableProviders ?? current.availableProviders,
-            availableCommands: availableCommands ?? current.availableCommands,
-            selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
-            stagedCommand: revalidatedStagedCommand,
-            availableVariants: derivedVariants,
-            isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
-            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
-            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
-          ),
-        );
-      case NewSessionError():
-        emit(
-          current.copyWith(
-            availableAgents: availableAgents ?? current.availableAgents,
-            availableProviders: availableProviders ?? current.availableProviders,
-            availableCommands: availableCommands ?? current.availableCommands,
-            selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
-            stagedCommand: revalidatedStagedCommand,
-            availableVariants: derivedVariants,
-            isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
-            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
-            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
-          ),
-        );
-      case NewSessionCreated():
-        break;
-    }
-  }
-
-  List<SessionVariant> _deriveAvailableVariants({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    final providerID = model?.providerID;
-    final modelID = model?.modelID;
-    final provider = providerID != null ? providers.firstWhereOrNull((item) => item.id == providerID) : null;
-    final providerModel = provider?.models[modelID];
-    return providerModel?.variants
-            .where((variant) => variant != "none")
-            .map((variant) => SessionVariant(id: variant))
-            .toList() ??
-        [];
-  }
-
-  ({String? selectedAgent, AgentModel? selectedAgentModel}) _resolveInitialSelection({
-    required String pluginId,
-    required String? defaultAgent,
-    required AgentModel? defaultAgentModel,
-    required List<AgentInfo> agents,
-    required List<ProviderInfo> providers,
-  }) {
-    final saved = _selectionTracker.read(projectId: _projectId, pluginId: pluginId);
-    if (saved == null) {
-      return (selectedAgent: defaultAgent, selectedAgentModel: defaultAgentModel);
-    }
-
-    final savedAgent = saved.agent;
-    final selectedAgent = savedAgent != null && agents.any((agent) => agent.name == savedAgent)
-        ? savedAgent
-        : defaultAgent;
-
-    final savedModel = saved.agentModel;
-    AgentModel? selectedAgentModel = defaultAgentModel;
-    if (savedModel != null && _modelIsAvailable(providers: providers, model: savedModel)) {
-      final availableVariants = _deriveAvailableVariants(providers: providers, model: savedModel);
-      final variant = savedModel.variant;
-      final validVariant = variant != null && availableVariants.any((item) => item.id == variant) ? variant : null;
-      selectedAgentModel = savedModel.copyWith(variant: validVariant);
-    }
-
-    return (selectedAgent: selectedAgent, selectedAgentModel: selectedAgentModel);
-  }
-
-  bool _modelIsAvailable({required List<ProviderInfo> providers, required AgentModel model}) {
-    final providerModel = providers.firstWhereOrNull((item) => item.id == model.providerID)?.models[model.modelID];
-    return providerModel != null && providerModel.isAvailable;
   }
 
   bool get _canEditComposer {
@@ -484,136 +330,141 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
   }
 
-  void _persistSelection() {
-    final data = state.agentModelData;
-    final pluginId = data?.plugin?.id;
-    if (data == null || pluginId == null || data.isLoading) return;
-    _selectionTracker.write(
-      projectId: _projectId,
-      pluginId: pluginId,
-      agent: data.agent,
-      agentModel: data.agentModel,
-    );
-  }
-
-  void selectAgent(String agent) {
-    if (!_canEditComposer) return;
-    final current = state;
-    final agentInfo = switch (current) {
-      NewSessionIdle() => current.availableAgents.firstWhereOrNull((item) => item.name == agent),
-      NewSessionError() => current.availableAgents.firstWhereOrNull((item) => item.name == agent),
-      NewSessionSending() || NewSessionCreated() => null,
-    };
-    if (agentInfo == null) return;
-    _emitAgentModelUpdate(
-      selectedAgent: agent,
-      selectedAgentModel: agentInfo.model,
-      availableAgents: null,
-      availableCommands: null,
-      availableProviders: null,
-      isComposerDataLoading: null,
-      isPluginDiscoveryInFlight: null,
-      supportsDedicatedWorktrees: null, // no change
-    );
-    _persistSelection();
-  }
-
-  void selectVariant(SessionVariant? variant) {
-    if (!_canEditComposer) return;
-    final current = state;
-    final availableVariants = current.agentModelData?.availableVariants ?? const [];
-    if (variant != null && !availableVariants.any((available) => available.id == variant.id)) return;
-    switch (current) {
-      case NewSessionIdle():
-        final agentModel = current.selectedAgentModel;
-        if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
-      case NewSessionError():
-        final agentModel = current.selectedAgentModel;
-        if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
-      case NewSessionSending() || NewSessionCreated():
-        return;
-    }
-    _persistSelection();
-  }
-
-  void stageCommand(CommandInfo command) {
-    if (!_canEditComposer) return;
-    final current = state;
-    final currentCommand = current.agentModelData?.commands.firstWhereOrNull((available) => available == command);
-    if (currentCommand == null) return;
-    switch (current) {
-      case NewSessionIdle():
-        emit(current.copyWith(stagedCommand: currentCommand));
-      case NewSessionError():
-        emit(current.copyWith(stagedCommand: currentCommand));
-      case NewSessionSending() || NewSessionCreated():
-        break;
-    }
-  }
-
-  void clearStagedCommand() {
+  void _emitStateUpdate({
+    required NewSessionOptionsLoadState? options,
+    required bool? isPluginDiscoveryInFlight,
+    required bool? supportsDedicatedWorktrees,
+  }) {
+    if (isClosed) return;
     final current = state;
     switch (current) {
       case NewSessionIdle():
-        if (!_canEditComposer) return;
-        emit(current.copyWith(stagedCommand: null));
-      case NewSessionError():
-        if (!_canEditComposer) return;
-        emit(current.copyWith(stagedCommand: null));
+        emit(
+          current.copyWith(
+            options: options ?? current.options,
+            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
+          ),
+        );
       case NewSessionSending():
-        emit(current.copyWith(stagedCommand: null));
+        emit(
+          current.copyWith(
+            options: options ?? current.options,
+            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
+          ),
+        );
+      case NewSessionError():
+        emit(
+          current.copyWith(
+            options: options ?? current.options,
+            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
+          ),
+        );
       case NewSessionCreated():
         break;
     }
   }
 
-  void selectModel({required String providerID, required String modelID}) {
-    if (!_canEditComposer) return;
-    final current = state.agentModelData;
-    if (current == null) return;
-    final selectedModel = AgentModel(providerID: providerID, modelID: modelID, variant: null);
-    if (!_modelIsAvailable(providers: current.providers, model: selectedModel)) return;
-
-    final availableVariants = _deriveAvailableVariants(
-      providers: current.providers,
-      model: selectedModel,
-    );
-    final agentModel = _resolveAgentModel(
-      agents: current.agents,
-      providerID: providerID,
-      modelID: modelID,
-    );
-    final previousVariant = current.agentModel?.variant;
-    final variant = previousVariant != null && availableVariants.any((item) => item.id == previousVariant)
-        ? previousVariant
-        : agentModel?.variant;
-
-    _emitAgentModelUpdate(
-      selectedAgentModel:
-          agentModel?.copyWith(variant: variant) ??
-          AgentModel(providerID: providerID, modelID: modelID, variant: variant),
-      selectedAgent: null,
-      availableAgents: null,
-      availableCommands: null,
-      availableProviders: null,
-      isComposerDataLoading: null,
+  void _replaceOptionsData({required NewSessionOptionsData options}) {
+    final currentOptions = state.agentModelData?.optionsState;
+    final source = currentOptions?.source;
+    if (source == null) return;
+    final next = switch (currentOptions) {
+      NewSessionOptionsRefreshFailureRetainedState() => NewSessionOptionsRefreshFailureRetainedState(options: options),
+      NewSessionOptionsRefreshingState() => NewSessionOptionsRefreshingState(options: options, source: source),
+      NewSessionOptionsLoadingState() ||
+      NewSessionOptionsAvailableState() ||
+      NewSessionOptionsUnsupportedState() ||
+      NewSessionOptionsUnavailableState() ||
+      NewSessionOptionsFailureState() ||
+      NewSessionOptionsRefreshFailureUnavailableState() ||
+      null => NewSessionOptionsAvailableState(options: options, source: source),
+    };
+    _emitStateUpdate(
+      options: next,
       isPluginDiscoveryInFlight: null,
-      supportsDedicatedWorktrees: null, // no change
+      supportsDedicatedWorktrees: null,
     );
-    _persistSelection();
   }
 
-  AgentModel? _resolveAgentModel({
-    required List<AgentInfo> agents,
-    required String providerID,
-    required String modelID,
-  }) {
-    final agent = agents.firstWhereOrNull(
-      (item) => item.model?.providerID == providerID && item.model?.modelID == modelID,
+  String? get _selectedPluginId {
+    final data = state.agentModelData;
+    final pluginId = data?.plugin?.id;
+    return data == null || pluginId == null || data.isLoading ? null : pluginId;
+  }
+
+  void selectAgent(String agent) {
+    if (!_canEditComposer) return;
+    final options = state.agentModelData?.optionsState.data;
+    if (options == null) return;
+    final selected = _newSessionOptionsService.selectAgent(options: options, agent: agent);
+    if (selected == null) return;
+    _replaceOptionsData(options: selected);
+    final pluginId = _selectedPluginId;
+    if (pluginId != null) {
+      _selectionTracker.recordAgent(projectId: _projectId, pluginId: pluginId, agentName: agent);
+    }
+  }
+
+  void selectModel({required String providerID, required String modelID}) {
+    if (!_canEditComposer) return;
+    final options = state.agentModelData?.optionsState.data;
+    if (options == null) return;
+    final selected = _newSessionOptionsService.selectModel(
+      options: options,
+      providerId: providerID,
+      modelId: modelID,
     );
-    return agent?.model ?? AgentModel(providerID: providerID, modelID: modelID, variant: null);
+    if (selected == null) return;
+    _replaceOptionsData(options: selected);
+    final pluginId = _selectedPluginId;
+    if (pluginId != null) {
+      _selectionTracker.recordModel(
+        projectId: _projectId,
+        pluginId: pluginId,
+        providerId: providerID,
+        modelId: modelID,
+      );
+    }
+  }
+
+  void selectVariant(SessionVariant? variant) {
+    if (!_canEditComposer) return;
+    final options = state.agentModelData?.optionsState.data;
+    if (options == null) return;
+    final selected = _newSessionOptionsService.selectVariant(options: options, variant: variant);
+    if (selected == null) return;
+    _replaceOptionsData(options: selected);
+    final pluginId = _selectedPluginId;
+    if (pluginId != null) {
+      _selectionTracker.recordVariant(
+        projectId: _projectId,
+        pluginId: pluginId,
+        variant: variant == null
+            ? const NewSessionDefaultVariantIntent()
+            : NewSessionNamedVariantIntent(id: variant.id),
+      );
+    }
+  }
+
+  void stageCommand(CommandInfo command) {
+    if (!_canEditComposer) return;
+    final options = state.agentModelData?.optionsState.data;
+    if (options == null) return;
+    final selected = _newSessionOptionsService.stageCommand(options: options, command: command);
+    if (selected == null) return;
+    _replaceOptionsData(options: selected);
+  }
+
+  void clearStagedCommand() {
+    final current = state;
+    if (current is NewSessionCreated) return;
+    if (current is! NewSessionSending && !_canEditComposer) return;
+    final options = current.agentModelData?.optionsState.data;
+    if (options == null) return;
+    _replaceOptionsData(options: _newSessionOptionsService.clearStagedCommand(options: options));
   }
 
   Future<void> createSession({
@@ -641,31 +492,26 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       NewSessionState.sending(
         availablePlugins: config.plugins,
         selectedPlugin: selectedPlugin,
-        isComposerDataLoading: false,
+        options: config.optionsState,
         isPluginDiscoveryInFlight: false,
-        availableAgents: config.agents,
-        availableProviders: config.providers,
-        availableCommands: config.commands,
-        selectedAgent: config.agent,
-        selectedAgentModel: config.agentModel,
-        stagedCommand: config.stagedCommand,
-        availableVariants: config.availableVariants,
         supportsDedicatedWorktrees: config.supportsDedicatedWorktrees,
       ),
     );
 
-    final variantId = config.agentModel?.variant;
+    final options = config.optionsState.data;
+    final selectedAgentModel = options?.selectedAgentModel;
     unawaited(
       _newSessionPluginService.recordSelection(bridgeId: _discoveryBridgeId, plugin: selectedPlugin),
     );
+    final selectedVariant = selectedAgentModel?.variant;
     final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
       pluginId: pluginId,
       text: trimmed,
-      agent: config.agent,
-      providerID: config.agentModel?.providerID,
-      modelID: config.agentModel?.modelID,
-      variant: variantId == null ? null : SessionVariant(id: variantId),
+      agent: options?.selectedAgent,
+      providerID: selectedAgentModel?.providerID,
+      modelID: selectedAgentModel?.modelID,
+      variant: selectedVariant == null ? null : SessionVariant(id: selectedVariant),
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree && config.supportsDedicatedWorktrees,
     );
@@ -690,15 +536,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             reason: error.remoteFailureReason,
             availablePlugins: latest.plugins,
             selectedPlugin: latest.plugin,
-            isComposerDataLoading: latest.isLoading,
+            options: latest.optionsState,
             isPluginDiscoveryInFlight: false,
-            availableAgents: latest.agents,
-            availableProviders: latest.providers,
-            availableCommands: latest.commands,
-            selectedAgent: latest.agent,
-            selectedAgentModel: latest.agentModel,
-            stagedCommand: latest.stagedCommand,
-            availableVariants: latest.availableVariants,
             supportsDedicatedWorktrees: latest.supportsDedicatedWorktrees,
           ),
         );

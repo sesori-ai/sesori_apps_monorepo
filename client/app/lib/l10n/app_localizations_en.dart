@@ -1095,6 +1095,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionPluginLoading => 'Loading coding tool options';
 
   @override
+  String get newSessionOptionsRefresh => 'Refresh';
+
+  @override
+  String get newSessionOptionsCached => 'Using cached coding tool options.';
+
+  @override
+  String get newSessionOptionsUnavailable =>
+      'No cached options are available. You can create with defaults or refresh now.';
+
+  @override
+  String get newSessionOptionsLegacyBridge =>
+      'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.';
+
+  @override
+  String get newSessionOptionsRefreshFailedRetained => 'Refresh failed. Previously cached options are still available.';
+
+  @override
+  String get newSessionOptionsRefreshFailedUnavailable =>
+      'Refresh failed and no valid cached options remain. You can create with defaults.';
+
+  @override
   String get sessionListDeleteWorktreeCheckbox => 'Delete worktree';
 
   @override

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
@@ -33,6 +34,7 @@ class NewSessionScreen extends StatelessWidget {
         connectionService: getIt<ConnectionService>(),
         sessionService: getIt<SessionService>(),
         newSessionPluginService: getIt<NewSessionPluginService>(),
+        newSessionOptionsService: getIt<NewSessionOptionsService>(),
         projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,
@@ -127,6 +129,66 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
+  Widget? _buildOptionsStatus(AgentModelData? data) {
+    final plugin = data?.plugin;
+    if (data == null || plugin == null || !plugin.isRoutable || data.isLoading) return null;
+
+    final loc = context.loc;
+    final prego = context.prego;
+    final optionsState = data.optionsState;
+    final String message;
+    final bool isFailure;
+    switch (optionsState) {
+      case NewSessionOptionsFailureState(:final reason):
+        message = reason.localizedMessage(loc);
+        isFailure = true;
+      case NewSessionOptionsRefreshFailureRetainedState():
+        message = loc.newSessionOptionsRefreshFailedRetained;
+        isFailure = true;
+      case NewSessionOptionsRefreshFailureUnavailableState():
+        message = loc.newSessionOptionsRefreshFailedUnavailable;
+        isFailure = true;
+      case NewSessionOptionsUnavailableState():
+        message = loc.newSessionOptionsUnavailable;
+        isFailure = false;
+      case NewSessionOptionsUnsupportedState() ||
+          NewSessionOptionsAvailableState(source: NewSessionOptionsSource.legacy):
+        message = loc.newSessionOptionsLegacyBridge;
+        isFailure = false;
+      case NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate):
+        message = loc.newSessionOptionsCached;
+        isFailure = false;
+      case NewSessionOptionsLoadingState() || NewSessionOptionsRefreshingState():
+        return null;
+    }
+
+    return Padding(
+      padding: EdgeInsetsDirectional.only(top: prego.spacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              style: prego.textTheme.textXs.regular.copyWith(
+                color: isFailure ? prego.colors.fgErrorPrimary : prego.colors.textSecondary,
+              ),
+            ),
+          ),
+          SizedBox(width: prego.spacing.sm),
+          PregoButtonsSolid(
+            key: const Key("new_session_options_refresh"),
+            label: loc.newSessionOptionsRefresh,
+            hierarchy: PregoButtonsSolidHierarchy.link,
+            size: PregoButtonsSolidSize.sm,
+            leadingIcon: TablerRegular.refresh,
+            onPressed: () => context.read<NewSessionCubit>().refreshOptions(),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<NewSessionCubit>().state;
@@ -214,6 +276,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                               pluginId: pluginId,
                             ),
                           ),
+                          ?_buildOptionsStatus(composerData),
                           if (composerData?.plugins.isNotEmpty ?? false) SizedBox(height: prego.spacing.sm),
                           if (composerData?.supportsDedicatedWorktrees ?? false)
                             SwitchListTile(

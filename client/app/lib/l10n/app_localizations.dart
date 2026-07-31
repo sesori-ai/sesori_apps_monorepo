@@ -2131,6 +2131,42 @@ abstract class AppLocalizations {
   /// **'Loading coding tool options'**
   String get newSessionPluginLoading;
 
+  /// No description provided for @newSessionOptionsRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get newSessionOptionsRefresh;
+
+  /// No description provided for @newSessionOptionsCached.
+  ///
+  /// In en, this message translates to:
+  /// **'Using cached coding tool options.'**
+  String get newSessionOptionsCached;
+
+  /// No description provided for @newSessionOptionsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No cached options are available. You can create with defaults or refresh now.'**
+  String get newSessionOptionsUnavailable;
+
+  /// No description provided for @newSessionOptionsLegacyBridge.
+  ///
+  /// In en, this message translates to:
+  /// **'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.'**
+  String get newSessionOptionsLegacyBridge;
+
+  /// No description provided for @newSessionOptionsRefreshFailedRetained.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh failed. Previously cached options are still available.'**
+  String get newSessionOptionsRefreshFailedRetained;
+
+  /// No description provided for @newSessionOptionsRefreshFailedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh failed and no valid cached options remain. You can create with defaults.'**
+  String get newSessionOptionsRefreshFailedUnavailable;
+
   /// No description provided for @sessionListDeleteWorktreeCheckbox.
   ///
   /// In en, this message translates to:

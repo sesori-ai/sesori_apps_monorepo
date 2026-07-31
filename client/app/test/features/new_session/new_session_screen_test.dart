@@ -34,6 +34,12 @@ AgentInfo _testAgent({required String name, required String description, require
   );
 }
 
+SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
+  agents: [_testAgent(name: "coder", description: "A coding assistant", variant: "xhigh")],
+  providers: testProviderListResponse().items,
+  commands: const [],
+);
+
 Widget _buildApp({
   ThemeMode themeMode = ThemeMode.light,
   bool? initialSupportsDedicatedWorktrees = true,
@@ -94,6 +100,7 @@ Future<void> enterTypingMode(WidgetTester tester) async {
 
 void main() {
   late MockSessionService sessionService;
+  late MockSessionRepository sessionRepository;
   late MockPluginRepository pluginRepository;
   late MockPluginPreferenceRepository pluginPreferenceRepository;
   late MockConnectionService connectionService;
@@ -107,6 +114,7 @@ void main() {
   setUp(() async {
     await GetIt.instance.reset();
     sessionService = MockSessionService();
+    sessionRepository = MockSessionRepository();
     pluginRepository = MockPluginRepository();
     pluginPreferenceRepository = MockPluginPreferenceRepository();
     connectionService = MockConnectionService();
@@ -124,9 +132,10 @@ void main() {
 
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        const PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
-          plugins: [
+          supportsSessionOptions: true,
+          plugins: const [
             PluginMetadata(
               id: "plugin-1",
               displayName: "Plugin One",
@@ -171,6 +180,69 @@ void main() {
       (_) async => ApiResponse.success(const CommandListResponse(items: [])),
     );
     when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        refresh: any(named: "refresh"),
+      ),
+    ).thenAnswer((invocation) async {
+      final projectId = invocation.namedArguments[#projectId]! as String;
+      final pluginId = invocation.namedArguments[#pluginId]! as String;
+      final (agents, providers, commands) = await (
+        sessionService.listAgents(projectId: projectId, pluginId: pluginId),
+        sessionService.listProviders(projectId: projectId, pluginId: pluginId),
+        sessionService.listCommands(projectId: projectId, pluginId: pluginId),
+      ).wait;
+      return switch ((agents, providers, commands)) {
+        (
+          SuccessResponse(data: final agentData),
+          SuccessResponse(data: final providerData),
+          SuccessResponse(data: final commandData),
+        ) =>
+          SessionOptionsRepositoryAvailable(
+            catalog: SessionOptionsCatalog(
+              agents: agentData.agents,
+              providers: providerData.items,
+              commands: commandData.items,
+            ),
+          ),
+        (ErrorResponse(:final error), _, _) => SessionOptionsRepositoryFailure(error: error),
+        (_, ErrorResponse(:final error), _) => SessionOptionsRepositoryFailure(error: error),
+        (_, _, ErrorResponse(:final error)) => SessionOptionsRepositoryFailure(error: error),
+      };
+    });
+    when(
+      () => sessionRepository.loadLegacySessionOptions(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer((invocation) async {
+      final projectId = invocation.namedArguments[#projectId]! as String;
+      final pluginId = invocation.namedArguments[#pluginId]! as String;
+      final (agents, providers, commands) = await (
+        sessionService.listAgents(projectId: projectId, pluginId: pluginId),
+        sessionService.listProviders(projectId: projectId, pluginId: pluginId),
+        sessionService.listCommands(projectId: projectId, pluginId: pluginId),
+      ).wait;
+      return switch ((agents, providers, commands)) {
+        (
+          SuccessResponse(data: final agentData),
+          SuccessResponse(data: final providerData),
+          SuccessResponse(data: final commandData),
+        ) =>
+          LegacySessionOptionsRepositoryAvailable(
+            catalog: SessionOptionsCatalog(
+              agents: agentData.agents,
+              providers: providerData.items,
+              commands: commandData.items,
+            ),
+          ),
+        (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(error: error),
+        (_, ErrorResponse(:final error), _) => LegacySessionOptionsRepositoryFailure(error: error),
+        (_, _, ErrorResponse(:final error)) => LegacySessionOptionsRepositoryFailure(error: error),
+      };
+    });
+    when(
       () => projectRepository.getProject(projectId: any(named: "projectId")),
     ).thenAnswer(
       (_) async => ApiResponse.success(
@@ -204,6 +276,12 @@ void main() {
       NewSessionPluginService(
         pluginRepository: pluginRepository,
         pluginPreferenceRepository: pluginPreferenceRepository,
+      ),
+    );
+    GetIt.instance.registerSingleton<NewSessionOptionsService>(
+      NewSessionOptionsService(
+        sessionRepository: sessionRepository,
+        defaultModelSelector: const DefaultModelSelector(),
       ),
     );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
@@ -242,6 +320,153 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: false,
+          plugins: const [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "Plugin One",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    expect(find.text(loc.newSessionOptionsLegacyBridge), findsOneWidget);
+    expect(find.byKey(const Key("new_session_options_refresh")), findsOneWidget);
+    final composerPointer = tester.widget<IgnorePointer>(
+      find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
+    );
+    expect(composerPointer.ignoring, isFalse);
+    verifyNever(
+      () => sessionRepository.loadSessionOptions(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        refresh: any(named: "refresh"),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
+    await tester.pumpAndSettle();
+
+    verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.text(loc.newSessionOptionsLegacyBridge), findsOneWidget);
+  });
+
+  testWidgets("cache miss keeps creation available with backend defaults", (tester) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        refresh: false,
+      ),
+    ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(testSession(id: "session-cache-miss")));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text(loc.newSessionOptionsUnavailable), findsOneWidget);
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "use backend defaults");
+    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    verify(
+      () => sessionService.createSessionWithMessage(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        text: "use backend defaults",
+        agent: null,
+        providerID: null,
+        modelID: null,
+        variant: null,
+        command: null,
+        dedicatedWorktree: true,
+      ),
+    ).called(1);
+  });
+
+  testWidgets("retained refresh failure keeps cached options visible", (tester) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        refresh: any(named: "refresh"),
+      ),
+    ).thenAnswer((invocation) async {
+      final refresh = invocation.namedArguments[#refresh]! as bool;
+      return refresh
+          ? const SessionOptionsRepositoryRefreshFailedRetained()
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text(loc.newSessionOptionsCached), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
+    await tester.pumpAndSettle();
+
+    expect(find.text(loc.newSessionOptionsRefreshFailedRetained), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+  });
+
+  testWidgets("unavailable refresh failure clears options immediately", (tester) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        refresh: any(named: "refresh"),
+      ),
+    ).thenAnswer((invocation) async {
+      final refresh = invocation.namedArguments[#refresh]! as bool;
+      return refresh
+          ? const SessionOptionsRepositoryRefreshFailedUnavailable()
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
+    await tester.pumpAndSettle();
+
+    expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "coder"), findsNothing);
+  });
+
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
@@ -265,9 +490,10 @@ void main() {
   testWidgets("renders bridge order with generic degraded and blocked presentation", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        const PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
-          plugins: [
+          supportsSessionOptions: true,
+          plugins: const [
             PluginMetadata(
               id: "failed-id",
               displayName: "First Tool",
@@ -336,9 +562,10 @@ void main() {
   testWidgets("uses on-brand foreground tokens for a selected plugin in dark mode", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        const PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
-          plugins: [
+          supportsSessionOptions: true,
+          plugins: const [
             PluginMetadata(
               id: "degraded-id",
               displayName: "Selected Tool",
@@ -386,8 +613,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        PluginListResponse(
+        PluginDiscoverySnapshot(
           bridgeId: null,
+          supportsSessionOptions: true,
           plugins: [
             for (var index = 0; index < 8; index++)
               PluginMetadata(
@@ -485,7 +713,13 @@ void main() {
       actionHint: "Check the bridge console.",
     );
     when(pluginRepository.listPlugins).thenAnswer(
-      (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])),
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: const [toolA, toolB],
+        ),
+      ),
     );
     final toolBAgents = Completer<ApiResponse<Agents>>();
     when(
@@ -558,12 +792,20 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
     );
-    final reconnectDiscovery = Completer<ApiResponse<PluginListResponse>>();
+    final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
     var discoveryCalls = 0;
     when(pluginRepository.listPlugins).thenAnswer((_) {
       discoveryCalls++;
       if (discoveryCalls == 1) {
-        return Future.value(ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])));
+        return Future.value(
+          ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: null,
+              supportsSessionOptions: true,
+              plugins: const [toolA, toolB],
+            ),
+          ),
+        );
       }
       return reconnectDiscovery.future;
     });
@@ -603,7 +845,15 @@ void main() {
     );
     verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
 
-    reconnectDiscovery.complete(ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])));
+    reconnectDiscovery.complete(
+      ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: const [toolA, toolB],
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isTrue);
@@ -629,9 +879,10 @@ void main() {
       discoveryCalls++;
       if (discoveryCalls == 1) {
         return ApiResponse.success(
-          const PluginListResponse(
+          PluginDiscoverySnapshot(
             bridgeId: null,
-            plugins: [
+            supportsSessionOptions: true,
+            plugins: const [
               PluginMetadata(
                 id: "plugin-1",
                 displayName: "Plugin One",
