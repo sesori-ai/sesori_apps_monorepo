@@ -1,7 +1,9 @@
 import "dart:async";
+import "dart:ui" show PointerDeviceKind;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
+import "package:flutter/gestures.dart" show kSecondaryButton;
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -621,6 +623,28 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+  });
+
+  testWidgets("a secondary pointer button does not start recording", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text("Hold to talk")),
+      kind: PointerDeviceKind.mouse,
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    verifyNever(() => voiceTranscriptionService.startRecording());
+    verifyNever(() => voiceTranscriptionService.cancelRecording());
     verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
   });
 

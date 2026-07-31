@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/gestures.dart" show kPrimaryButton;
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -345,7 +346,7 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   void _handleRecordPointerDown(PointerDownEvent event) {
-    if (_recordingPointer != null) return;
+    if (_recordingPointer != null || (event.buttons & kPrimaryButton) == 0) return;
     _recordingPointer = event.pointer;
     _recordingPointerPosition = event.position;
     unawaited(_handleRecordStart());
