@@ -63,13 +63,8 @@ final class PrivacyDeletionRepository {
     );
   }
 
-  Future<AuthExportReadiness> checkTombstoneAwareAuthExport({
-    required DateTime suppressedAt,
-  }) async {
-    final snapshot = await _api.latestSuccessfulAuthExport();
-    return snapshot != null && !snapshot.runCutoff.isBefore(suppressedAt)
-        ? AuthExportReadiness.ready
-        : AuthExportReadiness.notReady;
+  Future<AuthExportSnapshot?> loadLatestSuccessfulAuthExport() {
+    return _api.latestSuccessfulAuthExport();
   }
 
   Future<List<AppInstanceId>> discoverTargetInstallations({

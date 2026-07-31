@@ -308,14 +308,23 @@ final class RestBigQueryPrivacyDeletionClient
         requirement: 'only configured allowlisted datasets',
       );
     }
+    final sqlWithoutTemporaryTableCreates = statement.sql.replaceAll(
+      RegExp(
+        r'\bCREATE\s+(?:OR\s+REPLACE\s+)?TEMP(?:ORARY)?\s+TABLE\b',
+        caseSensitive: false,
+      ),
+      '',
+    );
     final forbidden = RegExp(
-      r'\b(EXECUTE\s+IMMEDIATE|EXTERNAL_QUERY|EXPORT\s+DATA|LOAD\s+DATA|CREATE\s+CONNECTION)\b',
+      r'\b(EXECUTE\s+IMMEDIATE|EXTERNAL_QUERY|EXPORT\s+DATA|LOAD\s+DATA|'
+      r'CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\b',
       caseSensitive: false,
     );
-    if (forbidden.hasMatch(statement.sql)) {
+    if (forbidden.hasMatch(sqlWithoutTemporaryTableCreates)) {
       throw const PrivacyDeletionValidationException(
         field: 'query',
-        requirement: 'no dynamic, external, export, load, or connection SQL',
+        requirement:
+            'no dynamic, external, export, load, connection, or persistent DDL SQL',
       );
     }
     for (final match in RegExp(r'`([^`]+)`').allMatches(statement.sql)) {
@@ -408,7 +417,10 @@ final class RestBigQueryPrivacyDeletionClient
     required HttpClientRequest request,
   }) async {
     final response = await request.close().timeout(_queryTimeout);
-    final body = await response.transform(utf8.decoder).join();
+    final body = await response
+        .transform(utf8.decoder)
+        .join()
+        .timeout(_queryTimeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw GoogleApiHttpException(statusCode: response.statusCode);
     }

@@ -125,6 +125,16 @@
   BigQuery metric fixture passed in `europe-west3` on 2026-07-31. Deployed-schema
   assertions remain deferred until an approved warehouse exists; no repository
   SQL, schedules, IAM, or dashboards have been applied to cloud resources.
+- [x] Apply valid PR #641 review findings locally: split first-run bootstrap from
+  auth-dependent apply; make DDL dry-run limits explicit; bound schedule
+  inventory and move schedule SQL out of argv; harden metadata/API timeouts and
+  SQL boundaries; require fresh tombstone-aware request/sweep cleanup; serialize
+  tombstones with keyed publication; guard transform watermarks; enforce ordered
+  activation progression and schema-ready foundation; remove unsupported build
+  dimensions; and extend focused Dart/BigQuery fixtures. A two-pass architecture
+  review moved deployment policy to orchestration and freshness policy to the
+  deletion Service, then approved the revised boundaries. Review replies, push,
+  and renewed PR checks remain pending.
 
 ## Immediate Operational Action
 
@@ -194,7 +204,7 @@ patches in one umbrella diff.
 | 4.B/5 | apps monorepo | `[user-analytics] Instrument account-less login outcomes [step 4.B/5]` | PR #634 merged as `5223c27d` on 2026-07-31 | Step 4.A |
 | 4.C/5 | apps monorepo | `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]` | PR #633 merged as `c662a639` on 2026-07-31 | Step 4.B |
 | 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 merged as `671c67ed` on 2026-07-31 | Step 4.C |
-| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | PR #641 open; local repository assets implemented, metric fixtures passed, and architecture approved. Required Step 5 cloud setup remains tracked above and blocked pending approved restricted values. Billing/budget and 90-day raw expiration are configured, while restricted IAM, GA4 privacy settings, identities, exact timestamps, deployed-schema assertions, jobs/schedules, deletion drill, and dashboard setup remain unresolved | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
+| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | PR #641 open; local repository assets and review fixes are implemented, focused Dart checks and updated metric fixtures pass, and the review-fix architecture is approved. Review replies/push and renewed PR checks remain pending. Required Step 5 cloud setup remains tracked above and blocked pending approved restricted values. Billing/budget and 90-day raw expiration are configured, while restricted IAM, GA4 privacy settings, identities, exact timestamps, deployed-schema assertions, jobs/schedules, deletion drill, and dashboard setup remain unresolved | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
 ## Release Evidence
 

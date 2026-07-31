@@ -378,7 +378,9 @@ pseudonymous personal data. Documentation and access controls must call it that.
   seam and used only as validated warehouse time—not registered as a GA custom
   dimension.
 - Stable screen enum.
-- Platform and app version/build supplied by Firebase.
+- Platform and app version supplied by Firebase. Build number is not emitted by
+  the typed clients or exposed by the GA4 raw app-info record, so it is not a
+  warehouse/reporting dimension.
 - Bounded onboarding, interaction, voice-input, login-provider, login-failure,
   and product-failure enums.
 
@@ -973,14 +975,15 @@ only raw-ID-to-`user_key` handoff, and raw account ID never crosses it.
 | Class/file | Layer/dependencies | Responsibility |
 | --- | --- | --- |
 | `google_api_foundation.dart`, `bigquery_privacy_deletion_client.dart`, and `ga_user_deletion_client.dart` | Neutral Google credential/transport foundation plus peer Foundation clients | Shared metadata-first credential acquisition and bounded Google API failures live in the neutral file. The peer clients own typed BigQuery operations within allowlisted datasets and typed GA User Deletion API submission; neither client depends on the other, orchestrates deletion, or receives a raw account ID. |
-| `privacy_deletion_api.dart` | Layer 1; requires both clients | Loads pending privacy-private targets for request processing; upserts/reads the permanent deletion-exclusion control; range-joins the overlapping raw window against **all** permanent tombstones for sweeps; discovers currently linkable installation IDs, deletes matching warehouse rows, submits app-instance/legacy-user deletion, rebuilds aggregates, and updates target status through typed operations. |
-| `privacy_deletion_repository.dart` | Layer 2; requires API | Owns idempotent request status, target validation, run checkpoints, one-shot tombstone-aware auth-export cutoff reads, and explicit operation/result mapping. It never orchestrates cross-system cleanup or persists discovered installation IDs. |
-| `privacy_deletion_service.dart` | Layer 3; requires repository | Orchestrates exclusion-before-delete, one readiness check, upstream/raw/keyed deletion, fixed rebuild, verification, and completion. When no successful auth export has `runCutoff >= suppressedAt`, it returns retryable and relies on the external job/operator to invoke the idempotent command again rather than polling in-process. |
+| `privacy_deletion_api.dart` | Layer 1; requires both clients | Loads pending privacy-private targets for request processing; transactionally advances the keyed-publication epoch while upserting/reading the permanent deletion-exclusion control; range-joins the overlapping raw window against **all** permanent tombstones for sweeps; discovers currently linkable installation IDs, deletes matching warehouse rows, submits app-instance/legacy-user deletion, rebuilds aggregates, and updates target status through typed operations. |
+| `privacy_deletion_repository.dart` | Layer 2; requires API | Owns idempotent request status, target validation, run checkpoints, typed latest-auth-snapshot retrieval, and explicit operation/result mapping. It never decides lifecycle readiness, orchestrates cross-system cleanup, or persists discovered installation IDs. |
+| `privacy_deletion_service.dart` | Layer 3; requires repository and clock | Orchestrates exclusion-before-delete, evaluates one-shot tombstone-aware auth readiness using the configured publication-age/clock policy plus cutoff, then owns upstream/raw/keyed deletion, fixed rebuild, verification, and completion. When no fresh successful auth export has `runCutoff >= suppressedAt`, it returns retryable and relies on the external job/operator to invoke the idempotent command again rather than polling in-process. A sweep applies that gate to the newest permanent tombstone before auth-private cleanup or checkpoint advancement. |
 | `run_privacy_deletion.dart` / `sweep_privacy_deletions.dart` | Manual and scheduled composition roots | Construct with the attached metadata-server identity by default (with explicit local ADC fallback only for approved operator runs), process one request or a checkpointed raw-partition range, return only aggregate status, and close clients. Each daily sweep starts from the earlier of the last-success watermark continuation and the latest three UTC event dates, matching GA4 late-arrival recomputation; it joins every scanned version against all permanent deletion tombstones regardless of target completion/age. Submission/deletion is idempotent and acts only on future **keyed** uploads. |
 
 Use a dedicated deletion service account with BigQuery Job User, read of the
 restricted privacy-target/raw datasets, write only to the deletion-exclusion
-control, sweep checkpoint, and privacy-target status, delete/rebuild permission
+control, keyed-publication guard, sweep checkpoint, and privacy-target status,
+delete/rebuild permission
 on auth-private/curated (and matching retained raw rows), metadata-only reporting
 inventory access, plus the minimum GA deletion API role. It has no Mongo access,
 reporting mutation, or general controls/deployment role. The attached identity
@@ -1117,7 +1120,7 @@ not weaken the written privacy boundary to fit an unchecked property.
    `emitted_at` via `TIMESTAMP_MICROS(event_timestamp)`, parse required integer
    `occurred_at_micros` the same way as `occurred_at`,
    require schema version and non-null custom `user_key`, and retain Firebase
-   platform/app version/build. Reject occurrence later than emitted time beyond
+   platform/app version. Reject occurrence later than emitted time beyond
    the documented clock-skew allowance. User-milestone/cohort joins additionally
    require occurrence no earlier than account creation beyond that allowance;
    invalid timing remains a data-quality count and is excluded from time-bound
@@ -1139,7 +1142,7 @@ not weaken the written privacy boundary to fit an unchecked property.
 3. **`user_activity_daily`**: one row per user/date with monitor, control,
    message, voice-assisted, transcription, diff, screen, and feature
    flags/counts.
-4. **`user_milestones`**: auth timestamps plus earliest foundation and
+4. **`user_milestones`**: auth timestamps plus earliest schema-ready foundation and
    activation-capable exposure,
    project availability, full activation, monitor activity, and feature
    milestones. Full activation is the minimum of the two successful message
@@ -1147,8 +1150,9 @@ not weaken the written privacy boundary to fit an unchecked property.
    `activation_capable_at` is the earliest activation-ready event or activation
    outcome.
 5. **`activation_cohorts`**: account-cohort denominators only when activation-
-   capable schema-v1 exposure occurs within 24 hours of account creation, plus
-   1/7/30-day milestone flags, times to milestone, cohort maturity, and separate
+   capable schema-v1 exposure occurs within 24 hours of account creation, with
+   ordered account -> bridge -> project -> message progression, 1/7/30-day
+   milestone flags, times to milestone, cohort maturity, and separate
    preference/foundation/activation-capability coverage.
 6. **`retention_cohorts`**: activation-anchored W1/W4 eligibility and activity.
 
@@ -1162,6 +1166,10 @@ snapshot and anti-joins the permanent internal exclusion table. Therefore a
 disable or newly added internal exclusion takes effect after the next auth
 export/report refresh even when an older curated partition exists; those gates
 are not applied only at the historical partition's original build time.
+Keyed transforms capture a shared publication epoch before staging and advance
+it inside their publication transaction. Permanent tombstone insertion advances
+the same singleton transactionally. An epoch mismatch or overlapping write
+aborts rather than republishing a concurrently deleted user.
 
 The auth export atomically publishes snapshot metadata (`run_id`, immutable
 source cutoff, completion time, eligible/source counts) with its tables. Before
@@ -1522,6 +1530,9 @@ directory name.
 
 - Add `tool/product_analytics/` data contract, parameterized deployment tool,
   DDL, transforms, fixture assertions, scheduled-query definitions, and runbook.
+- Bootstrap datasets/reference tables first, publish and validate the initial
+  auth snapshot, then apply auth-dependent transforms; full apply fails closed
+  when no initial auth snapshot exists.
 - Create auth-private/privacy-private/controls/curated/reporting datasets in the raw GA4
   location; keep export-job write access confined to auth-private and grant only
   authorized-view reads for internal exclusion; configure IAM, expiration,

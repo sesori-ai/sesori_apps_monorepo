@@ -61,7 +61,10 @@ Future<void> main(final List<String> arguments) async {
       rawRetentionDays: config.rawRetentionDays,
       now: DateTime.now,
     );
-    final service = PrivacyDeletionService(repository: repository);
+    final service = PrivacyDeletionService(
+      repository: repository,
+      now: DateTime.now,
+    );
     final summary = await service.runSweep(dryRun: command.dryRun);
     _writeSummary(summary: summary, tokenProvider: tokenProvider);
     if (!summary.succeeded) {
@@ -100,6 +103,7 @@ PrivacyDeletionWarehouseSchema _warehouseSchema({
     reportingDataset: config.reportingDataset,
     targetsTable: config.targetsTable,
     exclusionsTable: config.exclusionsTable,
+    publicationGuardTable: config.publicationGuardTable,
     authExportRunsTable: config.authExportRunsTable,
     sweepStateTable: config.sweepStateTable,
     authKeyedTables: config.authKeyedTables,

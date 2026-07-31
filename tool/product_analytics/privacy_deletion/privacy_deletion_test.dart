@@ -7,13 +7,17 @@ import 'privacy_deletion_api.dart';
 import 'privacy_deletion_config.dart';
 import 'privacy_deletion_models.dart';
 import 'privacy_deletion_repository.dart';
+import 'privacy_deletion_service.dart';
 
 Future<void> main() async {
   _testIdentifiers();
   _testConfigurationAllowlistAndDefaults();
   _testSweepRanges();
   _testCleanupPhases();
+  _testAuthExportReadiness();
   _testAnalyticsAdminRequestShapes();
+  await _testPermanentExclusionPublicationGuard();
+  await _testPersistentDdlRejected();
   await _testLatestSuccessfulAuthExportSql();
   await _testKeyedTableInventory();
   await _testRawDateAndInstallationDiscovery();
@@ -74,6 +78,12 @@ void _testConfigurationAllowlistAndDefaults() {
         command.config.exclusionsTable.tableId.value ==
         'permanent_deletion_exclusions',
     message: 'the permanent deletion exclusions default is incorrect',
+  );
+  _expect(
+    condition:
+        command.config.publicationGuardTable.tableId.value ==
+        'keyed_publication_guard',
+    message: 'the keyed publication guard default is incorrect',
   );
   _expect(
     condition:
@@ -167,6 +177,67 @@ void _testConfigurationAllowlistAndDefaults() {
   );
 }
 
+Future<void> _testPermanentExclusionPublicationGuard() async {
+  final client = _FakeBigQueryClient(
+    handler: ({required statement, required index}) =>
+        const BigQueryStatementResult(
+          rows: <Map<String, Object?>>[],
+          affectedRows: 1,
+          dryRun: false,
+        ),
+  );
+  await _api(client: client).upsertPermanentExclusion(
+    target: PrivacyDeletionTarget(
+      requestId: PrivacyRequestId.parse(value: 'request_123'),
+      userKey: PseudonymousUserKey.parse(value: 'a' * 64),
+      legacyFirebaseUserId: LegacyFirebaseUserId.parse(value: 'b' * 64),
+      suppressedAt: DateTime.utc(2026, 7, 31, 10),
+      status: PrivacyDeletionTargetStatus.pending,
+    ),
+    dryRun: false,
+  );
+  final statement = client.statements.single;
+  _expect(
+    condition:
+        statement.sql.contains('BEGIN TRANSACTION') &&
+        statement.sql.contains('keyed_publication_guard') &&
+        statement.sql.contains('publication_epoch = publication_epoch + 1') &&
+        statement.sql.contains('permanent_deletion_exclusions') &&
+        statement.sql.contains('COMMIT TRANSACTION') &&
+        statement.referencedDatasets.length == 1,
+    message:
+        'permanent exclusion insertion is not serialized with keyed publication',
+  );
+}
+
+Future<void> _testPersistentDdlRejected() async {
+  final projectId = GcpProjectId.parse(value: 'sesori-ai');
+  final dataset = _dataset(projectId: projectId, datasetId: 'curated');
+  final client = RestBigQueryPrivacyDeletionClient(
+    projectId: projectId,
+    location: BigQueryLocation.parse(value: 'europe-west3'),
+    allowedDatasets: <BigQueryDatasetReference>[dataset],
+    accessTokenProvider: const _FakeAccessTokenProvider(),
+    queryTimeout: const Duration(seconds: 1),
+  );
+  try {
+    await _expectThrowsAsync<PrivacyDeletionValidationException>(
+      body: () => client.execute(
+        statement: BigQueryStatement(
+          sql: 'CREATE TABLE `sesori-ai.curated.unreviewed` (value STRING)',
+          parameters: const <BigQueryParameter>[],
+          referencedDatasets: <BigQueryDatasetReference>[dataset],
+          isMutation: true,
+          dryRun: false,
+        ),
+      ),
+      message: 'persistent DDL was accepted by the privacy BigQuery client',
+    );
+  } finally {
+    client.close();
+  }
+}
+
 void _testCleanupPhases() {
   _expect(
     condition:
@@ -252,7 +323,9 @@ void _testAnalyticsAdminRequestShapes() {
     legacyUserId: LegacyFirebaseUserId.parse(value: legacyId),
   );
   _expect(
-    condition: legacyIdentifier.toRequestBody().keys.single == 'userId',
+    condition:
+        legacyIdentifier.toRequestBody().keys.single == 'userId' &&
+        legacyIdentifier.toRequestBody()['userId'] == legacyId,
     message: 'legacy Firebase request does not use Admin API userId',
   );
 
@@ -261,8 +334,100 @@ void _testAnalyticsAdminRequestShapes() {
     values: <String>[legacyId],
   ).toJson();
   _expect(
-    condition: parameter['name'] == 'user_keys',
+    condition:
+        jsonEncode(parameter) ==
+        jsonEncode(<String, Object?>{
+          'name': 'user_keys',
+          'parameterType': <String, Object?>{
+            'type': 'ARRAY',
+            'arrayType': <String, Object?>{'type': 'STRING'},
+          },
+          'parameterValue': <String, Object?>{
+            'arrayValues': <Map<String, Object?>>[
+              <String, Object?>{'value': legacyId},
+            ],
+          },
+        }),
     message: 'BigQuery value was not represented as a named parameter',
+  );
+}
+
+void _testAuthExportReadiness() {
+  final now = DateTime.utc(2026, 7, 31, 12);
+  AuthExportSnapshot snapshot({
+    required DateTime runCutoff,
+    required DateTime publishedAt,
+  }) => AuthExportSnapshot(
+    runCutoff: runCutoff,
+    publishedAt: publishedAt,
+    maxAge: const Duration(hours: 36),
+    futureClockAllowance: const Duration(minutes: 5),
+  );
+
+  _expect(
+    condition:
+        PrivacyDeletionService.evaluateAuthExportReadiness(
+          snapshot: snapshot(
+            runCutoff: DateTime.utc(2026, 7, 31, 10),
+            publishedAt: DateTime.utc(2026, 7, 31, 10, 5),
+          ),
+          suppressedAt: DateTime.utc(2026, 7, 31, 9),
+          now: now,
+        ) ==
+        AuthExportReadiness.ready,
+    message: 'a fresh tombstone-aware auth export was rejected',
+  );
+  for (final staleSnapshot in <AuthExportSnapshot?>[
+    null,
+    snapshot(
+      runCutoff: DateTime.utc(2026, 7, 31, 8),
+      publishedAt: DateTime.utc(2026, 7, 31, 10),
+    ),
+    snapshot(
+      runCutoff: DateTime.utc(2026, 7, 29, 23, 59),
+      publishedAt: DateTime.utc(2026, 7, 30),
+    ),
+    snapshot(
+      runCutoff: DateTime.utc(2026, 7, 31, 12, 6),
+      publishedAt: DateTime.utc(2026, 7, 31, 12, 6),
+    ),
+  ]) {
+    _expect(
+      condition:
+          PrivacyDeletionService.evaluateAuthExportReadiness(
+            snapshot: staleSnapshot,
+            suppressedAt: DateTime.utc(2026, 7, 31, 9),
+            now: now,
+          ) ==
+          AuthExportReadiness.notReady,
+      message: 'an unsafe auth export was accepted for final cleanup',
+    );
+  }
+  _expect(
+    condition:
+        PrivacyDeletionService.evaluateAuthExportReadiness(
+          snapshot: snapshot(
+            runCutoff: DateTime.utc(2026, 7, 29, 23, 59),
+            publishedAt: DateTime.utc(2026, 7, 29, 23, 59),
+          ),
+          suppressedAt: DateTime.utc(2026, 7, 29, 20),
+          now: now,
+        ) ==
+        AuthExportReadiness.notReady,
+    message: 'a tombstone-aware but stale auth export was accepted',
+  );
+  _expect(
+    condition:
+        PrivacyDeletionService.evaluateAuthExportReadiness(
+          snapshot: snapshot(
+            runCutoff: DateTime.utc(2026, 7, 29, 23, 59),
+            publishedAt: DateTime.utc(2026, 7, 31, 11),
+          ),
+          suppressedAt: DateTime.utc(2026, 7, 29, 20),
+          now: now,
+        ) ==
+        AuthExportReadiness.notReady,
+    message: 'a freshly published snapshot with a stale cutoff was accepted',
   );
 }
 
@@ -274,6 +439,8 @@ Future<void> _testLatestSuccessfulAuthExportSql() async {
           <String, Object?>{
             'run_cutoff': '2026-07-30T10:00:00Z',
             'published_at': '2026-07-30T10:05:00Z',
+            'auth_snapshot_max_age_hours': '36',
+            'clock_skew_allowance_seconds': '300',
           },
         ],
         affectedRows: 0,
@@ -286,13 +453,15 @@ Future<void> _testLatestSuccessfulAuthExportSql() async {
   _expect(
     condition:
         snapshot!.runCutoff == DateTime.utc(2026, 7, 30, 10) &&
-        snapshot.publishedAt == DateTime.utc(2026, 7, 30, 10, 5),
+        snapshot.publishedAt == DateTime.utc(2026, 7, 30, 10, 5) &&
+        snapshot.maxAge == const Duration(hours: 36) &&
+        snapshot.futureClockAllowance == const Duration(minutes: 5),
     message: 'auth snapshot timestamps were parsed incorrectly',
   );
   final statement = client.statements.single;
   _expect(
     condition: statement.sql.contains(
-      'ORDER BY published_at DESC, run_cutoff DESC',
+      'ORDER BY export.published_at DESC, export.run_cutoff DESC',
     ),
     message: 'latest auth snapshot ordering is incorrect',
   );
@@ -875,6 +1044,10 @@ PrivacyDeletionWarehouseSchema _schema() {
       dataset: controls,
       tableId: 'permanent_deletion_exclusions',
     ),
+    publicationGuardTable: _table(
+      dataset: controls,
+      tableId: 'keyed_publication_guard',
+    ),
     authExportRunsTable: _table(
       dataset: auth,
       tableId: 'product_analytics_export_runs',
@@ -1010,6 +1183,24 @@ final class _FakeAggregateRebuilder implements AggregateRebuilder {
       executedOperations: dryRun ? 0 : 3,
     );
   }
+}
+
+final class _FakeAccessTokenProvider implements GoogleAccessTokenProvider {
+  const _FakeAccessTokenProvider();
+
+  @override
+  AdcCredentialSource get lastSource => AdcCredentialSource.notUsed;
+
+  @override
+  bool get usedFallback => false;
+
+  @override
+  Future<GoogleAccessToken> accessToken() {
+    throw StateError('accessToken must not be called during local validation');
+  }
+
+  @override
+  void close() {}
 }
 
 final class _FakeGaUserDeletionClient implements GaUserDeletionClient {

@@ -24,8 +24,10 @@ Modes:
                No BigQuery command is run and no resource is changed.
   --dry-run    Run a best-effort whole-script BigQuery dry run for each numeric
                SQL asset and print its byte estimate and estimate accuracy.
+  --bootstrap  Dry-run and apply only 00_datasets.sql. Use this once before the
+               initial auth export on a new warehouse.
   --apply      Dry-run and then execute each numeric SQL asset in dependency
-               order. This is the only mode that mutates BigQuery resources.
+               order after verifying that an auth snapshot already exists.
 
 Schedule deployment:
   Scheduled-query transfer configs are created or updated only when --apply,
@@ -64,6 +66,7 @@ const Set<String> _optionalValueFlags = <String>{'--transform-service-account'};
 
 const Set<String> _booleanFlags = <String>{
   '--dry-run',
+  '--bootstrap',
   '--apply',
   '--apply-schedules',
 };
@@ -110,7 +113,7 @@ final RegExp _dailyCadencePattern = RegExp(
   r'^every day (?:[01][0-9]|2[0-3]):[0-5][0-9]$',
 );
 
-enum _Mode { renderOnly, dryRun, apply }
+enum _Mode { renderOnly, dryRun, bootstrap, apply }
 
 enum _DryRunAccuracy {
   unknown(wireValue: 'UNKNOWN'),
@@ -260,17 +263,47 @@ Future<void> main(final List<String> args) async {
       projectId: options.projectId,
       location: options.location,
     );
-    for (final asset in assets) {
+    if (options.mode == _Mode.apply) {
+      final authSnapshotCount = await bq.loadInitialAuthSnapshotCount(
+        authDatasetId: options.authDatasetId,
+      );
+      if (authSnapshotCount < 1) {
+        throw const _CliError(
+          message:
+              'Error: No initial auth snapshot exists. Run --bootstrap, publish '
+              'and validate the initial auth export, then run --apply.',
+        );
+      }
+    }
+    final selectedAssets = options.mode == _Mode.bootstrap
+        ? assets.where((asset) => asset.fileName == '00_datasets.sql').toList()
+        : assets;
+    for (final asset in selectedAssets) {
       stdout.writeln(
         'Dry-running ${asset.fileName} with allocatedBytes='
         '${asset.maxBytesBilled}.',
       );
+      if (asset.schedule == null) {
+        stdout.writeln(
+          'DDL dry-run limitation for ${asset.fileName}: BigQuery validates '
+          'only through the first DDL statement; deployed-schema assertions '
+          'remain required.',
+        );
+      }
       await bq.runQuery(asset: asset, dryRun: true);
 
-      if (options.mode == _Mode.apply) {
+      if (options.mode == _Mode.bootstrap || options.mode == _Mode.apply) {
         stdout.writeln('Applying ${asset.fileName}.');
         await bq.runQuery(asset: asset, dryRun: false);
       }
+    }
+
+    if (options.mode == _Mode.bootstrap) {
+      stdout.writeln(
+        'Bootstrap apply complete. Publish and validate the initial auth '
+        'snapshot before running --apply.',
+      );
+      return;
     }
 
     if (options.mode == _Mode.dryRun) {
@@ -362,15 +395,19 @@ _Options _parseOptions({required List<String> args}) {
   }
 
   final dryRun = enabledFlags.contains('--dry-run');
+  final bootstrap = enabledFlags.contains('--bootstrap');
   final apply = enabledFlags.contains('--apply');
-  if (dryRun && apply) {
+  if (<bool>[dryRun, bootstrap, apply].where((value) => value).length > 1) {
     throw const _CliError(
-      message: 'Error: --dry-run and --apply are mutually exclusive.',
+      message:
+          'Error: --dry-run, --bootstrap, and --apply are mutually exclusive.',
     );
   }
 
   final mode = dryRun
       ? _Mode.dryRun
+      : bootstrap
+      ? _Mode.bootstrap
       : apply
       ? _Mode.apply
       : _Mode.renderOnly;
@@ -579,6 +616,7 @@ Future<List<_ScheduleDefinition>> _loadSchedules({required String path}) async {
         displayName.isEmpty ||
         displayName != displayName.trim() ||
         displayName.length > 256 ||
+        !displayName.startsWith(_scheduleDisplayNamePrefix) ||
         !_printableAsciiPattern.hasMatch(displayName)) {
       throw _CliError(
         message:
@@ -889,6 +927,43 @@ class _BqRunner {
   final String projectId;
   final String location;
 
+  Future<int> loadInitialAuthSnapshotCount({
+    required String authDatasetId,
+  }) async {
+    final result = await _run(
+      arguments: <String>[
+        ..._globalArguments(format: 'json'),
+        'query',
+        '--use_legacy_sql=false',
+      ],
+      standardInput:
+          'SELECT COUNT(*) AS snapshot_count FROM '
+          '`$projectId.$authDatasetId.product_analytics_export_runs`',
+      operation: 'read the initial auth snapshot count',
+    );
+    late final Object? decoded;
+    try {
+      decoded = jsonDecode(result.standardOutput);
+    } on FormatException catch (error) {
+      throw _CliError.withCause(
+        message: 'Error: bq returned an invalid auth snapshot count.',
+        cause: error,
+      );
+    }
+    final snapshotRow = decoded is List<Object?> && decoded.length == 1
+        ? decoded.single
+        : null;
+    final snapshotCount = snapshotRow is Map<String, Object?>
+        ? snapshotRow['snapshot_count']
+        : null;
+    if (snapshotCount is! String || int.tryParse(snapshotCount) == null) {
+      throw const _CliError(
+        message: 'Error: bq returned an invalid auth snapshot count.',
+      );
+    }
+    return int.parse(snapshotCount);
+  }
+
   Future<void> runQuery({
     required _SqlAsset asset,
     required bool dryRun,
@@ -947,6 +1022,13 @@ class _BqRunner {
         message: 'Error: bq returned an invalid scheduled-query config list.',
       );
     }
+    if (decoded.length >= 1000) {
+      throw const _CliError(
+        message:
+            'Error: Scheduled-query config listing reached the 1000-result '
+            'safety limit and may be truncated. No schedules were changed.',
+      );
+    }
 
     final configsByDisplayName = <String, List<String>>{};
     for (final rawConfig in decoded) {
@@ -988,7 +1070,7 @@ class _BqRunner {
     required String renderedSql,
     required String serviceAccount,
   }) async {
-    await _run(
+    await _runScheduleCommand(
       arguments: <String>[
         ..._globalArguments(format: 'none'),
         'mk',
@@ -996,10 +1078,9 @@ class _BqRunner {
         '--data_source=scheduled_query',
         '--display_name=${schedule.displayName}',
         '--schedule=${schedule.cadence}',
-        '--params=${jsonEncode(<String, String>{'query': renderedSql})}',
         '--service_account_name=$serviceAccount',
       ],
-      standardInput: null,
+      renderedSql: renderedSql,
       operation: 'create schedule for ${schedule.queryFile}',
     );
   }
@@ -1010,21 +1091,66 @@ class _BqRunner {
     required String renderedSql,
     required String serviceAccount,
   }) async {
-    await _run(
+    await _runScheduleCommand(
       arguments: <String>[
         ..._globalArguments(format: 'none'),
         'update',
         '--transfer_config=true',
         '--display_name=${schedule.displayName}',
         '--schedule=${schedule.cadence}',
-        '--params=${jsonEncode(<String, String>{'query': renderedSql})}',
         '--service_account_name=$serviceAccount',
         '--update_credentials=true',
         resourceName,
       ],
-      standardInput: null,
+      renderedSql: renderedSql,
       operation: 'update schedule for ${schedule.queryFile}',
     );
+  }
+
+  Future<void> _runScheduleCommand({
+    required List<String> arguments,
+    required String renderedSql,
+    required String operation,
+  }) async {
+    Directory? temporaryDirectory;
+    try {
+      temporaryDirectory = await Directory.systemTemp.createTemp(
+        'sesori-product-analytics-',
+      );
+      final paramsFile = File(
+        _joinPath(parent: temporaryDirectory.path, child: 'bq-flags.txt'),
+      );
+      await paramsFile.writeAsString(
+        '--params=${jsonEncode(<String, String>{'query': renderedSql})}\n',
+        flush: true,
+      );
+      final commandIndex = arguments.indexWhere(
+        (argument) => argument == 'mk' || argument == 'update',
+      );
+      if (commandIndex < 0) {
+        throw const _CliError(
+          message: 'Error: Invalid bq schedule command configuration.',
+        );
+      }
+      await _run(
+        arguments: <String>[
+          ...arguments.take(commandIndex + 1),
+          '--flagfile=${paramsFile.path}',
+          ...arguments.skip(commandIndex + 1),
+        ],
+        standardInput: null,
+        operation: operation,
+      );
+    } on FileSystemException catch (error) {
+      throw _CliError.withCause(
+        message: 'Error: Could not prepare bq schedule parameters.',
+        cause: error,
+      );
+    } finally {
+      if (temporaryDirectory != null && temporaryDirectory.existsSync()) {
+        await temporaryDirectory.delete(recursive: true);
+      }
+    }
   }
 
   List<String> _globalArguments({required String format}) => <String>[

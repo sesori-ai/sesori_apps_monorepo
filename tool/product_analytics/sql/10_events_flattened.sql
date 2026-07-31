@@ -16,8 +16,19 @@ DECLARE previous_source_end_date DATE DEFAULT (
   WHERE model_name = 'events_flattened'
   LIMIT 1
 );
+DECLARE previous_completed_at TIMESTAMP DEFAULT (
+  SELECT completed_at
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
+  WHERE model_name = 'events_flattened'
+  LIMIT 1
+);
 DECLARE scan_start_date DATE;
 DECLARE rows_inserted INT64 DEFAULT 0;
+DECLARE keyed_publication_epoch INT64 DEFAULT (
+  SELECT publication_epoch
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard`
+  WHERE guard_key = 'singleton'
+);
 
 SET scan_start_date = GREATEST(
   raw_start_date,
@@ -37,6 +48,8 @@ ASSERT previous_source_end_date IS NULL OR scan_end_date >= previous_source_end_
   AS 'The latest available GA4 daily export regressed behind the published watermark';
 ASSERT scan_start_date >= DATE_SUB(scan_end_date, INTERVAL 89 DAY)
   AS 'The flattened-event watermark gap exceeds the recoverable 90-day raw window';
+ASSERT keyed_publication_epoch IS NOT NULL
+  AS 'The keyed publication guard singleton is required';
 
 -- Property-local suffixes can straddle UTC dates. Scan one suffix day around
 -- the UTC range, then retain and partition only by the UTC emission date.
@@ -111,7 +124,6 @@ parameterized AS (
     raw.* EXCEPT (event_params),
     (
       SELECT AS STRUCT
-        MAX(IF(parameter.key = 'app_build', COALESCE(parameter.value.string_value, CAST(parameter.value.int_value AS STRING)), NULL)) AS app_build,
         MAX(IF(parameter.key = 'user_key', parameter.value.string_value, NULL)) AS user_key,
         MAX(IF(parameter.key = 'schema_version', parameter.value.int_value, NULL)) AS schema_version,
         MAX(IF(parameter.key = 'occurred_at_micros', parameter.value.int_value, NULL)) AS occurred_at_micros,
@@ -259,7 +271,6 @@ deduplicated AS (
         occurred_at_micros,
         platform,
         app_version,
-        app_build,
         activation_schema_version_raw,
         inventory_state,
         activity_state,
@@ -308,7 +319,6 @@ SELECT
   user_key,
   platform,
   app_version,
-  app_build,
   IF(
     event_name = 'analytics_activation_ready',
     SAFE_CAST(activation_schema_version_raw AS INT64),
@@ -381,7 +391,27 @@ SELECT
   MAX(IF(occurred_at <= TIMESTAMP_ADD(emitted_at, INTERVAL 300 SECOND), occurred_at, NULL)) AS latest_occurred_at
 FROM candidate_stage;
 
+ASSERT previous_source_end_date IS NOT DISTINCT FROM (
+  SELECT source_end_date
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
+  WHERE model_name = 'events_flattened'
+  LIMIT 1
+) AND previous_completed_at IS NOT DISTINCT FROM (
+  SELECT completed_at
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
+  WHERE model_name = 'events_flattened'
+  LIMIT 1
+) AS 'events_flattened state changed while the transform was staged';
+
 BEGIN TRANSACTION;
+
+UPDATE `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard`
+SET publication_epoch = publication_epoch + 1,
+    updated_at = CURRENT_TIMESTAMP()
+WHERE guard_key = 'singleton'
+  AND publication_epoch = keyed_publication_epoch;
+ASSERT @@row_count = 1
+  AS 'A tombstone or keyed publication changed while events were staged';
 
 -- The broad partition predicate lets a newly added permanent tombstone remove
 -- every retained keyed fact, not just the three mutable source dates.
@@ -407,7 +437,6 @@ INSERT INTO `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.events_flattened` (
   user_key,
   platform,
   app_version,
-  app_build,
   activation_schema_version,
   inventory_state,
   activity_state,
@@ -445,7 +474,10 @@ USING (
   FROM quality_stage AS quality
 ) AS source
 ON target.model_name = source.model_name
-WHEN MATCHED THEN UPDATE SET
+WHEN MATCHED
+  AND target.source_end_date IS NOT DISTINCT FROM previous_source_end_date
+  AND target.completed_at IS NOT DISTINCT FROM previous_completed_at
+THEN UPDATE SET
   source_start_date = scan_start_date,
   source_end_date = scan_end_date,
   completed_at = CURRENT_TIMESTAMP(),
@@ -514,5 +546,7 @@ WHEN NOT MATCHED THEN INSERT (
   source.latest_emitted_at,
   source.latest_occurred_at
 );
+ASSERT @@row_count = 1
+  AS 'events_flattened state changed before watermark publication';
 
 COMMIT TRANSACTION;

@@ -26,6 +26,13 @@ Future<void> main(final List<String> arguments) async {
       requestIdRequired: true,
     );
     final config = command.config;
+    final requestId = command.requestId;
+    if (requestId == null) {
+      throw const PrivacyDeletionValidationException(
+        field: 'request_id',
+        requirement: 'required for request processing',
+      );
+    }
     tokenProvider = ApplicationDefaultAccessTokenProvider(
       scopes: const <String>{bigQueryOAuthScope, analyticsEditOAuthScope},
       metadataTimeout: const Duration(seconds: 1),
@@ -61,9 +68,12 @@ Future<void> main(final List<String> arguments) async {
       rawRetentionDays: config.rawRetentionDays,
       now: DateTime.now,
     );
-    final service = PrivacyDeletionService(repository: repository);
+    final service = PrivacyDeletionService(
+      repository: repository,
+      now: DateTime.now,
+    );
     final summary = await service.runRequest(
-      requestId: command.requestId!,
+      requestId: requestId,
       dryRun: command.dryRun,
     );
     _writeSummary(summary: summary, tokenProvider: tokenProvider);
@@ -113,6 +123,7 @@ PrivacyDeletionWarehouseSchema _warehouseSchema({
     reportingDataset: config.reportingDataset,
     targetsTable: config.targetsTable,
     exclusionsTable: config.exclusionsTable,
+    publicationGuardTable: config.publicationGuardTable,
     authExportRunsTable: config.authExportRunsTable,
     sweepStateTable: config.sweepStateTable,
     authKeyedTables: config.authKeyedTables,

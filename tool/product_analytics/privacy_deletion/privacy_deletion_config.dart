@@ -13,6 +13,7 @@ final class PrivacyDeletionConfig {
     required this.reportingDataset,
     required this.targetsTable,
     required this.exclusionsTable,
+    required this.publicationGuardTable,
     required this.authExportRunsTable,
     required this.sweepStateTable,
     required this.authKeyedTables,
@@ -35,6 +36,7 @@ final class PrivacyDeletionConfig {
   final BigQueryDatasetReference reportingDataset;
   final BigQueryTableReference targetsTable;
   final BigQueryTableReference exclusionsTable;
+  final BigQueryTableReference publicationGuardTable;
   final BigQueryTableReference authExportRunsTable;
   final BigQueryTableReference sweepStateTable;
   final List<BigQueryTableReference> authKeyedTables;
@@ -205,6 +207,11 @@ final class PrivacyDeletionCommandConfig {
           name: 'exclusions-table',
           defaultValue: 'permanent_deletion_exclusions',
         ),
+      ),
+      publicationGuardTable: _table(
+        dataset: controlsDataset,
+        field: 'publication_guard_table',
+        value: 'keyed_publication_guard',
       ),
       authExportRunsTable: _table(
         dataset: authDataset,

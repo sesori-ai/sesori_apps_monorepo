@@ -216,6 +216,20 @@ CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_del
 CLUSTER BY user_key
 OPTIONS (description = 'Permanent deletion tombstones applied to every keyed warehouse recomputation');
 
+CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard` (
+  guard_key STRING NOT NULL,
+  publication_epoch INT64 NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+)
+OPTIONS (description = 'Singleton transaction-conflict guard serializing tombstones and keyed publication');
+
+MERGE `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard` AS target
+USING (SELECT 'singleton' AS guard_key) AS source
+ON target.guard_key = source.guard_key
+WHEN NOT MATCHED THEN
+  INSERT (guard_key, publication_epoch, updated_at)
+  VALUES ('singleton', 0, CURRENT_TIMESTAMP());
+
 CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.product_analytics_privacy_sweep_state` (
   sweep_name STRING NOT NULL,
   last_success_through_date DATE NOT NULL,
@@ -259,7 +273,6 @@ CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.events_flatten
   user_key STRING NOT NULL,
   platform STRING,
   app_version STRING,
-  app_build STRING,
   activation_schema_version INT64,
   inventory_state STRING,
   activity_state STRING,
@@ -289,7 +302,6 @@ CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.installation_l
   schema_version INT64 NOT NULL,
   platform STRING,
   app_version STRING,
-  app_build STRING,
   provider STRING NOT NULL,
   failure_kind STRING,
   event_count INT64 NOT NULL,
@@ -464,7 +476,6 @@ CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.screen_usage_w
   week_end DATE NOT NULL,
   platform STRING,
   app_version STRING,
-  app_build STRING,
   screen STRING NOT NULL,
   unique_users INT64 NOT NULL,
   view_count INT64 NOT NULL,
@@ -480,7 +491,6 @@ CREATE TABLE IF NOT EXISTS `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.onboarding_fri
   metric_name STRING NOT NULL,
   platform STRING,
   app_version STRING,
-  app_build STRING,
   surface STRING,
   channel STRING,
   install_method STRING,

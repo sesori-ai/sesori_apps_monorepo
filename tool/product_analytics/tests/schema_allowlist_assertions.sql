@@ -13,7 +13,6 @@ FROM UNNEST([
   'user_key',
   'platform',
   'app_version',
-  'app_build',
   'activation_schema_version',
   'inventory_state',
   'activity_state',
@@ -53,7 +52,6 @@ FROM UNNEST([
   'schema_version',
   'platform',
   'app_version',
-  'app_build',
   'provider',
   'failure_kind',
   'event_count',
@@ -210,6 +208,18 @@ ASSERT TO_JSON_STRING((
   WHERE table_name = 'product_analytics_privacy_sweep_state'
 )) = TO_JSON_STRING(['sweep_name', 'last_success_through_date', 'updated_at'])
   AS 'Privacy sweep checkpoint must remain identifier-free and monotonic';
+
+ASSERT TO_JSON_STRING((
+  SELECT ARRAY_AGG(column_name ORDER BY ordinal_position)
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.INFORMATION_SCHEMA.COLUMNS`
+  WHERE table_name = 'keyed_publication_guard'
+)) = TO_JSON_STRING(['guard_key', 'publication_epoch', 'updated_at'])
+  AS 'Keyed publication guard schema must remain a singleton epoch';
+ASSERT (
+  SELECT COUNT(*) = 1
+    AND COUNTIF(guard_key = 'singleton' AND publication_epoch >= 0) = 1
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard`
+) AS 'Keyed publication guard must contain one valid singleton';
 
 ASSERT NOT EXISTS (
   SELECT 1
@@ -607,7 +617,7 @@ ASSERT NOT EXISTS (
     ))
     OR (event_name != 'login_attempt_failed' AND failure_kind IS NOT NULL)
     OR event_count <= 0
-    OR NOT includes_internal_test_traffic
+    OR includes_internal_test_traffic IS NOT TRUE
 ) AS 'Installation login aggregates must retain only the exact bounded diagnostic contract';
 
 ASSERT NOT EXISTS (

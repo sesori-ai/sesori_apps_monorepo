@@ -257,7 +257,7 @@ a Looker-side alias.
 | `analytics_529377727` | Raw restricted | Firebase-managed `events_YYYYMMDD`; 90-day default and current-table expiration | Analytics/security admins and transform/deletion identities only |
 | `sesori_analytics_auth_private` | Pseudonymous private | Current eligible auth snapshot, aggregate setup cohorts, run metadata/state, and expiring staging tables | Auth export writes; transform reads; deletion repairs; admins oversee |
 | `sesori_analytics_privacy_private` | Privacy restricted | Deletion targets and status only | Suppression handoff and deletion identity; security/privacy admins |
-| `sesori_analytics_controls` | Restricted controls | Permanent internal and deletion exclusions, measurement starts, freshness policy, and authorized exclusion view | Deployment identity writes; transform reads; auth export sees one authorized view only |
+| `sesori_analytics_controls` | Restricted controls | Permanent internal and deletion exclusions, measurement starts, freshness policy, keyed-publication guard, and authorized exclusion view | Deployment identity writes; transform reads plus table-scoped guard update; auth export sees one authorized view only |
 | `sesori_analytics_curated` | Minimized pseudonymous | Allowlisted event facts, daily user activity, milestones, cohorts, and scheduled intermediates | Transform identity writes; analytics engineers read; deletion repairs |
 | `sesori_analytics_reporting` | Identifier-free reporting | Aggregate authorized reporting views | Deployment creates views; Looker and approved product leadership read; deletion receives metadata-only inventory access |
 
@@ -301,6 +301,7 @@ not a successful session creation or full activation.
 | `internal_exclusion_control_state` | Singleton common `control_updated_at`; advance only when the permanent exclusion set is reviewed |
 | `auth_permanent_internal_exclusions` | Read-only projection for auth export with `user_key`, `is_active`, and common `control_updated_at`, including a null-key freshness sentinel |
 | `permanent_deletion_exclusions` | Permanent HMAC `user_key` tombstones used by every flattened/reported rebuild and recurring sweep |
+| `keyed_publication_guard` | Singleton epoch advanced transactionally by tombstone insertion and keyed publication to prevent concurrent repopulation |
 | `analytics_measurement_config` | Exactly one approved `raw_export_start_at`, one independently approved `behavioral_schema_v1_start_at`, clock-skew/freshness policy, and update audit metadata |
 | `product_analytics_privacy_sweep_state` | Last successful raw-partition watermark and run status; no discovered installation identifier is persisted |
 
@@ -309,14 +310,14 @@ not a successful session creation or full activation.
 | Object | Grain and contract |
 | --- | --- |
 | `transform_state` | One last-success watermark/quality row per transform with source range, completion/auth freshness, bounded rejection counts, and latest event times; no identifiers |
-| `events_flattened` | One deduplicated, allowlisted account-linked custom event; keeps `user_key`, event name, schema, validated occurrence/emission UTC timestamps, platform/app version/build, and bounded event parameters only |
+| `events_flattened` | One deduplicated, allowlisted account-linked custom event; keeps `user_key`, event name, schema, validated occurrence/emission UTC timestamps, platform/app version, and bounded event parameters only |
 | `installation_login_daily` | UTC date/platform/app version/provider/failure-kind aggregate counts; never contains `user_pseudo_id` or `user_key`; always flags `includes_internal_test_traffic=true` |
 | `user_activity_daily` | One eligible user/UTC date with bounded monitoring, control, message, voice, diff, screen, and feature flags/counts |
 | `user_milestones` | One eligible user with auth milestones and earliest foundation, activation-capable, project, activation, monitoring, and feature milestones |
 | `activation_cohorts` | Account creation cohort with 1/7/30-day setup/activation flags, latency, maturity, and separate preference/foundation/activation-capability coverage |
 | `retention_cohorts` | Activation-week cohort with W1 (days 7-13) and W4 (days 28-34) eligible denominators, meaningful-activity numerators, and separate flags that become mature only after every activated user in that week has completed the window |
 | `weekly_engagement` | One complete UTC Monday-Sunday week with meaningful/controller WAU, activity-depth percentiles, intervention/message/voice/feature totals, and refresh time |
-| `screen_usage_weekly` | Complete week/platform/app version/build/pinned screen with identifier-free unique-user and view counts |
+| `screen_usage_weekly` | Complete week/platform/app version/pinned screen with identifier-free unique-user and view counts |
 | `onboarding_friction_weekly` | Complete week and bounded diagnostic dimensions with identifier-free user/event counts |
 
 `events_flattened` is recoverable only while the relevant raw partitions remain
@@ -396,9 +397,9 @@ access. No runtime receives a downloadable service-account key.
 | `<ANALYTICS_SECURITY_ADMIN_GROUP>` | Administer approved analytics datasets, IAM reviews, raw/privacy incident access | Routine dashboard use as a reason for raw access |
 | `<DEPLOYMENT_SERVICE_ACCOUNT>` | BigQuery Job User; create/update derived schemas, approved controls, authorized views, IAM, and transfer configs; act-as only approved schedule identities | Runtime Mongo secret; GA event identifiers; routine dashboard credentials |
 | `<AUTH_EXPORT_SERVICE_ACCOUNT>` | BigQuery Job User; Data Editor on `sesori_analytics_auth_private`; table-level read of the authorized internal-exclusion view; managed Mongo/HMAC secrets | Controls write/DDL; privacy-private, raw, curated, or reporting access; project-wide data roles |
-| `<TRANSFORM_SERVICE_ACCOUNT>` | BigQuery Job User; Data Viewer on raw, auth-private, and controls; Data Editor on curated only; run only declared schedules | Privacy-private; reporting writes; Mongo; GA Admin mutation; IAM or control-table mutation |
+| `<TRANSFORM_SERVICE_ACCOUNT>` | BigQuery Job User; Data Viewer on raw, auth-private, and controls; Data Editor on curated; table-scoped Data Editor on `keyed_publication_guard`; run only declared schedules | Privacy-private; reporting writes; Mongo; GA Admin mutation; IAM or any other control-table mutation |
 | `<AUTH_SUPPRESSION_SERVICE_ACCOUNT>` | BigQuery Job User; Mongo suppression operation; table-scoped query/MERGE and status read on `product_analytics_deletion_targets` only; managed HMAC/Mongo secrets | Dataset-wide privacy access; auth export tables, controls, raw, curated, reporting, and GA Admin API |
-| `<PRIVACY_DELETION_SERVICE_ACCOUNT>` | BigQuery Job User; read privacy targets/raw; write deletion exclusions/status and the sweep checkpoint; delete affected raw/auth-private/curated keyed rows; rebuild the fixed curated aggregate chain; metadata-only inventory access on reporting; Analytics Admin `analytics.edit` only for deletion submission | Reporting data mutation; Mongo; deployment/IAM administration; unrelated control mutation; Looker ownership; general GA property administration |
+| `<PRIVACY_DELETION_SERVICE_ACCOUNT>` | BigQuery Job User; read privacy targets/raw; write deletion exclusions/status, the sweep checkpoint, and `keyed_publication_guard`; delete affected raw/auth-private/curated keyed rows; rebuild the fixed curated aggregate chain; metadata-only inventory access on reporting; Analytics Admin `analytics.edit` only for deletion submission | Reporting data mutation; Mongo; deployment/IAM administration; any other control mutation; Looker ownership; general GA property administration |
 | `<LOOKER_SERVICE_ACCOUNT>` | BigQuery Job User and Data Viewer on `sesori_analytics_reporting` only | Raw, auth-private, privacy-private, controls, curated, `user_key`, and write access |
 | `<DASHBOARD_VIEWER_GROUP>` | View the restricted Looker report through approved data-source credentials | Direct BigQuery access, data-source editing/reuse, public/link sharing |
 | Auth web runtime | Existing web preference service and managed HMAC secret | Every BigQuery role and every warehouse/deletion class |
@@ -521,9 +522,11 @@ source-dataset access. Any later reporting view that reads a private source
 requires a reviewed ACL update; reporting-dataset membership is never a blanket
 authorization for future views.
 
-Then grant the auth-export identity table-level read on only that view, and
-grant the deployment identity service-account act-as on only the approved
-transform identity. `roles/iam.serviceAccountUser` supplies
+Then grant the auth-export identity table-level read on only that view. Grant
+the transform and privacy-deletion identities table-scoped Data Editor on only
+the shared publication guard; dataset-wide controls write remains forbidden.
+Finally, grant the deployment identity service-account act-as on only the
+approved transform identity. `roles/iam.serviceAccountUser` supplies
 `iam.serviceAccounts.actAs`; do not replace it with project-wide Service Account
 User or Token Creator:
 
@@ -532,6 +535,16 @@ bq --project_id=sesori-ai add-iam-policy-binding \
   --member="serviceAccount:<AUTH_EXPORT_SERVICE_ACCOUNT>" \
   --role="roles/bigquery.dataViewer" \
   "sesori-ai:sesori_analytics_controls.auth_permanent_internal_exclusions"
+
+bq --project_id=sesori-ai add-iam-policy-binding \
+  --member="serviceAccount:<TRANSFORM_SERVICE_ACCOUNT>" \
+  --role="roles/bigquery.dataEditor" \
+  "sesori-ai:sesori_analytics_controls.keyed_publication_guard"
+
+bq --project_id=sesori-ai add-iam-policy-binding \
+  --member="serviceAccount:<PRIVACY_DELETION_SERVICE_ACCOUNT>" \
+  --role="roles/bigquery.dataEditor" \
+  "sesori-ai:sesori_analytics_controls.keyed_publication_guard"
 
 gcloud iam service-accounts add-iam-policy-binding \
   "<TRANSFORM_SERVICE_ACCOUNT>" \
@@ -591,7 +604,8 @@ Confirm the transform service-account policy contains exactly the approved
 deployment principal under `roles/iam.serviceAccountUser` and no unintended
 Token Creator grant. After schedule application, confirm each transfer config
 runs as `<TRANSFORM_SERVICE_ACCOUNT>`, then require expected-deny probes against
-privacy-private data and IAM mutation to fail under that identity. Any
+privacy-private data, every other controls mutation, and IAM mutation to fail
+under that identity. Any
 unexpected success blocks rollout; remove the excess grant rather than
 broadening the matrix.
 
@@ -730,6 +744,10 @@ BigQuery SCRIPT estimates are best-effort. Accuracy can be `PRECISE`,
 below actual billed bytes and is not evidence that a query fits its allocation.
 If BigQuery omits the estimate, the tool prints `totalBytesProcessed=unavailable`
 and `accuracy=UNKNOWN` rather than inferring precision.
+For a multi-statement DDL asset, BigQuery dry-run validation stops after the
+first DDL statement. The CLI reports this limitation explicitly; dry-run is not
+proof that every schema object is valid. The deployed-schema assertions below
+remain mandatory after apply.
 Review the estimate and accuracy against both the manifest allocation and the 2
 GiB principal/10 GiB project daily quotas, then verify actual production job
 bytes before enabling schedules. Dry-run success does not prove a cost ceiling,
@@ -737,10 +755,33 @@ IAM deny boundaries, source freshness, or metric correctness. If `bq` fails or
 returns malformed output, the tool reports only a bounded operation error and
 suppresses backend details.
 
+### Bootstrap schemas, then publish auth
+
+On a new warehouse, create only the datasets and reference schemas first:
+
+```bash
+dart tool/product_analytics/deploy.dart \
+  --project=sesori-ai \
+  --location=europe-west3 \
+  --raw-dataset-id=analytics_529377727 \
+  --auth-dataset-id=sesori_analytics_auth_private \
+  --privacy-dataset-id=sesori_analytics_privacy_private \
+  --controls-dataset-id=sesori_analytics_controls \
+  --curated-dataset-id=sesori_analytics_curated \
+  --reporting-dataset-id=sesori_analytics_reporting \
+  --raw-export-start-at="<RAW_EXPORT_START_AT_UTC>" \
+  --behavioral-schema-v1-start-at="<BEHAVIORAL_SCHEMA_V1_START_AT_UTC>" \
+  --bootstrap
+```
+
+Next run and validate the initial auth export described below. Do not run
+auth-dependent transforms before that snapshot exists.
+
 ### Apply schemas and transforms without schedules
 
 Only after the deployment block is cleared, pass the explicit mutating
-`--apply` mode without `--apply-schedules`:
+`--apply` mode without `--apply-schedules`. The command fails before applying
+any asset when `product_analytics_export_runs` has no initial snapshot:
 
 ```bash
 dart tool/product_analytics/deploy.dart \
@@ -794,10 +835,12 @@ perl -pe '
 
 Require both `metric_contract_assertions.sql` and
 `schema_allowlist_assertions.sql` to pass. Assertions cover activation success
-versus queued/failed attempts, timely activation capability, cohort maturity,
-W1/W4 boundaries, occurrence time, internal/disabled/deleted exclusion,
-monitoring deduplication, voice classification, account-less login isolation,
-custom-screen-only reporting, stale auth snapshots, and late-event replacement.
+versus queued/failed attempts, ordered account-to-bridge-to-project-to-message
+progression, timely activation capability, cohort maturity, W1/W4 boundaries,
+occurrence time, internal/disabled/deleted exclusion, the keyed publication
+guard, monitoring deduplication, voice classification, account-less login
+isolation, custom-screen-only reporting, stale auth snapshots, and late-event
+replacement.
 
 ### Apply schedules
 
@@ -850,6 +893,12 @@ started runs can overlap. The SQL scripts therefore enforce same-run auth and
 upstream watermark guards before publication, and each write is transactional
 or idempotent. Do not weaken those guards or assume schedule timing provides
 mutual exclusion.
+
+Keyed transforms and permanent deletion tombstones also advance the shared
+`keyed_publication_guard` singleton inside their transactions. Every transform
+captures the epoch before staging and fails if it changes, while an overlapping
+tombstone/publication causes a transaction conflict. This prevents a staged
+aggregate from republishing a user whose tombstone arrived concurrently.
 
 Before creating or updating any transfer config, `--apply-schedules` lists
 scheduled-query configs in the location. If any display name beginning with
@@ -1013,6 +1062,12 @@ approved change in the restricted operations record.
 Privacy deletion is an isolated, idempotent source-to-warehouse flow. It is not
 an ad hoc console query and not a public route.
 
+The required repository preflight for any privacy-job change is:
+
+```bash
+dart tool/product_analytics/privacy_deletion/privacy_deletion_test.dart
+```
+
 ### 1. Source suppression and handoff
 
 After independently verifying the requester and external request ID, run the
@@ -1085,12 +1140,14 @@ checked-in `20_user_activity_daily.sql` -> `30_user_milestones.sql` ->
 The command adds and verifies the permanent deletion exclusion first, then
 performs one immediate privacy-preserving raw/curated cleanup and rebuild. It
 reads auth-export readiness exactly once; it never polls or sleeps inside the
-process. If no successful export has `run_cutoff >= suppressed_at`, the command
-records a bounded retryable outcome and exits. The approved external job or
-operator must run the auth export and invoke the same idempotent deletion
-command again. The preliminary pass deliberately does not mutate auth-private
-publication while an older export may still own that snapshot. Once a later
-invocation observes the qualifying export, the final pass deletes the key from
+process. If no successful export has `run_cutoff >= suppressed_at`, or its
+source cutoff/publication is stale or future-dated under the warehouse
+freshness policy, the command records a bounded retryable outcome and exits. The
+approved external job or operator must run the auth export and invoke the same
+idempotent deletion command again. The preliminary pass deliberately does not
+mutate auth-private publication while an older export may still own that
+snapshot. Once a later invocation observes the qualifying export, the final
+pass deletes the key from
 auth-private and curated keyed tables, repeats the fixed rebuild, verifies
 keyed/raw absence and post-request transform state, and only then marks the
 request complete. Do not declare warehouse completion before both the
@@ -1168,6 +1225,10 @@ age/status, deletes newly landed keyed rows, and resubmits newly discovered app
 instances through `submitUserDeletion`. It persists no account-install mapping
 and automatically uses the same fixed checked-in 20 -> 30 -> 40 rebuild chain;
 there is no operator-supplied rebuild path or command.
+Before any auth-private cleanup or checkpoint advancement, the sweep requires a
+fresh successful auth export whose cutoff covers the newest tombstone. A stale
+or pre-tombstone export produces a bounded retryable result without cleanup or
+checkpoint advancement.
 
 The enforceable promise is source/warehouse suppression plus recurring removal
 of future **keyed uploads**. An automatic-only installation that never emitted a

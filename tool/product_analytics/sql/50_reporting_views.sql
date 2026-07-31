@@ -304,7 +304,6 @@ SELECT
   schema_version,
   platform,
   app_version,
-  app_build,
   provider,
   SUM(IF(event_name = 'login_attempt_started', event_count, 0)) AS started_events,
   SUM(IF(event_name = 'login_attempt_completed', event_count, 0)) AS completed_events,
@@ -322,7 +321,7 @@ SELECT
   LOGICAL_OR(includes_internal_test_traffic) AS includes_internal_test_traffic,
   MAX(refreshed_at) AS refreshed_at
 FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.installation_login_daily`
-GROUP BY event_date, schema_version, platform, app_version, app_build, provider;
+GROUP BY event_date, schema_version, platform, app_version, provider;
 
 CREATE OR REPLACE VIEW `{{PROJECT_ID}}.{{REPORTING_DATASET_ID}}.screen_usage`
 OPTIONS (description = 'Canonical custom product_screen_viewed usage; Firebase-native screen_view is excluded') AS
@@ -331,7 +330,6 @@ SELECT
   week_end,
   platform,
   app_version,
-  app_build,
   screen,
   unique_users,
   view_count,
@@ -346,7 +344,6 @@ SELECT
   metric_name,
   platform,
   app_version,
-  app_build,
   surface,
   channel,
   install_method,
@@ -410,6 +407,7 @@ latest_complete_activation AS (
   SELECT *
   FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.activation_cohorts`
   WHERE cohort_week_end < CURRENT_DATE('UTC')
+    AND cohort_week_end < DATE(data_as_of_at)
   ORDER BY cohort_week DESC
   LIMIT 1
 ),
@@ -589,8 +587,7 @@ app_distribution AS (
     'account_event_rows' AS metric_name,
     CONCAT(
       COALESCE(platform, 'unknown'), '/',
-      COALESCE(app_version, 'unknown'), '/',
-      COALESCE(app_build, 'unknown')
+      COALESCE(app_version, 'unknown')
     ) AS dimension_value,
     COUNT(*) AS metric_count,
     CAST(NULL AS FLOAT64) AS metric_rate,
@@ -601,7 +598,7 @@ app_distribution AS (
   FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.events_flattened`
   WHERE source_export_date BETWEEN DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 425 DAY)
     AND DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 1 DAY)
-  GROUP BY platform, app_version, app_build
+  GROUP BY platform, app_version
 )
 SELECT * FROM pipeline
 UNION ALL SELECT * FROM quality_counters

@@ -31,6 +31,7 @@ DECLARE retained_start_date DATE;
 DECLARE first_complete_behavioral_week DATE;
 DECLARE deletion_exclusion_count INT64;
 DECLARE deletion_exclusion_max_updated_at TIMESTAMP;
+DECLARE keyed_publication_epoch INT64;
 
 SET measurement_config = (
   SELECT AS STRUCT raw_export_start_at, behavioral_schema_v1_start_at
@@ -156,9 +157,32 @@ SET (deletion_exclusion_count, deletion_exclusion_max_updated_at) = (
   SELECT AS STRUCT COUNT(*), MAX(updated_at)
   FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_deletion_exclusions`
 );
+SET keyed_publication_epoch = (
+  SELECT publication_epoch
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard`
+  WHERE guard_key = 'singleton'
+);
+ASSERT keyed_publication_epoch IS NOT NULL
+  AS 'The keyed publication guard singleton is required';
 
 CREATE TEMP TABLE current_user_stage AS
-SELECT milestone.*
+SELECT
+  milestone.*,
+  CASE
+    WHEN milestone.bridge_registered_at >= TIMESTAMP_SUB(milestone.account_created_at, INTERVAL 300 SECOND)
+    THEN milestone.bridge_registered_at
+  END AS ordered_bridge_registered_at,
+  CASE
+    WHEN milestone.bridge_registered_at >= TIMESTAMP_SUB(milestone.account_created_at, INTERVAL 300 SECOND)
+      AND milestone.project_available_at >= TIMESTAMP_SUB(milestone.bridge_registered_at, INTERVAL 300 SECOND)
+    THEN milestone.project_available_at
+  END AS ordered_project_available_at,
+  CASE
+    WHEN milestone.bridge_registered_at >= TIMESTAMP_SUB(milestone.account_created_at, INTERVAL 300 SECOND)
+      AND milestone.project_available_at >= TIMESTAMP_SUB(milestone.bridge_registered_at, INTERVAL 300 SECOND)
+      AND milestone.full_activation_at >= TIMESTAMP_SUB(milestone.project_available_at, INTERVAL 300 SECOND)
+    THEN milestone.full_activation_at
+  END AS ordered_full_activation_at
 FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.user_milestones` AS milestone
 INNER JOIN `{{PROJECT_ID}}.{{AUTH_DATASET_ID}}.auth_user_milestones` AS auth USING (user_key)
 WHERE DATE(milestone.account_created_at) BETWEEN retained_start_date AND data_as_of_date
@@ -218,6 +242,7 @@ SELECT
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
+    AND ordered_bridge_registered_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
   ) AS activation_capable_accounts,
   COUNTIF(
@@ -225,73 +250,79 @@ SELECT
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
-    AND project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 1 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 1 DAY)
   ) AS project_available_within_1_day,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 7 DAY)
-    AND project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 7 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 7 DAY)
   ) AS project_available_within_7_days,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 30 DAY)
-    AND project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 30 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 30 DAY)
   ) AS project_available_within_30_days,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 1 DAY)
   ) AS activation_eligible_1_day_accounts,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 1 DAY)
-    AND full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 1 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 1 DAY)
+    AND ordered_full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 1 DAY)
   ) AS activated_within_1_day,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 7 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 7 DAY)
   ) AS activation_eligible_7_day_accounts,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 7 DAY)
-    AND full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 7 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 7 DAY)
+    AND ordered_full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 7 DAY)
   ) AS activated_within_7_days,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 30 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 30 DAY)
   ) AS activation_eligible_30_day_accounts,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
     AND account_created_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 30 DAY)
-    AND full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 30 DAY)
+    AND ordered_project_available_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 30 DAY)
+    AND ordered_full_activation_at <= TIMESTAMP_ADD(account_created_at, INTERVAL 30 DAY)
   ) AS activated_within_30_days,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
-    AND full_activation_at IS NOT NULL
+    AND ordered_full_activation_at IS NOT NULL
     AND full_activation_source = 'existing_session'
   ) AS existing_session_activations,
   COUNTIF(
     account_created_at >= measurement_config.behavioral_schema_v1_start_at
     AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
       AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
-    AND full_activation_at IS NOT NULL
+    AND ordered_full_activation_at IS NOT NULL
     AND full_activation_source = 'remote_created_session'
   ) AS remote_created_session_activations
 FROM current_user_stage
@@ -301,36 +332,36 @@ CREATE TEMP TABLE activation_time_stage AS
 SELECT
   DATE_TRUNC(DATE(account_created_at), WEEK(MONDAY)) AS cohort_week,
   APPROX_QUANTILES(
-    GREATEST(TIMESTAMP_DIFF(full_activation_at, account_created_at, SECOND), 0),
+    GREATEST(TIMESTAMP_DIFF(ordered_full_activation_at, account_created_at, SECOND), 0),
     100
   )[OFFSET(50)] AS time_to_activation_p50_seconds,
   APPROX_QUANTILES(
-    GREATEST(TIMESTAMP_DIFF(full_activation_at, account_created_at, SECOND), 0),
+    GREATEST(TIMESTAMP_DIFF(ordered_full_activation_at, account_created_at, SECOND), 0),
     100
   )[OFFSET(75)] AS time_to_activation_p75_seconds
 FROM current_user_stage
 WHERE account_created_at >= measurement_config.behavioral_schema_v1_start_at
   AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
     AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
-  AND full_activation_at IS NOT NULL
+  AND ordered_full_activation_at IS NOT NULL
 GROUP BY cohort_week;
 
 CREATE TEMP TABLE project_time_stage AS
 SELECT
   DATE_TRUNC(DATE(account_created_at), WEEK(MONDAY)) AS cohort_week,
   APPROX_QUANTILES(
-    GREATEST(TIMESTAMP_DIFF(project_available_at, account_created_at, SECOND), 0),
+    GREATEST(TIMESTAMP_DIFF(ordered_project_available_at, account_created_at, SECOND), 0),
     100
   )[OFFSET(50)] AS time_to_project_p50_seconds,
   APPROX_QUANTILES(
-    GREATEST(TIMESTAMP_DIFF(project_available_at, account_created_at, SECOND), 0),
+    GREATEST(TIMESTAMP_DIFF(ordered_project_available_at, account_created_at, SECOND), 0),
     100
   )[OFFSET(75)] AS time_to_project_p75_seconds
 FROM current_user_stage
 WHERE account_created_at >= measurement_config.behavioral_schema_v1_start_at
   AND activation_capable_at BETWEEN TIMESTAMP_SUB(account_created_at, INTERVAL 300 SECOND)
     AND TIMESTAMP_ADD(account_created_at, INTERVAL 24 HOUR)
-  AND project_available_at IS NOT NULL
+  AND ordered_project_available_at IS NOT NULL
 GROUP BY cohort_week;
 
 CREATE TEMP TABLE activation_cohort_stage AS
@@ -399,25 +430,25 @@ WHERE (event_name = 'session_activity_viewed' AND activity_state = 'non_empty')
 CREATE TEMP TABLE retention_user_stage AS
 SELECT
   user.user_key,
-  user.full_activation_at,
-  DATE_TRUNC(DATE(user.full_activation_at), WEEK(MONDAY)) AS activation_week,
-  user.full_activation_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 14 DAY) AS w1_eligible,
+  user.ordered_full_activation_at AS full_activation_at,
+  DATE_TRUNC(DATE(user.ordered_full_activation_at), WEEK(MONDAY)) AS activation_week,
+  user.ordered_full_activation_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 14 DAY) AS w1_eligible,
   COALESCE(LOGICAL_OR(
-    event.occurred_at >= TIMESTAMP_ADD(user.full_activation_at, INTERVAL 7 DAY)
-    AND event.occurred_at < TIMESTAMP_ADD(user.full_activation_at, INTERVAL 14 DAY)
+    event.occurred_at >= TIMESTAMP_ADD(user.ordered_full_activation_at, INTERVAL 7 DAY)
+    AND event.occurred_at < TIMESTAMP_ADD(user.ordered_full_activation_at, INTERVAL 14 DAY)
   ), FALSE) AS w1_retained,
-  user.full_activation_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 35 DAY) AS w4_eligible,
+  user.ordered_full_activation_at <= TIMESTAMP_SUB(data_as_of_at, INTERVAL 35 DAY) AS w4_eligible,
   COALESCE(LOGICAL_OR(
-    event.occurred_at >= TIMESTAMP_ADD(user.full_activation_at, INTERVAL 28 DAY)
-    AND event.occurred_at < TIMESTAMP_ADD(user.full_activation_at, INTERVAL 35 DAY)
+    event.occurred_at >= TIMESTAMP_ADD(user.ordered_full_activation_at, INTERVAL 28 DAY)
+    AND event.occurred_at < TIMESTAMP_ADD(user.ordered_full_activation_at, INTERVAL 35 DAY)
   ), FALSE) AS w4_retained
 FROM current_user_stage AS user
 LEFT JOIN meaningful_event_stage AS event USING (user_key)
-WHERE user.full_activation_at IS NOT NULL
+WHERE user.ordered_full_activation_at IS NOT NULL
   AND user.account_created_at >= measurement_config.behavioral_schema_v1_start_at
   AND user.activation_capable_at BETWEEN TIMESTAMP_SUB(user.account_created_at, INTERVAL 300 SECOND)
     AND TIMESTAMP_ADD(user.account_created_at, INTERVAL 24 HOUR)
-GROUP BY user.user_key, user.full_activation_at, activation_week, w1_eligible, w4_eligible;
+GROUP BY user.user_key, user.ordered_full_activation_at, activation_week, w1_eligible, w4_eligible;
 
 CREATE TEMP TABLE retention_cohort_stage AS
 SELECT
@@ -566,7 +597,6 @@ SELECT
   DATE_ADD(DATE_TRUNC(DATE(occurred_at), WEEK(MONDAY)), INTERVAL 6 DAY) AS week_end,
   platform,
   app_version,
-  app_build,
   screen,
   COUNT(DISTINCT user_key) AS unique_users,
   COUNT(*) AS view_count,
@@ -575,7 +605,7 @@ FROM eligible_event_stage
 WHERE event_name = 'product_screen_viewed'
   AND occurred_at >= TIMESTAMP(first_complete_behavioral_week)
   AND DATE_ADD(DATE_TRUNC(DATE(occurred_at), WEEK(MONDAY)), INTERVAL 6 DAY) <= data_as_of_date
-GROUP BY week_start, week_end, platform, app_version, app_build, screen;
+GROUP BY week_start, week_end, platform, app_version, screen;
 
 CREATE TEMP TABLE onboarding_friction_stage AS
 WITH classified AS (
@@ -598,7 +628,6 @@ WITH classified AS (
     END AS metric_name,
     platform,
     app_version,
-    app_build,
     surface,
     channel,
     method AS install_method,
@@ -614,7 +643,6 @@ SELECT
   metric_name,
   platform,
   app_version,
-  app_build,
   surface,
   channel,
   install_method,
@@ -634,7 +662,6 @@ GROUP BY
   metric_name,
   platform,
   app_version,
-  app_build,
   surface,
   channel,
   install_method,
@@ -698,6 +725,14 @@ ASSERT deletion_exclusion_count = (
 ) AS 'Permanent deletion exclusions changed while activation and retention aggregates were staged';
 
 BEGIN TRANSACTION;
+
+UPDATE `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard`
+SET publication_epoch = publication_epoch + 1,
+    updated_at = CURRENT_TIMESTAMP()
+WHERE guard_key = 'singleton'
+  AND publication_epoch = keyed_publication_epoch;
+ASSERT @@row_count = 1
+  AS 'A tombstone or keyed publication changed while aggregates were staged';
 
 DELETE FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.activation_cohorts` WHERE cohort_week >= DATE '0001-01-01';
 INSERT INTO `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.activation_cohorts` SELECT * FROM activation_cohort_stage;

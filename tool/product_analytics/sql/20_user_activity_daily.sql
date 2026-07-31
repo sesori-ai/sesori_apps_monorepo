@@ -24,6 +24,7 @@ DECLARE events_completed_at TIMESTAMP;
 DECLARE retained_start_date DATE;
 DECLARE deletion_exclusion_count INT64;
 DECLARE deletion_exclusion_max_updated_at TIMESTAMP;
+DECLARE keyed_publication_epoch INT64;
 DECLARE rows_inserted INT64 DEFAULT 0;
 
 SET measurement_config = (
@@ -112,6 +113,13 @@ SET (deletion_exclusion_count, deletion_exclusion_max_updated_at) = (
   SELECT AS STRUCT COUNT(*), MAX(updated_at)
   FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.permanent_deletion_exclusions`
 );
+SET keyed_publication_epoch = (
+  SELECT publication_epoch
+  FROM `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard`
+  WHERE guard_key = 'singleton'
+);
+ASSERT keyed_publication_epoch IS NOT NULL
+  AS 'The keyed publication guard singleton is required';
 
 CREATE TEMP TABLE gated_event_stage AS
 WITH internal_keys AS (
@@ -279,6 +287,14 @@ ASSERT deletion_exclusion_count = (
 ) AS 'Permanent deletion exclusions changed while user activity was staged';
 
 BEGIN TRANSACTION;
+
+UPDATE `{{PROJECT_ID}}.{{CONTROLS_DATASET_ID}}.keyed_publication_guard`
+SET publication_epoch = publication_epoch + 1,
+    updated_at = CURRENT_TIMESTAMP()
+WHERE guard_key = 'singleton'
+  AND publication_epoch = keyed_publication_epoch;
+ASSERT @@row_count = 1
+  AS 'A tombstone or keyed publication changed while user activity was staged';
 
 DELETE FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.user_activity_daily`
 WHERE activity_date >= DATE '0001-01-01';

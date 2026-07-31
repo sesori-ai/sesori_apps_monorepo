@@ -62,6 +62,7 @@ final class ApplicationDefaultAccessTokenProvider
       );
     }
     _metadataClient.connectionTimeout = metadataTimeout;
+    _metadataClient.findProxy = (uri) => 'DIRECT';
   }
 
   final List<String> _scopes;

@@ -153,6 +153,27 @@ ASSERT NOT (account_created_at <= TIMESTAMP_SUB(
   INTERVAL 7 DAY
 )) AS 'A seven-day activation cohort is immature one microsecond before its boundary';
 
+CREATE TEMP TABLE ordered_funnel_fixture (
+  case_name STRING,
+  account_at TIMESTAMP,
+  bridge_at TIMESTAMP,
+  project_at TIMESTAMP,
+  message_at TIMESTAMP
+);
+INSERT INTO ordered_funnel_fixture VALUES
+  ('ordered', account_created_at, TIMESTAMP_ADD(account_created_at, INTERVAL 1 HOUR), TIMESTAMP_ADD(account_created_at, INTERVAL 2 HOUR), TIMESTAMP_ADD(account_created_at, INTERVAL 3 HOUR)),
+  ('project_before_bridge', account_created_at, TIMESTAMP_ADD(account_created_at, INTERVAL 2 HOUR), TIMESTAMP_ADD(account_created_at, INTERVAL 1 HOUR), TIMESTAMP_ADD(account_created_at, INTERVAL 3 HOUR)),
+  ('message_before_project', account_created_at, TIMESTAMP_ADD(account_created_at, INTERVAL 1 HOUR), TIMESTAMP_ADD(account_created_at, INTERVAL 3 HOUR), TIMESTAMP_ADD(account_created_at, INTERVAL 2 HOUR));
+
+ASSERT (
+  SELECT COUNTIF(
+    bridge_at >= TIMESTAMP_SUB(account_at, INTERVAL 300 SECOND)
+    AND project_at >= TIMESTAMP_SUB(bridge_at, INTERVAL 300 SECOND)
+    AND message_at >= TIMESTAMP_SUB(project_at, INTERVAL 300 SECOND)
+  )
+  FROM ordered_funnel_fixture
+) = 1 AS 'Activation progression must remain account to bridge to project to message';
+
 CREATE TEMP TABLE retention_maturity_fixture (
   activation_week DATE,
   w1_eligible BOOL,

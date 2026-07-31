@@ -286,10 +286,14 @@ final class AuthExportSnapshot {
   const AuthExportSnapshot({
     required this.runCutoff,
     required this.publishedAt,
+    required this.maxAge,
+    required this.futureClockAllowance,
   });
 
   final DateTime runCutoff;
   final DateTime publishedAt;
+  final Duration maxAge;
+  final Duration futureClockAllowance;
 }
 
 enum AuthExportReadiness {

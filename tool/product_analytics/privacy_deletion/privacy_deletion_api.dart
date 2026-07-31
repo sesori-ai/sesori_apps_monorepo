@@ -15,6 +15,7 @@ final class PrivacyDeletionWarehouseSchema {
     required this.reportingDataset,
     required this.targetsTable,
     required this.exclusionsTable,
+    required this.publicationGuardTable,
     required this.authExportRunsTable,
     required this.sweepStateTable,
     required List<BigQueryTableReference> authKeyedTables,
@@ -31,6 +32,10 @@ final class PrivacyDeletionWarehouseSchema {
        ) {
     _validateTableDataset(table: targetsTable, dataset: privacyDataset);
     _validateTableDataset(table: exclusionsTable, dataset: controlsDataset);
+    _validateTableDataset(
+      table: publicationGuardTable,
+      dataset: controlsDataset,
+    );
     _validateTableDataset(table: authExportRunsTable, dataset: authDataset);
     _validateTableDataset(table: sweepStateTable, dataset: controlsDataset);
     for (final table in this.authKeyedTables) {
@@ -52,6 +57,7 @@ final class PrivacyDeletionWarehouseSchema {
   final BigQueryDatasetReference reportingDataset;
   final BigQueryTableReference targetsTable;
   final BigQueryTableReference exclusionsTable;
+  final BigQueryTableReference publicationGuardTable;
   final BigQueryTableReference authExportRunsTable;
   final BigQueryTableReference sweepStateTable;
   final List<BigQueryTableReference> authKeyedTables;
@@ -196,6 +202,9 @@ final class FixedAggregateRebuilder implements AggregateRebuilder {
   Future<void> _verifyCompletedTransforms({
     required DateTime rebuildStartedAt,
   }) async {
+    final requiredModelNames = AggregateTransform.values
+        .map((transform) => "    '${transform.modelName}'")
+        .join(',\n');
     final result = await _client.execute(
       statement: BigQueryStatement(
         sql:
@@ -209,9 +218,7 @@ WITH latest_auth_snapshot AS (
 required_models AS (
   SELECT model_name
   FROM UNNEST([
-    'user_activity_daily',
-    'user_milestones',
-    'activation_retention'
+$requiredModelNames
   ]) AS model_name
 )
 SELECT COUNT(*) AS matching_count
@@ -398,6 +405,15 @@ LIMIT 2
       statement: BigQueryStatement(
         sql:
             '''
+BEGIN TRANSACTION;
+
+UPDATE ${_schema.publicationGuardTable.sqlIdentifier}
+SET publication_epoch = publication_epoch + 1,
+    updated_at = CURRENT_TIMESTAMP()
+WHERE guard_key = 'singleton';
+
+ASSERT @@row_count = 1 AS 'The keyed publication guard singleton is required';
+
 MERGE ${_schema.exclusionsTable.sqlIdentifier} AS destination
 USING (
   SELECT @user_key AS user_key, @suppressed_at AS suppressed_at
@@ -409,7 +425,9 @@ WHEN MATCHED AND source.suppressed_at < destination.suppressed_at THEN
     updated_at = CURRENT_TIMESTAMP()
 WHEN NOT MATCHED THEN
   INSERT (user_key, suppressed_at, created_at, updated_at)
-  VALUES (source.user_key, source.suppressed_at, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
+  VALUES (source.user_key, source.suppressed_at, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP());
+
+COMMIT TRANSACTION;
 ''',
         parameters: <BigQueryParameter>[
           BigQueryStringParameter(
@@ -457,13 +475,22 @@ WHERE user_key = @user_key
       statement: BigQueryStatement(
         sql:
             '''
-SELECT run_cutoff, published_at
-FROM ${_schema.authExportRunsTable.sqlIdentifier}
-ORDER BY published_at DESC, run_cutoff DESC
+SELECT
+  export.run_cutoff,
+  export.published_at,
+  config.auth_snapshot_max_age_hours,
+  config.clock_skew_allowance_seconds
+FROM ${_schema.authExportRunsTable.sqlIdentifier} AS export
+CROSS JOIN `${_schema.controlsDataset.projectId.value}.${_schema.controlsDataset.datasetId.value}.analytics_measurement_config` AS config
+WHERE config.config_key = 'singleton'
+ORDER BY export.published_at DESC, export.run_cutoff DESC
 LIMIT 1
 ''',
         parameters: const <BigQueryParameter>[],
-        referencedDatasets: <BigQueryDatasetReference>[_schema.authDataset],
+        referencedDatasets: <BigQueryDatasetReference>[
+          _schema.authDataset,
+          _schema.controlsDataset,
+        ],
         isMutation: false,
         dryRun: false,
       ),
@@ -480,6 +507,18 @@ LIMIT 1
         publishedAt: _requiredTimestamp(
           row: result.rows.single,
           field: 'published_at',
+        ),
+        maxAge: Duration(
+          hours: _requiredPositiveInt(
+            row: result.rows.single,
+            field: 'auth_snapshot_max_age_hours',
+          ),
+        ),
+        futureClockAllowance: Duration(
+          seconds: _requiredPositiveInt(
+            row: result.rows.single,
+            field: 'clock_skew_allowance_seconds',
+          ),
         ),
       );
     } catch (error, stackTrace) {
@@ -1385,6 +1424,7 @@ ORDER BY table_name
       SELECT parameter.value.string_value
       FROM UNNEST(event_params) AS parameter
       WHERE parameter.key = 'user_key'
+        AND parameter.value.string_value IS NOT NULL
       LIMIT 1
     )[SAFE_OFFSET(0)] AS user_key
   FROM ${table.sqlIdentifier}
@@ -1551,6 +1591,22 @@ DateTime _requiredTimestamp({
     throw BigQueryRowShapeException(field: field);
   }
   return parsed.toUtc();
+}
+
+int _requiredPositiveInt({
+  required Map<String, Object?> row,
+  required String field,
+}) {
+  final raw = row[field];
+  final value = switch (raw) {
+    int value => value,
+    String value => int.tryParse(value),
+    _ => null,
+  };
+  if (value == null || value < 1) {
+    throw BigQueryRowShapeException(field: field);
+  }
+  return value;
 }
 
 bool _isCredentialFailure({required Object error}) {

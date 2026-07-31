@@ -17,6 +17,12 @@ DECLARE previous_source_end_date DATE DEFAULT (
   WHERE model_name = 'installation_login_daily'
   LIMIT 1
 );
+DECLARE previous_completed_at TIMESTAMP DEFAULT (
+  SELECT completed_at
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
+  WHERE model_name = 'installation_login_daily'
+  LIMIT 1
+);
 DECLARE scan_start_date DATE;
 
 SET scan_start_date = GREATEST(
@@ -69,7 +75,6 @@ parameterized AS (
     raw.* EXCEPT (event_params),
     (
       SELECT AS STRUCT
-        MAX(IF(parameter.key = 'app_build', COALESCE(parameter.value.string_value, CAST(parameter.value.int_value AS STRING)), NULL)) AS app_build,
         MAX(IF(parameter.key = 'schema_version', parameter.value.int_value, NULL)) AS schema_version,
         MAX(IF(parameter.key = 'provider', parameter.value.string_value, NULL)) AS provider,
         MAX(IF(parameter.key = 'failure_kind', parameter.value.string_value, NULL)) AS failure_kind,
@@ -129,7 +134,6 @@ deduplicated AS (
         schema_version,
         platform,
         app_version,
-        app_build,
         provider,
         failure_kind,
         parameter_shape_valid,
@@ -149,7 +153,6 @@ SELECT
   schema_version,
   platform,
   app_version,
-  app_build,
   provider,
   IF(event_name = 'login_attempt_failed', failure_kind, NULL) AS failure_kind,
   COUNT(*) AS event_count,
@@ -161,7 +164,7 @@ WHERE duplicate_rank = 1
   AND parameter_shape_valid
   AND parameter_semantics_valid
   AND bounded_enum_valid
-GROUP BY source_export_date, event_date, event_name, schema_version, platform, app_version, app_build, provider, failure_kind;
+GROUP BY source_export_date, event_date, event_name, schema_version, platform, app_version, provider, failure_kind;
 
 CREATE TEMP TABLE quality_stage AS
 SELECT
@@ -186,6 +189,18 @@ SELECT
   MAX(emitted_at) AS latest_emitted_at
 FROM login_candidate_stage;
 
+ASSERT previous_source_end_date IS NOT DISTINCT FROM (
+  SELECT source_end_date
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
+  WHERE model_name = 'installation_login_daily'
+  LIMIT 1
+) AND previous_completed_at IS NOT DISTINCT FROM (
+  SELECT completed_at
+  FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.transform_state`
+  WHERE model_name = 'installation_login_daily'
+  LIMIT 1
+) AS 'installation_login_daily state changed while the transform was staged';
+
 BEGIN TRANSACTION;
 
 DELETE FROM `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.installation_login_daily`
@@ -198,7 +213,6 @@ INSERT INTO `{{PROJECT_ID}}.{{CURATED_DATASET_ID}}.installation_login_daily` (
   schema_version,
   platform,
   app_version,
-  app_build,
   provider,
   failure_kind,
   event_count,
@@ -213,7 +227,10 @@ USING (
   FROM quality_stage AS quality
 ) AS source
 ON target.model_name = source.model_name
-WHEN MATCHED THEN UPDATE SET
+WHEN MATCHED
+  AND target.source_end_date IS NOT DISTINCT FROM previous_source_end_date
+  AND target.completed_at IS NOT DISTINCT FROM previous_completed_at
+THEN UPDATE SET
   source_start_date = scan_start_date,
   source_end_date = scan_end_date,
   completed_at = CURRENT_TIMESTAMP(),
@@ -282,5 +299,7 @@ WHEN NOT MATCHED THEN INSERT (
   source.latest_emitted_at,
   NULL
 );
+ASSERT @@row_count = 1
+  AS 'installation_login_daily state changed before watermark publication';
 
 COMMIT TRANSACTION;

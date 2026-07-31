@@ -2,10 +2,14 @@ import 'privacy_deletion_models.dart';
 import 'privacy_deletion_repository.dart';
 
 final class PrivacyDeletionService {
-  const PrivacyDeletionService({required PrivacyDeletionRepository repository})
-    : _repository = repository;
+  const PrivacyDeletionService({
+    required PrivacyDeletionRepository repository,
+    required DateTime Function() now,
+  }) : _repository = repository,
+       _now = now;
 
   final PrivacyDeletionRepository _repository;
+  final DateTime Function() _now;
 
   Future<PrivacyDeletionSummary> runRequest({
     required PrivacyRequestId requestId,
@@ -36,7 +40,7 @@ final class PrivacyDeletionService {
           dryRun: dryRun,
         ),
       );
-      readiness = await _repository.checkTombstoneAwareAuthExport(
+      readiness = await _checkTombstoneAwareAuthExport(
         suppressedAt: target.suppressedAt,
       );
 
@@ -170,6 +174,35 @@ final class PrivacyDeletionService {
     );
   }
 
+  Future<AuthExportReadiness> _checkTombstoneAwareAuthExport({
+    required DateTime suppressedAt,
+  }) async {
+    return evaluateAuthExportReadiness(
+      snapshot: await _repository.loadLatestSuccessfulAuthExport(),
+      suppressedAt: suppressedAt,
+      now: _now(),
+    );
+  }
+
+  static AuthExportReadiness evaluateAuthExportReadiness({
+    required AuthExportSnapshot? snapshot,
+    required DateTime suppressedAt,
+    required DateTime now,
+  }) {
+    final current = now.toUtc();
+    if (snapshot == null ||
+        snapshot.runCutoff.isBefore(suppressedAt.toUtc()) ||
+        snapshot.runCutoff.isBefore(current.subtract(snapshot.maxAge)) ||
+        snapshot.runCutoff.isAfter(snapshot.publishedAt) ||
+        snapshot.publishedAt.isBefore(current.subtract(snapshot.maxAge)) ||
+        snapshot.publishedAt.isAfter(
+          current.add(snapshot.futureClockAllowance),
+        )) {
+      return AuthExportReadiness.notReady;
+    }
+    return AuthExportReadiness.ready;
+  }
+
   Future<CleanupResult> _cleanupSweep({
     required List<PermanentDeletionTombstone> tombstones,
     required UtcDateRange discoveryRange,
@@ -272,6 +305,7 @@ final class PrivacyDeletionService {
   Future<PrivacyDeletionSummary> runSweep({required bool dryRun}) async {
     var cleanup = const CleanupResult.none();
     var targetCount = 0;
+    AuthExportReadiness? readiness;
     try {
       await _repository.validateWarehouseInventory(
         allowAuthStagingTables: false,
@@ -279,6 +313,25 @@ final class PrivacyDeletionService {
       final range = await _repository.nextSweepRange();
       final tombstones = await _repository.loadAllPermanentTombstones();
       targetCount = tombstones.length;
+      if (tombstones.isNotEmpty) {
+        final latestSuppressedAt = tombstones
+            .map((tombstone) => tombstone.suppressedAt)
+            .reduce((left, right) => left.isAfter(right) ? left : right);
+        readiness = await _checkTombstoneAwareAuthExport(
+          suppressedAt: latestSuppressedAt,
+        );
+        if (readiness == AuthExportReadiness.notReady) {
+          return PrivacyDeletionSummary(
+            operation: PrivacyDeletionOperationKind.sweep,
+            outcome: PrivacyDeletionOutcome.retryable,
+            dryRun: dryRun,
+            targetsConsidered: targetCount,
+            authExportReadiness: readiness,
+            cleanup: cleanup,
+            failureKind: PrivacyDeletionFailureKind.authExportNotReady,
+          );
+        }
+      }
       cleanup = await _cleanupSweep(
         tombstones: tombstones,
         discoveryRange: range,
@@ -297,7 +350,7 @@ final class PrivacyDeletionService {
             : PrivacyDeletionOutcome.completed,
         dryRun: dryRun,
         targetsConsidered: targetCount,
-        authExportReadiness: null,
+        authExportReadiness: readiness,
         cleanup: cleanup,
         failureKind: null,
       );
@@ -307,7 +360,7 @@ final class PrivacyDeletionService {
         outcome: PrivacyDeletionOutcome.retryable,
         dryRun: dryRun,
         targetsConsidered: targetCount,
-        authExportReadiness: null,
+        authExportReadiness: readiness,
         cleanup: cleanup,
         failureKind: error.failureKind,
       );
@@ -323,7 +376,7 @@ final class PrivacyDeletionService {
         outcome: PrivacyDeletionOutcome.retryable,
         dryRun: dryRun,
         targetsConsidered: targetCount,
-        authExportReadiness: null,
+        authExportReadiness: readiness,
         cleanup: cleanup,
         failureKind: failure.failureKind,
       );
