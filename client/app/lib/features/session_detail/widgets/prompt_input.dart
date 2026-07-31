@@ -642,7 +642,15 @@ class _PromptInputState extends State<PromptInput> {
         mainAxisSize: .min,
         children: [
           ?widget.header,
-          _buildComposerTopSlot(context),
+          // A focused composer consumes the first route pop so Android back
+          // dismisses the keyboard before a later back leaves the screen.
+          PopScope(
+            canPop: !_focusNode.hasFocus,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop && _focusNode.hasFocus) _focusNode.unfocus();
+            },
+            child: _buildComposerTopSlot(context),
+          ),
 
           // Group only the input container with the text field via a
           // TextFieldTapRegion. The field's default `onTapOutside` unfocuses

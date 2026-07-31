@@ -30,9 +30,22 @@ Widget _buildApp({
   required SessionDetailCubit cubit,
   ChatInputMode chatInputMode = ChatInputMode.voiceFirst,
   StubChatInputModeCubit? chatInputModeCubit,
+  bool startAtPreviousScreen = false,
 }) {
   final router = GoRouter(
+    initialLocation: startAtPreviousScreen ? "/previous" : "/",
     routes: [
+      GoRoute(
+        path: "/previous",
+        builder: (context, state) => Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () => context.push("/"),
+              child: const Text("Open session"),
+            ),
+          ),
+        ),
+      ),
       GoRoute(
         path: "/",
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
@@ -460,6 +473,30 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.arrow_up));
     await tester.pump();
     expect(composerFocus(tester).hasFocus, isTrue, reason: "send must not dismiss the keyboard");
+  });
+
+  testWidgets("system back dismisses the composer keyboard before popping the route", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit, startAtPreviousScreen: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Open session"));
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    final focusNode = composerFocus(tester);
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(focusNode.hasFocus, isFalse);
+    expect(find.byType(SessionDetailBody), findsOneWidget);
+    expect(find.text("Open session"), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SessionDetailBody), findsNothing);
+    expect(find.text("Open session"), findsOneWidget);
   });
 
   testWidgets("opening a composer menu dismisses the keyboard (glass path)", (tester) async {
