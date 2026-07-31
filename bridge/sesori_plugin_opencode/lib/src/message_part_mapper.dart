@@ -33,12 +33,12 @@ class MessagePartMapper {
   static const int _maxRemoteUrlCharacters = 4096;
   static const int _maxMimeCharacters = 255;
   static const int _maxToolAttachmentCount = 4;
-  static const Set<String> _supportedInlineRasterMimes = {
-    "image/bmp",
-    "image/gif",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
+  static const Map<String, Set<String>> _supportedInlineRasterExtensions = {
+    "image/bmp": {"bmp"},
+    "image/gif": {"gif"},
+    "image/jpeg": {"jpg", "jpeg"},
+    "image/png": {"png"},
+    "image/webp": {"webp"},
   };
 
   /// Maps a generated [Part] union to the plugin-facing [PluginMessagePart].
@@ -271,7 +271,7 @@ class MessagePartMapper {
         ? null
         : _normalizedValue(value: headerParts.first, maxCharacters: _maxMimeCharacters);
     final mime = _normalizedMime(mime: raw.mime, fallback: headerMime);
-    if (!_supportedInlineRasterMimes.contains(mime.split(";").first.trim())) {
+    if (!_supportedInlineRasterExtensions.containsKey(mime.split(";").first.trim())) {
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
 
@@ -406,14 +406,7 @@ class MessagePartMapper {
     final extensionStart = filename.lastIndexOf(".");
     if (extensionStart <= 0 || extensionStart == filename.length - 1) return null;
     final extension = filename.substring(extensionStart + 1).toLowerCase();
-    final allowedExtensions = switch (_normalizedMime(mime: mime, fallback: null).split(";").first.trim()) {
-      "image/bmp" => const {"bmp"},
-      "image/gif" => const {"gif"},
-      "image/jpeg" => const {"jpg", "jpeg"},
-      "image/png" => const {"png"},
-      "image/webp" => const {"webp"},
-      _ => const <String>{},
-    };
-    return allowedExtensions.contains(extension) ? filename : null;
+    final normalizedMime = _normalizedMime(mime: mime, fallback: null).split(";").first.trim();
+    return (_supportedInlineRasterExtensions[normalizedMime]?.contains(extension) ?? false) ? filename : null;
   }
 }
