@@ -1544,6 +1544,19 @@ directory name.
 - Record dashboard owner, refresh schedule, metric definitions, and rollback/
   incident steps in the runbook.
 
+**Step 5 completion includes the cloud setup above.** Merging the repository PR
+delivers the reviewed automation and contracts, but does not complete Step 5 by
+itself. After the required security/privacy decisions are approved, the same
+Step 5 work must use the checked-in runbook and tools to create the service
+identities and dataset ACLs, authorize views, apply warehouse schemas, provision
+auth export and privacy jobs, apply transform/deletion schedules, run deployed
+assertions and deletion drills, build/restrict Looker, and record go-live
+evidence. These are tracked delivery tasks, not an out-of-band setup handed to
+the user. The user supplies approvals, restricted values, and any admin-only
+authorization that cannot be delegated; the implementing operator performs and
+verifies the setup. Keep Step 5 open until every applicable cloud and dashboard
+acceptance item passes.
+
 ### Deployability, compatibility, and rollback by step
 
 | State | Independently usable behavior | Deployment prerequisites/order | Rollback boundary |
@@ -1744,3 +1757,13 @@ The work is complete when:
 - The executive page can truthfully report new accounts, setup, full
   activation, WAU/growth, W1/W4 retention when mature, activity depth, and the
   selected feature-adoption metrics without manual spreadsheet logic.
+
+## Final Step — Archive The Completed Plan
+
+After every completion criterion above and every in-scope tracker item is done,
+record the final PR, cloud setup, access, deletion-drill, dashboard, and release
+evidence in `TRACKER.md`. Then, as the last action of this plan, move the entire
+plan directory (including its tracker and supporting files) from
+`.plan/active/user-analytics/` to `.plan/completed/user-analytics/` and commit
+that move. Do not copy it, leave an active duplicate, or archive it while any
+required Step 5 setup or acceptance work remains.

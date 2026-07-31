@@ -142,6 +142,36 @@
   only after production `analytics_activation_ready` appears; foundation-only
   and account-less login events do not qualify.
 
+## Step 5 Cloud Setup And Go-Live
+
+This setup is required Step 5 delivery work, not a prerequisite delegated to the
+user and not a separate future project. PR #641 supplies the reviewed automation
+and runbook. After the user approves the restricted values and security/privacy
+decisions, the implementing operator must execute and verify all unchecked work:
+
+- [ ] Record the approved GA4 privacy posture, exact raw/behavioral UTC start
+  timestamps, service identities, schedule owners, dashboard owner/viewer group,
+  and refresh policy in the restricted deployment record.
+- [ ] Create the separate deployment, auth-export, auth-suppression, transform,
+  privacy-deletion, and Looker identities; remove broad inherited data access;
+  apply the dataset/table IAM matrix and exact authorized-view ACLs; pass every
+  positive and expected-deny access probe.
+- [ ] Apply the same-location warehouse schemas and views with the checked-in
+  deployment tool, run the deployed-schema assertions, and reconcile the first
+  complete raw/auth/curated/reporting data.
+- [ ] Provision and smoke-test the isolated auth export and suppression jobs,
+  transform schedules, request deletion command, and recurring privacy sweep;
+  complete the non-production in-flight export and delayed-upload deletion drill.
+- [ ] Build the restricted three-page Looker report, verify its data sources,
+  maturity/coverage/freshness labels and sharing controls, then record asset IDs
+  and go-live evidence.
+- [ ] Keep Step 5 open until all setup, verification, deletion, access, and
+  dashboard acceptance items pass; merging PR #641 alone does not complete it.
+- [ ] **Final plan action:** after every completion criterion and tracker item is
+  complete, record final evidence and move the entire
+  `.plan/active/user-analytics/` directory to
+  `.plan/completed/user-analytics/`; commit the move and leave no active copy.
+
 ## Implementation Series
 
 The total remains fixed at five rollout steps. Titles retain this slug and step
@@ -164,7 +194,7 @@ patches in one umbrella diff.
 | 4.B/5 | apps monorepo | `[user-analytics] Instrument account-less login outcomes [step 4.B/5]` | PR #634 merged as `5223c27d` on 2026-07-31 | Step 4.A |
 | 4.C/5 | apps monorepo | `[user-analytics] Instrument activation and voice outcomes [step 4.C/5]` | PR #633 merged as `c662a639` on 2026-07-31 | Step 4.B |
 | 4.D/5 | apps monorepo | `[user-analytics] Instrument visible engagement outcomes [step 4.D/5]` | PR #631 merged as `671c67ed` on 2026-07-31 | Step 4.C |
-| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | Local repository assets implemented, metric fixtures passed, and architecture approved; cloud application remains blocked. Billing/budget and 90-day raw expiration are configured, while restricted IAM, GA4 privacy settings, identities, exact timestamps, deployed-schema assertions, and dashboard ownership remain unresolved | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
+| 5/5 | apps monorepo + cloud | `[user-analytics] Add BigQuery metrics and Looker dashboards [step 5/5]` | PR #641 open; local repository assets implemented, metric fixtures passed, and architecture approved. Required Step 5 cloud setup remains tracked above and blocked pending approved restricted values. Billing/budget and 90-day raw expiration are configured, while restricted IAM, GA4 privacy settings, identities, exact timestamps, deployed-schema assertions, jobs/schedules, deletion drill, and dashboard setup remain unresolved | Steps 2 and 4.D, controlled Firebase export, split auth-private/privacy-private/control IAM |
 
 ## Release Evidence
 

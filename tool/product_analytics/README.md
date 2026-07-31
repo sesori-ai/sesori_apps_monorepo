@@ -27,6 +27,10 @@ restricted deployment record:
 - the restricted Looker report owner; and
 - the restricted Looker viewer group.
 
+This block is a safety gate, not a scope boundary. Creating and verifying these
+cloud resources is required Step 5 delivery work after approval; merging the
+repository PR alone does not complete the analytics rollout.
+
 As of 2026-07-31, those approvals are unverified. All mutating commands remain
 blocked even though the raw export, retention expiration, billing, budget, and
 query-quota facts below have been observed.
