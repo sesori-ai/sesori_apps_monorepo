@@ -2155,11 +2155,11 @@ abstract class AppLocalizations {
   /// **'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.'**
   String get newSessionOptionsLegacyBridge;
 
-  /// No description provided for @newSessionOptionsRefreshFailedRetained.
+  /// No description provided for @newSessionOptionsUpdateFailedRetained.
   ///
   /// In en, this message translates to:
-  /// **'Refresh failed. Previously cached options are still available.'**
-  String get newSessionOptionsRefreshFailedRetained;
+  /// **'Couldn’t update options. Previously cached options are still available.'**
+  String get newSessionOptionsUpdateFailedRetained;
 
   /// No description provided for @newSessionOptionsRefreshFailedUnavailable.
   ///

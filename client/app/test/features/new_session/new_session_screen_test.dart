@@ -447,7 +447,7 @@ void main() {
     await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
-    expect(find.text(loc.newSessionOptionsRefreshFailedRetained), findsOneWidget);
+    expect(find.text(loc.newSessionOptionsUpdateFailedRetained), findsOneWidget);
     expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
   });
 

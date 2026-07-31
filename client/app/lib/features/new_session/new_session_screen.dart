@@ -146,7 +146,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
         message = reason.localizedMessage(loc);
         isFailure = true;
       case NewSessionOptionsFailureRetainedState():
-        message = loc.newSessionOptionsRefreshFailedRetained;
+        message = loc.newSessionOptionsUpdateFailedRetained;
         isFailure = true;
       case NewSessionOptionsRefreshFailureUnavailableState():
         message = loc.newSessionOptionsRefreshFailedUnavailable;

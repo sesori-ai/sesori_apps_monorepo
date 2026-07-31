@@ -1109,7 +1109,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.';
 
   @override
-  String get newSessionOptionsRefreshFailedRetained => 'Refresh failed. Previously cached options are still available.';
+  String get newSessionOptionsUpdateFailedRetained =>
+      'Couldn’t update options. Previously cached options are still available.';
 
   @override
   String get newSessionOptionsRefreshFailedUnavailable =>

@@ -267,3 +267,7 @@
   retained/unavailable service outcomes rather than cubit-side typed-failure
   policy. All 102 focused core tests and 27 mobile New Session tests passed, as
   did fatal analysis in module-core, mobile, and desktop plus `git diff --check`.
+- Step 5.B/6 retained-status copy follow-up (2026-07-31): retained failures now
+  use mode-neutral “couldn’t update” guidance so automatic cached reload failures
+  are not presented as failed user refreshes. The focused widget test, fatal
+  mobile analysis, and `git diff --check` passed.
