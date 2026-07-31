@@ -5,10 +5,10 @@
 - **Plan slug:** `output-image-support`
 - **Implementation base:** `origin/main` at
   `9d2c1e9e79ab80fa8824b9d803a74798eb71140d`
-- **Series state:** Step 1/12 plan delivery in progress
+- **Series state:** Step 1/12 plan PR open
 - **Current step:** Step 1/12 — durable plan and tracker
-- **Plan PR:** pending
-- **Next action:** commit, push, and open the Step 1/12 plan PR
+- **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
+- **Next action:** monitor Step 1/12 CI and review
 
 ## Plan Review
 
@@ -26,7 +26,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/12 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/12]` | 450-700 | In progress |
+| [ ] | 1/12 | `investigate-opencode-image-support` | `[output-image-support] docs: plan output image support [step 1/12]` | 450-700 | [PR #638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638) open |
 | [ ] | 2/12 | `output-image-support-codex-rollout-content` | `[output-image-support] refactor(codex): seal rollout content [step 2/12]` | 1,200-1,650 | Blocked on Step 1 merge |
 | [ ] | 3/12 | `output-image-support-codex-rollout-envelopes` | `[output-image-support] refactor(codex): seal rollout envelopes [step 3/12]` | 900-1,350 | Blocked on Step 2 merge |
 | [ ] | 4/12 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/12]` | 1,100-1,650 | Blocked on Step 3 merge |
@@ -77,8 +77,10 @@
 
 - Step 1/12 (2026-07-31): plan and tracker authored; fixed slug, twelve titles,
   delivery order, and changed-line estimates cross-checked. The staged diff is
-  581 changed lines and `git diff --cached --check` passes. Commit, push, and PR
-  delivery remain pending; no Dart or Flutter suites were run for this
+  581 changed lines and `git diff --cached --check` passes. Committed as
+  `3cc4881e`, pushed, and opened as
+  [PR #638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638); CI and
+  review monitoring started. No Dart or Flutter suites were run for this
   documentation-only step.
 
 ## Findings And Plan Deltas
