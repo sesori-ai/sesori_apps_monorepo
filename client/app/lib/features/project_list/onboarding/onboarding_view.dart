@@ -10,8 +10,8 @@ part of "../project_list_screen.dart";
 //   call to action. See [_ConnectedEmptyView].
 //
 // Both are bodies, not pages: [ProjectListScreen] hosts them in its own page
-// scroll — with the pull-to-refresh and the collapsing large title that come
-// with it — rather than each nesting a scroll view of its own.
+// scroll — with the pull-to-refresh that comes with it — rather than each
+// nesting a scroll view of its own.
 // ===========================================================================
 
 /// The "connected, no projects" empty state: the stacked-folders graphic, the
@@ -30,8 +30,8 @@ class _ConnectedEmptyView extends StatelessWidget {
     final prego = context.prego;
 
     // Centred in the body rather than at the design's exact screen centre: the
-    // collapsing large title takes the space above, so the group sits in the
-    // middle of what is left of the page.
+    // top bar takes the space above, so the group sits in the middle of what is
+    // left of the page.
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,

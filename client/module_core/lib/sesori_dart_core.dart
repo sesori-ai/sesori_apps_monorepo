@@ -56,6 +56,8 @@ export "src/capabilities/voice/voice_api.dart";
 export "src/consumers/analytics/session_activity_analytics_listener.dart";
 // Cubits
 export "src/cubits/appearance/appearance_cubit.dart";
+export "src/cubits/bridge_identity/bridge_identity_cubit.dart";
+export "src/cubits/bridge_identity/bridge_identity_state.dart";
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/connection_overlay/connection_overlay_state.dart";
 export "src/cubits/legal/legal_document_cubit.dart";
