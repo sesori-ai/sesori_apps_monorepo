@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -12,11 +13,16 @@ import "package:test/test.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
+const _githubRepositoryIdentity = "org/repo";
+const _githubLogin = "octocat";
+final VerifiedGithubLogin _octocatLogin = VerifiedGithubLogin.tryParse(rawLogin: _githubLogin)!;
+
 void main() {
   group("GetSessionsHandler", () {
     late FakeBridgePlugin plugin;
     late FakeSessionDao sessionDao;
     late FakePullRequestRepository pullRequestRepository;
+    late FakePrSourceRepository prSource;
     late FakePrSyncService prSyncService;
     late FakeSessionRepository sessionRepository;
     late AppDatabase db;
@@ -26,7 +32,8 @@ void main() {
       plugin = FakeBridgePlugin();
       sessionDao = FakeSessionDao();
       pullRequestRepository = FakePullRequestRepository();
-      prSyncService = FakePrSyncService();
+      prSource = FakePrSourceRepository();
+      prSyncService = FakePrSyncService(prSource: prSource);
       db = createTestDatabase();
       sessionRepository = FakeSessionRepository(
         plugin: plugin,
@@ -162,7 +169,10 @@ void main() {
       expect(projects, hasLength(1));
       expect(projects.single.projectId, equals("project-1"));
       expect(sessionRepository.getSessionsCallCount, equals(1));
-      expect(sessionRepository.lastGetSessionsArgs, equals((projectId: "project-1", start: 2, limit: 3)));
+      expect(
+        sessionRepository.lastGetSessionsArgs,
+        equals((projectId: "project-1", start: 2, limit: 3, verifiedGithubLogin: null)),
+      );
       expect(result.items.map((session) => session.id), equals(["s1", "s2", "s3"]));
     });
 
@@ -345,6 +355,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: 999,
           baseBranch: null,
@@ -424,6 +436,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -493,6 +507,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: 999,
           baseBranch: null,
@@ -519,6 +535,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -572,6 +590,8 @@ void main() {
           directory: "/repo/.worktrees/session-001",
           worktreePath: "/repo/.worktrees/session-001",
           branchName: "session-001",
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: true,
           archivedAt: null,
           baseBranch: null,
@@ -622,6 +642,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -674,6 +696,7 @@ void main() {
     });
 
     test("merges pull request metadata when session has a PR", () async {
+      prSource.authenticatedIdentityResult = _octocatLogin;
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -689,6 +712,8 @@ void main() {
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
           prNumber: 42,
           branchName: "feature/one",
           url: "https://github.com/org/repo/pull/42",
@@ -718,9 +743,161 @@ void main() {
       expect(pr?.mergeableStatus, equals(PrMergeableStatus.mergeable));
       expect(pr?.reviewDecision, equals(PrReviewDecision.approved));
       expect(pr?.checkStatus, equals(PrCheckStatus.success));
+      expect(
+        pullRequestRepository.getPrsBySessionIdsCalls.map((call) => call.verifiedGithubLogin),
+        everyElement(same(_octocatLogin)),
+      );
+    });
+
+    test("omits cached PR metadata when fresh identity is unavailable", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session with cached pr",
+          time: null,
+        ),
+      ];
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+          prNumber: 43,
+          branchName: "feature/cached",
+          url: "https://github.com/org/repo/pull/43",
+          title: "Cached PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.single.pullRequest, isNull);
+      expect(prSource.getAuthenticatedIdentityCallCount, 1);
+      expect(pullRequestRepository.getPrsBySessionIdsCalls, isEmpty);
+      expect(sessionRepository.lastGetSessionsArgs?.verifiedGithubLogin, isNull);
+    });
+
+    test("omits cached PR metadata when fresh identity verification fails", () async {
+      prSource.authenticatedIdentityFailuresRemaining = 1;
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session with cached pr",
+          time: null,
+        ),
+      ];
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+          prNumber: 44,
+          branchName: "feature/cached",
+          url: "https://github.com/org/repo/pull/44",
+          title: "Cached PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.single.pullRequest, isNull);
+      expect(prSource.getAuthenticatedIdentityCallCount, 1);
+      expect(pullRequestRepository.getPrsBySessionIdsCalls, isEmpty);
+    });
+
+    test("reverifies identity before mapping a completed PR refresh", () async {
+      prSource.authenticatedIdentityResults = <VerifiedGithubLogin?>[
+        null,
+        _octocatLogin,
+      ];
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session with refreshed pr",
+          time: null,
+        ),
+      ];
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+          prNumber: 45,
+          branchName: "feature/refreshed",
+          url: "https://github.com/org/repo/pull/45",
+          title: "Refreshed PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(
+          projectId: "p1",
+          start: null,
+          limit: null,
+          waitForPrData: true,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.single.pullRequest?.number, 45);
+      expect(prSource.getAuthenticatedIdentityCallCount, 2);
+      expect(
+        sessionRepository.enrichSessionsVerifiedGithubLogins.map((login) => login?.login),
+        equals(<String?>[null, _githubLogin]),
+      );
+      expect(
+        pullRequestRepository.getPrsBySessionIdsCalls.single.verifiedGithubLogin.login,
+        _githubLogin,
+      );
     });
 
     test("reads catalog fields while preserving stored worktree and pull request metadata", () async {
+      prSource.authenticatedIdentityResult = _octocatLogin;
       final realRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -748,9 +925,21 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
+      await db.projectsDao.setPrCacheGithubLogin(projectId: "p1", githubLogin: _githubLogin);
+      await db.sessionDao.updatePullRequestScopes(
+        updates: const [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/preserved-pr",
+            currentGithubRepositoryIdentity: _githubRepositoryIdentity,
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
           branchName: "feature/preserved-pr",
           prNumber: 84,
           url: "https://github.com/org/repo/pull/84",
@@ -835,6 +1024,7 @@ void main() {
     });
 
     test("merges PR data for mixed session batches", () async {
+      prSource.authenticatedIdentityResult = _octocatLogin;
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -858,6 +1048,8 @@ void main() {
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
           prNumber: 7,
           branchName: "feature/one",
           url: "https://github.com/org/repo/pull/7",
@@ -940,6 +1132,7 @@ void main() {
     });
 
     test("returns original sessions when PR refresh times out", () async {
+      prSource.authenticatedIdentityResult = _octocatLogin;
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -950,7 +1143,28 @@ void main() {
           time: null,
         ),
       ];
-      final slowPrSyncService = FakePrSyncService(delay: const Duration(seconds: 10));
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+          prNumber: 98,
+          branchName: "feature/timeout",
+          url: "https://github.com/org/repo/pull/98",
+          title: "Timed-out PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      final slowPrSyncService = FakePrSyncService(
+        delay: const Duration(seconds: 10),
+        prSource: prSource,
+      );
       final timeoutHandler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: slowPrSyncService,
@@ -967,10 +1181,18 @@ void main() {
 
       expect(result.items, hasLength(1));
       expect(result.items.single.title, equals("session one"));
+      expect(result.items.single.directory, equals("/tmp"));
+      expect(result.items.single.pullRequest, isNull);
+      expect(result.items.single.pullRequestHistory, isEmpty);
       expect(sessionRepository.getSessionsCallCount, equals(1));
+      expect(
+        pullRequestRepository.getPrsBySessionIdsCalls.map((call) => call.verifiedGithubLogin.login),
+        everyElement(_githubLogin),
+      );
     });
 
     test("enriches sessions when PR refresh succeeds within timeout", () async {
+      prSource.authenticatedIdentityResult = _octocatLogin;
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -985,6 +1207,8 @@ void main() {
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
           prNumber: 99,
           branchName: "feature/enriched",
           url: "https://github.com/org/repo/pull/99",
@@ -997,7 +1221,7 @@ void main() {
           createdAt: 1,
         ),
       );
-      final fastPrSyncService = FakePrSyncService();
+      final fastPrSyncService = FakePrSyncService(prSource: prSource);
       final enrichedHandler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: fastPrSyncService,

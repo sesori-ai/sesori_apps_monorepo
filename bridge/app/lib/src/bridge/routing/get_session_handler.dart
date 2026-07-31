@@ -1,18 +1,24 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
+import "../services/pr_sync_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/detail` — returns a single enriched session by ID.
 class GetSessionHandler extends BodyRequestHandler<SessionIdRequest, Session> {
   final SessionRepository _sessionRepository;
+  final PrSyncService _prSyncService;
 
-  GetSessionHandler(this._sessionRepository)
-    : super(
-        HttpMethod.post,
-        "/session/detail",
-        fromJson: SessionIdRequest.fromJson,
-      );
+  GetSessionHandler({
+    required SessionRepository sessionRepository,
+    required PrSyncService prSyncService,
+  }) : _sessionRepository = sessionRepository,
+       _prSyncService = prSyncService,
+       super(
+         HttpMethod.post,
+         "/session/detail",
+         fromJson: SessionIdRequest.fromJson,
+       );
 
   @override
   Future<Session> handle(
@@ -32,9 +38,11 @@ class GetSessionHandler extends BodyRequestHandler<SessionIdRequest, Session> {
       throw buildErrorResponse(request, 404, "session not found");
     }
 
+    final verifiedGithubLogin = await _prSyncService.verifyGithubIdentity();
     final session = await _sessionRepository.getSessionForProject(
       projectId: projectId,
       sessionId: sessionId,
+      verifiedGithubLogin: verifiedGithubLogin,
     );
     if (session == null) {
       throw buildErrorResponse(request, 404, "session not found");

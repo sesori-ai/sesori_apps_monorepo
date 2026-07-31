@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Conso
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
 
 import "../foundation/process_runner.dart";
+import "gh_authenticated_identity.dart";
 import "gh_pull_request.dart";
 
 class GhCliApi {
@@ -55,6 +56,35 @@ class GhCliApi {
             "GitHub pull request and CI status sync is disabled.",
       );
       return false;
+    }
+  }
+
+  Future<GhAuthenticatedIdentity?> getAuthenticatedIdentity() async {
+    try {
+      final result = await _processRunner.run(
+        "gh",
+        const ["api", "--hostname", "github.com", "user", "--jq", ".login"],
+      );
+      if (result.exitCode != 0) {
+        _reportAuthenticationFailure();
+        return null;
+      }
+
+      final identity = GhAuthenticatedIdentity.tryParse(rawLogin: result.stdout.toString());
+      if (identity == null) {
+        _reportAuthenticationFailure();
+        return null;
+      }
+
+      _authenticationFailureReported = false;
+      return identity;
+    } on ProcessException {
+      _reportAvailabilityFailure(
+        message:
+            "GitHub CLI (gh) is not installed or is unavailable on PATH. "
+            "GitHub pull request and CI status sync is disabled.",
+      );
+      return null;
     }
   }
 

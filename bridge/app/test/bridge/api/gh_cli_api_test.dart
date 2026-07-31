@@ -149,6 +149,60 @@ void main() {
     });
   });
 
+  group("GhCliApi.getAuthenticatedIdentity", () {
+    late _FakeProcessRunner processRunner;
+    late GhCliApi service;
+
+    setUp(() {
+      processRunner = _FakeProcessRunner();
+      service = GhCliApi(processRunner: processRunner);
+    });
+
+    test("returns a normalized login from the github.com user endpoint", () async {
+      processRunner.enqueueResult(result: _ok(stdout: "  OctoCat\n"));
+
+      final identity = await service.getAuthenticatedIdentity();
+
+      expect(identity?.login, "octocat");
+      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations.single.command, "gh");
+      expect(
+        processRunner.invocations.single.arguments,
+        ["api", "--hostname", "github.com", "user", "--jq", ".login"],
+      );
+      expect(processRunner.invocations.single.workingDirectory, isNull);
+    });
+
+    test("returns null when gh cannot verify an identity", () async {
+      processRunner.enqueueResult(result: _fail(exitCode: 1));
+
+      expect(await service.getAuthenticatedIdentity(), isNull);
+    });
+
+    test("returns null for an empty login", () async {
+      processRunner.enqueueResult(result: _ok(stdout: "  \n"));
+
+      expect(await service.getAuthenticatedIdentity(), isNull);
+    });
+
+    test("returns null when gh is unavailable", () async {
+      processRunner.enqueueError(
+        error: const ProcessException("gh", <String>["api"], "boom", 1),
+      );
+
+      expect(await service.getAuthenticatedIdentity(), isNull);
+    });
+
+    test("propagates timeout for the caller to handle", () async {
+      processRunner.enqueueError(error: TimeoutException("timed out"));
+
+      await expectLater(
+        service.getAuthenticatedIdentity(),
+        throwsA(isA<TimeoutException>()),
+      );
+    });
+  });
+
   group("GhCliApi.listOpenPrs", () {
     late _FakeProcessRunner processRunner;
     late GhCliApi service;

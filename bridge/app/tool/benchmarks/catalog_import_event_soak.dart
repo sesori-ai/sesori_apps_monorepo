@@ -469,6 +469,7 @@ class _CatalogImportEventSoak {
             path: fixture.projectPaths[index],
             hidden: false,
             baseBranch: null,
+            prCacheGithubLogin: null,
             displayName: "Project $index",
             createdAt: _catalogTimestamp + index,
             updatedAt: _catalogTimestamp + index,
@@ -486,6 +487,8 @@ class _CatalogImportEventSoak {
           directory: fixture.projectPaths.first,
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -519,6 +522,7 @@ class _CatalogImportEventSoak {
       projectId: sentinelProjectId,
       start: null,
       limit: null,
+      verifiedGithubLogin: null,
     );
     if (sessions.length != 1 || sessions.single.id != _sentinelSessionId) {
       throw StateError("last-committed sentinel was not readable while import was blocked");

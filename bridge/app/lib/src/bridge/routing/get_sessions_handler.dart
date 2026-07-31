@@ -47,15 +47,20 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 
     final start = body.start;
     final limit = body.limit;
+    final verifiedGithubLogin = await _prSyncService.verifyGithubIdentity();
 
     var sessions = await _sessionRepository.getSessionsForProject(
       projectId: projectId,
       start: start,
       limit: limit,
+      verifiedGithubLogin: verifiedGithubLogin,
     );
 
     try {
-      sessions = await _sessionRepository.enrichSessions(sessions: sessions);
+      sessions = await _sessionRepository.enrichSessions(
+        sessions: sessions,
+        verifiedGithubLogin: verifiedGithubLogin,
+      );
     } on Object catch (e, st) {
       Log.w("GetSessionsHandler: post-publication enrichment failed for projectId=$projectId", e, st);
     }
@@ -67,17 +72,22 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
         await prRefreshFuture.timeout(_prRefreshTimeout);
         // Refresh succeeded within timeout — enrich the already-fetched sessions
         // with updated PR/CI metadata from the database (no extra plugin round-trip).
+        final refreshedGithubLogin = await _prSyncService.verifyGithubIdentity();
         final enrichedSessions = await _sessionRepository.enrichSessions(
           sessions: sessions,
+          verifiedGithubLogin: refreshedGithubLogin,
         );
         return SessionListResponse(items: enrichedSessions);
       } catch (err, st) {
         Log.w(
-          "PR refresh timed out after "
+          "PR refresh or final identity-gated mapping failed after waiting up to "
           "${_prRefreshTimeout.inSeconds}s for $projectId — "
-          "returning current data; SSE will deliver updates when ready",
+          "returning sessions without cached PR data; SSE will deliver updates when ready",
           err,
           st,
+        );
+        return SessionListResponse(
+          items: _withoutPullRequestData(sessions: sessions),
         );
       }
     } else {
@@ -86,6 +96,16 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     }
 
     return SessionListResponse(items: sessions);
+  }
+
+  List<Session> _withoutPullRequestData({required List<Session> sessions}) {
+    return [
+      for (final session in sessions)
+        session.copyWith(
+          pullRequest: null,
+          pullRequestHistory: const <PullRequestInfo>[],
+        ),
+    ];
   }
 
   Future<void> _triggerPrRefresh({

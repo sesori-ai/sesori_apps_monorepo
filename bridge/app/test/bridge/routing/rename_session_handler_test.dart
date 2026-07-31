@@ -114,6 +114,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/rename",
           prNumber: 13,
           url: "https://github.com/org/repo/pull/13",
@@ -152,8 +154,7 @@ void main() {
       expect(result.time?.created, equals(1));
       expect(result.time?.updated, greaterThan(1));
       expect(result.time?.archived, isNull);
-      expect(result.pullRequest?.number, equals(13));
-      expect(result.pullRequest?.title, equals("Rename PR"));
+      expect(result.pullRequest, isNull);
       await sessionMutationDispatcher.dispose();
       expect(plugin.lastRenameSessionId, equals("backend-s1"));
     });

@@ -568,6 +568,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "/repo",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "session-001",
           prNumber: 17,
           url: "https://github.com/org/repo/pull/17",
@@ -599,8 +601,7 @@ void main() {
       );
 
       expect(result.hasWorktree, isTrue);
-      expect(result.pullRequest?.number, equals(17));
-      expect(result.pullRequest?.title, equals("Created PR"));
+      expect(result.pullRequest, isNull);
     });
 
     test("hasWorktree is false when dedicated=false", () async {

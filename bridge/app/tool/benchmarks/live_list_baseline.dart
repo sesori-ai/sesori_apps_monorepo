@@ -310,6 +310,7 @@ class _LiveListBenchmark {
             final session = await sessionRepository.getSessionForProject(
               projectId: _projectDirectory,
               sessionId: detailSessionId,
+              verifiedGithubLogin: null,
             );
             if (session?.id != detailSessionId) {
               throw StateError("session detail returned ${session?.id}; expected $detailSessionId");
@@ -356,6 +357,7 @@ class _LiveListBenchmark {
           path: _projectId(index: index),
           hidden: false,
           baseBranch: null,
+          prCacheGithubLogin: null,
           displayName: "project-${index.toString().padLeft(4, "0")}",
           createdAt: _defaultTimestamp + index,
           updatedAt: _defaultTimestamp + index,
@@ -369,6 +371,7 @@ class _LiveListBenchmark {
           path: _smallProjectDirectory,
           hidden: true,
           baseBranch: null,
+          prCacheGithubLogin: null,
           displayName: "project-0001",
           createdAt: _defaultTimestamp + 1,
           updatedAt: _defaultTimestamp + 1,
@@ -409,6 +412,8 @@ class _LiveListBenchmark {
           directory: _projectDirectory,
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -460,8 +465,12 @@ class _LiveListBenchmark {
       projectId: projectId,
       start: start,
       limit: limit,
+      verifiedGithubLogin: null,
     );
-    sessions = await repository.enrichSessions(sessions: sessions);
+    sessions = await repository.enrichSessions(
+      sessions: sessions,
+      verifiedGithubLogin: null,
+    );
     _verifyBoundaries(
       name: "session catalog for $projectId",
       expectedFirst: expectedFirstSessionId,
@@ -569,6 +578,8 @@ class _LiveListBenchmark {
         directory: projectId,
         worktreePath: null,
         branchName: null,
+        currentBranchName: null,
+        currentGithubRepositoryIdentity: null,
         isDedicated: false,
         archivedAt: null,
         baseBranch: null,

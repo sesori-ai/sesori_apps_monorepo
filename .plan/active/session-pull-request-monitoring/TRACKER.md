@@ -4,11 +4,11 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484`
-- **Series state:** Step 1/9 plan PR open; architecture approved
-- **Current step:** Step 1/9 — durable plan and PR guidance
-- **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649)
-- **Next action:** monitor CI/review and merge Step 1/9 before starting Step 2/9
+  `f969754bfa1ae8074ef24d4dbb248499abff79b1`
+- **Series state:** Step 1/9 merged; Step 2/9 implementation and verification complete
+- **Current step:** Step 2/9 — scoped PR persistence
+- **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
+- **Next action:** commit, push, open, and monitor the Step 2/9 PR
 
 ## Existing Baseline
 
@@ -29,16 +29,16 @@
   architecture all passed
 - **Post-review drift:** `main` advanced through Harness settings, output-image
   plugin work, analytics documentation, bridge `--data-dir` expansion, and plan
-  archival. The current tip is audited at `10c7afb9`; none changes this feature's
-  architecture or requested agent guidance, so metadata/path refresh did not
-  trigger another architecture review.
+  archival before Step 1 merged at `f969754b`. Step 2 pinned that merge as its
+  implementation base; the later `4ca1cb90` Codex output-image commit does not
+  change this feature's architecture.
 
 ## Delivery Steps
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) open; architecture/docs validation passed |
-| [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Blocked on Step 1 merge; generated migration overage may be unavoidable |
+| [x] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged as `f969754b` |
+| [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Implementation and verification complete; PR pending; generated migration overage recorded below |
 | [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2 merge |
 | [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
 | [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
@@ -83,17 +83,19 @@
 
 ## Current Drift and Open Work
 
-- Latest audited `main`: `10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484`.
-- Drift schema: v12. Step 2 allocates the next version present on its actual
-  baseline, not a hard-coded v13.
+- Step 2 base: `f969754bfa1ae8074ef24d4dbb248499abff79b1`.
+- Latest drift-audited `origin/main`: `4ca1cb90bd1dcc066dc4d54bf444c96dac67db70`.
+  Its only post-base commit is unrelated Codex output-image work (#657).
+- Drift schema: v13, allocated from the exported v12 baseline without rewriting
+  any merged migration.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
 - PR #647 is merged and consolidates Harness settings into one screen. Its
   numeric-input/mutation pattern is current evidence for Step 8; PR cadence
   remains a separate bridge setting.
-- Open PR #641 is analytics warehouse-only and does not change this feature's
-  no-new-event decision.
-- Open PR #621 touches the settings landing screen and may require Step 8 drift
-  reconciliation if it merges.
+- PR #641 closed without merging; its warehouse-only scope did not change this
+  feature's no-new-event decision.
+- PR #621 and its #655 voice follow-up merged. Step 8 will reconcile its settings
+  surface against that then-current baseline.
 
 ## Interview Decisions Recorded 2026-07-31
 
@@ -147,6 +149,25 @@
   architecture. `git diff --check` passes, exact titles match between
   plan/tracker, and change scope is limited to this plan plus the three
   instruction/agent files.
+- **Step 2/9 implementation:** Exported v12 before source edits, generated v13
+  schema/migration fixtures, and added repository/login/current-session scope,
+  typed fresh-login verification, transactional cache ownership, and fail-closed
+  list/detail reads. `dart analyze --fatal-infos`, all 2,295 bridge-app tests,
+  and `git diff --check` pass.
+- **Step 2/9 architecture review:** `aristotle-impl-review` rejected the initial
+  working-tree implementation with three in-scope findings. The implementation
+  now maps the API identity into repository-owned `VerifiedGithubLogin`, preserves
+  established PR scope during catalog publication, and strips PR metadata when
+  the waited refresh/final mapping path fails. Per repository policy, these
+  applied findings were not re-reviewed; no approval is claimed for the revised
+  working tree.
+- **Step 2/9 line overage:** The implementation changes 6,392
+  lines, including 3,646 generated Drift/Freezed/schema-fixture lines. The schema
+  migration, generated artifacts, required internal contract updates, privacy
+  read gates, and their migration/DAO/repository/routing regressions must land in
+  lockstep to compile and keep the migration independently valid; there is no
+  smaller coherent PR inside the fixed Step 2 acceptance boundary. New v12/v13
+  verifier fixtures intentionally omit generated data classes to limit overage.
 
 ## Findings and Plan Deltas
 
@@ -177,3 +198,7 @@
   removes repository-wide PR source code and directly obsolete test support.
   Creation-branch storage and the empty compatibility wire field remain because
   they still have required cleanup/transport roles.
+- **2026-07-31 — Step 2 review corrections:** Verification evidence remains a
+  repository-owned typed value through handlers/services/repositories; catalog
+  imports preserve PR scope they do not own; waited list responses strip cached
+  PR data if refresh or final identity-gated mapping fails.

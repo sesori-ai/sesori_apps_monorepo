@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
@@ -8,6 +9,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
@@ -423,13 +425,14 @@ void main() {
   group("SessionLifecycleService archive binding", () {
     late AppDatabase db;
     late _FakeBridgePlugin plugin;
+    late SessionRepository repository;
     late SessionLifecycleService service;
 
     setUp(() async {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       plugin = _FakeBridgePlugin();
-      final repository = singlePluginSessionRepository(
+      repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -476,6 +479,56 @@ void main() {
       expect(update.changed, isTrue);
       expect(plugin.lastArchivedSessionId, "backend-session");
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNotNull);
+    });
+
+    test("archive lifecycle result omits scoped PR metadata", () async {
+      final verifiedGithubLogin = VerifiedGithubLogin.tryParse(rawLogin: "verified-user")!;
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "/repo",
+        githubLogin: "verified-user",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: const [
+          (
+            sessionId: "root-session",
+            currentBranchName: "feature/archive",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "verified-user",
+          prNumber: 17,
+          branchName: "feature/archive",
+          url: "https://github.com/org/repo/pull/17",
+          title: "Archive PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      final prBearingRead = await repository.getSessionForProject(
+        projectId: "/repo",
+        sessionId: "root-session",
+        verifiedGithubLogin: verifiedGithubLogin,
+      );
+      expect(prBearingRead?.pullRequest?.number, equals(17));
+
+      final update = await service.updateArchiveStatus(
+        sessionId: "root-session",
+        archived: true,
+        deleteWorktree: false,
+        deleteBranch: false,
+        force: false,
+      );
+
+      expect(update.session.pullRequest, isNull);
     });
 
     test("unarchive uses the existing root binding and returns its stable id", () async {
@@ -540,10 +593,16 @@ class _FakeSessionRepository implements SessionRepository {
   int hasSharingCallCount = 0;
 
   @override
-  Future<Session> enrichSession({required Session session}) async => session;
+  Future<Session> enrichSession({
+    required Session session,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => session;
 
   @override
-  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => sessions;
 
   @override
   Future<bool> hasOtherActiveSessionsSharing({

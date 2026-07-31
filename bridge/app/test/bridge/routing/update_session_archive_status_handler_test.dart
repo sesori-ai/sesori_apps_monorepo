@@ -111,6 +111,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "/repo",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "session-001",
           prNumber: 21,
           url: "https://github.com/org/repo/pull/21",
@@ -145,7 +147,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
       expect(result.id, equals("s1"));
       expect(result.time?.archived, equals(persisted?.archivedAt));
-      expect(result.pullRequest?.number, equals(21));
+      expect(result.pullRequest, isNull);
     });
 
     test("archiving an already-archived session emits no unseen change", () async {
@@ -389,6 +391,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "/repo",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "session-001",
           prNumber: 22,
           url: "https://github.com/org/repo/pull/22",
@@ -420,7 +424,7 @@ void main() {
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
       expect(result.time?.archived, isNull);
-      expect(result.pullRequest?.number, equals(22));
+      expect(result.pullRequest, isNull);
     });
 
     test("unarchive with deleted worktree restores worktree", () async {

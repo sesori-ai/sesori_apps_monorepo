@@ -295,8 +295,10 @@ class Orchestrator {
       ),
     );
     final pullRequestRepository = PullRequestRepository(
+      database: _database,
       pullRequestDao: _database.pullRequestDao,
       projectsDao: _database.projectsDao,
+      sessionDao: _database.sessionDao,
     );
     final prSyncService = PrSyncService(
       prSource: PrSourceRepository(
@@ -465,7 +467,10 @@ class Orchestrator {
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
         GetChildSessionsHandler(sessionRepository: sessionRepository),
-        GetSessionHandler(sessionRepository),
+        GetSessionHandler(
+          sessionRepository: sessionRepository,
+          prSyncService: prSyncService,
+        ),
         GetSessionMessagesHandler(sessionRepository: sessionRepository),
         GetSessionsHandler(
           sessionRepository: sessionRepository,

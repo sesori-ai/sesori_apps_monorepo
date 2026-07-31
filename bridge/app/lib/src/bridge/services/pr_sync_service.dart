@@ -4,6 +4,7 @@ import "package:clock/clock.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../repositories/models/stored_session.dart";
+import "../repositories/models/verified_github_login.dart";
 import "../repositories/pr_source_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
@@ -16,14 +17,11 @@ class PrSyncService {
   final Duration _debounceWindow;
   final StreamController<String> _prChangesController = StreamController<String>.broadcast();
 
-  final Map<String, ({bool value, DateTime cachedAt})> _hasGitHubRemoteCache =
-      <String, ({bool value, DateTime cachedAt})>{};
   final Map<String, DateTime> _lastRefreshTimes = <String, DateTime>{};
   final Set<String> _activeRefreshes = <String>{};
   ({bool capable, DateTime checkedAt})? _githubCliCapabilityCache;
   Future<bool>? _githubCliCapabilityCheck;
 
-  static const _remoteCacheTtl = Duration(minutes: 10);
   static const _githubCliCapabilityCacheTtl = Duration(seconds: 30);
 
   PrSyncService({
@@ -40,6 +38,19 @@ class PrSyncService {
 
   Stream<String> get prChanges => _prChangesController.stream;
 
+  Future<VerifiedGithubLogin?> verifyGithubIdentity() async {
+    try {
+      return await _prSource.getAuthenticatedIdentity();
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[PrSyncService] Failed to verify the active GitHub identity; cached PR data is hidden",
+        error,
+        stackTrace,
+      );
+      return null;
+    }
+  }
+
   Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
     if (_activeRefreshes.contains(projectId)) {
       return;
@@ -55,19 +66,40 @@ class PrSyncService {
     _activeRefreshes.add(projectId);
     try {
       if (!await _hasGithubCliCapability()) {
+        await _pullRequestRepository.suspendProjectVisibility(projectId: projectId);
         return;
       }
 
-      final cached = _hasGitHubRemoteCache[projectPath];
-      if (cached == null || _clock.now().difference(cached.cachedAt) > _remoteCacheTtl) {
-        final hasRemote = await _prSource.hasGitHubRemote(projectPath: projectPath);
-        _hasGitHubRemoteCache[projectPath] = (value: hasRemote, cachedAt: _clock.now());
-      }
-      if (_hasGitHubRemoteCache[projectPath] case final cachedRemote? when !cachedRemote.value) {
+      final identity = await verifyGithubIdentity();
+      if (identity == null) {
+        await _pullRequestRepository.suspendProjectVisibility(projectId: projectId);
         return;
       }
 
-      await _refresh(projectId: projectId, projectPath: projectPath);
+      final storedSessions = await _sessionRepository.getStoredSessionsByProjectId(projectId: projectId);
+      final githubRepositoryIdentity = await _prSource.getGithubRepositoryIdentity(projectPath: projectPath);
+      if (githubRepositoryIdentity == null) {
+        await _pullRequestRepository.clearScopedRefresh(
+          projectId: projectId,
+          sessions: storedSessions,
+        );
+        return;
+      }
+
+      await _pullRequestRepository.prepareScopedRefresh(
+        projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: identity,
+        sessions: storedSessions,
+      );
+
+      await _refresh(
+        projectId: projectId,
+        projectPath: projectPath,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: identity,
+        storedSessions: storedSessions,
+      );
     } finally {
       _activeRefreshes.remove(projectId);
     }
@@ -100,12 +132,21 @@ class PrSyncService {
     return capable;
   }
 
-  Future<void> _refresh({required String projectId, required String projectPath}) async {
+  Future<void> _refresh({
+    required String projectId,
+    required String projectPath,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> storedSessions,
+  }) async {
     try {
-      final (openPrs, storedSessions, activePrs) = await (
+      final (openPrs, activePrs) = await (
         _prSource.listOpenPrs(workingDirectory: projectPath),
-        _sessionRepository.getStoredSessionsByProjectId(projectId: projectId),
-        _pullRequestRepository.getActivePullRequestsByProjectId(projectId: projectId),
+        _pullRequestRepository.getActivePullRequestsByProjectId(
+          projectId: projectId,
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          verifiedGithubLogin: verifiedGithubLogin,
+        ),
       ).wait;
 
       final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
@@ -131,6 +172,8 @@ class PrSyncService {
 
         await _pullRequestRepository.upsertFromGhPr(
           projectId: projectId,
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          verifiedGithubLogin: verifiedGithubLogin,
           pr: pr,
           createdAt: createdAt,
           lastCheckedAt: nowEpochMs,
@@ -155,6 +198,8 @@ class PrSyncService {
 
           await _pullRequestRepository.upsertFromGhPr(
             projectId: projectId,
+            githubRepositoryIdentity: githubRepositoryIdentity,
+            verifiedGithubLogin: verifiedGithubLogin,
             pr: finalPr,
             createdAt: disappeared.createdAt,
             lastCheckedAt: nowEpochMs,
@@ -163,6 +208,7 @@ class PrSyncService {
           Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e — removing stale record");
           await _pullRequestRepository.deletePr(
             projectId: projectId,
+            githubRepositoryIdentity: githubRepositoryIdentity,
             prNumber: disappeared.prNumber,
           );
           hasChanges = true;

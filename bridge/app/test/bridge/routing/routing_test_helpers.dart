@@ -17,6 +17,7 @@ import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mappe
 import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -465,6 +466,8 @@ class FakeSessionDao {
       directory: worktreePath ?? projectId,
       worktreePath: worktreePath,
       branchName: branchName,
+      currentBranchName: null,
+      currentGithubRepositoryIdentity: null,
       isDedicated: isDedicated,
       archivedAt: null,
       baseBranch: baseBranch,
@@ -532,39 +535,112 @@ class FakeMetadataService implements MetadataService {
 class FakePullRequestRepository implements PullRequestRepository {
   final Map<String, List<PullRequestDto>> _prsBySessionId = <String, List<PullRequestDto>>{};
   final Map<String, PullRequestDto> _prsByPrimaryKey = <String, PullRequestDto>{};
+  final Map<String, String?> _visibleGithubLoginByProject = <String, String?>{};
+
+  final List<({List<String> sessionIds, VerifiedGithubLogin verifiedGithubLogin})> getPrsBySessionIdsCalls = [];
+  final List<({String projectId, String githubRepositoryIdentity, VerifiedGithubLogin verifiedGithubLogin})>
+  getActivePullRequestsCalls = [];
+  final List<
+    ({
+      String projectId,
+      String githubRepositoryIdentity,
+      VerifiedGithubLogin verifiedGithubLogin,
+      List<StoredSession> sessions,
+    })
+  >
+  prepareScopedRefreshCalls = [];
+  final List<({String projectId, List<StoredSession> sessions})> clearScopedRefreshCalls = [];
+  final List<String> suspendProjectVisibilityCalls = [];
 
   FakePullRequestRepository();
 
   void setPr({required String sessionId, required PullRequestDto pullRequest}) {
     _prsBySessionId.putIfAbsent(sessionId, () => <PullRequestDto>[]).add(pullRequest);
-    _prsByPrimaryKey[_key(projectId: pullRequest.projectId, prNumber: pullRequest.prNumber)] = pullRequest;
+    _prsByPrimaryKey[_key(
+          projectId: pullRequest.projectId,
+          githubRepositoryIdentity: pullRequest.githubRepositoryIdentity,
+          prNumber: pullRequest.prNumber,
+        )] =
+        pullRequest;
+    _visibleGithubLoginByProject[pullRequest.projectId] = pullRequest.githubLogin;
   }
 
   @override
-  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
-    return <String, List<PullRequestDto>>{
-      for (final sessionId in sessionIds)
-        if (_prsBySessionId.containsKey(sessionId)) sessionId: _prsBySessionId[sessionId]!,
-    };
+  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({
+    required List<String> sessionIds,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async {
+    getPrsBySessionIdsCalls.add((
+      sessionIds: List<String>.unmodifiable(sessionIds),
+      verifiedGithubLogin: verifiedGithubLogin,
+    ));
+    final result = <String, List<PullRequestDto>>{};
+    for (final sessionId in sessionIds) {
+      final pullRequests = _prsBySessionId[sessionId];
+      if (pullRequests == null) continue;
+      final visible = pullRequests
+          .where(
+            (pullRequest) =>
+                pullRequest.githubLogin == verifiedGithubLogin.login &&
+                _visibleGithubLoginByProject[pullRequest.projectId] == verifiedGithubLogin.login,
+          )
+          .toList(growable: false);
+      if (visible.isNotEmpty) {
+        result[sessionId] = visible;
+      }
+    }
+    return result;
   }
 
-  Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
-    return _prsByPrimaryKey.values.where((pr) => pr.projectId == projectId && pr.state == PrState.open).toList();
+  Future<List<PullRequestDto>> getActivePrsByProjectId({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async {
+    return _prsByPrimaryKey.values
+        .where(
+          (pr) =>
+              pr.projectId == projectId &&
+              pr.githubRepositoryIdentity == githubRepositoryIdentity &&
+              pr.githubLogin == verifiedGithubLogin.login &&
+              pr.state == PrState.open,
+        )
+        .toList();
   }
 
   @override
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) {
-    return getActivePrsByProjectId(projectId: projectId);
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) {
+    getActivePullRequestsCalls.add((
+      projectId: projectId,
+      githubRepositoryIdentity: githubRepositoryIdentity,
+      verifiedGithubLogin: verifiedGithubLogin,
+    ));
+    return getActivePrsByProjectId(
+      projectId: projectId,
+      githubRepositoryIdentity: githubRepositoryIdentity,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
   }
 
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {
-    _prsByPrimaryKey[_key(projectId: record.projectId, prNumber: record.prNumber)] = record;
+    _prsByPrimaryKey[_key(
+          projectId: record.projectId,
+          githubRepositoryIdentity: record.githubRepositoryIdentity,
+          prNumber: record.prNumber,
+        )] =
+        record;
   }
 
   @override
   Future<void> upsertFromGhPr({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
     required GhPullRequest pr,
     required int createdAt,
     required int lastCheckedAt,
@@ -572,6 +648,8 @@ class FakePullRequestRepository implements PullRequestRepository {
     return upsertPullRequest(
       record: PullRequestDto(
         projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
         prNumber: pr.number,
         branchName: pr.headRefName,
         url: pr.url,
@@ -599,16 +677,74 @@ class FakePullRequestRepository implements PullRequestRepository {
         existing.checkStatus != pr.statusCheckRollup;
   }
 
-  String _key({required String projectId, required int prNumber}) {
-    return "$projectId::$prNumber";
+  @override
+  Future<void> prepareScopedRefresh({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> sessions,
+  }) async {
+    prepareScopedRefreshCalls.add((
+      projectId: projectId,
+      githubRepositoryIdentity: githubRepositoryIdentity,
+      verifiedGithubLogin: verifiedGithubLogin,
+      sessions: List<StoredSession>.unmodifiable(sessions),
+    ));
+    _visibleGithubLoginByProject[projectId] = verifiedGithubLogin.login;
   }
 
   @override
-  Future<void> deletePr({required String projectId, required int prNumber}) async {
-    _prsByPrimaryKey.remove(_key(projectId: projectId, prNumber: prNumber));
+  Future<void> clearScopedRefresh({
+    required String projectId,
+    required List<StoredSession> sessions,
+  }) async {
+    clearScopedRefreshCalls.add((
+      projectId: projectId,
+      sessions: List<StoredSession>.unmodifiable(sessions),
+    ));
+    _visibleGithubLoginByProject.remove(projectId);
+    _prsByPrimaryKey.removeWhere((_, pullRequest) => pullRequest.projectId == projectId);
     _prsBySessionId.updateAll(
-      (_, List<PullRequestDto> list) =>
-          list.where((pr) => !(pr.projectId == projectId && pr.prNumber == prNumber)).toList(),
+      (_, pullRequests) => pullRequests.where((pullRequest) => pullRequest.projectId != projectId).toList(),
+    );
+  }
+
+  @override
+  Future<void> suspendProjectVisibility({required String projectId}) async {
+    suspendProjectVisibilityCalls.add(projectId);
+    _visibleGithubLoginByProject[projectId] = null;
+  }
+
+  String _key({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required int prNumber,
+  }) {
+    return "$projectId::$githubRepositoryIdentity::$prNumber";
+  }
+
+  @override
+  Future<void> deletePr({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required int prNumber,
+  }) async {
+    _prsByPrimaryKey.remove(
+      _key(
+        projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        prNumber: prNumber,
+      ),
+    );
+    _prsBySessionId.updateAll(
+      (_, List<PullRequestDto> list) => list
+          .where(
+            (pr) =>
+                !(pr.projectId == projectId &&
+                    pr.githubRepositoryIdentity == githubRepositoryIdentity &&
+                    pr.prNumber == prNumber),
+          )
+          .toList(),
     );
   }
 }
@@ -623,7 +759,7 @@ class FakePrSyncService extends PrSyncService {
     PullRequestRepository? pullRequestRepository,
     SessionRepository? sessionRepository,
   }) : super(
-         prSource: prSource ?? _AlwaysReadyPrSource(),
+         prSource: prSource ?? FakePrSourceRepository(),
          pullRequestRepository: pullRequestRepository ?? _NoopPullRequestRepository(),
          sessionRepository: sessionRepository ?? _NoopSessionRepository(),
          clock: const Clock(),
@@ -638,15 +774,50 @@ class FakePrSyncService extends PrSyncService {
   }
 }
 
-class _AlwaysReadyPrSource implements PrSourceRepository {
+class FakePrSourceRepository implements PrSourceRepository {
+  bool isGithubCliAvailableResult = true;
+  bool isGithubCliAuthenticatedResult = true;
+  VerifiedGithubLogin? authenticatedIdentityResult;
+  List<VerifiedGithubLogin?> authenticatedIdentityResults = const [];
+  int authenticatedIdentityFailuresRemaining = 0;
+  String? githubRepositoryIdentityResult;
+  List<GhPullRequest> listOpenPrsResult = const [];
+
+  int getAuthenticatedIdentityCallCount = 0;
+  int getGithubRepositoryIdentityCallCount = 0;
+  final List<String> githubRepositoryIdentityProjectPaths = [];
+
+  int _authenticatedIdentityResultIndex = 0;
+
   @override
-  Future<bool> isGithubCliAvailable() async => true;
+  Future<bool> isGithubCliAvailable() async => isGithubCliAvailableResult;
+
   @override
-  Future<bool> isGithubCliAuthenticated() async => true;
+  Future<bool> isGithubCliAuthenticated() async => isGithubCliAuthenticatedResult;
+
   @override
-  Future<bool> hasGitHubRemote({required String projectPath}) async => true;
+  Future<VerifiedGithubLogin?> getAuthenticatedIdentity() async {
+    getAuthenticatedIdentityCallCount++;
+    if (authenticatedIdentityFailuresRemaining > 0) {
+      authenticatedIdentityFailuresRemaining--;
+      throw StateError("GitHub identity verification failed");
+    }
+    if (_authenticatedIdentityResultIndex < authenticatedIdentityResults.length) {
+      return authenticatedIdentityResults[_authenticatedIdentityResultIndex++];
+    }
+    return authenticatedIdentityResult;
+  }
+
   @override
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => const <GhPullRequest>[];
+  Future<String?> getGithubRepositoryIdentity({required String projectPath}) async {
+    getGithubRepositoryIdentityCallCount++;
+    githubRepositoryIdentityProjectPaths.add(projectPath);
+    return githubRepositoryIdentityResult;
+  }
+
+  @override
+  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => listOpenPrsResult;
+
   @override
   Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async =>
       throw StateError("getPrByNumber should not be called");
@@ -654,11 +825,17 @@ class _AlwaysReadyPrSource implements PrSourceRepository {
 
 class _NoopPullRequestRepository implements PullRequestRepository {
   @override
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async =>
-      const <PullRequestDto>[];
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async => const <PullRequestDto>[];
 
   @override
-  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
+  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({
+    required List<String> sessionIds,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async {
     return <String, List<PullRequestDto>>{};
   }
 
@@ -668,16 +845,39 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   @override
   Future<void> upsertFromGhPr({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
     required GhPullRequest pr,
     required int createdAt,
     required int lastCheckedAt,
   }) async {}
 
   @override
-  Future<void> deletePr({required String projectId, required int prNumber}) async {}
+  Future<void> deletePr({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required int prNumber,
+  }) async {}
 
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}
+
+  @override
+  Future<void> prepareScopedRefresh({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> sessions,
+  }) async {}
+
+  @override
+  Future<void> clearScopedRefresh({
+    required String projectId,
+    required List<StoredSession> sessions,
+  }) async {}
+
+  @override
+  Future<void> suspendProjectVisibility({required String projectId}) async {}
 }
 
 Session _deletedSession(String sessionId) => Session(
@@ -803,14 +1003,21 @@ class _NoopSessionRepository implements SessionRepository {
     required String projectId,
     required int? start,
     required int? limit,
+    required VerifiedGithubLogin? verifiedGithubLogin,
   }) async => const <Session>[];
   @override
-  Future<Session> enrichSession({required Session session}) async => session;
+  Future<Session> enrichSession({
+    required Session session,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => session;
   @override
   Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async =>
       pluginSession.toSharedSession(pluginId: pluginId);
   @override
-  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => sessions;
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
@@ -914,7 +1121,11 @@ class _NoopSessionRepository implements SessionRepository {
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
 
   @override
-  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
+  Future<Session?> getSessionForProject({
+    required String projectId,
+    required String sessionId,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => null;
 
   @override
   Future<void> abortSession({required String sessionId}) async {}
@@ -982,7 +1193,10 @@ class FakeSessionRepository implements SessionRepository {
   final FakePullRequestRepository _pullRequestRepository;
   final AppDatabase? _persistenceDatabase;
   int getSessionsCallCount = 0;
-  ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
+  ({String projectId, int? start, int? limit, VerifiedGithubLogin? verifiedGithubLogin})? lastGetSessionsArgs;
+  final List<VerifiedGithubLogin?> enrichSessionsVerifiedGithubLogins = [];
+  final List<({String projectId, String sessionId, VerifiedGithubLogin? verifiedGithubLogin})>
+  getSessionForProjectCalls = [];
   String? projectPathResult;
   Object? publicationError;
 
@@ -1080,9 +1294,15 @@ class FakeSessionRepository implements SessionRepository {
     required String projectId,
     required int? start,
     required int? limit,
+    required VerifiedGithubLogin? verifiedGithubLogin,
   }) async {
     getSessionsCallCount++;
-    lastGetSessionsArgs = (projectId: projectId, start: start, limit: limit);
+    lastGetSessionsArgs = (
+      projectId: projectId,
+      start: start,
+      limit: limit,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
     final pluginSessions = await _plugin.getSessions(
       projectId,
       start: start,
@@ -1105,7 +1325,12 @@ class FakeSessionRepository implements SessionRepository {
       }
       return session;
     }).toList();
-    final prsBySessionId = await _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds);
+    final prsBySessionId = verifiedGithubLogin == null
+        ? <String, List<PullRequestDto>>{}
+        : await _pullRequestRepository.getPrsBySessionIds(
+            sessionIds: sessionIds,
+            verifiedGithubLogin: verifiedGithubLogin,
+          );
     final result = mergedSessions.map((session) {
       final prs = prsBySessionId[session.id];
       final pr = _selectBestPr(prs);
@@ -1137,21 +1362,39 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> enrichSession({required Session session}) async {
-    final sessions = await enrichSessions(sessions: [session]);
+  Future<Session> enrichSession({
+    required Session session,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
+    final sessions = await enrichSessions(
+      sessions: [session],
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
     return sessions.single;
   }
 
   @override
   Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async {
-    return enrichSession(session: pluginSession.toSharedSession(pluginId: pluginId));
+    return enrichSession(
+      session: pluginSession.toSharedSession(pluginId: pluginId),
+      verifiedGithubLogin: null,
+    );
   }
 
   @override
-  Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
+    enrichSessionsVerifiedGithubLogins.add(verifiedGithubLogin);
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
     final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
-    final prsBySessionId = await _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds);
+    final prsBySessionId = verifiedGithubLogin == null
+        ? <String, List<PullRequestDto>>{}
+        : await _pullRequestRepository.getPrsBySessionIds(
+            sessionIds: sessionIds,
+            verifiedGithubLogin: verifiedGithubLogin,
+          );
     final pullRequestsBySessionId = <String, PullRequestInfo>{
       for (final session in sessions)
         if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
@@ -1336,8 +1579,22 @@ class FakeSessionRepository implements SessionRepository {
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
 
   @override
-  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {
-    final sessions = await getSessionsForProject(projectId: projectId, start: null, limit: null);
+  Future<Session?> getSessionForProject({
+    required String projectId,
+    required String sessionId,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
+    getSessionForProjectCalls.add((
+      projectId: projectId,
+      sessionId: sessionId,
+      verifiedGithubLogin: verifiedGithubLogin,
+    ));
+    final sessions = await getSessionsForProject(
+      projectId: projectId,
+      start: null,
+      limit: null,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
     for (final session in sessions) {
       if (session.id == sessionId) {
         return session;

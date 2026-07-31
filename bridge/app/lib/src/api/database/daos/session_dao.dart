@@ -38,6 +38,12 @@ typedef SessionProjectPathRow = ({
   String? worktreePath,
 });
 
+typedef SessionPullRequestScopeUpdate = ({
+  String sessionId,
+  String? currentBranchName,
+  String? currentGithubRepositoryIdentity,
+});
+
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   static const _ownerIdentity = "local";
@@ -189,6 +195,26 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   Future<SessionDto?> getSession({required String sessionId}) async {
     return (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
+  }
+
+  Future<void> updatePullRequestScopes({
+    required List<SessionPullRequestScopeUpdate> updates,
+  }) async {
+    if (updates.isEmpty) {
+      return;
+    }
+    await batch((batch) {
+      for (final update in updates) {
+        batch.update(
+          sessionTable,
+          SessionTableCompanion(
+            currentBranchName: Value(update.currentBranchName),
+            currentGithubRepositoryIdentity: Value(update.currentGithubRepositoryIdentity),
+          ),
+          where: (table) => table.sessionId.equals(update.sessionId),
+        );
+      }
+    });
   }
 
   /// Upserts the supplied rows without applying merge or import policy.

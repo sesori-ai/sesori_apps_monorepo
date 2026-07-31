@@ -170,6 +170,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 11,
           url: "https://github.com/org/repo/pull/11",
@@ -213,10 +215,7 @@ void main() {
 
       expect(firstEvent["type"], equals("session.created"));
       expect(secondEvent["type"], equals("session.diff"));
-      expect(
-        ((firstEvent["info"] as Map<String, dynamic>)["pullRequest"] as Map<String, dynamic>)["number"],
-        equals(11),
-      );
+      expect((firstEvent["info"] as Map<String, dynamic>)["pullRequest"], isNull);
     });
 
     test("debug client disconnect does not tear down the orchestrator plugin listeners", () async {
