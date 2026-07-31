@@ -7,54 +7,37 @@ import "../../services/new_session_options_service.dart";
 
 part "new_session_state.freezed.dart";
 
-sealed class NewSessionOptionsLoadState {
-  const NewSessionOptionsLoadState();
-}
+@Freezed()
+sealed class NewSessionOptionsLoadState with _$NewSessionOptionsLoadState {
+  const factory NewSessionOptionsLoadState.loading({required NewSessionOptionsSource? source}) =
+      NewSessionOptionsLoadingState;
 
-final class NewSessionOptionsLoadingState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsLoadingState({required this.source});
+  const factory NewSessionOptionsLoadState.refreshing({
+    required NewSessionOptionsData options,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsRefreshingState;
 
-  final NewSessionOptionsSource? source;
-}
+  const factory NewSessionOptionsLoadState.available({
+    required NewSessionOptionsData options,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsAvailableState;
 
-final class NewSessionOptionsRefreshingState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsRefreshingState({required this.options, required this.source});
+  const factory NewSessionOptionsLoadState.unsupported() = NewSessionOptionsUnsupportedState;
 
-  final NewSessionOptionsData options;
-  final NewSessionOptionsSource source;
-}
+  const factory NewSessionOptionsLoadState.unavailable() = NewSessionOptionsUnavailableState;
 
-final class NewSessionOptionsAvailableState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsAvailableState({required this.options, required this.source});
+  const factory NewSessionOptionsLoadState.failure({
+    required RemoteFailureReason reason,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsFailureState;
 
-  final NewSessionOptionsData options;
-  final NewSessionOptionsSource source;
-}
+  const factory NewSessionOptionsLoadState.refreshFailureRetained({
+    required NewSessionOptionsData options,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsRefreshFailureRetainedState;
 
-final class NewSessionOptionsUnsupportedState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsUnsupportedState();
-}
-
-final class NewSessionOptionsUnavailableState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsUnavailableState();
-}
-
-final class NewSessionOptionsFailureState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsFailureState({required this.reason, required this.source});
-
-  final RemoteFailureReason reason;
-  final NewSessionOptionsSource source;
-}
-
-final class NewSessionOptionsRefreshFailureRetainedState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsRefreshFailureRetainedState({required this.options, required this.source});
-
-  final NewSessionOptionsData options;
-  final NewSessionOptionsSource source;
-}
-
-final class NewSessionOptionsRefreshFailureUnavailableState extends NewSessionOptionsLoadState {
-  const NewSessionOptionsRefreshFailureUnavailableState();
+  const factory NewSessionOptionsLoadState.refreshFailureUnavailable() =
+      NewSessionOptionsRefreshFailureUnavailableState;
 }
 
 extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {

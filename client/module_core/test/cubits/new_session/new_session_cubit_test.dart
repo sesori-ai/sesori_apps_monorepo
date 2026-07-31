@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
 import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
@@ -159,6 +160,33 @@ void main() {
         cubit.state,
         isA<NewSessionIdle>().having((state) => state.selectedAgentModel, "selectedAgentModel", isNull),
       );
+    });
+
+    test("option payloads participate in structural NewSessionState equality", () {
+      NewSessionState buildState() => const NewSessionState.idle(
+        availablePlugins: [defaultPlugin],
+        selectedPlugin: defaultPlugin,
+        options: NewSessionOptionsAvailableState(
+          options: NewSessionOptionsData(
+            agents: [],
+            providers: [],
+            commands: [],
+            selectedAgent: null,
+            selectedAgentModel: null,
+            stagedCommand: null,
+            availableVariants: [],
+          ),
+          source: NewSessionOptionsSource.aggregate,
+        ),
+        isPluginDiscoveryInFlight: false,
+        supportsDedicatedWorktrees: true,
+      );
+
+      final first = buildState();
+      final second = buildState();
+
+      expect(first, second);
+      expect(first.hashCode, second.hashCode);
     });
 
     test("uses a known unsupported capability in the initial state", () {

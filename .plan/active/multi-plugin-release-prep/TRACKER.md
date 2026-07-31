@@ -236,3 +236,8 @@
   its composer-draft and product-analytics changes. All 111 focused core tests
   and 27 mobile New Session tests passed, as did fatal analysis in module-core,
   mobile, and desktop plus `git diff --check`.
+- Step 5.B/6 equality follow-up (2026-07-31): converted the option-load variants
+  and nested option snapshot to Freezed value types so equivalent option payloads
+  participate in `NewSessionState` equality and hashing. The 77 directly affected
+  core tests and 27 mobile New Session tests passed, as did fatal analysis in
+  module-core, mobile, and desktop plus `git diff --check`.

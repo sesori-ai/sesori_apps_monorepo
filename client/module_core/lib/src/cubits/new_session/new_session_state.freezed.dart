@@ -12,6 +12,498 @@ part of 'new_session_state.dart';
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
+mixin _$NewSessionOptionsLoadState {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadState);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState()';
+}
+
+
+}
+
+/// @nodoc
+class $NewSessionOptionsLoadStateCopyWith<$Res>  {
+$NewSessionOptionsLoadStateCopyWith(NewSessionOptionsLoadState _, $Res Function(NewSessionOptionsLoadState) __);
+}
+
+
+
+/// @nodoc
+
+
+class NewSessionOptionsLoadingState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsLoadingState({required this.source});
+  
+
+ final  NewSessionOptionsSource? source;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionOptionsLoadingStateCopyWith<NewSessionOptionsLoadingState> get copyWith => _$NewSessionOptionsLoadingStateCopyWithImpl<NewSessionOptionsLoadingState>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadingState&&(identical(other.source, source) || other.source == source));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,source);
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.loading(source: $source)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionOptionsLoadingStateCopyWith<$Res> implements $NewSessionOptionsLoadStateCopyWith<$Res> {
+  factory $NewSessionOptionsLoadingStateCopyWith(NewSessionOptionsLoadingState value, $Res Function(NewSessionOptionsLoadingState) _then) = _$NewSessionOptionsLoadingStateCopyWithImpl;
+@useResult
+$Res call({
+ NewSessionOptionsSource? source
+});
+
+
+
+
+}
+/// @nodoc
+class _$NewSessionOptionsLoadingStateCopyWithImpl<$Res>
+    implements $NewSessionOptionsLoadingStateCopyWith<$Res> {
+  _$NewSessionOptionsLoadingStateCopyWithImpl(this._self, this._then);
+
+  final NewSessionOptionsLoadingState _self;
+  final $Res Function(NewSessionOptionsLoadingState) _then;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? source = freezed,}) {
+  return _then(NewSessionOptionsLoadingState(
+source: freezed == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsSource?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class NewSessionOptionsRefreshingState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsRefreshingState({required this.options, required this.source});
+  
+
+ final  NewSessionOptionsData options;
+ final  NewSessionOptionsSource source;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionOptionsRefreshingStateCopyWith<NewSessionOptionsRefreshingState> get copyWith => _$NewSessionOptionsRefreshingStateCopyWithImpl<NewSessionOptionsRefreshingState>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsRefreshingState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,options,source);
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.refreshing(options: $options, source: $source)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionOptionsRefreshingStateCopyWith<$Res> implements $NewSessionOptionsLoadStateCopyWith<$Res> {
+  factory $NewSessionOptionsRefreshingStateCopyWith(NewSessionOptionsRefreshingState value, $Res Function(NewSessionOptionsRefreshingState) _then) = _$NewSessionOptionsRefreshingStateCopyWithImpl;
+@useResult
+$Res call({
+ NewSessionOptionsData options, NewSessionOptionsSource source
+});
+
+
+$NewSessionOptionsDataCopyWith<$Res> get options;
+
+}
+/// @nodoc
+class _$NewSessionOptionsRefreshingStateCopyWithImpl<$Res>
+    implements $NewSessionOptionsRefreshingStateCopyWith<$Res> {
+  _$NewSessionOptionsRefreshingStateCopyWithImpl(this._self, this._then);
+
+  final NewSessionOptionsRefreshingState _self;
+  final $Res Function(NewSessionOptionsRefreshingState) _then;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? options = null,Object? source = null,}) {
+  return _then(NewSessionOptionsRefreshingState(
+options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsData,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsSource,
+  ));
+}
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsDataCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsDataCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
+  });
+}
+}
+
+/// @nodoc
+
+
+class NewSessionOptionsAvailableState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsAvailableState({required this.options, required this.source});
+  
+
+ final  NewSessionOptionsData options;
+ final  NewSessionOptionsSource source;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionOptionsAvailableStateCopyWith<NewSessionOptionsAvailableState> get copyWith => _$NewSessionOptionsAvailableStateCopyWithImpl<NewSessionOptionsAvailableState>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAvailableState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,options,source);
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.available(options: $options, source: $source)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionOptionsAvailableStateCopyWith<$Res> implements $NewSessionOptionsLoadStateCopyWith<$Res> {
+  factory $NewSessionOptionsAvailableStateCopyWith(NewSessionOptionsAvailableState value, $Res Function(NewSessionOptionsAvailableState) _then) = _$NewSessionOptionsAvailableStateCopyWithImpl;
+@useResult
+$Res call({
+ NewSessionOptionsData options, NewSessionOptionsSource source
+});
+
+
+$NewSessionOptionsDataCopyWith<$Res> get options;
+
+}
+/// @nodoc
+class _$NewSessionOptionsAvailableStateCopyWithImpl<$Res>
+    implements $NewSessionOptionsAvailableStateCopyWith<$Res> {
+  _$NewSessionOptionsAvailableStateCopyWithImpl(this._self, this._then);
+
+  final NewSessionOptionsAvailableState _self;
+  final $Res Function(NewSessionOptionsAvailableState) _then;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? options = null,Object? source = null,}) {
+  return _then(NewSessionOptionsAvailableState(
+options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsData,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsSource,
+  ));
+}
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsDataCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsDataCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
+  });
+}
+}
+
+/// @nodoc
+
+
+class NewSessionOptionsUnsupportedState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsUnsupportedState();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsUnsupportedState);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.unsupported()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class NewSessionOptionsUnavailableState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsUnavailableState();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsUnavailableState);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.unavailable()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class NewSessionOptionsFailureState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsFailureState({required this.reason, required this.source});
+  
+
+ final  RemoteFailureReason reason;
+ final  NewSessionOptionsSource source;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionOptionsFailureStateCopyWith<NewSessionOptionsFailureState> get copyWith => _$NewSessionOptionsFailureStateCopyWithImpl<NewSessionOptionsFailureState>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsFailureState&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.source, source) || other.source == source));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,reason,source);
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.failure(reason: $reason, source: $source)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionOptionsFailureStateCopyWith<$Res> implements $NewSessionOptionsLoadStateCopyWith<$Res> {
+  factory $NewSessionOptionsFailureStateCopyWith(NewSessionOptionsFailureState value, $Res Function(NewSessionOptionsFailureState) _then) = _$NewSessionOptionsFailureStateCopyWithImpl;
+@useResult
+$Res call({
+ RemoteFailureReason reason, NewSessionOptionsSource source
+});
+
+
+
+
+}
+/// @nodoc
+class _$NewSessionOptionsFailureStateCopyWithImpl<$Res>
+    implements $NewSessionOptionsFailureStateCopyWith<$Res> {
+  _$NewSessionOptionsFailureStateCopyWithImpl(this._self, this._then);
+
+  final NewSessionOptionsFailureState _self;
+  final $Res Function(NewSessionOptionsFailureState) _then;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? source = null,}) {
+  return _then(NewSessionOptionsFailureState(
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsSource,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class NewSessionOptionsRefreshFailureRetainedState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsRefreshFailureRetainedState({required this.options, required this.source});
+  
+
+ final  NewSessionOptionsData options;
+ final  NewSessionOptionsSource source;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionOptionsRefreshFailureRetainedStateCopyWith<NewSessionOptionsRefreshFailureRetainedState> get copyWith => _$NewSessionOptionsRefreshFailureRetainedStateCopyWithImpl<NewSessionOptionsRefreshFailureRetainedState>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsRefreshFailureRetainedState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,options,source);
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.refreshFailureRetained(options: $options, source: $source)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionOptionsRefreshFailureRetainedStateCopyWith<$Res> implements $NewSessionOptionsLoadStateCopyWith<$Res> {
+  factory $NewSessionOptionsRefreshFailureRetainedStateCopyWith(NewSessionOptionsRefreshFailureRetainedState value, $Res Function(NewSessionOptionsRefreshFailureRetainedState) _then) = _$NewSessionOptionsRefreshFailureRetainedStateCopyWithImpl;
+@useResult
+$Res call({
+ NewSessionOptionsData options, NewSessionOptionsSource source
+});
+
+
+$NewSessionOptionsDataCopyWith<$Res> get options;
+
+}
+/// @nodoc
+class _$NewSessionOptionsRefreshFailureRetainedStateCopyWithImpl<$Res>
+    implements $NewSessionOptionsRefreshFailureRetainedStateCopyWith<$Res> {
+  _$NewSessionOptionsRefreshFailureRetainedStateCopyWithImpl(this._self, this._then);
+
+  final NewSessionOptionsRefreshFailureRetainedState _self;
+  final $Res Function(NewSessionOptionsRefreshFailureRetainedState) _then;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? options = null,Object? source = null,}) {
+  return _then(NewSessionOptionsRefreshFailureRetainedState(
+options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsData,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsSource,
+  ));
+}
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsDataCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsDataCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
+  });
+}
+}
+
+/// @nodoc
+
+
+class NewSessionOptionsRefreshFailureUnavailableState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsRefreshFailureUnavailableState();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsRefreshFailureUnavailableState);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.refreshFailureUnavailable()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
 mixin _$NewSessionState {
 
 
@@ -95,7 +587,7 @@ $Res call({
 });
 
 
-$PluginMetadataCopyWith<$Res>? get selectedPlugin;
+$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;
 
 }
 /// @nodoc
@@ -130,6 +622,15 @@ $PluginMetadataCopyWith<$Res>? get selectedPlugin {
 
   return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
     return _then(_self.copyWith(selectedPlugin: value));
+  });
+}/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsLoadStateCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
   });
 }
 }
@@ -187,7 +688,7 @@ $Res call({
 });
 
 
-$PluginMetadataCopyWith<$Res>? get selectedPlugin;
+$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;
 
 }
 /// @nodoc
@@ -222,6 +723,15 @@ $PluginMetadataCopyWith<$Res>? get selectedPlugin {
 
   return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
     return _then(_self.copyWith(selectedPlugin: value));
+  });
+}/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsLoadStateCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
   });
 }
 }
@@ -280,7 +790,7 @@ $Res call({
 });
 
 
-$PluginMetadataCopyWith<$Res>? get selectedPlugin;
+$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;
 
 }
 /// @nodoc
@@ -316,6 +826,15 @@ $PluginMetadataCopyWith<$Res>? get selectedPlugin {
 
   return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
     return _then(_self.copyWith(selectedPlugin: value));
+  });
+}/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsLoadStateCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
   });
 }
 }

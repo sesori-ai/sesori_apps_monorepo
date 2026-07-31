@@ -1,4 +1,5 @@
 import "package:collection/collection.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -9,27 +10,19 @@ import "../utils/model_filter/default_model_selector.dart";
 import "models/new_session_options_source.dart";
 import "models/new_session_selection_intent.dart";
 
-final class NewSessionOptionsData {
-  NewSessionOptionsData({
+part "new_session_options_service.freezed.dart";
+
+@Freezed()
+sealed class NewSessionOptionsData with _$NewSessionOptionsData {
+  const factory NewSessionOptionsData({
     required List<AgentInfo> agents,
     required List<ProviderInfo> providers,
     required List<CommandInfo> commands,
-    required this.selectedAgent,
-    required this.selectedAgentModel,
-    required this.stagedCommand,
+    required String? selectedAgent,
+    required AgentModel? selectedAgentModel,
+    required CommandInfo? stagedCommand,
     required List<SessionVariant> availableVariants,
-  }) : agents = List.unmodifiable(agents),
-       providers = List.unmodifiable(providers),
-       commands = List.unmodifiable(commands),
-       availableVariants = List.unmodifiable(availableVariants);
-
-  final List<AgentInfo> agents;
-  final List<ProviderInfo> providers;
-  final List<CommandInfo> commands;
-  final String? selectedAgent;
-  final AgentModel? selectedAgentModel;
-  final CommandInfo? stagedCommand;
-  final List<SessionVariant> availableVariants;
+  }) = _NewSessionOptionsData;
 }
 
 sealed class NewSessionOptionsLoadResult {

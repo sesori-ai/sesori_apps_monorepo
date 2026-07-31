@@ -273,14 +273,14 @@ void main() {
       );
       expect(unavailable, isA<NewSessionOptionsUnavailable>());
 
-      final previous = NewSessionOptionsData(
-        agents: const [],
-        providers: const [],
-        commands: const [],
+      const previous = NewSessionOptionsData(
+        agents: [],
+        providers: [],
+        commands: [],
         selectedAgent: null,
         selectedAgentModel: null,
         stagedCommand: null,
-        availableVariants: const [],
+        availableVariants: [],
       );
       when(
         () => repository.loadSessionOptions(projectId: "project-1", pluginId: "plugin-1", refresh: true),
