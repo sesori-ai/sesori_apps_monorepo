@@ -230,5 +230,14 @@ void main() {
 
       expect(tracker.read(projectId: "project-1", pluginId: "plugin-a")?.agentName, "agent-a");
     });
+
+    test("clears choices when an unidentified bridge scope is re-established", () {
+      tracker.establishBridgeScope(bridgeId: null);
+      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
+
+      tracker.establishBridgeScope(bridgeId: null);
+
+      expect(tracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
+    });
   });
 }

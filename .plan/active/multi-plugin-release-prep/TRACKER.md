@@ -255,3 +255,7 @@
   project; failed rediscovery also disables creation in both the cubit and UI.
   All 83 focused core tests and 27 mobile New Session tests passed, as did fatal
   analysis in module-core, mobile, and desktop plus `git diff --check`.
+- Step 5.B/6 unidentified-scope follow-up (2026-07-31): re-establishing an
+  unidentified bridge scope now clears backend-local selection intent as well
+  as cached options. The directly affected tracker and reconnect tests passed,
+  as did fatal module-core analysis and `git diff --check`.

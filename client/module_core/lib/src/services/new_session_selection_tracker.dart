@@ -18,10 +18,11 @@ class NewSessionSelectionTracker {
   String? _bridgeId;
 
   /// Clears backend-local intent when the active connection moves to another
-  /// identified bridge. Re-establishing the same scope preserves intent across
-  /// New Session screen recreation within the current app run.
+  /// identified bridge or when bridge identity is unavailable. Re-establishing
+  /// the same identified scope preserves intent across New Session screen
+  /// recreation within the current app run.
   void establishBridgeScope({required String? bridgeId}) {
-    if (_hasBridgeScope && _bridgeId != bridgeId) {
+    if (_hasBridgeScope && (bridgeId == null || _bridgeId != bridgeId)) {
       _selections.clear();
     }
     _hasBridgeScope = true;
