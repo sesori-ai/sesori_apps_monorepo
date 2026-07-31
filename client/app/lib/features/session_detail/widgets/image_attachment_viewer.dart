@@ -3,6 +3,7 @@ import "dart:typed_data";
 
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -118,8 +119,7 @@ class ImageAttachmentViewer extends StatelessWidget {
                   children: [
                     IconButton(
                       tooltip: context.loc.sessionDetailImageClose,
-                      // ignore: no_slop_linter/avoid_navigator_of, closes the transient PageRouteBuilder used for the Hero transition
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: context.pop,
                       icon: Icon(Icons.close, color: prego.colors.textPrimary),
                     ),
                     SizedBox(width: prego.spacing.xs),
