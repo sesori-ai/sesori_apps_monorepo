@@ -87,6 +87,8 @@ import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
+import 'package:sesori_dart_core/src/services/new_session_options_service.dart'
+    as _i74;
 import 'package:sesori_dart_core/src/services/new_session_plugin_service.dart'
     as _i177;
 import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart'
@@ -114,6 +116,8 @@ import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
 import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
     as _i18;
 import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
+import 'package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart'
+    as _i895;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -133,6 +137,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i84.SessionActivityCalculator>(
       () => const _i84.SessionActivityCalculator(),
+    );
+    gh.lazySingleton<_i895.DefaultModelSelector>(
+      () => const _i895.DefaultModelSelector(),
     );
     gh.lazySingleton<_i895.RoomKeyStorage>(
       () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
@@ -353,6 +360,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i763.SessionListService(
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
+    );
+    gh.lazySingleton<_i74.NewSessionOptionsService>(
+      () => _i74.NewSessionOptionsService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        defaultModelSelector: gh<_i895.DefaultModelSelector>(),
       ),
     );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(
