@@ -44,7 +44,7 @@ void main() {
   test("sniffs the mime from content and keeps the picker filename", () async {
     // A path-backed XFile, like the real picker returns — XFile.fromData does
     // not surface a name.
-    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0]);
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
     final file = File("${Directory.systemTemp.createTempSync("picker_test").path}/shot.png")
       ..writeAsBytesSync(png);
     addTearDown(() => file.parent.deleteSync(recursive: true));
@@ -63,6 +63,22 @@ void main() {
     final attachment = await picker.pickImage();
 
     expect(attachment!.mime, "image/jpeg");
+  });
+
+  test("a truncated png signature is rejected, matching the renderer's check", () async {
+    stubPick(XFile.fromData(Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0]), name: "cut.png"));
+
+    expect(picker.pickImage, throwsA(isA<UnsupportedAttachmentImageError>()));
+  });
+
+  test("heif content is rejected — the client's inline renderer cannot decode it", () async {
+    final heic = Uint8List.fromList([
+      0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63, // ....ftypheic
+      ...List<int>.filled(12, 0),
+    ]);
+    stubPick(XFile.fromData(heic, name: "photo.heic"));
+
+    expect(picker.pickImage, throwsA(isA<UnsupportedAttachmentImageError>()));
   });
 
   test("unrecognized content is rejected instead of mislabeled", () async {

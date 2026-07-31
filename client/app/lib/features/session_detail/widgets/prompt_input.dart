@@ -279,6 +279,13 @@ class _PromptInputState extends State<PromptInput> {
     final stagedCommand = widget.stagedCommand;
     final attachments = List<ComposerAttachment>.unmodifiable(_attachments);
     if (stagedCommand != null) {
+      if (attachments.isNotEmpty) {
+        // The bridge's command paths read only the text part, so images sent
+        // with a command would silently vanish. Refuse the combination and
+        // keep both staged for the user to untangle.
+        _showComposerNotice(context.loc.sessionDetailAttachmentsNotWithCommands);
+        return;
+      }
       widget.onSend(
         text: _controller.text,
         command: stagedCommand.name,
@@ -1045,6 +1052,9 @@ class _PromptInputState extends State<PromptInput> {
               attachment.bytes,
               width: _attachmentThumbnailSize,
               height: _attachmentThumbnailSize,
+              // Decode at thumbnail scale — a full-resolution decode of a
+              // 2048px pick would hold ~16MB of raster per thumbnail.
+              cacheWidth: (_attachmentThumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
               fit: BoxFit.cover,
               gaplessPlayback: true,
             ),

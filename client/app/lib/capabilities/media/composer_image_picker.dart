@@ -72,8 +72,10 @@ class ComposerImagePicker {
   /// Content sniffing beats the picker's metadata: `XFile.mimeType` is
   /// platform-dependent (usually null on iOS/Android) and file extensions
   /// lie after the picker's JPEG re-encode. Null means the content is not a
-  /// recognized image format — labeling it with a guessed mime would make
-  /// receivers decode it with the wrong codec.
+  /// format this client's own inline renderer decodes — the accepted set and
+  /// signatures mirror `MessageImageRepository`, so anything staged here also
+  /// renders in message history. HEIF is deliberately absent: the renderer
+  /// cannot decode it, and iOS re-encodes HEIC picks to JPEG anyway.
   static String? _sniffImageMime({required Uint8List bytes}) {
     bool startsWith(List<int> signature, {int offset = 0}) {
       if (bytes.length < offset + signature.length) return false;
@@ -84,15 +86,15 @@ class ComposerImagePicker {
     }
 
     if (startsWith(const [0xFF, 0xD8, 0xFF])) return "image/jpeg";
-    if (startsWith(const [0x89, 0x50, 0x4E, 0x47])) return "image/png";
-    if (startsWith(const [0x47, 0x49, 0x46, 0x38])) return "image/gif";
+    if (startsWith(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) return "image/png";
+    if (startsWith(const [0x47, 0x49, 0x46, 0x38, 0x37, 0x61]) ||
+        startsWith(const [0x47, 0x49, 0x46, 0x38, 0x39, 0x61])) {
+      return "image/gif";
+    }
     if (startsWith(const [0x52, 0x49, 0x46, 0x46]) && startsWith(const [0x57, 0x45, 0x42, 0x50], offset: 8)) {
       return "image/webp";
     }
-    // "ftypheic" / "ftypheif" at offset 4 marks HEIF containers.
-    if (startsWith(const [0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69], offset: 4)) {
-      return "image/heic";
-    }
+    if (startsWith(const [0x42, 0x4D])) return "image/bmp";
     return null;
   }
 }

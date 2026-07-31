@@ -595,6 +595,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachmentBudgetExceeded => 'Attached images are limited to 5 MB per message.';
 
   @override
+  String get sessionDetailAttachmentsNotWithCommands => 'Images can\'t be sent with slash commands.';
+
+  @override
+  String sessionDetailQueuedAttachmentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images',
+      one: '1 image',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sessionDetailExpandEditor => 'Expand editor';
 
   @override

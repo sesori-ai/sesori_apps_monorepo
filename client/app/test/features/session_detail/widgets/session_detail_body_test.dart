@@ -1290,4 +1290,69 @@ void main() {
     // Nothing was staged, so the composer stays in its resting pill.
     expect(find.byType(EditableText), findsNothing);
   });
+
+  testWidgets("send is refused while both a command and attachments are staged", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      stagedCommand: const CommandInfo(
+        name: "review",
+        template: null,
+        hints: null,
+        description: null,
+        agent: null,
+        model: null,
+        provider: null,
+        source: null,
+        subtask: null,
+      ),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pumpAndSettle();
+
+    // The bridge's command paths carry only text, so the send is refused and
+    // both the command chip and the image stay staged.
+    expect(find.text("Images can't be sent with slash commands."), findsOneWidget);
+    expect(semanticsWithLabel("screenshot.png"), findsOneWidget);
+    verifyNever(
+      () => cubit.sendMessage(
+        text: any(named: "text"),
+        command: any(named: "command"),
+        inputMode: any(named: "inputMode"),
+        attachments: any(named: "attachments"),
+      ),
+    );
+  });
+
+  testWidgets("a queued attachment-only submission shows an image count instead of a blank bubble", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      queuedMessages: [
+        QueuedSessionSubmission.text(
+          text: "",
+          inputMode: ComposerInputMode.typed,
+          attachments: [
+            ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null),
+          ],
+        ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text("1 image"), findsOneWidget);
+  });
 }

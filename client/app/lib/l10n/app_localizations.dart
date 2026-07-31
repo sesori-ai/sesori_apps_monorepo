@@ -1213,6 +1213,18 @@ abstract class AppLocalizations {
   /// **'Attached images are limited to 5 MB per message.'**
   String get sessionDetailAttachmentBudgetExceeded;
 
+  /// Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images.
+  ///
+  /// In en, this message translates to:
+  /// **'Images can\'t be sent with slash commands.'**
+  String get sessionDetailAttachmentsNotWithCommands;
+
+  /// Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 image} other{{count} images}}'**
+  String sessionDetailQueuedAttachmentCount(int count);
+
   /// Accessibility label of the button that opens the fullscreen message editor.
   ///
   /// In en, this message translates to:
