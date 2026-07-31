@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "acp_content.dart";
 import "acp_event_mapper.dart" show AcpHaltNotice;
+import "repositories/mappers/acp_content_mapper.dart";
 
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
@@ -17,7 +18,8 @@ class AcpReplayCollector {
     this.providerId,
     required this.initialUserMessageId,
     required this.haltClassifier,
-  });
+    required AcpContentMapper contentMapper,
+  }) : _contentMapper = contentMapper;
 
   final String sessionId;
   final String agentId;
@@ -28,6 +30,7 @@ class AcpReplayCollector {
   /// notice as an error message exactly as it appeared live. Null on backends
   /// with no halt notices.
   final AcpHaltNotice? Function({required String text})? haltClassifier;
+  final AcpContentMapper _contentMapper;
 
   /// Model/provider stamped on replayed assistant messages. Mutable so the
   /// plugin can set the loaded session's real model after `session/load`
@@ -44,13 +47,13 @@ class AcpReplayCollector {
     if (update == null) return;
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
-        final t = acpContentText(update["content"]);
+        final t = _contentMapper.text(content: update["content"]);
         if (t != null) _assistant(messageId: _chunkMessageId(update)).text.write(t);
       case "agent_thought_chunk":
-        final t = acpContentText(update["content"]);
+        final t = _contentMapper.text(content: update["content"]);
         if (t != null) _assistant(messageId: _chunkMessageId(update)).reasoning.write(t);
       case "user_message_chunk":
-        final t = acpContentText(update["content"]);
+        final t = _contentMapper.text(content: update["content"]);
         if (t != null) _user(messageId: _chunkMessageId(update)).text.write(t);
       case "tool_call":
         final id = update["toolCallId"] as String?;
@@ -101,10 +104,7 @@ class AcpReplayCollector {
     // lone assistant message) is surfaced as an error message so a reloaded
     // session matches the live rendering. Only a pure-text terminal notice
     // qualifies — no reasoning, no tools — matching the shape the backend emits.
-    if (draft.role == "assistant" &&
-        draft.reasoning.isEmpty &&
-        draft.tools.isEmpty &&
-        draft.text.isNotEmpty) {
+    if (draft.role == "assistant" && draft.reasoning.isEmpty && draft.tools.isEmpty && draft.text.isNotEmpty) {
       final halt = haltClassifier?.call(text: draft.text.toString());
       if (halt != null) {
         return PluginMessageWithParts(
@@ -209,8 +209,7 @@ class AcpReplayCollector {
   _Draft _assistantForTool() {
     if (_drafts.isNotEmpty && _drafts.last.role == "assistant") {
       final last = _drafts.last;
-      if (last.acpMessageId != null ||
-          (last.text.isEmpty && last.reasoning.isEmpty)) {
+      if (last.acpMessageId != null || (last.text.isEmpty && last.reasoning.isEmpty)) {
         return last;
       }
     }
@@ -226,8 +225,7 @@ class AcpReplayCollector {
   _Draft _ensureRole(String role, {String? messageId}) {
     if (_drafts.isNotEmpty && _drafts.last.role == role) {
       final last = _drafts.last;
-      if (last.acpMessageId == messageId &&
-          !(messageId == null && last.tools.isNotEmpty)) {
+      if (last.acpMessageId == messageId && !(messageId == null && last.tools.isNotEmpty)) {
         return last;
       }
     }
@@ -242,9 +240,7 @@ class AcpReplayCollector {
         : "$sessionId-h${_seq++}-$role";
     final draft = _Draft(
       role: role,
-      id: isFirstUser && initialUserMessageId != null
-          ? initialUserMessageId!
-          : defaultId,
+      id: isFirstUser && initialUserMessageId != null ? initialUserMessageId! : defaultId,
       acpMessageId: messageId,
     );
     _drafts.add(draft);

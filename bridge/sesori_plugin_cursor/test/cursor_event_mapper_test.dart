@@ -10,6 +10,7 @@ void main() {
       launchDirectory: "/repo",
       pluginId: CursorPlugin.pluginId,
       configurationTracker: AcpSessionConfigurationTracker(),
+      contentMapper: const AcpContentMapper(),
     );
 
     test("cursor/update_todos maps to a todo update", () {

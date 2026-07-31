@@ -16,6 +16,7 @@ void main() {
         providerId: null,
         initialUserMessageId: "s1-initial-user",
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "user_message_chunk",
@@ -42,6 +43,7 @@ void main() {
         providerId: "cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "user_message_chunk",
@@ -86,6 +88,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
@@ -115,6 +118,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "tool_call",
@@ -146,6 +150,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "tool_call",
@@ -172,6 +177,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "tool_call",
@@ -194,6 +200,7 @@ void main() {
         providerId: "cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )..consume(upd({
           "sessionUpdate": "agent_message_chunk",
           "content": {"type": "text", "text": "hi"},
@@ -211,6 +218,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
@@ -241,6 +249,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
@@ -253,12 +262,49 @@ void main() {
       expect(collector.build().single.parts.single.text, "one flow");
     });
 
+    test("validated replay images remain unmaterialized without changing text grouping", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
+      )
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "mixed",
+          "content": {"type": "text", "text": "before"},
+        }))
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "mixed",
+          "content": {
+            "type": "image",
+            "data": "AA==",
+            "mimeType": "image/png",
+            "uri": "file:///private/output.png",
+          },
+        }))
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "mixed",
+          "content": {"type": "text", "text": "after"},
+        }));
+
+      final message = collector.build().single;
+      expect(message.parts, hasLength(1));
+      expect(message.parts.single.type, PluginMessagePartType.text);
+      expect(message.parts.single.text, "beforeafter");
+      expect(message.parts.single.attachment, isNull);
+    });
+
     test("an explicit messageId after id-less text starts a new message", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
@@ -282,6 +328,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",
@@ -305,6 +352,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "agent_thought_chunk",
@@ -341,6 +389,7 @@ void main() {
         haltClassifier: ({required text}) => text.trim() == "Check your settings to continue"
             ? const AcpHaltNotice(errorName: "cursor_gate", message: "Check your settings to continue")
             : null,
+        contentMapper: const AcpContentMapper(),
       )..consume(upd({
           "sessionUpdate": "agent_message_chunk",
           "content": {"type": "text", "text": "\n\nCheck your settings to continue"},
@@ -358,6 +407,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
       )
         ..consume(upd({
           "sessionUpdate": "agent_message_chunk",

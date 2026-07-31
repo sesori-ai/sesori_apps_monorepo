@@ -6,6 +6,7 @@ import "acp_content.dart";
 import "acp_protocol.dart";
 import "acp_session_configuration_tracker.dart";
 import "acp_stdio_client.dart";
+import "repositories/mappers/acp_content_mapper.dart";
 
 /// A backend "halt notice": the agent ended a turn without doing the requested
 /// work and instead streamed a terminal notice telling the user to change
@@ -53,7 +54,9 @@ class AcpEventMapper {
     required this.agentId,
     required this.pluginId,
     required AcpSessionConfigurationTracker configurationTracker,
+    required AcpContentMapper contentMapper,
   }) : _configurationTracker = configurationTracker,
+       _contentMapper = contentMapper,
        launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   /// The bridge launch directory (canonicalized) — the fallback project
@@ -67,6 +70,7 @@ class AcpEventMapper {
   final String pluginId;
 
   final AcpSessionConfigurationTracker _configurationTracker;
+  final AcpContentMapper _contentMapper;
 
   /// The model/provider to stamp on [sessionId]'s assistant messages.
   String? modelForSession({required String sessionId}) =>
@@ -408,7 +412,7 @@ class AcpEventMapper {
     required String partSuffix,
     required PluginMessagePartType partType,
   }) {
-    final text = acpContentText(update["content"]);
+    final text = _contentMapper.text(content: update["content"]);
     if (text == null || text.isEmpty) return const [];
 
     // A backend may end a turn without doing the requested work and instead

@@ -18,6 +18,7 @@ void main() {
         agentId: "cursor",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        contentMapper: const AcpContentMapper(),
       );
     });
 
@@ -57,6 +58,29 @@ void main() {
       }));
       expect(second.whereType<BridgeSseMessageUpdated>(), isEmpty);
       expect(second.whereType<BridgeSseMessagePartDelta>().single.delta, "lo");
+    });
+
+    test("validated image chunks remain unmaterialized until the content tracker lands", () {
+      mapper.beginTurn("s1");
+      final imageEvents = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "mixed",
+        "content": {
+          "type": "image",
+          "data": "AA==",
+          "mimeType": "image/png",
+          "uri": "file:///private/output.png",
+        },
+      }));
+      final textEvents = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "mixed",
+        "content": {"type": "text", "text": "visible"},
+      }));
+
+      expect(imageEvents, isEmpty);
+      expect(textEvents.whereType<BridgeSseMessageUpdated>(), hasLength(1));
+      expect(textEvents.whereType<BridgeSseMessagePartDelta>().single.delta, "visible");
     });
 
     test("agent_thought_chunk maps to a reasoning part", () {
@@ -856,7 +880,12 @@ void main() {
 /// as a halt notice, using the trimmed text as the shown message.
 class _HaltMapper extends AcpEventMapper {
   _HaltMapper({required super.configurationTracker})
-    : super(launchDirectory: "/repo", agentId: "cursor", pluginId: "cursor");
+    : super(
+        launchDirectory: "/repo",
+        agentId: "cursor",
+        pluginId: "cursor",
+        contentMapper: const AcpContentMapper(),
+      );
 
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) {

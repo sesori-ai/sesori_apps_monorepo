@@ -8,6 +8,7 @@ class CursorEventMapper extends AcpEventMapper {
     required super.launchDirectory,
     required super.pluginId,
     required super.configurationTracker,
+    required super.contentMapper,
   }) : super(agentId: pluginId);
 
   @override
