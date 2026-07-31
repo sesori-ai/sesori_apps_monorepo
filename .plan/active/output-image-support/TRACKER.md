@@ -32,7 +32,7 @@
 | [x] | 4/13 | `output-image-support-codex-response-items` | `[output-image-support] refactor(codex): seal response items [step 4/13]` | 1,100-1,500 | [PR #646](https://github.com/sesori-ai/sesori_apps_monorepo/pull/646) merged as `4be1e7bb`; 1,416 changed lines |
 | [x] | 5/13 | `output-image-support-codex-image-events` | `[output-image-support] refactor(codex): type image-bearing events [step 5/13]` | 1,200-1,500 | [PR #648](https://github.com/sesori-ai/sesori_apps_monorepo/pull/648) merged as `e9a03363`; 1,472 changed lines |
 | [x] | 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | [PR #652](https://github.com/sesori-ai/sesori_apps_monorepo/pull/652) merged as `737226d8`; 830 changed lines |
-| [ ] | 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | [PR #657](https://github.com/sesori-ai/sesori_apps_monorepo/pull/657) open; 536 changed lines |
+| [ ] | 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | [PR #657](https://github.com/sesori-ai/sesori_apps_monorepo/pull/657) open; 589 changed lines |
 | [ ] | 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | Blocked on Step 7 merge |
 | [ ] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | Blocked on Step 8 merge |
 | [ ] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | Blocked on Step 9 merge |
@@ -146,9 +146,12 @@
   across later smaller app-server updates have focused coverage. Codex codegen,
   focused tests, all 231 package tests, `dart pub get`,
   `dart analyze --fatal-infos`, and `git diff --cached --check` pass.
-  `aristotle-impl-review` approved the architecture with no findings. The 536
+  `aristotle-impl-review` approved the architecture with no findings. The 589
   changed-line diff is below the 1,500-line soft cap; no neighboring scope was
-  combined.
+  combined. PR review follow-up named the repository's local helper parameters
+  and exposed only `status`/`result` field names in schema-only malformed-image
+  diagnostics; all 37 rollout tests and fatal analysis pass. Missing required
+  image fields remain malformed rather than creating an invalid partial item.
 
 ## Findings And Plan Deltas
 

@@ -297,6 +297,33 @@ void main() {
       expect(output, isNot(contains("secret-source-content")));
     });
 
+    test("readTranscript names image-generation schema fields without values", () {
+      final path = p.join(codexHome.path, "malformed-image-transcript.jsonl");
+      File(path).writeAsStringSync(
+        '${jsonEncode({
+          "type": "response_item",
+          "payload": {
+            "type": "image_generation_call",
+            "id": "secret-image-id",
+            "status": "completed",
+            "result": 42,
+            "revised_prompt": "secret revised prompt",
+          },
+        })}\n{}\n',
+      );
+
+      final output = _captureWarnings(
+        () => rolloutApi.readTranscript(rolloutPath: path),
+        level: LogLevel.verbose,
+      );
+
+      expect(output, contains('status:enum("completed")'));
+      expect(output, contains("result:int"));
+      expect(output, contains("<redacted-key>:String"));
+      expect(output, isNot(contains("secret-image-id")));
+      expect(output, isNot(contains("secret revised prompt")));
+    });
+
     test("readTranscript bounds malformed record schema output", () {
       Object? wideValue(int depth) {
         if (depth == 0) return "value";

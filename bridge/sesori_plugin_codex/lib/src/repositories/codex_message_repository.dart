@@ -48,7 +48,10 @@ class CodexMessageRepository {
     String? sessionProvider;
     String? currentModel;
 
-    PluginMessage assistantInfo(String id, PluginMessageTime? time) => PluginMessage.assistant(
+    PluginMessage assistantInfo({
+      required String id,
+      required PluginMessageTime? time,
+    }) => PluginMessage.assistant(
       id: id,
       sessionID: sessionId,
       agent: "codex",
@@ -76,8 +79,8 @@ class CodexMessageRepository {
               messageId: messageId,
               sessionId: sessionId,
               info: assistantInfo(
-                messageId,
-                _messageTimeFrom(timestamp),
+                id: messageId,
+                time: _messageTimeFrom(timestamp),
               ),
               tool: "compact",
               title: "Context compacted",
@@ -107,7 +110,7 @@ class CodexMessageRepository {
             _toolMessage(
               messageId: call.id,
               sessionId: sessionId,
-              info: assistantInfo(call.id, messageTime),
+              info: assistantInfo(id: call.id, time: messageTime),
               tool: call.tool,
               title: call.title,
               status: result?.status ?? PluginToolStatus.running,
@@ -127,7 +130,7 @@ class CodexMessageRepository {
             _toolMessage(
               messageId: messageId,
               sessionId: sessionId,
-              info: assistantInfo(messageId, messageTime),
+              info: assistantInfo(id: messageId, time: messageTime),
               tool: "web_search",
               title: action?.query,
               status: PluginToolStatus.completed,
@@ -146,7 +149,7 @@ class CodexMessageRepository {
             _toolMessage(
               messageId: messageId,
               sessionId: sessionId,
-              info: assistantInfo(messageId, messageTime),
+              info: assistantInfo(id: messageId, time: messageTime),
               tool: "image_generation",
               title: null,
               status: generation.status,
@@ -168,7 +171,7 @@ class CodexMessageRepository {
           );
           messages.add(
             PluginMessageWithParts(
-              info: assistantInfo(messageId, messageTime),
+              info: assistantInfo(id: messageId, time: messageTime),
               parts: [
                 PluginMessagePart(
                   id: "$messageId-reasoning",
@@ -213,7 +216,7 @@ class CodexMessageRepository {
                   agent: null,
                   time: messageTime,
                 )
-              : assistantInfo(messageId, messageTime);
+              : assistantInfo(id: messageId, time: messageTime);
           messages.add(
             PluginMessageWithParts(
               info: info,
