@@ -73,6 +73,11 @@ final class AcpContentMapper {
     "image/png",
     "image/webp",
   };
+  static const Set<String> _supportedFilenameUriSchemes = {
+    "file",
+    "http",
+    "https",
+  };
 
   List<AcpMappedContentBlock> map({required Object? content}) {
     final warned = <_AcpContentWarning>{};
@@ -259,7 +264,12 @@ final class AcpContentMapper {
       return null;
     }
     final parsed = Uri.tryParse(uri);
-    if (parsed == null || parsed.pathSegments.isEmpty) return null;
+    if (parsed == null ||
+        !_supportedFilenameUriSchemes.contains(parsed.scheme) ||
+        (!parsed.hasAuthority && !parsed.path.startsWith("/")) ||
+        parsed.pathSegments.isEmpty) {
+      return null;
+    }
     final segments = parsed.pathSegments.where((segment) => segment.isNotEmpty);
     return segments.isEmpty ? null : normalizePluginMessageAttachmentFilename(filename: segments.last);
   }

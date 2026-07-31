@@ -121,6 +121,25 @@ void main() {
       expect(tooLarge.reason, AcpImageDegradationReason.oversized);
     });
 
+    test("does not derive metadata filenames from opaque URIs", () {
+      for (final uri in ["data:text/plain,secret", "mailto:secret@example.com"]) {
+        final mapped =
+            mapper
+                    .map(
+                      content: {
+                        "type": "image",
+                        "data": "not base64",
+                        "mimeType": "image/png",
+                        "uri": uri,
+                      },
+                    )
+                    .single
+                as AcpMappedMetadataImageContentBlock;
+
+        expect(mapped.attachment.filename, isNull);
+      }
+    });
+
     test("separates known unsupported and future content variants", () {
       final mapped = mapper.map(
         content: [
