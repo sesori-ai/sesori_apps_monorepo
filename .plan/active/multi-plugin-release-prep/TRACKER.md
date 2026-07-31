@@ -241,3 +241,7 @@
   participate in `NewSessionState` equality and hashing. The 77 directly affected
   core tests and 27 mobile New Session tests passed, as did fatal analysis in
   module-core, mobile, and desktop plus `git diff --check`.
+- Step 5.B/6 typed-failure follow-up (2026-07-31): typed legacy refresh
+  failures now retain prior options and staged commands while surfacing the
+  refresh failure. All 34 plugin-selection tests passed, as did fatal analysis
+  in module-core, mobile, and desktop.

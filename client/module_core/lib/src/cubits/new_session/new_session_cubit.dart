@@ -320,10 +320,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       ),
       NewSessionOptionsUnsupported() => const NewSessionOptionsUnsupportedState(),
       NewSessionOptionsUnavailable() => const NewSessionOptionsUnavailableState(),
-      NewSessionOptionsLoadFailure(:final error, :final source) => NewSessionOptionsFailureState(
-        reason: error.remoteFailureReason,
-        source: source,
-      ),
+      NewSessionOptionsLoadFailure(:final error, :final source) => refresh && previousOptions != null
+          ? NewSessionOptionsRefreshFailureRetainedState(options: previousOptions, source: source)
+          : NewSessionOptionsFailureState(reason: error.remoteFailureReason, source: source),
       NewSessionOptionsRefreshFailureRetained(:final options) => NewSessionOptionsRefreshFailureRetainedState(
         options: options,
         source: source,
