@@ -5,10 +5,10 @@
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
   `0da8ec7cae9e23ac17569ab7a1069e815e16f8cf`
-- **Series state:** Step 1/9 plan PR preparing; architecture approved
+- **Series state:** Step 1/9 plan PR open; architecture approved
 - **Current step:** Step 1/9 — revised durable plan
-- **Plan PR:** pending
-- **Next action:** commit/push and open Step 1/9
+- **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649)
+- **Next action:** monitor CI/review and merge Step 1/9 before starting Step 2/9
 
 ## Historical Delivery
 
@@ -39,7 +39,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] docs: replan current PR monitoring [step 1/9]` | 4,000–7,000 | Architecture/docs validation passed; preparing commit/PR; pre-evidence diff was 4,888 lines |
+| [ ] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `[session-pull-request-monitoring] docs: replan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) open; architecture/docs validation passed; initial plan commit was 4,893 lines |
 | [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `[session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Blocked on Step 1 merge; generated migration overage may be unavoidable |
 | [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `[session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2 merge |
 | [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `[session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
@@ -118,11 +118,11 @@
 
 - **Step 1/9:** `aristotle-plan-review` approved the complete revised plan with
   no findings. `git diff --check` passes; all 14 changed files are under the one
-  plan directory. The pre-evidence 954-addition/3,934-deletion (4,888-line)
-  docs-only diff is
+  plan directory. The initial plan commit's 959-addition/3,934-deletion
+  (4,893-line) docs-only diff is
   within its recorded 4,000–7,000 target; the intentional overage atomically
   removes obsolete executable stage authority. No Dart/Flutter suite was run.
-  Commit/push/PR delivery is pending.
+  [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) is open.
 
 ## Findings and Plan Deltas
 

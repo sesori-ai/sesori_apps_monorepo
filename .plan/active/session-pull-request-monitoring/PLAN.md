@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `session-pull-request-monitoring`
-- **Status:** Approved — Step 1/9 plan PR preparing
+- **Status:** Approved — Step 1/9 plan PR [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) open
 - **Plan revision date:** 2026-07-31
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main`
