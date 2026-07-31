@@ -166,19 +166,21 @@ void main() {
       expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
     });
 
-    test("executes service-owned timeout plans including zero and negative values", () async {
+    test("executes service-owned typed timeout plans and keeps clear override separate", () async {
+      const applyInput = PluginManagementIdleTimeoutInput.noTimeout();
+      const overrideInput = PluginManagementIdleTimeoutInput.custom(input: " 15 ");
       when(
-        () => service.planApplyAllIdleTimeout(input: " -5 "),
+        () => service.planApplyAllIdleTimeout(input: applyInput),
       ).thenReturn(
         const PluginManagementCommandPlan.request(
-          request: PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: -5),
+          request: PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0),
         ),
       );
       when(
-        () => service.planSetIdleTimeoutOverride(pluginId: "one", input: "0"),
+        () => service.planSetIdleTimeoutOverride(pluginId: "one", input: overrideInput),
       ).thenReturn(
         const PluginManagementCommandPlan.request(
-          request: PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 0),
+          request: PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 15),
         ),
       );
       when(
@@ -189,18 +191,21 @@ void main() {
         ),
       );
 
-      await cubit.applyIdleTimeoutToAll(input: " -5 ");
-      await cubit.setIdleTimeoutOverride(pluginId: "one", input: "0");
+      await cubit.applyIdleTimeoutToAll(input: applyInput);
+      await cubit.setIdleTimeoutOverride(pluginId: "one", input: overrideInput);
       await cubit.clearIdleTimeoutOverride(pluginId: "one");
 
+      verify(() => service.planApplyAllIdleTimeout(input: applyInput)).called(1);
+      verify(() => service.planSetIdleTimeoutOverride(pluginId: "one", input: overrideInput)).called(1);
+      verify(() => service.planClearIdleTimeoutOverride(pluginId: "one")).called(1);
       verify(
         () => service.updateIdleTimeout(
-          request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: -5),
+          request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0),
         ),
       ).called(1);
       verify(
         () => service.updateIdleTimeout(
-          request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 0),
+          request: const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 15),
         ),
       ).called(1);
       verify(
@@ -211,11 +216,12 @@ void main() {
     });
 
     test("maps invalid timeout plans without dispatching", () async {
+      const input = PluginManagementIdleTimeoutInput.custom(input: "not a number");
       when(
-        () => service.planApplyAllIdleTimeout(input: "not a number"),
+        () => service.planApplyAllIdleTimeout(input: input),
       ).thenReturn(const PluginManagementCommandPlan.invalidInput());
 
-      await cubit.applyIdleTimeoutToAll(input: "not a number");
+      await cubit.applyIdleTimeoutToAll(input: input);
 
       expect(
         (cubit.state as PluginManagementReady).action,

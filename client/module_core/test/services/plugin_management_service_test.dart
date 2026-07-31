@@ -488,24 +488,66 @@ void main() {
       await connection.dispose();
     });
 
-    test("timeout plans accept signed integers and reject other input", () {
+    test("no-timeout intent maps to canonical zero", () {
+      const input = PluginManagementIdleTimeoutInput.noTimeout();
+
       expect(
-        service.planApplyAllIdleTimeout(input: " -5 "),
+        service.planApplyAllIdleTimeout(input: input),
         isA<PluginManagementCommandPlanRequest>().having(
           (plan) => plan.request,
           "request",
-          const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: -5),
+          const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0),
         ),
       );
       expect(
-        service.planSetIdleTimeoutOverride(pluginId: "one", input: "0"),
+        service.planSetIdleTimeoutOverride(pluginId: "one", input: input),
         isA<PluginManagementCommandPlanRequest>().having(
           (plan) => plan.request,
           "request",
           const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 0),
         ),
       );
-      expect(service.planApplyAllIdleTimeout(input: "1.5"), isA<PluginManagementCommandPlanInvalidInput>());
+    });
+
+    test("custom timeout accepts only trimmed strictly positive integers", () {
+      expect(
+        service.planApplyAllIdleTimeout(
+          input: const PluginManagementIdleTimeoutInput.custom(input: " 15 "),
+        ),
+        isA<PluginManagementCommandPlanRequest>().having(
+          (plan) => plan.request,
+          "request",
+          const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 15),
+        ),
+      );
+      expect(
+        service.planSetIdleTimeoutOverride(
+          pluginId: "one",
+          input: const PluginManagementIdleTimeoutInput.custom(input: "\t20\n"),
+        ),
+        isA<PluginManagementCommandPlanRequest>().having(
+          (plan) => plan.request,
+          "request",
+          const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 20),
+        ),
+      );
+
+      for (final value in ["", " ", "not a number", "1.5", "0", " 0 ", "-5", " -5 "]) {
+        final input = PluginManagementIdleTimeoutInput.custom(input: value);
+        expect(
+          service.planApplyAllIdleTimeout(input: input),
+          isA<PluginManagementCommandPlanInvalidInput>(),
+          reason: "apply-all should reject '$value'",
+        );
+        expect(
+          service.planSetIdleTimeoutOverride(pluginId: "one", input: input),
+          isA<PluginManagementCommandPlanInvalidInput>(),
+          reason: "override should reject '$value'",
+        );
+      }
+    });
+
+    test("clear override remains a distinct inheritance request", () {
       expect(
         service.planClearIdleTimeoutOverride(pluginId: "one"),
         isA<PluginManagementCommandPlanRequest>().having(

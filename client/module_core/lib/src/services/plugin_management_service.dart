@@ -25,6 +25,25 @@ typedef _CapturedManagementRequest = ({
   bool hasBridgeIdentity,
 });
 
+sealed class PluginManagementIdleTimeoutInput {
+  const PluginManagementIdleTimeoutInput();
+
+  const factory PluginManagementIdleTimeoutInput.noTimeout() = PluginManagementIdleTimeoutInputNoTimeout;
+
+  const factory PluginManagementIdleTimeoutInput.custom({required String input}) =
+      PluginManagementIdleTimeoutInputCustom;
+}
+
+final class PluginManagementIdleTimeoutInputNoTimeout extends PluginManagementIdleTimeoutInput {
+  const PluginManagementIdleTimeoutInputNoTimeout();
+}
+
+final class PluginManagementIdleTimeoutInputCustom extends PluginManagementIdleTimeoutInput {
+  const PluginManagementIdleTimeoutInputCustom({required this.input});
+
+  final String input;
+}
+
 @lazySingleton
 class PluginManagementService with Disposable {
   PluginManagementService({
@@ -83,8 +102,8 @@ class PluginManagementService with Disposable {
     );
   }
 
-  PluginManagementCommandPlan planApplyAllIdleTimeout({required String input}) {
-    final idleTimeoutMins = int.tryParse(input.trim());
+  PluginManagementCommandPlan planApplyAllIdleTimeout({required PluginManagementIdleTimeoutInput input}) {
+    final idleTimeoutMins = _parseIdleTimeoutMins(input: input);
     if (idleTimeoutMins == null) return const PluginManagementCommandPlan.invalidInput();
     return PluginManagementCommandPlan.request(
       request: PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: idleTimeoutMins),
@@ -93,9 +112,9 @@ class PluginManagementService with Disposable {
 
   PluginManagementCommandPlan planSetIdleTimeoutOverride({
     required String pluginId,
-    required String input,
+    required PluginManagementIdleTimeoutInput input,
   }) {
-    final idleTimeoutMins = int.tryParse(input.trim());
+    final idleTimeoutMins = _parseIdleTimeoutMins(input: input);
     if (idleTimeoutMins == null) return const PluginManagementCommandPlan.invalidInput();
     return PluginManagementCommandPlan.request(
       request: PluginIdleTimeoutUpdateRequest.setOverride(
@@ -373,6 +392,16 @@ class PluginManagementService with Disposable {
     await _refreshTail;
     await _snapshots.close();
   }
+}
+
+int? _parseIdleTimeoutMins({required PluginManagementIdleTimeoutInput input}) {
+  return switch (input) {
+    PluginManagementIdleTimeoutInputNoTimeout() => 0,
+    PluginManagementIdleTimeoutInputCustom(:final input) => switch (int.tryParse(input.trim())) {
+      final value? when value > 0 => value,
+      _ => null,
+    },
+  };
 }
 
 enum _RefreshOutcome { applied, failed, superseded, fenced }

@@ -3,9 +3,9 @@
 ## Status
 
 - **Plan slug:** `multi-plugin-release-prep`
-- **Status:** Steps 1/6 through 5.B/6 merged; Step 5.C/6 is in progress
+- **Status:** Steps 1/6 through 5.C/6 merged; Step 6/6 is in progress
 - **Plan delivery:** this document and its tracker are Step 1/6
-- **Implementation base:** `origin/main` at `6ffc9f39`
+- **Implementation base:** `origin/main` at `4be1e7bb`
 - **Approved product direction:** Codex remains project-aware; Cursor and the
   ACP-backed option state use plugin-scoped caching; OpenCode remains
   project-scoped
@@ -550,7 +550,7 @@ UI decisions.
 | 5.A/6 | `multi-plugin-release-prep-client-options` | `[multi-plugin-release-prep] feat(client): add cached session option layers [step 5.A/6]` | 1,350-1,750 | Aggregate API/repository mapping, provider-cache removal, repository-owned catalogs, and service-owned option policy including explicit old-bridge fallback. |
 | 5.B/6 | `multi-plugin-release-prep-client-options-ui` | `[multi-plugin-release-prep] feat(client): use cached session options [step 5.B/6]` | 1,650-2,150 | Repository-mapped plugin source, independent selection intent, composed cubit state, generation fencing, and New Session mobile UI. |
 | 5.C/6 | `multi-plugin-release-prep-dynamic-options` | `[multi-plugin-release-prep] feat(bridge): dynamically load missing session options [step 5.C/6]` | 180-320 | Tri-state aggregate query semantics, dynamic cache-miss fetch, client terminology, and compatibility verification without changing legacy routes. |
-| 6/6 | `multi-plugin-release-prep-harness-settings` | `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]` | 850-1,200 | One Harnesses screen/cubit, capability/setup-aware visibility, route removal, and Prego timeout/force sheets. |
+| 6/6 | `multi-plugin-release-prep-harness-settings` | `[multi-plugin-release-prep] refactor(app): consolidate Harness settings [step 6/6]` | 2,700-2,900 | One Harnesses screen/cubit, capability/setup-aware visibility, route removal, and Prego timeout/force sheets. The cohesive diff includes deletion of the redundant screen and its folded test suite. |
 
 ## Per-Step Verification
 

@@ -2,11 +2,11 @@
 
 ## Current State
 
-- **Implementation base:** `origin/main` at `bfadd097`
-- **Series state:** Steps 1/6 through 5.B/6 are merged; oversized PR #620 is
+- **Implementation base:** `origin/main` at `4be1e7bb`
+- **Series state:** Steps 1/6 through 5.C/6 are merged; oversized PR #620 is
   closed, with its frozen branch retained only as the split implementation source
-- **Current step:** Step 5.C/6 — dynamic session-option cache misses
-- **Next action:** monitor Step 5.C PR #642 through review and CI
+- **Current step:** Step 6/6 — consolidated Harnesses settings
+- **Next action:** commit and open the verified final Step 6 PR against `main`
 
 ## Delivery
 
@@ -23,8 +23,8 @@
 | [x] | Step 4.F/6 — route, listeners, and lifecycle wiring | `multi-plugin-release-prep-cache-route` | PR #630 merged |
 | [x] | Step 5.A/6 — cached session-option client layers | `multi-plugin-release-prep-client-options` | PR #635 merged |
 | [x] | Step 5.B/6 — cached New Session composer | `multi-plugin-release-prep-client-options-ui` | PR #636 merged |
-| [ ] | Step 5.C/6 — dynamic session-option cache misses | `multi-plugin-release-prep-dynamic-options` | [PR #642](https://github.com/sesori-ai/sesori_apps_monorepo/pull/642) open against `main` |
-| [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Blocked on Step 5.C merge |
+| [x] | Step 5.C/6 — dynamic session-option cache misses | `multi-plugin-release-prep-dynamic-options` | PR #642 merged |
+| [ ] | Step 6/6 — consolidated Harnesses settings | `multi-plugin-release-prep-harness-settings` | Ready for PR |
 
 ## Locked Decisions
 
@@ -295,3 +295,17 @@
   that path again immediately before may-activate capture. All 34 service tests,
   47 focused module-core tests, and 28 mobile New Session tests passed, as did fatal
   analysis in bridge-app, module-core, mobile, and desktop plus `git diff --check`.
+- Step 5.C/6 merge (2026-07-31): PR #642 merged to `main` as `cd6d3caa`; Step
+  6/6 now proceeds from that base.
+- Step 6/6 preparation (2026-07-31): consolidated overview and management into
+  one Harnesses screen with one screen-owned cubit; removed the nested route;
+  made facts and actions setup-, eligibility-, capability-, and unknown-state
+  aware; modeled no-timeout versus strictly-positive custom input explicitly;
+  and replaced Material timeout/force dialogs with Prego sheets. Generated
+  localization output. All 55 focused module-core tests and 66 focused mobile
+  tests passed, as did `dart pub get`, fatal analysis in module-core, mobile,
+  module-desktop-core, and desktop, plus `git diff --check`. Aristotle approved
+  the implementation architecture without findings. The final diff is 2,801
+  changed lines because it deletes the redundant screen/test while folding their
+  coverage into the surviving surface; the user approved one cohesive PR rather
+  than transitional stacked delivery.

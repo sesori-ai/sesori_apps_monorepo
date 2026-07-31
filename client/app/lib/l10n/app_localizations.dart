@@ -403,12 +403,6 @@ abstract class AppLocalizations {
   /// **'Harnesses'**
   String get settingsHarnessesTitle;
 
-  /// No description provided for @settingsHarnessManagementTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Manage Harnesses'**
-  String get settingsHarnessManagementTitle;
-
   /// No description provided for @harnessManagementDescription.
   ///
   /// In en, this message translates to:
@@ -493,10 +487,28 @@ abstract class AppLocalizations {
   /// **'Minutes'**
   String get harnessManagementTimeoutMinutesLabel;
 
+  /// No description provided for @harnessManagementTimeoutUseDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Use bridge default'**
+  String get harnessManagementTimeoutUseDefault;
+
+  /// No description provided for @harnessManagementTimeoutNoTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'No timeout'**
+  String get harnessManagementTimeoutNoTimeout;
+
+  /// No description provided for @harnessManagementTimeoutCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get harnessManagementTimeoutCustom;
+
   /// No description provided for @harnessManagementTimeoutHelp.
   ///
   /// In en, this message translates to:
-  /// **'Use zero or a negative value to keep the harness running.'**
+  /// **'Custom timeouts must be a whole number greater than zero.'**
   String get harnessManagementTimeoutHelp;
 
   /// No description provided for @harnessManagementCancel.
@@ -550,7 +562,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessManagementInvalidTimeout.
   ///
   /// In en, this message translates to:
-  /// **'Enter a whole number of minutes.'**
+  /// **'Enter a whole number greater than zero.'**
   String get harnessManagementInvalidTimeout;
 
   /// No description provided for @harnessManagementNotFound.
@@ -576,12 +588,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check your connection and try again.'**
   String get harnessManagementRequestFailed;
-
-  /// No description provided for @harnessesDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'View the coding harnesses registered by your connected bridge.'**
-  String get harnessesDescription;
 
   /// No description provided for @harnessesRegisteredSection.
   ///
@@ -678,12 +684,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Work'**
   String get harnessesWorkStatus;
-
-  /// No description provided for @harnessesEffectiveIdleTimeout.
-  ///
-  /// In en, this message translates to:
-  /// **'Idle timeout'**
-  String get harnessesEffectiveIdleTimeout;
 
   /// No description provided for @harnessesCustomIdleTimeout.
   ///

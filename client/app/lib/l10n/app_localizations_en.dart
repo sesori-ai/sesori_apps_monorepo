@@ -177,9 +177,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsHarnessesTitle => 'Harnesses';
 
   @override
-  String get settingsHarnessManagementTitle => 'Manage Harnesses';
-
-  @override
   String get harnessManagementDescription => 'Control the harnesses that support management through Sesori.';
 
   @override
@@ -226,7 +223,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementTimeoutMinutesLabel => 'Minutes';
 
   @override
-  String get harnessManagementTimeoutHelp => 'Use zero or a negative value to keep the harness running.';
+  String get harnessManagementTimeoutUseDefault => 'Use bridge default';
+
+  @override
+  String get harnessManagementTimeoutNoTimeout => 'No timeout';
+
+  @override
+  String get harnessManagementTimeoutCustom => 'Custom';
+
+  @override
+  String get harnessManagementTimeoutHelp => 'Custom timeouts must be a whole number greater than zero.';
 
   @override
   String get harnessManagementCancel => 'Cancel';
@@ -254,7 +260,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementDismissActionError => 'Dismiss action error';
 
   @override
-  String get harnessManagementInvalidTimeout => 'Enter a whole number of minutes.';
+  String get harnessManagementInvalidTimeout => 'Enter a whole number greater than zero.';
 
   @override
   String get harnessManagementNotFound => 'The harness is no longer registered on this bridge.';
@@ -268,9 +274,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessManagementRequestFailed => 'Check your connection and try again.';
-
-  @override
-  String get harnessesDescription => 'View the coding harnesses registered by your connected bridge.';
 
   @override
   String get harnessesRegisteredSection => 'Registered Harnesses';
@@ -319,9 +322,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessesWorkStatus => 'Work';
-
-  @override
-  String get harnessesEffectiveIdleTimeout => 'Idle timeout';
 
   @override
   String get harnessesCustomIdleTimeout => 'Custom for this harness';

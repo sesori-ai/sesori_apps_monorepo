@@ -48,12 +48,15 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
     replacePendingConfirmation: false,
   );
 
-  Future<void> applyIdleTimeoutToAll({required String input}) => _runTimeoutPlan(
+  Future<void> applyIdleTimeoutToAll({required PluginManagementIdleTimeoutInput input}) => _runTimeoutPlan(
     target: const PluginManagementActionTarget.allHarnesses(),
     plan: _service.planApplyAllIdleTimeout(input: input),
   );
 
-  Future<void> setIdleTimeoutOverride({required String pluginId, required String input}) => _runTimeoutPlan(
+  Future<void> setIdleTimeoutOverride({
+    required String pluginId,
+    required PluginManagementIdleTimeoutInput input,
+  }) => _runTimeoutPlan(
     target: PluginManagementActionTarget.harness(pluginId: pluginId),
     plan: _service.planSetIdleTimeoutOverride(pluginId: pluginId, input: input),
   );
