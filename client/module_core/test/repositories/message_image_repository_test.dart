@@ -137,6 +137,43 @@ void main() {
     expect(result, isA<MessageImageLoadRejected>());
   });
 
+  test("uses the declared image MIME extension when the filename is absent", () async {
+    final repository = MessageImageRepository(
+      api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
+    );
+    final cases = <({String mime, List<int> bytes, String expectedFilename})>[
+      (mime: "image/bmp", bytes: const [0x42, 0x4D], expectedFilename: "image.bmp"),
+      (mime: "image/gif", bytes: const [0x47, 0x49, 0x46, 0x38, 0x39, 0x61], expectedFilename: "image.gif"),
+      (mime: "image/jpeg", bytes: const [0xFF, 0xD8, 0xFF], expectedFilename: "image.jpg"),
+      (
+        mime: "image/png",
+        bytes: const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+        expectedFilename: "image.png",
+      ),
+      (
+        mime: "image/webp",
+        bytes: const [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50],
+        expectedFilename: "image.webp",
+      ),
+    ];
+
+    for (final imageCase in cases) {
+      final result = await repository.load(
+        attachment: MessageAttachment.inlineImage(
+          mime: imageCase.mime,
+          base64: base64Encode(imageCase.bytes),
+          filename: null,
+        ),
+      );
+
+      expect(
+        (result as MessageImageLoadSuccess).actionFilename,
+        imageCase.expectedFilename,
+        reason: imageCase.mime,
+      );
+    }
+  });
+
   test("bounds action filenames by UTF-8 byte length", () async {
     final repository = MessageImageRepository(
       api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),

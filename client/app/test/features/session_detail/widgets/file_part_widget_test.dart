@@ -121,7 +121,7 @@ void main() {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
-      filename: "image.png",
+      filename: "why-needed.png",
     );
 
     await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
@@ -148,6 +148,7 @@ void main() {
     expect(find.byIcon(Icons.content_copy), findsOneWidget);
     expect(find.byIcon(Icons.share_outlined), findsOneWidget);
     expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.text("why-needed.png"), findsOneWidget);
     final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
     expect(identical(fullscreen.image, preview.image), isTrue);
     final memoryImage = (preview.image as ResizeImage).imageProvider as MemoryImage;
@@ -181,6 +182,10 @@ void main() {
 
     expect(find.text("image.png"), findsNothing);
     expect(find.text("Unknown file"), findsNothing);
+    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.pump();
+
+    expect(imageSaver.savedFilename, "image.png");
   });
 
   testWidgets("keeps display and action filenames separate when saving", (tester) async {
