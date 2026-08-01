@@ -399,11 +399,9 @@ final class AcpContentMapper {
     if (raw is String) return true;
     if (raw is! Map) return false;
     if (raw.isEmpty) return true;
-    if (raw.containsKey("stdout") && raw["stdout"] is! String) return false;
-    if (raw.containsKey("stderr") && raw["stderr"] is! String) return false;
-    if (raw.containsKey("exitCode") && raw["exitCode"] is! int) return false;
-    if (raw.containsKey("content")) return true;
-    return raw.containsKey("stdout") || raw.containsKey("stderr") || raw.containsKey("exitCode");
+    if (raw["stdout"] is String || raw["stderr"] is String || raw["exitCode"] is int) return true;
+    final content = raw["content"];
+    return content is String || content is List || content is Map;
   }
 
   List<AcpMappedContentBlock> _legacyMapContent({

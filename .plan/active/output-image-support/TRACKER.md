@@ -235,7 +235,8 @@
   four-image candidate limit; the status-less diff exception remains unchanged
   because it is established compatibility behavior for backends that provide no
   later status event. Malformed raw-output-only updates now preserve prior tool
-  state while explicit empty output still clears it. The final 1,364-line PR diff
+  state while explicit empty output still clears it; valid sibling fields remain
+  usable and malformed nested content is rejected. The final 1,375-line PR diff
   is below the 1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas
