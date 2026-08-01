@@ -177,6 +177,59 @@ void main() {
       expect(plugin.calls, 0);
     });
 
+    test("session detail bounds identity verification and returns PR-free data", () async {
+      await database.projectsDao.setPrCacheGithubLogin(
+        projectId: "project",
+        githubLogin: "octocat",
+      );
+      await database.sessionDao.updatePullRequestScopes(
+        updates: const [
+          (
+            sessionId: "root",
+            currentBranchName: "feature/private",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
+      await database.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "project",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
+          prNumber: 45,
+          branchName: "feature/private",
+          url: "https://github.com/org/repo/pull/45",
+          title: "Private PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      final detailHandler = GetSessionHandler(
+        sessionRepository: repository,
+        prSyncService: FakePrSyncService(
+          identityVerificationDelays: const [Duration(milliseconds: 100)],
+        ),
+        identityVerificationTimeout: const Duration(milliseconds: 10),
+      );
+
+      final detail = await detailHandler.handle(
+        makeRequest("POST", "/session/detail"),
+        body: const SessionIdRequest(sessionId: "root"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(detail.id, "root");
+      expect(detail.pullRequest, isNull);
+      expect(detail.pullRequestHistory, isEmpty);
+      await Future<void>.delayed(const Duration(milliseconds: 110));
+    });
+
     test("unknown detail and parent ids remain 404s without plugin calls", () async {
       final detailHandler = GetSessionHandler(
         sessionRepository: repository,

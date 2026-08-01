@@ -124,7 +124,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 
       final fallbackDirectory = sessions.firstOrNull?.directory;
       if (fallbackDirectory == null || fallbackDirectory.isEmpty) {
-        return PrRefreshOutcome.completed;
+        return PrRefreshOutcome.failed;
       }
       return await _prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory);
     } on Object catch (e, st) {

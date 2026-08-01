@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
@@ -8,12 +11,15 @@ import "request_handler.dart";
 class GetSessionHandler extends BodyRequestHandler<SessionIdRequest, Session> {
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
+  final Duration _identityVerificationTimeout;
 
   GetSessionHandler({
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    Duration identityVerificationTimeout = const Duration(seconds: 5),
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
+       _identityVerificationTimeout = identityVerificationTimeout,
        super(
          HttpMethod.post,
          "/session/detail",
@@ -38,7 +44,21 @@ class GetSessionHandler extends BodyRequestHandler<SessionIdRequest, Session> {
       throw buildErrorResponse(request, 404, "session not found");
     }
 
-    final verifiedGithubLogin = await _prSyncService.verifyGithubIdentity();
+    final verifiedGithubLogin = await _prSyncService.verifyGithubIdentity().timeout(
+      _identityVerificationTimeout,
+      onTimeout: () {
+        final error = TimeoutException(
+          "GitHub identity verification exceeded ${_identityVerificationTimeout.inSeconds}s",
+          _identityVerificationTimeout,
+        );
+        Log.w(
+          "Session detail identity verification timed out; returning PR-free data",
+          error,
+          StackTrace.current,
+        );
+        return null;
+      },
+    );
     final session = await _sessionRepository.getSessionForProject(
       projectId: projectId,
       sessionId: sessionId,

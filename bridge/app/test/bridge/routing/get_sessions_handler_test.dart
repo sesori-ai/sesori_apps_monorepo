@@ -1226,6 +1226,48 @@ void main() {
       expect(result.items.single.pullRequestHistory, isEmpty);
     });
 
+    test("strips cached PR metadata when no refresh source is available", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "",
+          parentID: null,
+          title: "session one",
+          time: null,
+        ),
+      ];
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
+          prNumber: 103,
+          branchName: "feature/no-source",
+          url: "https://github.com/org/repo/pull/103",
+          title: "Unavailable refresh source PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.single.pullRequest, isNull);
+      expect(result.items.single.pullRequestHistory, isEmpty);
+    });
+
     test("keeps final identity verification inside the waited deadline", () async {
       plugin.sessionsResult = const [
         PluginSession(

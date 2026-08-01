@@ -240,10 +240,14 @@
   PR/history clearing solely in `SessionRepository`, with no policy re-review.
   Automated review follow-up placed initial/final identity and mapping inside one
   five-second deadline, converts asynchronous refresh errors into explicit
-  failure, and distinguishes an active refresh from completion. Post-follow-up
-  fatal-info analysis and 54 focused handler/service tests pass. The approximately
-  1,050-line change remains below estimate because it reuses the Step 2.b
-  persistence seams and has no generated artifacts.
+  failure, and distinguishes an active refresh from completion. A later round
+  bounded detail-read identity checks and made an unavailable waited-refresh
+  source fail closed; the non-waiting list deadline remains intentional because
+  it bounds the fresh identity gate rather than waiting for background refresh.
+  Post-follow-up fatal-info analysis and the latest 59 focused
+  handler/service tests pass. The approximately 1,170-line change remains below
+  estimate because it reuses the Step 2.b persistence seams and has no generated
+  artifacts.
 - **Step 2.c/9 cleanup assessment:** Removed the unused PR-repository session
   read API and made non-list/detail mapping explicitly PR-free. No persisted,
   wire, job, listener, setting, or compatibility artifact became obsolete.
