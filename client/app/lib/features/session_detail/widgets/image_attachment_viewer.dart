@@ -109,6 +109,7 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
   Offset? _doubleTapPosition;
   Offset _interactionDelta = Offset.zero;
   double _dragOffset = 0;
+  double _dragStartOffset = 0;
   double _dragResetStart = 0;
   bool _canDragToDismiss = false;
   bool _isDismissDrag = false;
@@ -147,10 +148,13 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
 
   void _handleInteractionStart({required ScaleStartDetails details}) {
     _zoomController.stop();
-    _dragResetController.stop();
     _interactionDelta = Offset.zero;
     _canDragToDismiss = details.pointerCount == 1 && _isAtBaseScale;
     _isDismissDrag = false;
+    if (_canDragToDismiss) {
+      _dragStartOffset = _dragOffset;
+      _dragResetController.stop();
+    }
   }
 
   void _handleInteractionUpdate({required ScaleUpdateDetails details}) {
@@ -166,20 +170,26 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
       if (_interactionDelta.distance < 8) return;
       if (_interactionDelta.dy.abs() <= _interactionDelta.dx.abs() * 1.2) {
         _canDragToDismiss = false;
+        if (_dragOffset != 0) _animateDragToOrigin();
         return;
       }
       _isDismissDrag = true;
     }
 
     final height = MediaQuery.sizeOf(context).height;
-    setState(() => _dragOffset = _interactionDelta.dy.clamp(-height, height));
+    setState(() => _dragOffset = (_dragStartOffset + _interactionDelta.dy).clamp(-height, height));
   }
 
   void _handleInteractionEnd({required ScaleEndDetails details}) {
     final wasDismissDrag = _isDismissDrag;
     _canDragToDismiss = false;
     _isDismissDrag = false;
-    if (!wasDismissDrag || _isDismissing) return;
+    if (!wasDismissDrag || _isDismissing) {
+      if (!_isDismissing && _dragOffset != 0 && !_dragResetController.isAnimating) {
+        _animateDragToOrigin();
+      }
+      return;
+    }
 
     final velocity = details.velocity.pixelsPerSecond.dy;
     final distanceThreshold = (MediaQuery.sizeOf(context).height * 0.15).clamp(96.0, 160.0);

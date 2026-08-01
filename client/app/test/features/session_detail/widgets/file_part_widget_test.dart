@@ -272,6 +272,8 @@ void main() {
     final initialCenter = tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey));
 
     await tester.timedDrag(viewer, const Offset(0, 40), const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 40));
+    await tester.timedDrag(viewer, const Offset(80, 0), const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     expect(viewer, findsOneWidget);
