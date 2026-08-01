@@ -234,7 +234,7 @@
   and `git diff --check` passes. Follow-up review centralized the shared
   four-image candidate limit; the status-less diff exception remains unchanged
   because it is established compatibility behavior for backends that provide no
-  later status event. The final 1,346-line PR diff
+  later status event. The final 1,345-line PR diff
   is below the 1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas
