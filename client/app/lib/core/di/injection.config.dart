@@ -231,16 +231,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
     );
-    gh.lazySingleton<_i1038.VoiceTranscriptionService>(
-      () => _i1038.VoiceTranscriptionService(
-        gh<_i948.VoiceApi>(),
-        gh<_i1039.AudioRecorder>(),
-        gh<_i62.RecordingFileProvider>(),
-        gh<_i511.WakeLockService>(),
-        gh<_i430.AudioFormatConfig>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     return this;
   }
 }

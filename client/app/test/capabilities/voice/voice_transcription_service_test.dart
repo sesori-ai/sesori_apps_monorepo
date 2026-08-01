@@ -172,9 +172,10 @@ void main() {
         verify(() => mockRecorder.start(any(), path: recordingPath)).called(1);
       });
 
-      test("a stalled prewarm cannot block recording indefinitely", () {
+      test("a timed-out recording attempt stays serialized until prewarm finishes", () {
         fakeAsync((async) {
           final nativePrewarm = Completer<void>();
+          Object? startError;
           when(
             () => mockRecorderPrewarmClient.prewarm(
               sampleRate: any(named: "sampleRate"),
@@ -185,12 +186,27 @@ void main() {
 
           unawaited(service.prewarmRecording());
           async.flushMicrotasks();
-          unawaited(service.startRecording());
+          unawaited(
+            service.startRecording().then<void>(
+              (_) {},
+              onError: (Object error) => startError = error,
+            ),
+          );
           async.flushMicrotasks();
           verifyNever(() => mockRecorder.start(any(), path: any(named: "path")));
 
           try {
             async.elapse(const Duration(seconds: 2));
+            async.flushMicrotasks();
+
+            expect(startError, isA<TimeoutException>());
+            expect(service.isBusy, isFalse);
+            expect(service.isRecording, isFalse);
+            verifyNever(() => mockRecorder.start(any(), path: any(named: "path")));
+
+            nativePrewarm.complete();
+            async.flushMicrotasks();
+            unawaited(service.startRecording());
             async.flushMicrotasks();
 
             expect(service.isRecording, isTrue);

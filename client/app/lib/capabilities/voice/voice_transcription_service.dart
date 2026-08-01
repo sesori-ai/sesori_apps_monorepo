@@ -16,8 +16,8 @@ const maxRecordingDuration = Duration(minutes: 15);
 /// Amplitude polling interval for the waveform visualizer.
 const _amplitudeInterval = Duration(milliseconds: 100);
 
-/// Native warm-up should normally finish in under 200 ms. This bound keeps a
-/// stalled platform call from blocking real recording or service disposal.
+/// Native warm-up should normally finish in under 200 ms. This bound lets a
+/// recording attempt fail promptly without racing native warm-up resources.
 const _recorderPrewarmTimeout = Duration(seconds: 2);
 
 /// dBFS floor for normalization — speech rarely drops below -60 dBFS,
@@ -89,13 +89,11 @@ class VoiceTranscriptionService {
       final hasPermission = await _recorder.hasPermission(request: false);
       if (!hasPermission) return;
 
-      await _recorderPrewarmClient
-          .prewarm(
-            sampleRate: _audioFormat.sampleRate,
-            bitRate: _audioFormat.bitRate,
-            numChannels: _audioFormat.numChannels,
-          )
-          .timeout(_recorderPrewarmTimeout);
+      await _recorderPrewarmClient.prewarm(
+        sampleRate: _audioFormat.sampleRate,
+        bitRate: _audioFormat.bitRate,
+        numChannels: _audioFormat.numChannels,
+      );
     } catch (error, stackTrace) {
       logw("Failed to prewarm audio recorder", error, stackTrace);
     } finally {
@@ -113,7 +111,11 @@ class VoiceTranscriptionService {
 
     try {
       final prewarmFuture = _prewarmFuture;
-      if (prewarmFuture != null) await prewarmFuture;
+      if (prewarmFuture != null) {
+        // Future.timeout does not cancel native work, so a timeout must fail
+        // this attempt while the underlying future remains serialized.
+        await prewarmFuture.timeout(_recorderPrewarmTimeout);
+      }
 
       bool hasPermission;
       try {
@@ -329,7 +331,13 @@ class VoiceTranscriptionService {
     await _maxDurationReachedController.close();
 
     final prewarmFuture = _prewarmFuture;
-    if (prewarmFuture != null) await prewarmFuture;
+    if (prewarmFuture != null) {
+      try {
+        await prewarmFuture.timeout(_recorderPrewarmTimeout);
+      } on TimeoutException catch (error, stackTrace) {
+        logw("Timed out waiting for recorder prewarm during disposal", error, stackTrace);
+      }
+    }
 
     try {
       await _recorder.dispose();
