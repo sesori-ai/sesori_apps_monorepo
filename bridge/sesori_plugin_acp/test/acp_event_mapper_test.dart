@@ -907,6 +907,32 @@ void main() {
       expect(again, isEmpty);
     });
 
+    test("a tool clears unrendered id-less state before a later halt", () {
+      mapper.beginTurn("s1");
+      expect(
+        mapper.map(update({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "audio", "data": "private", "mimeType": "audio/wav"},
+        })),
+        isEmpty,
+      );
+      mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "t1",
+        "kind": "read",
+        "status": "completed",
+      }));
+      final halt = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "HALT: fix it"},
+      }));
+
+      expect(
+        shared.Message.fromJson(halt.whereType<BridgeSseMessageUpdated>().single.info),
+        isA<shared.MessageError>(),
+      );
+    });
+
     test("id-less assistant text after a halt opens a fresh envelope", () {
       mapper.beginTurn("s1");
       final before = mapper.map(update({

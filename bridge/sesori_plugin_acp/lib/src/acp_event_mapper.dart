@@ -429,7 +429,7 @@ class AcpEventMapper {
       (block) => block is AcpMappedImageContentBlock || (block is AcpMappedTextContentBlock && block.text.isNotEmpty),
     );
     if (identity.hasAcpMessageId && hasTrackableContent) {
-      _closeIdlessAssistantEnvelope(sessionId);
+      _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
 
     if (!identity.hasAcpMessageId &&
@@ -605,7 +605,7 @@ class AcpEventMapper {
     // message id and opens a new envelope rather than appending a delta to the
     // abandoned one. (The dedupe return above runs first, so a repeated halt
     // chunk can't double-bump the sequence.)
-    _closeIdlessAssistantEnvelope(sessionId);
+    _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     return [
       BridgeSseMessageUpdated(
         info: shared.Message.error(
@@ -629,7 +629,7 @@ class AcpEventMapper {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     if (_liveTools[sessionId]?[toolCallId] == null) {
-      _closeIdlessAssistantEnvelope(sessionId);
+      _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
     final messageId = "$sessionId-tool-$toolCallId";
     final content = _contentMapper.toolContent(update: update);
@@ -672,7 +672,7 @@ class AcpEventMapper {
     // which already merges — keeping live and history renderings consistent.
     final prior = _liveTools[sessionId]?[toolCallId];
     if (prior == null) {
-      _closeIdlessAssistantEnvelope(sessionId);
+      _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
     // Only re-resolve the tool identifier when `kind` is explicitly present; a
     // title-only update must NOT overwrite the canonical id (e.g. "edit") with
@@ -717,6 +717,15 @@ class AcpEventMapper {
   void _closeIdlessAssistantEnvelope(String sessionId) {
     if (!_openIdlessAssistant.remove(sessionId)) return;
     _idlessAssistantSeq[sessionId] = (_idlessAssistantSeq[sessionId] ?? 0) + 1;
+  }
+
+  void _closeCurrentIdlessAssistantContent({required String sessionId}) {
+    final messageId =
+        "$sessionId-t${_turn(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
+    final sessionTrackers = _contentTrackers[sessionId];
+    sessionTrackers?.remove(messageId);
+    if (sessionTrackers?.isEmpty ?? false) _contentTrackers.remove(sessionId);
+    _closeIdlessAssistantEnvelope(sessionId);
   }
 
   BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {
