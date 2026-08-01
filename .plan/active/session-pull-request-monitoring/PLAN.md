@@ -515,7 +515,7 @@ settings screen analytics continue unchanged.
   overage.
 - Never hand-edit generated files. Internal Dart contracts update every
   in-repository consumer in lockstep.
-- Run `aristotle-impl-review` for Steps 2–8 because they alter production
+- Run `aristotle-impl-review` for Steps 2.a–8 because they alter production
   persistence, APIs, ownership, lifecycle, public/wire contracts, or cross-layer
   flow. Do not run it for documentation-only Steps 1 or 9.
 
@@ -524,7 +524,9 @@ settings screen analytics continue unchanged.
 | Step | Branch | Exact PR title | Complexity rationale | Changed-line target | Outcome |
 |---|---|---|---|---:|---|
 | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | Documentation/instruction/agent-definition changes only, with no runtime behavior. | 4,000–7,000 | Publish this reviewed plan/tracker and the reusable PR communication/cleanup rules. |
-| 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | Drift migration plus fail-closed account identity and cache visibility. | 1,300–2,000 | Migrate current branch/repository/login scope and repository-keyed ephemeral PR cache while preserving request-driven behavior. |
+| 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | Typed identity/repository evidence and deterministic repository-pinned CLI queries. | 500–900 | Make the existing request-driven source verify its active login and canonical repository before querying that repository explicitly. |
+| 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | Drift migration, generated artifacts, transactional writer ownership, and scoped cache joins. | 4,200–5,200 | Migrate current branch/repository/login scope and the repository-keyed ephemeral PR cache while preserving request-driven behavior. |
+| 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | Fresh request identity gating, list/detail failure behavior, and privacy-sensitive regressions. | 1,200–1,700 | Require fresh login evidence for every PR-bearing read and fail closed without blocking session/catalog data. |
 | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | Typed dynamic GraphQL batching/pagination, identity fencing, and deterministic selection. | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
 | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | Git/process resolution, persisted scope, cache races, and cross-layer rendering. | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |
 | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | Multi-device connection lifecycle and serialized add-during-flight scheduling. | 900–1,400 | Route per-connection project presence and run one fixed 30-second aggregate scheduler. |
@@ -541,7 +543,7 @@ Scope:
 
 - Publish the current-branch architecture and tracker as one plan authority.
 - Consolidate execution guidance into the top-level plan files.
-- Record the fixed nine emoji-prefixed titles, line budgets, existing PR #457
+- Record the fixed top-level sequence and emoji-prefixed titles, line budgets, existing PR #457
   contract baseline, current code baseline, open-PR drift, and final retirement
   step.
 - Update root repository guidance, Plan Maker, and Plan Worker with the reusable
@@ -556,7 +558,36 @@ Verification:
 - confirm only this plan directory, root `AGENTS.md`, and the two requested
   agent definitions changed
 
-### Step 2/9 — Scoped PR persistence
+### Step 2.a/9 — Scoped GitHub source queries
+
+Scope:
+
+- Pin current `main` and record drift from the merged plan baseline.
+- Add typed active-login verification and canonical lowercase GitHub
+  `owner/repo` resolution at the API/repository boundary.
+- Require the existing request-driven writer to obtain both pieces of evidence
+  before GitHub work and pass canonical `owner/repo` through every repository
+  layer.
+- Pin repository-wide `gh pr list` and `gh pr view` calls with `--repo` so
+  `GH_REPO` or another CLI default cannot redirect data under the wrong scope.
+- Keep the existing unscoped database shape and read behavior unchanged; Steps
+  2.b and 2.c own persistence and fresh read gating respectively.
+
+Acceptance:
+
+- Identity verification failure skips source refresh without claiming the user
+  is signed out.
+- Non-GitHub, malformed, or unavailable remotes cannot start a PR query.
+- Every PR list/view command targets the canonical repository explicitly.
+- No database, wire, client, timer, or settings behavior changes.
+
+Verification:
+
+- `GhCliApi`, canonical remote, and `PrSyncService` source-scope tests
+- bridge fatal-info analysis and focused/full tests as warranted
+- `git diff --check` and changed-line count
+
+### Step 2.b/9 — Scoped PR persistence
 
 Scope:
 
@@ -566,13 +597,12 @@ Scope:
   repository/login-scoped PR rows/key.
 - Rebuild legacy cache empty because no valid repository/login backfill exists.
 - Keep creation `branch_name` unchanged.
-- Add the minimal active-login and canonical project-remote reads needed for the
-  existing request-driven writer to populate required scoped rows before the
-  GraphQL source lands.
-- Require every PR-bearing session read to receive a freshly verified typed
-  GitHub login from the calling handler/service; explicit absence omits PR data.
-- Adapt existing request-driven writer/read code to the new required cache row
-  shape without activating current-branch semantics yet.
+- Adapt the Step 2.a request-driven writer to populate the required row scope in
+  one repository-owned transaction before the GraphQL source lands.
+- Join cached rows to persisted project login and session repository/branch
+  scope without adding fresh request-time identity gating yet.
+- Preserve established PR scope when catalog publication updates project or
+  session rows.
 - Add schema verifier, old-row, key/FK/cascade, and cache-empty migration tests.
 
 Acceptance:
@@ -580,17 +610,45 @@ Acceptance:
 - Existing project/session/catalog identities and cleanup metadata survive.
 - Old unscoped PR rows cannot become visible after migration.
 - Request-driven refresh can repopulate scoped rows on the next request.
-- Switching or invalidating `gh` identity between two session reads prevents
-  the second response from exposing the first login's cached PR metadata.
 - No project presence, timer, or client behavior ships.
 
 Verification:
 
 - Drift schema/code generation and migration tests
 - focused DAO/repository/session mapping tests
-- list/detail read-gate tests for same/switched/unknown/failed identity
 - bridge analyze/tests for changed modules
 - generated-line count and overage rationale recorded in tracker
+
+### Step 2.c/9 — Fresh scoped PR reads
+
+Scope:
+
+- Map API identity output into repository-owned `VerifiedGithubLogin` evidence
+  and require every PR-bearing `SessionRepository` read to receive it explicitly.
+- Have list/detail handlers verify identity freshly before mapping cached PR
+  metadata; explicit absence returns the session and branch without a PR.
+- Add the read-scoped login to persisted project/row/repository/branch joins.
+- Treat scoped cache selection as authoritative during enrichment, clearing
+  incoming PR/history data before applying a freshly selected row.
+- Propagate refresh failure to waited list handling so timeout/source/query
+  failures return sessions without cached PR metadata.
+
+Acceptance:
+
+- Switching or invalidating `gh` identity between two session reads prevents
+  the second response from exposing the first login's cached PR metadata.
+- Failed or timed-out waited refreshes preserve session/catalog data while
+  stripping PR metadata.
+- Catalog reads remain database-owned; only privacy-sensitive PR enrichment
+  depends on fresh identity evidence.
+- No project presence, timer, settings, client, or wire behavior ships.
+
+Verification:
+
+- session mapping tests for same/switched/unknown/failed identity
+- list/detail read-gate and waited-refresh failure tests
+- bridge fatal-info analysis and focused/full tests as warranted
+- `git diff --check` and changed-line count
 
 ### Step 3/9 — Exact GraphQL selection
 
@@ -816,7 +874,7 @@ Verification:
 
 Scope:
 
-- Confirm Steps 2–8 merged and required verification/findings are recorded.
+- Confirm Steps 2.a–8 merged and required verification/findings are recorded.
 - Mark the tracker complete.
 - Move the entire directory unchanged except final state from
   `.plan/active/session-pull-request-monitoring/` to

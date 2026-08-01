@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -13,6 +14,9 @@ import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+const _githubRepositoryIdentity = "sesori-ai/sesori_apps_monorepo";
+final VerifiedGithubLogin _verifiedGithubLogin = VerifiedGithubLogin.tryParse(rawLogin: "octocat")!;
 
 void main() {
   group("PrSyncService", () {
@@ -49,6 +53,7 @@ void main() {
       expect(prs.single.prNumber, equals(11));
       expect(prs.single.branchName, equals("feature/new-pr"));
       expect(emittedProjectIds, equals(<String>["project-1"]));
+      expect(prSource.listOpenPrsRepositoryIdentities, [_githubRepositoryIdentity]);
     });
 
     test("does not emit when PR data is unchanged", () async {
@@ -139,6 +144,41 @@ void main() {
       final prs = pullRequestRepository.getByProjectId(projectId: "project-1");
       expect(prs.single.state, equals(PrState.merged));
       expect(prSource.getPrByNumberCalls, contains(22));
+      expect(prSource.getPrByNumberRepositoryIdentities, everyElement(_githubRepositoryIdentity));
+    });
+
+    test("skips PR queries when fresh identity verification fails", () async {
+      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..authenticatedIdentityResult = null;
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: _FakePullRequestRepository(),
+        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+
+      expect(prSource.getAuthenticatedIdentityCallCount, 1);
+      expect(prSource.getGithubRepositoryIdentityCalls, isEmpty);
+      expect(prSource.listOpenPrsCallCount, 0);
+    });
+
+    test("skips PR queries when the canonical GitHub repository is unavailable", () async {
+      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..githubRepositoryIdentityResult = null;
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: _FakePullRequestRepository(),
+        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+
+      expect(prSource.getAuthenticatedIdentityCallCount, 1);
+      expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
+      expect(prSource.listOpenPrsCallCount, 0);
     });
 
     test("caches unavailable gh capability and detects installation after the TTL", () async {
@@ -160,6 +200,7 @@ void main() {
 
       expect(prSource.isAvailableCallCount, equals(1));
       expect(prSource.isAuthenticatedCallCount, equals(0));
+      expect(prSource.getAuthenticatedIdentityCallCount, equals(0));
       expect(prSource.listOpenPrsCallCount, equals(0));
 
       prSource.isAvailableResult = true;
@@ -171,6 +212,7 @@ void main() {
       await service.triggerRefresh(projectId: "project-4", projectPath: "/tmp/project-4");
       expect(prSource.isAvailableCallCount, equals(2));
       expect(prSource.isAuthenticatedCallCount, equals(1));
+      expect(prSource.getAuthenticatedIdentityCallCount, equals(1));
       expect(prSource.listOpenPrsCallCount, equals(1));
     });
 
@@ -195,11 +237,13 @@ void main() {
       capabilityBlock.complete();
       await Future.wait([first, second]);
       expect(prSource.isAuthenticatedCallCount, equals(1));
+      expect(prSource.getAuthenticatedIdentityCallCount, equals(2));
       expect(prSource.listOpenPrsCallCount, equals(2));
 
       await service.triggerRefresh(projectId: "project-3", projectPath: "/tmp/project-3");
       expect(prSource.isAvailableCallCount, equals(1));
       expect(prSource.isAuthenticatedCallCount, equals(1));
+      expect(prSource.getAuthenticatedIdentityCallCount, equals(3));
       expect(prSource.listOpenPrsCallCount, equals(3));
     });
 
@@ -220,6 +264,7 @@ void main() {
       await service.triggerRefresh(projectId: "project-2", projectPath: "/tmp/project-2");
 
       expect(prSource.isAvailableCallCount, equals(2));
+      expect(prSource.getAuthenticatedIdentityCallCount, equals(1));
       expect(prSource.listOpenPrsCallCount, equals(1));
     });
 
@@ -340,13 +385,19 @@ class _FakePrSource implements PrSourceRepository {
   final Future<void> Function()? onListOpenPrs;
   bool isAvailableResult;
   bool isAuthenticatedResult = true;
+  VerifiedGithubLogin? authenticatedIdentityResult = _verifiedGithubLogin;
+  String? githubRepositoryIdentityResult = _githubRepositoryIdentity;
   Completer<void>? availabilityBlock;
   int isAvailableFailuresRemaining = 0;
 
   int isAvailableCallCount = 0;
   int isAuthenticatedCallCount = 0;
+  int getAuthenticatedIdentityCallCount = 0;
   int listOpenPrsCallCount = 0;
+  final List<String> getGithubRepositoryIdentityCalls = <String>[];
+  final List<String> listOpenPrsRepositoryIdentities = <String>[];
   final List<int> getPrByNumberCalls = <int>[];
+  final List<String> getPrByNumberRepositoryIdentities = <String>[];
 
   _FakePrSource({
     required this.listOpenPrsResult,
@@ -375,11 +426,24 @@ class _FakePrSource implements PrSourceRepository {
   }
 
   @override
-  Future<bool> hasGitHubRemote({required String projectPath}) async => true;
+  Future<VerifiedGithubLogin?> getAuthenticatedIdentity() async {
+    getAuthenticatedIdentityCallCount++;
+    return authenticatedIdentityResult;
+  }
 
   @override
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
+  Future<String?> getGithubRepositoryIdentity({required String projectPath}) async {
+    getGithubRepositoryIdentityCalls.add(projectPath);
+    return githubRepositoryIdentityResult;
+  }
+
+  @override
+  Future<List<GhPullRequest>> listOpenPrs({
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async {
     listOpenPrsCallCount++;
+    listOpenPrsRepositoryIdentities.add(githubRepositoryIdentity);
     if (onListOpenPrs case final callback?) {
       await callback();
     }
@@ -387,8 +451,13 @@ class _FakePrSource implements PrSourceRepository {
   }
 
   @override
-  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
+  Future<GhPullRequest> getPrByNumber({
+    required int number,
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async {
     getPrByNumberCalls.add(number);
+    getPrByNumberRepositoryIdentities.add(githubRepositoryIdentity);
     final pr = prByNumber[number];
     if (pr == null) {
       throw Exception("PR #$number not found");

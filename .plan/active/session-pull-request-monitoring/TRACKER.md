@@ -4,11 +4,12 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484`
-- **Series state:** Step 1/9 plan PR open; architecture approved
-- **Current step:** Step 1/9 — durable plan and PR guidance
-- **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649)
-- **Next action:** monitor CI/review and merge Step 1/9 before starting Step 2/9
+  `edff10828f17a45c40ba5bc02db109977a856411`
+- **Series state:** Step 1/9 merged; Step 2 split into 2.a–2.c
+- **Current step:** Step 2.a/9 — scoped GitHub source queries
+- **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
+- **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
+- **Next action:** commit and raise Step 2.a/9
 
 ## Existing Baseline
 
@@ -37,9 +38,11 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) open; architecture/docs validation passed |
-| [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Blocked on Step 1 merge; generated migration overage may be unavoidable |
-| [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2 merge |
+| [x] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged as `f969754b` |
+| [ ] | 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | 500–900 | Implemented, locally verified, and architecture finding addressed on `edff1082` |
+| [ ] | 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | 4,200–5,200 | Blocked on Step 2.a; generated migration overage is unavoidable |
+| [ ] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | Blocked on Step 2.b |
+| [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2.c merge |
 | [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
 | [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
 | [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Blocked on Step 5 merge |
@@ -50,7 +53,9 @@
 ## Exact PR Titles
 
 1. `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]`
-2. `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]`
+2.a. `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]`
+2.b. `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]`
+2.c. `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]`
 3. `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]`
 4. `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]`
 5. `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]`
@@ -61,7 +66,7 @@
 
 ## Execution Rules
 
-- Merge in numeric order. Each implementation step starts from current `main`
+- Merge in numeric/substep order. Each implementation step starts from current `main`
   after its predecessor merges and records a drift audit.
 - Step 1 is the plan PR. Step 9 moves the plan from active to completed and has
   no production changes.
@@ -75,7 +80,7 @@
 - Every schema change exports/generates from current `main`; never rewrite a
   merged Drift migration or generated file.
 - Run directly relevant tests/analyzers and architecture implementation review
-  for Steps 2–8. Documentation-only Steps 1/9 and 9/9 use plan/docs validation.
+  for Steps 2.a–8. Documentation-only Steps 1/9 and 9/9 use plan/docs validation.
 - Reassess causal cleanup in every implementation step; remove directly obsolete
   code/data/tests in the coherent owning PR or record why removal is deferred.
 - After each merge, update this tracker in the next step and proceed in order
@@ -83,9 +88,9 @@
 
 ## Current Drift and Open Work
 
-- Latest audited `main`: `10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484`.
-- Drift schema: v12. Step 2 allocates the next version present on its actual
-  baseline, not a hard-coded v13.
+- Latest audited `main`: `edff10828f17a45c40ba5bc02db109977a856411`.
+- Drift schema: v12. Step 2.b allocates the next version present on its actual
+  baseline; Step 2.a intentionally has no database change.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
 - PR #647 is merged and consolidates Harness settings into one screen. Its
   numeric-input/mutation pattern is current evidence for Step 8; PR cadence
@@ -147,6 +152,22 @@
   architecture. `git diff --check` passes, exact titles match between
   plan/tracker, and change scope is limited to this plan plus the three
   instruction/agent files.
+- **Step 2 prototype and split:** PR #659 proved the end-to-end implementation
+  and passed bridge tests/review fixes, but its 6,848 changed lines exceeded the
+  1,500-line soft cap. It was closed without force-pushing. Step 2 is now split
+  into source (2.a), persistence/migration (2.b), and fresh reads (2.c). The
+  generated migration bundle still makes 2.b an unavoidable documented overage;
+  separating it from its required writer/tests would create an untestable or
+  non-compiling intermediate state.
+- **Step 2.a/9 local verification:** `dart analyze --fatal-infos` and the focused
+  `GhCliApi`, `PrSourceRepository`, and `PrSyncService` suites pass (41 tests).
+  `git diff --check` passes. The 640 changed lines remain inside the 500–900
+  target, including plan/tracker drift updates and tests.
+- **Step 2.a/9 architecture review:** Aristotle rejected duplicate identity
+  canonicalization in the initial API/repository models. The API model now owns
+  only raw typed CLI output; `PrSourceRepository` exclusively trims, validates,
+  and canonicalizes `VerifiedGithubLogin`. The required finding was addressed;
+  repository policy does not re-review direct corrections.
 
 ## Findings and Plan Deltas
 
@@ -161,8 +182,9 @@
   per-project timers.
 - **2026-07-31 — Settings:** Fixed cadence defaults to 30 seconds per bridge,
   supports live client mutation, and intentionally has no JSON file watcher.
-- **2026-07-31 — Plan lifecycle:** Fixed a nine-PR series with this plan as
-  Step 1/9 and active-to-completed retirement as Step 9/9.
+- **2026-07-31 — Plan lifecycle:** Keep nine top-level steps with this plan as
+  Step 1/9 and active-to-completed retirement as Step 9/9; Step 2 uses ordered
+  2.a–2.c substeps after the reviewed implementation exceeded the line cap.
 - **2026-07-31 — PR #649 review:** Corrected the reviewed baseline SHA; required
   candidate pagination past newer fork heads, read-time GitHub identity gating,
   a coalesced add-during-flight refresh, and independent branch display for

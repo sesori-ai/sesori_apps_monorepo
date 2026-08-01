@@ -17,6 +17,7 @@ import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mappe
 import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -644,12 +645,20 @@ class _AlwaysReadyPrSource implements PrSourceRepository {
   @override
   Future<bool> isGithubCliAuthenticated() async => true;
   @override
-  Future<bool> hasGitHubRemote({required String projectPath}) async => true;
+  Future<VerifiedGithubLogin?> getAuthenticatedIdentity() async => VerifiedGithubLogin.tryParse(rawLogin: "octocat");
   @override
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => const <GhPullRequest>[];
+  Future<String?> getGithubRepositoryIdentity({required String projectPath}) async => "sesori-ai/test";
   @override
-  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async =>
-      throw StateError("getPrByNumber should not be called");
+  Future<List<GhPullRequest>> listOpenPrs({
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async => const <GhPullRequest>[];
+  @override
+  Future<GhPullRequest> getPrByNumber({
+    required int number,
+    required String workingDirectory,
+    required String githubRepositoryIdentity,
+  }) async => throw StateError("getPrByNumber should not be called");
 }
 
 class _NoopPullRequestRepository implements PullRequestRepository {
