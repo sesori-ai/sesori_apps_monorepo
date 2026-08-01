@@ -638,6 +638,7 @@ class AcpEventMapper {
     final contentTracker = prior?.contentTracker ?? AcpToolContentTracker();
     contentTracker.applyInitial(mutation: contentMutation);
     final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
+    final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
     final useCallTool = prior == null || (!prior.hasExplicitKind && (hasKind || prior.tool == "tool"));
     final state = _LiveTool(
       // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
@@ -645,7 +646,7 @@ class AcpEventMapper {
       // throwing and aborting the notification.
       tool: useCallTool ? _contentMapper.toolName(update: update) : prior.tool,
       title: prior?.title ?? (update["title"] is String ? update["title"] as String? : null),
-      status: prior?.hasExplicitStatus ?? false ? prior!.status : _contentMapper.toolStatus(status: update["status"]),
+      status: prior?.hasExplicitStatus ?? false ? prior!.status : mappedStatus ?? PluginToolStatus.pending,
       contentTracker: contentTracker,
       isFileMutation:
           (prior?.isFileMutation ?? false) ||
@@ -655,7 +656,7 @@ class AcpEventMapper {
           ),
       diffEmitted: prior?.diffEmitted ?? false,
       hasExplicitKind: (prior?.hasExplicitKind ?? false) || hasKind,
-      hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || update.containsKey("status"),
+      hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || mappedStatus != null,
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
     final events = <BridgeSseEvent>[
@@ -695,14 +696,13 @@ class AcpEventMapper {
     final contentMutation = _contentMapper.toolContent(update: update);
     final contentTracker = prior?.contentTracker ?? AcpToolContentTracker();
     contentTracker.apply(mutation: contentMutation);
+    final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
     final state = _LiveTool(
       tool: hasKind
           ? _contentMapper.toolName(update: update)
           : (prior?.tool ?? _contentMapper.toolName(update: update)),
       title: update.containsKey("title") && update["title"] is String ? update["title"] as String? : prior?.title,
-      status: update.containsKey("status")
-          ? _contentMapper.toolStatus(status: update["status"])
-          : (prior?.status ?? PluginToolStatus.pending),
+      status: mappedStatus ?? prior?.status ?? PluginToolStatus.pending,
       contentTracker: contentTracker,
       isFileMutation:
           (prior?.isFileMutation ?? false) ||
@@ -712,7 +712,7 @@ class AcpEventMapper {
           ),
       diffEmitted: prior?.diffEmitted ?? false,
       hasExplicitKind: (prior?.hasExplicitKind ?? false) || hasKind,
-      hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || update.containsKey("status"),
+      hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || mappedStatus != null,
     );
     final events = <BridgeSseEvent>[
       // ACP events can be reordered (reconnect / resume / replay), so a

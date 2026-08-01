@@ -206,7 +206,7 @@ void main() {
       expect(mapper.toolStatus(status: "in_progress"), PluginToolStatus.running);
       expect(mapper.toolStatus(status: "completed"), PluginToolStatus.completed);
       expect(mapper.toolStatus(status: "failed"), PluginToolStatus.error);
-      expect(mapper.toolStatus(status: "future"), PluginToolStatus.pending);
+      expect(mapper.toolStatus(status: "future"), isNull);
     });
 
     test("maps typed tool content text and diff while ignoring terminal and unknown variants", () {
@@ -415,6 +415,25 @@ void main() {
               as AcpReplaceToolContentMutation;
       expect(imageOnly.output, isNull);
       expect(imageOnly.imageCandidates, hasLength(1));
+    });
+
+    test("rejects malformed top-level tool content but preserves legacy containers", () {
+      expect(
+        mapper.toolContent(update: {"content": 42}),
+        isA<AcpUnchangedToolContentMutation>(),
+      );
+      for (final content in <Object>[
+        "legacy",
+        {"text": "legacy"},
+        [
+          {"text": "legacy"},
+        ],
+      ]) {
+        expect(
+          (mapper.toolContent(update: {"content": content}) as AcpReplaceToolContentMutation).output,
+          "legacy",
+        );
+      }
     });
 
     test("uses raw output only when replacement content has no text", () {

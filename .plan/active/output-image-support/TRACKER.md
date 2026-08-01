@@ -229,15 +229,19 @@
   completion while retaining the mutation; and unused tool snapshot counters
   were removed. The diff fix preserves PR #414's later `7b2d21dc` exception for
   explicit diff content with no known status after `952cc30f` introduced terminal
-  gating. The five new regressions failed before the fixes. All 204 ACP
-  tests and all 109 Cursor tests pass, fatal analysis passes in both packages,
-  and `git diff --check` passes. Follow-up review centralized the shared
-  four-image candidate limit; the status-less diff exception remains unchanged
-  because it is established compatibility behavior for backends that provide no
-  later status event. Malformed raw-output-only updates now preserve prior tool
-  state while explicit empty output still clears it; valid sibling fields remain
-  usable and malformed nested content is rejected. The final 1,375-line PR diff
-  is below the 1,500-line soft cap; no neighboring scope was combined.
+  gating. The five earlier regressions failed before their fixes. Follow-up review
+  centralized the shared four-image candidate limit; status-less diff compatibility
+  remains unchanged. Malformed raw-output-only updates preserve prior state while
+  explicit empty output clears; valid siblings remain usable and malformed nested
+  content is rejected. The three latest boundary/security fixes map only recognized
+  statuses as explicit in live/replay, strip inline payloads from retained replay
+  tool state while preserving safe metadata and replacement/output/diff boundaries,
+  and treat malformed top-level content as unchanged while String/List/Map forms and
+  empty collections still replace. The live/replay status and mapper regressions
+  failed first; payload-free retained state has tracker coverage. All 207 ACP and
+  all 109 Cursor tests pass; fatal analysis passes in both packages, and focused
+  tests plus `git diff --check` pass. The final 1,474-line PR diff remains below the
+  1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas
 

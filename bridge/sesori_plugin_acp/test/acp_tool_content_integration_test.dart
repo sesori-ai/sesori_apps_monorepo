@@ -207,6 +207,18 @@ void main() {
       expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
     });
 
+    test("malformed status lets a later tool_call supply live status", () {
+      mapper.map(
+        update({"sessionUpdate": "tool_call_update", "toolCallId": "t1", "status": 42}),
+      );
+
+      final call = mapper.map(
+        update({"sessionUpdate": "tool_call", "toolCallId": "t1", "status": "completed"}),
+      );
+
+      expect(_liveState(events: call).status, PluginToolStatus.completed);
+    });
+
     test("a late tool_call enriches without clobbering a first-seen update", () {
       final firstSeen = mapper.map(
         update({
@@ -373,6 +385,18 @@ void main() {
       final state = _replayState(collector: collector);
       expect(state.output, isNull);
       expect(state.attachments, isEmpty);
+    });
+
+    test("malformed status lets a later tool_call supply replay status", () {
+      final collector = _collector()
+        ..consume(
+          update({"sessionUpdate": "tool_call_update", "toolCallId": "t1", "status": 42}),
+        )
+        ..consume(
+          update({"sessionUpdate": "tool_call", "toolCallId": "t1", "status": "completed"}),
+        );
+
+      expect(_replayState(collector: collector).status, PluginToolStatus.completed);
     });
 
     test("a late tool_call enriches without clobbering a first-seen replay update", () {
