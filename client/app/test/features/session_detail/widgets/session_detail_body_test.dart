@@ -10,7 +10,6 @@ import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
@@ -142,6 +141,11 @@ const _permission = SesoriPermissionAsked(
   description: "Allow writing the release notes",
 );
 
+Finder _pickerMenuItem(String label) => find.descendant(
+  of: find.byType(SingleChildScrollView),
+  matching: find.widgetWithText(InkWell, label),
+);
+
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -150,9 +154,8 @@ void main() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
   });
 
-  // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
-  // renders its flat (cue) menu here — the menu rows are Material InkWells, not
-  // GlassMenuItems. Finders below target those InkWells.
+  // Composer pickers force PregoAnchorMenu's flat cue path on every platform,
+  // so the menu rows are Material InkWells.
   setUp(() async {
     KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
@@ -191,12 +194,12 @@ void main() {
     // the bar subtitle must collapse to empty — never a literal "null".
     expect(find.text("null"), findsNothing);
 
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(InkWell, "xhigh"), findsOneWidget);
+    expect(_pickerMenuItem("xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(InkWell, "xhigh"));
+    await tester.tap(_pickerMenuItem("xhigh"));
     await tester.pumpAndSettle();
 
     verify(() => cubit.selectVariant(const SessionVariant(id: "xhigh"))).called(1);
@@ -242,14 +245,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Initially shows the selected variant.
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
     // Open variant picker.
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Select Default (null variant).
-    await tester.tap(find.widgetWithText(InkWell, "Default"));
+    await tester.tap(_pickerMenuItem("Default"));
     await tester.pumpAndSettle();
 
     verify(() => cubit.selectVariant(null)).called(1);
@@ -260,8 +263,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // The UI should now show "Default".
-    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
   testWidgets("diff button navigates to diffs with the typed route", (tester) async {
@@ -550,13 +553,9 @@ void main() {
     }
   });
 
-  testWidgets("opening a composer menu dismisses the keyboard (glass path)", (tester) async {
-    // Force the iOS glass path: there PregoAnchorMenu opens GlassMenu as an
-    // overlay (not a route), so the only thing that can dismiss the keyboard is
-    // the field's `onTapOutside` firing because the pill sits outside the
-    // TextFieldTapRegion. That makes this the precise guard that the menus are
-    // NOT grouped with the field. (On the Android flat path the menu is a modal
-    // route that moves focus anyway, so it can't tell the two designs apart.)
+  testWidgets("opening the shared flat composer menu dismisses the keyboard on iOS", (tester) async {
+    // Force iOS to guard that the composer still uses the Android flat menu path
+    // there, and that opening its modal route dismisses the field as expected.
     // Reset in a finally so a failed expect can't leak the override into later
     // tests (the binding asserts foundation debug vars are clear before
     // tearDowns run).
@@ -568,13 +567,11 @@ void main() {
       await enterTypingMode(tester);
       expect(composerFocus(tester).hasFocus, isTrue);
 
-      // Tapping the variant pill opens its glass popup and, because the pill is
-      // outside the field's tap region, dismisses the keyboard. The unfocused,
-      // empty composer then collapses back to its resting pill, unmounting the
-      // field — which is the proof the focus was dropped.
-      await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+      // The unfocused, empty composer collapses back to its resting pill,
+      // unmounting the field, while the Android-style menu remains open.
+      await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(GlassMenuItem, "xhigh"), findsOneWidget);
+      expect(_pickerMenuItem("xhigh"), findsOneWidget);
       expect(
         find.byType(EditableText),
         findsNothing,

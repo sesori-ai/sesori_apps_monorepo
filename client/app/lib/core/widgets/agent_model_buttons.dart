@@ -9,7 +9,7 @@ import "../extensions/build_context_x.dart";
 import "model_picker_sheet.dart";
 
 /// Composer header exposing the available agent / model / variant selections
-/// as glass pill buttons ([PregoButtonsGlass]). Tapping a pill opens its
+/// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its
 /// [PregoAnchorMenu] popup listing the pickable values (instead of a modal
 /// bottom sheet).
 ///
@@ -160,9 +160,10 @@ class _AgentMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     return PregoAnchorMenu(
+      flat: true,
       menuWidth: 240,
       menuMaxHeight: _pickerMaxHeight,
-      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+      triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.smart_toy_outlined,
         label: selectedAgent,
         onPressed: toggle,
@@ -231,9 +232,10 @@ class _ModelMenu extends StatelessWidget {
     }
 
     return PregoAnchorMenu(
+      flat: true,
       menuWidth: 320,
       menuMaxHeight: _pickerMaxHeight,
-      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+      triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.memory_outlined,
         label: _resolveModelName(context, providers: providers, selected: selected),
         onPressed: toggle,
@@ -259,9 +261,10 @@ class _VariantMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     return PregoAnchorMenu(
+      flat: true,
       menuWidth: 220,
       menuMaxHeight: _pickerMaxHeight,
-      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+      triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.speed_outlined,
         label: selectedVariant ?? loc.sessionDetailVariantDefault,
         onPressed: toggle,

@@ -6,7 +6,6 @@ import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -40,6 +39,11 @@ SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
   agents: [_testAgent(name: "coder", description: "A coding assistant", variant: "xhigh")],
   providers: testProviderListResponse().items,
   commands: const [],
+);
+
+Finder _pickerMenuItem(String label) => find.descendant(
+  of: find.byType(SingleChildScrollView),
+  matching: find.widgetWithText(InkWell, label),
 );
 
 Widget _buildApp({
@@ -117,9 +121,8 @@ void main() {
 
   setUpAll(registerAllFallbackValues);
 
-  // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
-  // renders its flat (cue) menu here — the menu rows are Material InkWells, not
-  // GlassMenuItems. Finders below target those InkWells.
+  // Composer pickers force PregoAnchorMenu's flat cue path on every platform,
+  // so the menu rows are Material InkWells.
   setUp(() async {
     KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
@@ -393,7 +396,7 @@ void main() {
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
     expect(find.text(loc.newSessionOptionsLegacyBridge), findsOneWidget);
   });
 
@@ -479,13 +482,13 @@ void main() {
     await tester.pumpAndSettle();
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
     expect(find.text(loc.newSessionOptionsCached), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     expect(find.text(loc.newSessionOptionsUpdateFailedRetained), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
   });
 
   testWidgets("unavailable refresh failure clears options immediately", (tester) async {
@@ -505,33 +508,33 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "coder"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsNothing);
   });
 
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Tapping the variant pill opens a popup listing the Default option plus
     // the model's variants.
-    expect(find.widgetWithText(InkWell, "Default"), findsOneWidget);
-    expect(find.widgetWithText(InkWell, "xhigh"), findsOneWidget);
+    expect(_pickerMenuItem("Default"), findsOneWidget);
+    expect(_pickerMenuItem("xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(InkWell, "xhigh"));
+    await tester.tap(_pickerMenuItem("xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("renders bridge order with generic degraded and blocked presentation", (tester) async {
@@ -651,8 +654,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.smart_toy_outlined), findsNothing);
-    expect(find.widgetWithText(GlassButton, "Claude 3.5 Sonnet"), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "Claude 3.5 Sonnet"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
   });
 
   testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
@@ -788,12 +791,12 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
     await tester.pump();
 
-    expect(find.widgetWithText(GlassButton, "coder"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsNothing);
     final disabledComposer = find.ancestor(
       of: find.byType(PromptInput),
       matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
@@ -807,7 +810,7 @@ void main() {
     await tester.tap(find.byKey(const Key("new_session_plugin_tool-a")));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
     verifyNever(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
@@ -1059,19 +1062,19 @@ void main() {
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
     // Open variant picker.
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Select a different variant.
-    await tester.tap(find.widgetWithText(InkWell, "low"));
+    await tester.tap(_pickerMenuItem("low"));
     await tester.pumpAndSettle();
 
     // The UI should now reflect the newly selected variant.
-    expect(find.widgetWithText(GlassButton, "low"), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
   testWidgets("selecting Default clears the displayed variant", (tester) async {
@@ -1109,43 +1112,43 @@ void main() {
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
     // Open variant picker.
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Select Default (null variant).
-    await tester.tap(find.widgetWithText(InkWell, "Default"));
+    await tester.tap(_pickerMenuItem("Default"));
     await tester.pumpAndSettle();
 
     // The UI should now show "Default".
-    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
   testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(InkWell, "xhigh"));
+    await tester.tap(_pickerMenuItem("xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(GlassButton, "coder"));
+    await tester.tap(find.widgetWithText(PregoPickerButton, "coder"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(InkWell, "reviewer"));
+    await tester.tap(_pickerMenuItem("reviewer"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassButton, "reviewer"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "reviewer"), findsOneWidget);
     // Variant intent is independent, so the explicit xhigh choice survives the
     // agent change while that variant remains valid for the selected model.
-    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("shows the loading overlay with accessible message during sending", (tester) async {

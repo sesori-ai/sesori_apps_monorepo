@@ -41,7 +41,7 @@ class BackgroundTasksList extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const PregoDivider(),
+        const PregoDivider(flat: true),
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 240),
           child: ListView.builder(

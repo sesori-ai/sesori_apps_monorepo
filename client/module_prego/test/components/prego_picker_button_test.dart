@@ -14,7 +14,7 @@ void main() {
     var taps = 0;
     await tester.pumpWidget(
       _harness(
-        PregoButtonsGlass(
+        PregoPickerButton(
           leadingIcon: Icons.smart_toy_outlined,
           label: "Agent",
           onPressed: () => taps++,
@@ -27,11 +27,52 @@ void main() {
     // The trailing caret signals the pill opens a menu.
     expect(find.byIcon(Icons.unfold_more), findsOneWidget);
 
-    await tester.tap(find.byType(PregoButtonsGlass));
+    await tester.tap(find.byType(PregoPickerButton));
     await tester.pumpAndSettle();
 
     expect(taps, 1);
   });
+
+  testWidgets(
+    "uses the composer surface and Material interaction on both platforms",
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          PregoPickerButton(
+            leadingIcon: Icons.memory_outlined,
+            label: "Model",
+            onPressed: () {},
+          ),
+        ),
+      );
+
+      expect(find.byType(InkWell), findsOneWidget);
+      final decorations = tester
+          .widgetList<DecoratedBox>(
+            find.descendant(
+              of: find.byType(PregoPickerButton),
+              matching: find.byType(DecoratedBox),
+            ),
+          )
+          .map((widget) => widget.decoration)
+          .whereType<BoxDecoration>();
+      final surface = decorations.singleWhere(
+        (decoration) => decoration.color == PregoColorsLight.bgSurface2,
+      );
+      expect(surface.border, Border.all(color: PregoColorsLight.borderPrimary));
+      expect(
+        surface.boxShadow,
+        [
+          const BoxShadow(
+            color: PregoColorsLight.shadowXs,
+            offset: Offset(0, 1),
+            blurRadius: 2,
+          ),
+        ],
+      );
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}),
+  );
 
   testWidgets("ellipsizes a long label instead of overflowing", (tester) async {
     await tester.pumpWidget(
@@ -39,7 +80,7 @@ void main() {
         Row(
           children: [
             Expanded(
-              child: PregoButtonsGlass(
+              child: PregoPickerButton(
                 leadingIcon: Icons.memory_outlined,
                 label: "An extremely long model name that cannot possibly fit in one pill" * 3,
                 onPressed: () {},

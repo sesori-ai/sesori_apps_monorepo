@@ -9,8 +9,8 @@ import "background_tasks_list.dart";
 /// expands the same surface to reveal the individual task list with
 /// status + navigation.
 ///
-/// The surface is a [PregoCard] — frosted glass on Apple platforms, a flat
-/// Material card on Android (where the glass shader janks).
+/// The surface is a solid [PregoCard] with the same fill, border, and elevation
+/// as the prompt composer on every platform.
 ///
 /// The collapsed header is the only thing that occupies layout space in the
 /// bottom-controls cluster — the expanded card is painted in an [OverlayPortal]
