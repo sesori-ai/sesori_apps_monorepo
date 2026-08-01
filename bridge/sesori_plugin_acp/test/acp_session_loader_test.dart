@@ -566,6 +566,101 @@ void main() {
       expect(attachment.filename, "output.png");
     });
 
+    final stampedAssistantChronologyCases = [
+      (
+        name: "text/tool/image",
+        beforeTool: <String, dynamic>{"type": "text", "text": "before"},
+        afterTool: <String, dynamic>{
+          "type": "image",
+          "data": "AA==",
+          "mimeType": "image/png",
+          "uri": null,
+        },
+        expectedTypes: <PluginMessagePartType>[
+          PluginMessagePartType.text,
+          PluginMessagePartType.tool,
+          PluginMessagePartType.file,
+        ],
+      ),
+      (
+        name: "image/tool/text",
+        beforeTool: <String, dynamic>{
+          "type": "image",
+          "data": "AA==",
+          "mimeType": "image/png",
+          "uri": null,
+        },
+        afterTool: <String, dynamic>{"type": "text", "text": "after"},
+        expectedTypes: <PluginMessagePartType>[
+          PluginMessagePartType.file,
+          PluginMessagePartType.tool,
+          PluginMessagePartType.text,
+        ],
+      ),
+      (
+        name: "text/tool/text",
+        beforeTool: <String, dynamic>{"type": "text", "text": "before"},
+        afterTool: <String, dynamic>{"type": "text", "text": "after"},
+        expectedTypes: <PluginMessagePartType>[
+          PluginMessagePartType.text,
+          PluginMessagePartType.tool,
+          PluginMessagePartType.text,
+        ],
+      ),
+    ];
+
+    for (final testCase in stampedAssistantChronologyCases) {
+      test("preserves ${testCase.name} chronology in one stamped assistant draft", () {
+        final collector = AcpReplayCollector(
+          sessionId: "s1",
+          agentId: "Cursor",
+          initialUserMessageId: null,
+          haltClassifier: null,
+          contentMapper: const AcpContentMapper(),
+        )
+          ..consume(
+            upd({
+              "sessionUpdate": "agent_message_chunk",
+              "messageId": "m1",
+              "content": testCase.beforeTool,
+            }),
+          )
+          ..consume(
+            upd({
+              "sessionUpdate": "tool_call_update",
+              "toolCallId": "t1",
+              "status": "completed",
+              "rawOutput": {"stdout": "done"},
+            }),
+          )
+          ..consume(
+            upd({
+              "sessionUpdate": "agent_message_chunk",
+              "messageId": "m1",
+              "content": testCase.afterTool,
+            }),
+          )
+          ..consume(
+            upd({
+              "sessionUpdate": "tool_call",
+              "toolCallId": "t1",
+              "kind": "read",
+              "title": "Read source.dart",
+            }),
+          );
+
+        final message = collector.build().single;
+        expect(message.info.id, "s1-mm1-assistant");
+        expect(message.parts.map((part) => part.type), testCase.expectedTypes);
+        expect(message.parts.map((part) => part.id).toSet(), hasLength(message.parts.length));
+        final tool = message.parts.singleWhere((part) => part.type == PluginMessagePartType.tool);
+        expect(tool.tool, "read");
+        expect(tool.state?.status, PluginToolStatus.completed);
+        expect(tool.state?.title, "Read source.dart");
+        expect(tool.state?.output, "done");
+      });
+    }
+
     test("an id-less image closes its replay draft before a following tool", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",

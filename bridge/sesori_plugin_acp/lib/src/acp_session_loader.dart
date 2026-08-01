@@ -70,13 +70,16 @@ class AcpReplayCollector {
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
         if (draft == null) {
           final contentTracker = AcpToolContentTracker()..applyInitial(mutation: contentMutation);
-          _assistantForTool().tools[id] = _ToolDraft(
-            tool: _contentMapper.toolName(update: update),
-            title: _toolTitle(update),
-            status: mappedStatus ?? PluginToolStatus.pending,
-            contentTracker: contentTracker,
-            hasExplicitKind: hasKind,
-            hasExplicitStatus: mappedStatus != null,
+          _addTool(
+            id: id,
+            tool: _ToolDraft(
+              tool: _contentMapper.toolName(update: update),
+              title: _toolTitle(update),
+              status: mappedStatus ?? PluginToolStatus.pending,
+              contentTracker: contentTracker,
+              hasExplicitKind: hasKind,
+              hasExplicitStatus: mappedStatus != null,
+            ),
           );
         } else {
           if (!draft.hasExplicitKind && (hasKind || draft.tool == "tool")) {
@@ -103,13 +106,16 @@ class AcpReplayCollector {
           // the card still renders, mirroring the live mapper which emits a tool
           // part unconditionally.
           final contentTracker = AcpToolContentTracker()..apply(mutation: contentMutation);
-          _assistantForTool().tools[id] = _ToolDraft(
-            tool: _contentMapper.toolName(update: update),
-            title: _toolTitle(update),
-            status: mappedStatus ?? PluginToolStatus.pending,
-            contentTracker: contentTracker,
-            hasExplicitKind: hasKind,
-            hasExplicitStatus: mappedStatus != null,
+          _addTool(
+            id: id,
+            tool: _ToolDraft(
+              tool: _contentMapper.toolName(update: update),
+              title: _toolTitle(update),
+              status: mappedStatus ?? PluginToolStatus.pending,
+              contentTracker: contentTracker,
+              hasExplicitKind: hasKind,
+              hasExplicitStatus: mappedStatus != null,
+            ),
           );
           return;
         }
@@ -165,7 +171,9 @@ class AcpReplayCollector {
           contentTracker: tracker,
         );
     _pendingAssistantContent = null;
-    draft.contentMutations.addAll(mutations);
+    for (final mutation in mutations) {
+      draft.entries.add(_AssistantContentEntry(mutation: mutation));
+    }
   }
 
   List<PluginMessageWithParts> build() {
@@ -211,34 +219,7 @@ class AcpReplayCollector {
     if (draft.text.isNotEmpty) {
       parts.add(_textPart(draft, "text", PluginMessagePartType.text, draft.text.toString()));
     }
-    parts.addAll(_assistantParts(draft: draft));
-    draft.tools.forEach((toolId, tool) {
-      final content = tool.contentTracker.snapshot;
-      parts.add(
-        PluginMessagePart(
-          id: "${draft.id}-tool-$toolId",
-          sessionID: sessionId,
-          messageID: draft.id,
-          type: PluginMessagePartType.tool,
-          text: null,
-          tool: tool.tool,
-          state: PluginToolState(
-            status: tool.status,
-            title: tool.title,
-            output: content.output,
-            error: tool.status == PluginToolStatus.error ? content.output : null,
-            attachments: content.attachments,
-          ),
-          prompt: null,
-          description: null,
-          agent: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-          attachment: null,
-        ),
-      );
-    });
+    parts.addAll(_chronologicalAssistantParts(draft: draft));
     return PluginMessageWithParts(info: _message(draft), parts: parts);
   }
 
@@ -252,15 +233,17 @@ class AcpReplayCollector {
 
   String _assistantText({required _Draft draft}) {
     final buffer = StringBuffer();
-    for (final mutation in draft.contentMutations) {
-      if (mutation case AcpTextDeltaMutation(:final delta)) buffer.write(delta);
+    for (final entry in draft.entries) {
+      if (entry case _AssistantContentEntry(mutation: AcpTextDeltaMutation(:final delta))) {
+        buffer.write(delta);
+      }
     }
     return buffer.toString();
   }
 
   bool _hasAssistantImageCandidate({required _Draft draft}) => draft.contentTracker.snapshot.imageCandidateCount > 0;
 
-  List<PluginMessagePart> _assistantParts({required _Draft draft}) {
+  List<PluginMessagePart> _chronologicalAssistantParts({required _Draft draft}) {
     final parts = <PluginMessagePart>[];
     String? textPartIdSuffix;
     StringBuffer? textBuffer;
@@ -282,24 +265,30 @@ class AcpReplayCollector {
       textBuffer = null;
     }
 
-    for (final mutation in draft.contentMutations) {
-      switch (mutation) {
-        case AcpTextDeltaMutation(:final partIdSuffix, :final delta):
-          if (textPartIdSuffix != partIdSuffix) {
-            flushText();
-            textPartIdSuffix = partIdSuffix;
-            textBuffer = StringBuffer();
+    for (final entry in draft.entries) {
+      switch (entry) {
+        case _AssistantContentEntry(:final mutation):
+          switch (mutation) {
+            case AcpTextDeltaMutation(:final partIdSuffix, :final delta):
+              if (textPartIdSuffix != partIdSuffix) {
+                flushText();
+                textPartIdSuffix = partIdSuffix;
+                textBuffer = StringBuffer();
+              }
+              textBuffer!.write(delta);
+            case AcpImageMutation(:final partIdSuffix, :final attachment):
+              flushText();
+              parts.add(
+                _attachmentPart(
+                  draft: draft,
+                  suffix: partIdSuffix,
+                  attachment: attachment,
+                ),
+              );
           }
-          textBuffer!.write(delta);
-        case AcpImageMutation(:final partIdSuffix, :final attachment):
+        case _AssistantToolEntry(:final toolId, :final tool):
           flushText();
-          parts.add(
-            _attachmentPart(
-              draft: draft,
-              suffix: partIdSuffix,
-              attachment: attachment,
-            ),
-          );
+          parts.add(_toolPart(draft: draft, toolId: toolId, tool: tool));
       }
     }
     flushText();
@@ -372,6 +361,36 @@ class AcpReplayCollector {
     );
   }
 
+  PluginMessagePart _toolPart({
+    required _Draft draft,
+    required String toolId,
+    required _ToolDraft tool,
+  }) {
+    final content = tool.contentTracker.snapshot;
+    return PluginMessagePart(
+      id: "${draft.id}-tool-$toolId",
+      sessionID: sessionId,
+      messageID: draft.id,
+      type: PluginMessagePartType.tool,
+      text: null,
+      tool: tool.tool,
+      state: PluginToolState(
+        status: tool.status,
+        title: tool.title,
+        output: content.output,
+        error: tool.status == PluginToolStatus.error ? content.output : null,
+        attachments: content.attachments,
+      ),
+      prompt: null,
+      description: null,
+      agent: null,
+      agentName: null,
+      attempt: null,
+      retryError: null,
+      attachment: null,
+    );
+  }
+
   _Draft _assistant({String? messageId}) => _ensureRole("assistant", messageId: messageId);
   _Draft _user({String? messageId}) => _ensureRole("user", messageId: messageId);
 
@@ -380,7 +399,7 @@ class AcpReplayCollector {
   _Draft _assistantForTool() {
     if (_drafts.isNotEmpty && _drafts.last.role == "assistant") {
       final last = _drafts.last;
-      if (last.acpMessageId != null || (last.text.isEmpty && last.reasoning.isEmpty && last.contentMutations.isEmpty)) {
+      if (last.acpMessageId != null || (last.text.isEmpty && last.reasoning.isEmpty && last.entries.isEmpty)) {
         return last;
       }
     }
@@ -389,6 +408,13 @@ class AcpReplayCollector {
       messageId: null,
       contentTracker: null,
     );
+  }
+
+  void _addTool({required String id, required _ToolDraft tool}) {
+    final draft = _assistantForTool();
+    draft.tools[id] = tool;
+    draft.entries.add(_AssistantToolEntry(toolId: id, tool: tool));
+    draft.contentTracker.closeTextPart();
   }
 
   /// The draft the next chunk belongs to. ACP v1: chunks of one message share
@@ -477,8 +503,25 @@ class _Draft {
   final StringBuffer text = StringBuffer();
   final StringBuffer reasoning = StringBuffer();
   final AcpContentTracker contentTracker;
-  final List<AcpContentMutation> contentMutations = [];
+  final List<_AssistantDraftEntry> entries = [];
   final Map<String, _ToolDraft> tools = {};
+}
+
+sealed class _AssistantDraftEntry {
+  const _AssistantDraftEntry();
+}
+
+final class _AssistantContentEntry extends _AssistantDraftEntry {
+  const _AssistantContentEntry({required this.mutation});
+
+  final AcpContentMutation mutation;
+}
+
+final class _AssistantToolEntry extends _AssistantDraftEntry {
+  const _AssistantToolEntry({required this.toolId, required this.tool});
+
+  final String toolId;
+  final _ToolDraft tool;
 }
 
 final class _PendingAssistantContent {

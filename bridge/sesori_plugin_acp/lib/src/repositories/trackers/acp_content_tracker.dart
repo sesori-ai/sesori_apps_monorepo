@@ -132,6 +132,10 @@ final class AcpContentTracker {
     return mutations;
   }
 
+  void closeTextPart() {
+    _activeTextPartIdSuffix = null;
+  }
+
   String _nextTextPartIdSuffix() {
     final index = _textPartCount++;
     return index == 0 ? "text" : "text-$index";

@@ -251,16 +251,24 @@
   Live/replay assistant and tool parity tables cover mixed order, inline and
   metadata images, partial updates, image-only replacement, and reordered base
   calls. A dedicated replay-client `getSessionMessages` test covers assistant
-  and tool attachments across chronological tool boundaries. The 57 focused
-  replay/history/tracker tests, all 213 ACP tests, all 109 Cursor tests, and
-  fatal analysis in both packages pass. `aristotle-impl-review` approved with no
-  findings. No code generation was required; Cursor production code and its
-  dropped `cursor/generate_image` extension remain unchanged. Analytics remain
-  excluded because passive rendering has no authoritative user action and image
-  or tool metadata is privacy-sensitive. `git diff --check` passes. The exact
-  Step 12 diff is 1,179 changed lines (837 additions, 342 deletions), below the
-  1,500-line soft cap; this excludes the
-  pre-existing unrelated modified `fetch.sh` and untracked Step 6 test notes.
+  and tool attachments across chronological tool boundaries. PR review found
+  that a stamped assistant draft materialized all content before all tools.
+  Replay now retains sealed content/tool chronology entries, keeps each tool's
+  first-seen marker while later or reordered calls mutate its one ID-keyed
+  state, and closes text parts at markers without splitting explicit ACP
+  message-ID grouping. The requested text/tool/image and image/tool/text
+  regressions failed before the fix; text/tool/text additionally covers unique
+  split part IDs. The 60 focused replay/history/tracker tests, all 216 ACP tests,
+  all 109 Cursor tests, and fatal analysis in both packages pass.
+  Both initial and post-review `aristotle-impl-review` passes approved with no
+  findings.
+  No code generation was required; Cursor production code and its dropped
+  `cursor/generate_image` extension remain unchanged. Analytics remain excluded
+  because passive rendering has no authoritative user action and image or tool
+  metadata is privacy-sensitive. `git diff --check` passes.
+  The exact Step 12 diff is 1,419 changed lines (1,032 additions, 387
+  deletions), below the 1,500-line soft cap; this excludes the pre-existing
+  unrelated modified `fetch.sh` and untracked Step 6 test notes.
 
 ## Findings And Plan Deltas
 
