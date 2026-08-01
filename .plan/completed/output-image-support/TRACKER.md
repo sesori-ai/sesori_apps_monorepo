@@ -5,10 +5,10 @@
 - **Plan slug:** `output-image-support`
 - **Implementation base:** `origin/main` at
   `dd627325d065d8ac5dfed7118b092f2ea387c3e9`
-- **Series state:** Steps 1-12 merged in order; final retirement Step 13/13 in progress
-- **Current step:** Step 13/13 open as [PR #680](https://github.com/sesori-ai/sesori_apps_monorepo/pull/680)
+- **Series state:** All 13 steps complete; final retirement delivered by [PR #680](https://github.com/sesori-ai/sesori_apps_monorepo/pull/680)
+- **Current step:** Complete
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** monitor final retirement PR #680
+- **Next action:** None
 
 ## Plan Review
 
@@ -38,7 +38,7 @@
 | [x] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | [PR #666](https://github.com/sesori-ai/sesori_apps_monorepo/pull/666) merged as `e64fb4b5`; 1,138 changed lines |
 | [x] | 11/13 | `output-image-support-acp-tool-images` | `⚙️ [output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | [PR #670](https://github.com/sesori-ai/sesori_apps_monorepo/pull/670) merged as `db7d62c6`; 1,477 changed lines |
 | [x] | 12/13 | `output-image-support-acp-image-replay` | `⚙️ [output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | [PR #674](https://github.com/sesori-ai/sesori_apps_monorepo/pull/674) merged as `dd627325`; 1,419 changed lines |
-| [ ] | 13/13 | `output-image-support-retire-plan` | `🌱 [output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | [PR #680](https://github.com/sesori-ai/sesori_apps_monorepo/pull/680) open |
+| [x] | 13/13 | `output-image-support-retire-plan` | `🌱 [output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | Final retirement delivered by [PR #680](https://github.com/sesori-ai/sesori_apps_monorepo/pull/680) |
 
 ## Exact PR Titles
 
