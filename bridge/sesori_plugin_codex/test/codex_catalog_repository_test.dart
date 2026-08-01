@@ -1,9 +1,11 @@
 import "dart:io";
 
 import "package:codex_plugin/src/api/codex_rollout_api.dart";
+import "package:codex_plugin/src/api/models/codex_desktop_state_dto.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
+import "package:path/path.dart" as p;
 import "package:test/test.dart";
 
 void main() {
@@ -107,6 +109,68 @@ void main() {
       );
     });
 
+    test("discovery excludes projectless ids and every session under Documents/Codex", () async {
+      final userHome = p.join(Directory.systemTemp.path, "codex-discovery-user");
+      final documentsCodex = p.join(userHome, "Documents", "Codex");
+      final generatedChat = p.join(documentsCodex, "2026-08-01", "new-chat-2");
+      final normalProject = p.join(userHome, "repos", "app");
+      final dateShapedProject = p.join(userHome, "repos", "2026-08-01", "small-slug");
+      final similarlyNamedProject = p.join(userHome, "Documents", "Codexical", "app");
+      final repository = _DiscoveryStubCodexCatalogRepository(
+        rolloutApi: _DiscoveryRolloutApi(
+          documentsCodexDirectory: documentsCodex,
+          projectlessThreadIds: const {"state-filtered"},
+          desktopStateError: null,
+        ),
+        records: [
+          _record(id: "generated-root", cwd: documentsCodex, title: "Generated root"),
+          _record(id: "generated-child", cwd: generatedChat, title: "Generated child"),
+          _record(id: "state-filtered", cwd: normalProject, title: "Projectless elsewhere"),
+          _record(id: "normal", cwd: normalProject, title: "Normal"),
+          _record(id: "date-shaped", cwd: dateShapedProject, title: "Date shaped"),
+          _record(id: "similar-name", cwd: similarlyNamedProject, title: "Similar name"),
+        ],
+      );
+
+      final discovered = await repository.listAllSessions();
+
+      expect(
+        discovered.map((session) => session.id),
+        ["normal", "date-shaped", "similar-name"],
+      );
+      expect(
+        (await repository.getSessions(projectId: generatedChat, start: null, limit: null)).map(
+          (session) => session.id,
+        ),
+        ["generated-child"],
+        reason: "discovery filtering must not remove direct access to an already-known session",
+      );
+    });
+
+    test("discovery keeps using the Documents/Codex filter when desktop state is unreadable", () async {
+      final userHome = p.join(Directory.systemTemp.path, "codex-unreadable-state-user");
+      final documentsCodex = p.join(userHome, "Documents", "Codex");
+      final repository = _DiscoveryStubCodexCatalogRepository(
+        rolloutApi: _DiscoveryRolloutApi(
+          documentsCodexDirectory: documentsCodex,
+          projectlessThreadIds: const {},
+          desktopStateError: const FormatException("malformed state"),
+        ),
+        records: [
+          _record(
+            id: "generated",
+            cwd: p.join(documentsCodex, "2026-08-01", "chat"),
+            title: "Generated",
+          ),
+          _record(id: "normal", cwd: p.join(userHome, "repos", "app"), title: "Normal"),
+        ],
+      );
+
+      final discovered = await repository.listAllSessions();
+
+      expect(discovered.map((session) => session.id), ["normal"]);
+    });
+
     test("keeps the index entry when rollout deletion fails", () {
       final rolloutApi = _DeleteFailingRolloutApi();
       final repository = CodexCatalogRepository(rolloutApi: rolloutApi);
@@ -145,6 +209,40 @@ class _StubCodexCatalogRepository extends CodexCatalogRepository {
 
   @override
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
+}
+
+class _DiscoveryStubCodexCatalogRepository extends CodexCatalogRepository {
+  _DiscoveryStubCodexCatalogRepository({
+    required super.rolloutApi,
+    required this.records,
+  });
+
+  final List<CodexSessionRecord> records;
+
+  @override
+  Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
+}
+
+class _DiscoveryRolloutApi extends CodexRolloutApi {
+  _DiscoveryRolloutApi({
+    required this.documentsCodexDirectory,
+    required this.projectlessThreadIds,
+    required this.desktopStateError,
+  }) : super(environment: const {});
+
+  @override
+  final String? documentsCodexDirectory;
+  final Set<String> projectlessThreadIds;
+  final Object? desktopStateError;
+
+  @override
+  CodexDesktopStateDto readDesktopState() {
+    final error = desktopStateError;
+    if (error != null) throw error;
+    return CodexDesktopStateDto(
+      projectlessThreadIds: projectlessThreadIds,
+    );
+  }
 }
 
 class _DeleteFailingRolloutApi extends CodexRolloutApi {

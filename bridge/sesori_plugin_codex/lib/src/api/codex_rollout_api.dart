@@ -6,6 +6,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "models/codex_desktop_state_dto.dart";
 import "models/codex_rollout_dto.dart";
 
 typedef CodexSessionIndexLine = ({CodexSessionIndexEntryDto? entry, String raw});
@@ -32,7 +33,7 @@ class CodexRolloutTailPosition {
   final List<int> trailingBytes;
 }
 
-/// Layer-1 filesystem boundary for Codex's on-disk rollout history.
+/// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
 class CodexRolloutApi {
   CodexRolloutApi({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
 
@@ -54,6 +55,30 @@ class CodexRolloutApi {
   String? get sessionsDirectory {
     final home = codexHome;
     return home == null ? null : p.join(home, "sessions");
+  }
+
+  String? get desktopStatePath {
+    final home = codexHome;
+    return home == null ? null : p.join(home, ".codex-global-state.json");
+  }
+
+  String? get documentsCodexDirectory {
+    final home = resolveUserHomeDirectory(environment: _environment);
+    return home == null ? null : p.join(home, "Documents", "Codex");
+  }
+
+  CodexDesktopStateDto readDesktopState() {
+    final path = desktopStatePath;
+    if (path == null) {
+      return const CodexDesktopStateDto(projectlessThreadIds: {});
+    }
+    final file = File(path);
+    if (!file.existsSync()) {
+      return const CodexDesktopStateDto(projectlessThreadIds: {});
+    }
+    return CodexDesktopStateDto.fromJson(
+      jsonDecodeMap(file.readAsStringSync()),
+    );
   }
 
   List<CodexSessionIndexEntryDto> readSessionIndex() => [

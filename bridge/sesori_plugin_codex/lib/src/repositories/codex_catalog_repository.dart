@@ -69,8 +69,23 @@ class CodexCatalogRepository {
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() => Isolate.run(listSessionRecords);
 
   Future<List<PluginSession>> listAllSessions() async {
+    final projectlessThreadIds = _readProjectlessThreadIds();
+    final documentsCodexDirectory = _rolloutApi.documentsCodexDirectory;
+    final excludedDirectory = documentsCodexDirectory == null
+        ? null
+        : normalizeProjectDirectory(directory: documentsCodexDirectory);
     final records = await listSessionRecordsInIsolate();
-    return records.map(_toPluginSession).nonNulls.toList(growable: false);
+    return records
+        .where(
+          (record) => !_isExcludedFromDiscovery(
+            record: record,
+            projectlessThreadIds: projectlessThreadIds,
+            documentsCodexDirectory: excludedDirectory,
+          ),
+        )
+        .map(_toPluginSession)
+        .nonNulls
+        .toList(growable: false);
   }
 
   /// Filters by normalized rollout CWD before applying pagination.
@@ -162,6 +177,31 @@ class CodexCatalogRepository {
       Log.w("[codex] failed to read the session index", error, stackTrace);
       return const [];
     }
+  }
+
+  Set<String> _readProjectlessThreadIds() {
+    try {
+      return _rolloutApi.readDesktopState().projectlessThreadIds;
+    } on Object {
+      Log.d(
+        "[codex] Codex Desktop state is unreadable; continuing discovery without its projectless thread ids",
+      );
+      return const {};
+    }
+  }
+
+  bool _isExcludedFromDiscovery({
+    required CodexSessionRecord record,
+    required Set<String> projectlessThreadIds,
+    required String? documentsCodexDirectory,
+  }) {
+    if (projectlessThreadIds.contains(record.id)) return true;
+    final cwd = record.cwd?.trim();
+    if (documentsCodexDirectory == null || cwd == null || cwd.isEmpty) {
+      return false;
+    }
+    final directory = normalizeProjectDirectory(directory: cwd);
+    return p.equals(directory, documentsCodexDirectory) || p.isWithin(documentsCodexDirectory, directory);
   }
 
   _CodexSessionMetadata? _readMetadata(String rolloutPath) {
