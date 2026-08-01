@@ -7,8 +7,6 @@ sealed class AcpContentMutation {
   const AcpContentMutation({required this.partIdSuffix});
 
   final String partIdSuffix;
-
-  AcpContentMutation withoutImagePayload();
 }
 
 final class AcpTextDeltaMutation extends AcpContentMutation {
@@ -18,9 +16,6 @@ final class AcpTextDeltaMutation extends AcpContentMutation {
   });
 
   final String delta;
-
-  @override
-  AcpContentMutation withoutImagePayload() => this;
 }
 
 final class AcpImageMutation extends AcpContentMutation {
@@ -30,18 +25,6 @@ final class AcpImageMutation extends AcpContentMutation {
   });
 
   final PluginMessageAttachment attachment;
-
-  @override
-  AcpContentMutation withoutImagePayload() => AcpImageBoundaryMutation(
-    partIdSuffix: partIdSuffix,
-  );
-}
-
-final class AcpImageBoundaryMutation extends AcpContentMutation {
-  const AcpImageBoundaryMutation({required super.partIdSuffix});
-
-  @override
-  AcpContentMutation withoutImagePayload() => this;
 }
 
 final class AcpContentSnapshot {

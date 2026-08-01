@@ -10,6 +10,108 @@ void main() {
   group("AcpReplayCollector", () {
     Map<String, dynamic> upd(Map<String, dynamic> body) => {"update": body};
 
+    final assistantParityCases = <({String name, List<Map<String, dynamic>> updates})>[
+      (
+        name: "mixed content in one chunk",
+        updates: [
+          {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "mixed",
+            "content": [
+              {"type": "text", "text": "before"},
+              {
+                "type": "image",
+                "data": "AA==",
+                "mimeType": "image/png",
+                "uri": "file:///private/output.png",
+              },
+              {"type": "text", "text": "after"},
+            ],
+          },
+        ],
+      ),
+      (
+        name: "inline and metadata images across chunks",
+        updates: [
+          {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "chunked",
+            "content": {"type": "text", "text": "one "},
+          },
+          {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "chunked",
+            "content": {"type": "text", "text": "two"},
+          },
+          {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "chunked",
+            "content": {
+              "type": "image",
+              "data": "AA==",
+              "mimeType": "image/svg+xml",
+              "uri": "https://private.example/unsupported.svg",
+            },
+          },
+          {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "chunked",
+            "content": {
+              "type": "image",
+              "data": "AQ==",
+              "mimeType": "image/png",
+              "uri": null,
+            },
+          },
+          {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "chunked",
+            "content": {"type": "text", "text": "last"},
+          },
+        ],
+      ),
+    ];
+
+    for (final testCase in assistantParityCases) {
+      test("matches live assistant image parts for ${testCase.name}", () {
+        final configurationTracker = AcpSessionConfigurationTracker();
+        final mapper = AcpEventMapper(
+          launchDirectory: "/repo",
+          agentId: "ACP",
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+          contentMapper: const AcpContentMapper(),
+        )..beginTurn("s1");
+        final collector = AcpReplayCollector(
+          sessionId: "s1",
+          agentId: "ACP",
+          initialUserMessageId: null,
+          haltClassifier: null,
+          contentMapper: const AcpContentMapper(),
+        );
+        final liveEvents = <BridgeSseEvent>[];
+
+        for (final body in testCase.updates) {
+          collector.consume(upd(body));
+          liveEvents.addAll(
+            mapper.map(
+              AcpNotification(
+                method: "session/update",
+                params: {"sessionId": "s1", "update": body},
+              ),
+            ),
+          );
+        }
+
+        final replayParts = collector.build().single.parts;
+        expect(replayParts, _materializedLiveParts(events: liveEvents));
+        expect(
+          replayParts.where((part) => part.type == PluginMessagePartType.file),
+          isNotEmpty,
+        );
+      });
+    }
+
     test("reuses the synthetic identity for the first replayed user message", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",
@@ -20,14 +122,18 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "user_message_chunk",
-          "content": {"type": "text", "text": "Hello"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "Hi"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "Hello"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Hi"},
+          }),
+        );
 
       final messages = collector.build();
       final initial = messages.first;
@@ -47,27 +153,35 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "user_message_chunk",
-          "content": {"type": "text", "text": "list md files"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "t1",
-          "kind": "execute",
-          "title": "find . -name '*.md'",
-          "status": "pending",
-        }))
-        ..consume(upd({
-          "sessionUpdate": "tool_call_update",
-          "toolCallId": "t1",
-          "status": "completed",
-          "rawOutput": {"exitCode": 0, "stdout": "README.md\n", "stderr": ""},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "There is 1 file."},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "list md files"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "execute",
+            "title": "find . -name '*.md'",
+            "status": "pending",
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "status": "completed",
+            "rawOutput": {"exitCode": 0, "stdout": "README.md\n", "stderr": ""},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "There is 1 file."},
+          }),
+        );
 
       final messages = collector.build();
       expect(messages, hasLength(3));
@@ -91,25 +205,27 @@ void main() {
         initialUserMessageId: null,
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
-      )..consume(upd({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "t1",
-          "kind": "read",
-          "status": "completed",
-          "content": [
-            {
-              "type": "content",
-              "content": {"type": "text", "text": "replayed output"},
-            },
-            {
-              "type": "diff",
-              "path": "/private/source.dart",
-              "oldText": "old",
-              "newText": "new",
-            },
-            {"type": "terminal", "terminalId": "private-terminal"},
-          ],
-        }));
+      )..consume(
+          upd({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "status": "completed",
+            "content": [
+              {
+                "type": "content",
+                "content": {"type": "text", "text": "replayed output"},
+              },
+              {
+                "type": "diff",
+                "path": "/private/source.dart",
+                "oldText": "old",
+                "newText": "new",
+              },
+              {"type": "terminal", "terminalId": "private-terminal"},
+            ],
+          }),
+        );
 
       final tool = collector.build().single.parts.single;
       expect(tool.state?.output, "replayed output");
@@ -124,20 +240,26 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "Before"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "t1",
-          "kind": "read",
-          "status": "completed",
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "After"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Before"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "status": "completed",
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "After"},
+          }),
+        );
 
       final messages = collector.build();
       expect(messages, hasLength(3));
@@ -154,27 +276,37 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "t1",
-          "kind": "execute",
-          "status": "pending",
-        }))
-        ..consume(upd({
-          "sessionUpdate": "tool_call_update",
-          "toolCallId": "t1",
-          "status": "completed",
-          "rawOutput": {"stdout": "done"},
-        }))
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "execute",
+            "status": "pending",
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "status": "completed",
+            "rawOutput": {"stdout": "done"},
+          }),
+        )
         // An output-only update with NO status must keep the completed state.
-        ..consume(upd({
-          "sessionUpdate": "tool_call_update",
-          "toolCallId": "t1",
-          "rawOutput": {"stdout": "done (final)"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "rawOutput": {"stdout": "done (final)"},
+          }),
+        );
 
       final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
-      expect(toolPart.state?.status, PluginToolStatus.completed, reason: "status-less update must not reset to pending");
+      expect(
+        toolPart.state?.status,
+        PluginToolStatus.completed,
+        reason: "status-less update must not reset to pending",
+      );
       expect(toolPart.state?.output, "done (final)");
     });
 
@@ -186,20 +318,24 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "t1",
-          "kind": "edit",
-          "status": "pending",
-        }))
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "edit",
+            "status": "pending",
+          }),
+        )
         // A separate title-only update after the tool_call: replay must apply it
         // (the live mapper does), not silently drop it.
-        ..consume(upd({
-          "sessionUpdate": "tool_call_update",
-          "toolCallId": "t1",
-          "title": "Edit main.dart",
-          "status": "in_progress",
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "title": "Edit main.dart",
+            "status": "in_progress",
+          }),
+        );
       final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
       expect(toolPart.tool, "edit");
       expect(toolPart.state?.title, "Edit main.dart");
@@ -212,15 +348,16 @@ void main() {
         initialUserMessageId: null,
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
-      )
-        ..consume(upd({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "t1",
-          "kind": "read",
-          "title": {"unexpected": "object"},
-          "status": "completed",
-          "rawOutput": {"stdout": "x"},
-        }));
+      )..consume(
+          upd({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "title": {"unexpected": "object"},
+            "status": "completed",
+            "rawOutput": {"stdout": "x"},
+          }),
+        );
       final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
       expect(toolPart.tool, "read");
       expect(toolPart.state?.title, isNull);
@@ -235,10 +372,12 @@ void main() {
         initialUserMessageId: null,
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
-      )..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "hi"},
-        }));
+      )..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "hi"},
+          }),
+        );
       final assistant = collector.build().single.info as PluginMessageAssistant;
       expect(assistant.modelID, "claude-opus-4-8");
       expect(assistant.providerID, "cursor");
@@ -254,21 +393,27 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "m1",
-          "content": {"type": "text", "text": "first"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "m1",
-          "content": {"type": "text", "text": " message"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "m2",
-          "content": {"type": "text", "text": "second message"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": "first"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": " message"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m2",
+            "content": {"type": "text", "text": "second message"},
+          }),
+        );
 
       final messages = collector.build();
       expect(messages, hasLength(2));
@@ -285,14 +430,18 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "one"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": " flow"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "one"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": " flow"},
+          }),
+        );
       expect(collector.build().single.parts.single.text, "one flow");
     });
 
@@ -304,14 +453,18 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": ""},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "audio", "data": "private", "mimeType": "audio/wav"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": ""},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "audio", "data": "private", "mimeType": "audio/wav"},
+          }),
+        );
 
       expect(collector.build(), isEmpty);
     });
@@ -342,11 +495,13 @@ void main() {
       );
       final output = _captureWarnings(() {
         for (var index = 0; index < 2; index++) {
-          collector.consume(upd({
-            "sessionUpdate": "agent_message_chunk",
-            "messageId": "m1",
-            "content": {"type": "text", "text": 42, "private": "secret"},
-          }));
+          collector.consume(
+            upd({
+              "sessionUpdate": "agent_message_chunk",
+              "messageId": "m1",
+              "content": {"type": "text", "text": 42, "private": "secret"},
+            }),
+          );
         }
       });
 
@@ -355,7 +510,7 @@ void main() {
       expect(collector.build(), isEmpty);
     });
 
-    test("replay records image boundaries while deferring image materialization", () {
+    test("replay materializes mixed assistant images in order", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",
         agentId: "Cursor",
@@ -363,35 +518,52 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "mixed",
-          "content": {"type": "text", "text": "before"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "mixed",
-          "content": {
-            "type": "image",
-            "data": "AA==",
-            "mimeType": "image/png",
-            "uri": "file:///private/output.png",
-          },
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "mixed",
-          "content": {"type": "text", "text": "after"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "mixed",
+            "content": {"type": "text", "text": "before"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "mixed",
+            "content": {
+              "type": "image",
+              "data": "AA==",
+              "mimeType": "image/png",
+              "uri": "file:///private/output.png",
+            },
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "mixed",
+            "content": {"type": "text", "text": "after"},
+          }),
+        );
 
       final message = collector.build().single;
-      expect(message.parts, hasLength(2));
+      expect(message.parts, hasLength(3));
       expect(
         message.parts.map((part) => part.id),
-        ["s1-mmixed-assistant-text", "s1-mmixed-assistant-text-1"],
+        [
+          "s1-mmixed-assistant-text",
+          "s1-mmixed-assistant-image-1",
+          "s1-mmixed-assistant-text-1",
+        ],
       );
-      expect(message.parts.map((part) => part.text), ["before", "after"]);
-      expect(message.parts, everyElement(isA<PluginMessagePart>().having((part) => part.attachment, "attachment", isNull)));
+      expect(message.parts.map((part) => part.type), [
+        PluginMessagePartType.text,
+        PluginMessagePartType.file,
+        PluginMessagePartType.text,
+      ]);
+      expect(message.parts.map((part) => part.text), ["before", null, "after"]);
+      final attachment = message.parts[1].attachment! as PluginMessageAttachmentInlineImage;
+      expect(attachment.base64, "AA==");
+      expect(attachment.filename, "output.png");
     });
 
     test("an id-less image closes its replay draft before a following tool", () {
@@ -402,25 +574,33 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {
-            "type": "image",
-            "data": "AA==",
-            "mimeType": "image/png",
-            "uri": null,
-          },
-        }))
-        ..consume(upd({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "t1",
-          "kind": "read",
-          "status": "completed",
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "image",
+              "data": "AA==",
+              "mimeType": "image/png",
+              "uri": null,
+            },
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "status": "completed",
+          }),
+        );
 
       final messages = collector.build();
       expect(messages, hasLength(2));
-      expect(messages.first.parts, isEmpty);
+      expect(messages.first.parts.single.type, PluginMessagePartType.file);
+      expect(
+        messages.first.parts.single.attachment,
+        isA<PluginMessageAttachmentInlineImage>(),
+      );
       expect(messages.last.parts.single.type, PluginMessagePartType.tool);
     });
 
@@ -432,15 +612,19 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "id-less draft"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "m2",
-          "content": {"type": "text", "text": "identified message"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "id-less draft"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m2",
+            "content": {"type": "text", "text": "identified message"},
+          }),
+        );
 
       final messages = collector.build();
       expect(messages, hasLength(2));
@@ -456,15 +640,19 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "m1",
-          "content": {"type": "text", "text": "identified message"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "id-less message"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": "identified message"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "id-less message"},
+          }),
+        );
 
       final messages = collector.build();
       expect(messages, hasLength(2));
@@ -480,29 +668,38 @@ void main() {
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
       )
-        ..consume(upd({
-          "sessionUpdate": "agent_thought_chunk",
-          "messageId": "m1",
-          "content": {"type": "text", "text": "thinking"},
-        }))
-        ..consume(upd({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "t1",
-          "kind": "read",
-          "status": "completed",
-        }))
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "m1",
-          "content": {"type": "text", "text": "answer"},
-        }));
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_thought_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": "thinking"},
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "status": "completed",
+          }),
+        )
+        ..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": "answer"},
+          }),
+        );
 
       final message = collector.build().single;
-      expect(message.parts.map((p) => p.type), containsAll(<PluginMessagePartType>[
-        PluginMessagePartType.reasoning,
-        PluginMessagePartType.text,
-        PluginMessagePartType.tool,
-      ]));
+      expect(
+        message.parts.map((p) => p.type),
+        containsAll(<PluginMessagePartType>[
+          PluginMessagePartType.reasoning,
+          PluginMessagePartType.text,
+          PluginMessagePartType.tool,
+        ]),
+      );
     });
 
     test("a halt notice replays as an error message with no text part", () {
@@ -516,10 +713,12 @@ void main() {
             ? const AcpHaltNotice(errorName: "cursor_gate", message: "Check your settings to continue")
             : null,
         contentMapper: const AcpContentMapper(),
-      )..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "\n\nCheck your settings to continue"},
-        }));
+      )..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "\n\nCheck your settings to continue"},
+          }),
+        );
 
       final message = collector.build().single;
       expect(message.info, isA<PluginMessageError>());
@@ -532,14 +731,15 @@ void main() {
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
-        haltClassifier: ({required text}) =>
-            const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+        haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
         contentMapper: const AcpContentMapper(),
-      )..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "m1",
-          "content": {"type": "text", "text": "Check your settings to continue"},
-        }));
+      )..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": "Check your settings to continue"},
+          }),
+        );
 
       expect(collector.build().single.info, isA<PluginMessageAssistant>());
     });
@@ -549,25 +749,30 @@ void main() {
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
-        haltClassifier: ({required text}) =>
-            const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+        haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
         contentMapper: const AcpContentMapper(),
-      )..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": [
-            {
-              "type": "image",
-              "data": "AA==",
-              "mimeType": "image/png",
-              "uri": null,
-            },
-            {"type": "text", "text": "Check your settings to continue"},
-          ],
-        }));
+      )..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": [
+              {
+                "type": "image",
+                "data": "AA==",
+                "mimeType": "image/png",
+                "uri": null,
+              },
+              {"type": "text", "text": "Check your settings to continue"},
+            ],
+          }),
+        );
 
       final message = collector.build().single;
       expect(message.info, isA<PluginMessageAssistant>());
-      expect(message.parts.single.text, "Check your settings to continue");
+      expect(message.parts.map((part) => part.type), [
+        PluginMessagePartType.file,
+        PluginMessagePartType.text,
+      ]);
+      expect(message.parts.last.text, "Check your settings to continue");
     });
 
     test("unsupported content keeps halt-like replay text as an assistant message", () {
@@ -575,16 +780,17 @@ void main() {
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
-        haltClassifier: ({required text}) =>
-            const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+        haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
         contentMapper: const AcpContentMapper(),
-      )..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": [
-            {"type": "text", "text": "Check your settings to continue"},
-            {"type": "audio", "data": "private", "mimeType": "audio/wav"},
-          ],
-        }));
+      )..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": [
+              {"type": "text", "text": "Check your settings to continue"},
+              {"type": "audio", "data": "private", "mimeType": "audio/wav"},
+            ],
+          }),
+        );
 
       final message = collector.build().single;
       expect(message.info, isA<PluginMessageAssistant>());
@@ -598,16 +804,37 @@ void main() {
         initialUserMessageId: null,
         haltClassifier: null,
         contentMapper: const AcpContentMapper(),
-      )
-        ..consume(upd({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "Check your settings to continue"},
-        }));
+      )..consume(
+          upd({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Check your settings to continue"},
+          }),
+        );
       final message = collector.build().single;
       expect(message.info, isA<PluginMessageAssistant>());
       expect(message.parts, isNotEmpty);
     });
   });
+}
+
+List<PluginMessagePart> _materializedLiveParts({
+  required List<BridgeSseEvent> events,
+}) {
+  final parts = <String, PluginMessagePart>{};
+  for (final event in events) {
+    if (event case BridgeSseMessagePartUpdated(:final part)) {
+      parts[part.id] = part;
+    } else if (event
+        case BridgeSseMessagePartDelta(
+          :final partID,
+          field: "text",
+          :final delta,
+        )) {
+      final prior = parts[partID]!;
+      parts[partID] = prior.copyWith(text: "${prior.text ?? ""}$delta");
+    }
+  }
+  return parts.values.toList(growable: false);
 }
 
 String _captureWarnings(void Function() action) {

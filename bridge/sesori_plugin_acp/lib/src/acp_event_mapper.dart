@@ -495,8 +495,6 @@ class AcpEventMapper {
               ),
             ),
           );
-        case AcpImageBoundaryMutation():
-          continue;
       }
     }
     if (!identity.hasAcpMessageId) _openIdlessAssistant.add(sessionId);

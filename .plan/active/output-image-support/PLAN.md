@@ -314,7 +314,7 @@ coverage; it does not introduce another interpretation of content.
 | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | Tool DTOs and one shared behavior-preserving content policy. |
 | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | Message tracker adopted live/replay; live image materialization. |
 | 11/13 | `output-image-support-acp-tool-images` | `⚙️ [output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | Tool tracker adopted live/replay; live attachment materialization. |
-| 12/13 | `output-image-support-acp-image-replay` | `[output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | Replay materialization and end-to-end parity proof only. |
+| 12/13 | `output-image-support-acp-image-replay` | `⚙️ [output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | Replay materialization and end-to-end parity proof only. |
 | 13/13 | `output-image-support-retire-plan` | `[output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | Record completion and move the plan tree from active to completed. |
 
 ## Step Details And Verification

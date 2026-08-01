@@ -3,6 +3,157 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("live/replay ACP tool parity", () {
+    final toolParityCases = <({String name, List<Map<String, dynamic>> updates})>[
+      (
+        name: "partial output updates preserve mixed content attachments",
+        updates: [
+          {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "status": "in_progress",
+            "content": [
+              {
+                "type": "content",
+                "content": {"type": "text", "text": "standard output"},
+              },
+              {
+                "type": "content",
+                "content": {
+                  "type": "image",
+                  "data": "AA==",
+                  "mimeType": "image/png",
+                  "uri": "file:///private/output.png",
+                },
+              },
+            ],
+          },
+          {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "status": "completed",
+          },
+          {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "rawOutput": {"stdout": "final output\n"},
+          },
+        ],
+      ),
+      (
+        name: "image-only content replaces earlier mixed content",
+        updates: [
+          {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "status": "in_progress",
+            "content": [
+              {
+                "type": "content",
+                "content": {"type": "text", "text": "old output"},
+              },
+              {
+                "type": "content",
+                "content": {
+                  "type": "image",
+                  "data": "AA==",
+                  "mimeType": "image/png",
+                  "uri": "file:///private/old.png",
+                },
+              },
+            ],
+          },
+          {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "content": [
+              {
+                "type": "content",
+                "content": {
+                  "type": "image",
+                  "data": "AQ==",
+                  "mimeType": "image/png",
+                  "uri": "file:///private/new.png",
+                },
+              },
+            ],
+          },
+        ],
+      ),
+      (
+        name: "a late base call cannot replace a newer attachment",
+        updates: [
+          {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "status": "completed",
+            "content": [
+              {
+                "type": "content",
+                "content": {
+                  "type": "image",
+                  "data": "AA==",
+                  "mimeType": "image/png",
+                  "uri": "file:///private/new.png",
+                },
+              },
+            ],
+          },
+          {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "title": "Read source.dart",
+            "status": "pending",
+            "content": [
+              {
+                "type": "content",
+                "content": {
+                  "type": "image",
+                  "data": "AQ==",
+                  "mimeType": "image/png",
+                  "uri": "file:///private/stale.png",
+                },
+              },
+            ],
+          },
+        ],
+      ),
+    ];
+
+    for (final testCase in toolParityCases) {
+      test("matches live tool attachment state for ${testCase.name}", () {
+        final mapper = AcpEventMapper(
+          launchDirectory: "/repo",
+          agentId: "ACP",
+          pluginId: "acp",
+          configurationTracker: AcpSessionConfigurationTracker(),
+          contentMapper: const AcpContentMapper(),
+        );
+        final collector = _collector();
+        PluginMessagePart? livePart;
+
+        for (final body in testCase.updates) {
+          final events = mapper.map(
+            AcpNotification(
+              method: "session/update",
+              params: {"sessionId": "s1", "update": body},
+            ),
+          );
+          livePart = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+          collector.consume({"update": body});
+        }
+
+        final replayPart = collector.build().single.parts.single;
+        expect(replayPart.tool, livePart!.tool);
+        expect(replayPart.state, livePart.state);
+        expect(replayPart.state?.attachments, isNotEmpty);
+      });
+    }
+  });
+
   group("live ACP tool content", () {
     late AcpEventMapper mapper;
 
@@ -289,7 +440,7 @@ void main() {
   group("replayed ACP tool content", () {
     Map<String, dynamic> update(Map<String, dynamic> body) => {"update": body};
 
-    test("applies the same replacement state while deferring attachments", () {
+    test("applies the same replacement state with attachments", () {
       final collector = _collector()
         ..consume(
           update({
@@ -315,8 +466,10 @@ void main() {
           }),
         );
 
-      expect(_replayState(collector: collector).output, "standard output");
-      expect(_replayState(collector: collector).attachments, isEmpty);
+      var state = _replayState(collector: collector);
+      expect(state.output, "standard output");
+      expect(state.attachments.single.filename, "output.png");
+      expect(state.attachments.single, isA<PluginMessageAttachmentInlineImage>());
 
       collector.consume(
         update({
@@ -325,7 +478,9 @@ void main() {
           "status": "completed",
         }),
       );
-      expect(_replayState(collector: collector).output, "standard output");
+      state = _replayState(collector: collector);
+      expect(state.output, "standard output");
+      expect(state.attachments.single.filename, "output.png");
 
       collector.consume(
         update({
@@ -334,8 +489,9 @@ void main() {
           "rawOutput": {"stdout": "fallback output\n"},
         }),
       );
-      expect(_replayState(collector: collector).output, "fallback output");
-      expect(_replayState(collector: collector).attachments, isEmpty);
+      state = _replayState(collector: collector);
+      expect(state.output, "fallback output");
+      expect(state.attachments.single.filename, "output.png");
 
       collector.consume(
         update({
@@ -348,7 +504,7 @@ void main() {
       expect(_replayState(collector: collector).attachments, isEmpty);
     });
 
-    test("image-only content replaces prior replay output without rendering", () {
+    test("image-only content replaces prior replay output and attachment", () {
       final collector = _collector()
         ..consume(
           update({
@@ -384,7 +540,11 @@ void main() {
 
       final state = _replayState(collector: collector);
       expect(state.output, isNull);
-      expect(state.attachments, isEmpty);
+      expect(state.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(
+        (state.attachments.single as PluginMessageAttachmentInlineImage).base64,
+        "AA==",
+      );
     });
 
     test("malformed status lets a later tool_call supply replay status", () {
@@ -444,7 +604,7 @@ void main() {
       expect(part.state?.title, "Read source.dart");
       expect(part.state?.status, PluginToolStatus.completed);
       expect(part.state?.output, "new output");
-      expect(part.state?.attachments, isEmpty);
+      expect(part.state?.attachments.single.filename, "new.png");
     });
   });
 }

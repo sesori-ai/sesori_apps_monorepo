@@ -59,9 +59,6 @@ enum AcpImageDegradationReason {
 
 sealed class AcpToolContentMutation {
   const AcpToolContentMutation();
-
-  /// Retains mutation boundaries and safe metadata without inline image data.
-  AcpToolContentMutation withoutImagePayload();
 }
 
 final class AcpReplaceToolContentMutation extends AcpToolContentMutation {
@@ -74,29 +71,16 @@ final class AcpReplaceToolContentMutation extends AcpToolContentMutation {
   final String? output;
   final List<AcpMappedImageContentBlock> imageCandidates;
   final bool hasDiff;
-
-  @override
-  AcpToolContentMutation withoutImagePayload() => AcpReplaceToolContentMutation(
-    output: output,
-    imageCandidates: imageCandidates.whereType<AcpMappedMetadataImageContentBlock>().toList(growable: false),
-    hasDiff: hasDiff,
-  );
 }
 
 final class AcpUpdateToolOutputMutation extends AcpToolContentMutation {
   const AcpUpdateToolOutputMutation({required this.output});
 
   final String? output;
-
-  @override
-  AcpToolContentMutation withoutImagePayload() => this;
 }
 
 final class AcpUnchangedToolContentMutation extends AcpToolContentMutation {
   const AcpUnchangedToolContentMutation();
-
-  @override
-  AcpToolContentMutation withoutImagePayload() => this;
 }
 
 /// Deduplicates privacy-safe mapping warnings across chunks of one logical

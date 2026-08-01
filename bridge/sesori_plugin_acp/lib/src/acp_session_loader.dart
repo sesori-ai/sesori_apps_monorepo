@@ -64,7 +64,7 @@ class AcpReplayCollector {
       case "tool_call":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
-        final contentMutation = _contentMapper.toolContent(update: update).withoutImagePayload();
+        final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
         final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
@@ -93,7 +93,7 @@ class AcpReplayCollector {
       case "tool_call_update":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
-        final contentMutation = _contentMapper.toolContent(update: update).withoutImagePayload();
+        final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
         final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
@@ -165,9 +165,7 @@ class AcpReplayCollector {
           contentTracker: tracker,
         );
     _pendingAssistantContent = null;
-    draft.contentMutations.addAll(
-      mutations.map((mutation) => mutation.withoutImagePayload()),
-    );
+    draft.contentMutations.addAll(mutations);
   }
 
   List<PluginMessageWithParts> build() {
@@ -213,9 +211,7 @@ class AcpReplayCollector {
     if (draft.text.isNotEmpty) {
       parts.add(_textPart(draft, "text", PluginMessagePartType.text, draft.text.toString()));
     }
-    for (final entry in _assistantTextParts(draft: draft).entries) {
-      parts.add(_textPart(draft, entry.key, PluginMessagePartType.text, entry.value));
-    }
+    parts.addAll(_assistantParts(draft: draft));
     draft.tools.forEach((toolId, tool) {
       final content = tool.contentTracker.snapshot;
       parts.add(
@@ -231,7 +227,7 @@ class AcpReplayCollector {
             title: tool.title,
             output: content.output,
             error: tool.status == PluginToolStatus.error ? content.output : null,
-            attachments: const [],
+            attachments: content.attachments,
           ),
           prompt: null,
           description: null,
@@ -264,14 +260,50 @@ class AcpReplayCollector {
 
   bool _hasAssistantImageCandidate({required _Draft draft}) => draft.contentTracker.snapshot.imageCandidateCount > 0;
 
-  Map<String, String> _assistantTextParts({required _Draft draft}) {
-    final buffers = <String, StringBuffer>{};
+  List<PluginMessagePart> _assistantParts({required _Draft draft}) {
+    final parts = <PluginMessagePart>[];
+    String? textPartIdSuffix;
+    StringBuffer? textBuffer;
+
+    void flushText() {
+      final suffix = textPartIdSuffix;
+      final buffer = textBuffer;
+      if (suffix != null && buffer != null) {
+        parts.add(
+          _textPart(
+            draft,
+            suffix,
+            PluginMessagePartType.text,
+            buffer.toString(),
+          ),
+        );
+      }
+      textPartIdSuffix = null;
+      textBuffer = null;
+    }
+
     for (final mutation in draft.contentMutations) {
-      if (mutation case AcpTextDeltaMutation(:final partIdSuffix, :final delta)) {
-        buffers.putIfAbsent(partIdSuffix, StringBuffer.new).write(delta);
+      switch (mutation) {
+        case AcpTextDeltaMutation(:final partIdSuffix, :final delta):
+          if (textPartIdSuffix != partIdSuffix) {
+            flushText();
+            textPartIdSuffix = partIdSuffix;
+            textBuffer = StringBuffer();
+          }
+          textBuffer!.write(delta);
+        case AcpImageMutation(:final partIdSuffix, :final attachment):
+          flushText();
+          parts.add(
+            _attachmentPart(
+              draft: draft,
+              suffix: partIdSuffix,
+              attachment: attachment,
+            ),
+          );
       }
     }
-    return {for (final entry in buffers.entries) entry.key: entry.value.toString()};
+    flushText();
+    return parts;
   }
 
   PluginMessage _message(_Draft draft) {
@@ -314,6 +346,29 @@ class AcpReplayCollector {
       attempt: null,
       retryError: null,
       attachment: null,
+    );
+  }
+
+  PluginMessagePart _attachmentPart({
+    required _Draft draft,
+    required String suffix,
+    required PluginMessageAttachment attachment,
+  }) {
+    return PluginMessagePart(
+      id: "${draft.id}-$suffix",
+      sessionID: sessionId,
+      messageID: draft.id,
+      type: PluginMessagePartType.file,
+      text: null,
+      tool: null,
+      state: null,
+      prompt: null,
+      description: null,
+      agent: null,
+      agentName: null,
+      attempt: null,
+      retryError: null,
+      attachment: attachment,
     );
   }
 

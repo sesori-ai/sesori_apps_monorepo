@@ -8,7 +8,7 @@ import "package:test/test.dart";
 
 void main() {
   group("AcpToolContentTracker", () {
-    test("applies replacement, output-only, unchanged, and payload-free mutations", () {
+    test("applies replacement, output-only, and unchanged mutations", () {
       final tracker = AcpToolContentTracker()
         ..apply(
           mutation: AcpReplaceToolContentMutation(
@@ -30,16 +30,6 @@ void main() {
       );
       expect(tracker.snapshot.output, "updated");
       expect(tracker.snapshot.attachments.single.filename, "first.png");
-
-      tracker.apply(
-        mutation: AcpReplaceToolContentMutation(
-          output: "payload-free",
-          imageCandidates: [_inline(filename: "stripped.png", decodedBytes: 1), _metadata()],
-          hasDiff: true,
-        ).withoutImagePayload(),
-      );
-      expect(tracker.snapshot.output, "payload-free");
-      expect(tracker.snapshot.attachments.single, isA<PluginMessageAttachmentMetadata>());
     });
 
     test("layers late initial attachments below an earlier output update", () {
