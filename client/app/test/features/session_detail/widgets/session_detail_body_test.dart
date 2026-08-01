@@ -397,7 +397,7 @@ void main() {
 
     await tester.tap(find.text("Stable"));
     await tester.pump();
-    await tester.tap(find.text("Submit"));
+    await tester.tap(find.text("Submit answers"));
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
 

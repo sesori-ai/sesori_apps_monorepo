@@ -165,8 +165,9 @@ sealed class BridgePluginApi {
   /// [answers] is a `List<List<String>>` because:
   /// - The outer list contains one entry per question in the prompt
   ///   (a single prompt can ask multiple questions at once).
-  /// - Each inner list contains the selected answers for that question
-  ///   (supports multi-select — one or more values can be chosen).
+  /// - Each inner list contains the selected answers for that question. Multiple
+  ///   values represent multi-select; an empty list means that individual
+  ///   question was explicitly declined without rejecting the whole prompt.
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,

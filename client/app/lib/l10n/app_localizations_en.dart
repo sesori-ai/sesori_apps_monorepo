@@ -664,20 +664,62 @@ class AppLocalizationsEn extends AppLocalizations {
   String get questionModalTitle => 'Question';
 
   @override
-  String get questionModalReject => 'Reject';
+  String get questionModalDecline => 'Decline';
+
+  @override
+  String get questionModalDeclineAll => 'Decline all';
+
+  @override
+  String get questionModalDeclineQuestion => 'Decline this question';
+
+  @override
+  String get questionModalDeclineQuestionHint => 'The assistant will see it as unanswered.';
+
+  @override
+  String get questionModalQuestionDeclined => 'Question declined';
+
+  @override
+  String get questionModalQuestionDeclinedHint => 'Choose an answer to undo.';
+
+  @override
+  String get questionModalDeclineAllTitle => 'Decline all questions?';
+
+  @override
+  String get questionModalDeclineAllMessage =>
+      'None of your draft answers will be sent. Your coding session will remain active.';
+
+  @override
+  String get questionModalKeepAnswering => 'Keep answering';
 
   @override
   String get questionModalCustomHint => 'Type your own answer';
 
   @override
-  String get questionModalSubmit => 'Submit';
+  String get questionModalSubmit => 'Submit answers';
 
   @override
   String get questionModalNext => 'Next';
 
   @override
+  String get questionModalResolveAll => 'Answer or decline every question to submit.';
+
+  @override
+  String get questionModalStatusUnanswered => 'unanswered';
+
+  @override
+  String get questionModalStatusAnswered => 'answered';
+
+  @override
+  String get questionModalStatusDeclined => 'declined';
+
+  @override
   String questionModalStepIndicator(int current, int total) {
     return 'Question $current of $total';
+  }
+
+  @override
+  String questionModalStepSemantics(int current, int total, String status) {
+    return 'Question $current of $total, $status';
   }
 
   @override
