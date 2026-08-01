@@ -610,8 +610,8 @@ packages:
     dependency: transitive
     description:
       path: flutter_keyboard_visibility
-      ref: d8d628478d35687e3373735a377c663b19586fa0
-      resolved-ref: d8d628478d35687e3373735a377c663b19586fa0
+      ref: a640afe883868faf2709c41daa391e2cd6f1fc7b
+      resolved-ref: a640afe883868faf2709c41daa391e2cd6f1fc7b
       url: "https://github.com/vespr-wallet/flutter_keyboard_visibility.git"
     source: git
     version: "6.0.2"

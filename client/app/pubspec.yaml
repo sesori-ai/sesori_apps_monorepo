@@ -90,7 +90,7 @@ dependencies:
   flutter_keyboard_visibility:
     git:
       url: https://github.com/vespr-wallet/flutter_keyboard_visibility.git
-      ref: d8d628478d35687e3373735a377c663b19586fa0
+      ref: a640afe883868faf2709c41daa391e2cd6f1fc7b
       path: flutter_keyboard_visibility
 
 dev_dependencies:
