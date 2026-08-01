@@ -34,7 +34,7 @@
 | [x] | 6/13 | `output-image-support-codex-live-images` | `[output-image-support] feat(codex): surface live output images [step 6/13]` | 900-1,400 | [PR #652](https://github.com/sesori-ai/sesori_apps_monorepo/pull/652) merged as `737226d8`; 830 changed lines |
 | [x] | 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | [PR #657](https://github.com/sesori-ai/sesori_apps_monorepo/pull/657) merged as `4ca1cb90`; 589 changed lines |
 | [x] | 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | [PR #658](https://github.com/sesori-ai/sesori_apps_monorepo/pull/658) merged as `a973796c`; 1,119 changed lines |
-| [ ] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | Ready for PR; 860 changed lines |
+| [ ] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | [PR #661](https://github.com/sesori-ai/sesori_apps_monorepo/pull/661) open; 860 changed lines |
 | [ ] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | Blocked on Step 9 merge |
 | [ ] | 11/13 | `output-image-support-acp-tool-images` | `[output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | Blocked on Step 10 merge |
 | [ ] | 12/13 | `output-image-support-acp-image-replay` | `[output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | Blocked on Step 11 merge |
