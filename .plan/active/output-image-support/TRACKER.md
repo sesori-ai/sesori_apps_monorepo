@@ -240,11 +240,14 @@
   empty collections still replace. The live/replay status and mapper regressions
   failed first; payload-free retained state has tracker coverage. All 207 ACP and
   all 109 Cursor tests pass; fatal analysis passes in both packages, and focused
-  tests plus `git diff --check` pass. The final 1,474-line PR diff remains below the
+  tests plus `git diff --check` pass. The final 1,477-line PR diff remains below the
   1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas
 
+- **2026-08-01 — Live aggregate budget declined:** Retain the per-tool 5 MiB
+  bound and turn cleanup; the user declined additional cross-tool mutable
+  accounting as disproportionate for the edge case.
 - **2026-07-31 — Automatic continuation:** After each merged PR, proceed with
   the next numbered step without waiting for another explicit user request.
 - **2026-07-31 — Lifecycle and line budget:** Set a 1,500 changed-line soft cap,
