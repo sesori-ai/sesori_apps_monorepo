@@ -350,13 +350,18 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void didUpdateWidget(covariant PromptInput oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.draftIdentity != widget.draftIdentity) {
+    final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
+    final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
+    if (draftChanged) {
       // The state was reused for another session without initState/dispose.
       // The owning Cubit already persisted each edit, so only restore the new
       // immutable snapshot here.
       _restoreDraft(draft: widget.initialDraft);
     }
-    if (oldWidget.stagedCommand?.name != widget.stagedCommand?.name && widget.stagedCommand != null) {
+    if (oldWidget.surfaceStyleController != widget.surfaceStyleController || draftChanged || stagedCommandChanged) {
+      _syncSurfaceStyle();
+    }
+    if (stagedCommandChanged && widget.stagedCommand != null) {
       _focusComposerField();
     }
   }

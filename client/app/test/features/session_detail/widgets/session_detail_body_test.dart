@@ -684,6 +684,62 @@ void main() {
     );
   });
 
+  testWidgets("parent-driven staged command changes update adjacent surface styles", (tester) async {
+    var state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      children: [testSession(id: "child-1", title: "Child task", parentID: "session-1")],
+    );
+    final stateController = StreamController<SessionDetailState>.broadcast();
+    addTearDown(stateController.close);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => stateController.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final picker = find.byType(PregoPickerButton).first;
+    final taskCard = find.descendant(
+      of: find.byType(BackgroundTasksBar),
+      matching: find.byType(PregoCard),
+    );
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: picker),
+      PregoColorsLight.borderSecondary,
+    );
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: taskCard),
+      PregoColorsLight.borderSecondary,
+    );
+
+    state = state.copyWith(stagedCommand: testCommandInfo());
+    stateController.add(state);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: taskCard),
+      PregoColorsLight.borderPrimary,
+    );
+
+    composerFocus(tester).unfocus();
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(stagedCommand: null);
+    stateController.add(state);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EditableText), findsNothing);
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: picker),
+      PregoColorsLight.borderSecondary,
+    );
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: taskCard),
+      PregoColorsLight.borderSecondary,
+    );
+  });
+
   testWidgets("voice-first session with messages still rests in hold-to-talk", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
