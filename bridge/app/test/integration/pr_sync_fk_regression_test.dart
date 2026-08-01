@@ -23,6 +23,7 @@
 library;
 
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -32,6 +33,10 @@ import "package:test/test.dart";
 import "../helpers/fake_filesystem_api.dart";
 import "../helpers/fake_git_cli_api.dart";
 import "../helpers/test_database.dart";
+
+const _githubLogin = "octocat";
+const _githubRepositoryIdentity = "sesori-ai/sesori_apps_monorepo";
+final _verifiedGithubLogin = VerifiedGithubLogin.tryParse(rawLogin: _githubLogin)!;
 
 void main() {
   group("PR sync FK regression — forward-prevention paths (pre-v5 schema)", () {
@@ -53,8 +58,10 @@ void main() {
           filesystemApi: FakeFilesystemApi(),
         );
         final prRepo = PullRequestRepository(
+          database: db,
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
         );
 
         await db.projectsDao.recordOpenedProject(
@@ -78,12 +85,18 @@ void main() {
         // before querying the DB.
         await prRepo.upsertFromGhPr(
           projectId: "proj-X",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          verifiedGithubLogin: _verifiedGithubLogin,
           pr: _fakePr(),
           createdAt: 1,
           lastCheckedAt: 2,
         );
 
-        final prRows = await db.pullRequestDao.getActivePrsByProjectId(projectId: "proj-X");
+        final prRows = await db.pullRequestDao.getActivePrsByProjectId(
+          projectId: "proj-X",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+        );
         expect(
           prRows,
           hasLength(1),
@@ -105,8 +118,10 @@ void main() {
         addTearDown(db.close);
 
         final prRepo = PullRequestRepository(
+          database: db,
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
         );
 
         // Verify projects_table is empty — GetProjects never ran.
@@ -117,6 +132,8 @@ void main() {
         // Direct await — if FK exception were thrown, the test would fail here.
         await prRepo.upsertFromGhPr(
           projectId: "ghost",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          verifiedGithubLogin: _verifiedGithubLogin,
           pr: _fakePr(),
           createdAt: 1,
           lastCheckedAt: 2,
@@ -131,7 +148,11 @@ void main() {
         );
 
         // pull_requests_table has the PR row.
-        final prRows = await db.pullRequestDao.getActivePrsByProjectId(projectId: "ghost");
+        final prRows = await db.pullRequestDao.getActivePrsByProjectId(
+          projectId: "ghost",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+        );
         expect(prRows, hasLength(1));
         expect(prRows.first.prNumber, equals(42));
         expect(prRows.first.projectId, equals("ghost"));

@@ -108,9 +108,12 @@ void main() {
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
         ),
       ];
+      await _setPullRequestScope(db: db, sessionId: "s1");
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "/repo",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "session-001",
           prNumber: 21,
           url: "https://github.com/org/repo/pull/21",
@@ -386,9 +389,12 @@ void main() {
           time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
         ),
       ];
+      await _setPullRequestScope(db: db, sessionId: "s1");
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "/repo",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "session-001",
           prNumber: 22,
           url: "https://github.com/org/repo/pull/22",
@@ -1021,6 +1027,22 @@ void main() {
       expect(result.time?.archived, isNull);
     });
   });
+}
+
+Future<void> _setPullRequestScope({required AppDatabase db, required String sessionId}) async {
+  await db.projectsDao.setPrCacheGithubLogin(
+    projectId: "/repo",
+    githubLogin: "octocat",
+  );
+  await db.sessionDao.updatePullRequestScopes(
+    updates: [
+      (
+        sessionId: sessionId,
+        currentBranchName: "session-001",
+        currentGithubRepositoryIdentity: "org/repo",
+      ),
+    ],
+  );
 }
 
 UpdateSessionArchiveRequest _archiveRequest({

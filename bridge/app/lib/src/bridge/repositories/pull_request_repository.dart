@@ -1,24 +1,91 @@
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/pull_request_dao.dart";
+import "../../api/database/daos/session_dao.dart";
+import "../../api/database/database.dart";
 import "../../api/database/tables/pull_requests_table.dart";
 import "../api/gh_pull_request.dart";
+import "models/stored_session.dart";
+import "models/verified_github_login.dart";
 
 class PullRequestRepository {
+  final AppDatabase _database;
   final PullRequestDao _pullRequestDao;
   final ProjectsDao _projectsDao;
+  final SessionDao _sessionDao;
 
   PullRequestRepository({
+    required AppDatabase database,
     required PullRequestDao pullRequestDao,
     required ProjectsDao projectsDao,
-  }) : _pullRequestDao = pullRequestDao,
-       _projectsDao = projectsDao;
+    required SessionDao sessionDao,
+  }) : _database = database,
+       _pullRequestDao = pullRequestDao,
+       _projectsDao = projectsDao,
+       _sessionDao = sessionDao;
 
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async {
-    return _pullRequestDao.getActivePrsByProjectId(projectId: projectId);
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async {
+    return _pullRequestDao.getActivePrsByProjectId(
+      projectId: projectId,
+      githubRepositoryIdentity: githubRepositoryIdentity,
+      githubLogin: verifiedGithubLogin.login,
+    );
   }
 
   Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) {
     return _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+  }
+
+  Future<void> prepareScopedRefresh({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> sessions,
+  }) async {
+    await _database.transaction(() async {
+      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await _projectsDao.setPrCacheGithubLogin(
+        projectId: projectId,
+        githubLogin: verifiedGithubLogin.login,
+      );
+      await _sessionDao.updatePullRequestScopes(
+        updates: [
+          for (final session in sessions)
+            (
+              sessionId: session.id,
+              currentBranchName: session.parentSessionId == null ? session.branchName : null,
+              currentGithubRepositoryIdentity: session.parentSessionId == null ? githubRepositoryIdentity : null,
+            ),
+        ],
+      );
+      await _pullRequestDao.deletePrsOutsideRepositoryScope(
+        projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+      );
+    });
+  }
+
+  Future<void> clearScopedRefresh({
+    required String projectId,
+    required List<StoredSession> sessions,
+  }) async {
+    await _database.transaction(() async {
+      await _projectsDao.setPrCacheGithubLogin(projectId: projectId, githubLogin: null);
+      await _sessionDao.updatePullRequestScopes(
+        updates: [
+          for (final session in sessions)
+            (
+              sessionId: session.id,
+              currentBranchName: null,
+              currentGithubRepositoryIdentity: null,
+            ),
+        ],
+      );
+      await _pullRequestDao.deletePrsByProjectId(projectId: projectId);
+    });
   }
 
   bool hasChangedFromExisting({
@@ -39,6 +106,8 @@ class PullRequestRepository {
 
   Future<void> upsertFromGhPr({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
     required GhPullRequest pr,
     required int createdAt,
     required int lastCheckedAt,
@@ -50,6 +119,8 @@ class PullRequestRepository {
     await _pullRequestDao.upsertPr(
       pullRequest: PullRequestDto(
         projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
         branchName: pr.headRefName,
         prNumber: pr.number,
         url: pr.url,
@@ -72,8 +143,13 @@ class PullRequestRepository {
 
   Future<void> deletePr({
     required String projectId,
+    required String githubRepositoryIdentity,
     required int prNumber,
   }) async {
-    await _pullRequestDao.deletePr(projectId: projectId, prNumber: prNumber);
+    await _pullRequestDao.deletePr(
+      projectId: projectId,
+      githubRepositoryIdentity: githubRepositoryIdentity,
+      prNumber: prNumber,
+    );
   }
 }

@@ -11,6 +11,7 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   String get path;
   bool get hidden;
   String? get baseBranch;
+  String? get prCacheGithubLogin;
 
   /// Bridge-owned display-name override for a renamed aggregate project. Null
   /// means fall back to the directory basename.
@@ -36,6 +37,9 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
     map['hidden'] = Variable<bool>(hidden);
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
+    }
+    if (!nullToAbsent || prCacheGithubLogin != null) {
+      map['pr_cache_github_login'] = Variable<String>(prCacheGithubLogin);
     }
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
@@ -97,6 +101,17 @@ class $ProjectsTableTable extends ProjectsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _prCacheGithubLoginMeta =
+      const VerificationMeta('prCacheGithubLogin');
+  @override
+  late final GeneratedColumn<String> prCacheGithubLogin =
+      GeneratedColumn<String>(
+        'pr_cache_github_login',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _displayNameMeta = const VerificationMeta(
     'displayName',
   );
@@ -148,6 +163,7 @@ class $ProjectsTableTable extends ProjectsTable
     path,
     hidden,
     baseBranch,
+    prCacheGithubLogin,
     displayName,
     createdAt,
     updatedAt,
@@ -191,6 +207,15 @@ class $ProjectsTableTable extends ProjectsTable
       context.handle(
         _baseBranchMeta,
         baseBranch.isAcceptableOrUnknown(data['base_branch']!, _baseBranchMeta),
+      );
+    }
+    if (data.containsKey('pr_cache_github_login')) {
+      context.handle(
+        _prCacheGithubLoginMeta,
+        prCacheGithubLogin.isAcceptableOrUnknown(
+          data['pr_cache_github_login']!,
+          _prCacheGithubLoginMeta,
+        ),
       );
     }
     if (data.containsKey('display_name')) {
@@ -250,6 +275,10 @@ class $ProjectsTableTable extends ProjectsTable
         DriftSqlType.string,
         data['${effectivePrefix}base_branch'],
       ),
+      prCacheGithubLogin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pr_cache_github_login'],
+      ),
       displayName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}display_name'],
@@ -283,6 +312,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   final Value<String> path;
   final Value<bool> hidden;
   final Value<String?> baseBranch;
+  final Value<String?> prCacheGithubLogin;
   final Value<String?> displayName;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -292,6 +322,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
+    this.prCacheGithubLogin = const Value.absent(),
     this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -302,6 +333,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
+    this.prCacheGithubLogin = const Value.absent(),
     this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -314,6 +346,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     Expression<String>? path,
     Expression<bool>? hidden,
     Expression<String>? baseBranch,
+    Expression<String>? prCacheGithubLogin,
     Expression<String>? displayName,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -324,6 +357,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
+      if (prCacheGithubLogin != null)
+        'pr_cache_github_login': prCacheGithubLogin,
       if (displayName != null) 'display_name': displayName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -337,6 +372,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     Value<String>? path,
     Value<bool>? hidden,
     Value<String?>? baseBranch,
+    Value<String?>? prCacheGithubLogin,
     Value<String?>? displayName,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -347,6 +383,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
+      prCacheGithubLogin: prCacheGithubLogin ?? this.prCacheGithubLogin,
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -368,6 +405,9 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     }
     if (baseBranch.present) {
       map['base_branch'] = Variable<String>(baseBranch.value);
+    }
+    if (prCacheGithubLogin.present) {
+      map['pr_cache_github_login'] = Variable<String>(prCacheGithubLogin.value);
     }
     if (displayName.present) {
       map['display_name'] = Variable<String>(displayName.value);
@@ -391,6 +431,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
+          ..write('prCacheGithubLogin: $prCacheGithubLogin, ')
           ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -408,6 +449,8 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   String get directory;
   String? get worktreePath;
   String? get branchName;
+  String? get currentBranchName;
+  String? get currentGithubRepositoryIdentity;
   bool get isDedicated;
   int? get archivedAt;
   String? get baseBranch;
@@ -446,6 +489,14 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     }
     if (!nullToAbsent || branchName != null) {
       map['branch_name'] = Variable<String>(branchName);
+    }
+    if (!nullToAbsent || currentBranchName != null) {
+      map['current_branch_name'] = Variable<String>(currentBranchName);
+    }
+    if (!nullToAbsent || currentGithubRepositoryIdentity != null) {
+      map['current_github_repository_identity'] = Variable<String>(
+        currentGithubRepositoryIdentity,
+      );
     }
     map['is_dedicated'] = Variable<bool>(isDedicated);
     if (!nullToAbsent || archivedAt != null) {
@@ -577,6 +628,29 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _currentBranchNameMeta = const VerificationMeta(
+    'currentBranchName',
+  );
+  @override
+  late final GeneratedColumn<String> currentBranchName =
+      GeneratedColumn<String>(
+        'current_branch_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _currentGithubRepositoryIdentityMeta =
+      const VerificationMeta('currentGithubRepositoryIdentity');
+  @override
+  late final GeneratedColumn<String> currentGithubRepositoryIdentity =
+      GeneratedColumn<String>(
+        'current_github_repository_identity',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _isDedicatedMeta = const VerificationMeta(
     'isDedicated',
   );
@@ -749,6 +823,8 @@ class $SessionTableTable extends SessionTable
     directory,
     worktreePath,
     branchName,
+    currentBranchName,
+    currentGithubRepositoryIdentity,
     isDedicated,
     archivedAt,
     baseBranch,
@@ -834,6 +910,24 @@ class $SessionTableTable extends SessionTable
       context.handle(
         _branchNameMeta,
         branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
+      );
+    }
+    if (data.containsKey('current_branch_name')) {
+      context.handle(
+        _currentBranchNameMeta,
+        currentBranchName.isAcceptableOrUnknown(
+          data['current_branch_name']!,
+          _currentBranchNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('current_github_repository_identity')) {
+      context.handle(
+        _currentGithubRepositoryIdentityMeta,
+        currentGithubRepositoryIdentity.isAcceptableOrUnknown(
+          data['current_github_repository_identity']!,
+          _currentGithubRepositoryIdentityMeta,
+        ),
       );
     }
     if (data.containsKey('is_dedicated')) {
@@ -985,6 +1079,14 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}branch_name'],
       ),
+      currentBranchName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}current_branch_name'],
+      ),
+      currentGithubRepositoryIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}current_github_repository_identity'],
+      ),
       isDedicated: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_dedicated'],
@@ -1071,6 +1173,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String> directory;
   final Value<String?> worktreePath;
   final Value<String?> branchName;
+  final Value<String?> currentBranchName;
+  final Value<String?> currentGithubRepositoryIdentity;
   final Value<bool> isDedicated;
   final Value<int?> archivedAt;
   final Value<String?> baseBranch;
@@ -1094,6 +1198,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.directory = const Value.absent(),
     this.worktreePath = const Value.absent(),
     this.branchName = const Value.absent(),
+    this.currentBranchName = const Value.absent(),
+    this.currentGithubRepositoryIdentity = const Value.absent(),
     this.isDedicated = const Value.absent(),
     this.archivedAt = const Value.absent(),
     this.baseBranch = const Value.absent(),
@@ -1118,6 +1224,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     required String directory,
     this.worktreePath = const Value.absent(),
     this.branchName = const Value.absent(),
+    this.currentBranchName = const Value.absent(),
+    this.currentGithubRepositoryIdentity = const Value.absent(),
     required bool isDedicated,
     this.archivedAt = const Value.absent(),
     this.baseBranch = const Value.absent(),
@@ -1150,6 +1258,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? directory,
     Expression<String>? worktreePath,
     Expression<String>? branchName,
+    Expression<String>? currentBranchName,
+    Expression<String>? currentGithubRepositoryIdentity,
     Expression<bool>? isDedicated,
     Expression<int>? archivedAt,
     Expression<String>? baseBranch,
@@ -1174,6 +1284,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (directory != null) 'directory': directory,
       if (worktreePath != null) 'worktree_path': worktreePath,
       if (branchName != null) 'branch_name': branchName,
+      if (currentBranchName != null) 'current_branch_name': currentBranchName,
+      if (currentGithubRepositoryIdentity != null)
+        'current_github_repository_identity': currentGithubRepositoryIdentity,
       if (isDedicated != null) 'is_dedicated': isDedicated,
       if (archivedAt != null) 'archived_at': archivedAt,
       if (baseBranch != null) 'base_branch': baseBranch,
@@ -1201,6 +1314,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String>? directory,
     Value<String?>? worktreePath,
     Value<String?>? branchName,
+    Value<String?>? currentBranchName,
+    Value<String?>? currentGithubRepositoryIdentity,
     Value<bool>? isDedicated,
     Value<int?>? archivedAt,
     Value<String?>? baseBranch,
@@ -1225,6 +1340,10 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       directory: directory ?? this.directory,
       worktreePath: worktreePath ?? this.worktreePath,
       branchName: branchName ?? this.branchName,
+      currentBranchName: currentBranchName ?? this.currentBranchName,
+      currentGithubRepositoryIdentity:
+          currentGithubRepositoryIdentity ??
+          this.currentGithubRepositoryIdentity,
       isDedicated: isDedicated ?? this.isDedicated,
       archivedAt: archivedAt ?? this.archivedAt,
       baseBranch: baseBranch ?? this.baseBranch,
@@ -1266,6 +1385,14 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     }
     if (branchName.present) {
       map['branch_name'] = Variable<String>(branchName.value);
+    }
+    if (currentBranchName.present) {
+      map['current_branch_name'] = Variable<String>(currentBranchName.value);
+    }
+    if (currentGithubRepositoryIdentity.present) {
+      map['current_github_repository_identity'] = Variable<String>(
+        currentGithubRepositoryIdentity.value,
+      );
     }
     if (isDedicated.present) {
       map['is_dedicated'] = Variable<bool>(isDedicated.value);
@@ -1329,6 +1456,10 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('directory: $directory, ')
           ..write('worktreePath: $worktreePath, ')
           ..write('branchName: $branchName, ')
+          ..write('currentBranchName: $currentBranchName, ')
+          ..write(
+            'currentGithubRepositoryIdentity: $currentGithubRepositoryIdentity, ',
+          )
           ..write('isDedicated: $isDedicated, ')
           ..write('archivedAt: $archivedAt, ')
           ..write('baseBranch: $baseBranch, ')
@@ -1597,6 +1728,8 @@ class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
 
 mixin $PullRequestsTableTableToColumns implements Insertable<PullRequestDto> {
   String get projectId;
+  String get githubRepositoryIdentity;
+  String get githubLogin;
   int get prNumber;
   String get branchName;
   String get url;
@@ -1611,6 +1744,10 @@ mixin $PullRequestsTableTableToColumns implements Insertable<PullRequestDto> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['project_id'] = Variable<String>(projectId);
+    map['github_repository_identity'] = Variable<String>(
+      githubRepositoryIdentity,
+    );
+    map['github_login'] = Variable<String>(githubLogin);
     map['pr_number'] = Variable<int>(prNumber);
     map['branch_name'] = Variable<String>(branchName);
     map['url'] = Variable<String>(url);
@@ -1662,6 +1799,28 @@ class $PullRequestsTableTable extends PullRequestsTable
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES projects_table (project_id) ON DELETE CASCADE',
     ),
+  );
+  static const VerificationMeta _githubRepositoryIdentityMeta =
+      const VerificationMeta('githubRepositoryIdentity');
+  @override
+  late final GeneratedColumn<String> githubRepositoryIdentity =
+      GeneratedColumn<String>(
+        'github_repository_identity',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _githubLoginMeta = const VerificationMeta(
+    'githubLogin',
+  );
+  @override
+  late final GeneratedColumn<String> githubLogin = GeneratedColumn<String>(
+    'github_login',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _prNumberMeta = const VerificationMeta(
     'prNumber',
@@ -1770,6 +1929,8 @@ class $PullRequestsTableTable extends PullRequestsTable
   @override
   List<GeneratedColumn> get $columns => [
     projectId,
+    githubRepositoryIdentity,
+    githubLogin,
     prNumber,
     branchName,
     url,
@@ -1800,6 +1961,28 @@ class $PullRequestsTableTable extends PullRequestsTable
       );
     } else if (isInserting) {
       context.missing(_projectIdMeta);
+    }
+    if (data.containsKey('github_repository_identity')) {
+      context.handle(
+        _githubRepositoryIdentityMeta,
+        githubRepositoryIdentity.isAcceptableOrUnknown(
+          data['github_repository_identity']!,
+          _githubRepositoryIdentityMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_githubRepositoryIdentityMeta);
+    }
+    if (data.containsKey('github_login')) {
+      context.handle(
+        _githubLoginMeta,
+        githubLogin.isAcceptableOrUnknown(
+          data['github_login']!,
+          _githubLoginMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_githubLoginMeta);
     }
     if (data.containsKey('pr_number')) {
       context.handle(
@@ -1856,7 +2039,11 @@ class $PullRequestsTableTable extends PullRequestsTable
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {projectId, prNumber};
+  Set<GeneratedColumn> get $primaryKey => {
+    projectId,
+    githubRepositoryIdentity,
+    prNumber,
+  };
   @override
   PullRequestDto map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -1864,6 +2051,14 @@ class $PullRequestsTableTable extends PullRequestsTable
       projectId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
+      )!,
+      githubRepositoryIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}github_repository_identity'],
+      )!,
+      githubLogin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}github_login'],
       )!,
       prNumber: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -1942,6 +2137,8 @@ class $PullRequestsTableTable extends PullRequestsTable
 
 class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
   final Value<String> projectId;
+  final Value<String> githubRepositoryIdentity;
+  final Value<String> githubLogin;
   final Value<int> prNumber;
   final Value<String> branchName;
   final Value<String> url;
@@ -1954,6 +2151,8 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
   final Value<int> createdAt;
   const PullRequestsTableCompanion({
     this.projectId = const Value.absent(),
+    this.githubRepositoryIdentity = const Value.absent(),
+    this.githubLogin = const Value.absent(),
     this.prNumber = const Value.absent(),
     this.branchName = const Value.absent(),
     this.url = const Value.absent(),
@@ -1967,6 +2166,8 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
   });
   PullRequestsTableCompanion.insert({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required String githubLogin,
     required int prNumber,
     required String branchName,
     required String url,
@@ -1978,6 +2179,8 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
     required int lastCheckedAt,
     required int createdAt,
   }) : projectId = Value(projectId),
+       githubRepositoryIdentity = Value(githubRepositoryIdentity),
+       githubLogin = Value(githubLogin),
        prNumber = Value(prNumber),
        branchName = Value(branchName),
        url = Value(url),
@@ -1990,6 +2193,8 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
        createdAt = Value(createdAt);
   static Insertable<PullRequestDto> custom({
     Expression<String>? projectId,
+    Expression<String>? githubRepositoryIdentity,
+    Expression<String>? githubLogin,
     Expression<int>? prNumber,
     Expression<String>? branchName,
     Expression<String>? url,
@@ -2003,6 +2208,9 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
+      if (githubRepositoryIdentity != null)
+        'github_repository_identity': githubRepositoryIdentity,
+      if (githubLogin != null) 'github_login': githubLogin,
       if (prNumber != null) 'pr_number': prNumber,
       if (branchName != null) 'branch_name': branchName,
       if (url != null) 'url': url,
@@ -2018,6 +2226,8 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
 
   PullRequestsTableCompanion copyWith({
     Value<String>? projectId,
+    Value<String>? githubRepositoryIdentity,
+    Value<String>? githubLogin,
     Value<int>? prNumber,
     Value<String>? branchName,
     Value<String>? url,
@@ -2031,6 +2241,9 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
   }) {
     return PullRequestsTableCompanion(
       projectId: projectId ?? this.projectId,
+      githubRepositoryIdentity:
+          githubRepositoryIdentity ?? this.githubRepositoryIdentity,
+      githubLogin: githubLogin ?? this.githubLogin,
       prNumber: prNumber ?? this.prNumber,
       branchName: branchName ?? this.branchName,
       url: url ?? this.url,
@@ -2049,6 +2262,14 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
     final map = <String, Expression>{};
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (githubRepositoryIdentity.present) {
+      map['github_repository_identity'] = Variable<String>(
+        githubRepositoryIdentity.value,
+      );
+    }
+    if (githubLogin.present) {
+      map['github_login'] = Variable<String>(githubLogin.value);
     }
     if (prNumber.present) {
       map['pr_number'] = Variable<int>(prNumber.value);
@@ -2099,6 +2320,8 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
   String toString() {
     return (StringBuffer('PullRequestsTableCompanion(')
           ..write('projectId: $projectId, ')
+          ..write('githubRepositoryIdentity: $githubRepositoryIdentity, ')
+          ..write('githubLogin: $githubLogin, ')
           ..write('prNumber: $prNumber, ')
           ..write('branchName: $branchName, ')
           ..write('url: $url, ')
@@ -3102,6 +3325,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_sessions_archive',
     'CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
   );
+  late final Index idxPullRequestsScope = Index(
+    'idx_pull_requests_scope',
+    'CREATE INDEX idx_pull_requests_scope ON pull_requests_table (project_id, github_repository_identity, branch_name, github_login)',
+  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   late final PullRequestDao pullRequestDao = PullRequestDao(
@@ -3127,6 +3354,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxSessionsRoots,
     idxSessionsChildren,
     idxSessionsArchive,
+    idxPullRequestsScope,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3160,6 +3388,7 @@ typedef $$ProjectsTableTableCreateCompanionBuilder =
       required String path,
       Value<bool> hidden,
       Value<String?> baseBranch,
+      Value<String?> prCacheGithubLogin,
       Value<String?> displayName,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -3171,6 +3400,7 @@ typedef $$ProjectsTableTableUpdateCompanionBuilder =
       Value<String> path,
       Value<bool> hidden,
       Value<String?> baseBranch,
+      Value<String?> prCacheGithubLogin,
       Value<String?> displayName,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -3259,6 +3489,11 @@ class $$ProjectsTableTableFilterComposer
 
   ColumnFilters<String> get baseBranch => $composableBuilder(
     column: $table.baseBranch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prCacheGithubLogin => $composableBuilder(
+    column: $table.prCacheGithubLogin,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3362,6 +3597,11 @@ class $$ProjectsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get prCacheGithubLogin => $composableBuilder(
+    column: $table.prCacheGithubLogin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get displayName => $composableBuilder(
     column: $table.displayName,
     builder: (column) => ColumnOrderings(column),
@@ -3403,6 +3643,11 @@ class $$ProjectsTableTableAnnotationComposer
 
   GeneratedColumn<String> get baseBranch => $composableBuilder(
     column: $table.baseBranch,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get prCacheGithubLogin => $composableBuilder(
+    column: $table.prCacheGithubLogin,
     builder: (column) => column,
   );
 
@@ -3509,6 +3754,7 @@ class $$ProjectsTableTableTableManager
                 Value<String> path = const Value.absent(),
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
+                Value<String?> prCacheGithubLogin = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -3518,6 +3764,7 @@ class $$ProjectsTableTableTableManager
                 path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
+                prCacheGithubLogin: prCacheGithubLogin,
                 displayName: displayName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -3529,6 +3776,7 @@ class $$ProjectsTableTableTableManager
                 required String path,
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
+                Value<String?> prCacheGithubLogin = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -3538,6 +3786,7 @@ class $$ProjectsTableTableTableManager
                 path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
+                prCacheGithubLogin: prCacheGithubLogin,
                 displayName: displayName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -3638,6 +3887,8 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       required String directory,
       Value<String?> worktreePath,
       Value<String?> branchName,
+      Value<String?> currentBranchName,
+      Value<String?> currentGithubRepositoryIdentity,
       required bool isDedicated,
       Value<int?> archivedAt,
       Value<String?> baseBranch,
@@ -3663,6 +3914,8 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String> directory,
       Value<String?> worktreePath,
       Value<String?> branchName,
+      Value<String?> currentBranchName,
+      Value<String?> currentGithubRepositoryIdentity,
       Value<bool> isDedicated,
       Value<int?> archivedAt,
       Value<String?> baseBranch,
@@ -3755,6 +4008,17 @@ class $$SessionTableTableFilterComposer
     column: $table.branchName,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get currentBranchName => $composableBuilder(
+    column: $table.currentBranchName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currentGithubRepositoryIdentity =>
+      $composableBuilder(
+        column: $table.currentGithubRepositoryIdentity,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<bool> get isDedicated => $composableBuilder(
     column: $table.isDedicated,
@@ -3913,6 +4177,17 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currentBranchName => $composableBuilder(
+    column: $table.currentBranchName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currentGithubRepositoryIdentity =>
+      $composableBuilder(
+        column: $table.currentGithubRepositoryIdentity,
+        builder: (column) => ColumnOrderings(column),
+      );
+
   ColumnOrderings<bool> get isDedicated => $composableBuilder(
     column: $table.isDedicated,
     builder: (column) => ColumnOrderings(column),
@@ -4065,6 +4340,17 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get currentBranchName => $composableBuilder(
+    column: $table.currentBranchName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currentGithubRepositoryIdentity =>
+      $composableBuilder(
+        column: $table.currentGithubRepositoryIdentity,
+        builder: (column) => column,
+      );
+
   GeneratedColumn<bool> get isDedicated => $composableBuilder(
     column: $table.isDedicated,
     builder: (column) => column,
@@ -4213,6 +4499,9 @@ class $$SessionTableTableTableManager
                 Value<String> directory = const Value.absent(),
                 Value<String?> worktreePath = const Value.absent(),
                 Value<String?> branchName = const Value.absent(),
+                Value<String?> currentBranchName = const Value.absent(),
+                Value<String?> currentGithubRepositoryIdentity =
+                    const Value.absent(),
                 Value<bool> isDedicated = const Value.absent(),
                 Value<int?> archivedAt = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
@@ -4236,6 +4525,9 @@ class $$SessionTableTableTableManager
                 directory: directory,
                 worktreePath: worktreePath,
                 branchName: branchName,
+                currentBranchName: currentBranchName,
+                currentGithubRepositoryIdentity:
+                    currentGithubRepositoryIdentity,
                 isDedicated: isDedicated,
                 archivedAt: archivedAt,
                 baseBranch: baseBranch,
@@ -4261,6 +4553,9 @@ class $$SessionTableTableTableManager
                 required String directory,
                 Value<String?> worktreePath = const Value.absent(),
                 Value<String?> branchName = const Value.absent(),
+                Value<String?> currentBranchName = const Value.absent(),
+                Value<String?> currentGithubRepositoryIdentity =
+                    const Value.absent(),
                 required bool isDedicated,
                 Value<int?> archivedAt = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
@@ -4284,6 +4579,9 @@ class $$SessionTableTableTableManager
                 directory: directory,
                 worktreePath: worktreePath,
                 branchName: branchName,
+                currentBranchName: currentBranchName,
+                currentGithubRepositoryIdentity:
+                    currentGithubRepositoryIdentity,
                 isDedicated: isDedicated,
                 archivedAt: archivedAt,
                 baseBranch: baseBranch,
@@ -4583,6 +4881,8 @@ typedef $$DeletedSessionsTableTableProcessedTableManager =
 typedef $$PullRequestsTableTableCreateCompanionBuilder =
     PullRequestsTableCompanion Function({
       required String projectId,
+      required String githubRepositoryIdentity,
+      required String githubLogin,
       required int prNumber,
       required String branchName,
       required String url,
@@ -4597,6 +4897,8 @@ typedef $$PullRequestsTableTableCreateCompanionBuilder =
 typedef $$PullRequestsTableTableUpdateCompanionBuilder =
     PullRequestsTableCompanion Function({
       Value<String> projectId,
+      Value<String> githubRepositoryIdentity,
+      Value<String> githubLogin,
       Value<int> prNumber,
       Value<String> branchName,
       Value<String> url,
@@ -4647,6 +4949,16 @@ class $$PullRequestsTableTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get githubRepositoryIdentity => $composableBuilder(
+    column: $table.githubRepositoryIdentity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get githubLogin => $composableBuilder(
+    column: $table.githubLogin,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get prNumber => $composableBuilder(
     column: $table.prNumber,
     builder: (column) => ColumnFilters(column),
@@ -4734,6 +5046,16 @@ class $$PullRequestsTableTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get githubRepositoryIdentity => $composableBuilder(
+    column: $table.githubRepositoryIdentity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get githubLogin => $composableBuilder(
+    column: $table.githubLogin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get prNumber => $composableBuilder(
     column: $table.prNumber,
     builder: (column) => ColumnOrderings(column),
@@ -4817,6 +5139,16 @@ class $$PullRequestsTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get githubRepositoryIdentity => $composableBuilder(
+    column: $table.githubRepositoryIdentity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get githubLogin => $composableBuilder(
+    column: $table.githubLogin,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get prNumber =>
       $composableBuilder(column: $table.prNumber, builder: (column) => column);
 
@@ -4918,6 +5250,8 @@ class $$PullRequestsTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> projectId = const Value.absent(),
+                Value<String> githubRepositoryIdentity = const Value.absent(),
+                Value<String> githubLogin = const Value.absent(),
                 Value<int> prNumber = const Value.absent(),
                 Value<String> branchName = const Value.absent(),
                 Value<String> url = const Value.absent(),
@@ -4930,6 +5264,8 @@ class $$PullRequestsTableTableTableManager
                 Value<int> createdAt = const Value.absent(),
               }) => PullRequestsTableCompanion(
                 projectId: projectId,
+                githubRepositoryIdentity: githubRepositoryIdentity,
+                githubLogin: githubLogin,
                 prNumber: prNumber,
                 branchName: branchName,
                 url: url,
@@ -4944,6 +5280,8 @@ class $$PullRequestsTableTableTableManager
           createCompanionCallback:
               ({
                 required String projectId,
+                required String githubRepositoryIdentity,
+                required String githubLogin,
                 required int prNumber,
                 required String branchName,
                 required String url,
@@ -4956,6 +5294,8 @@ class $$PullRequestsTableTableTableManager
                 required int createdAt,
               }) => PullRequestsTableCompanion.insert(
                 projectId: projectId,
+                githubRepositoryIdentity: githubRepositoryIdentity,
+                githubLogin: githubLogin,
                 prNumber: prNumber,
                 branchName: branchName,
                 url: url,

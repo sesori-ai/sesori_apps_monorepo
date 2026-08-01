@@ -295,8 +295,10 @@ class Orchestrator {
       ),
     );
     final pullRequestRepository = PullRequestRepository(
+      database: _database,
       pullRequestDao: _database.pullRequestDao,
       projectsDao: _database.projectsDao,
+      sessionDao: _database.sessionDao,
     );
     final prSyncService = PrSyncService(
       prSource: PrSourceRepository(

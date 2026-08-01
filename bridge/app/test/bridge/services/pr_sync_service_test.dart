@@ -53,8 +53,11 @@ void main() {
       expect(prs, hasLength(1));
       expect(prs.single.prNumber, equals(11));
       expect(prs.single.branchName, equals("feature/new-pr"));
+      expect(prs.single.githubRepositoryIdentity, _githubRepositoryIdentity);
+      expect(prs.single.githubLogin, _verifiedGithubLogin.login);
       expect(emittedProjectIds, equals(<String>["project-1"]));
       expect(prSource.listOpenPrsRepositoryIdentities, [_githubRepositoryIdentity]);
+      expect(pullRequestRepository.prepareScopedRefreshCalls, hasLength(1));
     });
 
     test("does not emit when PR data is unchanged", () async {
@@ -72,6 +75,8 @@ void main() {
         seed: <PullRequestDto>[
           _dto(
             projectId: "project-1",
+            githubRepositoryIdentity: _githubRepositoryIdentity,
+            githubLogin: "octocat",
             branchName: "feature/no-change",
             prNumber: 33,
             title: "No changes",
@@ -116,6 +121,8 @@ void main() {
         seed: <PullRequestDto>[
           _dto(
             projectId: "project-1",
+            githubRepositoryIdentity: _githubRepositoryIdentity,
+            githubLogin: "octocat",
             branchName: "feature/merged",
             prNumber: 22,
             title: "Merged PR",
@@ -208,9 +215,10 @@ void main() {
 
     test("skips PR queries when the canonical GitHub repository is unavailable", () async {
       final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..githubRepositoryIdentityResult = null;
+      final pullRequestRepository = _FakePullRequestRepository();
       final service = PrSyncService(
         prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
+        pullRequestRepository: pullRequestRepository,
         sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
         clock: const Clock(),
       );
@@ -221,6 +229,9 @@ void main() {
       expect(prSource.getAuthenticatedIdentityCallCount, 0);
       expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
       expect(prSource.listOpenPrsCallCount, 0);
+      expect(pullRequestRepository.clearScopedRefreshCalls, [
+        (projectId: "project-1", sessions: const <StoredSession>[]),
+      ]);
     });
 
     test("caches unavailable gh capability and detects installation after the TTL", () async {
@@ -398,6 +409,8 @@ GhPullRequest _ghPr({
 
 PullRequestDto _dto({
   required String projectId,
+  required String githubRepositoryIdentity,
+  required String githubLogin,
   required String branchName,
   required int prNumber,
   required String title,
@@ -408,6 +421,8 @@ PullRequestDto _dto({
 }) {
   return PullRequestDto(
     projectId: projectId,
+    githubRepositoryIdentity: githubRepositoryIdentity,
+    githubLogin: githubLogin,
     prNumber: prNumber,
     branchName: branchName,
     url: "https://github.com/org/repo/pull/$prNumber",
@@ -532,6 +547,16 @@ class _CapturingStdout implements Stdout {
 class _FakePullRequestRepository implements PullRequestRepository {
   final Map<String, List<PullRequestDto>> _recordsByProject = <String, List<PullRequestDto>>{};
   int upsertCalls = 0;
+  final List<
+    ({
+      String projectId,
+      String githubRepositoryIdentity,
+      String githubLogin,
+      List<StoredSession> sessions,
+    })
+  >
+  prepareScopedRefreshCalls = [];
+  final List<({String projectId, List<StoredSession> sessions})> clearScopedRefreshCalls = [];
 
   _FakePullRequestRepository({List<PullRequestDto> seed = const <PullRequestDto>[]}) {
     for (final record in seed) {
@@ -540,8 +565,18 @@ class _FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async {
-    return List<PullRequestDto>.from(_recordsByProject[projectId] ?? const <PullRequestDto>[]);
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async {
+    return [
+      for (final record in _recordsByProject[projectId] ?? const <PullRequestDto>[])
+        if (record.githubRepositoryIdentity == githubRepositoryIdentity &&
+            record.githubLogin == verifiedGithubLogin.login &&
+            record.state == PrState.open)
+          record,
+    ];
   }
 
   @override
@@ -565,6 +600,8 @@ class _FakePullRequestRepository implements PullRequestRepository {
   @override
   Future<void> upsertFromGhPr({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
     required GhPullRequest pr,
     required int createdAt,
     required int lastCheckedAt,
@@ -572,6 +609,8 @@ class _FakePullRequestRepository implements PullRequestRepository {
     await upsertPullRequest(
       record: PullRequestDto(
         projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
         prNumber: pr.number,
         branchName: pr.headRefName,
         url: pr.url,
@@ -591,7 +630,10 @@ class _FakePullRequestRepository implements PullRequestRepository {
     upsertCalls++;
     final records = _recordsByProject.putIfAbsent(record.projectId, () => <PullRequestDto>[]);
     final existingIndex = records.indexWhere(
-      (existing) => existing.projectId == record.projectId && existing.prNumber == record.prNumber,
+      (existing) =>
+          existing.projectId == record.projectId &&
+          existing.githubRepositoryIdentity == record.githubRepositoryIdentity &&
+          existing.prNumber == record.prNumber,
     );
     if (existingIndex == -1) {
       records.add(record);
@@ -605,12 +647,45 @@ class _FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<void> deletePr({required String projectId, required int prNumber}) async {
+  Future<void> deletePr({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required int prNumber,
+  }) async {
     final records = _recordsByProject[projectId];
     if (records != null) {
-      records.removeWhere((r) => r.prNumber == prNumber);
+      records.removeWhere(
+        (record) => record.githubRepositoryIdentity == githubRepositoryIdentity && record.prNumber == prNumber,
+      );
     }
     upsertCalls++;
+  }
+
+  @override
+  Future<void> prepareScopedRefresh({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> sessions,
+  }) async {
+    prepareScopedRefreshCalls.add((
+      projectId: projectId,
+      githubRepositoryIdentity: githubRepositoryIdentity,
+      githubLogin: verifiedGithubLogin.login,
+      sessions: sessions,
+    ));
+    _recordsByProject[projectId]?.removeWhere(
+      (record) => record.githubRepositoryIdentity != githubRepositoryIdentity,
+    );
+  }
+
+  @override
+  Future<void> clearScopedRefresh({
+    required String projectId,
+    required List<StoredSession> sessions,
+  }) async {
+    clearScopedRefreshCalls.add((projectId: projectId, sessions: sessions));
+    _recordsByProject.remove(projectId);
   }
 }
 

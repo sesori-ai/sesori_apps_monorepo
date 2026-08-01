@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PullRequestDto {
 
- String get projectId; int get prNumber; String get branchName; String get url; String get title; PrState get state; PrMergeableStatus get mergeableStatus; PrReviewDecision get reviewDecision; PrCheckStatus get checkStatus; int get lastCheckedAt; int get createdAt;
+ String get projectId; String get githubRepositoryIdentity; String get githubLogin; int get prNumber; String get branchName; String get url; String get title; PrState get state; PrMergeableStatus get mergeableStatus; PrReviewDecision get reviewDecision; PrCheckStatus get checkStatus; int get lastCheckedAt; int get createdAt;
 /// Create a copy of PullRequestDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $PullRequestDtoCopyWith<PullRequestDto> get copyWith => _$PullRequestDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.prNumber, prNumber) || other.prNumber == prNumber)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.mergeableStatus, mergeableStatus) || other.mergeableStatus == mergeableStatus)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.checkStatus, checkStatus) || other.checkStatus == checkStatus)&&(identical(other.lastCheckedAt, lastCheckedAt) || other.lastCheckedAt == lastCheckedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.githubRepositoryIdentity, githubRepositoryIdentity) || other.githubRepositoryIdentity == githubRepositoryIdentity)&&(identical(other.githubLogin, githubLogin) || other.githubLogin == githubLogin)&&(identical(other.prNumber, prNumber) || other.prNumber == prNumber)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.mergeableStatus, mergeableStatus) || other.mergeableStatus == mergeableStatus)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.checkStatus, checkStatus) || other.checkStatus == checkStatus)&&(identical(other.lastCheckedAt, lastCheckedAt) || other.lastCheckedAt == lastCheckedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,projectId,prNumber,branchName,url,title,state,mergeableStatus,reviewDecision,checkStatus,lastCheckedAt,createdAt);
+int get hashCode => Object.hash(runtimeType,projectId,githubRepositoryIdentity,githubLogin,prNumber,branchName,url,title,state,mergeableStatus,reviewDecision,checkStatus,lastCheckedAt,createdAt);
 
 @override
 String toString() {
-  return 'PullRequestDto(projectId: $projectId, prNumber: $prNumber, branchName: $branchName, url: $url, title: $title, state: $state, mergeableStatus: $mergeableStatus, reviewDecision: $reviewDecision, checkStatus: $checkStatus, lastCheckedAt: $lastCheckedAt, createdAt: $createdAt)';
+  return 'PullRequestDto(projectId: $projectId, githubRepositoryIdentity: $githubRepositoryIdentity, githubLogin: $githubLogin, prNumber: $prNumber, branchName: $branchName, url: $url, title: $title, state: $state, mergeableStatus: $mergeableStatus, reviewDecision: $reviewDecision, checkStatus: $checkStatus, lastCheckedAt: $lastCheckedAt, createdAt: $createdAt)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $PullRequestDtoCopyWith<$Res>  {
   factory $PullRequestDtoCopyWith(PullRequestDto value, $Res Function(PullRequestDto) _then) = _$PullRequestDtoCopyWithImpl;
 @useResult
 $Res call({
- String projectId, int prNumber, String branchName, String url, String title, PrState state, PrMergeableStatus mergeableStatus, PrReviewDecision reviewDecision, PrCheckStatus checkStatus, int lastCheckedAt, int createdAt
+ String projectId, String githubRepositoryIdentity, String githubLogin, int prNumber, String branchName, String url, String title, PrState state, PrMergeableStatus mergeableStatus, PrReviewDecision reviewDecision, PrCheckStatus checkStatus, int lastCheckedAt, int createdAt
 });
 
 
@@ -62,9 +62,11 @@ class _$PullRequestDtoCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? prNumber = null,Object? branchName = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = null,Object? reviewDecision = null,Object? checkStatus = null,Object? lastCheckedAt = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? githubRepositoryIdentity = null,Object? githubLogin = null,Object? prNumber = null,Object? branchName = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = null,Object? reviewDecision = null,Object? checkStatus = null,Object? lastCheckedAt = null,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,githubRepositoryIdentity: null == githubRepositoryIdentity ? _self.githubRepositoryIdentity : githubRepositoryIdentity // ignore: cast_nullable_to_non_nullable
+as String,githubLogin: null == githubLogin ? _self.githubLogin : githubLogin // ignore: cast_nullable_to_non_nullable
 as String,prNumber: null == prNumber ? _self.prNumber : prNumber // ignore: cast_nullable_to_non_nullable
 as int,branchName: null == branchName ? _self.branchName : branchName // ignore: cast_nullable_to_non_nullable
 as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
@@ -87,10 +89,12 @@ as int,
 
 
 class _PullRequestDto extends PullRequestDto {
-  const _PullRequestDto({required this.projectId, required this.prNumber, required this.branchName, required this.url, required this.title, required this.state, required this.mergeableStatus, required this.reviewDecision, required this.checkStatus, required this.lastCheckedAt, required this.createdAt}): super._();
+  const _PullRequestDto({required this.projectId, required this.githubRepositoryIdentity, required this.githubLogin, required this.prNumber, required this.branchName, required this.url, required this.title, required this.state, required this.mergeableStatus, required this.reviewDecision, required this.checkStatus, required this.lastCheckedAt, required this.createdAt}): super._();
   
 
 @override final  String projectId;
+@override final  String githubRepositoryIdentity;
+@override final  String githubLogin;
 @override final  int prNumber;
 @override final  String branchName;
 @override final  String url;
@@ -112,16 +116,16 @@ _$PullRequestDtoCopyWith<_PullRequestDto> get copyWith => __$PullRequestDtoCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.prNumber, prNumber) || other.prNumber == prNumber)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.mergeableStatus, mergeableStatus) || other.mergeableStatus == mergeableStatus)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.checkStatus, checkStatus) || other.checkStatus == checkStatus)&&(identical(other.lastCheckedAt, lastCheckedAt) || other.lastCheckedAt == lastCheckedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.githubRepositoryIdentity, githubRepositoryIdentity) || other.githubRepositoryIdentity == githubRepositoryIdentity)&&(identical(other.githubLogin, githubLogin) || other.githubLogin == githubLogin)&&(identical(other.prNumber, prNumber) || other.prNumber == prNumber)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.mergeableStatus, mergeableStatus) || other.mergeableStatus == mergeableStatus)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.checkStatus, checkStatus) || other.checkStatus == checkStatus)&&(identical(other.lastCheckedAt, lastCheckedAt) || other.lastCheckedAt == lastCheckedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,projectId,prNumber,branchName,url,title,state,mergeableStatus,reviewDecision,checkStatus,lastCheckedAt,createdAt);
+int get hashCode => Object.hash(runtimeType,projectId,githubRepositoryIdentity,githubLogin,prNumber,branchName,url,title,state,mergeableStatus,reviewDecision,checkStatus,lastCheckedAt,createdAt);
 
 @override
 String toString() {
-  return 'PullRequestDto(projectId: $projectId, prNumber: $prNumber, branchName: $branchName, url: $url, title: $title, state: $state, mergeableStatus: $mergeableStatus, reviewDecision: $reviewDecision, checkStatus: $checkStatus, lastCheckedAt: $lastCheckedAt, createdAt: $createdAt)';
+  return 'PullRequestDto(projectId: $projectId, githubRepositoryIdentity: $githubRepositoryIdentity, githubLogin: $githubLogin, prNumber: $prNumber, branchName: $branchName, url: $url, title: $title, state: $state, mergeableStatus: $mergeableStatus, reviewDecision: $reviewDecision, checkStatus: $checkStatus, lastCheckedAt: $lastCheckedAt, createdAt: $createdAt)';
 }
 
 
@@ -132,7 +136,7 @@ abstract mixin class _$PullRequestDtoCopyWith<$Res> implements $PullRequestDtoCo
   factory _$PullRequestDtoCopyWith(_PullRequestDto value, $Res Function(_PullRequestDto) _then) = __$PullRequestDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, int prNumber, String branchName, String url, String title, PrState state, PrMergeableStatus mergeableStatus, PrReviewDecision reviewDecision, PrCheckStatus checkStatus, int lastCheckedAt, int createdAt
+ String projectId, String githubRepositoryIdentity, String githubLogin, int prNumber, String branchName, String url, String title, PrState state, PrMergeableStatus mergeableStatus, PrReviewDecision reviewDecision, PrCheckStatus checkStatus, int lastCheckedAt, int createdAt
 });
 
 
@@ -149,9 +153,11 @@ class __$PullRequestDtoCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? prNumber = null,Object? branchName = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = null,Object? reviewDecision = null,Object? checkStatus = null,Object? lastCheckedAt = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? githubRepositoryIdentity = null,Object? githubLogin = null,Object? prNumber = null,Object? branchName = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = null,Object? reviewDecision = null,Object? checkStatus = null,Object? lastCheckedAt = null,Object? createdAt = null,}) {
   return _then(_PullRequestDto(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,githubRepositoryIdentity: null == githubRepositoryIdentity ? _self.githubRepositoryIdentity : githubRepositoryIdentity // ignore: cast_nullable_to_non_nullable
+as String,githubLogin: null == githubLogin ? _self.githubLogin : githubLogin // ignore: cast_nullable_to_non_nullable
 as String,prNumber: null == prNumber ? _self.prNumber : prNumber // ignore: cast_nullable_to_non_nullable
 as int,branchName: null == branchName ? _self.branchName : branchName // ignore: cast_nullable_to_non_nullable
 as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable

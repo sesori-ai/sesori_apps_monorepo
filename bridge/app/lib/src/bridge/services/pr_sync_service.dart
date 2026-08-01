@@ -91,6 +91,12 @@ class PrSyncService {
         projectPath: projectPath,
       );
       if (githubRepositoryIdentity == null) {
+        await _pullRequestRepository.clearScopedRefresh(
+          projectId: projectId,
+          sessions: await _sessionRepository.getStoredSessionsByProjectId(
+            projectId: projectId,
+          ),
+        );
         return;
       }
 
@@ -99,10 +105,22 @@ class PrSyncService {
         return;
       }
 
+      final storedSessions = await _sessionRepository.getStoredSessionsByProjectId(
+        projectId: projectId,
+      );
+      await _pullRequestRepository.prepareScopedRefresh(
+        projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: verifiedGithubLogin,
+        sessions: storedSessions,
+      );
+
       await _refresh(
         projectId: projectId,
         projectPath: projectPath,
         githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: verifiedGithubLogin,
+        storedSessions: storedSessions,
       );
     } finally {
       _activeRefreshes.remove(projectId);
@@ -140,15 +158,20 @@ class PrSyncService {
     required String projectId,
     required String projectPath,
     required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> storedSessions,
   }) async {
     try {
-      final (openPrs, storedSessions, activePrs) = await (
+      final (openPrs, activePrs) = await (
         _prSource.listOpenPrs(
           workingDirectory: projectPath,
           githubRepositoryIdentity: githubRepositoryIdentity,
         ),
-        _sessionRepository.getStoredSessionsByProjectId(projectId: projectId),
-        _pullRequestRepository.getActivePullRequestsByProjectId(projectId: projectId),
+        _pullRequestRepository.getActivePullRequestsByProjectId(
+          projectId: projectId,
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          verifiedGithubLogin: verifiedGithubLogin,
+        ),
       ).wait;
 
       final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
@@ -174,6 +197,8 @@ class PrSyncService {
 
         await _pullRequestRepository.upsertFromGhPr(
           projectId: projectId,
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          verifiedGithubLogin: verifiedGithubLogin,
           pr: pr,
           createdAt: createdAt,
           lastCheckedAt: nowEpochMs,
@@ -199,6 +224,8 @@ class PrSyncService {
 
           await _pullRequestRepository.upsertFromGhPr(
             projectId: projectId,
+            githubRepositoryIdentity: githubRepositoryIdentity,
+            verifiedGithubLogin: verifiedGithubLogin,
             pr: finalPr,
             createdAt: disappeared.createdAt,
             lastCheckedAt: nowEpochMs,
@@ -207,6 +234,7 @@ class PrSyncService {
           Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e — removing stale record");
           await _pullRequestRepository.deletePr(
             projectId: projectId,
+            githubRepositoryIdentity: githubRepositoryIdentity,
             prNumber: disappeared.prNumber,
           );
           hasChanges = true;
