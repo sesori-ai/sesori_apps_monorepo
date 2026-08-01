@@ -195,7 +195,7 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
     final velocity = details.velocity.pixelsPerSecond;
     final dragDistance = _dragOffset.distance;
     final outwardVelocity = dragDistance == 0
-        ? velocity.distance
+        ? 0.0
         : (velocity.dx * _dragOffset.dx + velocity.dy * _dragOffset.dy) / dragDistance;
     final distanceThreshold = (MediaQuery.sizeOf(context).height * 0.15).clamp(96.0, 160.0);
     if (dragDistance >= distanceThreshold || outwardVelocity >= _dismissVelocity) {
