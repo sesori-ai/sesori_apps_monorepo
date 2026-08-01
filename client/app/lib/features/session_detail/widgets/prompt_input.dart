@@ -789,7 +789,7 @@ class _PromptInputState extends State<PromptInput> {
     return Padding(
       // The design floats the helper spacing-3xl above the pill, less the
       // padding the tap-region below already contributes.
-      padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md, bottom: PregoSpacing.xl),
+      padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs, bottom: PregoSpacing.xl),
       child: SizedBox(
         width: double.infinity,
         child: ValueListenableBuilder<double>(

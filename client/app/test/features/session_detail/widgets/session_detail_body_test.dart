@@ -14,6 +14,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
+import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
 import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -1057,11 +1058,13 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
+    final restingComposerHeight = tester.getSize(find.byType(PromptInput)).height;
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
     // Let the swap-in transitions finish (bounded: the waveform never settles).
     await tester.pump(const Duration(milliseconds: 300));
 
+    expect(tester.getSize(find.byType(PromptInput)).height, restingComposerHeight);
     expect(find.byType(VoiceCancelButton), findsOneWidget);
     // The cancel target must keep the full 44pt footprint (a CustomPaint with
     // a child would otherwise shrink to its icon).
