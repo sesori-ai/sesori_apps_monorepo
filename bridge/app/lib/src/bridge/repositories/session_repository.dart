@@ -48,6 +48,7 @@ import "mappers/stored_session_mapper.dart";
 import "models/project_not_found_exception.dart";
 import "models/session_operation.dart";
 import "models/stored_session.dart";
+import "models/verified_github_login.dart";
 import "session_unseen_calculator.dart";
 
 enum SessionBindingCommitKind { sessionCreation, catalogSync }
@@ -103,6 +104,7 @@ class SessionRepository {
     required String projectId,
     required int? start,
     required int? limit,
+    required VerifiedGithubLogin? verifiedGithubLogin,
   }) async {
     if (await _projectsDao.getProject(projectId: projectId) == null) {
       throw ProjectNotFoundException(projectId: projectId);
@@ -114,16 +116,26 @@ class SessionRepository {
         offset: start ?? 0,
         limit: effectiveLimit,
       ),
+      verifiedGithubLogin: verifiedGithubLogin,
     );
   }
 
-  Future<Session> enrichSession({required Session session}) async {
-    final enrichedSessions = await enrichSessions(sessions: [session]);
+  Future<Session> enrichSession({
+    required Session session,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
+    final enrichedSessions = await enrichSessions(
+      sessions: [session],
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
     return enrichedSessions.single;
   }
 
   Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) {
-    return enrichSession(session: pluginSession.toSharedSession(pluginId: pluginId));
+    return enrichSession(
+      session: pluginSession.toSharedSession(pluginId: pluginId),
+      verifiedGithubLogin: null,
+    );
   }
 
   Future<Session> createSession({
@@ -442,7 +454,10 @@ class SessionRepository {
       operation: SessionOperation.deleteSession,
     );
     final subtree = await _getSessionSubtree(root: binding);
-    final deletionSnapshot = (await _mapCatalogSessions(rows: [binding])).single;
+    final deletionSnapshot = (await _mapCatalogSessions(
+      rows: [binding],
+      verifiedGithubLogin: null,
+    )).single;
     await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.deleteSession,
@@ -817,10 +832,17 @@ class SessionRepository {
     };
   }
 
-  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {
+  Future<Session?> getSessionForProject({
+    required String projectId,
+    required String sessionId,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
     final row = await _sessionDao.getSession(sessionId: sessionId);
     if (row == null || row.projectId != projectId) return null;
-    return (await _mapCatalogSessions(rows: [row])).single;
+    return (await _mapCatalogSessions(
+      rows: [row],
+      verifiedGithubLogin: verifiedGithubLogin,
+    )).single;
   }
 
   Future<String?> findProjectIdForSession({required String sessionId}) async {
@@ -894,12 +916,18 @@ class SessionRepository {
     );
   }
 
-  Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
 
     final (dbSessions, prsBySessionId) = await (
       _sessionDao.getSessionsByIds(sessionIds: sessionIds),
-      _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds),
+      _getVisiblePrsBySessionIds(
+        sessionIds: sessionIds,
+        verifiedGithubLogin: verifiedGithubLogin,
+      ),
     ).wait;
 
     final pullRequestsBySessionId = <String, PullRequestInfo>{};
@@ -913,7 +941,10 @@ class SessionRepository {
     return [
       for (final session in sessions)
         enrichSharedSession(
-          session: session,
+          session: session.copyWith(
+            pullRequest: null,
+            pullRequestHistory: const <PullRequestInfo>[],
+          ),
           storedSession: dbSessions[session.id],
           pullRequest: pullRequestsBySessionId[session.id],
           unseenCalculator: _unseenCalculator,
@@ -926,9 +957,15 @@ class SessionRepository {
     ];
   }
 
-  Future<List<Session>> _mapCatalogSessions({required List<SessionDto> rows}) async {
+  Future<List<Session>> _mapCatalogSessions({
+    required List<SessionDto> rows,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
     final sessionIds = [for (final row in rows) row.sessionId];
-    final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+    final prsBySessionId = await _getVisiblePrsBySessionIds(
+      sessionIds: sessionIds,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
     return [
       for (final row in rows)
         _sessionCatalogMapper.map(
@@ -944,6 +981,19 @@ class SessionRepository {
           ),
         ),
     ];
+  }
+
+  Future<Map<String, List<PullRequestDto>>> _getVisiblePrsBySessionIds({
+    required List<String> sessionIds,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) {
+    if (verifiedGithubLogin == null) {
+      return Future.value(<String, List<PullRequestDto>>{});
+    }
+    return _pullRequestDao.getPrsBySessionIds(
+      sessionIds: sessionIds,
+      verifiedGithubLogin: verifiedGithubLogin.login,
+    );
   }
 
   /// Selects the most relevant PR from a list of candidates.
@@ -983,6 +1033,7 @@ class SessionRepository {
     }
     return _mapCatalogSessions(
       rows: await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId),
+      verifiedGithubLogin: null,
     );
   }
 
@@ -1205,7 +1256,10 @@ class SessionRepository {
   Future<Session?> getCatalogSession({required String sessionId}) async {
     final row = await _sessionDao.getSession(sessionId: sessionId);
     if (row == null) return null;
-    return (await _mapCatalogSessions(rows: [row])).single;
+    return (await _mapCatalogSessions(
+      rows: [row],
+      verifiedGithubLogin: null,
+    )).single;
   }
 
   Future<void> archiveStoredSession({

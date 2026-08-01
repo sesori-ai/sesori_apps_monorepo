@@ -522,6 +522,7 @@ class _CatalogImportEventSoak {
       projectId: sentinelProjectId,
       start: null,
       limit: null,
+      verifiedGithubLogin: null,
     );
     if (sessions.length != 1 || sessions.single.id != _sentinelSessionId) {
       throw StateError("last-committed sentinel was not readable while import was blocked");

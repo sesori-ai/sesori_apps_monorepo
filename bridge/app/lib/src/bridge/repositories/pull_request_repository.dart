@@ -35,10 +35,6 @@ class PullRequestRepository {
     );
   }
 
-  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) {
-    return _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
-  }
-
   Future<bool> prepareScopedRefresh({
     required String projectId,
     required String githubRepositoryIdentity,
@@ -47,7 +43,7 @@ class PullRequestRepository {
   }) async {
     return _database.transaction(() async {
       final sessionIds = sessions.map((session) => session.id).toList(growable: false);
-      final before = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+      final before = await _pullRequestDao.getPrsByPersistedScopeSessionIds(sessionIds: sessionIds);
       await _projectsDao.setPrCacheGithubLogin(
         projectId: projectId,
         githubLogin: verifiedGithubLogin.login,
@@ -68,7 +64,7 @@ class PullRequestRepository {
         githubLogin: verifiedGithubLogin.login,
         branchNames: _rootBranchNames(sessions: sessions),
       );
-      final after = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+      final after = await _pullRequestDao.getPrsByPersistedScopeSessionIds(sessionIds: sessionIds);
       return !_sameVisiblePullRequests(before: before, after: after);
     });
   }
@@ -78,7 +74,7 @@ class PullRequestRepository {
     required List<StoredSession> sessions,
   }) async {
     return _database.transaction(() async {
-      final before = await _pullRequestDao.getPrsBySessionIds(
+      final before = await _pullRequestDao.getPrsByPersistedScopeSessionIds(
         sessionIds: sessions.map((session) => session.id).toList(growable: false),
       );
       await _projectsDao.setPrCacheGithubLogin(projectId: projectId, githubLogin: null);

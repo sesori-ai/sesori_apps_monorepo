@@ -467,7 +467,10 @@ class Orchestrator {
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
         GetChildSessionsHandler(sessionRepository: sessionRepository),
-        GetSessionHandler(sessionRepository),
+        GetSessionHandler(
+          sessionRepository: sessionRepository,
+          prSyncService: prSyncService,
+        ),
         GetSessionMessagesHandler(sessionRepository: sessionRepository),
         GetSessionsHandler(
           sessionRepository: sessionRepository,

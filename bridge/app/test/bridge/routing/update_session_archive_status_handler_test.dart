@@ -148,7 +148,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
       expect(result.id, equals("s1"));
       expect(result.time?.archived, equals(persisted?.archivedAt));
-      expect(result.pullRequest?.number, equals(21));
+      expect(result.pullRequest, isNull);
     });
 
     test("archiving an already-archived session emits no unseen change", () async {
@@ -426,7 +426,7 @@ void main() {
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
       expect(result.time?.archived, isNull);
-      expect(result.pullRequest?.number, equals(22));
+      expect(result.pullRequest, isNull);
     });
 
     test("unarchive with deleted worktree restores worktree", () async {

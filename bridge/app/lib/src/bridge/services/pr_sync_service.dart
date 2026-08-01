@@ -9,6 +9,8 @@ import "../repositories/pr_source_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
 
+enum PrRefreshOutcome { completed, failed }
+
 class PrSyncService {
   final PrSourceRepository _prSource;
   final PullRequestRepository _pullRequestRepository;
@@ -39,7 +41,7 @@ class PrSyncService {
 
   Stream<String> get prChanges => _prChangesController.stream;
 
-  Future<VerifiedGithubLogin?> _verifyGithubIdentity() async {
+  Future<VerifiedGithubLogin?> verifyGithubIdentity() async {
     try {
       final identity = await _prSource.getAuthenticatedIdentity();
       if (identity == null) {
@@ -69,14 +71,14 @@ class PrSyncService {
     );
   }
 
-  Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
+  Future<PrRefreshOutcome> triggerRefresh({required String projectId, required String projectPath}) async {
     if (_activeRefreshes.contains(projectId)) {
-      return;
+      return PrRefreshOutcome.completed;
     }
 
     final lastRefreshAt = _lastRefreshTimes[projectId];
     if (lastRefreshAt != null && _clock.now().difference(lastRefreshAt) < _debounceWindow) {
-      return;
+      return PrRefreshOutcome.completed;
     }
 
     // Claim the project before the first async gap so concurrent requests for
@@ -84,7 +86,7 @@ class PrSyncService {
     _activeRefreshes.add(projectId);
     try {
       if (!await _hasGithubCliCapability()) {
-        return;
+        return PrRefreshOutcome.failed;
       }
 
       final githubRepositoryIdentity = await _prSource.getGithubRepositoryIdentity(
@@ -101,12 +103,12 @@ class PrSyncService {
           _prChangesController.add(projectId);
         }
         _lastRefreshTimes[projectId] = _clock.now();
-        return;
+        return PrRefreshOutcome.completed;
       }
 
-      final verifiedGithubLogin = await _verifyGithubIdentity();
+      final verifiedGithubLogin = await verifyGithubIdentity();
       if (verifiedGithubLogin == null) {
-        return;
+        return PrRefreshOutcome.failed;
       }
 
       final storedSessions = await _sessionRepository.getStoredSessionsByProjectId(
@@ -122,7 +124,7 @@ class PrSyncService {
         _prChangesController.add(projectId);
       }
 
-      await _refresh(
+      return await _refresh(
         projectId: projectId,
         projectPath: projectPath,
         githubRepositoryIdentity: githubRepositoryIdentity,
@@ -161,7 +163,7 @@ class PrSyncService {
     return capable;
   }
 
-  Future<void> _refresh({
+  Future<PrRefreshOutcome> _refresh({
     required String projectId,
     required String projectPath,
     required String githubRepositoryIdentity,
@@ -250,8 +252,10 @@ class PrSyncService {
       }
 
       completed = true;
+      return PrRefreshOutcome.completed;
     } catch (e, st) {
-      Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
+      Log.e("[PrSync] refresh failed", e, st);
+      return PrRefreshOutcome.failed;
     } finally {
       if (hasChanges) {
         _prChangesController.add(projectId);

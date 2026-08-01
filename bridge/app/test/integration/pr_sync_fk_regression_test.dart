@@ -200,6 +200,7 @@ void main() {
           projectId: "sess-proj",
           start: null,
           limit: null,
+          verifiedGithubLogin: null,
         );
 
         // projects_table has "sess-proj".

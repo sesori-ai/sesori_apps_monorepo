@@ -228,10 +228,7 @@ void main() {
 
       expect(firstEvent["type"], equals("session.created"));
       expect(secondEvent["type"], equals("session.diff"));
-      expect(
-        ((firstEvent["info"] as Map<String, dynamic>)["pullRequest"] as Map<String, dynamic>)["number"],
-        equals(11),
-      );
+      expect((firstEvent["info"] as Map<String, dynamic>)["pullRequest"], isNull);
     });
 
     test("debug client disconnect does not tear down the orchestrator plugin listeners", () async {

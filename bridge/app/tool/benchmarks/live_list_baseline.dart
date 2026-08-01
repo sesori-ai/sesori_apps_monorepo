@@ -310,6 +310,7 @@ class _LiveListBenchmark {
             final session = await sessionRepository.getSessionForProject(
               projectId: _projectDirectory,
               sessionId: detailSessionId,
+              verifiedGithubLogin: null,
             );
             if (session?.id != detailSessionId) {
               throw StateError("session detail returned ${session?.id}; expected $detailSessionId");
@@ -464,8 +465,12 @@ class _LiveListBenchmark {
       projectId: projectId,
       start: start,
       limit: limit,
+      verifiedGithubLogin: null,
     );
-    sessions = await repository.enrichSessions(sessions: sessions);
+    sessions = await repository.enrichSessions(
+      sessions: sessions,
+      verifiedGithubLogin: null,
+    );
     _verifyBoundaries(
       name: "session catalog for $projectId",
       expectedFirst: expectedFirstSessionId,

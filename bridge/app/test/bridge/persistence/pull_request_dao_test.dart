@@ -176,6 +176,7 @@ void main() {
 
       final result = await dao.getPrsBySessionIds(
         sessionIds: ["session-1"],
+        verifiedGithubLogin: githubLogin,
       );
       expect(result["session-1"]?.map((pr) => pr.prNumber), unorderedEquals([100, 101]));
     });
@@ -215,8 +216,15 @@ void main() {
 
       final matchingAccount = await dao.getPrsBySessionIds(
         sessionIds: ["session-1"],
+        verifiedGithubLogin: githubLogin,
       );
       expect(matchingAccount["session-1"]?.map((pr) => pr.prNumber), [100]);
+
+      final unverifiedSwitch = await dao.getPrsBySessionIds(
+        sessionIds: ["session-1"],
+        verifiedGithubLogin: "hubot",
+      );
+      expect(unverifiedSwitch, isEmpty);
 
       await db.projectsDao.setPrCacheGithubLogin(
         projectId: "proj-1",
@@ -224,6 +232,7 @@ void main() {
       );
       final switchedAccount = await dao.getPrsBySessionIds(
         sessionIds: ["session-1"],
+        verifiedGithubLogin: "hubot",
       );
       expect(switchedAccount["session-1"]?.map((pr) => pr.prNumber), [102]);
     });

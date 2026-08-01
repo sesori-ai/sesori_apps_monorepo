@@ -24,26 +24,53 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
 
   Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({
     required List<String> sessionIds,
+    required String verifiedGithubLogin,
+  }) {
+    return _getPrsBySessionIds(
+      sessionIds: sessionIds,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
+  }
+
+  Future<Map<String, List<PullRequestDto>>> getPrsByPersistedScopeSessionIds({
+    required List<String> sessionIds,
+  }) {
+    return _getPrsBySessionIds(
+      sessionIds: sessionIds,
+      verifiedGithubLogin: null,
+    );
+  }
+
+  Future<Map<String, List<PullRequestDto>>> _getPrsBySessionIds({
+    required List<String> sessionIds,
+    required String? verifiedGithubLogin,
   }) async {
     if (sessionIds.isEmpty) {
       return <String, List<PullRequestDto>>{};
     }
 
-    final query = select(pullRequestsTable).join([
-      innerJoin(
-        sessionTable,
-        pullRequestsTable.projectId.equalsExp(sessionTable.projectId) &
-            pullRequestsTable.githubRepositoryIdentity.equalsExp(
-              sessionTable.currentGithubRepositoryIdentity,
-            ) &
-            pullRequestsTable.branchName.equalsExp(sessionTable.currentBranchName),
-      ),
-      innerJoin(
-        projectsTable,
-        projectsTable.projectId.equalsExp(sessionTable.projectId) &
-            projectsTable.prCacheGithubLogin.equalsExp(pullRequestsTable.githubLogin),
-      ),
-    ])..where(sessionTable.sessionId.isIn(sessionIds) & sessionTable.parentSessionId.isNull());
+    final readLoginScope = verifiedGithubLogin == null
+        ? const Constant(true)
+        : pullRequestsTable.githubLogin.equals(verifiedGithubLogin) &
+              projectsTable.prCacheGithubLogin.equals(verifiedGithubLogin);
+    final query =
+        select(pullRequestsTable).join([
+          innerJoin(
+            sessionTable,
+            pullRequestsTable.projectId.equalsExp(sessionTable.projectId) &
+                pullRequestsTable.githubRepositoryIdentity.equalsExp(
+                  sessionTable.currentGithubRepositoryIdentity,
+                ) &
+                pullRequestsTable.branchName.equalsExp(sessionTable.currentBranchName),
+          ),
+          innerJoin(
+            projectsTable,
+            projectsTable.projectId.equalsExp(sessionTable.projectId) &
+                projectsTable.prCacheGithubLogin.equalsExp(pullRequestsTable.githubLogin),
+          ),
+        ])..where(
+          sessionTable.sessionId.isIn(sessionIds) & sessionTable.parentSessionId.isNull() & readLoginScope,
+        );
 
     final joinedRows = await query.get();
     final groupedBySessionId = <String, List<PullRequestDto>>{};

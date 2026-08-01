@@ -151,6 +151,29 @@ void main() {
       expect(emittedProjectIds, isEmpty);
     });
 
+    test("reports a failed outcome when the PR source query fails", () async {
+      final prSource = _FakePrSource(
+        listOpenPrsResult: const <GhPullRequest>[],
+        onListOpenPrs: () async => throw StateError("list failed"),
+      );
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: _FakePullRequestRepository(),
+        sessionRepository: _FakeSessionRepository(
+          sessionsByProject: const <String, List<StoredSession>>{},
+        ),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      final outcome = await service.triggerRefresh(
+        projectId: "project-1",
+        projectPath: "/tmp/project-1",
+      );
+
+      expect(outcome, PrRefreshOutcome.failed);
+    });
+
     test("fetches final PR state for disappeared active PR", () async {
       final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[],
@@ -206,8 +229,12 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      final outcome = await service.triggerRefresh(
+        projectId: "project-1",
+        projectPath: "/tmp/project-1",
+      );
 
+      expect(outcome, PrRefreshOutcome.failed);
       expect(prSource.getAuthenticatedIdentityCallCount, 1);
       expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
       expect(prSource.listOpenPrsCallCount, 0);
@@ -715,11 +742,6 @@ class _FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
-    return <String, List<PullRequestDto>>{};
-  }
-
-  @override
   bool hasChangedFromExisting({required PullRequestDto? existing, required GhPullRequest pr}) {
     if (existing == null) return true;
     return existing.prNumber != pr.number ||
@@ -913,17 +935,24 @@ class _FakeSessionRepository implements SessionRepository {
     required String projectId,
     required int? start,
     required int? limit,
+    required VerifiedGithubLogin? verifiedGithubLogin,
   }) async => const <Session>[];
 
   @override
-  Future<Session> enrichSession({required Session session}) async => session;
+  Future<Session> enrichSession({
+    required Session session,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => session;
 
   @override
   Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async =>
       pluginSession.toSharedSession(pluginId: pluginId);
 
   @override
-  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => sessions;
 
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
@@ -1013,7 +1042,11 @@ class _FakeSessionRepository implements SessionRepository {
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
 
   @override
-  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
+  Future<Session?> getSessionForProject({
+    required String projectId,
+    required String sessionId,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async => null;
 
   @override
   Future<void> abortSession({required String sessionId}) async {}

@@ -4,12 +4,12 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `3f9a2980f35ca3e8d3f0456af937743036be9bae`
-- **Series state:** Steps 1/9 and 2.a/9 merged; Step 2 continues through 2.b–2.c
-- **Current step:** Step 2.b/9 — scoped PR persistence
+  `e6001fdc3bbfe610414ab10c73f141a48c33efa3`
+- **Series state:** Steps 1/9 and 2.a–2.b/9 merged; Step 2.c is in progress
+- **Current step:** Step 2.c/9 — fresh scoped PR reads
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Next action:** monitor CI/review and merge Step 2.b/9 [PR #671](https://github.com/sesori-ai/sesori_apps_monorepo/pull/671)
+- **Next action:** commit, raise, and monitor the Step 2.c/9 PR
 
 ## Existing Baseline
 
@@ -40,8 +40,8 @@
 |---|---|---|---|---:|---|
 | [x] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged as `f969754b` |
 | [x] | 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | 500–900 | [PR #662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/662) merged as `057e4c24` |
-| [ ] | 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | 9,800–10,800 | [PR #671](https://github.com/sesori-ai/sesori_apps_monorepo/pull/671) open; schema v13, scoped writer/joins, generated artifacts, tests, and architecture review complete |
-| [ ] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | Blocked on Step 2.b |
+| [x] | 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | 9,800–10,800 | [PR #671](https://github.com/sesori-ai/sesori_apps_monorepo/pull/671) merged as `e6001fdc` |
+| [ ] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | Implementation, focused verification, and architecture correction complete; PR pending |
 | [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2.c merge |
 | [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
 | [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
@@ -88,9 +88,10 @@
 
 ## Current Drift and Open Work
 
-- Latest audited `main`: `3f9a2980f35ca3e8d3f0456af937743036be9bae`.
-- Drift schema: v12 on `main`; Step 2.b allocates v13 and leaves every merged
-  schema/migration intact.
+- Latest audited `main`: Step 2.c branched from `e6001fdc`; later client-only
+  drift through `0b1e6072` does not overlap this bridge scope.
+- Drift schema: v13 on `main`; Step 2.c leaves the merged schema and migration
+  unchanged.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
 - PR #647 is merged and consolidates Harness settings into one screen. Its
   numeric-input/mutation pattern is current evidence for Step 8; PR cadence
@@ -221,6 +222,27 @@
   violate authoritative scope ownership. The previous 2,301-test full suite,
   latest 51 focused tests, fatal-info analysis, and `git diff --check` pass; the
   final 10,743-line PR contains 8,754 generated and 1,989 hand-authored lines.
+- **Step 2.b/9 merge:** PR #671 merged as `e6001fdc` with all 12 checks passing
+  and no unresolved review threads. Step 2.c started immediately from that
+  merged `main` tip.
+- **Step 2.c/9 implementation:** List and detail reads now obtain fresh typed
+  GitHub identity evidence before PR enrichment; DAO joins require that login
+  alongside persisted project, row, repository, and branch scope. Unknown or
+  switched identity yields sessions without PR metadata, and enrichment clears
+  incoming PR/history data before applying the selected row. Waited refresh
+  failures and timeouts return the original PR-free catalog snapshot.
+- **Step 2.c/9 verification and review:** Fatal-info analysis, DAO/repository,
+  identity-gated list/detail, refresh, mutation-response, SSE, and benchmark
+  contract suites pass. One full app run had 2,301 passes and four stale
+  assertions expecting ungated mutation/SSE PR data; all four affected suites
+  pass after those expectations were corrected. `aristotle-impl-review` rejected
+  handler-owned response mapping; the valid finding was applied by keeping
+  authoritative PR/history clearing solely in `SessionRepository`, with no
+  policy re-review. The 810-line change is below estimate because it reuses the
+  Step 2.b persistence seams and has no generated artifacts.
+- **Step 2.c/9 cleanup assessment:** Removed the unused PR-repository session
+  read API and made non-list/detail mapping explicitly PR-free. No persisted,
+  wire, job, listener, setting, or compatibility artifact became obsolete.
 
 ## Findings and Plan Deltas
 
