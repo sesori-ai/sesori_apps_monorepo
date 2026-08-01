@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart"
     show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
 import "../../api/models/acp_content_block_dto.dart";
+import "../../api/models/acp_tool_content_dto.dart";
 
 sealed class AcpMappedContentBlock {
   const AcpMappedContentBlock();
@@ -54,6 +55,21 @@ enum AcpImageDegradationReason {
   oversized,
 }
 
+enum AcpToolContentMutation {
+  none,
+  diff,
+}
+
+final class AcpMappedToolContent {
+  const AcpMappedToolContent({
+    required this.output,
+    required this.mutation,
+  });
+
+  final String? output;
+  final AcpToolContentMutation mutation;
+}
+
 /// Maps standard ACP content blocks into backend-neutral, individually
 /// validated content while retaining no URI or source-path data.
 ///
@@ -82,6 +98,46 @@ final class AcpContentMapper {
   List<AcpMappedContentBlock> map({required Object? content}) {
     final warned = <_AcpContentWarning>{};
     return _mapValue(content: content, warned: warned).toList(growable: false);
+  }
+
+  String toolName({required Map<String, dynamic> update}) {
+    final kind = update["kind"];
+    if (kind is String && kind.isNotEmpty) return kind;
+    final title = update["title"];
+    if (title is String && title.isNotEmpty) return title;
+    return "tool";
+  }
+
+  PluginToolStatus toolStatus({required Object? status}) {
+    return switch (status) {
+      "pending" => PluginToolStatus.pending,
+      "in_progress" => PluginToolStatus.running,
+      "completed" => PluginToolStatus.completed,
+      "failed" => PluginToolStatus.error,
+      _ => PluginToolStatus.pending,
+    };
+  }
+
+  AcpMappedToolContent toolContent({required Map<String, dynamic> update}) {
+    final warned = <_AcpContentWarning>{};
+    final buffer = StringBuffer();
+    var mutation = AcpToolContentMutation.none;
+    for (final item in _mapToolValue(content: update["content"], warned: warned)) {
+      switch (item) {
+        case _AcpMappedToolText(:final text):
+          buffer.write(text);
+        case _AcpMappedToolDiff():
+          mutation = AcpToolContentMutation.diff;
+      }
+    }
+    final contentText = buffer.toString();
+    final text = contentText.isNotEmpty ? contentText : _rawOutputText(raw: update["rawOutput"]);
+    final output = switch (text) {
+      null || "" => null,
+      _ when text.length > maxToolOutputLength => "${text.substring(0, maxToolOutputLength)}…",
+      _ => text,
+    };
+    return AcpMappedToolContent(output: output, mutation: mutation);
   }
 
   String? text({required Object? content}) {
@@ -147,6 +203,85 @@ final class AcpContentMapper {
           yield* fallback;
         }
     }
+  }
+
+  Iterable<_AcpMappedToolItem> _mapToolValue({
+    required Object? content,
+    required Set<_AcpContentWarning> warned,
+  }) sync* {
+    if (content == null) return;
+    if (content is List) {
+      for (final entry in content) {
+        yield* _mapToolValue(content: entry, warned: warned);
+      }
+      return;
+    }
+    if (content is! Map) {
+      final text = _textFromMappedBlocks(_mapValue(content: content, warned: warned));
+      if (text != null) yield _AcpMappedToolText(text: text);
+      return;
+    }
+
+    final AcpToolContentDto dto;
+    try {
+      dto = AcpToolContentDto.fromJson(content.cast<String, dynamic>());
+    } on Object {
+      if (content["type"] == "diff") {
+        yield const _AcpMappedToolDiff();
+        return;
+      }
+      final text = _textFromMappedBlocks(_mapValue(content: content, warned: warned));
+      if (text != null) yield _AcpMappedToolText(text: text);
+      return;
+    }
+
+    switch (dto) {
+      case AcpStandardToolContentDto():
+        final text = _textFromMappedBlocks(_mapValue(content: content["content"], warned: warned));
+        if (text != null) yield _AcpMappedToolText(text: text);
+      case AcpDiffToolContentDto():
+        yield const _AcpMappedToolDiff();
+      case AcpTerminalToolContentDto():
+        return;
+      case AcpUnknownToolContentDto():
+        final text = _textFromMappedBlocks(_mapValue(content: content, warned: warned));
+        if (text != null) yield _AcpMappedToolText(text: text);
+    }
+  }
+
+  String? _textFromMappedBlocks(Iterable<AcpMappedContentBlock> blocks) {
+    final buffer = StringBuffer();
+    for (final block in blocks) {
+      if (block case AcpMappedTextContentBlock(:final text) when text.isNotEmpty) {
+        buffer.write(text);
+      }
+    }
+    final text = buffer.toString();
+    return text.isEmpty ? null : text;
+  }
+
+  String? _rawOutputText({required Object? raw}) {
+    if (raw is String) return raw.isEmpty ? null : raw;
+    if (raw is! Map) return null;
+    final outValue = raw["stdout"];
+    final errorValue = raw["stderr"];
+    final out = outValue is String ? outValue.trimRight() : "";
+    final error = errorValue is String ? errorValue.trimRight() : "";
+    if (out.isNotEmpty || error.isNotEmpty) {
+      final buffer = StringBuffer(out);
+      if (error.isNotEmpty) {
+        if (buffer.isNotEmpty) buffer.write("\n");
+        buffer.write(error);
+      }
+      return buffer.toString();
+    }
+    final content = _textFromMappedBlocks(
+      _mapValue(content: raw["content"], warned: <_AcpContentWarning>{}),
+    )?.trimRight();
+    if (content != null && content.isNotEmpty) return content;
+    final exitCode = raw["exitCode"];
+    if (exitCode is int && exitCode != 0) return "exited with code $exitCode";
+    return null;
   }
 
   List<AcpMappedContentBlock> _legacyMapContent({
@@ -285,4 +420,18 @@ final class AcpContentMapper {
 
 enum _AcpContentWarning {
   malformed,
+}
+
+sealed class _AcpMappedToolItem {
+  const _AcpMappedToolItem();
+}
+
+final class _AcpMappedToolText extends _AcpMappedToolItem {
+  const _AcpMappedToolText({required this.text});
+
+  final String text;
+}
+
+final class _AcpMappedToolDiff extends _AcpMappedToolItem {
+  const _AcpMappedToolDiff();
 }

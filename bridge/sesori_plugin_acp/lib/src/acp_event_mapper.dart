@@ -2,7 +2,6 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
-import "acp_content.dart";
 import "acp_protocol.dart";
 import "acp_session_configuration_tracker.dart";
 import "acp_stdio_client.dart";
@@ -520,15 +519,16 @@ class AcpEventMapper {
       _closeIdlessAssistantEnvelope(sessionId);
     }
     final messageId = "$sessionId-tool-$toolCallId";
+    final content = _contentMapper.toolContent(update: update);
     final state = _LiveTool(
       // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
       // title (schema drift / malformed agent data) renders as null rather than
       // throwing and aborting the notification.
-      tool: acpToolName(update),
+      tool: _contentMapper.toolName(update: update),
       title: update["title"] is String ? update["title"] as String? : null,
-      status: acpToolStatus(update["status"]),
-      output: acpToolOutputText(update),
-      isFileMutation: _isFileMutation(update),
+      status: _contentMapper.toolStatus(status: update["status"]),
+      output: content.output,
+      isFileMutation: _isFileMutation(update: update, content: content),
       diffEmitted: false,
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
@@ -540,7 +540,7 @@ class AcpEventMapper {
       events: events,
       sessionId: sessionId,
       state: state,
-      mutationAvailable: _hasDiffContent(update),
+      mutationAvailable: content.mutation == AcpToolContentMutation.diff,
     );
     return events;
   }
@@ -566,15 +566,17 @@ class AcpEventMapper {
     // the title text (`title` lives separately in PluginToolState.title). This
     // matches the replay collector, which preserves the original tool name.
     final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
-    final newOutput = acpToolOutputText(update);
+    final content = _contentMapper.toolContent(update: update);
     final state = _LiveTool(
-      tool: hasKind ? acpToolName(update) : (prior?.tool ?? acpToolName(update)),
+      tool: hasKind
+          ? _contentMapper.toolName(update: update)
+          : (prior?.tool ?? _contentMapper.toolName(update: update)),
       title: update.containsKey("title") && update["title"] is String ? update["title"] as String? : prior?.title,
       status: update.containsKey("status")
-          ? acpToolStatus(update["status"])
+          ? _contentMapper.toolStatus(status: update["status"])
           : (prior?.status ?? PluginToolStatus.pending),
-      output: newOutput ?? prior?.output,
-      isFileMutation: (prior?.isFileMutation ?? false) || _isFileMutation(update),
+      output: content.output ?? prior?.output,
+      isFileMutation: (prior?.isFileMutation ?? false) || _isFileMutation(update: update, content: content),
       diffEmitted: prior?.diffEmitted ?? false,
     );
     final events = <BridgeSseEvent>[
@@ -594,7 +596,7 @@ class AcpEventMapper {
       events: events,
       sessionId: sessionId,
       state: state,
-      mutationAvailable: _hasDiffContent(update),
+      mutationAvailable: content.mutation == AcpToolContentMutation.diff,
     );
     return events;
   }
@@ -754,20 +756,13 @@ class AcpEventMapper {
   /// a mutating `kind`, or a standard tool `content` entry of `type: "diff"`
   /// (a spec-compliant agent may report an edit only through the diff content
   /// shape, with a non-mutating or absent kind).
-  bool _isFileMutation(Map<String, dynamic> update) {
+  bool _isFileMutation({
+    required Map<String, dynamic> update,
+    required AcpMappedToolContent content,
+  }) {
     final kind = update["kind"];
     if (kind == "edit" || kind == "delete" || kind == "move") return true;
-    return _hasDiffContent(update);
-  }
-
-  bool _hasDiffContent(Map<String, dynamic> update) {
-    final content = update["content"];
-    if (content is List) {
-      for (final entry in content) {
-        if (entry is Map && entry["type"] == "diff") return true;
-      }
-    }
-    return false;
+    return content.mutation == AcpToolContentMutation.diff;
   }
 
   void _appendCompletedMutationDiff({

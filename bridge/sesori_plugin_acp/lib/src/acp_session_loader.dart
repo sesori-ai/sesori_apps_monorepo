@@ -1,6 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "acp_content.dart";
 import "acp_event_mapper.dart" show AcpHaltNotice;
 import "repositories/mappers/acp_content_mapper.dart";
 
@@ -58,15 +57,17 @@ class AcpReplayCollector {
       case "tool_call":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
+        final content = _contentMapper.toolContent(update: update);
         _assistantForTool().tools[id] = _ToolDraft(
-          tool: acpToolName(update),
+          tool: _contentMapper.toolName(update: update),
           title: _toolTitle(update),
-          status: acpToolStatus(update["status"]),
-          output: acpToolOutputText(update),
+          status: _contentMapper.toolStatus(status: update["status"]),
+          output: content.output,
         );
       case "tool_call_update":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
+        final content = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
         if (draft == null) {
           // No prior `tool_call` was replayed for this id (loaded history can
@@ -74,10 +75,10 @@ class AcpReplayCollector {
           // the card still renders, mirroring the live mapper which emits a tool
           // part unconditionally.
           _assistantForTool().tools[id] = _ToolDraft(
-            tool: acpToolName(update),
+            tool: _contentMapper.toolName(update: update),
             title: _toolTitle(update),
-            status: acpToolStatus(update["status"]),
-            output: acpToolOutputText(update),
+            status: _contentMapper.toolStatus(status: update["status"]),
+            output: content.output,
           );
           return;
         }
@@ -86,10 +87,11 @@ class AcpReplayCollector {
         // completed/failed replayed tool card back to pending (status) or drop a
         // separately-sent display title. Mirrors the live mapper's merge so
         // replayed history matches live rendering.
-        if (update.containsKey("status")) draft.status = acpToolStatus(update["status"]);
+        if (update.containsKey("status")) {
+          draft.status = _contentMapper.toolStatus(status: update["status"]);
+        }
         if (update.containsKey("title")) draft.title = _toolTitle(update);
-        final out = acpToolOutputText(update);
-        if (out != null) draft.output = out;
+        if (content.output != null) draft.output = content.output;
     }
   }
 
