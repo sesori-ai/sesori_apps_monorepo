@@ -1327,12 +1327,13 @@ packages:
     source: hosted
     version: "7.1.1"
   record_android:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: record_android
-      sha256: "28f1108626a190e249b01ffa9f639070e31e5157474b64a5ae380bf36aec9559"
-      url: "https://pub.dev"
-    source: hosted
+      path: record_android
+      ref: "98dc1e1a856186e613523aaac06264984bedda87"
+      resolved-ref: "98dc1e1a856186e613523aaac06264984bedda87"
+      url: "https://github.com/sesori-ai/record.git"
+    source: git
     version: "2.1.2"
   record_ios:
     dependency: transitive
