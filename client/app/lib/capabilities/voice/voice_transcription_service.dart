@@ -16,6 +16,10 @@ const maxRecordingDuration = Duration(minutes: 15);
 /// Amplitude polling interval for the waveform visualizer.
 const _amplitudeInterval = Duration(milliseconds: 100);
 
+/// Native warm-up should normally finish in under 200 ms. This bound keeps a
+/// stalled platform call from blocking real recording or service disposal.
+const _recorderPrewarmTimeout = Duration(seconds: 2);
+
 /// dBFS floor for normalization — speech rarely drops below -60 dBFS,
 /// so using -160 (the technical floor) would make the bars barely move.
 const double _amplitudeFloor = -60.0;
@@ -85,11 +89,13 @@ class VoiceTranscriptionService {
       final hasPermission = await _recorder.hasPermission(request: false);
       if (!hasPermission) return;
 
-      await _recorderPrewarmClient.prewarm(
-        sampleRate: _audioFormat.sampleRate,
-        bitRate: _audioFormat.bitRate,
-        numChannels: _audioFormat.numChannels,
-      );
+      await _recorderPrewarmClient
+          .prewarm(
+            sampleRate: _audioFormat.sampleRate,
+            bitRate: _audioFormat.bitRate,
+            numChannels: _audioFormat.numChannels,
+          )
+          .timeout(_recorderPrewarmTimeout);
     } catch (error, stackTrace) {
       logw("Failed to prewarm audio recorder", error, stackTrace);
     } finally {

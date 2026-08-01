@@ -171,6 +171,36 @@ void main() {
 
         verify(() => mockRecorder.start(any(), path: recordingPath)).called(1);
       });
+
+      test("a stalled prewarm cannot block recording indefinitely", () {
+        fakeAsync((async) {
+          final nativePrewarm = Completer<void>();
+          when(
+            () => mockRecorderPrewarmClient.prewarm(
+              sampleRate: any(named: "sampleRate"),
+              bitRate: any(named: "bitRate"),
+              numChannels: any(named: "numChannels"),
+            ),
+          ).thenAnswer((_) => nativePrewarm.future);
+
+          unawaited(service.prewarmRecording());
+          async.flushMicrotasks();
+          unawaited(service.startRecording());
+          async.flushMicrotasks();
+          verifyNever(() => mockRecorder.start(any(), path: any(named: "path")));
+
+          try {
+            async.elapse(const Duration(seconds: 2));
+            async.flushMicrotasks();
+
+            expect(service.isRecording, isTrue);
+            verify(() => mockRecorder.start(any(), path: recordingPath)).called(1);
+          } finally {
+            if (!nativePrewarm.isCompleted) nativePrewarm.complete();
+            async.flushMicrotasks();
+          }
+        });
+      });
     });
 
     group("startRecording", () {

@@ -74,9 +74,12 @@ final class RecorderPrewarmService {
       try fileManager.removeItem(at: outputUrl)
     }
 
+    let session = AVAudioSession.sharedInstance()
+    let previousSession = AudioSessionSnapshot(session: session)
     var recorder: AVAudioRecorder?
     defer {
       recorder = nil
+      restoreAudioSession(session: session, snapshot: previousSession)
       if fileManager.fileExists(atPath: outputUrl.path) {
         do {
           try fileManager.removeItem(at: outputUrl)
@@ -86,7 +89,6 @@ final class RecorderPrewarmService {
       }
     }
 
-    let session = AVAudioSession.sharedInstance()
     try session.setPreferredSampleRate(min(Double(sampleRate), 48_000))
     if #available(iOS 14.5, *) {
       try session.setPrefersNoInterruptionsFromSystemAlerts(true)
@@ -143,6 +145,40 @@ final class RecorderPrewarmService {
     recorder = nil
   }
 
+  private func restoreAudioSession(
+    session: AVAudioSession,
+    snapshot: AudioSessionSnapshot
+  ) {
+    do {
+      try session.setAllowHapticsAndSystemSoundsDuringRecording(
+        snapshot.allowsHapticsAndSystemSoundsDuringRecording
+      )
+    } catch {
+      NSLog("Failed to restore audio-session haptics preference: %@", error.localizedDescription)
+    }
+    do {
+      try session.setPrefersNoInterruptionsFromSystemAlerts(
+        snapshot.prefersNoInterruptionsFromSystemAlerts
+      )
+    } catch {
+      NSLog("Failed to restore audio-session interruption preference: %@", error.localizedDescription)
+    }
+    do {
+      try session.setCategory(
+        snapshot.category,
+        mode: snapshot.mode,
+        options: snapshot.categoryOptions
+      )
+    } catch {
+      NSLog("Failed to restore audio-session category: %@", error.localizedDescription)
+    }
+    do {
+      try session.setPreferredSampleRate(snapshot.preferredSampleRate)
+    } catch {
+      NSLog("Failed to restore audio-session sample rate: %@", error.localizedDescription)
+    }
+  }
+
   private func nearest(to target: Double, values: [NSNumber]) -> NSNumber {
     values.min {
       abs($0.doubleValue - target) < abs($1.doubleValue - target)
@@ -155,5 +191,25 @@ final class RecorderPrewarmService {
       code: 1,
       userInfo: [NSLocalizedDescriptionKey: message]
     )
+  }
+}
+
+private struct AudioSessionSnapshot {
+  let category: AVAudioSession.Category
+  let categoryOptions: AVAudioSession.CategoryOptions
+  let mode: AVAudioSession.Mode
+  let preferredSampleRate: Double
+  let allowsHapticsAndSystemSoundsDuringRecording: Bool
+  let prefersNoInterruptionsFromSystemAlerts: Bool
+
+  init(session: AVAudioSession) {
+    category = session.category
+    categoryOptions = session.categoryOptions
+    mode = session.mode
+    preferredSampleRate = session.preferredSampleRate
+    allowsHapticsAndSystemSoundsDuringRecording =
+      session.allowHapticsAndSystemSoundsDuringRecording
+    prefersNoInterruptionsFromSystemAlerts =
+      session.prefersNoInterruptionsFromSystemAlerts
   }
 }
