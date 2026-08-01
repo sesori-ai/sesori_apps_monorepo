@@ -60,6 +60,8 @@ import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
 import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
+import 'package:sesori_mobile/core/platform/temporary_directory_client.dart'
+    as _i908;
 import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i901;
 import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -96,6 +98,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
     gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
+    gh.lazySingleton<_i908.TemporaryDirectoryClient>(
+      () => _i908.TemporaryDirectoryClient(),
+    );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
     gh.lazySingleton<_i948.LocalNotificationClient>(
@@ -113,9 +118,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
-    );
-    gh.lazySingleton<_i62.RecordingFileProvider>(
-      () => _i62.RecordingFileProvider(gh<_i430.AudioFormatConfig>()),
     );
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
@@ -154,20 +156,16 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i833.DeviceInfoPlugin>(),
       ),
     );
-    gh.lazySingleton<_i1038.VoiceTranscriptionService>(
-      () => _i1038.VoiceTranscriptionService(
-        gh<_i948.VoiceApi>(),
-        gh<_i1039.AudioRecorder>(),
-        gh<_i62.RecordingFileProvider>(),
-        gh<_i511.WakeLockService>(),
-        gh<_i430.AudioFormatConfig>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i948.ImageSaver>(
       () => registerModule.imageSaver(
         galClient: gh<_i227.GalClient>(),
         fileSaveClient: gh<_i223.FileSaveClient>(),
+      ),
+    );
+    gh.lazySingleton<_i62.RecordingFileProvider>(
+      () => _i62.RecordingFileProvider(
+        audioFormat: gh<_i430.AudioFormatConfig>(),
+        temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
       ),
     );
     gh.lazySingleton<_i948.ImageClipboard>(
@@ -216,6 +214,16 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
+    );
+    gh.lazySingleton<_i1038.VoiceTranscriptionService>(
+      () => _i1038.VoiceTranscriptionService(
+        gh<_i948.VoiceApi>(),
+        gh<_i1039.AudioRecorder>(),
+        gh<_i62.RecordingFileProvider>(),
+        gh<_i511.WakeLockService>(),
+        gh<_i430.AudioFormatConfig>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     return this;
   }
