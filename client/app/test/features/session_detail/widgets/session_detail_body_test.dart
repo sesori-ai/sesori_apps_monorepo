@@ -174,6 +174,7 @@ void main() {
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
+    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
 
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
   });
@@ -692,6 +693,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
     expect(find.byIcon(TablerSolid.player_stop), findsNothing);
+  });
+
+  testWidgets("prewarms the voice recorder when the composer mounts", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    verify(() => voiceTranscriptionService.prewarmRecording()).called(1);
   });
 
   testWidgets("a very short tap starts recording immediately but never transcribes", (tester) async {

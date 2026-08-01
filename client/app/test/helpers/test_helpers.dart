@@ -52,6 +52,7 @@ import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
+import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
 import "package:sesori_mobile/core/di/injection.dart";
@@ -131,6 +132,8 @@ class MockRelayClient extends Mock implements RelayClient {}
 class MockVoiceApi extends Mock implements VoiceApi {}
 
 class MockAudioRecorder extends Mock implements AudioRecorder {}
+
+class MockRecorderPrewarmClient extends Mock implements RecorderPrewarmClient {}
 
 class MockRecordingFileProvider extends Mock implements RecordingFileProvider {}
 

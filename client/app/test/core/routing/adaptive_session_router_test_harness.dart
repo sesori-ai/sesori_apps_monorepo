@@ -198,6 +198,7 @@ class AdaptiveSessionRouterTestHarness {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer(
       (_) => maxDurationReachedController.stream,
     );
+    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
     when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
     when(() => authSession.currentState).thenAnswer((_) => authStateController.value);
 

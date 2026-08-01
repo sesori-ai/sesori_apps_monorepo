@@ -6,6 +6,7 @@ import "package:record/record.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "audio_format_config.dart";
+import "recorder_prewarm_client.dart";
 import "recording_file_provider.dart";
 import "wake_lock_service.dart";
 
@@ -23,11 +24,13 @@ const double _amplitudeFloor = -60.0;
 class VoiceTranscriptionService {
   final VoiceApi _voiceApi;
   final AudioRecorder _recorder;
+  final RecorderPrewarmClient _recorderPrewarmClient;
   final RecordingFileProvider _fileProvider;
   final WakeLockService _wakeLockService;
   final AudioFormatConfig _audioFormat;
   bool _isRecording = false;
   bool _isBusy = false;
+  Future<void>? _prewarmFuture;
   int _transcriptionGeneration = 0;
   String? _currentRecordingPath;
   StreamSubscription<Amplitude>? _amplitudeSub;
@@ -35,17 +38,19 @@ class VoiceTranscriptionService {
   final _amplitudeController = StreamController<double>.broadcast();
   final _maxDurationReachedController = StreamController<void>.broadcast();
 
-  VoiceTranscriptionService(
-    VoiceApi voiceApi,
-    AudioRecorder recorder,
-    RecordingFileProvider fileProvider,
-    WakeLockService wakeLockService,
-    AudioFormatConfig audioFormat,
-  ) : _voiceApi = voiceApi,
-      _recorder = recorder,
-      _fileProvider = fileProvider,
-      _wakeLockService = wakeLockService,
-      _audioFormat = audioFormat;
+  VoiceTranscriptionService({
+    required VoiceApi voiceApi,
+    required AudioRecorder recorder,
+    required RecorderPrewarmClient recorderPrewarmClient,
+    required RecordingFileProvider fileProvider,
+    required WakeLockService wakeLockService,
+    required AudioFormatConfig audioFormat,
+  }) : _voiceApi = voiceApi,
+       _recorder = recorder,
+       _recorderPrewarmClient = recorderPrewarmClient,
+       _fileProvider = fileProvider,
+       _wakeLockService = wakeLockService,
+       _audioFormat = audioFormat;
 
   bool get isRecording => _isRecording;
   bool get isBusy => _isBusy;
@@ -59,6 +64,39 @@ class VoiceTranscriptionService {
   /// Listeners should call [stopAndTranscribe] to finalize the recording.
   Stream<void> get onMaxDurationReached => _maxDurationReachedController.stream;
 
+  /// Best-effort preparation of native resources used by the first recording.
+  ///
+  /// Permission is never requested here, and concurrent callers share one
+  /// attempt. [startRecording] waits for an attempt already in progress so the
+  /// prewarmer and recorder never contend for the same native resources.
+  Future<void> prewarmRecording() {
+    if (_isBusy) return Future<void>.value();
+
+    final prewarmFuture = _prewarmFuture;
+    if (prewarmFuture != null) return prewarmFuture;
+
+    final newPrewarmFuture = _runRecorderPrewarm();
+    _prewarmFuture = newPrewarmFuture;
+    return newPrewarmFuture;
+  }
+
+  Future<void> _runRecorderPrewarm() async {
+    try {
+      final hasPermission = await _recorder.hasPermission(request: false);
+      if (!hasPermission) return;
+
+      await _recorderPrewarmClient.prewarm(
+        sampleRate: _audioFormat.sampleRate,
+        bitRate: _audioFormat.bitRate,
+        numChannels: _audioFormat.numChannels,
+      );
+    } catch (error, stackTrace) {
+      logw("Failed to prewarm audio recorder", error, stackTrace);
+    } finally {
+      _prewarmFuture = null;
+    }
+  }
+
   Future<void> startRecording() async {
     if (_isBusy) {
       logw("Operation already in progress, ignoring startRecording call");
@@ -68,6 +106,9 @@ class VoiceTranscriptionService {
     _isBusy = true;
 
     try {
+      final prewarmFuture = _prewarmFuture;
+      if (prewarmFuture != null) await prewarmFuture;
+
       bool hasPermission;
       try {
         hasPermission = await _recorder.hasPermission();
@@ -84,8 +125,9 @@ class VoiceTranscriptionService {
 
       final config = RecordConfig(
         encoder: _audioFormat.encoder,
+        bitRate: _audioFormat.bitRate,
         sampleRate: _audioFormat.sampleRate,
-        numChannels: 1,
+        numChannels: _audioFormat.numChannels,
         autoGain: true,
         noiseSuppress: true,
         audioInterruption: AudioInterruptionMode.none,
@@ -279,6 +321,9 @@ class VoiceTranscriptionService {
     await _wakeLockService.disable();
     await _amplitudeController.close();
     await _maxDurationReachedController.close();
+
+    final prewarmFuture = _prewarmFuture;
+    if (prewarmFuture != null) await prewarmFuture;
 
     try {
       await _recorder.dispose();

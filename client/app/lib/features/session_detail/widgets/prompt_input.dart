@@ -160,6 +160,7 @@ class _PromptInputState extends State<PromptInput> {
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
+    unawaited(_voiceService.prewarmRecording());
     _maxDurationSub = _voiceService.onMaxDurationReached.listen((_) {
       if (_voiceState == _VoiceState.recording && mounted) {
         _showRecordingLimitReached();

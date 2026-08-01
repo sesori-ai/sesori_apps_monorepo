@@ -191,6 +191,7 @@ void main() {
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
+    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
 
     when(
       () => loadService.load(

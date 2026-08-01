@@ -24,6 +24,8 @@ import 'package:record/record.dart' as _i1039;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
+import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
+    as _i361;
 import 'package:sesori_mobile/capabilities/voice/recording_file_provider.dart'
     as _i62;
 import 'package:sesori_mobile/capabilities/voice/voice_transcription_service.dart'
@@ -79,6 +81,9 @@ extension GetItInjectableX on _i174.GetIt {
     final registerModule = _$RegisterModule();
     final firebaseRegisterModule = _$FirebaseRegisterModule();
     gh.lazySingleton<_i430.AudioFormatConfig>(() => _i430.AudioFormatConfig());
+    gh.lazySingleton<_i361.RecorderPrewarmClient>(
+      () => _i361.RecorderPrewarmClient(),
+    );
     gh.lazySingleton<_i511.WakeLockService>(() => _i511.WakeLockService());
     gh.lazySingleton<_i519.Client>(() => registerModule.httpClient);
     gh.lazySingleton<_i553.RelayCryptoService>(
@@ -196,6 +201,17 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseDisabled},
     );
+    gh.lazySingleton<_i1038.VoiceTranscriptionService>(
+      () => _i1038.VoiceTranscriptionService(
+        voiceApi: gh<_i948.VoiceApi>(),
+        recorder: gh<_i1039.AudioRecorder>(),
+        recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
+        fileProvider: gh<_i62.RecordingFileProvider>(),
+        wakeLockService: gh<_i511.WakeLockService>(),
+        audioFormat: gh<_i430.AudioFormatConfig>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i901.DeepLinkService>(
       () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
@@ -214,16 +230,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
-    );
-    gh.lazySingleton<_i1038.VoiceTranscriptionService>(
-      () => _i1038.VoiceTranscriptionService(
-        gh<_i948.VoiceApi>(),
-        gh<_i1039.AudioRecorder>(),
-        gh<_i62.RecordingFileProvider>(),
-        gh<_i511.WakeLockService>(),
-        gh<_i430.AudioFormatConfig>(),
-      ),
-      dispose: (i) => i.dispose(),
     );
     return this;
   }
