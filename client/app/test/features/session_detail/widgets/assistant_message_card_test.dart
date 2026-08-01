@@ -1,3 +1,6 @@
+import "dart:typed_data";
+import "dart:ui" show SemanticsAction;
+
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -217,6 +220,7 @@ void main() {
   });
 
   testWidgets("opens a decoded Markdown image in the full-screen viewer", (tester) async {
+    final semantics = tester.ensureSemantics();
     const imageData =
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
 
@@ -244,6 +248,10 @@ void main() {
       find.descendant(of: markdownImage, matching: find.byType(GestureDetector)),
     );
     expect(tapTarget.onTap, isNotNull);
+    expect(
+      tester.getSemantics(markdownImage).getSemanticsData().hasAction(SemanticsAction.tap),
+      isTrue,
+    );
 
     tapTarget.onTap!();
     await tester.pumpAndSettle();
@@ -255,6 +263,32 @@ void main() {
     expect(find.byIcon(Icons.download_outlined), findsNothing);
     final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
     expect(identical(fullscreen.image, preview.image), isTrue);
+    semantics.dispose();
+  });
+
+  testWidgets("rejects oversized Markdown data images before decoding", (tester) async {
+    final oversizedUri = Uri.dataFromBytes(
+      Uint8List(maxInlineMessageAttachmentBytes + 1),
+      mimeType: "image/png",
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: MarkdownMessageImage(
+            uri: oversizedUri,
+            semanticLabel: "Oversized image",
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(Image), findsNothing);
+    expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.byType(GestureDetector), findsNothing);
   });
 
   testWidgets("renders normalized assistant file attachments", (tester) async {

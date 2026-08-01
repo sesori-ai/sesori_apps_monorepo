@@ -2,6 +2,8 @@ import "dart:async";
 
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:sesori_shared/sesori_shared.dart"
+    show isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
@@ -87,7 +89,18 @@ class _MarkdownMessageImageState extends State<MarkdownMessageImage> {
     try {
       final data = uri.data;
       if (data == null || !data.mimeType.toLowerCase().startsWith("image/")) return null;
-      return MemoryImage(data.contentAsBytes());
+      final encoded = uri.toString();
+      final separator = encoded.indexOf(",");
+      if (separator < 0) return null;
+      final encodedDataLength = encoded.length - separator - 1;
+      final isWithinEncodedLimit = data.isBase64
+          ? isInlineMessageAttachmentWithinSizeLimit(base64Length: encodedDataLength)
+          : encodedDataLength <= maxInlineMessageAttachmentBytes * 3;
+      if (!isWithinEncodedLimit) return null;
+
+      final bytes = data.contentAsBytes();
+      if (bytes.length > maxInlineMessageAttachmentBytes) return null;
+      return MemoryImage(bytes);
     } on FormatException {
       return null;
     }
