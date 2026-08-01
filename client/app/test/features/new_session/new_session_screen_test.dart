@@ -398,6 +398,7 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text(loc.voiceReleaseToTranscribe), findsOneWidget);
     expect(tester.getSize(find.byType(PromptInput)).height, closeTo(restingComposerHeight, 0.01));
     await gesture.up();
     await tester.pumpAndSettle();
