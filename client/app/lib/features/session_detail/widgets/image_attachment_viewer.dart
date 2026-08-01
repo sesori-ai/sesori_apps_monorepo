@@ -135,9 +135,9 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
   Matrix4Tween? _zoomTween;
   Offset? _doubleTapPosition;
   Offset _interactionDelta = Offset.zero;
-  double _dragOffset = 0;
-  double _dragStartOffset = 0;
-  double _dragResetStart = 0;
+  Offset _dragOffset = Offset.zero;
+  Offset _dragStartOffset = Offset.zero;
+  Offset _dragResetStart = Offset.zero;
   bool _canDragToDismiss = false;
   bool _isDismissDrag = false;
   bool _isDismissing = false;
@@ -188,23 +188,24 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
     if (!_canDragToDismiss || _isDismissing) return;
     if (details.pointerCount != 1 || !_isAtBaseScale) {
       _canDragToDismiss = false;
-      if (_dragOffset != 0) _animateDragToOrigin();
+      if (_dragOffset != Offset.zero) _animateDragToOrigin();
       return;
     }
 
     _interactionDelta += details.focalPointDelta;
     if (!_isDismissDrag) {
       if (_interactionDelta.distance < 8) return;
-      if (_interactionDelta.dy.abs() <= _interactionDelta.dx.abs() * 1.2) {
-        _canDragToDismiss = false;
-        if (_dragOffset != 0) _animateDragToOrigin();
-        return;
-      }
       _isDismissDrag = true;
     }
 
-    final height = MediaQuery.sizeOf(context).height;
-    setState(() => _dragOffset = (_dragStartOffset + _interactionDelta.dy).clamp(-height, height));
+    final size = MediaQuery.sizeOf(context);
+    final nextOffset = _dragStartOffset + _interactionDelta;
+    setState(
+      () => _dragOffset = Offset(
+        nextOffset.dx.clamp(-size.width, size.width),
+        nextOffset.dy.clamp(-size.height, size.height),
+      ),
+    );
   }
 
   void _handleInteractionEnd({required ScaleEndDetails details}) {
@@ -212,17 +213,19 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
     _canDragToDismiss = false;
     _isDismissDrag = false;
     if (!wasDismissDrag || _isDismissing) {
-      if (!_isDismissing && _dragOffset != 0 && !_dragResetController.isAnimating) {
+      if (!_isDismissing && _dragOffset != Offset.zero && !_dragResetController.isAnimating) {
         _animateDragToOrigin();
       }
       return;
     }
 
-    final velocity = details.velocity.pixelsPerSecond.dy;
+    final velocity = details.velocity.pixelsPerSecond;
+    final dragDistance = _dragOffset.distance;
+    final outwardVelocity = dragDistance == 0
+        ? 0.0
+        : (velocity.dx * _dragOffset.dx + velocity.dy * _dragOffset.dy) / dragDistance;
     final distanceThreshold = (MediaQuery.sizeOf(context).height * 0.15).clamp(96.0, 160.0);
-    final hasDismissVelocity =
-        velocity.abs() >= _dismissVelocity && (_dragOffset == 0 || velocity.sign == _dragOffset.sign);
-    if (_dragOffset.abs() >= distanceThreshold || hasDismissVelocity) {
+    if (dragDistance >= distanceThreshold || outwardVelocity >= _dismissVelocity) {
       _dismiss();
     } else {
       _animateDragToOrigin();
@@ -231,7 +234,7 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
 
   void _animateDragToOrigin() {
     if (context.isReducedMotion) {
-      setState(() => _dragOffset = 0);
+      setState(() => _dragOffset = Offset.zero);
       return;
     }
     _dragResetStart = _dragOffset;
@@ -310,7 +313,7 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
     final isRunningAction =
         hasAttachmentActions && context.watch<ImageAttachmentActionsCubit>().state is ImageAttachmentActionRunning;
     final dismissRange = (MediaQuery.sizeOf(context).height * 0.45).clamp(1.0, double.infinity);
-    final dismissProgress = (_dragOffset.abs() / dismissRange).clamp(0.0, 1.0);
+    final dismissProgress = (_dragOffset.distance / dismissRange).clamp(0.0, 1.0);
     final chromeOpacity = 1 - dismissProgress;
     final backgroundOpacity = 1 - dismissProgress * 0.8;
     final viewer = Scaffold(
@@ -396,7 +399,7 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
             ),
             Expanded(
               child: Transform.translate(
-                offset: Offset(0, _dragOffset),
+                offset: _dragOffset,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onDoubleTapDown: (details) => _captureDoubleTapPosition(details: details),

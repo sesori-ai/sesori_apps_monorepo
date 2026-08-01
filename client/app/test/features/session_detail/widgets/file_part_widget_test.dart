@@ -260,7 +260,7 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, "/sessions");
   });
 
-  testWidgets("vertical image drag snaps back or dismisses the viewer", (tester) async {
+  testWidgets("free-form image drag follows the pointer, snaps back, or dismisses", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -271,9 +271,19 @@ void main() {
     final viewer = find.byType(ImageAttachmentViewer);
     final initialCenter = tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey));
 
-    await tester.timedDrag(viewer, const Offset(0, 40), const Duration(seconds: 1));
-    await tester.pump(const Duration(milliseconds: 40));
-    await tester.timedDrag(viewer, const Offset(80, 0), const Duration(milliseconds: 400));
+    final gesture = await tester.startGesture(initialCenter);
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(20, 15));
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(20, 15));
+    await tester.pump();
+
+    final draggedCenter = tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey));
+    expect(draggedCenter.dx, greaterThan(initialCenter.dx));
+    expect(draggedCenter.dy, greaterThan(initialCenter.dy));
+
+    await tester.pump(const Duration(seconds: 1));
+    await gesture.up();
     await tester.pumpAndSettle();
 
     expect(viewer, findsOneWidget);
@@ -282,11 +292,44 @@ void main() {
       lessThan(0.01),
     );
 
-    await tester.timedDrag(viewer, const Offset(0, 200), const Duration(milliseconds: 400));
+    await tester.timedDrag(viewer, const Offset(200, 0), const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     expect(viewer, findsNothing);
     expect(find.byKey(FilePartWidget.previewTapTargetKey), findsOneWidget);
+  });
+
+  testWidgets("fast drag back to center does not dismiss the viewer", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      filename: "image.png",
+    );
+    await tester.pumpWidget(_app(child: const FilePartWidget(attachment: attachment)));
+    await _openImageViewer(tester: tester);
+    final viewer = find.byType(ImageAttachmentViewer);
+    final image = find.byKey(ImageAttachmentViewer.imageKey);
+    final initialCenter = tester.getCenter(image);
+
+    final gesture = await tester.startGesture(initialCenter);
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(30, 0), timeStamp: const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(30, 0), timeStamp: const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+    await gesture.moveBy(const Offset(-10, 0), timeStamp: const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 1));
+    await gesture.moveBy(const Offset(-10, 0), timeStamp: const Duration(milliseconds: 401));
+    await tester.pump(const Duration(milliseconds: 1));
+    await gesture.moveBy(const Offset(-10, 0), timeStamp: const Duration(milliseconds: 402));
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect((tester.getCenter(image) - initialCenter).distance, lessThan(0.01));
+
+    await gesture.up(timeStamp: const Duration(milliseconds: 403));
+    await tester.pumpAndSettle();
+
+    expect(viewer, findsOneWidget);
   });
 
   testWidgets("double tap toggles zoom and disables drag dismissal while zoomed", (tester) async {
