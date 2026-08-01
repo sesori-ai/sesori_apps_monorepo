@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "acp_event_mapper.dart" show AcpHaltNotice;
 import "repositories/mappers/acp_content_mapper.dart";
+import "repositories/trackers/acp_content_tracker.dart";
 
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
@@ -46,8 +47,12 @@ class AcpReplayCollector {
     if (update == null) return;
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
-        final t = _contentMapper.text(content: update["content"]);
-        if (t != null) _assistant(messageId: _chunkMessageId(update)).text.write(t);
+        final draft = _assistant(messageId: _chunkMessageId(update));
+        draft.contentMutations.addAll(
+          draft.contentTracker.append(
+            blocks: _contentMapper.map(content: update["content"]),
+          ),
+        );
       case "agent_thought_chunk":
         final t = _contentMapper.text(content: update["content"]);
         if (t != null) _assistant(messageId: _chunkMessageId(update)).reasoning.write(t);
@@ -106,8 +111,13 @@ class AcpReplayCollector {
     // lone assistant message) is surfaced as an error message so a reloaded
     // session matches the live rendering. Only a pure-text terminal notice
     // qualifies — no reasoning, no tools — matching the shape the backend emits.
-    if (draft.role == "assistant" && draft.reasoning.isEmpty && draft.tools.isEmpty && draft.text.isNotEmpty) {
-      final halt = haltClassifier?.call(text: draft.text.toString());
+    final assistantText = _assistantText(draft);
+    if (draft.role == "assistant" &&
+        draft.reasoning.isEmpty &&
+        draft.tools.isEmpty &&
+        !_hasAssistantImageCandidate(draft) &&
+        assistantText.isNotEmpty) {
+      final halt = haltClassifier?.call(text: assistantText);
       if (halt != null) {
         return PluginMessageWithParts(
           info: PluginMessage.error(
@@ -130,6 +140,9 @@ class AcpReplayCollector {
     }
     if (draft.text.isNotEmpty) {
       parts.add(_textPart(draft, "text", PluginMessagePartType.text, draft.text.toString()));
+    }
+    for (final entry in _assistantTextParts(draft).entries) {
+      parts.add(_textPart(draft, entry.key, PluginMessagePartType.text, entry.value));
     }
     draft.tools.forEach((toolId, tool) {
       parts.add(
@@ -158,6 +171,26 @@ class AcpReplayCollector {
       );
     });
     return PluginMessageWithParts(info: _message(draft), parts: parts);
+  }
+
+  String _assistantText(_Draft draft) {
+    final buffer = StringBuffer();
+    for (final mutation in draft.contentMutations) {
+      if (mutation case AcpTextDeltaMutation(:final delta)) buffer.write(delta);
+    }
+    return buffer.toString();
+  }
+
+  bool _hasAssistantImageCandidate(_Draft draft) => draft.contentTracker.snapshot.imageCandidateCount > 0;
+
+  Map<String, String> _assistantTextParts(_Draft draft) {
+    final buffers = <String, StringBuffer>{};
+    for (final mutation in draft.contentMutations) {
+      if (mutation case AcpTextDeltaMutation(:final partIdSuffix, :final delta)) {
+        buffers.putIfAbsent(partIdSuffix, StringBuffer.new).write(delta);
+      }
+    }
+    return {for (final entry in buffers.entries) entry.key: entry.value.toString()};
   }
 
   PluginMessage _message(_Draft draft) {
@@ -211,7 +244,7 @@ class AcpReplayCollector {
   _Draft _assistantForTool() {
     if (_drafts.isNotEmpty && _drafts.last.role == "assistant") {
       final last = _drafts.last;
-      if (last.acpMessageId != null || (last.text.isEmpty && last.reasoning.isEmpty)) {
+      if (last.acpMessageId != null || (last.text.isEmpty && last.reasoning.isEmpty && last.contentMutations.isEmpty)) {
         return last;
       }
     }
@@ -285,6 +318,8 @@ class _Draft {
   String? acpMessageId;
   final StringBuffer text = StringBuffer();
   final StringBuffer reasoning = StringBuffer();
+  final AcpContentTracker contentTracker = AcpContentTracker();
+  final List<AcpContentMutation> contentMutations = [];
   final Map<String, _ToolDraft> tools = {};
 }
 

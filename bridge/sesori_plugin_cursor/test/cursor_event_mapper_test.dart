@@ -48,6 +48,41 @@ void main() {
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "hi");
     });
 
+    test("standard ACP images are inherited while cursor image extensions stay dropped", () {
+      mapper.beginTurn("s-image");
+      final standard = mapper.map(
+        const AcpNotification(
+          method: "session/update",
+          params: {
+            "sessionId": "s-image",
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {
+                "type": "image",
+                "data": "AA==",
+                "mimeType": "image/png",
+                "uri": null,
+              },
+            },
+          },
+        ),
+      );
+      expect(
+        standard.whereType<BridgeSseMessagePartUpdated>().single.part.type,
+        PluginMessagePartType.file,
+      );
+
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: "cursor/generate_image",
+            params: {"sessionId": "s-image", "path": "/private/output.png"},
+          ),
+        ),
+        isEmpty,
+      );
+    });
+
     test("an account/plan gate notice becomes an error message, not assistant text", () {
       mapper.beginTurn("sg");
       final events = mapper.map(

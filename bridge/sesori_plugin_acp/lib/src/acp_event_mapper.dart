@@ -6,6 +6,7 @@ import "acp_protocol.dart";
 import "acp_session_configuration_tracker.dart";
 import "acp_stdio_client.dart";
 import "repositories/mappers/acp_content_mapper.dart";
+import "repositories/trackers/acp_content_tracker.dart";
 
 /// A backend "halt notice": the agent ended a turn without doing the requested
 /// work and instead streamed a terminal notice telling the user to change
@@ -161,6 +162,7 @@ class AcpEventMapper {
     _sessionSnapshots.remove(sessionId);
     _turnSeq.remove(sessionId);
     _startedParts.remove(sessionId);
+    _contentTrackers.remove(sessionId);
     _sentUserSeq.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
@@ -185,6 +187,10 @@ class AcpEventMapper {
   /// grow without bound across a long-running session.
   final Map<String, Set<String>> _startedParts = {};
 
+  /// Per-session, per-message ordered content state. Nested keys keep cleanup
+  /// exact for opaque session and ACP message identifiers.
+  final Map<String, Map<String, AcpContentTracker>> _contentTrackers = {};
+
   /// Sequence for user messages accepted by this plugin. These are emitted
   /// locally because ACP agents do not reliably echo `user_message_chunk`.
   final Map<String, int> _sentUserSeq = {};
@@ -202,6 +208,7 @@ class AcpEventMapper {
     // The new turn uses fresh (turn-numbered) part ids, so the prior turn's are
     // dead weight — drop them to bound memory in long sessions.
     _startedParts.remove(sessionId);
+    _contentTrackers.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
     // Tool state is retained across a turn (so a reordered late `tool_call_update`
@@ -234,6 +241,7 @@ class AcpEventMapper {
           sessionId: sessionId,
           type: PluginMessagePartType.text,
           text: text,
+          attachment: null,
         ),
       ),
     ];
@@ -262,6 +270,7 @@ class AcpEventMapper {
             sessionId: sessionId,
             type: PluginMessagePartType.text,
             text: textParts[index].text,
+            attachment: null,
           ),
         ),
     ];
@@ -308,13 +317,7 @@ class AcpEventMapper {
 
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
-        return _textChunk(
-          sessionId: sessionId,
-          update: update,
-          role: _ChunkRole.assistant,
-          partSuffix: "text",
-          partType: PluginMessagePartType.text,
-        );
+        return _assistantContentChunk(sessionId: sessionId, update: update);
       case "agent_thought_chunk":
         return _textChunk(
           sessionId: sessionId,
@@ -404,6 +407,88 @@ class AcpEventMapper {
   /// way it did live.
   AcpHaltNotice? classifyHaltNotice({required String text}) => null;
 
+  List<BridgeSseEvent> _assistantContentChunk({
+    required String sessionId,
+    required Map<String, dynamic> update,
+  }) {
+    final blocks = _contentMapper.map(content: update["content"]);
+    if (blocks.isEmpty) return const [];
+    final identity = _chunkIdentity(
+      sessionId: sessionId,
+      update: update,
+      role: _ChunkRole.assistant,
+    );
+    final tracker = (_contentTrackers[sessionId] ??= {}).putIfAbsent(
+      identity.messageId,
+      AcpContentTracker.new,
+    );
+
+    if (tracker.snapshot.imageCandidateCount == 0 && blocks.every((block) => block is AcpMappedTextContentBlock)) {
+      final text = blocks.whereType<AcpMappedTextContentBlock>().map((block) => block.text).join();
+      if (text.isNotEmpty) {
+        final halt = classifyHaltNotice(text: text);
+        if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt);
+      }
+    }
+
+    final mutations = tracker.append(blocks: blocks);
+    if (mutations.isEmpty) return const [];
+    final events = <BridgeSseEvent>[];
+    final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
+    if (started.add(identity.messageId)) {
+      events.add(
+        BridgeSseMessageUpdated(
+          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId).toJson(),
+        ),
+      );
+    }
+    for (final mutation in mutations) {
+      final partId = "${identity.messageId}-${mutation.partIdSuffix}";
+      switch (mutation) {
+        case AcpTextDeltaMutation(:final delta):
+          if (started.add(partId)) {
+            events.add(
+              BridgeSseMessagePartUpdated(
+                part: _part(
+                  partId: partId,
+                  messageId: identity.messageId,
+                  sessionId: sessionId,
+                  type: PluginMessagePartType.text,
+                  text: "",
+                  attachment: null,
+                ),
+              ),
+            );
+          }
+          events.add(
+            BridgeSseMessagePartDelta(
+              sessionID: sessionId,
+              messageID: identity.messageId,
+              partID: partId,
+              field: "text",
+              delta: delta,
+            ),
+          );
+        case AcpImageMutation(:final attachment):
+          started.add(partId);
+          events.add(
+            BridgeSseMessagePartUpdated(
+              part: _part(
+                partId: partId,
+                messageId: identity.messageId,
+                sessionId: sessionId,
+                type: PluginMessagePartType.file,
+                text: null,
+                attachment: attachment,
+              ),
+            ),
+          );
+      }
+    }
+    if (!identity.hasAcpMessageId) _openIdlessAssistant.add(sessionId);
+    return events;
+  }
+
   List<BridgeSseEvent> _textChunk({
     required String sessionId,
     required Map<String, dynamic> update,
@@ -433,20 +518,18 @@ class AcpEventMapper {
     // role stays in the id so a pathological cross-role id reuse can't merge a
     // user chunk into an assistant envelope. Absent (Cursor today) → the
     // synthesized per-turn id.
-    final acpMessageId = update["messageId"];
-    final hasAcpMessageId = acpMessageId is String && acpMessageId.isNotEmpty;
-    final fallbackSuffix = role == _ChunkRole.assistant ? "-a${_idlessAssistantSeq[sessionId] ?? 0}" : "";
-    final messageId = hasAcpMessageId
-        ? "$sessionId-m$acpMessageId-${role.name}"
-        : "$sessionId-t${_turn(sessionId)}-${role.name}$fallbackSuffix";
+    final identity = _chunkIdentity(sessionId: sessionId, update: update, role: role);
+    final messageId = identity.messageId;
     final partId = "$messageId-$partSuffix";
 
     final events = <BridgeSseEvent>[];
     final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
     if (started.add(partId)) {
-      events.add(
-        BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId).toJson()),
-      );
+      if (started.add(messageId)) {
+        events.add(
+          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId).toJson()),
+        );
+      }
       events.add(
         BridgeSseMessagePartUpdated(
           part: _part(
@@ -455,6 +538,7 @@ class AcpEventMapper {
             sessionId: sessionId,
             type: partType,
             text: "",
+            attachment: null,
           ),
         ),
       );
@@ -468,10 +552,26 @@ class AcpEventMapper {
         delta: text,
       ),
     );
-    if (role == _ChunkRole.assistant && !hasAcpMessageId) {
+    if (role == _ChunkRole.assistant && !identity.hasAcpMessageId) {
       _openIdlessAssistant.add(sessionId);
     }
     return events;
+  }
+
+  ({String messageId, bool hasAcpMessageId}) _chunkIdentity({
+    required String sessionId,
+    required Map<String, dynamic> update,
+    required _ChunkRole role,
+  }) {
+    final acpMessageId = update["messageId"];
+    final hasAcpMessageId = acpMessageId is String && acpMessageId.isNotEmpty;
+    final fallbackSuffix = role == _ChunkRole.assistant ? "-a${_idlessAssistantSeq[sessionId] ?? 0}" : "";
+    return (
+      messageId: hasAcpMessageId
+          ? "$sessionId-m$acpMessageId-${role.name}"
+          : "$sessionId-t${_turn(sessionId)}-${role.name}$fallbackSuffix",
+      hasAcpMessageId: hasAcpMessageId,
+    );
   }
 
   /// Emits a backend halt [notice] (see [classifyHaltNotice]) as a single
@@ -707,7 +807,8 @@ class AcpEventMapper {
     required String messageId,
     required String sessionId,
     required PluginMessagePartType type,
-    required String text,
+    required String? text,
+    required PluginMessageAttachment? attachment,
   }) {
     return PluginMessagePart(
       id: partId,
@@ -723,7 +824,7 @@ class AcpEventMapper {
       agentName: null,
       attempt: null,
       retryError: null,
-      attachment: null,
+      attachment: attachment,
     );
   }
 

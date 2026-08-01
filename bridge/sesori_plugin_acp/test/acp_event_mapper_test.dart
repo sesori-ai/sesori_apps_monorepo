@@ -60,27 +60,77 @@ void main() {
       expect(second.whereType<BridgeSseMessagePartDelta>().single.delta, "lo");
     });
 
-    test("validated image chunks remain unmaterialized until the content tracker lands", () {
+    test("agent message content preserves mixed text and image order", () {
       mapper.beginTurn("s1");
-      final imageEvents = mapper.map(update({
+      final events = mapper.map(update({
         "sessionUpdate": "agent_message_chunk",
         "messageId": "mixed",
+        "content": [
+          {"type": "text", "text": "before"},
+          {
+            "type": "image",
+            "data": "AA==",
+            "mimeType": "image/png",
+            "uri": "file:///private/output.png",
+          },
+          {"type": "text", "text": "after"},
+        ],
+      }));
+
+      expect(events.whereType<BridgeSseMessageUpdated>(), hasLength(1));
+      final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(
+        parts.map((part) => part.id),
+        ["s1-mmixed-assistant-text", "s1-mmixed-assistant-image-1", "s1-mmixed-assistant-text-1"],
+      );
+      expect(parts.map((part) => part.type), [
+        PluginMessagePartType.text,
+        PluginMessagePartType.file,
+        PluginMessagePartType.text,
+      ]);
+      expect(parts[1].attachment, isA<PluginMessageAttachmentInlineImage>());
+      expect(parts[1].attachment?.filename, "output.png");
+      expect(events.whereType<BridgeSseMessagePartDelta>().map((event) => event.delta), ["before", "after"]);
+    });
+
+    test("message trackers persist across chunks and reset at turn boundaries", () {
+      mapper.beginTurn("s1");
+      mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "m1",
         "content": {
           "type": "image",
           "data": "AA==",
           "mimeType": "image/png",
-          "uri": "file:///private/output.png",
+          "uri": null,
         },
       }));
-      final textEvents = mapper.map(update({
+      final text = mapper.map(update({
         "sessionUpdate": "agent_message_chunk",
-        "messageId": "mixed",
-        "content": {"type": "text", "text": "visible"},
+        "messageId": "m1",
+        "content": {"type": "text", "text": "after"},
       }));
+      expect(text.whereType<BridgeSseMessageUpdated>(), isEmpty);
+      expect(
+        text.whereType<BridgeSseMessagePartUpdated>().single.part.id,
+        "s1-mm1-assistant-text",
+      );
 
-      expect(imageEvents, isEmpty);
-      expect(textEvents.whereType<BridgeSseMessageUpdated>(), hasLength(1));
-      expect(textEvents.whereType<BridgeSseMessagePartDelta>().single.delta, "visible");
+      mapper.beginTurn("s1");
+      final reset = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "m1",
+        "content": {
+          "type": "image",
+          "data": "AA==",
+          "mimeType": "image/png",
+          "uri": null,
+        },
+      }));
+      expect(
+        reset.whereType<BridgeSseMessagePartUpdated>().single.part.id,
+        "s1-mm1-assistant-image-1",
+      );
     });
 
     test("agent_thought_chunk maps to a reasoning part", () {
@@ -144,11 +194,16 @@ void main() {
       expect(events, isEmpty);
     });
 
-    test("id-less assistant text after a tool opens a later envelope", () {
+    test("id-less assistant content after a tool opens a later envelope", () {
       mapper.beginTurn("s1");
       final beforeTool = mapper.map(update({
         "sessionUpdate": "agent_message_chunk",
-        "content": {"type": "text", "text": "Before"},
+        "content": {
+          "type": "image",
+          "data": "AA==",
+          "mimeType": "image/png",
+          "uri": null,
+        },
       }));
       mapper.map(update({
         "sessionUpdate": "tool_call",
@@ -859,6 +914,31 @@ void main() {
         events.whereType<BridgeSseMessagePartUpdated>().single.part.type,
         PluginMessagePartType.reasoning,
       );
+    });
+
+    test("an image-bearing halt-like message remains an assistant message", () {
+      mapper.beginTurn("s1");
+      final events = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": [
+          {
+            "type": "image",
+            "data": "AA==",
+            "mimeType": "image/png",
+            "uri": null,
+          },
+          {"type": "text", "text": "HALT: fix it"},
+        ],
+      }));
+
+      final message = shared.Message.fromJson(
+        events.whereType<BridgeSseMessageUpdated>().single.info,
+      );
+      expect(message, isA<shared.MessageAssistant>());
+      expect(events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.type), [
+        PluginMessagePartType.file,
+        PluginMessagePartType.text,
+      ]);
     });
 
     test("ordinary assistant text still streams as an assistant message", () {
