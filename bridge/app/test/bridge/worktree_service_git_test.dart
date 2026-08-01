@@ -8,14 +8,17 @@ void main() {
   group("GitCliApi", () {
     late _FakeProcessRunner processRunner;
     late bool gitDirectoryExists;
+    late Set<String> additionalGitPaths;
     late GitCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = false;
+      additionalGitPaths = <String>{};
       service = GitCliApi(
         processRunner: processRunner,
-        gitPathExists: ({required String gitPath}) => gitDirectoryExists,
+        gitPathExists: ({required String gitPath}) =>
+            additionalGitPaths.contains(gitPath) || (gitDirectoryExists && gitPath == "/repo/project/.git"),
       );
     });
 
@@ -78,6 +81,19 @@ void main() {
 
       expect(url, equals("https://github.com/org/repo.git"));
       expect(processRunner.invocations.last.arguments, equals(["remote", "get-url", "upstream"]));
+    });
+
+    test("getRemoteUrl discovers an enclosing worktree from a nested project", () async {
+      additionalGitPaths.add("/repo/.git");
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"));
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "https://github.com/org/repo.git\n"));
+
+      final url = await service.getRemoteUrl(
+        projectPath: "/repo/packages/nested-project",
+      );
+
+      expect(url, "https://github.com/org/repo.git");
+      expect(processRunner.invocations, hasLength(2));
     });
 
     test("getRemoteUrl returns null when the directory is not a git repository", () async {

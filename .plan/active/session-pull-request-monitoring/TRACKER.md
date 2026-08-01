@@ -202,10 +202,16 @@
   invalidations, and preserving cache on typed transient Git failures. The
   second and final `aristotle-impl-review` approved the follow-up with no findings.
   Fatal-info analysis, all 2,297 bridge app tests, and `git diff --check` pass.
-  The resulting 10,481-line PR contains 8,754 generated and 1,727 hand-authored
+  After that round the 10,481-line PR contained 8,754 generated and 1,727 hand-authored
   lines; the 227-line hand-authored soft-cap overage is the coupled correctness
   response to review and cannot be separated without leaving known persistence
   and update-delivery defects in this PR.
+- **PR #671 nested-worktree follow-up:** Two later bot threads correctly found
+  that exact `projectPath/.git` detection regressed projects nested inside an
+  enclosing worktree. Remote discovery now accepts Git metadata at any ancestor
+  while retaining typed process failures; fatal-info analysis, 98 focused Git,
+  source, project, and sync tests, and `git diff --check` pass. The final PR is
+  10,517 lines: 8,754 generated and 1,763 hand-authored.
 
 ## Findings and Plan Deltas
 
@@ -240,6 +246,6 @@
 - **2026-08-01 — Step 2.b generated overage:** Current Drift generation emits
   both v12 and v13 migration helper classes, increasing the evidence-based target
   to 9,800–10,800 lines. Initial hand-authored production/tests remained within
-  the soft cap; required PR review fixes raised them to 1,727 lines. The generated
+  the soft cap; required PR review fixes raised them to 1,763 lines. The generated
   schema/migration bundle and coupled correctness fixes must accompany v13
   atomically, so neither overage has a smaller independently valid split.
