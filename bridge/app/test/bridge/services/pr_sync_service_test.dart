@@ -60,6 +60,47 @@ void main() {
       expect(pullRequestRepository.prepareScopedRefreshCalls, hasLength(1));
     });
 
+    test("does not cache PRs matched only to child-session branches", () async {
+      final prSource = _FakePrSource(
+        listOpenPrsResult: <GhPullRequest>[
+          _ghPr(number: 12, branch: "child-branch", title: "Child PR"),
+        ],
+      );
+      final pullRequestRepository = _FakePullRequestRepository();
+      final sessionRepository = _FakeSessionRepository(
+        sessionsByProject: <String, List<StoredSession>>{
+          "project-1": [
+            _storedSession(id: "root", branchName: "root-branch"),
+            const StoredSession(
+              id: "child",
+              backendSessionId: "child",
+              pluginId: "fake",
+              projectId: "project-1",
+              parentSessionId: "root",
+              directory: "/tmp/project-1",
+              worktreePath: null,
+              branchName: "child-branch",
+              isDedicated: false,
+              archivedAt: null,
+              baseBranch: null,
+              baseCommit: null,
+            ),
+          ],
+        },
+      );
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: pullRequestRepository,
+        sessionRepository: sessionRepository,
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+
+      expect(pullRequestRepository.upsertCalls, 0);
+    });
+
     test("does not emit when PR data is unchanged", () async {
       final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[

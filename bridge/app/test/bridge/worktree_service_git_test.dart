@@ -122,6 +122,39 @@ void main() {
 
       expect(url, isNull);
       expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations.single.environment, {"LC_ALL": "C"});
+    });
+
+    test("getRemoteUrl returns null when the project directory is missing", () async {
+      processRunner.enqueueError(
+        error: const ProcessException(
+          "git",
+          ["rev-parse", "--is-inside-work-tree"],
+          "No such file or directory",
+          2,
+        ),
+      );
+
+      final url = await service.getRemoteUrl(projectPath: "/missing/project");
+
+      expect(url, isNull);
+    });
+
+    test("getRemoteUrl propagates a discovery start failure for an existing directory", () async {
+      gitDirectoryExists = true;
+      processRunner.enqueueError(
+        error: const ProcessException(
+          "git",
+          ["rev-parse", "--is-inside-work-tree"],
+          "Failed to start process",
+          2,
+        ),
+      );
+
+      await expectLater(
+        service.getRemoteUrl(projectPath: "/repo/project"),
+        throwsA(isA<ProcessException>()),
+      );
     });
 
     test("getRemoteUrl propagates an unexpected worktree discovery failure", () async {

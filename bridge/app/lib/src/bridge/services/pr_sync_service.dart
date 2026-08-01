@@ -269,6 +269,9 @@ class PrSyncService {
   Map<String, StoredSession> _indexSessionsByBranch({required List<StoredSession> sessions}) {
     final result = <String, StoredSession>{};
     for (final session in sessions) {
+      if (session.parentSessionId != null) {
+        continue;
+      }
       final branchName = session.branchName;
       if (branchName == null || branchName.isEmpty) {
         continue;

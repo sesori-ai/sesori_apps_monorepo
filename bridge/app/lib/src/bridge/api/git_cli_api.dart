@@ -158,7 +158,20 @@ class GitCliApi {
 
   Future<bool> _isInsideGitWorkTreeForRemote({required String projectPath}) async {
     const arguments = ["rev-parse", "--is-inside-work-tree"];
-    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    final ProcessResult result;
+    try {
+      result = await _processRunner.run(
+        "git",
+        arguments,
+        workingDirectory: projectPath,
+        environment: const {"LC_ALL": "C"},
+      );
+    } on ProcessException {
+      if (!_gitPathExists(gitPath: projectPath)) {
+        return false;
+      }
+      rethrow;
+    }
     if (result.exitCode == 0) {
       return result.stdout.toString().trim() == "true";
     }
