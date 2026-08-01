@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:ui" show SemanticsAction;
 
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -15,12 +16,12 @@ class _ReplyCapture {
   Stream<bool> pendingStream = const Stream.empty();
   bool isPending = true;
 
-  void onReply(String requestId, List<ReplyAnswer> answers) {
+  void onReply({required String requestId, required List<ReplyAnswer> answers}) {
     this.requestId = requestId;
     this.answers = answers;
   }
 
-  void onReject(String requestId) {
+  void onReject({required String requestId}) {
     rejectedRequestId = requestId;
   }
 }
@@ -42,8 +43,11 @@ GoRouter _createRouter({
                   QuestionModal.show(
                     context,
                     question: question,
-                    onReply: capture.onReply,
-                    onReject: capture.onReject,
+                    onReply: (requestId, answers) => capture.onReply(
+                      requestId: requestId,
+                      answers: answers,
+                    ),
+                    onReject: (requestId) => capture.onReject(requestId: requestId),
                     isPendingStream: capture.pendingStream,
                     isPending: () => capture.isPending,
                   );
@@ -662,6 +666,49 @@ void main() {
     expect(find.byType(PregoBottomSheet), findsNothing);
   });
 
+  testWidgets("system back cancels decline-all confirmation without dismissing drafts", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a language",
+            header: "Language",
+            custom: false,
+            options: [
+              QuestionOption(label: "Dart", description: "Flutter language"),
+            ],
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            custom: false,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+    await tester.tap(find.text("Dart"));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("decline-question-request")));
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.text("Choose a language"), findsOneWidget);
+    expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+    expect(capture.rejectedRequestId, isNull);
+  });
+
   testWidgets("external resolution dismisses an open decline-all confirmation", (tester) async {
     final capture = _ReplyCapture();
     final pendingController = StreamController<bool>();
@@ -731,7 +778,12 @@ void main() {
     await tester.pumpWidget(_buildApp(router: router));
     await _openQuestionModal(tester);
 
-    expect(find.bySemanticsLabel("Question 1 of 2, unanswered"), findsOneWidget);
+    final firstStep = find.bySemanticsLabel("Question 1 of 2, unanswered");
+    expect(firstStep, findsOneWidget);
+    expect(
+      tester.getSemantics(firstStep).getSemanticsData().hasAction(SemanticsAction.tap),
+      isTrue,
+    );
     await tester.tap(find.text("Dart"));
     await tester.pump();
     expect(find.bySemanticsLabel("Question 1 of 2, answered"), findsOneWidget);
@@ -742,6 +794,43 @@ void main() {
     await tester.pump();
     expect(find.bySemanticsLabel("Question 2 of 2, declined"), findsOneWidget);
     semantics.dispose();
+  });
+
+  testWidgets("rapid return to a custom question keeps one text field mounted", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Add release notes",
+            header: "Notes",
+            options: [],
+            custom: true,
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            custom: false,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pump(const Duration(milliseconds: 30));
+    await tester.tap(find.byKey(const Key("question-step-0")));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(TextField), findsOneWidget);
   });
 
   testWidgets("compact keyboard viewport keeps the action row overflow-free", (tester) async {
@@ -774,11 +863,13 @@ void main() {
 
     await tester.pumpWidget(_buildApp(router: router));
     await _openQuestionModal(tester);
-    await tester.tap(find.byType(TextField));
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
     tester.view.viewInsets = const FakeViewPadding(bottom: 180);
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+    expect(find.text("Answer or decline all"), findsOneWidget);
     expect(find.byKey(const Key("question-primary-action")), findsOneWidget);
     expect(find.byKey(const Key("question-step-0")), findsNothing);
   });

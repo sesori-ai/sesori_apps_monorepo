@@ -704,6 +704,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get questionModalResolveAll => 'Answer or decline every question to submit.';
 
   @override
+  String get questionModalResolveAllCompact => 'Answer or decline all';
+
+  @override
   String get questionModalStatusUnanswered => 'unanswered';
 
   @override

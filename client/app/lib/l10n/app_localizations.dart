@@ -1429,6 +1429,12 @@ abstract class AppLocalizations {
   /// **'Answer or decline every question to submit.'**
   String get questionModalResolveAll;
 
+  /// No description provided for @questionModalResolveAllCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer or decline all'**
+  String get questionModalResolveAllCompact;
+
   /// No description provided for @questionModalStatusUnanswered.
   ///
   /// In en, this message translates to:

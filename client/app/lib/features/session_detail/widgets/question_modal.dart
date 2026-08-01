@@ -103,8 +103,8 @@ class _QuestionModalState extends State<QuestionModal> {
     super.initState();
     _drafts = List.generate(_totalQuestions, (index) {
       final draft = _QuestionDraft();
-      draft.customFocus.addListener(() => _onCustomFocusChanged(index));
-      draft.customController.addListener(() => _onCustomTextChanged(index));
+      draft.customFocus.addListener(() => _onCustomFocusChanged(index: index));
+      draft.customController.addListener(() => _onCustomTextChanged(index: index));
       return draft;
     });
   }
@@ -121,7 +121,7 @@ class _QuestionModalState extends State<QuestionModal> {
   // Callbacks
   // ---------------------------------------------------------------------------
 
-  void _onCustomFocusChanged(int index) {
+  void _onCustomFocusChanged({required int index}) {
     if (!mounted || index != _currentIndex) return;
 
     final draft = _drafts[index];
@@ -137,7 +137,7 @@ class _QuestionModalState extends State<QuestionModal> {
     }
   }
 
-  void _onCustomTextChanged(int index) {
+  void _onCustomTextChanged({required int index}) {
     // Rebuild to update submit button enabled state.
     if (mounted && index == _currentIndex && _drafts[index].customSelected) {
       setState(() {});
@@ -165,7 +165,7 @@ class _QuestionModalState extends State<QuestionModal> {
     draft.customFocus.requestFocus();
   }
 
-  void _onOptionTap(String label) {
+  void _onOptionTap({required String label}) {
     final draft = _currentDraft;
     draft.customFocus.unfocus();
     setState(() {
@@ -210,7 +210,7 @@ class _QuestionModalState extends State<QuestionModal> {
     });
   }
 
-  void _navigateTo(int index) {
+  void _navigateTo({required int index}) {
     if (index == _currentIndex || index < 0 || index >= _totalQuestions) return;
 
     _currentDraft.customFocus.unfocus();
@@ -221,7 +221,7 @@ class _QuestionModalState extends State<QuestionModal> {
   }
 
   void _onProceed() {
-    if (!_isLastQuestion) _navigateTo(_currentIndex + 1);
+    if (!_isLastQuestion) _navigateTo(index: _currentIndex + 1);
   }
 
   void _onSubmit() {
@@ -245,6 +245,10 @@ class _QuestionModalState extends State<QuestionModal> {
     }
 
     setState(() => _confirmingRequestDecline = true);
+  }
+
+  void _cancelDeclineRequest() {
+    setState(() => _confirmingRequestDecline = false);
   }
 
   // ---------------------------------------------------------------------------
@@ -272,169 +276,167 @@ class _QuestionModalState extends State<QuestionModal> {
     // instead of overflowing fixed navigator and helper rows.
     final showQuestionNavigator = _isMultiQuestion && maxBody >= 180;
 
-    return PregoBottomSheet(
-      title: _confirmingRequestDecline
-          ? loc.questionModalDeclineAllTitle
-          : (info.header.isNotEmpty ? info.header : loc.questionModalTitle),
-      subtitle: _isMultiQuestion && !_confirmingRequestDecline
-          ? loc.questionModalStepIndicator(
-              _currentIndex + 1,
-              _totalQuestions,
-            )
-          : null,
-      topInset: widget.topInset,
-      onBack: _confirmingRequestDecline
-          ? () => setState(() => _confirmingRequestDecline = false)
-          : (_currentIndex > 0 ? () => _navigateTo(_currentIndex - 1) : null),
-      onClose: _dismissModal,
-      // Full-bleed body; the step indicator, list, and actions pad themselves.
-      contentPadding: EdgeInsetsDirectional.zero,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
-        child: _confirmingRequestDecline
-            ? _DeclineAllConfirmation(
-                onCancel: () => setState(() => _confirmingRequestDecline = false),
-                onConfirm: _onReject,
+    return PopScope(
+      canPop: !_confirmingRequestDecline,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _confirmingRequestDecline) _cancelDeclineRequest();
+      },
+      child: PregoBottomSheet(
+        title: _confirmingRequestDecline
+            ? loc.questionModalDeclineAllTitle
+            : (info.header.isNotEmpty ? info.header : loc.questionModalTitle),
+        subtitle: _isMultiQuestion && !_confirmingRequestDecline
+            ? loc.questionModalStepIndicator(
+                _currentIndex + 1,
+                _totalQuestions,
               )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Direct question navigation (only when there are multiple questions).
-                  if (showQuestionNavigator)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
-                      child: _QuestionNavigator(
-                        currentIndex: _currentIndex,
-                        resolutions: _drafts.map((item) => item.resolution).toList(growable: false),
-                        onSelected: _navigateTo,
+            : null,
+        topInset: widget.topInset,
+        onBack: _confirmingRequestDecline
+            ? _cancelDeclineRequest
+            : (_currentIndex > 0 ? () => _navigateTo(index: _currentIndex - 1) : null),
+        onClose: _dismissModal,
+        // Full-bleed body; the step indicator, list, and actions pad themselves.
+        contentPadding: EdgeInsetsDirectional.zero,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
+          child: _confirmingRequestDecline
+              ? _DeclineAllConfirmation(
+                  onCancel: _cancelDeclineRequest,
+                  onConfirm: _onReject,
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Direct question navigation (only when there are multiple questions).
+                    if (showQuestionNavigator)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
+                        child: _QuestionNavigator(
+                          currentIndex: _currentIndex,
+                          resolutions: _drafts.map((item) => item.resolution).toList(growable: false),
+                          onSelected: (index) => _navigateTo(index: index),
+                        ),
+                      ),
+
+                    // Scrollable body — wraps its content (a handful of option tiles,
+                    // so laying them all out is cheap) and scrolls only once the
+                    // sheet hits its cap.
+                    Flexible(
+                      child: TweenAnimationBuilder<double>(
+                        key: ValueKey(_currentIndex),
+                        tween: Tween(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return Opacity(
+                            opacity: value,
+                            child: Transform.translate(
+                              offset: Offset(_navigationDirection * 12 * (1 - value), 0),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: ListView(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            // Question text
+                            MarkdownBody(
+                              data: info.question,
+                              selectable: true,
+                              onTapLink: handleMarkdownLinkTap,
+                              styleSheet: buildSessionMarkdownStyleSheet(
+                                prego: prego,
+                                paragraphStyle: prego.textTheme.textSm.medium,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Option tiles
+                            ...info.options.map(
+                              (option) => _OptionTile(
+                                option: option,
+                                isMultiple: info.multiple,
+                                isSelected: !draft.isDeclined && draft.selectedLabels.contains(option.label),
+                                onTap: () => _onOptionTap(label: option.label),
+                              ),
+                            ),
+
+                            // Custom answer tile
+                            if (info.custom) ...[
+                              const SizedBox(height: 8),
+                              _CustomAnswerTile(
+                                controller: draft.customController,
+                                focusNode: draft.customFocus,
+                                isSelected: !draft.isDeclined && draft.customSelected,
+                                isMultiple: info.multiple,
+                                onTap: _onCustomTileTap,
+                              ),
+                            ],
+
+                            if (_isMultiQuestion) ...[
+                              const SizedBox(height: 8),
+                              _DeclineQuestionTile(
+                                isSelected: draft.isDeclined,
+                                onTap: _onDeclineCurrentQuestion,
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
 
-                  // Scrollable body — wraps its content (a handful of option tiles,
-                  // so laying them all out is cheap) and scrolls only once the
-                  // sheet hits its cap.
-                  Flexible(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder: (child, animation) {
-                        final key = child.key;
-                        final isIncoming = key is ValueKey<int> && key.value == _currentIndex;
-                        final horizontalOffset = (isIncoming ? 1 : -1) * _navigationDirection * 0.04;
-                        return IgnorePointer(
-                          ignoring: !isIncoming,
-                          child: ExcludeSemantics(
-                            excluding: !isIncoming,
-                            child: FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: Offset(horizontalOffset, 0),
-                                  end: Offset.zero,
-                                ).animate(animation),
-                                child: child,
+                    if (_isLastQuestion && !_allQuestionsResolved && showQuestionNavigator)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
+                        child: Text(
+                          loc.questionModalResolveAll,
+                          textAlign: TextAlign.center,
+                          style: prego.textTheme.textXs.regular.copyWith(
+                            color: prego.colors.textSecondary,
+                          ),
+                        ),
+                      ),
+
+                    // Request-wide decline / Submit / Next actions.
+                    Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              key: const Key("decline-question-request"),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: prego.colors.fgErrorPrimary,
+                                side: BorderSide(color: prego.colors.fgErrorPrimary),
+                              ),
+                              onPressed: _onDeclineRequest,
+                              child: Text(
+                                _isMultiQuestion ? loc.questionModalDeclineAll : loc.questionModalDecline,
                               ),
                             ),
                           ),
-                        );
-                      },
-                      child: ListView(
-                        key: ValueKey(_currentIndex),
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          // Question text
-                          MarkdownBody(
-                            data: info.question,
-                            selectable: true,
-                            onTapLink: handleMarkdownLinkTap,
-                            styleSheet: buildSessionMarkdownStyleSheet(
-                              prego: prego,
-                              paragraphStyle: prego.textTheme.textSm.medium,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton(
+                              key: const Key("question-primary-action"),
+                              onPressed: _isLastQuestion ? (_allQuestionsResolved ? _onSubmit : null) : _onProceed,
+                              child: Text(
+                                _isLastQuestion
+                                    ? (!_allQuestionsResolved && !showQuestionNavigator
+                                          ? loc.questionModalResolveAllCompact
+                                          : loc.questionModalSubmit)
+                                    : loc.questionModalNext,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 16),
-
-                          // Option tiles
-                          ...info.options.map(
-                            (option) => _OptionTile(
-                              option: option,
-                              isMultiple: info.multiple,
-                              isSelected: !draft.isDeclined && draft.selectedLabels.contains(option.label),
-                              onTap: () => _onOptionTap(option.label),
-                            ),
-                          ),
-
-                          // Custom answer tile
-                          if (info.custom) ...[
-                            const SizedBox(height: 8),
-                            _CustomAnswerTile(
-                              controller: draft.customController,
-                              focusNode: draft.customFocus,
-                              isSelected: !draft.isDeclined && draft.customSelected,
-                              isMultiple: info.multiple,
-                              onTap: _onCustomTileTap,
-                            ),
-                          ],
-
-                          if (_isMultiQuestion) ...[
-                            const SizedBox(height: 8),
-                            _DeclineQuestionTile(
-                              isSelected: draft.isDeclined,
-                              onTap: _onDeclineCurrentQuestion,
-                            ),
-                          ],
                         ],
                       ),
                     ),
-                  ),
-
-                  if (_isLastQuestion && !_allQuestionsResolved && showQuestionNavigator)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
-                      child: Text(
-                        loc.questionModalResolveAll,
-                        textAlign: TextAlign.center,
-                        style: prego.textTheme.textXs.regular.copyWith(
-                          color: prego.colors.textSecondary,
-                        ),
-                      ),
-                    ),
-
-                  // Request-wide decline / Submit / Next actions.
-                  Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            key: const Key("decline-question-request"),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: prego.colors.fgErrorPrimary,
-                              side: BorderSide(color: prego.colors.fgErrorPrimary),
-                            ),
-                            onPressed: _onDeclineRequest,
-                            child: Text(
-                              _isMultiQuestion ? loc.questionModalDeclineAll : loc.questionModalDecline,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: FilledButton(
-                            key: const Key("question-primary-action"),
-                            onPressed: _isLastQuestion ? (_allQuestionsResolved ? _onSubmit : null) : _onProceed,
-                            child: Text(
-                              _isLastQuestion ? loc.questionModalSubmit : loc.questionModalNext,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -465,7 +467,8 @@ class _QuestionDraft {
 
   _QuestionResolution get resolution {
     if (isDeclined) return _QuestionResolution.declined;
-    return answerValues.isEmpty ? _QuestionResolution.unanswered : _QuestionResolution.answered;
+    final hasCustomAnswer = customSelected && customController.text.trim().isNotEmpty;
+    return selectedLabels.isEmpty && !hasCustomAnswer ? _QuestionResolution.unanswered : _QuestionResolution.answered;
   }
 
   void dispose() {
@@ -705,6 +708,7 @@ class _QuestionStep extends StatelessWidget {
       button: true,
       selected: isCurrent,
       label: loc.questionModalStepSemantics(index + 1, total, status),
+      onTap: onTap,
       child: ExcludeSemantics(
         child: SizedBox(
           width: 44,

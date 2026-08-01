@@ -417,6 +417,7 @@
   "questionModalSubmit": "Submit answers",
   "questionModalNext": "Next",
   "questionModalResolveAll": "Answer or decline every question to submit.",
+  "questionModalResolveAllCompact": "Answer or decline all",
   "questionModalStatusUnanswered": "unanswered",
   "questionModalStatusAnswered": "answered",
   "questionModalStatusDeclined": "declined",
