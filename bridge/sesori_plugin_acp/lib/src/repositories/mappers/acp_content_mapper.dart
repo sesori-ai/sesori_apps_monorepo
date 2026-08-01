@@ -7,6 +7,8 @@ import "package:sesori_shared/sesori_shared.dart"
 import "../../api/models/acp_content_block_dto.dart";
 import "../../api/models/acp_tool_content_dto.dart";
 
+const int acpToolImageCandidateLimit = 4;
+
 sealed class AcpMappedContentBlock {
   const AcpMappedContentBlock();
 }
@@ -541,12 +543,10 @@ enum _AcpContentWarning {
 }
 
 final class _AcpToolImagePrefix {
-  static const int _maxCandidates = 4;
-
   int _candidateCount = 0;
 
   bool take() {
-    if (_candidateCount >= _maxCandidates) return false;
+    if (_candidateCount >= acpToolImageCandidateLimit) return false;
     _candidateCount++;
     return true;
   }

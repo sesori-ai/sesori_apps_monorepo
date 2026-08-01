@@ -231,7 +231,10 @@
   explicit diff content with no known status after `952cc30f` introduced terminal
   gating. The five new regressions failed before the fixes. All 204 ACP
   tests and all 109 Cursor tests pass, fatal analysis passes in both packages,
-  and `git diff --check` passes. The final 1,344-line PR diff
+  and `git diff --check` passes. Follow-up review centralized the shared
+  four-image candidate limit; the status-less diff exception remains unchanged
+  because it is established compatibility behavior for backends that provide no
+  later status event. The final 1,346-line PR diff
   is below the 1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas

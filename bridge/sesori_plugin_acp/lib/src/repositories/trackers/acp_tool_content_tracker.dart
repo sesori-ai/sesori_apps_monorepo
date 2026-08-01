@@ -17,8 +17,6 @@ final class AcpToolContentSnapshot {
 /// tool call. Callers apply only mapper-produced mutations, so live and replay
 /// share collection replacement and partial-update semantics.
 final class AcpToolContentTracker {
-  static const int _maxImageCandidates = 4;
-
   String? _output;
   List<PluginMessageAttachment> _attachments = const [];
   bool _hasReplacement = false;
@@ -74,7 +72,7 @@ final class AcpToolContentTracker {
     var decodedImageBytes = 0;
     for (var index = 0; index < candidates.length; index++) {
       final candidate = candidates[index];
-      if (index >= _maxImageCandidates) {
+      if (index >= acpToolImageCandidateLimit) {
         _warnOnce(
           reason: _AcpToolContentWarning.countOverflow,
           warned: warned,
