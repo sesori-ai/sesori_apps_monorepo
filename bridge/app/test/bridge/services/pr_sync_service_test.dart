@@ -519,9 +519,14 @@ void main() {
       final firstRefresh = service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await _waitFor(() => prSource.listOpenPrsCallCount == 1);
 
-      // Second refresh should be skipped because first is still active.
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      // Second refresh should report that the first is still active rather than
+      // representing unfinished work as completed.
+      final secondOutcome = await service.triggerRefresh(
+        projectId: "project-1",
+        projectPath: "/tmp/project-1",
+      );
 
+      expect(secondOutcome, PrRefreshOutcome.inProgress);
       expect(prSource.listOpenPrsCallCount, equals(1));
       expect(prSource.isAvailableCallCount, equals(1));
       expect(prSource.isAuthenticatedCallCount, equals(1));

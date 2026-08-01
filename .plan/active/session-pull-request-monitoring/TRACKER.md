@@ -41,7 +41,7 @@
 | [x] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged as `f969754b` |
 | [x] | 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | 500–900 | [PR #662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/662) merged as `057e4c24` |
 | [x] | 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | 9,800–10,800 | [PR #671](https://github.com/sesori-ai/sesori_apps_monorepo/pull/671) merged as `e6001fdc` |
-| [ ] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | [PR #678](https://github.com/sesori-ai/sesori_apps_monorepo/pull/678) open; implementation, verification, and architecture correction complete |
+| [ ] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | [PR #678](https://github.com/sesori-ai/sesori_apps_monorepo/pull/678) open; implementation, verification, architecture correction, and review fixes complete |
 | [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2.c merge |
 | [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
 | [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
@@ -231,13 +231,18 @@
   switched identity yields sessions without PR metadata, and enrichment clears
   incoming PR/history data before applying the selected row. Waited refresh
   failures and timeouts return the original PR-free catalog snapshot.
-- **Step 2.c/9 verification and review:** Fatal-info analysis and all 2,309 bridge
-  app tests pass. Focused DAO/repository, identity-gated list/detail, refresh,
-  mutation-response, SSE, integration, and benchmark contract suites also pass,
-  as does `git diff --check`. `aristotle-impl-review` rejected handler-owned
+- **Step 2.c/9 verification and review:** Fatal-info analysis and the pre-review
+  full bridge app suite of 2,309 tests pass. Focused DAO/repository,
+  identity-gated list/detail, refresh, mutation-response, SSE, integration, and
+  benchmark contract suites also pass, as does `git diff --check`.
+  `aristotle-impl-review` rejected handler-owned
   response mapping; the valid finding was applied by keeping authoritative
   PR/history clearing solely in `SessionRepository`, with no policy re-review.
-  The 809-line change is below estimate because it reuses the Step 2.b
+  Automated review follow-up placed initial/final identity and mapping inside one
+  five-second deadline, converts asynchronous refresh errors into explicit
+  failure, and distinguishes an active refresh from completion. Post-follow-up
+  fatal-info analysis and 54 focused handler/service tests pass. The approximately
+  1,050-line change remains below estimate because it reuses the Step 2.b
   persistence seams and has no generated artifacts.
 - **Step 2.c/9 cleanup assessment:** Removed the unused PR-repository session
   read API and made non-list/detail mapping explicitly PR-free. No persisted,

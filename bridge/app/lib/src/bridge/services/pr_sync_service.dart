@@ -9,7 +9,7 @@ import "../repositories/pr_source_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
 
-enum PrRefreshOutcome { completed, failed }
+enum PrRefreshOutcome { completed, inProgress, failed }
 
 class PrSyncService {
   final PrSourceRepository _prSource;
@@ -73,7 +73,7 @@ class PrSyncService {
 
   Future<PrRefreshOutcome> triggerRefresh({required String projectId, required String projectPath}) async {
     if (_activeRefreshes.contains(projectId)) {
-      return PrRefreshOutcome.completed;
+      return PrRefreshOutcome.inProgress;
     }
 
     final lastRefreshAt = _lastRefreshTimes[projectId];

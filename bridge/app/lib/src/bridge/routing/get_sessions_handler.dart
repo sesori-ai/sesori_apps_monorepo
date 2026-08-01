@@ -55,6 +55,28 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       verifiedGithubLogin: null,
     );
 
+    try {
+      return await _readIdentityGatedPullRequestData(
+        projectId: projectId,
+        sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
+        waitForPrData: body.waitForPrData,
+      ).timeout(_prRefreshTimeout);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "PR identity-gated read or refresh work failed after waiting up to "
+        "${_prRefreshTimeout.inSeconds}s — returning sessions without cached PR data",
+        error,
+        stackTrace,
+      );
+      return SessionListResponse(items: sessionsWithoutPullRequestData);
+    }
+  }
+
+  Future<SessionListResponse> _readIdentityGatedPullRequestData({
+    required String projectId,
+    required List<Session> sessionsWithoutPullRequestData,
+    required bool waitForPrData,
+  }) async {
     var sessions = sessionsWithoutPullRequestData;
     final verifiedGithubLogin = await _prSyncService.verifyGithubIdentity();
     try {
@@ -62,44 +84,32 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
         sessions: sessions,
         verifiedGithubLogin: verifiedGithubLogin,
       );
-    } on Object catch (e, st) {
-      Log.w("GetSessionsHandler: post-publication enrichment failed", e, st);
+    } on Object catch (error, stackTrace) {
+      Log.w("GetSessionsHandler: post-publication enrichment failed", error, stackTrace);
     }
 
     final prRefreshFuture = _triggerPrRefresh(projectId: projectId, sessions: sessions);
-
-    if (body.waitForPrData) {
-      try {
-        final refreshOutcome = await prRefreshFuture.timeout(_prRefreshTimeout);
-        if (refreshOutcome == PrRefreshOutcome.failed) {
-          return SessionListResponse(items: sessionsWithoutPullRequestData);
-        }
-        // Refresh succeeded within timeout — enrich the already-fetched sessions
-        // with updated PR/CI metadata from the database (no extra plugin round-trip).
-        final refreshedGithubLogin = await _prSyncService.verifyGithubIdentity();
-        final enrichedSessions = await _sessionRepository.enrichSessions(
-          sessions: sessions,
-          verifiedGithubLogin: refreshedGithubLogin,
-        );
-        return SessionListResponse(items: enrichedSessions);
-      } catch (err, st) {
-        Log.w(
-          "PR refresh or final identity-gated mapping failed after waiting up to "
-          "${_prRefreshTimeout.inSeconds}s — "
-          "returning sessions without cached PR data; SSE will deliver updates when ready",
-          err,
-          st,
-        );
-        return SessionListResponse(items: sessionsWithoutPullRequestData);
-      }
-    } else {
+    if (!waitForPrData) {
       // COMPATIBILITY 2026-08-01 (v1.6.1): Released clients rely on the
       // non-waiting request to trigger background PR refresh. Remove this path
       // only after those client versions are no longer supported.
       unawaited(prRefreshFuture);
+      return SessionListResponse(items: sessions);
     }
 
-    return SessionListResponse(items: sessions);
+    final refreshOutcome = await prRefreshFuture;
+    if (refreshOutcome != PrRefreshOutcome.completed) {
+      return SessionListResponse(items: sessionsWithoutPullRequestData);
+    }
+
+    // Refresh succeeded within the shared request deadline. Verify identity
+    // again before mapping updated PR/CI metadata from the database.
+    final refreshedGithubLogin = await _prSyncService.verifyGithubIdentity();
+    final enrichedSessions = await _sessionRepository.enrichSessions(
+      sessions: sessions,
+      verifiedGithubLogin: refreshedGithubLogin,
+    );
+    return SessionListResponse(items: enrichedSessions);
   }
 
   Future<PrRefreshOutcome> _triggerPrRefresh({
@@ -109,14 +119,14 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     try {
       final projectPath = await _sessionRepository.getProjectPath(projectId: projectId);
       if (projectPath != null) {
-        return _prSyncService.triggerRefresh(projectId: projectId, projectPath: projectPath);
+        return await _prSyncService.triggerRefresh(projectId: projectId, projectPath: projectPath);
       }
 
       final fallbackDirectory = sessions.firstOrNull?.directory;
       if (fallbackDirectory == null || fallbackDirectory.isEmpty) {
         return PrRefreshOutcome.completed;
       }
-      return _prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory);
+      return await _prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory);
     } on Object catch (e, st) {
       Log.w("[GetSessionsHandler] PR refresh trigger failed", e, st);
       return PrRefreshOutcome.failed;

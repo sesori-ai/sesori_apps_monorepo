@@ -682,6 +682,7 @@ class FakePrSyncService extends PrSyncService {
   final Duration? delay;
   final Object? refreshError;
   final PrRefreshOutcome refreshOutcome;
+  final List<Duration> identityVerificationDelays;
   VerifiedGithubLogin? verifiedGithubLogin;
   int identityVerificationCallCount = 0;
 
@@ -689,6 +690,7 @@ class FakePrSyncService extends PrSyncService {
     this.delay,
     this.refreshError,
     this.refreshOutcome = PrRefreshOutcome.completed,
+    this.identityVerificationDelays = const <Duration>[],
     VerifiedGithubLogin? verifiedGithubLogin,
     PrSourceRepository? prSource,
     PullRequestRepository? pullRequestRepository,
@@ -716,6 +718,10 @@ class FakePrSyncService extends PrSyncService {
   @override
   Future<VerifiedGithubLogin?> verifyGithubIdentity() async {
     identityVerificationCallCount++;
+    final delayIndex = identityVerificationCallCount - 1;
+    if (delayIndex < identityVerificationDelays.length) {
+      await Future<void>.delayed(identityVerificationDelays[delayIndex]);
+    }
     return verifiedGithubLogin;
   }
 }
