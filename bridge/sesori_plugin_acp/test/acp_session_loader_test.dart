@@ -316,6 +316,22 @@ void main() {
       expect(collector.build(), isEmpty);
     });
 
+    test("a non-string session update discriminator is ignored", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
+      );
+
+      expect(
+        () => collector.consume(upd({"sessionUpdate": 42})),
+        returnsNormally,
+      );
+      expect(collector.build(), isEmpty);
+    });
+
     test("malformed replay chunks share warning state without creating a message", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",
@@ -509,6 +525,23 @@ void main() {
       expect(message.info, isA<PluginMessageError>());
       expect((message.info as PluginMessageError).errorMessage, "Check your settings to continue");
       expect(message.parts, isEmpty);
+    });
+
+    test("an identified halt-like message remains assistant content", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: ({required text}) =>
+            const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+        contentMapper: const AcpContentMapper(),
+      )..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "m1",
+          "content": {"type": "text", "text": "Check your settings to continue"},
+        }));
+
+      expect(collector.build().single.info, isA<PluginMessageAssistant>());
     });
 
     test("an image-bearing halt-like message remains an assistant message", () {

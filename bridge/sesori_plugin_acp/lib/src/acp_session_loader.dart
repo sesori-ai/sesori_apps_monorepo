@@ -46,7 +46,8 @@ class AcpReplayCollector {
   void consume(Map<String, dynamic> params) {
     final update = _asMap(params["update"]);
     if (update == null) return;
-    final sessionUpdate = update["sessionUpdate"] as String?;
+    final rawSessionUpdate = update["sessionUpdate"];
+    final sessionUpdate = rawSessionUpdate is String ? rawSessionUpdate : null;
     if (sessionUpdate != "agent_message_chunk") {
       _pendingAssistantContent = null;
     }
@@ -152,6 +153,7 @@ class AcpReplayCollector {
     // qualifies — no reasoning, no tools — matching the shape the backend emits.
     final assistantText = _assistantText(draft: draft);
     if (draft.role == "assistant" &&
+        draft.acpMessageId == null &&
         draft.reasoning.isEmpty &&
         draft.tools.isEmpty &&
         !_hasAssistantImageCandidate(draft: draft) &&
