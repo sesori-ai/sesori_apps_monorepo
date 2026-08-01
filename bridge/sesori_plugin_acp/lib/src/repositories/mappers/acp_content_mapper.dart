@@ -152,6 +152,9 @@ final class AcpContentMapper {
       if (!update.containsKey("rawOutput")) {
         return const AcpUnchangedToolContentMutation();
       }
+      if (!_isValidRawOutput(raw: update["rawOutput"])) {
+        return const AcpUnchangedToolContentMutation();
+      }
       return AcpUpdateToolOutputMutation(
         output: _boundedToolOutput(
           text: _rawOutputText(raw: update["rawOutput"]),
@@ -390,6 +393,17 @@ final class AcpContentMapper {
     final exitCode = raw["exitCode"];
     if (exitCode is int && exitCode != 0) return "exited with code $exitCode";
     return null;
+  }
+
+  bool _isValidRawOutput({required Object? raw}) {
+    if (raw is String) return true;
+    if (raw is! Map) return false;
+    if (raw.isEmpty) return true;
+    if (raw.containsKey("stdout") && raw["stdout"] is! String) return false;
+    if (raw.containsKey("stderr") && raw["stderr"] is! String) return false;
+    if (raw.containsKey("exitCode") && raw["exitCode"] is! int) return false;
+    if (raw.containsKey("content")) return true;
+    return raw.containsKey("stdout") || raw.containsKey("stderr") || raw.containsKey("exitCode");
   }
 
   List<AcpMappedContentBlock> _legacyMapContent({

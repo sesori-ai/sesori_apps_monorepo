@@ -369,6 +369,10 @@ void main() {
         ),
       );
       expect(
+        mapper.toolContent(update: {"rawOutput": {"stdout": 42}}),
+        isA<AcpUnchangedToolContentMutation>(),
+      );
+      expect(
         mapper.toolContent(update: {"content": const <Object?>[]}),
         isA<AcpReplaceToolContentMutation>()
             .having((mutation) => mutation.output, "output", isNull)
