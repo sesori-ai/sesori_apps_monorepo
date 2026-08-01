@@ -354,6 +354,9 @@ void main() {
   });
 
   testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(
@@ -382,6 +385,7 @@ void main() {
       find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
     );
     expect(composerPointer.ignoring, isFalse);
+    expect(find.byType(PregoPickerButton), findsNothing);
     verifyNever(
       () => sessionRepository.loadSessionOptions(
         projectId: any(named: "projectId"),
@@ -389,6 +393,14 @@ void main() {
         forceRefresh: any(named: "forceRefresh"),
       ),
     );
+
+    final restingComposerHeight = tester.getSize(find.byType(PromptInput)).height;
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.getSize(find.byType(PromptInput)).height, closeTo(restingComposerHeight, 0.01));
+    await gesture.up();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();

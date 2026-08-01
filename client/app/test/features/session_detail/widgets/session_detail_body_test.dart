@@ -1064,7 +1064,7 @@ void main() {
     // Let the swap-in transitions finish (bounded: the waveform never settles).
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(tester.getSize(find.byType(PromptInput)).height, restingComposerHeight);
+    expect(tester.getSize(find.byType(PromptInput)).height, closeTo(restingComposerHeight, 0.01));
     expect(find.byType(VoiceCancelButton), findsOneWidget);
     // The cancel target must keep the full 44pt footprint (a CustomPaint with
     // a child would otherwise shrink to its icon).

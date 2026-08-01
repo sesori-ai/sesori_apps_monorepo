@@ -767,7 +767,9 @@ class _PromptInputState extends State<PromptInput> {
       };
       child = KeyedSubtree(
         key: ValueKey(widget.stagedCommand == null ? "header" : "staged-command"),
-        child: headerChild ?? const SizedBox(width: double.infinity),
+        // Older bridges can provide no picker header. Reserve its footprint so
+        // the recording helper does not grow the composer when it appears.
+        child: headerChild ?? const SizedBox(width: double.infinity, height: _actionButtonSize),
       );
     }
 
