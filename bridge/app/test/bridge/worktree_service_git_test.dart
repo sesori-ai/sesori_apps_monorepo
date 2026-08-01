@@ -56,6 +56,7 @@ void main() {
     });
 
     test("getRemoteUrl prefers origin over other remotes", () async {
+      gitDirectoryExists = true;
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "upstream\norigin\n"));
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "git@github.com:org/repo.git\n"));
 
@@ -69,6 +70,7 @@ void main() {
     });
 
     test("getRemoteUrl falls back to the first listed remote without origin", () async {
+      gitDirectoryExists = true;
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "upstream\nfork\n"));
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "https://github.com/org/repo.git\n"));
 
@@ -79,27 +81,26 @@ void main() {
     });
 
     test("getRemoteUrl returns null when the directory is not a git repository", () async {
-      processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "fatal: not a git repository"));
-
       final url = await service.getRemoteUrl(projectPath: "/repo/project");
 
       expect(url, isNull);
-      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations, isEmpty);
     });
 
-    test("getRemoteUrl returns null when the git process cannot start", () async {
-      // Process.start throws (rather than exiting non-zero) when the stored
-      // project directory was moved or deleted.
+    test("getRemoteUrl propagates a process failure for an existing repository", () async {
+      gitDirectoryExists = true;
       processRunner.enqueueError(
-        error: const ProcessException("git", ["remote"], "No such file or directory", -1),
+        error: const ProcessException("git", ["remote"], "temporary failure", -1),
       );
 
-      final url = await service.getRemoteUrl(projectPath: "/repo/deleted");
-
-      expect(url, isNull);
+      await expectLater(
+        service.getRemoteUrl(projectPath: "/repo/project"),
+        throwsA(isA<ProcessException>()),
+      );
     });
 
     test("getRemoteUrl returns null when the repository has no remotes", () async {
+      gitDirectoryExists = true;
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "\n"));
 
       final url = await service.getRemoteUrl(projectPath: "/repo/project");
@@ -108,13 +109,24 @@ void main() {
       expect(processRunner.invocations, hasLength(1));
     });
 
-    test("getRemoteUrl returns null when get-url fails or is empty", () async {
+    test("getRemoteUrl returns null when the configured URL is empty", () async {
+      gitDirectoryExists = true;
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"));
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "  \n"));
 
       final url = await service.getRemoteUrl(projectPath: "/repo/project");
 
       expect(url, isNull);
+    });
+
+    test("getRemoteUrl propagates a nonzero git result for an existing repository", () async {
+      gitDirectoryExists = true;
+      processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "temporary failure"));
+
+      await expectLater(
+        service.getRemoteUrl(projectPath: "/repo/project"),
+        throwsA(isA<ProcessException>()),
+      );
     });
 
     test("resolveDefaultBranch uses origin HEAD symbolic-ref when available", () async {

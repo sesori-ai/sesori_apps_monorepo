@@ -39,14 +39,15 @@ class PullRequestRepository {
     return _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
   }
 
-  Future<void> prepareScopedRefresh({
+  Future<bool> prepareScopedRefresh({
     required String projectId,
     required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<StoredSession> sessions,
   }) async {
-    await _database.transaction(() async {
-      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+    return _database.transaction(() async {
+      final sessionIds = sessions.map((session) => session.id).toList(growable: false);
+      final before = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
       await _projectsDao.setPrCacheGithubLogin(
         projectId: projectId,
         githubLogin: verifiedGithubLogin.login,
@@ -61,18 +62,24 @@ class PullRequestRepository {
             ),
         ],
       );
-      await _pullRequestDao.deletePrsOutsideRepositoryScope(
+      await _pullRequestDao.deletePrsOutsideScope(
         projectId: projectId,
         githubRepositoryIdentity: githubRepositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
       );
+      final after = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+      return !_sameVisiblePullRequests(before: before, after: after);
     });
   }
 
-  Future<void> clearScopedRefresh({
+  Future<bool> clearScopedRefresh({
     required String projectId,
     required List<StoredSession> sessions,
   }) async {
-    await _database.transaction(() async {
+    return _database.transaction(() async {
+      final before = await _pullRequestDao.getPrsBySessionIds(
+        sessionIds: sessions.map((session) => session.id).toList(growable: false),
+      );
       await _projectsDao.setPrCacheGithubLogin(projectId: projectId, githubLogin: null);
       await _sessionDao.updatePullRequestScopes(
         updates: [
@@ -85,6 +92,7 @@ class PullRequestRepository {
         ],
       );
       await _pullRequestDao.deletePrsByProjectId(projectId: projectId);
+      return before.values.any((pullRequests) => pullRequests.isNotEmpty);
     });
   }
 
@@ -112,10 +120,6 @@ class PullRequestRepository {
     required int createdAt,
     required int lastCheckedAt,
   }) async {
-    // Defensive backstop: ensure the project row exists before inserting the PR.
-    // PrSyncService calls this method from two places; fixing it here covers both.
-    // If insertProjectIfMissing throws, the exception propagates to the caller.
-    await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
     await _pullRequestDao.upsertPr(
       pullRequest: PullRequestDto(
         projectId: projectId,
@@ -151,5 +155,29 @@ class PullRequestRepository {
       githubRepositoryIdentity: githubRepositoryIdentity,
       prNumber: prNumber,
     );
+  }
+
+  bool _sameVisiblePullRequests({
+    required Map<String, List<PullRequestDto>> before,
+    required Map<String, List<PullRequestDto>> after,
+  }) {
+    final beforeKeys = _visiblePullRequestKeys(before);
+    final afterKeys = _visiblePullRequestKeys(after);
+    return beforeKeys.length == afterKeys.length && beforeKeys.containsAll(afterKeys);
+  }
+
+  Set<({String sessionId, String repository, String login, int number})> _visiblePullRequestKeys(
+    Map<String, List<PullRequestDto>> pullRequestsBySession,
+  ) {
+    return {
+      for (final entry in pullRequestsBySession.entries)
+        for (final pullRequest in entry.value)
+          (
+            sessionId: entry.key,
+            repository: pullRequest.githubRepositoryIdentity,
+            login: pullRequest.githubLogin,
+            number: pullRequest.prNumber,
+          ),
+    };
   }
 }

@@ -169,6 +169,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
           // created_at or the unseen timestamps that a placeholder may have set.
           worktreePath: Value(worktreePath),
           branchName: Value(branchName),
+          currentBranchName: const Value(null),
+          currentGithubRepositoryIdentity: const Value(null),
           isDedicated: Value(isDedicated),
           baseBranch: Value(baseBranch),
           baseCommit: Value(baseCommit),

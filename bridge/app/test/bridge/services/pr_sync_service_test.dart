@@ -234,6 +234,78 @@ void main() {
       ]);
     });
 
+    test("emits and debounces a scope clear that hides cached PR metadata", () async {
+      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..githubRepositoryIdentityResult = null;
+      final pullRequestRepository = _FakePullRequestRepository()..clearScopedRefreshChanged = true;
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: pullRequestRepository,
+        sessionRepository: _FakeSessionRepository(
+          sessionsByProject: const <String, List<StoredSession>>{},
+        ),
+        clock: const Clock(),
+        debounceWindow: const Duration(hours: 1),
+      );
+      addTearDown(service.dispose);
+      final emittedProjectIds = <String>[];
+      final sub = service.prChanges.listen(emittedProjectIds.add);
+      addTearDown(sub.cancel);
+
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+
+      expect(pullRequestRepository.clearScopedRefreshCalls, hasLength(1));
+      expect(emittedProjectIds, ["project-1"]);
+    });
+
+    test("emits when scope preparation hides cached PR metadata", () async {
+      final pullRequestRepository = _FakePullRequestRepository()..prepareScopedRefreshChanged = true;
+      final service = PrSyncService(
+        prSource: _FakePrSource(listOpenPrsResult: const <GhPullRequest>[]),
+        pullRequestRepository: pullRequestRepository,
+        sessionRepository: _FakeSessionRepository(
+          sessionsByProject: const <String, List<StoredSession>>{},
+        ),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+      final emittedProjectIds = <String>[];
+      final sub = service.prChanges.listen(emittedProjectIds.add);
+      addTearDown(sub.cancel);
+
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      await _waitFor(() => emittedProjectIds.isNotEmpty);
+
+      expect(emittedProjectIds, ["project-1"]);
+    });
+
+    test("preserves scoped cache when repository resolution fails", () async {
+      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])
+        ..githubRepositoryIdentityError = const ProcessException(
+          "git",
+          ["remote"],
+          "temporary failure",
+          -1,
+        );
+      final pullRequestRepository = _FakePullRequestRepository();
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: pullRequestRepository,
+        sessionRepository: _FakeSessionRepository(
+          sessionsByProject: const <String, List<StoredSession>>{},
+        ),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      await expectLater(
+        service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
+        throwsA(isA<ProcessException>()),
+      );
+
+      expect(pullRequestRepository.clearScopedRefreshCalls, isEmpty);
+    });
+
     test("caches unavailable gh capability and detects installation after the TTL", () async {
       var now = DateTime.utc(2026, 7, 13);
       final prSource = _FakePrSource(
@@ -445,6 +517,7 @@ class _FakePrSource implements PrSourceRepository {
   VerifiedGithubLogin? authenticatedIdentityResult = _verifiedGithubLogin;
   Object? authenticatedIdentityError;
   String? githubRepositoryIdentityResult = _githubRepositoryIdentity;
+  Object? githubRepositoryIdentityError;
   Completer<void>? availabilityBlock;
   int isAvailableFailuresRemaining = 0;
 
@@ -495,6 +568,9 @@ class _FakePrSource implements PrSourceRepository {
   @override
   Future<String?> getGithubRepositoryIdentity({required String projectPath}) async {
     getGithubRepositoryIdentityCalls.add(projectPath);
+    if (githubRepositoryIdentityError case final error?) {
+      throw error;
+    }
     return githubRepositoryIdentityResult;
   }
 
@@ -557,6 +633,8 @@ class _FakePullRequestRepository implements PullRequestRepository {
   >
   prepareScopedRefreshCalls = [];
   final List<({String projectId, List<StoredSession> sessions})> clearScopedRefreshCalls = [];
+  bool prepareScopedRefreshChanged = false;
+  bool clearScopedRefreshChanged = false;
 
   _FakePullRequestRepository({List<PullRequestDto> seed = const <PullRequestDto>[]}) {
     for (final record in seed) {
@@ -662,7 +740,7 @@ class _FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<void> prepareScopedRefresh({
+  Future<bool> prepareScopedRefresh({
     required String projectId,
     required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
@@ -675,17 +753,21 @@ class _FakePullRequestRepository implements PullRequestRepository {
       sessions: sessions,
     ));
     _recordsByProject[projectId]?.removeWhere(
-      (record) => record.githubRepositoryIdentity != githubRepositoryIdentity,
+      (record) =>
+          record.githubRepositoryIdentity != githubRepositoryIdentity ||
+          record.githubLogin != verifiedGithubLogin.login,
     );
+    return prepareScopedRefreshChanged;
   }
 
   @override
-  Future<void> clearScopedRefresh({
+  Future<bool> clearScopedRefresh({
     required String projectId,
     required List<StoredSession> sessions,
   }) async {
     clearScopedRefreshCalls.add((projectId: projectId, sessions: sessions));
     _recordsByProject.remove(projectId);
+    return clearScopedRefreshChanged;
   }
 }
 

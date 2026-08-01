@@ -63,7 +63,8 @@ void main() {
       );
     }
 
-    test("upsertFromGhPr ensures the project exists and persists PR scope", () async {
+    test("upsertFromGhPr persists PR scope for an existing project", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["X"]);
       await expectLater(
         () => repository.upsertFromGhPr(
           projectId: "X",
@@ -77,11 +78,7 @@ void main() {
       );
 
       final projectRows = await db.select(db.projectsTable).get();
-      expect(
-        projectRows.map((row) => row.projectId),
-        contains("X"),
-        reason: "upsertFromGhPr must insert the project row if missing",
-      );
+      expect(projectRows.map((row) => row.projectId), contains("X"));
 
       final prRows = await db.pullRequestDao.getActivePrsByProjectId(
         projectId: "X",
@@ -92,6 +89,34 @@ void main() {
       expect(prRows.single.prNumber, 42);
       expect(prRows.single.githubRepositoryIdentity, githubRepositoryIdentity);
       expect(prRows.single.githubLogin, githubLogin);
+    });
+
+    test("upsertFromGhPr does not fabricate a missing catalog project", () async {
+      await expectLater(
+        repository.upsertFromGhPr(
+          projectId: "missing",
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          verifiedGithubLogin: verifiedGithubLogin,
+          pr: ghPr(number: 42, branchName: "feature-branch"),
+          createdAt: 1,
+          lastCheckedAt: 2,
+        ),
+        throwsA(anything),
+      );
+
+      expect(await db.projectsDao.getProject(projectId: "missing"), isNull);
+    });
+
+    test("prepareScopedRefresh does not fabricate a missing catalog project", () async {
+      final changed = await repository.prepareScopedRefresh(
+        projectId: "missing",
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: verifiedGithubLogin,
+        sessions: const [],
+      );
+
+      expect(changed, isFalse);
+      expect(await db.projectsDao.getProject(projectId: "missing"), isNull);
     });
 
     test("prepareScopedRefresh establishes account and root repository scope", () async {
@@ -143,11 +168,19 @@ void main() {
         createdAt: 2,
         lastCheckedAt: 2,
       );
+      await repository.upsertFromGhPr(
+        projectId: "X",
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: previousVerifiedGithubLogin,
+        pr: ghPr(number: 3, branchName: "feature/root"),
+        createdAt: 3,
+        lastCheckedAt: 3,
+      );
       final storedSessions = (await db.sessionDao.getSessionsByProject(
         projectId: "X",
       )).map((row) => row.toStoredSession()).toList(growable: false);
 
-      await repository.prepareScopedRefresh(
+      final changed = await repository.prepareScopedRefresh(
         projectId: "X",
         githubRepositoryIdentity: githubRepositoryIdentity,
         verifiedGithubLogin: verifiedGithubLogin,
@@ -164,6 +197,7 @@ void main() {
       expect(child?.currentBranchName, isNull);
       expect(child?.currentGithubRepositoryIdentity, isNull);
       expect(prs.map((pr) => pr.prNumber), [2]);
+      expect(changed, isTrue);
     });
 
     test("prepareScopedRefresh rolls back account and session scope on failure", () async {
@@ -228,7 +262,7 @@ void main() {
         lastCheckedAt: 1,
       );
 
-      await repository.clearScopedRefresh(
+      final changed = await repository.clearScopedRefresh(
         projectId: "X",
         sessions: [storedSession],
       );
@@ -239,6 +273,7 @@ void main() {
       expect(session?.currentBranchName, isNull);
       expect(session?.currentGithubRepositoryIdentity, isNull);
       expect(await db.pullRequestDao.getPrsByProjectId(projectId: "X"), isEmpty);
+      expect(changed, isTrue);
     });
   });
 }
@@ -247,9 +282,10 @@ class _FailingScopeCleanupPullRequestDao extends PullRequestDao {
   _FailingScopeCleanupPullRequestDao(super.database);
 
   @override
-  Future<void> deletePrsOutsideRepositoryScope({
+  Future<void> deletePrsOutsideScope({
     required String projectId,
     required String githubRepositoryIdentity,
+    required String githubLogin,
   }) {
     throw StateError("scope cleanup failed");
   }

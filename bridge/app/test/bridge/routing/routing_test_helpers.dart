@@ -659,18 +659,18 @@ class FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<void> prepareScopedRefresh({
+  Future<bool> prepareScopedRefresh({
     required String projectId,
     required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<StoredSession> sessions,
-  }) async {}
+  }) async => false;
 
   @override
-  Future<void> clearScopedRefresh({
+  Future<bool> clearScopedRefresh({
     required String projectId,
     required List<StoredSession> sessions,
-  }) async {}
+  }) async => false;
 }
 
 class FakePrSyncService extends PrSyncService {
@@ -754,18 +754,18 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   }) async {}
 
   @override
-  Future<void> prepareScopedRefresh({
+  Future<bool> prepareScopedRefresh({
     required String projectId,
     required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<StoredSession> sessions,
-  }) async {}
+  }) async => false;
 
   @override
-  Future<void> clearScopedRefresh({
+  Future<bool> clearScopedRefresh({
     required String projectId,
     required List<StoredSession> sessions,
-  }) async {}
+  }) async => false;
 
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}

@@ -181,7 +181,7 @@
 - **Step 2.b/9 focused verification:** Drift/database/FK, repository/service,
   catalog, session enrichment, routing, and debug-server suites pass (237 tests),
   and the complete bridge app suite passes (2,291 tests). `dart analyze
-  --fatal-infos` and `git diff --check` also pass. The final pre-commit diff is
+  --fatal-infos` and `git diff --check` also pass. The initial PR diff was
   10,134 changed lines: 8,754 generated and 1,380 hand-authored. The generated
   total includes 6,841 lines of required v12/v13 migration helpers and the 1,137-line
   v13 schema snapshot; a separate helper-only PR would not be independently useful.
@@ -196,6 +196,16 @@
   the Drift migration, scoped joins, repository-owned transactions, service
   adaptation, catalog preservation, and orchestration wiring maintain the bridge
   layer and ownership rules without pulling Steps 2.c–4 forward.
+- **PR #671 review follow-up:** Addressed all 12 initial bot threads by clearing
+  stale scope during session rekeys, removing prior-account rows, preventing PR
+  refresh from fabricating catalog projects, emitting/debouncing rendered scope
+  invalidations, and preserving cache on typed transient Git failures. The
+  second and final `aristotle-impl-review` approved the follow-up with no findings.
+  Fatal-info analysis, all 2,297 bridge app tests, and `git diff --check` pass.
+  The resulting 10,481-line PR contains 8,754 generated and 1,727 hand-authored
+  lines; the 227-line hand-authored soft-cap overage is the coupled correctness
+  response to review and cannot be separated without leaving known persistence
+  and update-delivery defects in this PR.
 
 ## Findings and Plan Deltas
 
@@ -229,6 +239,7 @@
   they still have required cleanup/transport roles.
 - **2026-08-01 — Step 2.b generated overage:** Current Drift generation emits
   both v12 and v13 migration helper classes, increasing the evidence-based target
-  to 9,800–10,800 lines. Hand-authored production/tests remain within the soft
-  cap; the excess is generated schema, migration, and model output that must
-  accompany the v13 migration atomically.
+  to 9,800–10,800 lines. Initial hand-authored production/tests remained within
+  the soft cap; required PR review fixes raised them to 1,727 lines. The generated
+  schema/migration bundle and coupled correctness fixes must accompany v13
+  atomically, so neither overage has a smaller independently valid split.

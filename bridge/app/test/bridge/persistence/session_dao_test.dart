@@ -40,6 +40,15 @@ void main() {
       // The create flow inserts the same session under the original project id
       // (its project row exists first, satisfying the FK).
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      await db.sessionDao.updatePullRequestScopes(
+        updates: const [
+          (
+            sessionId: "s1",
+            currentBranchName: "stale-branch",
+            currentGithubRepositoryIdentity: "stale/repository",
+          ),
+        ],
+      );
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
@@ -60,6 +69,8 @@ void main() {
       // a placeholder may have set) is preserved.
       expect(dto?.projectId, equals("/repo"));
       expect(dto?.createdAt, equals(100));
+      expect(dto?.currentBranchName, isNull);
+      expect(dto?.currentGithubRepositoryIdentity, isNull);
     });
 
     test("looks up a divergent stable id by its plugin/backend binding", () async {

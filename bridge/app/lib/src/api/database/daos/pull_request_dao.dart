@@ -90,13 +90,16 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
         .go();
   }
 
-  Future<void> deletePrsOutsideRepositoryScope({
+  Future<void> deletePrsOutsideScope({
     required String projectId,
     required String githubRepositoryIdentity,
+    required String githubLogin,
   }) async {
     await (delete(pullRequestsTable)..where(
           (table) =>
-              table.projectId.equals(projectId) & table.githubRepositoryIdentity.equals(githubRepositoryIdentity).not(),
+              table.projectId.equals(projectId) &
+              (table.githubRepositoryIdentity.equals(githubRepositoryIdentity).not() |
+                  table.githubLogin.equals(githubLogin).not()),
         ))
         .go();
   }

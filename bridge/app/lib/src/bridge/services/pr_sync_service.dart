@@ -91,12 +91,16 @@ class PrSyncService {
         projectPath: projectPath,
       );
       if (githubRepositoryIdentity == null) {
-        await _pullRequestRepository.clearScopedRefresh(
+        final scopeChanged = await _pullRequestRepository.clearScopedRefresh(
           projectId: projectId,
           sessions: await _sessionRepository.getStoredSessionsByProjectId(
             projectId: projectId,
           ),
         );
+        if (scopeChanged) {
+          _prChangesController.add(projectId);
+        }
+        _lastRefreshTimes[projectId] = _clock.now();
         return;
       }
 
@@ -108,7 +112,7 @@ class PrSyncService {
       final storedSessions = await _sessionRepository.getStoredSessionsByProjectId(
         projectId: projectId,
       );
-      await _pullRequestRepository.prepareScopedRefresh(
+      final scopeChanged = await _pullRequestRepository.prepareScopedRefresh(
         projectId: projectId,
         githubRepositoryIdentity: githubRepositoryIdentity,
         verifiedGithubLogin: verifiedGithubLogin,
@@ -121,6 +125,7 @@ class PrSyncService {
         githubRepositoryIdentity: githubRepositoryIdentity,
         verifiedGithubLogin: verifiedGithubLogin,
         storedSessions: storedSessions,
+        scopeChanged: scopeChanged,
       );
     } finally {
       _activeRefreshes.remove(projectId);
@@ -160,7 +165,10 @@ class PrSyncService {
     required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<StoredSession> storedSessions,
+    required bool scopeChanged,
   }) async {
+    var hasChanges = scopeChanged;
+    var completed = false;
     try {
       final (openPrs, activePrs) = await (
         _prSource.listOpenPrs(
@@ -176,7 +184,6 @@ class PrSyncService {
 
       final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
 
-      var hasChanges = false;
       final nowEpochMs = _clock.now().millisecondsSinceEpoch;
 
       final matchedOpenPrs = openPrs
@@ -241,13 +248,16 @@ class PrSyncService {
         }
       }
 
+      completed = true;
+    } catch (e, st) {
+      Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
+    } finally {
       if (hasChanges) {
         _prChangesController.add(projectId);
       }
-
-      _lastRefreshTimes[projectId] = _clock.now();
-    } catch (e, st) {
-      Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
+      if (completed) {
+        _lastRefreshTimes[projectId] = _clock.now();
+      }
     }
   }
 
