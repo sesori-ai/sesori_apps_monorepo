@@ -33,6 +33,7 @@ void main() {
       final repository = _repository(
         ghResults: const [],
         gitResults: [
+          _result(stdout: "true\n"),
           _result(stdout: "origin\n"),
           _result(stdout: "git@GitHub.com:Sesori-AI/Sesori_Apps_Monorepo.git\n"),
         ],
@@ -53,6 +54,7 @@ void main() {
         final repository = _repository(
           ghResults: const [],
           gitResults: [
+            _result(stdout: "true\n"),
             _result(stdout: "origin\n"),
             _result(stdout: "$remoteUrl\n"),
           ],

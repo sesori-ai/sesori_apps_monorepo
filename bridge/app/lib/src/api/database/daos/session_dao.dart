@@ -133,6 +133,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     if (project == null) {
       throw StateError("Cannot insert session for unknown project $projectId");
     }
+    final existing = await getSession(sessionId: sessionId);
+    final preservePullRequestScope = existing?.projectId == projectId && existing?.branchName == branchName;
     final directory = worktreePath ?? project.path;
     await into(sessionTable).insert(
       SessionTableCompanion(
@@ -169,8 +171,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
           // created_at or the unseen timestamps that a placeholder may have set.
           worktreePath: Value(worktreePath),
           branchName: Value(branchName),
-          currentBranchName: const Value(null),
-          currentGithubRepositoryIdentity: const Value(null),
+          currentBranchName: preservePullRequestScope ? const Value.absent() : const Value(null),
+          currentGithubRepositoryIdentity: preservePullRequestScope ? const Value.absent() : const Value(null),
           isDedicated: Value(isDedicated),
           baseBranch: Value(baseBranch),
           baseCommit: Value(baseCommit),

@@ -73,6 +73,52 @@ void main() {
       expect(dto?.currentGithubRepositoryIdentity, isNull);
     });
 
+    test("preserves PR scope when retrying the same project and branch binding", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      await dao.insertSession(
+        pluginId: "opencode",
+        sessionId: "s1",
+        backendSessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        createdAt: 100,
+        worktreePath: "/repo/.worktrees/s1",
+        branchName: "feature/one",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await dao.updatePullRequestScopes(
+        updates: const [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/one",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
+
+      await dao.insertSession(
+        pluginId: "opencode",
+        sessionId: "s1",
+        backendSessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        createdAt: 200,
+        worktreePath: "/repo/.worktrees/s1",
+        branchName: "feature/one",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      final dto = await dao.getSession(sessionId: "s1");
+      expect(dto?.currentBranchName, "feature/one");
+      expect(dto?.currentGithubRepositoryIdentity, "org/repo");
+    });
+
     test("looks up a divergent stable id by its plugin/backend binding", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(

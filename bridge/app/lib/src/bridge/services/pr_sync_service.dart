@@ -118,6 +118,9 @@ class PrSyncService {
         verifiedGithubLogin: verifiedGithubLogin,
         sessions: storedSessions,
       );
+      if (scopeChanged) {
+        _prChangesController.add(projectId);
+      }
 
       await _refresh(
         projectId: projectId,
@@ -125,7 +128,6 @@ class PrSyncService {
         githubRepositoryIdentity: githubRepositoryIdentity,
         verifiedGithubLogin: verifiedGithubLogin,
         storedSessions: storedSessions,
-        scopeChanged: scopeChanged,
       );
     } finally {
       _activeRefreshes.remove(projectId);
@@ -165,9 +167,8 @@ class PrSyncService {
     required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<StoredSession> storedSessions,
-    required bool scopeChanged,
   }) async {
-    var hasChanges = scopeChanged;
+    var hasChanges = false;
     var completed = false;
     try {
       final (openPrs, activePrs) = await (

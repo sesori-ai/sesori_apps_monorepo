@@ -119,7 +119,7 @@ class GitCliApi {
   /// git repository, has no remotes, or the remote has no URL configured.
   /// Unexpected failures from an existing repository remain observable.
   Future<String?> getRemoteUrl({required String projectPath}) async {
-    if (!_hasGitMetadataAtOrAbove(projectPath: projectPath)) {
+    if (!await isInsideGitWorkTree(projectPath: projectPath)) {
       return null;
     }
     const remoteArguments = ["remote"];
@@ -154,20 +154,6 @@ class GitCliApi {
     }
     final url = urlResult.stdout.toString().trim();
     return url.isEmpty ? null : url;
-  }
-
-  bool _hasGitMetadataAtOrAbove({required String projectPath}) {
-    var directory = p.normalize(projectPath);
-    while (true) {
-      if (_gitPathExists(gitPath: p.join(directory, ".git"))) {
-        return true;
-      }
-      final parent = p.dirname(directory);
-      if (parent == directory) {
-        return false;
-      }
-      directory = parent;
-    }
   }
 
   Future<bool> branchExists({

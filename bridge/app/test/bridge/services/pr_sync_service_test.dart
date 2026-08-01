@@ -259,9 +259,18 @@ void main() {
     });
 
     test("emits when scope preparation hides cached PR metadata", () async {
+      final listBlock = Completer<void>();
+      addTearDown(() {
+        if (!listBlock.isCompleted) {
+          listBlock.complete();
+        }
+      });
       final pullRequestRepository = _FakePullRequestRepository()..prepareScopedRefreshChanged = true;
       final service = PrSyncService(
-        prSource: _FakePrSource(listOpenPrsResult: const <GhPullRequest>[]),
+        prSource: _FakePrSource(
+          listOpenPrsResult: const <GhPullRequest>[],
+          onListOpenPrs: () => listBlock.future,
+        ),
         pullRequestRepository: pullRequestRepository,
         sessionRepository: _FakeSessionRepository(
           sessionsByProject: const <String, List<StoredSession>>{},
@@ -273,9 +282,16 @@ void main() {
       final sub = service.prChanges.listen(emittedProjectIds.add);
       addTearDown(sub.cancel);
 
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      final refresh = service.triggerRefresh(
+        projectId: "project-1",
+        projectPath: "/tmp/project-1",
+      );
+      await _waitFor(() => pullRequestRepository.prepareScopedRefreshCalls.isNotEmpty);
       await _waitFor(() => emittedProjectIds.isNotEmpty);
 
+      expect(emittedProjectIds, ["project-1"]);
+      listBlock.complete();
+      await refresh;
       expect(emittedProjectIds, ["project-1"]);
     });
 
