@@ -254,6 +254,47 @@ void main() {
       expect(mapped.toString(), isNot(contains("secret")));
     });
 
+    test("bounds tool images before scanning trailing text and diff content", () {
+      late AcpReplaceToolContentMutation replacement;
+      final output = _captureWarnings(() {
+        replacement =
+            mapper.toolContent(
+                  update: {
+                    "content": [
+                      for (var index = 0; index < 5; index++)
+                        {
+                          "type": "content",
+                          "content": {
+                            "type": "image",
+                            "data": "AA==",
+                            "mimeType": "image/png",
+                            "uri": "file:///private/image-$index.png",
+                          },
+                        },
+                      {
+                        "type": "content",
+                        "content": {"type": "text", "text": "after images"},
+                      },
+                      {
+                        "type": "diff",
+                        "path": "/private/source.dart",
+                        "oldText": "old",
+                        "newText": "new",
+                      },
+                    ],
+                  },
+                )
+                as AcpReplaceToolContentMutation;
+      });
+
+      expect(replacement.imageCandidates, hasLength(4));
+      expect(replacement.output, "after images");
+      expect(replacement.hasDiff, isTrue);
+      expect("exceeds the count limit".allMatches(output), hasLength(1));
+      expect(output, isNot(contains("source.dart")));
+      expect(output, isNot(contains("image-4.png")));
+    });
+
     test("preserves legacy tool text and bounded raw-output fallbacks", () {
       expect(
         mapper.toolContent(

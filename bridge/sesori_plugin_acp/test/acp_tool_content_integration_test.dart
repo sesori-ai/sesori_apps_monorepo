@@ -167,7 +167,7 @@ void main() {
       );
       expect(_liveState(events: replacement).output, isNull);
       expect(_liveState(events: replacement).attachments, isEmpty);
-      expect(replacement.whereType<BridgeSseSessionDiff>(), hasLength(1));
+      expect(replacement.whereType<BridgeSseSessionDiff>(), isEmpty);
 
       final completed = mapper.map(
         update({
@@ -176,7 +176,101 @@ void main() {
           "status": "completed",
         }),
       );
-      expect(completed.whereType<BridgeSseSessionDiff>(), isEmpty);
+      expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
+    });
+
+    test("explicit non-terminal diff content waits for completion", () {
+      final running = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "t1",
+          "status": "in_progress",
+          "content": [
+            {
+              "type": "diff",
+              "path": "/private/source.dart",
+              "oldText": "old",
+              "newText": "new",
+            },
+          ],
+        }),
+      );
+      expect(running.whereType<BridgeSseSessionDiff>(), isEmpty);
+
+      final completed = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "t1",
+          "status": "completed",
+        }),
+      );
+      expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
+    });
+
+    test("a late tool_call enriches without clobbering a first-seen update", () {
+      final firstSeen = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "t1",
+          "status": "completed",
+          "content": [
+            {
+              "type": "content",
+              "content": {"type": "text", "text": "new output"},
+            },
+            {
+              "type": "content",
+              "content": {
+                "type": "image",
+                "data": "AA==",
+                "mimeType": "image/png",
+                "uri": "file:///private/new.png",
+              },
+            },
+            {
+              "type": "diff",
+              "path": "/private/source.dart",
+              "oldText": "old",
+              "newText": "new",
+            },
+          ],
+        }),
+      );
+      expect(firstSeen.whereType<BridgeSseSessionDiff>(), hasLength(1));
+
+      final lateCall = mapper.map(
+        update({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "t1",
+          "kind": "edit",
+          "title": "Edit source.dart",
+          "status": "pending",
+          "content": [
+            {
+              "type": "content",
+              "content": {"type": "text", "text": "stale output"},
+            },
+            {
+              "type": "content",
+              "content": {
+                "type": "image",
+                "data": "AQ==",
+                "mimeType": "image/png",
+                "uri": "file:///private/stale.png",
+              },
+            },
+          ],
+        }),
+      );
+
+      expect(lateCall.whereType<BridgeSseMessageUpdated>(), isEmpty);
+      final state = _liveState(events: lateCall);
+      expect(lateCall.whereType<BridgeSseMessagePartUpdated>().single.part.tool, "edit");
+      expect(state.title, "Edit source.dart");
+      expect(state.status, PluginToolStatus.completed);
+      expect(state.output, "new output");
+      expect(state.attachments.single.filename, "new.png");
+      expect(lateCall.whereType<BridgeSseSessionDiff>(), isEmpty);
     });
   });
 
@@ -279,6 +373,54 @@ void main() {
       final state = _replayState(collector: collector);
       expect(state.output, isNull);
       expect(state.attachments, isEmpty);
+    });
+
+    test("a late tool_call enriches without clobbering a first-seen replay update", () {
+      final collector = _collector()
+        ..consume(
+          update({
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "t1",
+            "status": "completed",
+            "content": [
+              {
+                "type": "content",
+                "content": {"type": "text", "text": "new output"},
+              },
+              {
+                "type": "content",
+                "content": {
+                  "type": "image",
+                  "data": "AA==",
+                  "mimeType": "image/png",
+                  "uri": "file:///private/new.png",
+                },
+              },
+            ],
+          }),
+        )
+        ..consume(
+          update({
+            "sessionUpdate": "tool_call",
+            "toolCallId": "t1",
+            "kind": "read",
+            "title": "Read source.dart",
+            "status": "pending",
+            "content": [
+              {
+                "type": "content",
+                "content": {"type": "text", "text": "stale output"},
+              },
+            ],
+          }),
+        );
+
+      final part = collector.build().single.parts.single;
+      expect(part.tool, "read");
+      expect(part.state?.title, "Read source.dart");
+      expect(part.state?.status, PluginToolStatus.completed);
+      expect(part.state?.output, "new output");
+      expect(part.state?.attachments, isEmpty);
     });
   });
 }

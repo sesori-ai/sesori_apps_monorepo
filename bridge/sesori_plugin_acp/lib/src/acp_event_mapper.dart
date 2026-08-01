@@ -629,29 +629,37 @@ class AcpEventMapper {
   }) {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
-    if (_liveTools[sessionId]?[toolCallId] == null) {
+    final prior = _liveTools[sessionId]?[toolCallId];
+    if (prior == null) {
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
     final messageId = "$sessionId-tool-$toolCallId";
     final contentMutation = _contentMapper.toolContent(update: update);
-    final contentTracker = AcpToolContentTracker()..apply(mutation: contentMutation);
+    final contentTracker = prior?.contentTracker ?? AcpToolContentTracker();
+    contentTracker.applyInitial(mutation: contentMutation);
+    final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
+    final useCallTool = prior == null || (!prior.hasExplicitKind && (hasKind || prior.tool == "tool"));
     final state = _LiveTool(
       // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
       // title (schema drift / malformed agent data) renders as null rather than
       // throwing and aborting the notification.
-      tool: _contentMapper.toolName(update: update),
-      title: update["title"] is String ? update["title"] as String? : null,
-      status: _contentMapper.toolStatus(status: update["status"]),
+      tool: useCallTool ? _contentMapper.toolName(update: update) : prior.tool,
+      title: prior?.title ?? (update["title"] is String ? update["title"] as String? : null),
+      status: prior?.hasExplicitStatus ?? false ? prior!.status : _contentMapper.toolStatus(status: update["status"]),
       contentTracker: contentTracker,
-      isFileMutation: _isFileMutation(
-        update: update,
-        contentMutation: contentMutation,
-      ),
-      diffEmitted: false,
+      isFileMutation:
+          (prior?.isFileMutation ?? false) ||
+          _isFileMutation(
+            update: update,
+            contentMutation: contentMutation,
+          ),
+      diffEmitted: prior?.diffEmitted ?? false,
+      hasExplicitKind: (prior?.hasExplicitKind ?? false) || hasKind,
+      hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || update.containsKey("status"),
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
     final events = <BridgeSseEvent>[
-      _toolEnvelope(sessionId: sessionId, messageId: messageId),
+      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
     _appendCompletedMutationDiff(
@@ -703,6 +711,8 @@ class AcpEventMapper {
             contentMutation: contentMutation,
           ),
       diffEmitted: prior?.diffEmitted ?? false,
+      hasExplicitKind: (prior?.hasExplicitKind ?? false) || hasKind,
+      hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || update.containsKey("status"),
     );
     final events = <BridgeSseEvent>[
       // ACP events can be reordered (reconnect / resume / replay), so a
@@ -917,7 +927,7 @@ class AcpEventMapper {
     if (!state.isFileMutation || state.diffEmitted) {
       return;
     }
-    if (!mutationAvailable && !_isTerminalToolStatus(state.status)) {
+    if (!_isTerminalToolStatus(state.status) && (!mutationAvailable || state.hasExplicitStatus)) {
       return;
     }
     state.diffEmitted = true;
@@ -957,6 +967,8 @@ class _LiveTool {
     required this.contentTracker,
     required this.isFileMutation,
     required this.diffEmitted,
+    required this.hasExplicitKind,
+    required this.hasExplicitStatus,
   });
 
   final String tool;
@@ -965,4 +977,6 @@ class _LiveTool {
   final AcpToolContentTracker contentTracker;
   final bool isFileMutation;
   bool diffEmitted;
+  final bool hasExplicitKind;
+  final bool hasExplicitStatus;
 }

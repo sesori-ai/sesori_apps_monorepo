@@ -6,9 +6,9 @@
 - **Implementation base:** `origin/main` at
   `e64fb4b5d6daeee55447efdf0177318daece5932`
 - **Series state:** Step 10/13 merged as [PR #666](https://github.com/sesori-ai/sesori_apps_monorepo/pull/666)
-- **Current step:** Step 11/13 — implemented and verified; preparing PR
+- **Current step:** Step 11/13 — [PR #670](https://github.com/sesori-ai/sesori_apps_monorepo/pull/670) open; local review fixes verified
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** commit, push, and open the Step 11 PR
+- **Next action:** review and publish the local PR feedback fixes
 
 ## Plan Review
 
@@ -36,7 +36,7 @@
 | [x] | 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | [PR #658](https://github.com/sesori-ai/sesori_apps_monorepo/pull/658) merged as `a973796c`; 1,119 changed lines |
 | [x] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | [PR #661](https://github.com/sesori-ai/sesori_apps_monorepo/pull/661) merged as `f5f24240`; 879 changed lines |
 | [x] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | [PR #666](https://github.com/sesori-ai/sesori_apps_monorepo/pull/666) merged as `e64fb4b5`; 1,138 changed lines |
-| [ ] | 11/13 | `output-image-support-acp-tool-images` | `⚙️ [output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | Implemented and verified; preparing PR |
+| [ ] | 11/13 | `output-image-support-acp-tool-images` | `⚙️ [output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | [PR #670](https://github.com/sesori-ai/sesori_apps_monorepo/pull/670) open; local review fixes verified |
 | [ ] | 12/13 | `output-image-support-acp-image-replay` | `[output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | Blocked on Step 11 merge |
 | [ ] | 13/13 | `output-image-support-retire-plan` | `[output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | Blocked on Step 12 merge |
 
@@ -221,8 +221,18 @@
   degradation, and one-shot diff signaling have focused coverage. All 199 ACP
   tests and all 109 Cursor tests pass; fatal analysis passes in both packages;
   `aristotle-impl-review` approved with no findings. No code generation was
-  required. The 963-line implementation is below the 1,500-line soft cap; no
-  neighboring scope was combined.
+  required. PR #670 review found four valid root issues across eight duplicate
+  bot threads: reordered late `tool_call`s now retain newer live/replay content,
+  status, and diff state while filling missing metadata; tool mapping stops
+  normalizing image candidates after the four-item prefix while still scanning
+  trailing text/diff entries; explicit non-terminal diff content now waits for
+  completion while retaining the mutation; and unused tool snapshot counters
+  were removed. The diff fix preserves PR #414's later `7b2d21dc` exception for
+  explicit diff content with no known status after `952cc30f` introduced terminal
+  gating. The five new regressions failed before the fixes. All 204 ACP
+  tests and all 109 Cursor tests pass, fatal analysis passes in both packages,
+  and `git diff --check` passes. The final 1,344-line PR diff
+  is below the 1,500-line soft cap; no neighboring scope was combined.
 
 ## Findings And Plan Deltas
 

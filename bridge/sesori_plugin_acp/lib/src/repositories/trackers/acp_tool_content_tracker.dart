@@ -7,14 +7,10 @@ final class AcpToolContentSnapshot {
   const AcpToolContentSnapshot({
     required this.output,
     required this.attachments,
-    required this.imageCandidateCount,
-    required this.decodedImageBytes,
   });
 
   final String? output;
   final List<PluginMessageAttachment> attachments;
-  final int imageCandidateCount;
-  final int decodedImageBytes;
 }
 
 /// Owns the normalized output and bounded attachment collection for one ACP
@@ -25,14 +21,12 @@ final class AcpToolContentTracker {
 
   String? _output;
   List<PluginMessageAttachment> _attachments = const [];
-  int _imageCandidateCount = 0;
-  int _decodedImageBytes = 0;
+  bool _hasReplacement = false;
+  bool _hasOutputUpdate = false;
 
   AcpToolContentSnapshot get snapshot => AcpToolContentSnapshot(
     output: _output,
     attachments: _attachments,
-    imageCandidateCount: _imageCandidateCount,
-    decodedImageBytes: _decodedImageBytes,
   );
 
   void apply({required AcpToolContentMutation mutation}) {
@@ -41,10 +35,32 @@ final class AcpToolContentTracker {
         :final output,
         :final imageCandidates,
       ):
+        _hasReplacement = true;
         _output = output;
         _replaceAttachments(candidates: imageCandidates);
       case AcpUpdateToolOutputMutation(:final output):
+        _hasOutputUpdate = true;
         _output = output;
+      case AcpUnchangedToolContentMutation():
+        return;
+    }
+  }
+
+  /// Applies a reordered base call beneath any newer updates seen first.
+  void applyInitial({required AcpToolContentMutation mutation}) {
+    switch (mutation) {
+      case AcpReplaceToolContentMutation(
+        :final output,
+        :final imageCandidates,
+      ):
+        if (_hasReplacement) return;
+        if (!_hasOutputUpdate) _output = output;
+        _replaceAttachments(candidates: imageCandidates);
+        _hasReplacement = true;
+      case AcpUpdateToolOutputMutation(:final output):
+        if (_hasReplacement || _hasOutputUpdate) return;
+        _output = output;
+        _hasOutputUpdate = true;
       case AcpUnchangedToolContentMutation():
         return;
     }
@@ -97,8 +113,6 @@ final class AcpToolContentTracker {
       }
     }
     _attachments = List.unmodifiable(attachments);
-    _imageCandidateCount = candidates.length;
-    _decodedImageBytes = decodedImageBytes;
   }
 
   _AcpToolContentWarning _warningFor({

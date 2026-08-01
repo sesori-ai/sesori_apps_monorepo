@@ -32,6 +32,23 @@ void main() {
       expect(tracker.snapshot.attachments.single.filename, "first.png");
     });
 
+    test("layers late initial attachments below an earlier output update", () {
+      final tracker = AcpToolContentTracker()
+        ..apply(
+          mutation: const AcpUpdateToolOutputMutation(output: "new output"),
+        )
+        ..applyInitial(
+          mutation: AcpReplaceToolContentMutation(
+            output: "initial output",
+            imageCandidates: [_inline(filename: "initial.png", decodedBytes: 1)],
+            hasDiff: false,
+          ),
+        );
+
+      expect(tracker.snapshot.output, "new output");
+      expect(tracker.snapshot.attachments.single.filename, "initial.png");
+    });
+
     test("present empty and image-only collections replace the whole state", () {
       final tracker = AcpToolContentTracker()
         ..apply(
@@ -62,8 +79,6 @@ void main() {
       );
       expect(tracker.snapshot.output, isNull);
       expect(tracker.snapshot.attachments, isEmpty);
-      expect(tracker.snapshot.imageCandidateCount, 0);
-      expect(tracker.snapshot.decodedImageBytes, 0);
     });
 
     test("enforces count and aggregate budgets for each replacement", () {
@@ -95,11 +110,6 @@ void main() {
           PluginMessageAttachmentInlineImage,
         ],
       );
-      expect(tracker.snapshot.imageCandidateCount, 5);
-      expect(
-        tracker.snapshot.decodedImageBytes,
-        maxInlineMessageAttachmentBytes,
-      );
 
       tracker.apply(
         mutation: AcpReplaceToolContentMutation(
@@ -109,8 +119,6 @@ void main() {
         ),
       );
       expect(tracker.snapshot.attachments.single.filename, "reset.png");
-      expect(tracker.snapshot.imageCandidateCount, 1);
-      expect(tracker.snapshot.decodedImageBytes, 1);
     });
 
     test("deduplicates privacy-safe warnings within each collection", () {
