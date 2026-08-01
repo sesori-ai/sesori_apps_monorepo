@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
+import "package:go_router/go_router.dart";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:mocktail/mocktail.dart";
@@ -158,6 +159,76 @@ void main() {
 
     expect(identical(imageClipboard.copiedBytes, memoryImage.bytes), isTrue);
     expect(find.text("Image copied to clipboard"), findsOneWidget);
+  });
+
+  testWidgets("repeated system back closes the image viewer without leaving the session", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      filename: "image.png",
+    );
+    final router = GoRouter(
+      initialLocation: "/sessions/chat",
+      routes: [
+        ShellRoute(
+          builder: (_, _, child) => child,
+          routes: [
+            GoRoute(
+              path: "/sessions",
+              builder: (_, _) => const Scaffold(body: Text("Session list")),
+              routes: [
+                GoRoute(
+                  path: "chat",
+                  builder: (_, _) => const Scaffold(body: FilePartWidget(attachment: attachment)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
+    await _finishAsyncDecode(tester: tester);
+    final preview = tester.widget<Image>(find.byKey(FilePartWidget.previewImageKey));
+    await tester.runAsync(
+      () => precacheImage(
+        preview.image,
+        tester.element(find.byKey(FilePartWidget.previewImageKey)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<GestureDetector>(find.byKey(FilePartWidget.previewTapTargetKey)).onTap,
+      isNotNull,
+    );
+    await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, "/sessions/chat");
+
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImageAttachmentViewer), findsNothing);
+    expect(find.byKey(FilePartWidget.previewTapTargetKey), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, "/sessions/chat");
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text("Session list"), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, "/sessions");
   });
 
   testWidgets("omits the image title when attachment metadata has no filename", (tester) async {

@@ -209,6 +209,7 @@ class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
   final _heroTag = UniqueKey();
   late LoadedMessageImage _image;
   bool _isDecoded = false;
+  bool _isViewerOpen = false;
 
   @override
   void initState() {
@@ -250,10 +251,25 @@ class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
     });
   }
 
+  Future<void> _openViewer() async {
+    if (_isViewerOpen) return;
+    setState(() => _isViewerOpen = true);
+    try {
+      await showImageAttachmentViewer(
+        context: context,
+        image: _image,
+        filename: widget.filename,
+        heroTag: _heroTag,
+      );
+    } finally {
+      if (mounted) setState(() => _isViewerOpen = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    return Padding(
+    final preview = Padding(
       padding: EdgeInsets.symmetric(vertical: prego.spacing.md),
       child: Semantics(
         button: _isDecoded,
@@ -261,16 +277,7 @@ class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
         child: GestureDetector(
           key: FilePartWidget.previewTapTargetKey,
           behavior: HitTestBehavior.opaque,
-          onTap: !_isDecoded
-              ? null
-              : () => unawaited(
-                  showImageAttachmentViewer(
-                    context: context,
-                    image: _image,
-                    filename: widget.filename,
-                    heroTag: _heroTag,
-                  ),
-                ),
+          onTap: !_isDecoded || _isViewerOpen ? null : () => unawaited(_openViewer()),
           child: Hero(
             tag: _heroTag,
             child: ClipRRect(
@@ -301,6 +308,12 @@ class _LoadedImageAttachmentState extends State<_LoadedImageAttachment> {
           ),
         ),
       ),
+    );
+    return PopScope(
+      // Keep repeated back events off the session route while the root viewer
+      // is completing its reverse transition.
+      canPop: !_isViewerOpen,
+      child: preview,
     );
   }
 }

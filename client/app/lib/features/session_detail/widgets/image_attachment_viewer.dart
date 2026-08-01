@@ -33,30 +33,30 @@ Future<void> showImageAttachmentViewer({
   required String? filename,
   required Key heroTag,
 }) {
-  // ignore: no_slop_linter/avoid_navigator_of, no_slop_linter/avoid_raw_go_router, this transient root Hero route carries an in-memory ImageProvider that cannot be represented in a URL
-  return Navigator.of(context, rootNavigator: true).push<void>(
-    PageRouteBuilder<void>(
-      opaque: true,
-      transitionDuration: const Duration(milliseconds: 260),
-      reverseTransitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (_, _, _) => BlocProvider(
-        create: (_) => ImageAttachmentActionsCubit(
-          imageSaver: getIt<ImageSaver>(),
-          imageClipboard: getIt<ImageClipboard>(),
-          imageSharer: getIt<ImageSharer>(),
-          bytes: image.bytes,
-          mime: image.mime,
-          actionFilename: image.actionFilename,
-        ),
-        child: ImageAttachmentViewer(
-          image: image,
-          filename: filename,
-          heroTag: heroTag,
-        ),
+  final route = PageRouteBuilder<void>(
+    opaque: true,
+    transitionDuration: const Duration(milliseconds: 260),
+    reverseTransitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (_, _, _) => BlocProvider(
+      create: (_) => ImageAttachmentActionsCubit(
+        imageSaver: getIt<ImageSaver>(),
+        imageClipboard: getIt<ImageClipboard>(),
+        imageSharer: getIt<ImageSharer>(),
+        bytes: image.bytes,
+        mime: image.mime,
+        actionFilename: image.actionFilename,
       ),
-      transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
+      child: ImageAttachmentViewer(
+        image: image,
+        filename: filename,
+        heroTag: heroTag,
+      ),
     ),
+    transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
   );
+  // ignore: no_slop_linter/avoid_navigator_of, no_slop_linter/avoid_raw_go_router, this transient root Hero route carries an in-memory ImageProvider that cannot be represented in a URL
+  unawaited(Navigator.of(context, rootNavigator: true).push<void>(route));
+  return route.completed;
 }
 
 class ImageAttachmentViewer extends StatelessWidget {
