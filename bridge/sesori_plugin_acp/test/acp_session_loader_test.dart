@@ -82,6 +82,38 @@ void main() {
       expect(messages.last.parts.single.text, "There is 1 file.");
     });
 
+    test("replays standard tool content text without materializing other variants", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
+      )..consume(upd({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "t1",
+          "kind": "read",
+          "status": "completed",
+          "content": [
+            {
+              "type": "content",
+              "content": {"type": "text", "text": "replayed output"},
+            },
+            {
+              "type": "diff",
+              "path": "/private/source.dart",
+              "oldText": "old",
+              "newText": "new",
+            },
+            {"type": "terminal", "terminalId": "private-terminal"},
+          ],
+        }));
+
+      final tool = collector.build().single.parts.single;
+      expect(tool.state?.output, "replayed output");
+      expect(tool.state?.attachments, isEmpty);
+    });
+
     test("id-less text after a tool stays chronologically after the tool", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",

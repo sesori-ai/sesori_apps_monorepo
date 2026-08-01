@@ -181,6 +181,119 @@ void main() {
       expect(output, isNot(contains("secret.png")));
       expect(output, isNot(contains("type cast")));
     });
+
+    test("maps tool identity and status with fail-soft defaults", () {
+      expect(mapper.toolName(update: {"kind": "read", "title": "Read file"}), "read");
+      expect(mapper.toolName(update: {"kind": "", "title": "Read file"}), "Read file");
+      expect(mapper.toolName(update: {"kind": 42, "title": null}), "tool");
+
+      expect(mapper.toolStatus(status: "pending"), PluginToolStatus.pending);
+      expect(mapper.toolStatus(status: "in_progress"), PluginToolStatus.running);
+      expect(mapper.toolStatus(status: "completed"), PluginToolStatus.completed);
+      expect(mapper.toolStatus(status: "failed"), PluginToolStatus.error);
+      expect(mapper.toolStatus(status: "future"), PluginToolStatus.pending);
+    });
+
+    test("maps typed tool content text and diff while ignoring terminal and unknown variants", () {
+      final mapped = mapper.toolContent(
+        update: {
+          "content": [
+            {
+              "type": "content",
+              "content": {"type": "text", "text": "one "},
+            },
+            {
+              "type": "diff",
+              "path": "/private/source.dart",
+              "oldText": "old",
+              "newText": "new",
+            },
+            {"type": "terminal", "terminalId": "private-terminal"},
+            {"type": "future", "private": "secret"},
+            {
+              "type": "content",
+              "content": {
+                "type": "image",
+                "data": "AA==",
+                "mimeType": "image/png",
+                "uri": null,
+              },
+            },
+            {
+              "type": "content",
+              "content": {"type": "text", "text": "two"},
+            },
+          ],
+          "rawOutput": "must not replace standard content",
+        },
+      );
+
+      expect(mapped.output, "one two");
+      expect(mapped.mutation, AcpToolContentMutation.diff);
+      expect(mapped.toString(), isNot(contains("private-terminal")));
+      expect(mapped.toString(), isNot(contains("source.dart")));
+      expect(mapped.toString(), isNot(contains("secret")));
+    });
+
+    test("preserves legacy tool text and bounded raw-output fallbacks", () {
+      expect(
+        mapper.toolContent(
+          update: {
+            "content": [
+              {"text": "legacy"},
+              {"type": "diff"},
+            ],
+          },
+        ),
+        isA<AcpMappedToolContent>()
+            .having((content) => content.output, "output", "legacy")
+            .having((content) => content.mutation, "mutation", AcpToolContentMutation.diff),
+      );
+      expect(
+        mapper
+            .toolContent(
+              update: {
+                "rawOutput": {"stdout": "out\n", "stderr": "error\n"},
+              },
+            )
+            .output,
+        "out\nerror",
+      );
+      expect(
+        mapper
+            .toolContent(
+              update: {
+                "rawOutput": {
+                  "content": {"type": "text", "text": "nested\n"},
+                },
+              },
+            )
+            .output,
+        "nested",
+      );
+      expect(
+        mapper
+            .toolContent(
+              update: {
+                "rawOutput": {"exitCode": 7},
+              },
+            )
+            .output,
+        "exited with code 7",
+      );
+
+      final oversized = "x" * (maxToolOutputLength + 1);
+      expect(
+        mapper.toolContent(update: {"rawOutput": oversized}).output,
+        "${"x" * maxToolOutputLength}…",
+      );
+
+      final unicode = "${"x" * (maxToolOutputLength - 1)}😀z";
+      expect(
+        mapper.toolContent(update: {"rawOutput": unicode}).output,
+        "${"x" * (maxToolOutputLength - 1)}😀…",
+      );
+    });
   });
 }
 

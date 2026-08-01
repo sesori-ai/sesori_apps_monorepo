@@ -88,6 +88,7 @@ class _PromptInputState extends State<PromptInput> {
   static const _draftCalculator = ComposerDraftCalculator();
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
   final _controller = TextEditingController();
+  final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
@@ -179,6 +180,7 @@ class _PromptInputState extends State<PromptInput> {
     }
     _cancelDragProgress.dispose();
     _controller.dispose();
+    _textScrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -498,6 +500,7 @@ class _PromptInputState extends State<PromptInput> {
         transcript: transcript,
       );
       _applyDraft(draft: nextDraft);
+      _scrollToDraftEndAfterLayout();
       widget.onVoiceTranscriptionCompleted();
       // Text-first raises the keyboard so the transcript can be extended
       // right away. Voice-first rests the transcript in the typing container
@@ -542,6 +545,13 @@ class _PromptInputState extends State<PromptInput> {
     _isApplyingDraft = false;
     _hasText = draft.text.trim().isNotEmpty;
     widget.onDraftChanged(draft);
+  }
+
+  void _scrollToDraftEndAfterLayout() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_textScrollController.hasClients) return;
+      _textScrollController.jumpTo(_textScrollController.position.maxScrollExtent);
+    });
   }
 
   /// Discards the running voice interaction: a drag released on the cancel
@@ -1041,6 +1051,7 @@ class _PromptInputState extends State<PromptInput> {
                   },
                   child: TextField(
                     controller: _controller,
+                    scrollController: _textScrollController,
                     focusNode: _focusNode,
                     minLines: 1,
                     maxLines: 6,
