@@ -19,51 +19,6 @@ const _amplitudeInterval = Duration(milliseconds: 100);
 /// so using -160 (the technical floor) would make the bars barely move.
 const double _amplitudeFloor = -60.0;
 
-const _voiceStartupTimingEnabled = bool.fromEnvironment("SESORI_VOICE_STARTUP_TIMING");
-
-String _elapsedMilliseconds({required Stopwatch stopwatch}) =>
-    (stopwatch.elapsedMicroseconds / Duration.microsecondsPerMillisecond).toStringAsFixed(3);
-
-void _logVoiceStartupStage({
-  required int attempt,
-  required String stage,
-  required Stopwatch stageStopwatch,
-  required Stopwatch totalStopwatch,
-}) {
-  if (!_voiceStartupTimingEnabled) return;
-  logd(
-    "[voice.start.timing] attempt=$attempt stage=$stage "
-    "elapsed_ms=${_elapsedMilliseconds(stopwatch: stageStopwatch)} "
-    "total_ms=${_elapsedMilliseconds(stopwatch: totalStopwatch)}",
-  );
-}
-
-void _logVoiceStartupEvent({
-  required int attempt,
-  required String event,
-  required Stopwatch totalStopwatch,
-}) {
-  if (!_voiceStartupTimingEnabled) return;
-  logd(
-    "[voice.start.timing] attempt=$attempt event=$event "
-    "total_ms=${_elapsedMilliseconds(stopwatch: totalStopwatch)}",
-  );
-}
-
-void _logVoiceStartupFailure({
-  required int attempt,
-  required String stage,
-  required Stopwatch stageStopwatch,
-  required Stopwatch totalStopwatch,
-}) {
-  if (!_voiceStartupTimingEnabled) return;
-  logd(
-    "[voice.start.timing] attempt=$attempt event=failed stage=$stage "
-    "elapsed_ms=${_elapsedMilliseconds(stopwatch: stageStopwatch)} "
-    "total_ms=${_elapsedMilliseconds(stopwatch: totalStopwatch)}",
-  );
-}
-
 @lazySingleton
 class VoiceTranscriptionService {
   final VoiceApi _voiceApi;
@@ -73,7 +28,6 @@ class VoiceTranscriptionService {
   final AudioFormatConfig _audioFormat;
   bool _isRecording = false;
   bool _isBusy = false;
-  int _recordingStartAttempt = 0;
   int _transcriptionGeneration = 0;
   String? _currentRecordingPath;
   StreamSubscription<Amplitude>? _amplitudeSub;
@@ -111,15 +65,6 @@ class VoiceTranscriptionService {
       return;
     }
 
-    final attempt = ++_recordingStartAttempt;
-    final totalStopwatch = Stopwatch()..start();
-    final stageStopwatch = Stopwatch()..start();
-    var currentStage = "permission_check";
-    _logVoiceStartupEvent(
-      attempt: attempt,
-      event: "requested",
-      totalStopwatch: totalStopwatch,
-    );
     _isBusy = true;
 
     try {
@@ -130,29 +75,13 @@ class VoiceTranscriptionService {
         loge("Failed to check microphone permission", error, stackTrace);
         throw VoiceTranscriptionError.microphonePermissionDenied();
       }
-      _logVoiceStartupStage(
-        attempt: attempt,
-        stage: currentStage,
-        stageStopwatch: stageStopwatch,
-        totalStopwatch: totalStopwatch,
-      );
       if (!hasPermission) {
         throw VoiceTranscriptionError.microphonePermissionDenied();
       }
 
-      currentStage = "temporary_directory_and_path";
-      stageStopwatch.reset();
       final path = await _fileProvider.createRecordingPath();
       _currentRecordingPath = path;
-      _logVoiceStartupStage(
-        attempt: attempt,
-        stage: currentStage,
-        stageStopwatch: stageStopwatch,
-        totalStopwatch: totalStopwatch,
-      );
 
-      currentStage = "record_config";
-      stageStopwatch.reset();
       final config = RecordConfig(
         encoder: _audioFormat.encoder,
         sampleRate: _audioFormat.sampleRate,
@@ -161,47 +90,18 @@ class VoiceTranscriptionService {
         noiseSuppress: true,
         audioInterruption: AudioInterruptionMode.none,
       );
-      _logVoiceStartupStage(
-        attempt: attempt,
-        stage: currentStage,
-        stageStopwatch: stageStopwatch,
-        totalStopwatch: totalStopwatch,
-      );
       logt(
         "[voice] starting recorder — encoder=${config.encoder.name} "
         "sampleRate=${config.sampleRate} channels=${config.numChannels} "
         "path=$path",
       );
 
-      currentStage = "native_recorder_start";
-      stageStopwatch.reset();
       try {
         await _recorder.start(config, path: path);
-        _logVoiceStartupStage(
-          attempt: attempt,
-          stage: currentStage,
-          stageStopwatch: stageStopwatch,
-          totalStopwatch: totalStopwatch,
-        );
-
-        currentStage = "post_start_setup";
-        stageStopwatch.reset();
         _isRecording = true;
         _startAmplitudeMonitoring(_recorder);
         _startMaxDurationTimer();
         unawaited(_wakeLockService.enable());
-        _logVoiceStartupStage(
-          attempt: attempt,
-          stage: currentStage,
-          stageStopwatch: stageStopwatch,
-          totalStopwatch: totalStopwatch,
-        );
-        totalStopwatch.stop();
-        _logVoiceStartupEvent(
-          attempt: attempt,
-          event: "ready",
-          totalStopwatch: totalStopwatch,
-        );
       } catch (error, stackTrace) {
         loge("Failed to start recording", error, stackTrace);
         await _cleanupFile(path);
@@ -209,13 +109,6 @@ class VoiceTranscriptionService {
         throw VoiceTranscriptionError.recordingFailed();
       }
     } catch (_) {
-      totalStopwatch.stop();
-      _logVoiceStartupFailure(
-        attempt: attempt,
-        stage: currentStage,
-        stageStopwatch: stageStopwatch,
-        totalStopwatch: totalStopwatch,
-      );
       // Release the busy lock on any error — if recording started
       // successfully, _isBusy stays true until stop/cancel.
       if (!_isRecording) _isBusy = false;
