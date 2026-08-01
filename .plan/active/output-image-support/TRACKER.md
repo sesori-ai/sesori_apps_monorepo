@@ -5,10 +5,10 @@
 - **Plan slug:** `output-image-support`
 - **Implementation base:** `origin/main` at
   `f5f24240bb49be17313f7f2748720f8399523e23`
-- **Series state:** Step 10/13 ready for PR
+- **Series state:** Step 10/13 open as [PR #666](https://github.com/sesori-ai/sesori_apps_monorepo/pull/666)
 - **Current step:** Step 10/13 — surface live ACP message images
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** raise Step 10/13 for review
+- **Next action:** monitor PR #666 and address CI or review findings
 
 ## Plan Review
 
@@ -35,7 +35,7 @@
 | [x] | 7/13 | `output-image-support-codex-image-history` | `[output-image-support] feat(codex): restore output image history [step 7/13]` | 1,100-1,500 | [PR #657](https://github.com/sesori-ai/sesori_apps_monorepo/pull/657) merged as `4ca1cb90`; 589 changed lines |
 | [x] | 8/13 | `output-image-support-acp-content-blocks` | `[output-image-support] refactor(acp): type content blocks [step 8/13]` | 1,300-1,500 | [PR #658](https://github.com/sesori-ai/sesori_apps_monorepo/pull/658) merged as `a973796c`; 1,119 changed lines |
 | [x] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | [PR #661](https://github.com/sesori-ai/sesori_apps_monorepo/pull/661) merged as `f5f24240`; 879 changed lines |
-| [ ] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | Ready for PR; 714 changed lines |
+| [ ] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | [PR #666](https://github.com/sesori-ai/sesori_apps_monorepo/pull/666) open; 714 changed lines |
 | [ ] | 11/13 | `output-image-support-acp-tool-images` | `[output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | Blocked on Step 10 merge |
 | [ ] | 12/13 | `output-image-support-acp-image-replay` | `[output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | Blocked on Step 11 merge |
 | [ ] | 13/13 | `output-image-support-retire-plan` | `[output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | Blocked on Step 12 merge |
