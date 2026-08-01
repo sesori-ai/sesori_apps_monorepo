@@ -425,8 +425,16 @@ class AcpEventMapper {
       scope: tracker.mappingScope,
     );
     if (blocks.isEmpty) return const [];
+    final hasTrackableContent = blocks.any(
+      (block) => block is AcpMappedImageContentBlock || (block is AcpMappedTextContentBlock && block.text.isNotEmpty),
+    );
+    if (identity.hasAcpMessageId && hasTrackableContent) {
+      _closeIdlessAssistantEnvelope(sessionId);
+    }
 
-    if (tracker.snapshot.imageCandidateCount == 0 && blocks.every((block) => block is AcpMappedTextContentBlock)) {
+    if (!identity.hasAcpMessageId &&
+        tracker.snapshot.composition != AcpContentComposition.mixed &&
+        blocks.every((block) => block is AcpMappedTextContentBlock)) {
       final text = blocks.whereType<AcpMappedTextContentBlock>().map((block) => block.text).join();
       if (text.isNotEmpty) {
         final halt = classifyHaltNotice(text: text);

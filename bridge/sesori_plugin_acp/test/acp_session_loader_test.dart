@@ -537,6 +537,27 @@ void main() {
       expect(message.parts.single.text, "Check your settings to continue");
     });
 
+    test("unsupported content keeps halt-like replay text as an assistant message", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: ({required text}) =>
+            const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+        contentMapper: const AcpContentMapper(),
+      )..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": [
+            {"type": "text", "text": "Check your settings to continue"},
+            {"type": "audio", "data": "private", "mimeType": "audio/wav"},
+          ],
+        }));
+
+      final message = collector.build().single;
+      expect(message.info, isA<PluginMessageAssistant>());
+      expect(message.parts.single.text, "Check your settings to continue");
+    });
+
     test("without a halt classifier the same chunk stays assistant text", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",

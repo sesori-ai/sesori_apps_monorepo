@@ -229,6 +229,37 @@ void main() {
       );
     });
 
+    test("an explicit assistant message closes the prior id-less envelope", () {
+      mapper.beginTurn("s1");
+      final before = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "before"},
+      }));
+      mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "m1",
+        "content": {"type": "text", "text": "explicit"},
+      }));
+      final after = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {
+          "type": "image",
+          "data": "AA==",
+          "mimeType": "image/png",
+          "uri": null,
+        },
+      }));
+
+      final beforeId = shared.Message.fromJson(
+        before.whereType<BridgeSseMessageUpdated>().single.info,
+      ).id;
+      final afterId = shared.Message.fromJson(
+        after.whereType<BridgeSseMessageUpdated>().single.info,
+      ).id;
+      expect(afterId, isNot(beforeId));
+      expect(after.whereType<BridgeSseMessagePartUpdated>().single.part.type, PluginMessagePartType.file);
+    });
+
     test("tool_call maps to an assistant message with a tool part", () {
       final events = mapper.map(update({
         "sessionUpdate": "tool_call",
@@ -939,6 +970,33 @@ void main() {
         PluginMessagePartType.file,
         PluginMessagePartType.text,
       ]);
+    });
+
+    test("an identified halt-like text chunk can receive a later image", () {
+      mapper.beginTurn("s1");
+      final text = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "mixed",
+        "content": {"type": "text", "text": "HALT: fix it"},
+      }));
+      final image = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "mixed",
+        "content": {
+          "type": "image",
+          "data": "AA==",
+          "mimeType": "image/png",
+          "uri": null,
+        },
+      }));
+
+      expect(
+        shared.Message.fromJson(text.whereType<BridgeSseMessageUpdated>().single.info),
+        isA<shared.MessageAssistant>(),
+      );
+      expect(text.whereType<BridgeSseMessagePartDelta>().single.delta, "HALT: fix it");
+      expect(image.whereType<BridgeSseMessageUpdated>(), isEmpty);
+      expect(image.whereType<BridgeSseMessagePartUpdated>().single.part.type, PluginMessagePartType.file);
     });
 
     test("ordinary assistant text still streams as an assistant message", () {

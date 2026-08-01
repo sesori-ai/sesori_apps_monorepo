@@ -50,12 +50,20 @@ final class AcpContentSnapshot {
     required this.activeTextPartIdSuffix,
     required this.imageCandidateCount,
     required this.decodedImageBytes,
+    required this.composition,
   });
 
   final int textPartCount;
   final String? activeTextPartIdSuffix;
   final int imageCandidateCount;
   final int decodedImageBytes;
+  final AcpContentComposition composition;
+}
+
+enum AcpContentComposition {
+  empty,
+  textOnly,
+  mixed,
 }
 
 /// Owns ordered text/image segmentation and bounded image budgets for one
@@ -69,12 +77,14 @@ final class AcpContentTracker {
   String? _activeTextPartIdSuffix;
   int _imageCandidateCount = 0;
   int _decodedImageBytes = 0;
+  AcpContentComposition _composition = AcpContentComposition.empty;
 
   AcpContentSnapshot get snapshot => AcpContentSnapshot(
     textPartCount: _textPartCount,
     activeTextPartIdSuffix: _activeTextPartIdSuffix,
     imageCandidateCount: _imageCandidateCount,
     decodedImageBytes: _decodedImageBytes,
+    composition: _composition,
   );
 
   List<AcpContentMutation> append({required Iterable<AcpMappedContentBlock> blocks}) {
@@ -82,10 +92,14 @@ final class AcpContentTracker {
     for (final block in blocks) {
       switch (block) {
         case AcpMappedTextContentBlock(:final text):
+          if (_composition == AcpContentComposition.empty) {
+            _composition = AcpContentComposition.textOnly;
+          }
           if (text.isEmpty) continue;
           final suffix = _activeTextPartIdSuffix ??= _nextTextPartIdSuffix();
           mutations.add(AcpTextDeltaMutation(partIdSuffix: suffix, delta: text));
         case AcpMappedInlineImageContentBlock(:final attachment, :final decodedBytes):
+          _composition = AcpContentComposition.mixed;
           _activeTextPartIdSuffix = null;
           final imageIndex = ++_imageCandidateCount;
           if (imageIndex > _maxImageCandidates) {
@@ -113,6 +127,7 @@ final class AcpContentTracker {
             ),
           );
         case AcpMappedMetadataImageContentBlock(:final attachment, :final reason):
+          _composition = AcpContentComposition.mixed;
           _activeTextPartIdSuffix = null;
           final imageIndex = ++_imageCandidateCount;
           if (imageIndex > _maxImageCandidates) {
@@ -127,6 +142,7 @@ final class AcpContentTracker {
             ),
           );
         case AcpMappedUnsupportedContentBlock() || AcpMappedUnknownContentBlock():
+          _composition = AcpContentComposition.mixed;
           continue;
       }
     }

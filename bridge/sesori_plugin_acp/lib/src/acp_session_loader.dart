@@ -124,6 +124,7 @@ class AcpReplayCollector {
       content: update["content"],
       scope: tracker.mappingScope,
     );
+    final mutations = tracker.append(blocks: blocks);
     if (!_hasTrackableAssistantContent(blocks: blocks)) return;
     final draft =
         existing ??
@@ -134,7 +135,7 @@ class AcpReplayCollector {
         );
     _pendingAssistantContent = null;
     draft.contentMutations.addAll(
-      tracker.append(blocks: blocks).map((mutation) => mutation.withoutImagePayload()),
+      mutations.map((mutation) => mutation.withoutImagePayload()),
     );
   }
 
@@ -154,6 +155,7 @@ class AcpReplayCollector {
         draft.reasoning.isEmpty &&
         draft.tools.isEmpty &&
         !_hasAssistantImageCandidate(draft: draft) &&
+        draft.contentTracker.snapshot.composition == AcpContentComposition.textOnly &&
         assistantText.isNotEmpty) {
       final halt = haltClassifier?.call(text: assistantText);
       if (halt != null) {
