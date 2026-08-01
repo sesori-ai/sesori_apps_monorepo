@@ -922,6 +922,10 @@ CodexRolloutResponseItemDto _$CodexRolloutResponseItemDtoFromJson(
           return CodexRolloutWebSearchCallDto.fromJson(
             json
           );
+                case 'image_generation_call':
+          return CodexRolloutImageGenerationDto.fromJson(
+            json
+          );
         
           default:
             return CodexRolloutUnknownResponseItemDto.fromJson(
@@ -1510,6 +1514,80 @@ $CodexRolloutActionDtoCopyWith<$Res>? get action {
     return _then(_self.copyWith(action: value));
   });
 }
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutImageGenerationDto implements CodexRolloutResponseItemDto {
+  const CodexRolloutImageGenerationDto({required this.id, @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) required this.status, required this.result, final  String? $type}): $type = $type ?? 'image_generation_call';
+  factory CodexRolloutImageGenerationDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutImageGenerationDtoFromJson(json);
+
+ final  String? id;
+@JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) final  CodexRolloutImageGenerationStatus status;
+ final  String result;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutResponseItemDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutImageGenerationDtoCopyWith<CodexRolloutImageGenerationDto> get copyWith => _$CodexRolloutImageGenerationDtoCopyWithImpl<CodexRolloutImageGenerationDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutImageGenerationDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.result, result) || other.result == result));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,status,result);
+
+@override
+String toString() {
+  return 'CodexRolloutResponseItemDto.imageGeneration(id: $id, status: $status, result: $result)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutImageGenerationDtoCopyWith<$Res> implements $CodexRolloutResponseItemDtoCopyWith<$Res> {
+  factory $CodexRolloutImageGenerationDtoCopyWith(CodexRolloutImageGenerationDto value, $Res Function(CodexRolloutImageGenerationDto) _then) = _$CodexRolloutImageGenerationDtoCopyWithImpl;
+@useResult
+$Res call({
+ String? id,@JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) CodexRolloutImageGenerationStatus status, String result
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutImageGenerationDtoCopyWithImpl<$Res>
+    implements $CodexRolloutImageGenerationDtoCopyWith<$Res> {
+  _$CodexRolloutImageGenerationDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutImageGenerationDto _self;
+  final $Res Function(CodexRolloutImageGenerationDto) _then;
+
+/// Create a copy of CodexRolloutResponseItemDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? status = null,Object? result = null,}) {
+  return _then(CodexRolloutImageGenerationDto(
+id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CodexRolloutImageGenerationStatus,result: null == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
 }
 
 /// @nodoc

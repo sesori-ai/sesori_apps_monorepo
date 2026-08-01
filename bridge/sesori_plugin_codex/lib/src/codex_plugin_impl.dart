@@ -130,7 +130,9 @@ class CodexPlugin implements CodexManagedApi {
     final rolloutApi = CodexRolloutApi();
     const imageAttachmentMapper = CodexImageAttachmentMapper();
     const imageBearingItemParser = CodexImageBearingItemParser();
-    const rolloutToolMapper = CodexRolloutToolMapper();
+    const rolloutToolMapper = CodexRolloutToolMapper(
+      imageAttachmentMapper: imageAttachmentMapper,
+    );
     final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
     final rolloutTailer = CodexRolloutTailer(
       rolloutApi: rolloutApi,

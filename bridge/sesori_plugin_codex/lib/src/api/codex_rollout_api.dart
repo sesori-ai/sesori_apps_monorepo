@@ -321,6 +321,8 @@ const _rolloutSchemaKeyNames = {
   "action",
   "query",
   "text",
+  "status",
+  "result",
 };
 
 /// Describes malformed Codex records without logging source or tool input.
@@ -403,7 +405,9 @@ String _renderRolloutSchemaForLog({
 
 bool _isRolloutEnumValuePath({required List<String> path}) {
   if (path.length == 1) return path.single == "type";
-  return path.length == 2 && path.first == "payload" && (path.last == "type" || path.last == "role");
+  return path.length == 2 &&
+      path.first == "payload" &&
+      (path.last == "type" || path.last == "role" || path.last == "status");
 }
 
 class _RolloutSchemaBudget {

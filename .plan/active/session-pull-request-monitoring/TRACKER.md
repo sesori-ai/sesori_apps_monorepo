@@ -1,72 +1,179 @@
-# Session Pull Request Monitoring: Tracker
+# Current-Branch Pull Request Monitoring: Tracker
 
-## Plan State
+## Current State
 
-- **Status:** Approved — plan PR #436 merged
-- **Implementation base:** `main`
 - **Plan slug:** `session-pull-request-monitoring`
-- **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/436
-- **Execution ordering:** Complete this plan before resuming parallel-plugin Stage 2.
+- **Implementation base:** `main` at
+  `10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484`
+- **Series state:** Step 1/9 plan PR open; architecture approved
+- **Current step:** Step 1/9 — durable plan and PR guidance
+- **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649)
+- **Next action:** monitor CI/review and merge Step 1/9 before starting Step 2/9
 
-## Current Pointer
+## Existing Baseline
 
-- **Stage:** S02 — Durable bridge monitoring
-- **Wave:** W01
-- **Next action:** After S01-W01-P01 merges, pin the then-current `main` baseline for S02/W01 and implement S02-W01-P01 with `sesori-plan-worker`.
+- Implementation PR [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457)
+  merged additive `RelayProjectView` and `Session.pullRequestHistory` contracts.
+  Those compatible contracts are the starting point for this nine-step series.
+- Parallel plugins are complete through PR #497.
 
 ## Plan Review
 
-- **Verdict:** Approved after repository-bound history hardening
+- **Verdict:** approved with no findings
 - **Reviewer:** `aristotle-plan-review`
-- **Date:** 2026-07-15
-- **Reviewed commit:** `9a8644afc43bf1aa0f841bad86da6c9bf2d3023c` plus the complete uncommitted archive-scope update
+- **Reviewed scope:** complete current `PLAN.md`, `TRACKER.md`, and
+  `CONSIDERATIONS.md`, against audited `main` at
+  `83518cc0e7d0a2f0be50ba7ec6a866f6cbf79c44`
+- **Date:** 2026-07-31
+- **Findings applied:** none; pre-review gate and bridge/client/shared
+  architecture all passed
+- **Post-review drift:** `main` advanced through Harness settings, output-image
+  plugin work, analytics documentation, bridge `--data-dir` expansion, and plan
+  archival. The current tip is audited at `10c7afb9`; none changes this feature's
+  architecture or requested agent guidance, so metadata/path refresh did not
+  trigger another architecture review.
 
-## Wave Baselines
+## Delivery Steps
 
-| Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
-|---|---|---|---|---|---|
-| S01 | W01 | `sesori-ai/sesori_apps_monorepo` | `main` | `d1379eaeae857531d73e7765fdea4f92d21d1063` | Proceed — five commits in under one day; S01 shared contract/schema paths are unchanged, and the plugin-subscriber plus menu/UI changes do not affect this step. |
+| Done | Step | Branch | Exact PR title | Changed-line target | State |
+|---|---|---|---|---:|---|
+| [ ] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) open; architecture/docs validation passed |
+| [ ] | 2/9 | `session-pull-request-monitoring-scoped-pr-cache` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]` | 1,300–2,000 | Blocked on Step 1 merge; generated migration overage may be unavoidable |
+| [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2 merge |
+| [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
+| [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
+| [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Blocked on Step 5 merge |
+| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Blocked on Step 6 merge |
+| [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
+| [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8 merge |
 
-## PR Steps
+## Exact PR Titles
 
-| Done | ID | Stage | Wave | PR | Branch | Notes |
-|---|---|---|---|---|---|---|
-| [x] | S01-W01-P01 | S01 | W01 | [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) | `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts` | Delivers additive shared contracts with no behavior activation. Shared, bridge, module-core, mobile, desktop-core, and desktop analysis/tests passed; `aristotle-impl-review` approved. |
-| [ ] | S02-W01-P01 | S02 | W01 | — | `plan/session-pull-request-monitoring/s02-w01-p01-durable-branch-observation` | Exact directory and filesystem-driven branch history. |
-| [ ] | S02-W02-P01 | S02 | W02 | — | `plan/session-pull-request-monitoring/s02-w02-p01-authored-pr-refresh` | Authored identity-scoped live cache and dispatcher. |
-| [ ] | S02-W03-P01 | S02 | W03 | — | `plan/session-pull-request-monitoring/s02-w03-p01-terminal-archive-snapshots` | Irreversible PR stop and immutable archived snapshot. |
-| [ ] | S02-W04-P01 | S02 | W04 | — | `plan/session-pull-request-monitoring/s02-w04-p01-view-scoped-pr-polling` | Project presence and adaptive bridge scheduling. |
-| [ ] | S03-W01-P01 | S03 | W01 | — | `plan/session-pull-request-monitoring/s03-w01-p01-project-view-declarations` | Client list/detail presence lifecycle. |
-| [ ] | S03-W02-P01 | S03 | W02 | — | `plan/session-pull-request-monitoring/s03-w02-p01-collapsed-pr-history-ui` | Collapsed history UI, integration, and dead-sync cleanup. |
+1. `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]`
+2. `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2/9]`
+3. `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]`
+4. `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]`
+5. `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]`
+6. `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]`
+7. `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]`
+8. `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]`
+9. `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]`
 
-## Manual Checkpoints
+## Execution Rules
 
-| User | Worker | ID | Check | Evidence |
-|---|---|---|---|---|
-| [ ] | [ ] | S03-W03-M01 | Real-repository branch/PR/presence/archive end-to-end check | — |
+- Merge in numeric order. Each implementation step starts from current `main`
+  after its predecessor merges and records a drift audit.
+- Step 1 is the plan PR. Step 9 moves the plan from active to completed and has
+  no production changes.
+- Keep each fixed complexity emoji in its exact title unless implementation
+  evidence requires a plan/tracker update before opening that PR.
+- Every PR body includes complexity/rationale, what, why, risk/test focus, and
+  expected user-visible/data/internal results.
+- Target 1,500 changed lines per implementation PR. Record actual additions plus
+  deletions, generated output, tests, and any unavoidable overage.
+- Do not combine adjacent steps merely because one lands below estimate.
+- Every schema change exports/generates from current `main`; never rewrite a
+  merged Drift migration or generated file.
+- Run directly relevant tests/analyzers and architecture implementation review
+  for Steps 2–8. Documentation-only Steps 1/9 and 9/9 use plan/docs validation.
+- Reassess causal cleanup in every implementation step; remove directly obsolete
+  code/data/tests in the coherent owning PR or record why removal is deferred.
+- After each merge, update this tracker in the next step and proceed in order
+  unless a material decision or blocker requires the user.
 
-## Blockers and Staleness
+## Current Drift and Open Work
 
-- No implementation blocker is known.
-- Parallel-plugin implementation is intentionally paused before Stage 2 while this plan executes. It requires explicit stale-plan re-review after this plan closes because both workstreams touch session schema, repositories, archive, and event flow.
-- The latest audited `main` tip is `e766684e0fdc22256419b7b99691021c9f14732d` (2026-07-14T17:59:08+03:00). Workers must assess drift and pin each wave's actual current tip before branching.
+- Latest audited `main`: `10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484`.
+- Drift schema: v12. Step 2 allocates the next version present on its actual
+  baseline, not a hard-coded v13.
+- Parallel-plugin plan: complete through Stage 9 / PR #497.
+- PR #647 is merged and consolidates Harness settings into one screen. Its
+  numeric-input/mutation pattern is current evidence for Step 8; PR cadence
+  remains a separate bridge setting.
+- Open PR #641 is analytics warehouse-only and does not change this feature's
+  no-new-event decision.
+- Open PR #621 touches the settings landing screen and may require Step 8 drift
+  reconciliation if it merges.
+
+## Interview Decisions Recorded 2026-07-31
+
+- Root sessions only; child sessions have no independent PR.
+- Dedicated and non-dedicated sessions both use the exact current branch.
+- Sessions sharing a directory share current branch/PR state.
+- Match any author in the same repository; fork heads are excluded.
+- Newest open PR wins, otherwise newest merged/closed PR.
+- A branch switch with no PR shows no PR and never falls back.
+- Do not retain visited branches, multiple PRs, or PR history.
+- Resolve branches only during activation/scheduled/explicit refresh; no
+  filesystem watchers.
+- Refresh only while project list/detail is viewed, plus explicit old-client
+  request triggers.
+- Multiple devices may view different projects; one connection owns one project
+  and the bridge refreshes their active union.
+- One fixed bridge interval defaults to 30 seconds and is customisable in
+  seconds through bridge JSON plus shared client settings.
+- App settings update the timer live; manual JSON edits require restart.
+- Archive has no special PR behavior.
+- No unseen mutation, push notification, history UI, desktop-shell-specific
+  code, or new analytics event.
+- Step 1 raises this plan; Step 9 moves it to `.plan/completed/`.
+
+## Verification Log
+
+- **Step 1/9:** `aristotle-plan-review` approved the complete production plan
+  with no findings. The plan consolidation remains within its recorded
+  4,000–7,000 changed-line target. No Dart/Flutter suite applies to this
+  documentation/agent-definition PR.
+- **PR #649 review follow-up:** Assessed five unresolved automated-review
+  threads. All five identified concrete plan defects; the plan now covers
+  fork-obscured candidate pagination, add-during-flight scheduling, read-time
+  identity gating, named non-GitHub branch display, and the correct reviewed
+  baseline SHA. Documentation validation remains `git diff --check`; no product
+  suite applies.
+- **PR #649 refresh-generation follow-up:** A later automated review correctly
+  identified that a same-project explicit refresh could share an in-flight cycle
+  after its local Git snapshot. The plan now seals per-project request
+  generations before local resolution and requires post-seal requests/waiters to
+  use the coalesced follow-up generation.
+- **PR #649 route-visibility follow-up:** A later automated review correctly
+  identified that GoRouter shell providers can remain mounted under covered
+  child routes. Client claims now carry explicit visibility from `RouteSource`
+  plus actual wide split-pane presence; hidden claims clear before disposal and
+  are not reasserted on resume.
+- **PR guidance update:** Added the requested `🌱`–`🚨` title scale,
+  required PR-body summaries, and feature cleanup assessment/execution rules to
+  Plan Maker and Plan Worker, with matching title/body rules in root
+  `AGENTS.md`. These non-production instructions do not change the approved
+  architecture. `git diff --check` passes, exact titles match between
+  plan/tracker, and change scope is limited to this plan plus the three
+  instruction/agent files.
 
 ## Findings and Plan Deltas
 
-- **2026-07-15 — Active-plan resolution correction:** The user explicitly authorized S01-W01-P01 to carry a prompt-only worker correction: inspect active plans first, proceed on a clear semantic match, ask with the best guess recommended when ambiguous, and never infer the plan from a branch name. The amended step passed `aristotle-plan-review` before implementation.
-- **2026-07-15 — Feedback review approval:** `aristotle-plan-review` approved the complete canonical tree after all current account/repository, dispatcher, scheduler, and client declaration corrections; no architecture violations remained.
-- **2026-07-15 — Archive-scope review approval:** `aristotle-plan-review` approved exact branch-name association, scope-gated terminal clears, and snapshot-neutral same-identity truncation; no architecture violations remained.
-- **2026-07-15 — Repository-bound review approval:** `aristotle-plan-review` approved the complete canonical tree after per-history-row Git binding, symmetric mutation events, and transactional live/terminal scope revalidation were made explicit; no architecture violations remained.
-- **2026-07-15 — Repository-bound window hardening:** Made the supported 1,000-row window explicitly creation-descending; keyed each verified branch-history observation by normalized Git common directory; and added commit-time live/terminal scope checks so moving a stable project id or session cannot cross-join old repository history by branch name.
-- **2026-07-15 — Canonical review hardening:** Made relative git `HEAD` paths checkout-relative before normalization; bound live/archived cache visibility to account, canonical repository, and verified project path; suspended live visibility once identity failure/change is detected while preserving cache-first reads; bounded disappeared-open finalization; correlated coalesced completions; prevented overdue all-state zero-delay loops; documented the pre-filter authored-row cap; and added bounded retries for lost connected project/null declarations. Retained the approved acyclic `SessionArchiveService -> WorktreeCleanupService` collaborator because it owns a standalone multi-caller policy and does not depend back on archive.
-- **2026-07-14 — Optimistic plan-PR state:** Plan-branch tracker state now reflects the post-merge result immediately after PR creation; the optimistic state reaches `main` only when the plan PR merges.
-- **2026-07-14 — Legacy cleanup:** Removed superseded `docs/pr-monitor/PLAN.md`; `.plan/active/session-pull-request-monitoring/` is the sole plan authority.
-- **2026-07-14 — Legacy-thread assessment:** Four bot threads on superseded `docs/pr-monitor/PLAN.md` required no canonical change: owner-scoped multi-user cache metadata is explicitly speculative, direct detail has no PR presentation, intermediate-wave historical freshness is not a shipped regression and remains explicitly refreshable, and unverifiable legacy archived cache rows intentionally fail closed rather than guessing GitHub authorship. Full plan review remained approved.
-- **2026-07-14 — Plan delivery:** The approved canonical plan tree was pushed to plan PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/436.
-- **2026-07-14 — Pre-delivery approval refresh:** `aristotle-plan-review` approved the complete tree against latest audited `main` tip `e766684e0fdc22256419b7b99691021c9f14732d`; architecture, compatibility, migrations, lifecycle ownership, verification, tracker state, and audit references were execution-ready.
-- **2026-07-14 — Pre-delivery drift audit:** `main` advanced from `2f4adf2dec643f44db231f88d09672499a8a8619` to `e766684e0fdc22256419b7b99691021c9f14732d` only through iOS TestFlight workflow/Fastfile fixes. No planned path, contract, schema, architecture, or product decision changed.
-- **2026-07-14 — Full-plan approval:** `aristotle-plan-review` approved the complete canonical tree after the architecture corrections below; no violations remained across bridge, shared, or client workspaces.
-- **2026-07-14 — Review correction:** Made `Orchestrator.compose` the sole bridge layer composer and `BridgeRuntime` lifecycle-only; moved shared worktree-cleanup policy out of routing into `WorktreeCleanupService`; removed touched archive routing/DAO/filesystem bypasses; and introduced generic Layer-0 `RelayControlClient` so view APIs construct feature messages without calling `ConnectionService` transport methods.
-- **2026-07-14 — Canonical migration:** Reframed the legacy single-file plan as a three-stage, seven-PR `.plan` tree with strict non-stacked waves, one advisory manual checkpoint, per-step commands, explicit baseline metadata, and compatibility cleanup markers.
-- **2026-07-14 — Interview delta:** PR monitoring runs before parallel-plugin Stage 2; `pullRequestHistory` now uses an honest non-null empty default rather than nullable boundary state; authored all-state discovery supports 1,000 rows with a 1,001st-row truncation signal and non-destructive partial semantics.
-- **2026-07-14 — Baseline audit:** Current `main` advances past the legacy plan audit only through unrelated prompt-sheet routing. Current session loading is already cache-first for normal loads and waits up to five seconds only on explicit pull-to-refresh, so S03 preserves that shipped behavior instead of planning a redundant cutover.
+- **2026-07-31 — Current-branch scope:** Keep one selected PR for the exact
+  current branch, with no visited-branch history, filesystem watcher, archive
+  PR state, history presentation, or all-state discovery.
+- **2026-07-31 — Coworker ownership:** Exact same-repository branch matching has
+  no author filter, so coworker-authored PRs are eligible while fork heads remain
+  excluded.
+- **2026-07-31 — Batched active set:** One connection-scoped active-set
+  scheduler batches bounded multi-repository GraphQL targets without
+  per-project timers.
+- **2026-07-31 — Settings:** Fixed cadence defaults to 30 seconds per bridge,
+  supports live client mutation, and intentionally has no JSON file watcher.
+- **2026-07-31 — Plan lifecycle:** Fixed a nine-PR series with this plan as
+  Step 1/9 and active-to-completed retirement as Step 9/9.
+- **2026-07-31 — PR #649 review:** Corrected the reviewed baseline SHA; required
+  candidate pagination past newer fork heads, read-time GitHub identity gating,
+  a coalesced add-during-flight refresh, and independent branch display for
+  named non-GitHub repositories.
+- **2026-07-31 — Explicit refresh generation:** Same-project requests arriving
+  after cycle admission no longer share potentially stale local evidence; their
+  waiter is bound to the immediate follow-up generation.
+- **2026-07-31 — Visible-route ownership:** Mounted list/detail cubits are not
+  sufficient evidence of viewing. Narrow covered routes clear claims, wide
+  visible list panes retain them, and detail child routes hide detail claims.
+- **2026-07-31 — Cleanup:** Step 2 replaces the unscoped cache shape; Step 3
+  removes repository-wide PR source code and directly obsolete test support.
+  Creation-branch storage and the empty compatibility wire field remain because
+  they still have required cleanup/transport roles.

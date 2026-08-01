@@ -20,7 +20,9 @@ void main() {
     const projectCwd = "/repo/app";
     const imageAttachmentMapper = CodexImageAttachmentMapper();
     const imageBearingItemParser = CodexImageBearingItemParser();
-    const rolloutToolMapper = CodexRolloutToolMapper();
+    const rolloutToolMapper = CodexRolloutToolMapper(
+      imageAttachmentMapper: imageAttachmentMapper,
+    );
     final mapper = CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
@@ -720,26 +722,110 @@ void main() {
       mapper.clearRolloutTurn(threadId: "t-unicode");
     });
 
-    test("image-generation rollout items remain unknown and emit no events", () {
+    test("image-generation rollout and app-server items converge on one stable part", () {
       final line = CodexRolloutLineDto.fromJson({
         "type": "response_item",
         "payload": {
           "type": "image_generation_call",
           "id": "image-1",
           "status": "completed",
-          "result": "not-retained-in-step-4",
+          "result": "AA==",
         },
       });
 
-      expect(
-        line,
-        isA<CodexRolloutResponseItemLineDto>().having(
-          (line) => line.payload,
-          "payload",
-          isA<CodexRolloutUnknownResponseItemDto>(),
+      final rollout = mapper.mapRolloutLine(threadId: "t-image", line: line);
+      final appServer = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-image",
+            "item": {
+              "type": "imageGeneration",
+              "id": "image-1",
+              "status": "completed",
+              "result": "AA==",
+              "savedPath": null,
+            },
+          },
         ),
       );
-      expect(mapper.mapRolloutLine(threadId: "t-image", line: line), isEmpty);
+
+      final rolloutPart = (rollout[1] as BridgeSseMessagePartUpdated).part;
+      final appServerPart = (appServer[1] as BridgeSseMessagePartUpdated).part;
+      expect(line, isA<CodexRolloutResponseItemLineDto>());
+      expect(rolloutPart.id, "image-1-tool");
+      expect(rolloutPart.messageID, "image-1");
+      expect(rolloutPart.id, appServerPart.id);
+      expect(rolloutPart.messageID, appServerPart.messageID);
+      expect(rolloutPart.tool, appServerPart.tool);
+      expect(rolloutPart.state?.status, appServerPart.state?.status);
+      expect(rolloutPart.state?.attachments, appServerPart.state?.attachments);
+
+      final idless = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "image_generation_call",
+          "status": "completed",
+          "result": "AA==",
+        },
+      });
+      expect(mapper.mapRolloutLine(threadId: "t-image", line: idless), isEmpty);
+    });
+
+    test("later app-server updates preserve richer rollout attachments", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "id": "tool-record",
+          "call_id": "tool-live",
+          "name": "exec",
+          "input": 'tools.exec_command({"cmd":"capture"})',
+        },
+      });
+      final result = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call_output",
+          "call_id": "tool-live",
+          "output": [
+            {"type": "input_text", "text": "persisted output"},
+            {"type": "input_image", "image_url": "data:image/png;base64,AA=="},
+          ],
+        },
+      });
+      mapper.mapRolloutLine(threadId: "t-canonical-image", line: call);
+      final rolloutEvents = mapper.mapRolloutLine(
+        threadId: "t-canonical-image",
+        line: result,
+      );
+
+      final appServerEvents = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-canonical-image",
+            "item": {
+              "type": "dynamicToolCall",
+              "id": "tool-live",
+              "tool": "exec",
+              "arguments": null,
+              "status": "completed",
+              "contentItems": [
+                {"type": "inputText", "text": "smaller app-server output"},
+              ],
+            },
+          },
+        ),
+      );
+
+      final rolloutPart = (rolloutEvents[1] as BridgeSseMessagePartUpdated).part;
+      final appServerPart = (appServerEvents[1] as BridgeSseMessagePartUpdated).part;
+      expect(appServerPart.id, rolloutPart.id);
+      expect(appServerPart.state?.output, "persisted output");
+      expect(appServerPart.state?.attachments, rolloutPart.state?.attachments);
+      expect(appServerPart.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      mapper.clearRolloutTurn(threadId: "t-canonical-image");
     });
 
     test("commandExecution (started/inProgress) → running tool part", () {

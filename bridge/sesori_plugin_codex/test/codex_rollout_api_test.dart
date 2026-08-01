@@ -6,6 +6,7 @@ import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -28,7 +29,9 @@ void main() {
       catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
       messageRepository = CodexMessageRepository(
         rolloutApi: rolloutApi,
-        rolloutToolMapper: const CodexRolloutToolMapper(),
+        rolloutToolMapper: const CodexRolloutToolMapper(
+          imageAttachmentMapper: CodexImageAttachmentMapper(),
+        ),
       );
     });
 
@@ -186,7 +189,17 @@ void main() {
         decode({"type": "custom_tool_call_output", "call_id": "c2", "output": <Object?>[]}),
         decode({"type": "web_search_call", "action": null}),
         decode({"type": "future_item", "secret": "ignored"}),
-        decode({"type": "image_generation_call", "result": "ignored"}),
+        decode({
+          "type": "image_generation_call",
+          "id": "image-1",
+          "status": "completed",
+          "result": "AA==",
+        }),
+        decode({
+          "type": "image_generation_call",
+          "status": "future_status",
+          "result": "AA==",
+        }),
       ];
 
       expect(items[0], isA<CodexRolloutMessageDto>());
@@ -197,7 +210,14 @@ void main() {
       expect(items[5], isA<CodexRolloutCustomToolCallOutputDto>());
       expect(items[6], isA<CodexRolloutWebSearchCallDto>());
       expect(items[7], isA<CodexRolloutUnknownResponseItemDto>());
-      expect(items[8], isA<CodexRolloutUnknownResponseItemDto>());
+      final image = items[8] as CodexRolloutImageGenerationDto;
+      expect(image.id, "image-1");
+      expect(image.status, CodexRolloutImageGenerationStatus.completed);
+      expect(image.result, "AA==");
+      expect(
+        (items[9] as CodexRolloutImageGenerationDto).status,
+        CodexRolloutImageGenerationStatus.unknown,
+      );
     });
 
     test("readHeader does not read beyond its bounded scan window", () {
@@ -275,6 +295,33 @@ void main() {
       expect(output, isNot(contains("secret-credential")));
       expect(output, isNot(contains("secret-query")));
       expect(output, isNot(contains("secret-source-content")));
+    });
+
+    test("readTranscript names image-generation schema fields without values", () {
+      final path = p.join(codexHome.path, "malformed-image-transcript.jsonl");
+      File(path).writeAsStringSync(
+        '${jsonEncode({
+          "type": "response_item",
+          "payload": {
+            "type": "image_generation_call",
+            "id": "secret-image-id",
+            "status": "completed",
+            "result": 42,
+            "revised_prompt": "secret revised prompt",
+          },
+        })}\n{}\n',
+      );
+
+      final output = _captureWarnings(
+        () => rolloutApi.readTranscript(rolloutPath: path),
+        level: LogLevel.verbose,
+      );
+
+      expect(output, contains('status:enum("completed")'));
+      expect(output, contains("result:int"));
+      expect(output, contains("<redacted-key>:String"));
+      expect(output, isNot(contains("secret-image-id")));
+      expect(output, isNot(contains("secret revised prompt")));
     });
 
     test("readTranscript bounds malformed record schema output", () {
@@ -830,6 +877,61 @@ void main() {
       expect(part.state?.output, isNull);
     });
 
+    test("readMessages restores image generations with stable persisted and fallback ids", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/07/31/rollout-image-history.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "timestamp": "2026-07-31T10:00:01Z",
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "id": "image-1",
+              "status": "completed",
+              "revised_prompt": "private prompt",
+              "result": "AA==",
+            },
+          }),
+          jsonEncode({
+            "timestamp": "2026-07-31T10:00:02Z",
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "status": "completed",
+              "result": "AA==",
+            },
+          }),
+        ],
+      );
+
+      final firstRead = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+      );
+      final secondRead = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+      );
+
+      expect(firstRead.map((message) => message.info.id), ["image-1", "m-2"]);
+      expect(secondRead.map((message) => message.info.id), ["image-1", "m-2"]);
+      for (final message in firstRead) {
+        final part = message.parts.single;
+        expect(part.id, "${message.info.id}-tool");
+        expect(part.messageID, message.info.id);
+        expect(part.tool, "image_generation");
+        expect(part.state?.status, PluginToolStatus.completed);
+        final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
+        expect(attachment.mime, "image/png");
+        expect(attachment.base64, "AA==");
+        expect(attachment.filename, isNull);
+        expect(part.toString(), isNot(contains("private prompt")));
+      }
+    });
+
     test("readMessages surfaces transcript read failures", () {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       final path = p.join(codexHome.path, "broken-rollout.jsonl");
@@ -1021,7 +1123,9 @@ void main() {
       expect(tool.state?.status, PluginToolStatus.completed);
       expect(tool.state?.title, "ls -la");
       expect(tool.state?.output, contains("foo.dart"));
-      expect(tool.state?.attachments, isEmpty);
+      final attachment = tool.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(attachment.mime, "image/png");
+      expect(attachment.base64, "AA==");
 
       final assistant = messages[2];
       expect(assistant.parts.single.text, "Done");
@@ -1237,7 +1341,9 @@ void main() {
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
         ),
-        rolloutToolMapper: const CodexRolloutToolMapper(),
+        rolloutToolMapper: const CodexRolloutToolMapper(
+          imageAttachmentMapper: CodexImageAttachmentMapper(),
+        ),
       );
       final path = _writeRollout(
         codexHome,
@@ -1295,7 +1401,9 @@ void main() {
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
         ),
-        rolloutToolMapper: const CodexRolloutToolMapper(),
+        rolloutToolMapper: const CodexRolloutToolMapper(
+          imageAttachmentMapper: CodexImageAttachmentMapper(),
+        ),
       );
       final path = _writeRollout(
         codexHome,

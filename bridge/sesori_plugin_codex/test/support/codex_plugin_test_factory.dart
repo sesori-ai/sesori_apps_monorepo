@@ -14,7 +14,10 @@ CodexPlugin createInjectedCodexPlugin({
   Duration rolloutPollInterval = const Duration(milliseconds: 10),
 }) {
   final rolloutApi = CodexRolloutApi(environment: environment);
-  const rolloutToolMapper = CodexRolloutToolMapper();
+  const imageAttachmentMapper = CodexImageAttachmentMapper();
+  const rolloutToolMapper = CodexRolloutToolMapper(
+    imageAttachmentMapper: imageAttachmentMapper,
+  );
   final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
   final configReader = CodexConfigReader(environment: environment);
   final metadataRepository = CodexMetadataRepository(
@@ -36,7 +39,7 @@ CodexPlugin createInjectedCodexPlugin({
     eventMapper: CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
-      imageAttachmentMapper: const CodexImageAttachmentMapper(),
+      imageAttachmentMapper: imageAttachmentMapper,
       imageBearingItemParser: const CodexImageBearingItemParser(),
       rolloutToolMapper: rolloutToolMapper,
       config: configReader.readDefaults(),
