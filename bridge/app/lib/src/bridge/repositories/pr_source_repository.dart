@@ -167,6 +167,7 @@ final class _PullRequestTargetSelection {
   final PullRequestSelectionTarget target;
   GhPullRequestCandidatePage? _terminalInitialPage;
   final List<GhPullRequest> _eligibleCandidates = <GhPullRequest>[];
+  final Map<GhPullRequestStateGroup, Set<String>> _seenCursorsByState = <GhPullRequestStateGroup, Set<String>>{};
   GhPullRequestStateGroup _stateGroup = GhPullRequestStateGroup.open;
   String? _pendingCursor;
 
@@ -232,6 +233,10 @@ final class _PullRequestTargetSelection {
       final cursor = page.connection.pageInfo.endCursor;
       if (cursor == null || cursor.isEmpty) {
         throw const FormatException("GitHub pull request query omitted a required cursor");
+      }
+      final seenCursors = _seenCursorsByState.putIfAbsent(_stateGroup, () => <String>{});
+      if (!seenCursors.add(cursor)) {
+        throw const FormatException("GitHub pull request query returned a repeated cursor");
       }
       _pendingCursor = cursor;
       return;

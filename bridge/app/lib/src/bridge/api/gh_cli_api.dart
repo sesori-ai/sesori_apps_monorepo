@@ -99,7 +99,7 @@ class GhCliApi {
   Future<GhPullRequestBatchResponse> queryInitialPullRequestPages({
     required List<GhPullRequestTarget> targets,
   }) {
-    _requireValidQuerySize(targets.length);
+    _requireValidQuerySize(count: targets.length);
 
     final definitions = <String>[];
     final selections = <String>["viewer { login }"];
@@ -143,7 +143,7 @@ class GhCliApi {
   Future<GhPullRequestBatchResponse> queryPullRequestCursorPages({
     required List<GhPullRequestCursorRequest> requests,
   }) {
-    _requireValidQuerySize(requests.length);
+    _requireValidQuerySize(count: requests.length);
 
     final definitions = <String>[];
     final selections = <String>["viewer { login }"];
@@ -342,7 +342,7 @@ class GhCliApi {
     return response;
   }
 
-  void _requireValidQuerySize(int count) {
+  void _requireValidQuerySize({required int count}) {
     if (count < 1 || count > maxPullRequestTargetsPerQuery) {
       throw ArgumentError.value(
         count,

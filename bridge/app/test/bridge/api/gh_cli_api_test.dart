@@ -352,17 +352,27 @@ void main() {
 
       await expectLater(
         service.queryInitialPullRequestPages(targets: const [_target]),
-        throwsA(isA<GhPullRequestGraphqlException>().having((error) => error.errorCount, "errors", 1)),
+        throwsA(
+          isA<GhPullRequestGraphqlException>()
+              .having((error) => error.errorCount, "errors", 1)
+              .having((error) => error.toString(), "presentation", contains("1 GraphQL error")),
+        ),
       );
       await expectLater(
         service.queryInitialPullRequestPages(targets: const [_target]),
-        throwsA(isA<GhPullRequestProcessExitException>().having((error) => error.exitCode, "exit", 1)),
+        throwsA(
+          isA<GhPullRequestProcessExitException>()
+              .having((error) => error.exitCode, "exit", 1)
+              .having((error) => error.toString(), "presentation", contains("exit code 1")),
+        ),
       );
       await expectLater(
         service.queryInitialPullRequestPages(targets: const [_target]),
         throwsA(
           isA<GhPullRequestWrappedException>()
               .having((error) => error.innerError, "innerError", isA<TimeoutException>())
+              .having((error) => error.toString(), "presentation", contains("TimeoutException"))
+              .having((error) => error.toString(), "presentation", isNot(contains("query timed out")))
               .having((error) => error.toString(), "presentation", isNot(contains("feat/one"))),
         ),
       );
@@ -376,6 +386,7 @@ void main() {
         throwsA(
           isA<GhPullRequestWrappedException>()
               .having((error) => error.innerError, "innerError", isA<FormatException>())
+              .having((error) => error.toString(), "presentation", contains("FormatException"))
               .having((error) => error.toString(), "presentation", isNot(contains("not-json"))),
         ),
       );

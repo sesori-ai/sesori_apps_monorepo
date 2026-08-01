@@ -162,6 +162,52 @@ void main() {
       expect(ghCli.cursorCalls.map((requests) => requests.single.cursor), ["open-1", "open-2"]);
     });
 
+    test("rejects a repeated GraphQL cursor instead of looping", () async {
+      final ghCli = _FakeGhCliApi(
+        initialResponses: [
+          _batchResponse(
+            pages: [
+              _page(
+                stateGroup: GhPullRequestStateGroup.open,
+                pullRequests: const [],
+                hasNextPage: true,
+                endCursor: "repeated",
+              ),
+              _page(stateGroup: GhPullRequestStateGroup.terminal, pullRequests: const []),
+            ],
+          ),
+        ],
+        cursorResponses: [
+          _batchResponse(
+            pages: [
+              _page(
+                stateGroup: GhPullRequestStateGroup.open,
+                pullRequests: const [],
+                hasNextPage: true,
+                endCursor: "repeated",
+              ),
+            ],
+          ),
+        ],
+      );
+      final repository = _selectionRepository(ghCli: ghCli);
+
+      await expectLater(
+        repository.selectPullRequests(
+          targets: const [_selectionTarget],
+          expectedGithubLogin: _verifiedGithubLogin,
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            "message",
+            contains("repeated cursor"),
+          ),
+        ),
+      );
+      expect(ghCli.cursorCalls, hasLength(1));
+    });
+
     test("falls back to newest terminal and rejects wrong-branch candidates", () async {
       final ghCli = _FakeGhCliApi(
         initialResponses: [

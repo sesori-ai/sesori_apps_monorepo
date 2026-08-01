@@ -33,21 +33,24 @@ final class GhPullRequestCursorRequest {
 
 sealed class GhPullRequestQueryException implements Exception {
   const GhPullRequestQueryException();
-
-  @override
-  String toString() => "GitHub pull request query failed";
 }
 
 final class GhPullRequestProcessExitException extends GhPullRequestQueryException {
   final int exitCode;
 
   const GhPullRequestProcessExitException({required this.exitCode});
+
+  @override
+  String toString() => "GitHub pull request query failed with exit code $exitCode";
 }
 
 final class GhPullRequestGraphqlException extends GhPullRequestQueryException {
   final int errorCount;
 
   const GhPullRequestGraphqlException({required this.errorCount});
+
+  @override
+  String toString() => "GitHub pull request query returned $errorCount GraphQL error${errorCount == 1 ? "" : "s"}";
 }
 
 final class GhPullRequestWrappedException extends GhPullRequestQueryException {
@@ -58,6 +61,9 @@ final class GhPullRequestWrappedException extends GhPullRequestQueryException {
     required this.innerError,
     required this.innerStackTrace,
   });
+
+  @override
+  String toString() => "GitHub pull request query failed while handling ${innerError.runtimeType}";
 }
 
 @Freezed(fromJson: true, toJson: true)
