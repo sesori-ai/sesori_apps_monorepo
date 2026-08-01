@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:flutter/foundation.dart" show visibleForTesting;
@@ -22,14 +23,27 @@ class TemporaryDirectoryClient {
   @visibleForTesting
   TemporaryDirectoryClient.forTesting({required TemporaryDirectoryLoader load}) : _load = load;
 
-  Future<Directory> get directory => _directory ??= _load();
+  Future<Directory> get directory {
+    final cached = _directory;
+    if (cached != null) return cached;
+
+    final completer = Completer<Directory>();
+    final resolution = completer.future;
+    _directory = resolution;
+    Future<Directory>.sync(_load).then(
+      completer.complete,
+      onError: (Object error, StackTrace stackTrace) {
+        if (identical(_directory, resolution)) _directory = null;
+        completer.completeError(error, stackTrace);
+      },
+    );
+    return resolution;
+  }
 
   Future<void> warmUp() async {
-    final resolution = directory;
     try {
-      await resolution;
+      await directory;
     } catch (error, stackTrace) {
-      if (identical(_directory, resolution)) _directory = null;
       logw("Failed to warm the temporary-directory cache", error, stackTrace);
     }
   }

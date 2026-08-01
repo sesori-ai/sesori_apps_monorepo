@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:flutter_test/flutter_test.dart";
@@ -26,5 +27,27 @@ void main() {
     expect(firstPath, endsWith(".m4a"));
     expect(secondPath, startsWith("/tmp/sesori-recording-file-provider-test/sesori_voice_"));
     expect(directoryLoads, 1);
+  });
+
+  test("retries when recording starts as eager warm-up fails", () async {
+    final firstLoad = Completer<Directory>();
+    final recoveredDirectory = Directory("/tmp/sesori-recording-file-provider-recovered");
+    var directoryLoads = 0;
+    final temporaryDirectoryClient = TemporaryDirectoryClient.forTesting(
+      load: () {
+        directoryLoads++;
+        return directoryLoads == 1 ? firstLoad.future : Future.value(recoveredDirectory);
+      },
+    );
+    final provider = RecordingFileProvider(
+      audioFormat: AudioFormatConfig.forPlatform(isWeb: false),
+      temporaryDirectoryClient: temporaryDirectoryClient,
+    );
+
+    final path = provider.createRecordingPath();
+    firstLoad.completeError(StateError("temporary directory unavailable"));
+
+    expect(await path, startsWith("${recoveredDirectory.path}/sesori_voice_"));
+    expect(directoryLoads, 2);
   });
 }

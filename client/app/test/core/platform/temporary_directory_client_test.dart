@@ -46,4 +46,44 @@ void main() {
     expect(await client.directory, same(recoveredDirectory));
     expect(loadCalls, 2);
   });
+
+  test("retries after a direct lookup failure", () async {
+    final recoveredDirectory = Directory("/tmp/sesori-temporary-directory-client-direct-retry");
+    var loadCalls = 0;
+
+    final client = TemporaryDirectoryClient.forTesting(
+      load: () {
+        loadCalls++;
+        if (loadCalls == 1) {
+          return Future.error(StateError("temporary directory unavailable"));
+        }
+        return Future.value(recoveredDirectory);
+      },
+    );
+
+    await expectLater(client.directory, throwsA(isA<StateError>()));
+
+    expect(await client.directory, same(recoveredDirectory));
+    expect(loadCalls, 2);
+  });
+
+  test("contains a synchronous warm-up failure", () async {
+    final recoveredDirectory = Directory("/tmp/sesori-temporary-directory-client-sync-retry");
+    var loadCalls = 0;
+
+    final client = TemporaryDirectoryClient.forTesting(
+      load: () {
+        loadCalls++;
+        if (loadCalls == 1) {
+          throw StateError("temporary directory unavailable");
+        }
+        return Future.value(recoveredDirectory);
+      },
+    );
+
+    await client.warmUp();
+
+    expect(await client.directory, same(recoveredDirectory));
+    expect(loadCalls, 2);
+  });
 }
