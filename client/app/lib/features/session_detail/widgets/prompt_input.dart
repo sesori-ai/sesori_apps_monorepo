@@ -17,16 +17,12 @@ import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/command_picker_sheet.dart";
+import "../../../core/widgets/composer_surface_style.dart";
 import "composer_options_accordion.dart";
 import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
 enum _VoiceState { idle, recording, transcribing }
-
-/// The composer's three visual states: the hold-to-talk pill (voice-first
-/// resting state), the compact tap-to-type pill (text-first resting state),
-/// and the expanded typing container.
-enum _ComposerLayout { holdToTalk, compact, typing }
 
 typedef PromptSubmitCallback =
     void Function({
@@ -121,7 +117,7 @@ class _PromptInputState extends State<PromptInput> {
   /// composer's slots for the recording/transcribing chrome must not relayout
   /// the composer mid-hold — the gesture-owning elements would be reparented
   /// and never receive the release.
-  _ComposerLayout? _pinnedVoiceLayout;
+  ComposerSurfaceLayout? _pinnedVoiceLayout;
 
   /// Set when the hold is released while [_startRecording] is still awaiting
   /// the recorder, so the start path discards the incomplete recording once
@@ -168,6 +164,7 @@ class _PromptInputState extends State<PromptInput> {
       _updateComposerState(update: () => _chatInputMode = inputMode);
     });
     _restoreDraft(draft: widget.initialDraft);
+    _syncSurfaceStyle();
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
@@ -258,17 +255,14 @@ class _PromptInputState extends State<PromptInput> {
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
-  _ComposerLayout get _restingLayout {
-    if (_showsTypingLayout) return _ComposerLayout.typing;
-    return _isVoiceFirst ? _ComposerLayout.holdToTalk : _ComposerLayout.compact;
-  }
+  ComposerSurfaceLayout get _restingLayout => resolveComposerSurfaceLayout(
+    inputMode: _chatInputMode,
+    showsTypingLayout: _showsTypingLayout,
+  );
 
-  _ComposerLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
+  ComposerSurfaceLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
 
-  PregoComposerSurfaceStyle get _surfaceStyle => switch (_layout) {
-    _ComposerLayout.holdToTalk => PregoComposerSurfaceStyle.subtle,
-    _ComposerLayout.compact || _ComposerLayout.typing => PregoComposerSurfaceStyle.emphasized,
-  };
+  PregoComposerSurfaceStyle get _surfaceStyle => _layout.surfaceStyle;
 
   void _updateComposerState({required VoidCallback update}) {
     setState(update);
@@ -768,9 +762,9 @@ class _PromptInputState extends State<PromptInput> {
                     // [_layout], so a switch never happens mid-hold.
                     key: ValueKey(_layout),
                     child: switch (_layout) {
-                      _ComposerLayout.typing => _buildTypingComposer(context),
-                      _ComposerLayout.compact => _buildCompactComposer(context),
-                      _ComposerLayout.holdToTalk => _buildHoldToTalkComposer(context),
+                      ComposerSurfaceLayout.typing => _buildTypingComposer(context),
+                      ComposerSurfaceLayout.compact => _buildCompactComposer(context),
+                      ComposerSurfaceLayout.holdToTalk => _buildHoldToTalkComposer(context),
                     },
                   ),
                 ),
