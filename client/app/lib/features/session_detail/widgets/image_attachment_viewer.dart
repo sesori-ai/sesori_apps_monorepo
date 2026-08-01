@@ -10,11 +10,20 @@ import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/external_link.dart";
 
-final class LoadedMessageImage {
+sealed class MessageImageViewerImage {
+  ImageProvider get provider;
+  Uri? get originalUri;
+
+  const MessageImageViewerImage();
+}
+
+final class LoadedMessageImage extends MessageImageViewerImage {
   final Uint8List bytes;
+  @override
   final ImageProvider provider;
   final String mime;
   final String actionFilename;
+  @override
   final Uri? originalUri;
 
   const LoadedMessageImage({
@@ -23,12 +32,24 @@ final class LoadedMessageImage {
     required this.mime,
     required this.actionFilename,
     required this.originalUri,
-  });
+  }) : super();
+}
+
+final class ViewOnlyMessageImage extends MessageImageViewerImage {
+  @override
+  final ImageProvider provider;
+  @override
+  final Uri? originalUri;
+
+  const ViewOnlyMessageImage({
+    required this.provider,
+    required this.originalUri,
+  }) : super();
 }
 
 Future<void> showImageAttachmentViewer({
   required BuildContext context,
-  required LoadedMessageImage image,
+  required MessageImageViewerImage image,
   required String? filename,
   required Key heroTag,
 }) {
@@ -40,23 +61,29 @@ Future<void> showImageAttachmentViewer({
     opaque: false,
     transitionDuration: const Duration(milliseconds: 260),
     reverseTransitionDuration: const Duration(milliseconds: 220),
-    pageBuilder: (_, _, _) => BlocProvider(
-      create: (_) => ImageAttachmentActionsCubit(
-        imageSaver: getIt<ImageSaver>(),
-        imageClipboard: getIt<ImageClipboard>(),
-        imageSharer: getIt<ImageSharer>(),
-        bytes: image.bytes,
-        mime: image.mime,
-        actionFilename: image.actionFilename,
-      ),
-      child: ScaffoldMessenger(
+    pageBuilder: (_, _, _) {
+      final viewer = ScaffoldMessenger(
         child: ImageAttachmentViewer(
           image: image,
           filename: filename,
           heroTag: heroTag,
         ),
-      ),
-    ),
+      );
+      return switch (image) {
+        LoadedMessageImage() => BlocProvider(
+          create: (_) => ImageAttachmentActionsCubit(
+            imageSaver: getIt<ImageSaver>(),
+            imageClipboard: getIt<ImageClipboard>(),
+            imageSharer: getIt<ImageSharer>(),
+            bytes: image.bytes,
+            mime: image.mime,
+            actionFilename: image.actionFilename,
+          ),
+          child: viewer,
+        ),
+        ViewOnlyMessageImage() => viewer,
+      };
+    },
     transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
   );
   var shouldDismissViewerWithHistory = true;
@@ -80,7 +107,7 @@ Future<void> showImageAttachmentViewer({
 class ImageAttachmentViewer extends StatefulWidget {
   static const imageKey = ValueKey("imageAttachmentViewer.image");
 
-  final LoadedMessageImage image;
+  final MessageImageViewerImage image;
   final String? filename;
   final Key heroTag;
 
@@ -276,67 +303,69 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final image = widget.image;
     final originalUri = widget.image.originalUri;
     final displayFilename = widget.filename;
-    final isRunningAction = context.watch<ImageAttachmentActionsCubit>().state is ImageAttachmentActionRunning;
+    final hasAttachmentActions = image is LoadedMessageImage;
+    final isRunningAction =
+        hasAttachmentActions && context.watch<ImageAttachmentActionsCubit>().state is ImageAttachmentActionRunning;
     final dismissRange = (MediaQuery.sizeOf(context).height * 0.45).clamp(1.0, double.infinity);
     final dismissProgress = (_dragOffset.abs() / dismissRange).clamp(0.0, 1.0);
     final chromeOpacity = 1 - dismissProgress;
     final backgroundOpacity = 1 - dismissProgress * 0.8;
-    return BlocListener<ImageAttachmentActionsCubit, ImageAttachmentActionsState>(
-      listener: _handleActionState,
-      child: Scaffold(
-        backgroundColor: prego.colors.bgSurface1.withValues(alpha: backgroundOpacity),
-        body: SafeArea(
-          child: Column(
-            children: [
-              IgnorePointer(
-                ignoring: _isDismissDrag,
-                child: Opacity(
-                  opacity: chromeOpacity,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: prego.spacing.sm),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          tooltip: context.loc.sessionDetailImageClose,
-                          onPressed: _dismiss,
-                          icon: Icon(Icons.close, color: prego.colors.textPrimary),
-                        ),
-                        SizedBox(width: prego.spacing.xs),
-                        Expanded(
-                          child: displayFilename == null
-                              ? const SizedBox.shrink()
-                              : Text(
-                                  displayFilename,
-                                  style: prego.textTheme.textSm.bold,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                        ),
-                        if (isRunningAction)
-                          Padding(
-                            padding: EdgeInsets.all(prego.spacing.md),
-                            child: SizedBox.square(
-                              dimension: prego.spacing.x2l,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: prego.colors.fgBrandPrimary,
+    final viewer = Scaffold(
+      backgroundColor: prego.colors.bgSurface1.withValues(alpha: backgroundOpacity),
+      body: SafeArea(
+        child: Column(
+          children: [
+            IgnorePointer(
+              ignoring: _isDismissDrag,
+              child: Opacity(
+                opacity: chromeOpacity,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: prego.spacing.sm),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: context.loc.sessionDetailImageClose,
+                        onPressed: _dismiss,
+                        icon: Icon(Icons.close, color: prego.colors.textPrimary),
+                      ),
+                      SizedBox(width: prego.spacing.xs),
+                      Expanded(
+                        child: displayFilename == null
+                            ? const SizedBox.shrink()
+                            : Text(
+                                displayFilename,
+                                style: prego.textTheme.textSm.bold,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
+                      ),
+                      if (isRunningAction)
+                        Padding(
+                          padding: EdgeInsets.all(prego.spacing.md),
+                          child: SizedBox.square(
+                            dimension: prego.spacing.x2l,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: prego.colors.fgBrandPrimary,
                             ),
-                          )
-                        else ...[
-                          if (originalUri != null)
-                            IconButton(
-                              tooltip: context.loc.sessionDetailImageOpenOriginal,
-                              onPressed: () => unawaited(
-                                openExternalLink(
-                                  url: originalUri,
-                                  mode: UrlLaunchMode.externalApp,
-                                ).then<void>((_) {}),
-                              ),
-                              icon: Icon(Icons.open_in_new, color: prego.colors.textPrimary),
+                          ),
+                        )
+                      else ...[
+                        if (originalUri != null)
+                          IconButton(
+                            tooltip: context.loc.sessionDetailImageOpenOriginal,
+                            onPressed: () => unawaited(
+                              openExternalLink(
+                                url: originalUri,
+                                mode: UrlLaunchMode.externalApp,
+                              ).then<void>((_) {}),
                             ),
+                            icon: Icon(Icons.open_in_new, color: prego.colors.textPrimary),
+                          ),
+                        if (hasAttachmentActions) ...[
                           IconButton(
                             tooltip: context.loc.sessionDetailImageCopy,
                             onPressed: () => unawaited(context.read<ImageAttachmentActionsCubit>().copy()),
@@ -360,37 +389,37 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
                           ),
                         ],
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ),
-              Expanded(
-                child: Transform.translate(
-                  offset: Offset(0, _dragOffset),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onDoubleTapDown: (details) => _captureDoubleTapPosition(details: details),
-                    onDoubleTap: _toggleZoom,
-                    child: InteractiveViewer(
-                      transformationController: _transformationController,
-                      minScale: 0.8,
-                      maxScale: 5,
-                      onInteractionStart: (details) => _handleInteractionStart(details: details),
-                      onInteractionUpdate: (details) => _handleInteractionUpdate(details: details),
-                      onInteractionEnd: (details) => _handleInteractionEnd(details: details),
-                      child: Hero(
-                        tag: widget.heroTag,
-                        child: SizedBox.expand(
-                          child: Image(
-                            key: ImageAttachmentViewer.imageKey,
-                            image: widget.image.provider,
-                            fit: BoxFit.contain,
-                            semanticLabel: widget.filename,
-                            errorBuilder: (_, _, _) => Icon(
-                              Icons.broken_image,
-                              size: prego.spacing.x6l,
-                              color: prego.colors.textTertiary,
-                            ),
+            ),
+            Expanded(
+              child: Transform.translate(
+                offset: Offset(0, _dragOffset),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onDoubleTapDown: (details) => _captureDoubleTapPosition(details: details),
+                  onDoubleTap: _toggleZoom,
+                  child: InteractiveViewer(
+                    transformationController: _transformationController,
+                    minScale: 0.8,
+                    maxScale: 5,
+                    onInteractionStart: (details) => _handleInteractionStart(details: details),
+                    onInteractionUpdate: (details) => _handleInteractionUpdate(details: details),
+                    onInteractionEnd: (details) => _handleInteractionEnd(details: details),
+                    child: Hero(
+                      tag: widget.heroTag,
+                      child: SizedBox.expand(
+                        child: Image(
+                          key: ImageAttachmentViewer.imageKey,
+                          image: image.provider,
+                          fit: BoxFit.contain,
+                          semanticLabel: widget.filename,
+                          errorBuilder: (_, _, _) => Icon(
+                            Icons.broken_image,
+                            size: prego.spacing.x6l,
+                            color: prego.colors.textTertiary,
                           ),
                         ),
                       ),
@@ -398,10 +427,15 @@ class _ImageAttachmentViewerState extends State<ImageAttachmentViewer> with Tick
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+    if (!hasAttachmentActions) return viewer;
+    return BlocListener<ImageAttachmentActionsCubit, ImageAttachmentActionsState>(
+      listener: _handleActionState,
+      child: viewer,
     );
   }
 }

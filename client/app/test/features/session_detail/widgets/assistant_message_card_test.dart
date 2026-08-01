@@ -7,6 +7,8 @@ import "package:http/testing.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
+import "package:sesori_mobile/features/session_detail/widgets/image_attachment_viewer.dart";
+import "package:sesori_mobile/features/session_detail/widgets/text_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/tool_part_widget.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -212,6 +214,47 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data, "updated draft text");
+  });
+
+  testWidgets("opens a decoded Markdown image in the full-screen viewer", (tester) async {
+    const imageData =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
+
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [_textPart(id: "image-part", text: "![Test image]($imageData)")],
+        ),
+        streamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final markdownImage = find.byType(MarkdownMessageImage);
+    expect(markdownImage, findsOneWidget);
+    final preview = tester.widget<Image>(find.descendant(of: markdownImage, matching: find.byType(Image)));
+    await tester.runAsync(
+      () => precacheImage(
+        preview.image,
+        tester.element(markdownImage),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final tapTarget = tester.widget<GestureDetector>(
+      find.descendant(of: markdownImage, matching: find.byType(GestureDetector)),
+    );
+    expect(tapTarget.onTap, isNotNull);
+
+    tapTarget.onTap!();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    expect(find.byIcon(Icons.content_copy), findsNothing);
+    expect(find.byIcon(Icons.share_outlined), findsNothing);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
+    expect(identical(fullscreen.image, preview.image), isTrue);
   });
 
   testWidgets("renders normalized assistant file attachments", (tester) async {
