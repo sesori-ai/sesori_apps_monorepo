@@ -21,12 +21,14 @@ import "background_tasks_list.dart";
 /// Running tasks are always shown first. Completed tasks are hidden behind a
 /// "Show N completed" toggle.
 class BackgroundTasksBar extends StatefulWidget {
+  final PregoComposerSurfaceStyle surfaceStyle;
   final String? projectId;
   final List<Session> children;
   final Map<String, SessionStatus> childStatuses;
 
   const BackgroundTasksBar({
     super.key,
+    required this.surfaceStyle,
     required this.projectId,
     required this.children,
     required this.childStatuses,
@@ -132,6 +134,7 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
 
   Widget _buildCard(BuildContext context, {required bool expanded}) {
     return PregoCard(
+      surfaceStyle: widget.surfaceStyle,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

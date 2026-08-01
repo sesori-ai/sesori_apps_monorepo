@@ -14,18 +14,41 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 
+/// The two outline treatments used by the composer and its adjacent surfaces.
+enum PregoComposerSurfaceStyle { subtle, emphasized }
+
+/// Builds the shared solid decoration used by the composer, picker pills, and
+/// background-task card.
+BoxDecoration pregoComposerSurfaceDecoration({
+  required PregoDesignSystem prego,
+  required PregoComposerSurfaceStyle style,
+  required BorderRadius borderRadius,
+}) {
+  final borderColor = switch (style) {
+    PregoComposerSurfaceStyle.subtle => prego.colors.borderSecondary,
+    PregoComposerSurfaceStyle.emphasized => prego.colors.borderPrimary,
+  };
+  return BoxDecoration(
+    color: prego.colors.bgSurface2,
+    borderRadius: borderRadius,
+    border: Border.all(color: borderColor),
+    boxShadow: prego.shadows.xs,
+  );
+}
+
 /// A rounded, elevated surface that hosts grouped content.
 ///
-/// Uses the same fill, border, and elevation as the prompt composer on every
-/// platform.
+/// Uses the same fill, border, and elevation as the composer on every platform.
 class PregoCard extends StatelessWidget {
   const PregoCard({
     super.key,
     required this.child,
+    required this.surfaceStyle,
     this.borderRadius = 20,
   });
 
   final Widget child;
+  final PregoComposerSurfaceStyle surfaceStyle;
 
   /// Corner radius of the card.
   final double borderRadius;
@@ -35,11 +58,10 @@ class PregoCard extends StatelessWidget {
     final prego = context.prego;
     final radius = BorderRadius.circular(borderRadius);
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: prego.colors.bgSurface2,
+      decoration: pregoComposerSurfaceDecoration(
+        prego: prego,
+        style: surfaceStyle,
         borderRadius: radius,
-        border: Border.all(color: prego.colors.borderPrimary),
-        boxShadow: prego.shadows.xs,
       ),
       child: ClipRRect(
         borderRadius: radius,

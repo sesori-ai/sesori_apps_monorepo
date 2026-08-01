@@ -61,6 +61,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
+  final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle = ValueNotifier(
+    PregoComposerSurfaceStyle.subtle,
+  );
   late ScaffoldMessengerState _scaffoldMessenger;
   late String _launchingInBackgroundMessage;
 
@@ -83,6 +86,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
         );
       });
     }
+    _composerSurfaceStyle.dispose();
     super.dispose();
   }
 
@@ -119,15 +123,19 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     if (data == null || (data.agents.isEmpty && data.providers.isEmpty)) return null;
 
     final cubit = context.read<NewSessionCubit>();
-    return AgentModelButtons(
-      agents: data.agents,
-      selectedAgent: selectedAgent,
-      onAgentSelected: cubit.selectAgent,
-      providers: data.providers,
-      selectedAgentModel: data.agentModel,
-      onModelSelected: cubit.selectModel,
-      availableVariants: data.availableVariants,
-      onVariantSelected: cubit.selectVariant,
+    return ValueListenableBuilder<PregoComposerSurfaceStyle>(
+      valueListenable: _composerSurfaceStyle,
+      builder: (context, surfaceStyle, _) => AgentModelButtons(
+        surfaceStyle: surfaceStyle,
+        agents: data.agents,
+        selectedAgent: selectedAgent,
+        onAgentSelected: cubit.selectAgent,
+        providers: data.providers,
+        selectedAgentModel: data.agentModel,
+        onModelSelected: cubit.selectModel,
+        availableVariants: data.availableVariants,
+        onVariantSelected: cubit.selectVariant,
+      ),
     );
   }
 
@@ -336,6 +344,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             ),
                             onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
                             onAbort: _dismissScreen,
+                            onSurfaceStyleChanged: (style) => _composerSurfaceStyle.value = style,
                             header: _buildErrorBanner(state),
                             composerHeader: _buildComposerHeader(state),
                             availableCommands: composerData?.commands ?? const [],

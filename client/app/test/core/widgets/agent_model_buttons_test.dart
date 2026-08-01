@@ -33,6 +33,7 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           AgentModelButtons(
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
             agents: agents,
             selectedAgent: "sesori-plan-worker",
             onAgentSelected: onAgentSelected,

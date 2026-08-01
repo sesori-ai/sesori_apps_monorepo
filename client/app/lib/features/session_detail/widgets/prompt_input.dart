@@ -47,6 +47,7 @@ class PromptInput extends StatefulWidget {
   final ValueChanged<ComposerDraft> onDraftChanged;
   final VoidCallback onDraftCleared;
   final VoidCallback onAbort;
+  final ValueChanged<PregoComposerSurfaceStyle> onSurfaceStyleChanged;
   final Widget? composerHeader;
   final List<CommandInfo> availableCommands;
   final CommandInfo? stagedCommand;
@@ -70,6 +71,7 @@ class PromptInput extends StatefulWidget {
     required this.onDraftChanged,
     required this.onDraftCleared,
     required this.onAbort,
+    required this.onSurfaceStyleChanged,
     required this.composerHeader,
     required this.availableCommands,
     required this.stagedCommand,
@@ -112,6 +114,11 @@ class _PromptInputState extends State<PromptInput> {
   /// composer only rebuilds when emptiness flips (layout + send/stop swap),
   /// not on every keystroke.
   bool _hasText = false;
+
+  /// Last style queued for the parent-owned sibling surfaces. Reporting after
+  /// the frame keeps this child authoritative without rebuilding an ancestor
+  /// while the composer itself is building.
+  PregoComposerSurfaceStyle? _lastReportedSurfaceStyle;
 
   /// Layout pinned for the duration of a voice interaction. Swapping the
   /// composer's slots for the recording/transcribing chrome must not relayout
@@ -251,6 +258,11 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   _ComposerLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
+
+  PregoComposerSurfaceStyle get _surfaceStyle => switch (_layout) {
+    _ComposerLayout.holdToTalk => PregoComposerSurfaceStyle.subtle,
+    _ComposerLayout.compact || _ComposerLayout.typing => PregoComposerSurfaceStyle.emphasized,
+  };
 
   /// Acknowledges the hold immediately while the recorder starts without
   /// claiming that the underlying recording lifecycle has advanced yet.
@@ -649,11 +661,22 @@ class _PromptInputState extends State<PromptInput> {
   static const Duration _morphDuration = Duration(milliseconds: 220);
   static const Curve _morphCurve = Curves.easeOutCubic;
 
+  void _reportSurfaceStyleAfterBuild(PregoComposerSurfaceStyle surfaceStyle) {
+    if (_lastReportedSurfaceStyle == surfaceStyle) return;
+    _lastReportedSurfaceStyle = surfaceStyle;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _surfaceStyle != surfaceStyle) return;
+      widget.onSurfaceStyleChanged(surfaceStyle);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // The resting layout follows the settings choice live.
     context.watch<ChatInputModeCubit>();
     final prego = context.prego;
+    final surfaceStyle = _surfaceStyle;
+    _reportSurfaceStyleAfterBuild(surfaceStyle);
 
     return DecoratedBox(
       // Floating composer: no bar surface, no separator line. The scaffold
@@ -820,21 +843,6 @@ class _PromptInputState extends State<PromptInput> {
   // Composer layouts
   // ---------------------------------------------------------------------------
 
-  BoxDecoration _containerDecoration(
-    PregoDesignSystem prego, {
-    required Color borderColor,
-    required BorderRadius borderRadius,
-  }) {
-    return BoxDecoration(
-      color: prego.colors.bgSurface2,
-      borderRadius: borderRadius,
-      border: Border.all(color: borderColor),
-      boxShadow: [
-        BoxShadow(color: prego.colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
-      ],
-    );
-  }
-
   /// A resting pill surface with the destructive drag-to-cancel gradient
   /// sandwiched between its background and [child]. The gradient layer is
   /// always mounted (invisible at zero progress) so entering the recording
@@ -845,7 +853,7 @@ class _PromptInputState extends State<PromptInput> {
   /// end inset eases down so the waveform ends the spec's 12pt from the edge.
   Widget _buildVoicePillSurface(
     BuildContext context, {
-    required Color borderColor,
+    required PregoComposerSurfaceStyle surfaceStyle,
     required Widget child,
     bool tightensTrailingWhileRecording = false,
   }) {
@@ -854,7 +862,11 @@ class _PromptInputState extends State<PromptInput> {
     final tightenEnd = tightensTrailingWhileRecording && _displayedVoiceState == _VoiceState.recording;
 
     return DecoratedBox(
-      decoration: _containerDecoration(prego, borderColor: borderColor, borderRadius: radius),
+      decoration: pregoComposerSurfaceDecoration(
+        prego: prego,
+        style: surfaceStyle,
+        borderRadius: radius,
+      ),
       child: Stack(
         children: [
           Positioned.fill(child: _buildCancelGradient(context, borderRadius: radius)),
@@ -911,7 +923,7 @@ class _PromptInputState extends State<PromptInput> {
 
     return _buildVoicePillSurface(
       context,
-      borderColor: prego.colors.borderSecondary,
+      surfaceStyle: PregoComposerSurfaceStyle.subtle,
       tightensTrailingWhileRecording: true,
       child: Row(
         spacing: PregoSpacing.md,
@@ -963,7 +975,7 @@ class _PromptInputState extends State<PromptInput> {
 
     return _buildVoicePillSurface(
       context,
-      borderColor: prego.colors.borderPrimary,
+      surfaceStyle: PregoComposerSurfaceStyle.emphasized,
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1027,9 +1039,9 @@ class _PromptInputState extends State<PromptInput> {
 
     return Container(
       padding: const EdgeInsets.all(PregoSpacing.sm),
-      decoration: _containerDecoration(
-        prego,
-        borderColor: prego.colors.borderPrimary,
+      decoration: pregoComposerSurfaceDecoration(
+        prego: prego,
+        style: PregoComposerSurfaceStyle.emphasized,
         borderRadius: borderRadius,
       ),
       child: Column(
@@ -1106,7 +1118,7 @@ class _PromptInputState extends State<PromptInput> {
 
     return _buildVoicePillSurface(
       context,
-      borderColor: prego.colors.borderSecondary,
+      surfaceStyle: PregoComposerSurfaceStyle.subtle,
       tightensTrailingWhileRecording: true,
       child: Row(
         spacing: PregoSpacing.md,

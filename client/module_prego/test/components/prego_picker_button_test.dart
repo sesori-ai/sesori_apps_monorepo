@@ -17,6 +17,7 @@ void main() {
         PregoPickerButton(
           leadingIcon: Icons.smart_toy_outlined,
           label: "Agent",
+          surfaceStyle: PregoComposerSurfaceStyle.subtle,
           onPressed: () => taps++,
         ),
       ),
@@ -41,6 +42,7 @@ void main() {
           PregoPickerButton(
             leadingIcon: Icons.memory_outlined,
             label: "Model",
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
             onPressed: () {},
           ),
         ),
@@ -59,7 +61,7 @@ void main() {
       final surface = decorations.singleWhere(
         (decoration) => decoration.color == PregoColorsLight.bgSurface2,
       );
-      expect(surface.border, Border.all(color: PregoColorsLight.borderPrimary));
+      expect(surface.border, Border.all(color: PregoColorsLight.borderSecondary));
       expect(
         surface.boxShadow,
         [
@@ -83,6 +85,7 @@ void main() {
               child: PregoPickerButton(
                 leadingIcon: Icons.memory_outlined,
                 label: "An extremely long model name that cannot possibly fit in one pill" * 3,
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
                 onPressed: () {},
               ),
             ),

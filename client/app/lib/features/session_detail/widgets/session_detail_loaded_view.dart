@@ -57,10 +57,14 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
   /// message list — not rebuild the whole view including the very composer
   /// being measured.
   final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(0);
+  final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle = ValueNotifier(
+    PregoComposerSurfaceStyle.subtle,
+  );
 
   @override
   void dispose() {
     _bottomControlsHeight.dispose();
+    _composerSurfaceStyle.dispose();
     super.dispose();
   }
 
@@ -168,10 +172,14 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (state.children.isNotEmpty)
-                    BackgroundTasksBar(
-                      projectId: widget.projectId,
-                      children: state.children,
-                      childStatuses: state.childStatuses,
+                    ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                      valueListenable: _composerSurfaceStyle,
+                      builder: (context, surfaceStyle, _) => BackgroundTasksBar(
+                        surfaceStyle: surfaceStyle,
+                        projectId: widget.projectId,
+                        children: state.children,
+                        childStatuses: state.childStatuses,
+                      ),
                     ),
                   if (state.queuedMessages.isNotEmpty)
                     SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
@@ -202,16 +210,21 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                       ),
                       onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
                       onAbort: () => context.read<SessionDetailCubit>().abort(),
+                      onSurfaceStyleChanged: (style) => _composerSurfaceStyle.value = style,
                       header: null,
-                      composerHeader: AgentModelButtons(
-                        agents: state.availableAgents,
-                        selectedAgent: state.selectedAgent,
-                        onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
-                        providers: state.availableProviders,
-                        selectedAgentModel: state.selectedAgentModel,
-                        onModelSelected: context.read<SessionDetailCubit>().selectModel,
-                        availableVariants: state.availableVariants,
-                        onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                      composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                        valueListenable: _composerSurfaceStyle,
+                        builder: (context, surfaceStyle, _) => AgentModelButtons(
+                          surfaceStyle: surfaceStyle,
+                          agents: state.availableAgents,
+                          selectedAgent: state.selectedAgent,
+                          onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
+                          providers: state.availableProviders,
+                          selectedAgentModel: state.selectedAgentModel,
+                          onModelSelected: context.read<SessionDetailCubit>().selectModel,
+                          availableVariants: state.availableVariants,
+                          onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                        ),
                       ),
                       availableCommands: state.availableCommands,
                       stagedCommand: state.stagedCommand,

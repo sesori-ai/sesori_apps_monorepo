@@ -15,7 +15,14 @@ void main() {
     testWidgets(
       "PregoCard matches the composer surface on Android and iOS",
       (tester) async {
-        await tester.pumpWidget(_harness(const PregoCard(child: Text("Body"))));
+        await tester.pumpWidget(
+          _harness(
+            const PregoCard(
+              surfaceStyle: PregoComposerSurfaceStyle.subtle,
+              child: Text("Body"),
+            ),
+          ),
+        );
 
         expect(find.byType(GlassContainer), findsNothing);
         final decorations = tester
@@ -27,7 +34,7 @@ void main() {
         final surface = decorations.singleWhere(
           (decoration) => decoration.color == PregoColorsLight.bgSurface2,
         );
-        expect(surface.border, Border.all(color: PregoColorsLight.borderPrimary));
+        expect(surface.border, Border.all(color: PregoColorsLight.borderSecondary));
         expect(
           surface.boxShadow,
           [
@@ -49,6 +56,7 @@ void main() {
         await tester.pumpWidget(
           _harness(
             PregoCard(
+              surfaceStyle: PregoComposerSurfaceStyle.subtle,
               child: PregoListTile(
                 leading: const Icon(Icons.task_alt),
                 title: const Text("Alpha"),
@@ -77,6 +85,7 @@ void main() {
         await tester.pumpWidget(
           _harness(
             const PregoCard(
+              surfaceStyle: PregoComposerSurfaceStyle.subtle,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

@@ -87,6 +87,8 @@ SessionDetailLoaded _loadedState({
   required List<SesoriQuestionAsked> pendingQuestions,
   required List<SesoriPermissionAsked> pendingPermissions,
   List<MessageWithParts> messages = const [],
+  List<Session> children = const [],
+  Map<String, SessionStatus> childStatuses = const {},
   SessionStatus sessionStatus = const SessionStatus.idle(),
 }) {
   final provider = testProviderListResponse().items.first;
@@ -99,8 +101,8 @@ SessionDetailLoaded _loadedState({
     sessionTitle: "Session",
     agent: null,
     assistantAgentModel: null,
-    children: const [],
-    childStatuses: const {},
+    children: children,
+    childStatuses: childStatuses,
     isRootSession: true,
     isArchived: false,
     queuedMessages: const [],
@@ -457,6 +459,15 @@ void main() {
   // design.
   FocusNode composerFocus(WidgetTester tester) => tester.widget<EditableText>(find.byType(EditableText)).focusNode;
 
+  Color composerSurfaceBorderColor(WidgetTester tester, Finder surface) {
+    final decoration = tester
+        .widgetList<DecoratedBox>(find.descendant(of: surface, matching: find.byType(DecoratedBox)))
+        .map((widget) => widget.decoration)
+        .whereType<BoxDecoration>()
+        .singleWhere((decoration) => decoration.color == PregoColorsLight.bgSurface2);
+    return (decoration.border! as Border).top.color;
+  }
+
   // A fresh session rests in the hold-to-talk pill, which hosts no text field;
   // the keyboard button switches the composer to its typing layout and focuses
   // the field (focus lands post-frame).
@@ -601,6 +612,40 @@ void main() {
     // of the text-first mic button.
     expect(find.byIcon(TablerRegular.microphone), findsNothing);
     expect(find.text("Hold to talk"), findsOneWidget);
+  });
+
+  testWidgets("picker pills and task card follow the composer surface style", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      children: [testSession(id: "child-1", title: "Child task", parentID: "session-1")],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final picker = find.byType(PregoPickerButton).first;
+    final taskCard = find.byType(PregoCard);
+    expect(composerSurfaceBorderColor(tester, picker), PregoColorsLight.borderSecondary);
+    expect(composerSurfaceBorderColor(tester, taskCard), PregoColorsLight.borderSecondary);
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "draft");
+    composerFocus(tester).unfocus();
+    await tester.pumpAndSettle();
+
+    expect(composerSurfaceBorderColor(tester, picker), PregoColorsLight.borderPrimary);
+    expect(composerSurfaceBorderColor(tester, taskCard), PregoColorsLight.borderPrimary);
+
+    await tester.tap(find.text("draft"));
+    await tester.enterText(find.byType(EditableText), "");
+    composerFocus(tester).unfocus();
+    await tester.pumpAndSettle();
+
+    expect(composerSurfaceBorderColor(tester, picker), PregoColorsLight.borderSecondary);
+    expect(composerSurfaceBorderColor(tester, taskCard), PregoColorsLight.borderSecondary);
   });
 
   testWidgets("voice-first session with messages still rests in hold-to-talk", (tester) async {
@@ -1284,6 +1329,10 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit, chatInputModeCubit: modeCubit));
     await tester.pumpAndSettle();
     expect(find.text("Hold to talk"), findsOneWidget);
+    expect(
+      composerSurfaceBorderColor(tester, find.byType(PregoPickerButton).first),
+      PregoColorsLight.borderSecondary,
+    );
 
     await modeCubit.select(mode: ChatInputMode.textFirst);
     await tester.pumpAndSettle();
@@ -1291,6 +1340,10 @@ void main() {
     expect(find.text("Hold to talk"), findsNothing);
     expect(find.text("Ask anything..."), findsOneWidget);
     expect(find.byIcon(TablerRegular.microphone), findsOneWidget);
+    expect(
+      composerSurfaceBorderColor(tester, find.byType(PregoPickerButton).first),
+      PregoColorsLight.borderPrimary,
+    );
   });
 
   testWidgets("holding the typing container's voice pill records while the text stays", (tester) async {

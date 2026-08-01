@@ -1,12 +1,13 @@
 import "package:flutter/material.dart";
 
 import "../../theme/prego_theme.dart";
+import "../surfaces/prego_surfaces.dart";
 
 /// A solid pill that opens a picker: leading glyph, one-line [label], and a
 /// trailing unfold caret signalling the popup.
 ///
-/// Its surface matches the prompt composer's background, border, and elevation
-/// on every platform, while its press feedback uses the same Material ripple.
+/// Its surface matches the composer's background, border, and elevation on
+/// every platform, while its press feedback uses the same Material ripple.
 /// The pill fills its parent's width and ellipsizes long labels.
 ///
 /// Usage:
@@ -14,6 +15,7 @@ import "../../theme/prego_theme.dart";
 /// PregoPickerButton(
 ///   leadingIcon: Icons.smart_toy_outlined,
 ///   label: selectedAgent,
+///   surfaceStyle: PregoComposerSurfaceStyle.subtle,
 ///   onPressed: toggle,
 /// )
 /// ```
@@ -22,6 +24,7 @@ class PregoPickerButton extends StatelessWidget {
     super.key,
     required this.leadingIcon,
     required this.label,
+    required this.surfaceStyle,
     required this.onPressed,
   });
 
@@ -30,6 +33,9 @@ class PregoPickerButton extends StatelessWidget {
 
   /// One-line button text; ellipsizes when it doesn't fit.
   final String label;
+
+  /// Outline emphasis shared with the current composer state.
+  final PregoComposerSurfaceStyle surfaceStyle;
 
   /// Called when the pill is tapped. Wire this to the menu's open callback.
   final VoidCallback onPressed;
@@ -43,11 +49,10 @@ class PregoPickerButton extends StatelessWidget {
       width: double.infinity,
       height: 36,
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: prego.colors.bgSurface2,
+        decoration: pregoComposerSurfaceDecoration(
+          prego: prego,
+          style: surfaceStyle,
           borderRadius: borderRadius,
-          border: Border.all(color: prego.colors.borderPrimary),
-          boxShadow: prego.shadows.xs,
         ),
         child: Padding(
           padding: const EdgeInsets.all(1),
