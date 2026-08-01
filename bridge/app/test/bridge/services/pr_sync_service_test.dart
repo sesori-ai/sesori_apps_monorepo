@@ -161,7 +161,7 @@ void main() {
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
       expect(prSource.getAuthenticatedIdentityCallCount, 1);
-      expect(prSource.getGithubRepositoryIdentityCalls, isEmpty);
+      expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
       expect(prSource.listOpenPrsCallCount, 0);
     });
 
@@ -218,7 +218,7 @@ void main() {
 
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
-      expect(prSource.getAuthenticatedIdentityCallCount, 1);
+      expect(prSource.getAuthenticatedIdentityCallCount, 0);
       expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
       expect(prSource.listOpenPrsCallCount, 0);
     });

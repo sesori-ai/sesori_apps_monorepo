@@ -87,15 +87,15 @@ class PrSyncService {
         return;
       }
 
-      final verifiedGithubLogin = await _verifyGithubIdentity();
-      if (verifiedGithubLogin == null) {
-        return;
-      }
-
       final githubRepositoryIdentity = await _prSource.getGithubRepositoryIdentity(
         projectPath: projectPath,
       );
       if (githubRepositoryIdentity == null) {
+        return;
+      }
+
+      final verifiedGithubLogin = await _verifyGithubIdentity();
+      if (verifiedGithubLogin == null) {
         return;
       }
 
