@@ -260,7 +260,7 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, "/sessions");
   });
 
-  testWidgets("vertical image drag snaps back or dismisses the viewer", (tester) async {
+  testWidgets("free-form image drag follows the pointer, snaps back, or dismisses", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -271,9 +271,19 @@ void main() {
     final viewer = find.byType(ImageAttachmentViewer);
     final initialCenter = tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey));
 
-    await tester.timedDrag(viewer, const Offset(0, 40), const Duration(seconds: 1));
-    await tester.pump(const Duration(milliseconds: 40));
-    await tester.timedDrag(viewer, const Offset(80, 0), const Duration(milliseconds: 400));
+    final gesture = await tester.startGesture(initialCenter);
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(20, 15));
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(20, 15));
+    await tester.pump();
+
+    final draggedCenter = tester.getCenter(find.byKey(ImageAttachmentViewer.imageKey));
+    expect(draggedCenter.dx, greaterThan(initialCenter.dx));
+    expect(draggedCenter.dy, greaterThan(initialCenter.dy));
+
+    await tester.pump(const Duration(seconds: 1));
+    await gesture.up();
     await tester.pumpAndSettle();
 
     expect(viewer, findsOneWidget);
@@ -282,7 +292,7 @@ void main() {
       lessThan(0.01),
     );
 
-    await tester.timedDrag(viewer, const Offset(0, 200), const Duration(milliseconds: 400));
+    await tester.timedDrag(viewer, const Offset(200, 0), const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     expect(viewer, findsNothing);
