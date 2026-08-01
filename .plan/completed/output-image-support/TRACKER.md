@@ -4,11 +4,11 @@
 
 - **Plan slug:** `output-image-support`
 - **Implementation base:** `origin/main` at
-  `db7d62c666f88a63a05acd28fe6b8816dd6afc56`
-- **Series state:** Step 11/13 merged as [PR #670](https://github.com/sesori-ai/sesori_apps_monorepo/pull/670) (`db7d62c6`)
-- **Current step:** Step 12/13 open as [PR #674](https://github.com/sesori-ai/sesori_apps_monorepo/pull/674)
+  `dd627325d065d8ac5dfed7118b092f2ea387c3e9`
+- **Series state:** Steps 1-12 merged in order; final retirement Step 13/13 in progress
+- **Current step:** Step 13/13 — retire the completed plan
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** monitor PR #674 and address CI or review findings
+- **Next action:** commit, push, and open the final documentation-only PR
 
 ## Plan Review
 
@@ -37,8 +37,8 @@
 | [x] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | [PR #661](https://github.com/sesori-ai/sesori_apps_monorepo/pull/661) merged as `f5f24240`; 879 changed lines |
 | [x] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | [PR #666](https://github.com/sesori-ai/sesori_apps_monorepo/pull/666) merged as `e64fb4b5`; 1,138 changed lines |
 | [x] | 11/13 | `output-image-support-acp-tool-images` | `⚙️ [output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | [PR #670](https://github.com/sesori-ai/sesori_apps_monorepo/pull/670) merged as `db7d62c6`; 1,477 changed lines |
-| [ ] | 12/13 | `output-image-support-acp-image-replay` | `⚙️ [output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | [PR #674](https://github.com/sesori-ai/sesori_apps_monorepo/pull/674) open; architecture review approved |
-| [ ] | 13/13 | `output-image-support-retire-plan` | `[output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | Blocked on Step 12 merge |
+| [x] | 12/13 | `output-image-support-acp-image-replay` | `⚙️ [output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | [PR #674](https://github.com/sesori-ai/sesori_apps_monorepo/pull/674) merged as `dd627325`; 1,419 changed lines |
+| [ ] | 13/13 | `output-image-support-retire-plan` | `🌱 [output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | Final documentation-only retirement in progress |
 
 ## Exact PR Titles
 
@@ -54,7 +54,7 @@
 10. `[output-image-support] feat(acp): surface live message images [step 10/13]`
 11. `⚙️ [output-image-support] feat(acp): surface live tool images [step 11/13]`
 12. `⚙️ [output-image-support] feat(acp): restore output image replay [step 12/13]`
-13. `[output-image-support] docs: retire output image support plan [step 13/13]`
+13. `🌱 [output-image-support] docs: retire output image support plan [step 13/13]`
 
 ## Execution Rules
 
@@ -268,7 +268,13 @@
   metadata is privacy-sensitive. `git diff --check` passes.
   The exact Step 12 diff is 1,419 changed lines (1,032 additions, 387
   deletions), below the 1,500-line soft cap; this excludes the pre-existing
-  unrelated modified `fetch.sh` and untracked Step 6 test notes.
+  unrelated modified `fetch.sh` and untracked Step 6 test notes. PR #674 merged
+  as `dd627325` on 2026-08-01.
+- Step 13/13 (2026-08-01): confirmed Steps 1-12 merged in numeric order, recorded
+  the final Step 12 merge and verification evidence, and moved the tracked plan
+  tree from `.plan/active/` to `.plan/completed/`. This documentation-only
+  retirement requires no Dart, Flutter, code generation, analytics, or
+  architecture implementation review. `git diff --check` passes.
 
 ## Findings And Plan Deltas
 
