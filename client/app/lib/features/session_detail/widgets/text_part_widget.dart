@@ -59,6 +59,8 @@ class MarkdownMessageImage extends StatefulWidget {
 }
 
 class _MarkdownMessageImageState extends State<MarkdownMessageImage> {
+  static const _maxDecodedImageDimension = 2048;
+
   final _heroTag = UniqueKey();
   late ImageProvider? _provider;
   bool _isDecoded = false;
@@ -81,9 +83,11 @@ class _MarkdownMessageImageState extends State<MarkdownMessageImage> {
   ImageProvider? _imageProvider({required Uri uri}) {
     final scheme = uri.scheme.toLowerCase();
     if ((scheme == "http" || scheme == "https") && uri.host.isNotEmpty && uri.userInfo.isEmpty) {
-      return NetworkImage(uri.toString());
+      return _boundedProvider(provider: NetworkImage(uri.toString()));
     }
-    if (scheme == "resource" && uri.path.isNotEmpty) return AssetImage(uri.path);
+    if (scheme == "resource" && uri.path.isNotEmpty) {
+      return _boundedProvider(provider: AssetImage(uri.path));
+    }
     if (scheme != "data") return null;
 
     try {
@@ -100,10 +104,19 @@ class _MarkdownMessageImageState extends State<MarkdownMessageImage> {
 
       final bytes = data.contentAsBytes();
       if (bytes.length > maxInlineMessageAttachmentBytes) return null;
-      return MemoryImage(bytes);
+      return _boundedProvider(provider: MemoryImage(bytes));
     } on FormatException {
       return null;
     }
+  }
+
+  ImageProvider _boundedProvider({required ImageProvider provider}) {
+    return ResizeImage(
+      provider,
+      width: _maxDecodedImageDimension,
+      height: _maxDecodedImageDimension,
+      policy: ResizeImagePolicy.fit,
+    );
   }
 
   void _markDecoded() {

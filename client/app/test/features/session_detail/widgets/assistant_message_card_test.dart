@@ -237,6 +237,8 @@ void main() {
     final markdownImage = find.byType(MarkdownMessageImage);
     expect(markdownImage, findsOneWidget);
     final preview = tester.widget<Image>(find.descendant(of: markdownImage, matching: find.byType(Image)));
+    expect(preview.image, isA<ResizeImage>());
+    expect((preview.image as ResizeImage).imageProvider, isA<MemoryImage>());
     await tester.runAsync(
       () => precacheImage(
         preview.image,
@@ -264,6 +266,32 @@ void main() {
     final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
     expect(identical(fullscreen.image, preview.image), isTrue);
     semantics.dispose();
+  });
+
+  testWidgets("bounds remote Markdown image decode dimensions", (tester) async {
+    const uri = "https://example.com/image.png";
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: MarkdownMessageImage(
+            uri: Uri.parse(uri),
+            semanticLabel: "Remote image",
+          ),
+        ),
+      ),
+    );
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.image, isA<ResizeImage>());
+    final provider = image.image as ResizeImage;
+    expect(provider.width, 2048);
+    expect(provider.height, 2048);
+    expect(provider.policy, ResizeImagePolicy.fit);
+    expect(provider.imageProvider, isA<NetworkImage>());
+    expect((provider.imageProvider as NetworkImage).url, uri);
   });
 
   testWidgets("rejects oversized Markdown data images before decoding", (tester) async {
