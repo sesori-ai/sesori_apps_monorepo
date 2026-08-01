@@ -20,6 +20,15 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockUrlLauncher extends Mock implements UrlLauncher {}
 
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  final pushedRoutes = <Route<dynamic>>[];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushedRoutes.add(route);
+  }
+}
+
 class _FakeImageSaver implements ImageSaver {
   Uint8List? savedBytes;
   String? savedFilename;
@@ -161,16 +170,22 @@ void main() {
     expect(find.text("Image copied to clipboard"), findsOneWidget);
   });
 
-  testWidgets("repeated system back closes the image viewer without leaving the session", (tester) async {
+  testWidgets("system back closes the image viewer on the session navigator", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
       base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
       filename: "image.png",
     );
+    final rootNavigatorKey = GlobalKey<NavigatorState>();
+    final sessionNavigatorKey = GlobalKey<NavigatorState>();
+    final sessionObserver = _RecordingNavigatorObserver();
     final router = GoRouter(
+      navigatorKey: rootNavigatorKey,
       initialLocation: "/sessions/chat",
       routes: [
         ShellRoute(
+          navigatorKey: sessionNavigatorKey,
+          observers: [sessionObserver],
           builder: (_, _, child) => child,
           routes: [
             GoRoute(
@@ -209,14 +224,18 @@ void main() {
       tester.widget<GestureDetector>(find.byKey(FilePartWidget.previewTapTargetKey)).onTap,
       isNotNull,
     );
+    sessionObserver.pushedRoutes.clear();
     await tester.tap(find.byKey(FilePartWidget.previewTapTargetKey));
     await tester.pumpAndSettle();
 
     expect(find.byType(ImageAttachmentViewer), findsOneWidget);
     expect(router.routeInformationProvider.value.uri.path, "/sessions/chat");
+    expect(sessionObserver.pushedRoutes, hasLength(1));
+    final viewerRoute = sessionObserver.pushedRoutes.single;
+    expect(viewerRoute, isA<PageRouteBuilder<void>>());
+    expect(viewerRoute.navigator, same(sessionNavigatorKey.currentState));
+    expect(viewerRoute.navigator, isNot(same(rootNavigatorKey.currentState)));
 
-    await tester.binding.handlePopRoute();
-    await tester.pump(const Duration(milliseconds: 100));
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
