@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "acp_event_mapper.dart" show AcpHaltNotice;
 import "repositories/mappers/acp_content_mapper.dart";
 import "repositories/trackers/acp_content_tracker.dart";
+import "repositories/trackers/acp_tool_content_tracker.dart";
 
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
@@ -63,28 +64,29 @@ class AcpReplayCollector {
       case "tool_call":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
-        final content = _contentMapper.toolContent(update: update);
+        final contentTracker = AcpToolContentTracker()..apply(mutation: _contentMapper.toolContent(update: update));
         _assistantForTool().tools[id] = _ToolDraft(
           tool: _contentMapper.toolName(update: update),
           title: _toolTitle(update),
           status: _contentMapper.toolStatus(status: update["status"]),
-          output: content.output,
+          contentTracker: contentTracker,
         );
       case "tool_call_update":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
-        final content = _contentMapper.toolContent(update: update);
+        final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
         if (draft == null) {
           // No prior `tool_call` was replayed for this id (loaded history can
           // carry only the update). Seed a tool draft from the update payload so
           // the card still renders, mirroring the live mapper which emits a tool
           // part unconditionally.
+          final contentTracker = AcpToolContentTracker()..apply(mutation: contentMutation);
           _assistantForTool().tools[id] = _ToolDraft(
             tool: _contentMapper.toolName(update: update),
             title: _toolTitle(update),
             status: _contentMapper.toolStatus(status: update["status"]),
-            output: content.output,
+            contentTracker: contentTracker,
           );
           return;
         }
@@ -97,7 +99,7 @@ class AcpReplayCollector {
           draft.status = _contentMapper.toolStatus(status: update["status"]);
         }
         if (update.containsKey("title")) draft.title = _toolTitle(update);
-        if (content.output != null) draft.output = content.output;
+        draft.contentTracker.apply(mutation: contentMutation);
     }
   }
 
@@ -187,6 +189,7 @@ class AcpReplayCollector {
       parts.add(_textPart(draft, entry.key, PluginMessagePartType.text, entry.value));
     }
     draft.tools.forEach((toolId, tool) {
+      final content = tool.contentTracker.snapshot;
       parts.add(
         PluginMessagePart(
           id: "${draft.id}-tool-$toolId",
@@ -198,8 +201,8 @@ class AcpReplayCollector {
           state: PluginToolState(
             status: tool.status,
             title: tool.title,
-            output: tool.output,
-            error: tool.status == PluginToolStatus.error ? tool.output : null,
+            output: content.output,
+            error: tool.status == PluginToolStatus.error ? content.output : null,
             attachments: const [],
           ),
           prompt: null,
@@ -410,12 +413,12 @@ class _ToolDraft {
     required this.tool,
     required this.title,
     required this.status,
-    required this.output,
+    required this.contentTracker,
   });
 
   final String tool;
   // Reassigned as later tool_call_update notifications arrive during replay.
   String? title;
   PluginToolStatus status;
-  String? output;
+  final AcpToolContentTracker contentTracker;
 }
