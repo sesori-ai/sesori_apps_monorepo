@@ -18,9 +18,6 @@ class PrSourceRepository {
 
   Future<VerifiedGithubLogin?> getAuthenticatedIdentity() async {
     final identity = await _ghCli.getAuthenticatedIdentity();
-    if (identity == null) {
-      return null;
-    }
     return VerifiedGithubLogin.tryParse(rawLogin: identity.rawLogin);
   }
 

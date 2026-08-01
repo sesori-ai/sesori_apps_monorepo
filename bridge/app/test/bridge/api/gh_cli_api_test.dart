@@ -166,7 +166,7 @@ void main() {
 
       final identity = await service.getAuthenticatedIdentity();
 
-      expect(identity?.rawLogin, "  OctoCat\n");
+      expect(identity.rawLogin, "  OctoCat\n");
       expect(processRunner.invocations, hasLength(1));
       expect(processRunner.invocations.single.command, "gh");
       expect(
@@ -192,7 +192,7 @@ void main() {
     test("preserves an empty login for repository validation", () async {
       processRunner.enqueueResult(result: _ok(stdout: "  \n"));
 
-      expect((await service.getAuthenticatedIdentity())?.rawLogin, "  \n");
+      expect((await service.getAuthenticatedIdentity()).rawLogin, "  \n");
     });
 
     test("propagates a process failure for the caller to handle", () async {

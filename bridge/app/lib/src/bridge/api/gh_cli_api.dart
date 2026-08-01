@@ -59,7 +59,7 @@ class GhCliApi {
     }
   }
 
-  Future<GhAuthenticatedIdentity?> getAuthenticatedIdentity() async {
+  Future<GhAuthenticatedIdentity> getAuthenticatedIdentity() async {
     const arguments = ["api", "--hostname", "github.com", "user", "--jq", ".login"];
     final result = await _processRunner.run(
       "gh",

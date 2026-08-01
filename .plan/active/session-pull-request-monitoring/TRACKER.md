@@ -161,7 +161,7 @@
   non-compiling intermediate state.
 - **Step 2.a/9 local verification:** `dart analyze --fatal-infos` and the focused
   `GhCliApi`, `PrSourceRepository`, and `PrSyncService` suites pass (43 tests).
-  `git diff --check` passes. The 886 changed lines remain inside the 500–900
+  `git diff --check` passes. The 883 changed lines remain inside the 500–900
   target, including plan/tracker drift updates and tests.
 - **Step 2.a/9 architecture review:** Aristotle rejected duplicate identity
   canonicalization in the initial API/repository models. The API model now owns
