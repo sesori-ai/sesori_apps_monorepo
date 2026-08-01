@@ -1,5 +1,4 @@
 import "package:drift/drift.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../database.dart";
 import "../tables/projects_table.dart";
@@ -82,39 +81,6 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
     }
 
     return groupedBySessionId;
-  }
-
-  Future<List<PullRequestDto>> getActivePrsByProjectId({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required String githubLogin,
-  }) async {
-    return (select(
-          pullRequestsTable,
-        )..where(
-          (table) =>
-              table.projectId.equals(projectId) &
-              table.githubRepositoryIdentity.equals(githubRepositoryIdentity) &
-              table.githubLogin.equals(githubLogin) &
-              table.state.equals(PrState.open.name),
-        ))
-        .get();
-  }
-
-  Future<void> deletePr({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required int prNumber,
-  }) async {
-    await (delete(
-          pullRequestsTable,
-        )..where(
-          (table) =>
-              table.projectId.equals(projectId) &
-              table.githubRepositoryIdentity.equals(githubRepositoryIdentity) &
-              table.prNumber.equals(prNumber),
-        ))
-        .go();
   }
 
   Future<void> deletePrsOutsideScope({

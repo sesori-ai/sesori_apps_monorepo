@@ -4,12 +4,12 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `e6001fdc3bbfe610414ab10c73f141a48c33efa3`
-- **Series state:** Steps 1/9 and 2.a–2.b/9 merged; Step 2.c is in progress
-- **Current step:** Step 2.c/9 — fresh scoped PR reads
+  `d13cc8ca8ae137fb0db57a359bc8429e378af0de`
+- **Series state:** Steps 1/9 and 2.a–2.c/9 merged; Step 3 is in progress
+- **Current step:** Step 3/9 — exact GraphQL selection
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Next action:** monitor CI/review and merge Step 2.c/9 [PR #678](https://github.com/sesori-ai/sesori_apps_monorepo/pull/678)
+- **Next action:** commit, push, and raise Step 3/9
 
 ## Existing Baseline
 
@@ -41,8 +41,8 @@
 | [x] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged as `f969754b` |
 | [x] | 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | 500–900 | [PR #662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/662) merged as `057e4c24` |
 | [x] | 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | 9,800–10,800 | [PR #671](https://github.com/sesori-ai/sesori_apps_monorepo/pull/671) merged as `e6001fdc` |
-| [ ] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | [PR #678](https://github.com/sesori-ai/sesori_apps_monorepo/pull/678) open; implementation, verification, architecture correction, and review fixes complete |
-| [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2.c merge |
+| [x] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | [PR #678](https://github.com/sesori-ai/sesori_apps_monorepo/pull/678) merged as `d13cc8ca` |
+| [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 3,100–3,500 | Implementation, focused/full verification, and architecture correction complete |
 | [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 1,100–1,500 | Blocked on Step 3 merge |
 | [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
 | [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Blocked on Step 5 merge |
@@ -88,9 +88,10 @@
 
 ## Current Drift and Open Work
 
-- Latest audited `main`: Step 2.c branched from `e6001fdc`; later client-only
-  drift through `0b1e6072` does not overlap this bridge scope.
-- Drift schema: v13 on `main`; Step 2.c leaves the merged schema and migration
+- Latest audited `main`: Step 3 branched from merged Step 2.c at `d13cc8ca`.
+  Intervening client and ACP/output-image work does not overlap this bridge PR
+  source/selection scope.
+- Drift schema: v13 on `main`; Step 3 leaves the merged schema and migration
   unchanged.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
 - PR #647 is merged and consolidates Harness settings into one screen. Its
@@ -251,6 +252,34 @@
 - **Step 2.c/9 cleanup assessment:** Removed the unused PR-repository session
   read API and made non-list/detail mapping explicitly PR-free. No persisted,
   wire, job, listener, setting, or compatibility artifact became obsolete.
+- **Step 2.c/9 merge:** PR #678 merged as `d13cc8ca` with all 11 checks passing,
+  Cubic approval, and no unresolved review threads. Step 3 started immediately
+  from that merged `main` tip.
+- **Step 3/9 implementation:** `GhCliApi` now builds variable-bound GraphQL
+  documents for up to 20 exact repository/branch targets and parses normalized
+  generated DTOs for open and terminal pages. `PrSourceRepository` filters fork
+  and wrong-branch candidates, coalesces cursor work, reads equal-creation-time
+  boundaries, selects open before terminal, and fences every response plus one
+  final identity check. Target-bound selected/unmatched variants flow to one
+  repository-owned atomic cache replacement, so complete no-match clears stale
+  rows without exposing API DTOs to the service layer.
+- **Step 3/9 verification and review:** The live installed `gh` schema/query was
+  rechecked against PR #681 and returned its exact closed terminal projection.
+  Fatal-info analysis, 105 focused API/DAO/repository/service/routing/integration
+  tests, all 2,314 bridge app tests, code generation, formatting, and
+  `git diff --check` pass. `aristotle-impl-review` rejected the first working
+  tree because API DTOs escaped into the service, target identity was separable
+  from selected PR fields, query failures used nullable coordination fields,
+  and new contracts used legacy directories. The findings were applied with
+  target-bound repository variants, repository-owned mapping/persistence,
+  sealed query exceptions, and current top-level API/repository paths; direct
+  corrections were not re-reviewed per policy.
+- **Step 3/9 cleanup and size:** Removed repository-wide `gh pr list`,
+  per-disappeared-PR `gh pr view`, active-row DAO/repository helpers, incremental
+  writer methods, and their obsolete tests/fakes. The approximately 3,300-line
+  change exceeds the soft cap because roughly 700 lines are generated DTO output
+  and roughly 900 are required deletion of the replaced path. A smaller split
+  would ship unused GraphQL machinery or retain two competing source paths.
 
 ## Findings and Plan Deltas
 

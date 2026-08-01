@@ -1,9 +1,10 @@
 import "package:sesori_bridge/src/api/database/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -32,16 +33,20 @@ void main() {
 
     tearDown(() => db.close());
 
-    GhPullRequest ghPr({required int number, required String branchName}) {
-      return GhPullRequest(
+    PullRequestTargetSelected selectedPullRequest({required int number, required String branchName}) {
+      return PullRequestTargetSelected(
+        target: (
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          branchName: branchName,
+        ),
         number: number,
         url: "https://github.com/$githubRepositoryIdentity/pull/$number",
         title: "Test PR $number",
+        createdAt: DateTime.fromMillisecondsSinceEpoch(number, isUtc: true),
         state: PrState.open,
-        headRefName: branchName,
-        mergeable: PrMergeableStatus.mergeable,
+        mergeableStatus: PrMergeableStatus.mergeable,
         reviewDecision: PrReviewDecision.reviewRequired,
-        statusCheckRollup: PrCheckStatus.success,
+        checkStatus: PrCheckStatus.success,
       );
     }
 
@@ -63,48 +68,116 @@ void main() {
       );
     }
 
-    test("upsertFromGhPr persists PR scope for an existing project", () async {
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["X"]);
-      await expectLater(
-        () => repository.upsertFromGhPr(
+    Future<void> insertPullRequest({
+      required String repositoryIdentity,
+      required String login,
+      required int number,
+      required String branchName,
+    }) {
+      return db.pullRequestDao.upsertPr(
+        pullRequest: PullRequestDto(
           projectId: "X",
-          githubRepositoryIdentity: githubRepositoryIdentity,
-          verifiedGithubLogin: verifiedGithubLogin,
-          pr: ghPr(number: 42, branchName: "feature-branch"),
-          createdAt: 1,
-          lastCheckedAt: 2,
+          githubRepositoryIdentity: repositoryIdentity,
+          githubLogin: login,
+          prNumber: number,
+          branchName: branchName,
+          url: "https://github.com/$repositoryIdentity/pull/$number",
+          title: "Test PR $number",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.reviewRequired,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: number,
+          createdAt: number,
         ),
-        returnsNormally,
+      );
+    }
+
+    test("replaceScopedPullRequests persists selected PR scope", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["X"]);
+      final changed = await repository.replaceScopedPullRequests(
+        projectId: "X",
+        verifiedGithubLogin: verifiedGithubLogin,
+        targetSelections: [selectedPullRequest(number: 42, branchName: "feature-branch")],
+        lastCheckedAt: 2,
       );
 
       final projectRows = await db.select(db.projectsTable).get();
       expect(projectRows.map((row) => row.projectId), contains("X"));
 
-      final prRows = await db.pullRequestDao.getActivePrsByProjectId(
-        projectId: "X",
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        githubLogin: githubLogin,
-      );
+      final prRows = await db.pullRequestDao.getPrsByProjectId(projectId: "X");
       expect(prRows, hasLength(1));
       expect(prRows.single.prNumber, 42);
       expect(prRows.single.githubRepositoryIdentity, githubRepositoryIdentity);
       expect(prRows.single.githubLogin, githubLogin);
+      expect(prRows.single.createdAt, 42);
+      expect(changed, isTrue);
     });
 
-    test("upsertFromGhPr does not fabricate a missing catalog project", () async {
+    test("replaceScopedPullRequests does not fabricate a missing catalog project", () async {
       await expectLater(
-        repository.upsertFromGhPr(
+        repository.replaceScopedPullRequests(
           projectId: "missing",
-          githubRepositoryIdentity: githubRepositoryIdentity,
           verifiedGithubLogin: verifiedGithubLogin,
-          pr: ghPr(number: 42, branchName: "feature-branch"),
-          createdAt: 1,
+          targetSelections: [selectedPullRequest(number: 42, branchName: "feature-branch")],
           lastCheckedAt: 2,
         ),
         throwsA(anything),
       );
 
       expect(await db.projectsDao.getProject(projectId: "missing"), isNull);
+    });
+
+    test("replaceScopedPullRequests reports visible changes and clears complete no-match", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["X"]);
+      await insertPullRequest(
+        repositoryIdentity: githubRepositoryIdentity,
+        login: verifiedGithubLogin.login,
+        number: 42,
+        branchName: "feature-branch",
+      );
+
+      final unchanged = await repository.replaceScopedPullRequests(
+        projectId: "X",
+        verifiedGithubLogin: verifiedGithubLogin,
+        targetSelections: [selectedPullRequest(number: 42, branchName: "feature-branch")],
+        lastCheckedAt: 100,
+      );
+      final cleared = await repository.replaceScopedPullRequests(
+        projectId: "X",
+        verifiedGithubLogin: verifiedGithubLogin,
+        targetSelections: const [
+          PullRequestTargetUnmatched(
+            target: (
+              githubRepositoryIdentity: githubRepositoryIdentity,
+              branchName: "feature-branch",
+            ),
+          ),
+        ],
+        lastCheckedAt: 101,
+      );
+
+      expect(unchanged, isFalse);
+      expect(cleared, isTrue);
+      expect(await db.pullRequestDao.getPrsByProjectId(projectId: "X"), isEmpty);
+    });
+
+    test("replaceScopedPullRequests rejects duplicate target outcomes", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["X"]);
+      final selected = selectedPullRequest(number: 42, branchName: "feature-branch");
+
+      await expectLater(
+        repository.replaceScopedPullRequests(
+          projectId: "X",
+          verifiedGithubLogin: verifiedGithubLogin,
+          targetSelections: [
+            selected,
+            PullRequestTargetUnmatched(target: selected.target),
+          ],
+          lastCheckedAt: 2,
+        ),
+        throwsArgumentError,
+      );
     });
 
     test("prepareScopedRefresh does not fabricate a missing catalog project", () async {
@@ -152,37 +225,29 @@ void main() {
           ),
         ],
       );
-      await repository.upsertFromGhPr(
-        projectId: "X",
-        githubRepositoryIdentity: "previous/repository",
-        verifiedGithubLogin: previousVerifiedGithubLogin,
-        pr: ghPr(number: 1, branchName: "stale-root"),
-        createdAt: 1,
-        lastCheckedAt: 1,
+      await insertPullRequest(
+        repositoryIdentity: "previous/repository",
+        login: previousVerifiedGithubLogin.login,
+        number: 1,
+        branchName: "stale-root",
       );
-      await repository.upsertFromGhPr(
-        projectId: "X",
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        verifiedGithubLogin: verifiedGithubLogin,
-        pr: ghPr(number: 2, branchName: "feature/root"),
-        createdAt: 2,
-        lastCheckedAt: 2,
+      await insertPullRequest(
+        repositoryIdentity: githubRepositoryIdentity,
+        login: verifiedGithubLogin.login,
+        number: 2,
+        branchName: "feature/root",
       );
-      await repository.upsertFromGhPr(
-        projectId: "X",
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        verifiedGithubLogin: previousVerifiedGithubLogin,
-        pr: ghPr(number: 3, branchName: "feature/root"),
-        createdAt: 3,
-        lastCheckedAt: 3,
+      await insertPullRequest(
+        repositoryIdentity: githubRepositoryIdentity,
+        login: previousVerifiedGithubLogin.login,
+        number: 3,
+        branchName: "feature/root",
       );
-      await repository.upsertFromGhPr(
-        projectId: "X",
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        verifiedGithubLogin: verifiedGithubLogin,
-        pr: ghPr(number: 4, branchName: "departed-branch"),
-        createdAt: 4,
-        lastCheckedAt: 4,
+      await insertPullRequest(
+        repositoryIdentity: githubRepositoryIdentity,
+        login: verifiedGithubLogin.login,
+        number: 4,
+        branchName: "departed-branch",
       );
       final storedSessions = (await db.sessionDao.getSessionsByProject(
         projectId: "X",
@@ -261,13 +326,11 @@ void main() {
         verifiedGithubLogin: verifiedGithubLogin,
         sessions: [storedSession],
       );
-      await repository.upsertFromGhPr(
-        projectId: "X",
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        verifiedGithubLogin: verifiedGithubLogin,
-        pr: ghPr(number: 7, branchName: "feature/root"),
-        createdAt: 1,
-        lastCheckedAt: 1,
+      await insertPullRequest(
+        repositoryIdentity: githubRepositoryIdentity,
+        login: verifiedGithubLogin.login,
+        number: 7,
+        branchName: "feature/root",
       );
 
       final changed = await repository.clearScopedRefresh(

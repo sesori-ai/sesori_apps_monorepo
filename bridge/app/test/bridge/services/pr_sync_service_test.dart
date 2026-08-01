@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart"
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -23,7 +24,7 @@ void main() {
   group("PrSyncService", () {
     test("emits project id when a new matched PR is found", () async {
       final prSource = _FakePrSource(
-        listOpenPrsResult: <GhPullRequest>[
+        selectedPullRequestsResult: <GhPullRequest>[
           _ghPr(number: 11, branch: "feature/new-pr", title: "New PR"),
         ],
       );
@@ -56,13 +57,13 @@ void main() {
       expect(prs.single.githubRepositoryIdentity, _githubRepositoryIdentity);
       expect(prs.single.githubLogin, _verifiedGithubLogin.login);
       expect(emittedProjectIds, equals(<String>["project-1"]));
-      expect(prSource.listOpenPrsRepositoryIdentities, [_githubRepositoryIdentity]);
+      expect(prSource.selectionTargets.single.single.githubRepositoryIdentity, _githubRepositoryIdentity);
       expect(pullRequestRepository.prepareScopedRefreshCalls, hasLength(1));
     });
 
     test("does not cache PRs matched only to child-session branches", () async {
       final prSource = _FakePrSource(
-        listOpenPrsResult: <GhPullRequest>[
+        selectedPullRequestsResult: <GhPullRequest>[
           _ghPr(number: 12, branch: "child-branch", title: "Child PR"),
         ],
       );
@@ -103,7 +104,7 @@ void main() {
 
     test("does not emit when PR data is unchanged", () async {
       final prSource = _FakePrSource(
-        listOpenPrsResult: <GhPullRequest>[
+        selectedPullRequestsResult: <GhPullRequest>[
           _ghPr(
             number: 33,
             branch: "feature/no-change",
@@ -153,8 +154,8 @@ void main() {
 
     test("reports a failed outcome when the PR source query fails", () async {
       final prSource = _FakePrSource(
-        listOpenPrsResult: const <GhPullRequest>[],
-        onListOpenPrs: () async => throw StateError("list failed"),
+        selectedPullRequestsResult: const <GhPullRequest>[],
+        onSelection: () async => throw StateError("query failed"),
       );
       final service = PrSyncService(
         prSource: prSource,
@@ -174,12 +175,79 @@ void main() {
       expect(outcome, PrRefreshOutcome.failed);
     });
 
-    test("fetches final PR state for disappeared active PR", () async {
+    test("does not replace scoped rows when query identity changes", () async {
+      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
+        ..selectionOutcome = const PullRequestSelectionIdentityChanged();
+      final pullRequestRepository = _FakePullRequestRepository();
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: pullRequestRepository,
+        sessionRepository: _FakeSessionRepository(
+          sessionsByProject: <String, List<StoredSession>>{
+            "project-1": [_storedSession(id: "session-1", branchName: "feature/identity")],
+          },
+        ),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      final outcome = await service.triggerRefresh(
+        projectId: "project-1",
+        projectPath: "/tmp/project-1",
+      );
+
+      expect(outcome, PrRefreshOutcome.failed);
+      expect(pullRequestRepository.replaceCalls, 0);
+    });
+
+    test("clears a prior selection after a complete exact no-match", () async {
+      final pullRequestRepository = _FakePullRequestRepository(
+        seed: [
+          _dto(
+            projectId: "project-1",
+            githubRepositoryIdentity: _githubRepositoryIdentity,
+            githubLogin: "octocat",
+            branchName: "feature/gone",
+            prNumber: 20,
+            title: "Gone PR",
+            state: PrState.open,
+            mergeableStatus: PrMergeableStatus.mergeable,
+            reviewDecision: PrReviewDecision.unknown,
+            checkStatus: PrCheckStatus.success,
+          ),
+        ],
+      );
+      final service = PrSyncService(
+        prSource: _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[]),
+        pullRequestRepository: pullRequestRepository,
+        sessionRepository: _FakeSessionRepository(
+          sessionsByProject: <String, List<StoredSession>>{
+            "project-1": [_storedSession(id: "session-1", branchName: "feature/gone")],
+          },
+        ),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+      final emittedProjectIds = <String>[];
+      final sub = service.prChanges.listen(emittedProjectIds.add);
+      addTearDown(sub.cancel);
+
+      final outcome = await service.triggerRefresh(
+        projectId: "project-1",
+        projectPath: "/tmp/project-1",
+      );
+      await _waitFor(() => emittedProjectIds.isNotEmpty);
+
+      expect(outcome, PrRefreshOutcome.completed);
+      expect(pullRequestRepository.getByProjectId(projectId: "project-1"), isEmpty);
+      expect(emittedProjectIds, ["project-1"]);
+    });
+
+    test("replaces an open selection with the exact terminal selection", () async {
       final prSource = _FakePrSource(
-        listOpenPrsResult: <GhPullRequest>[],
-        prByNumber: <int, GhPullRequest>{
-          22: _ghPr(number: 22, branch: "feature/merged", title: "Merged PR", state: PrState.merged),
-        },
+        selectedPullRequestsResult: <GhPullRequest>[
+          _ghPr(number: 22, branch: "feature/merged", title: "Merged PR", state: PrState.merged),
+        ],
       );
       final pullRequestRepository = _FakePullRequestRepository(
         seed: <PullRequestDto>[
@@ -215,12 +283,12 @@ void main() {
 
       final prs = pullRequestRepository.getByProjectId(projectId: "project-1");
       expect(prs.single.state, equals(PrState.merged));
-      expect(prSource.getPrByNumberCalls, contains(22));
-      expect(prSource.getPrByNumberRepositoryIdentities, everyElement(_githubRepositoryIdentity));
+      expect(prSource.selectPullRequestsCallCount, 1);
     });
 
     test("skips PR queries when fresh identity verification fails", () async {
-      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..authenticatedIdentityResult = null;
+      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
+        ..authenticatedIdentityResult = null;
       final service = PrSyncService(
         prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
@@ -237,12 +305,13 @@ void main() {
       expect(outcome, PrRefreshOutcome.failed);
       expect(prSource.getAuthenticatedIdentityCallCount, 1);
       expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
-      expect(prSource.listOpenPrsCallCount, 0);
+      expect(prSource.selectPullRequestsCallCount, 0);
     });
 
     test("shows an actionable warning when identity verification fails", () async {
       final stderrLines = <String>[];
-      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..authenticatedIdentityResult = null;
+      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
+        ..authenticatedIdentityResult = null;
       final service = PrSyncService(
         prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
@@ -262,7 +331,7 @@ void main() {
 
     test("keeps an identity verification timeout visible", () async {
       final stderrLines = <String>[];
-      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])
+      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
         ..authenticatedIdentityError = TimeoutException("timed out");
       final service = PrSyncService(
         prSource: prSource,
@@ -278,11 +347,12 @@ void main() {
       );
 
       expect(stderrLines.join("\n"), contains("metadata cannot be refreshed"));
-      expect(prSource.listOpenPrsCallCount, 0);
+      expect(prSource.selectPullRequestsCallCount, 0);
     });
 
     test("skips PR queries when the canonical GitHub repository is unavailable", () async {
-      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..githubRepositoryIdentityResult = null;
+      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
+        ..githubRepositoryIdentityResult = null;
       final pullRequestRepository = _FakePullRequestRepository();
       final service = PrSyncService(
         prSource: prSource,
@@ -296,14 +366,15 @@ void main() {
 
       expect(prSource.getAuthenticatedIdentityCallCount, 0);
       expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
-      expect(prSource.listOpenPrsCallCount, 0);
+      expect(prSource.selectPullRequestsCallCount, 0);
       expect(pullRequestRepository.clearScopedRefreshCalls, [
         (projectId: "project-1", sessions: const <StoredSession>[]),
       ]);
     });
 
     test("emits and debounces a scope clear that hides cached PR metadata", () async {
-      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..githubRepositoryIdentityResult = null;
+      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
+        ..githubRepositoryIdentityResult = null;
       final pullRequestRepository = _FakePullRequestRepository()..clearScopedRefreshChanged = true;
       final service = PrSyncService(
         prSource: prSource,
@@ -336,8 +407,8 @@ void main() {
       final pullRequestRepository = _FakePullRequestRepository()..prepareScopedRefreshChanged = true;
       final service = PrSyncService(
         prSource: _FakePrSource(
-          listOpenPrsResult: const <GhPullRequest>[],
-          onListOpenPrs: () => listBlock.future,
+          selectedPullRequestsResult: const <GhPullRequest>[],
+          onSelection: () => listBlock.future,
         ),
         pullRequestRepository: pullRequestRepository,
         sessionRepository: _FakeSessionRepository(
@@ -364,7 +435,7 @@ void main() {
     });
 
     test("preserves scoped cache when repository resolution fails", () async {
-      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])
+      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
         ..githubRepositoryIdentityError = const ProcessException(
           "git",
           ["remote"],
@@ -393,7 +464,7 @@ void main() {
     test("caches unavailable gh capability and detects installation after the TTL", () async {
       var now = DateTime.utc(2026, 7, 13);
       final prSource = _FakePrSource(
-        listOpenPrsResult: <GhPullRequest>[],
+        selectedPullRequestsResult: <GhPullRequest>[],
         isAvailableResult: false,
       );
       final service = PrSyncService(
@@ -410,7 +481,7 @@ void main() {
       expect(prSource.isAvailableCallCount, equals(1));
       expect(prSource.isAuthenticatedCallCount, equals(0));
       expect(prSource.getAuthenticatedIdentityCallCount, equals(0));
-      expect(prSource.listOpenPrsCallCount, equals(0));
+      expect(prSource.selectPullRequestsCallCount, equals(0));
 
       prSource.isAvailableResult = true;
       now = now.add(const Duration(seconds: 29));
@@ -422,12 +493,13 @@ void main() {
       expect(prSource.isAvailableCallCount, equals(2));
       expect(prSource.isAuthenticatedCallCount, equals(1));
       expect(prSource.getAuthenticatedIdentityCallCount, equals(1));
-      expect(prSource.listOpenPrsCallCount, equals(1));
+      expect(prSource.selectPullRequestsCallCount, equals(1));
     });
 
     test("shares one in-flight gh capability check across projects", () async {
       final capabilityBlock = Completer<void>();
-      final prSource = _FakePrSource(listOpenPrsResult: <GhPullRequest>[])..availabilityBlock = capabilityBlock;
+      final prSource = _FakePrSource(selectedPullRequestsResult: <GhPullRequest>[])
+        ..availabilityBlock = capabilityBlock;
       final service = PrSyncService(
         prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
@@ -447,17 +519,17 @@ void main() {
       await Future.wait([first, second]);
       expect(prSource.isAuthenticatedCallCount, equals(1));
       expect(prSource.getAuthenticatedIdentityCallCount, equals(2));
-      expect(prSource.listOpenPrsCallCount, equals(2));
+      expect(prSource.selectPullRequestsCallCount, equals(2));
 
       await service.triggerRefresh(projectId: "project-3", projectPath: "/tmp/project-3");
       expect(prSource.isAvailableCallCount, equals(1));
       expect(prSource.isAuthenticatedCallCount, equals(1));
       expect(prSource.getAuthenticatedIdentityCallCount, equals(3));
-      expect(prSource.listOpenPrsCallCount, equals(3));
+      expect(prSource.selectPullRequestsCallCount, equals(3));
     });
 
     test("retries a gh capability check after an unexpected failure", () async {
-      final prSource = _FakePrSource(listOpenPrsResult: <GhPullRequest>[])..isAvailableFailuresRemaining = 1;
+      final prSource = _FakePrSource(selectedPullRequestsResult: <GhPullRequest>[])..isAvailableFailuresRemaining = 1;
       final service = PrSyncService(
         prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
@@ -474,12 +546,12 @@ void main() {
 
       expect(prSource.isAvailableCallCount, equals(2));
       expect(prSource.getAuthenticatedIdentityCallCount, equals(1));
-      expect(prSource.listOpenPrsCallCount, equals(1));
+      expect(prSource.selectPullRequestsCallCount, equals(1));
     });
 
     test("debounces repeated refreshes for same project", () async {
       var now = DateTime.utc(2026, 7, 13);
-      final prSource = _FakePrSource(listOpenPrsResult: <GhPullRequest>[]);
+      final prSource = _FakePrSource(selectedPullRequestsResult: <GhPullRequest>[]);
       final service = PrSyncService(
         prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
@@ -490,12 +562,12 @@ void main() {
       addTearDown(service.dispose);
 
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => prSource.listOpenPrsCallCount == 1);
+      await _waitFor(() => prSource.selectPullRequestsCallCount == 1);
       now = now.add(const Duration(seconds: 31));
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(prSource.listOpenPrsCallCount, equals(1));
+      expect(prSource.selectPullRequestsCallCount, equals(1));
       expect(prSource.isAvailableCallCount, equals(1));
       expect(prSource.isAuthenticatedCallCount, equals(1));
     });
@@ -503,8 +575,8 @@ void main() {
     test("skips concurrent refresh while one is already active", () async {
       final block = Completer<void>();
       final prSource = _FakePrSource(
-        listOpenPrsResult: <GhPullRequest>[],
-        onListOpenPrs: () => block.future,
+        selectedPullRequestsResult: <GhPullRequest>[],
+        onSelection: () => block.future,
       );
       final service = PrSyncService(
         prSource: prSource,
@@ -517,7 +589,7 @@ void main() {
 
       // Start first refresh without awaiting so we can test concurrent behavior.
       final firstRefresh = service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => prSource.listOpenPrsCallCount == 1);
+      await _waitFor(() => prSource.selectPullRequestsCallCount == 1);
 
       // Second refresh should report that the first is still active rather than
       // representing unfinished work as completed.
@@ -527,7 +599,7 @@ void main() {
       );
 
       expect(secondOutcome, PrRefreshOutcome.inProgress);
-      expect(prSource.listOpenPrsCallCount, equals(1));
+      expect(prSource.selectPullRequestsCallCount, equals(1));
       expect(prSource.isAvailableCallCount, equals(1));
       expect(prSource.isAuthenticatedCallCount, equals(1));
 
@@ -560,6 +632,7 @@ GhPullRequest _ghPr({
     number: number,
     url: "https://github.com/org/repo/pull/$number",
     title: title,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(number, isUtc: true),
     state: state,
     headRefName: branch,
     mergeable: mergeable,
@@ -593,14 +666,14 @@ PullRequestDto _dto({
     reviewDecision: reviewDecision,
     checkStatus: checkStatus,
     lastCheckedAt: 1,
-    createdAt: 1,
+    createdAt: prNumber,
   );
 }
 
 class _FakePrSource implements PrSourceRepository {
-  final List<GhPullRequest> listOpenPrsResult;
-  final Map<int, GhPullRequest> prByNumber;
-  final Future<void> Function()? onListOpenPrs;
+  final List<GhPullRequest> selectedPullRequestsResult;
+  final Future<void> Function()? onSelection;
+  PullRequestSelectionOutcome? selectionOutcome;
   bool isAvailableResult;
   bool isAuthenticatedResult = true;
   VerifiedGithubLogin? authenticatedIdentityResult = _verifiedGithubLogin;
@@ -613,16 +686,13 @@ class _FakePrSource implements PrSourceRepository {
   int isAvailableCallCount = 0;
   int isAuthenticatedCallCount = 0;
   int getAuthenticatedIdentityCallCount = 0;
-  int listOpenPrsCallCount = 0;
+  int selectPullRequestsCallCount = 0;
   final List<String> getGithubRepositoryIdentityCalls = <String>[];
-  final List<String> listOpenPrsRepositoryIdentities = <String>[];
-  final List<int> getPrByNumberCalls = <int>[];
-  final List<String> getPrByNumberRepositoryIdentities = <String>[];
+  final List<List<PullRequestSelectionTarget>> selectionTargets = <List<PullRequestSelectionTarget>>[];
 
   _FakePrSource({
-    required this.listOpenPrsResult,
-    this.prByNumber = const <int, GhPullRequest>{},
-    this.onListOpenPrs,
+    required this.selectedPullRequestsResult,
+    this.onSelection,
     this.isAvailableResult = true,
   });
 
@@ -664,31 +734,37 @@ class _FakePrSource implements PrSourceRepository {
   }
 
   @override
-  Future<List<GhPullRequest>> listOpenPrs({
-    required String workingDirectory,
-    required String githubRepositoryIdentity,
+  Future<PullRequestSelectionOutcome> selectPullRequests({
+    required List<PullRequestSelectionTarget> targets,
+    required VerifiedGithubLogin expectedGithubLogin,
   }) async {
-    listOpenPrsCallCount++;
-    listOpenPrsRepositoryIdentities.add(githubRepositoryIdentity);
-    if (onListOpenPrs case final callback?) {
+    selectPullRequestsCallCount++;
+    selectionTargets.add(List<PullRequestSelectionTarget>.from(targets));
+    if (onSelection case final callback?) {
       await callback();
     }
-    return listOpenPrsResult;
+    if (selectionOutcome case final outcome?) return outcome;
+    return PullRequestSelectionCompleted(
+      selections: [for (final target in targets) _selectionFor(target: target)],
+    );
   }
 
-  @override
-  Future<GhPullRequest> getPrByNumber({
-    required int number,
-    required String workingDirectory,
-    required String githubRepositoryIdentity,
-  }) async {
-    getPrByNumberCalls.add(number);
-    getPrByNumberRepositoryIdentities.add(githubRepositoryIdentity);
-    final pr = prByNumber[number];
-    if (pr == null) {
-      throw Exception("PR #$number not found");
-    }
-    return pr;
+  PullRequestTargetSelection _selectionFor({required PullRequestSelectionTarget target}) {
+    final pullRequest = selectedPullRequestsResult
+        .where((candidate) => candidate.headRefName == target.branchName)
+        .firstOrNull;
+    if (pullRequest == null) return PullRequestTargetUnmatched(target: target);
+    return PullRequestTargetSelected(
+      target: target,
+      number: pullRequest.number,
+      url: pullRequest.url,
+      title: pullRequest.title,
+      createdAt: pullRequest.createdAt,
+      state: pullRequest.state,
+      mergeableStatus: pullRequest.mergeable,
+      reviewDecision: pullRequest.reviewDecision,
+      checkStatus: pullRequest.statusCheckRollup,
+    );
   }
 }
 
@@ -712,6 +788,7 @@ class _CapturingStdout implements Stdout {
 class _FakePullRequestRepository implements PullRequestRepository {
   final Map<String, List<PullRequestDto>> _recordsByProject = <String, List<PullRequestDto>>{};
   int upsertCalls = 0;
+  int replaceCalls = 0;
   final List<
     ({
       String projectId,
@@ -732,95 +809,55 @@ class _FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+  Future<bool> replaceScopedPullRequests({
     required String projectId,
-    required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
-  }) async {
-    return [
-      for (final record in _recordsByProject[projectId] ?? const <PullRequestDto>[])
-        if (record.githubRepositoryIdentity == githubRepositoryIdentity &&
-            record.githubLogin == verifiedGithubLogin.login &&
-            record.state == PrState.open)
-          record,
-    ];
-  }
-
-  @override
-  bool hasChangedFromExisting({required PullRequestDto? existing, required GhPullRequest pr}) {
-    if (existing == null) return true;
-    return existing.prNumber != pr.number ||
-        existing.url != pr.url ||
-        existing.title != pr.title ||
-        existing.branchName != pr.headRefName ||
-        existing.state != pr.state ||
-        existing.mergeableStatus != pr.mergeable ||
-        existing.reviewDecision != pr.reviewDecision ||
-        existing.checkStatus != pr.statusCheckRollup;
-  }
-
-  @override
-  Future<void> upsertFromGhPr({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required VerifiedGithubLogin verifiedGithubLogin,
-    required GhPullRequest pr,
-    required int createdAt,
+    required List<PullRequestTargetSelection> targetSelections,
     required int lastCheckedAt,
   }) async {
-    await upsertPullRequest(
-      record: PullRequestDto(
-        projectId: projectId,
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        githubLogin: verifiedGithubLogin.login,
-        prNumber: pr.number,
-        branchName: pr.headRefName,
-        url: pr.url,
-        title: pr.title,
-        state: pr.state,
-        mergeableStatus: pr.mergeable,
-        reviewDecision: pr.reviewDecision,
-        checkStatus: pr.statusCheckRollup,
-        lastCheckedAt: lastCheckedAt,
-        createdAt: createdAt,
-      ),
-    );
-  }
-
-  @override
-  Future<void> upsertPullRequest({required PullRequestDto record}) async {
-    upsertCalls++;
-    final records = _recordsByProject.putIfAbsent(record.projectId, () => <PullRequestDto>[]);
-    final existingIndex = records.indexWhere(
-      (existing) =>
-          existing.projectId == record.projectId &&
-          existing.githubRepositoryIdentity == record.githubRepositoryIdentity &&
-          existing.prNumber == record.prNumber,
-    );
-    if (existingIndex == -1) {
-      records.add(record);
-    } else {
-      records[existingIndex] = record;
-    }
+    replaceCalls++;
+    final previous = _recordsByProject[projectId] ?? const <PullRequestDto>[];
+    final replacements = [
+      for (final selection in targetSelections)
+        if (selection case final PullRequestTargetSelected pullRequest)
+          PullRequestDto(
+            projectId: projectId,
+            githubRepositoryIdentity: pullRequest.target.githubRepositoryIdentity,
+            githubLogin: verifiedGithubLogin.login,
+            prNumber: pullRequest.number,
+            branchName: pullRequest.target.branchName,
+            url: pullRequest.url,
+            title: pullRequest.title,
+            state: pullRequest.state,
+            mergeableStatus: pullRequest.mergeableStatus,
+            reviewDecision: pullRequest.reviewDecision,
+            checkStatus: pullRequest.checkStatus,
+            lastCheckedAt: lastCheckedAt,
+            createdAt: pullRequest.createdAt.millisecondsSinceEpoch,
+          ),
+    ];
+    final changed =
+        previous.length != replacements.length ||
+        replacements.any((replacement) {
+          final existing = previous.where((record) => record.prNumber == replacement.prNumber).firstOrNull;
+          return existing == null ||
+              existing.githubRepositoryIdentity != replacement.githubRepositoryIdentity ||
+              existing.githubLogin != replacement.githubLogin ||
+              existing.branchName != replacement.branchName ||
+              existing.title != replacement.title ||
+              existing.state != replacement.state ||
+              existing.mergeableStatus != replacement.mergeableStatus ||
+              existing.reviewDecision != replacement.reviewDecision ||
+              existing.checkStatus != replacement.checkStatus ||
+              existing.createdAt != replacement.createdAt;
+        });
+    _recordsByProject[projectId] = replacements;
+    upsertCalls += replacements.length;
+    return changed;
   }
 
   List<PullRequestDto> getByProjectId({required String projectId}) {
     return List<PullRequestDto>.from(_recordsByProject[projectId] ?? const <PullRequestDto>[]);
-  }
-
-  @override
-  Future<void> deletePr({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required int prNumber,
-  }) async {
-    final records = _recordsByProject[projectId];
-    if (records != null) {
-      records.removeWhere(
-        (record) => record.githubRepositoryIdentity == githubRepositoryIdentity && record.prNumber == prNumber,
-      );
-    }
-    upsertCalls++;
   }
 
   @override

@@ -237,61 +237,6 @@ void main() {
       expect(switchedAccount["session-1"]?.map((pr) => pr.prNumber), [102]);
     });
 
-    test("getActivePrsByProjectId returns only open rows in the requested scope", () async {
-      await insertProject(projectId: "proj-1");
-      await upsertPr(
-        projectId: "proj-1",
-        branchName: "feature/open",
-        prNumber: 1,
-        state: PrState.open,
-        title: "Open",
-      );
-      await upsertPr(
-        projectId: "proj-1",
-        branchName: "feature/closed",
-        prNumber: 2,
-        state: PrState.closed,
-        title: "Closed",
-      );
-
-      final active = await dao.getActivePrsByProjectId(
-        projectId: "proj-1",
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        githubLogin: githubLogin,
-      );
-      expect(active.map((pr) => pr.prNumber), [1]);
-    });
-
-    test("deletePr deletes by project, repository, and PR number", () async {
-      await insertProject(projectId: "proj-1");
-      await upsertPr(
-        projectId: "proj-1",
-        branchName: "feature/a",
-        prNumber: 1,
-        state: PrState.open,
-        title: "A",
-      );
-      await upsertScopedPr(
-        projectId: "proj-1",
-        githubRepositoryIdentity: "other/repository",
-        githubLogin: githubLogin,
-        branchName: "feature/b",
-        prNumber: 1,
-        state: PrState.open,
-        title: "B",
-      );
-
-      await dao.deletePr(
-        projectId: "proj-1",
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        prNumber: 1,
-      );
-
-      final prs = await dao.getPrsByProjectId(projectId: "proj-1");
-      expect(prs, hasLength(1));
-      expect(prs.single.githubRepositoryIdentity, "other/repository");
-    });
-
     test("deleting project cascades pull request rows", () async {
       await insertProject(projectId: "proj-1");
       await upsertPr(

@@ -517,6 +517,12 @@ settings screen analytics continue unchanged.
   valid behavior or verification outcome. Record actual generated size and seek
   another coherent split if production/test logic—not generated migration
   output—causes extra overage.
+- Step 3 is expected to exceed 1,500 because the typed GraphQL response model
+  generates roughly 700 Freezed/JSON lines and the coherent source replacement
+  deletes roughly 900 lines of obsolete repository-wide list/view tests and
+  fakes. Splitting before integration would either ship unused GraphQL machinery
+  or retain both source paths, so the evidence-based target is 3,100–3,500
+  changed lines including generated output and deletions.
 - Never hand-edit generated files. Internal Dart contracts update every
   in-repository consumer in lockstep.
 - Run `aristotle-impl-review` for Steps 2.a–8 because they alter production
@@ -531,7 +537,7 @@ settings screen analytics continue unchanged.
 | 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | Typed identity/repository evidence and deterministic repository-pinned CLI queries. | 500–900 | Make the existing request-driven source verify its active login and canonical repository before querying that repository explicitly. |
 | 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | Drift migration, generated artifacts, transactional writer ownership, and scoped cache joins. | 9,800–10,800 | Migrate current branch/repository/login scope and the repository-keyed ephemeral PR cache while preserving request-driven behavior. |
 | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | Fresh request identity gating, list/detail failure behavior, and privacy-sensitive regressions. | 1,200–1,700 | Require fresh login evidence for every PR-bearing read and fail closed without blocking session/catalog data. |
-| 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | Typed dynamic GraphQL batching/pagination, identity fencing, and deterministic selection. | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
+| 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | Typed dynamic GraphQL batching/pagination, identity fencing, and deterministic selection. | 3,100–3,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
 | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | Git/process resolution, persisted scope, cache races, and cross-layer rendering. | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |
 | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | Multi-device connection lifecycle and serialized add-during-flight scheduling. | 900–1,400 | Route per-connection project presence and run one fixed 30-second aggregate scheduler. |
 | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | Localized persisted settings flow with concurrent writes and live timer updates. | 1,000–1,500 | Persist/validate interval settings, expose GET/PATCH, serialize settings writes, and rearm the live timer. |

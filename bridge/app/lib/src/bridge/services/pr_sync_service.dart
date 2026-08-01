@@ -3,6 +3,7 @@ import "dart:async";
 import "package:clock/clock.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console, Log;
 
+import "../../repositories/models/pull_request_selection.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/models/verified_github_login.dart";
 import "../repositories/pr_source_repository.dart";
@@ -126,7 +127,6 @@ class PrSyncService {
 
       return await _refresh(
         projectId: projectId,
-        projectPath: projectPath,
         githubRepositoryIdentity: githubRepositoryIdentity,
         verifiedGithubLogin: verifiedGithubLogin,
         storedSessions: storedSessions,
@@ -165,90 +165,34 @@ class PrSyncService {
 
   Future<PrRefreshOutcome> _refresh({
     required String projectId,
-    required String projectPath,
     required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<StoredSession> storedSessions,
   }) async {
-    var hasChanges = false;
     var completed = false;
     try {
-      final (openPrs, activePrs) = await (
-        _prSource.listOpenPrs(
-          workingDirectory: projectPath,
+      final selectionOutcome = await _prSource.selectPullRequests(
+        targets: _selectionTargets(
           githubRepositoryIdentity: githubRepositoryIdentity,
+          sessions: storedSessions,
         ),
-        _pullRequestRepository.getActivePullRequestsByProjectId(
-          projectId: projectId,
-          githubRepositoryIdentity: githubRepositoryIdentity,
-          verifiedGithubLogin: verifiedGithubLogin,
-        ),
-      ).wait;
-
-      final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
-
-      final nowEpochMs = _clock.now().millisecondsSinceEpoch;
-
-      final matchedOpenPrs = openPrs
-          .where((pr) => !pr.isCrossRepository && sessionsByBranch.containsKey(pr.headRefName))
-          .toList(growable: false);
-
-      final activeByBranch = {
-        for (final activePr in activePrs) activePr.branchName: activePr,
-      };
-
-      for (final pr in matchedOpenPrs) {
-        final existing = activeByBranch[pr.headRefName];
-        final createdAt = existing?.createdAt ?? nowEpochMs;
-
-        if (_pullRequestRepository.hasChangedFromExisting(existing: existing, pr: pr)) {
-          hasChanges = true;
-        }
-
-        await _pullRequestRepository.upsertFromGhPr(
-          projectId: projectId,
-          githubRepositoryIdentity: githubRepositoryIdentity,
-          verifiedGithubLogin: verifiedGithubLogin,
-          pr: pr,
-          createdAt: createdAt,
-          lastCheckedAt: nowEpochMs,
-        );
+        expectedGithubLogin: verifiedGithubLogin,
+      );
+      final PullRequestSelectionCompleted completedSelection;
+      switch (selectionOutcome) {
+        case PullRequestSelectionCompleted():
+          completedSelection = selectionOutcome;
+        case PullRequestSelectionIdentityChanged():
+          return PrRefreshOutcome.failed;
       }
-
-      final openPrNumbers = openPrs.map((pr) => pr.number).toSet();
-      final disappearedActivePrs = activePrs
-          .where((activePr) => !openPrNumbers.contains(activePr.prNumber))
-          .toList(growable: false);
-
-      for (final disappeared in disappearedActivePrs) {
-        try {
-          final finalPr = await _prSource.getPrByNumber(
-            number: disappeared.prNumber,
-            workingDirectory: projectPath,
-            githubRepositoryIdentity: githubRepositoryIdentity,
-          );
-
-          if (_pullRequestRepository.hasChangedFromExisting(existing: disappeared, pr: finalPr)) {
-            hasChanges = true;
-          }
-
-          await _pullRequestRepository.upsertFromGhPr(
-            projectId: projectId,
-            githubRepositoryIdentity: githubRepositoryIdentity,
-            verifiedGithubLogin: verifiedGithubLogin,
-            pr: finalPr,
-            createdAt: disappeared.createdAt,
-            lastCheckedAt: nowEpochMs,
-          );
-        } catch (e) {
-          Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e — removing stale record");
-          await _pullRequestRepository.deletePr(
-            projectId: projectId,
-            githubRepositoryIdentity: githubRepositoryIdentity,
-            prNumber: disappeared.prNumber,
-          );
-          hasChanges = true;
-        }
+      final hasChanges = await _pullRequestRepository.replaceScopedPullRequests(
+        projectId: projectId,
+        verifiedGithubLogin: verifiedGithubLogin,
+        targetSelections: completedSelection.selections,
+        lastCheckedAt: _clock.now().millisecondsSinceEpoch,
+      );
+      if (hasChanges) {
+        _prChangesController.add(projectId);
       }
 
       completed = true;
@@ -257,9 +201,6 @@ class PrSyncService {
       Log.e("[PrSync] refresh failed", e, st);
       return PrRefreshOutcome.failed;
     } finally {
-      if (hasChanges) {
-        _prChangesController.add(projectId);
-      }
       if (completed) {
         _lastRefreshTimes[projectId] = _clock.now();
       }
@@ -270,18 +211,18 @@ class PrSyncService {
     _prChangesController.close();
   }
 
-  Map<String, StoredSession> _indexSessionsByBranch({required List<StoredSession> sessions}) {
-    final result = <String, StoredSession>{};
-    for (final session in sessions) {
-      if (session.parentSessionId != null) {
-        continue;
-      }
-      final branchName = session.branchName;
-      if (branchName == null || branchName.isEmpty) {
-        continue;
-      }
-      result[branchName] = session;
-    }
-    return result;
+  List<PullRequestSelectionTarget> _selectionTargets({
+    required String githubRepositoryIdentity,
+    required List<StoredSession> sessions,
+  }) {
+    return {
+      for (final session in sessions)
+        if (session.parentSessionId == null)
+          if (session.branchName case final branchName? when branchName.isNotEmpty)
+            (
+              githubRepositoryIdentity: githubRepositoryIdentity,
+              branchName: branchName,
+            ),
+    }.toList(growable: false);
   }
 }

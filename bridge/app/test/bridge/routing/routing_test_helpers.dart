@@ -5,7 +5,6 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
@@ -26,6 +25,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
+import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 
@@ -560,73 +560,40 @@ class FakePullRequestRepository implements PullRequestRepository {
     };
   }
 
-  Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
-    return _prsByPrimaryKey.values.where((pr) => pr.projectId == projectId && pr.state == PrState.open).toList();
-  }
-
   @override
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+  Future<bool> replaceScopedPullRequests({
     required String projectId,
-    required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
-  }) async {
-    return (await getActivePrsByProjectId(projectId: projectId))
-        .where(
-          (pr) =>
-              pr.githubRepositoryIdentity == githubRepositoryIdentity && pr.githubLogin == verifiedGithubLogin.login,
-        )
-        .toList(growable: false);
-  }
-
-  @override
-  Future<void> upsertPullRequest({required PullRequestDto record}) async {
-    _prsByPrimaryKey[_key(
-          projectId: record.projectId,
-          githubRepositoryIdentity: record.githubRepositoryIdentity,
-          prNumber: record.prNumber,
-        )] =
-        record;
-  }
-
-  @override
-  Future<void> upsertFromGhPr({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required VerifiedGithubLogin verifiedGithubLogin,
-    required GhPullRequest pr,
-    required int createdAt,
+    required List<PullRequestTargetSelection> targetSelections,
     required int lastCheckedAt,
-  }) {
-    return upsertPullRequest(
-      record: PullRequestDto(
+  }) async {
+    _prsByPrimaryKey.removeWhere((_, pullRequest) => pullRequest.projectId == projectId);
+    for (final selection in targetSelections) {
+      if (selection is! PullRequestTargetSelected) continue;
+      final pullRequest = selection;
+      final record = PullRequestDto(
         projectId: projectId,
-        githubRepositoryIdentity: githubRepositoryIdentity,
+        githubRepositoryIdentity: pullRequest.target.githubRepositoryIdentity,
         githubLogin: verifiedGithubLogin.login,
-        prNumber: pr.number,
-        branchName: pr.headRefName,
-        url: pr.url,
-        title: pr.title,
-        state: pr.state,
-        mergeableStatus: pr.mergeable,
-        reviewDecision: pr.reviewDecision,
-        checkStatus: pr.statusCheckRollup,
+        prNumber: pullRequest.number,
+        branchName: pullRequest.target.branchName,
+        url: pullRequest.url,
+        title: pullRequest.title,
+        state: pullRequest.state,
+        mergeableStatus: pullRequest.mergeableStatus,
+        reviewDecision: pullRequest.reviewDecision,
+        checkStatus: pullRequest.checkStatus,
         lastCheckedAt: lastCheckedAt,
-        createdAt: createdAt,
-      ),
-    );
-  }
-
-  @override
-  bool hasChangedFromExisting({required PullRequestDto? existing, required GhPullRequest pr}) {
-    if (existing == null) return true;
-    return existing.prNumber != pr.number ||
-        existing.url != pr.url ||
-        existing.title != pr.title ||
-        existing.branchName != pr.headRefName ||
-        existing.state != pr.state ||
-        existing.mergeableStatus != pr.mergeable ||
-        existing.reviewDecision != pr.reviewDecision ||
-        existing.checkStatus != pr.statusCheckRollup;
+        createdAt: pullRequest.createdAt.millisecondsSinceEpoch,
+      );
+      _prsByPrimaryKey[_key(
+            projectId: record.projectId,
+            githubRepositoryIdentity: record.githubRepositoryIdentity,
+            prNumber: record.prNumber,
+          )] =
+          record;
+    }
+    return true;
   }
 
   String _key({
@@ -635,31 +602,6 @@ class FakePullRequestRepository implements PullRequestRepository {
     required int prNumber,
   }) {
     return "$projectId::$githubRepositoryIdentity::$prNumber";
-  }
-
-  @override
-  Future<void> deletePr({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required int prNumber,
-  }) async {
-    _prsByPrimaryKey.remove(
-      _key(
-        projectId: projectId,
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        prNumber: prNumber,
-      ),
-    );
-    _prsBySessionId.updateAll(
-      (_, List<PullRequestDto> list) => list
-          .where(
-            (pr) =>
-                !(pr.projectId == projectId &&
-                    pr.githubRepositoryIdentity == githubRepositoryIdentity &&
-                    pr.prNumber == prNumber),
-          )
-          .toList(),
-    );
   }
 
   @override
@@ -736,45 +678,22 @@ class _AlwaysReadyPrSource implements PrSourceRepository {
   @override
   Future<String?> getGithubRepositoryIdentity({required String projectPath}) async => "sesori-ai/test";
   @override
-  Future<List<GhPullRequest>> listOpenPrs({
-    required String workingDirectory,
-    required String githubRepositoryIdentity,
-  }) async => const <GhPullRequest>[];
-  @override
-  Future<GhPullRequest> getPrByNumber({
-    required int number,
-    required String workingDirectory,
-    required String githubRepositoryIdentity,
-  }) async => throw StateError("getPrByNumber should not be called");
+  Future<PullRequestSelectionOutcome> selectPullRequests({
+    required List<PullRequestSelectionTarget> targets,
+    required VerifiedGithubLogin expectedGithubLogin,
+  }) async => PullRequestSelectionCompleted(
+    selections: [for (final target in targets) PullRequestTargetUnmatched(target: target)],
+  );
 }
 
 class _NoopPullRequestRepository implements PullRequestRepository {
   @override
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+  Future<bool> replaceScopedPullRequests({
     required String projectId,
-    required String githubRepositoryIdentity,
     required VerifiedGithubLogin verifiedGithubLogin,
-  }) async => const <PullRequestDto>[];
-
-  @override
-  bool hasChangedFromExisting({required PullRequestDto? existing, required GhPullRequest pr}) => true;
-
-  @override
-  Future<void> upsertFromGhPr({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required VerifiedGithubLogin verifiedGithubLogin,
-    required GhPullRequest pr,
-    required int createdAt,
+    required List<PullRequestTargetSelection> targetSelections,
     required int lastCheckedAt,
-  }) async {}
-
-  @override
-  Future<void> deletePr({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required int prNumber,
-  }) async {}
+  }) async => false;
 
   @override
   Future<bool> prepareScopedRefresh({
@@ -789,9 +708,6 @@ class _NoopPullRequestRepository implements PullRequestRepository {
     required String projectId,
     required List<StoredSession> sessions,
   }) async => false;
-
-  @override
-  Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }
 
 Session _deletedSession(String sessionId) => Session(

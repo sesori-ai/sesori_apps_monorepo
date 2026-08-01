@@ -2,14 +2,13 @@ import "dart:async";
 import "dart:collection";
 import "dart:io";
 
+import "package:sesori_bridge/src/api/gh_pull_request_batch.dart";
 import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
-import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 const _githubRepositoryIdentity = "sesori-ai/sesori_apps_monorepo";
-const _githubRepositorySelector = "github.com/$_githubRepositoryIdentity";
 
 void main() {
   group("GhCliApi.isAvailable", () {
@@ -216,7 +215,7 @@ void main() {
     });
   });
 
-  group("GhCliApi.listOpenPrs", () {
+  group("GhCliApi pull request GraphQL", () {
     late _FakeProcessRunner processRunner;
     late GhCliApi service;
 
@@ -225,263 +224,212 @@ void main() {
       service = GhCliApi(processRunner: processRunner);
     });
 
-    test("returns parsed PR list for valid JSON", () async {
+    test("queries typed open and terminal pages with variable-bound targets", () async {
       processRunner.enqueueResult(
         result: _ok(
-          stdout:
-              '[{"number":1,"url":"https://example/pr/1","title":"Add feature","state":"OPEN","headRefName":"feat/one","mergeable":"MERGEABLE","reviewDecision":"APPROVED","statusCheckRollup":"SUCCESS"}]',
-        ),
-      );
-
-      final prs = await service.listOpenPrs(
-        workingDirectory: "/repo",
-        githubRepositoryIdentity: _githubRepositoryIdentity,
-      );
-
-      expect(
-        prs,
-        equals(
-          <GhPullRequest>[
-            const GhPullRequest(
-              number: 1,
-              url: "https://example/pr/1",
-              title: "Add feature",
-              state: PrState.open,
-              headRefName: "feat/one",
-              mergeable: PrMergeableStatus.mergeable,
-              reviewDecision: PrReviewDecision.approved,
-              statusCheckRollup: PrCheckStatus.success,
-            ),
-          ],
-        ),
-      );
-
-      expect(processRunner.invocations, hasLength(1));
-      expect(processRunner.invocations.first.command, equals("gh"));
-      expect(
-        processRunner.invocations.first.arguments,
-        equals(<String>[
-          "pr",
-          "list",
-          "--repo",
-          _githubRepositorySelector,
-          "--state",
-          "open",
-          "--json",
-          "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
-          "--limit",
-          "100",
-        ]),
-      );
-      expect(processRunner.invocations.first.workingDirectory, equals("/repo"));
-    });
-
-    test("returns empty list for empty JSON array", () async {
-      processRunner.enqueueResult(result: _ok(stdout: "[]"));
-
-      final prs = await service.listOpenPrs(
-        workingDirectory: "/repo",
-        githubRepositoryIdentity: _githubRepositoryIdentity,
-      );
-
-      expect(prs, isEmpty);
-    });
-
-    test("throws on malformed JSON", () async {
-      processRunner.enqueueResult(result: _ok(stdout: "not-json"));
-
-      expect(
-        () => service.listOpenPrs(
-          workingDirectory: "/repo",
-          githubRepositoryIdentity: _githubRepositoryIdentity,
-        ),
-        throwsA(isA<FormatException>()),
-      );
-    });
-
-    test("throws on non-zero exit code", () async {
-      processRunner.enqueueResult(result: _fail(exitCode: 1));
-
-      expect(
-        () => service.listOpenPrs(
-          workingDirectory: "/repo",
-          githubRepositoryIdentity: _githubRepositoryIdentity,
-        ),
-        throwsA(isA<Exception>()),
-      );
-    });
-
-    test("throws on timeout", () async {
-      processRunner.enqueueError(error: TimeoutException("timed out"));
-
-      expect(
-        () => service.listOpenPrs(
-          workingDirectory: "/repo",
-          githubRepositoryIdentity: _githubRepositoryIdentity,
-        ),
-        throwsA(isA<TimeoutException>()),
-      );
-    });
-
-    test("throws on ProcessException", () async {
-      processRunner.enqueueError(
-        error: const ProcessException("gh", <String>["pr", "list"], "boom", 1),
-      );
-
-      expect(
-        () => service.listOpenPrs(
-          workingDirectory: "/repo",
-          githubRepositoryIdentity: _githubRepositoryIdentity,
-        ),
-        throwsA(isA<ProcessException>()),
-      );
-    });
-
-    test("extracts statusCheckRollup state from object", () async {
-      processRunner.enqueueResult(
-        result: _ok(
-          stdout:
-              '[{"number":1,"url":"https://example/pr/1","title":"Add feature","state":"OPEN","headRefName":"feat/one","mergeable":"MERGEABLE","reviewDecision":"APPROVED","statusCheckRollup":{"state":"SUCCESS","contexts":[]}}]',
-        ),
-      );
-
-      final prs = await service.listOpenPrs(
-        workingDirectory: "/repo",
-        githubRepositoryIdentity: _githubRepositoryIdentity,
-      );
-
-      expect(prs, hasLength(1));
-      expect(prs.single.statusCheckRollup, equals(PrCheckStatus.success));
-    });
-
-    test("returns unknown statusCheckRollup for unsupported rollup shape", () async {
-      processRunner.enqueueResult(
-        result: _ok(
-          stdout:
-              '[{"number":1,"url":"https://example/pr/1","title":"Add feature","state":"OPEN","headRefName":"feat/one","mergeable":"MERGEABLE","reviewDecision":"APPROVED","statusCheckRollup":["unexpected"]}]',
-        ),
-      );
-
-      final prs = await service.listOpenPrs(
-        workingDirectory: "/repo",
-        githubRepositoryIdentity: _githubRepositoryIdentity,
-      );
-
-      expect(prs, hasLength(1));
-      expect(prs.single.statusCheckRollup, equals(PrCheckStatus.unknown));
-    });
-  });
-
-  group("GhCliApi.getPrByNumber", () {
-    late _FakeProcessRunner processRunner;
-    late GhCliApi service;
-
-    setUp(() {
-      processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner);
-    });
-
-    test("returns parsed PR for valid JSON", () async {
-      processRunner.enqueueResult(
-        result: _ok(
-          stdout:
-              '{"number":12,"url":"https://example/pr/12","title":"Fix bug","state":"OPEN","headRefName":"fix/two","mergeable":"CONFLICTING","reviewDecision":null,"statusCheckRollup":null}',
-        ),
-      );
-
-      final pr = await service.getPrByNumber(
-        number: 12,
-        workingDirectory: "/repo",
-        githubRepositoryIdentity: _githubRepositoryIdentity,
-      );
-
-      expect(
-        pr,
-        equals(
-          const GhPullRequest(
-            number: 12,
-            url: "https://example/pr/12",
-            title: "Fix bug",
-            state: PrState.open,
-            headRefName: "fix/two",
-            mergeable: PrMergeableStatus.conflicting,
-            reviewDecision: PrReviewDecision.unknown,
-            statusCheckRollup: PrCheckStatus.none,
+          stdout: _batchJson(
+            pages: [
+              _pageJson(
+                stateGroup: "open",
+                nodes: [
+                  _pullRequestJson(
+                    number: 1,
+                    state: "OPEN",
+                    branch: "feat/one",
+                    createdAt: "2026-08-01T10:00:00Z",
+                    statusCheckRollup: "SUCCESS",
+                  ),
+                ],
+              ),
+              _pageJson(stateGroup: "terminal", nodes: const []),
+            ],
           ),
         ),
       );
 
+      final response = await service.queryInitialPullRequestPages(
+        targets: const [
+          GhPullRequestTarget(
+            repositoryOwner: "sesori-ai",
+            repositoryName: "sesori_apps_monorepo",
+            branchName: "feat/one",
+          ),
+        ],
+      );
+
+      expect(response.viewerLogin, "OctoCat");
+      expect(response.pages, hasLength(2));
+      final pullRequest = response.pages.first.connection.nodes.single;
+      expect(pullRequest.number, 1);
+      expect(pullRequest.createdAt, DateTime.utc(2026, 8, 1, 10));
+      expect(pullRequest.statusCheckRollup, PrCheckStatus.success);
+
       expect(processRunner.invocations, hasLength(1));
-      expect(processRunner.invocations.first.command, equals("gh"));
-      expect(
-        processRunner.invocations.first.arguments,
-        equals(<String>[
-          "pr",
-          "view",
-          "12",
-          "--repo",
-          _githubRepositorySelector,
-          "--json",
-          "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
-        ]),
-      );
-      expect(processRunner.invocations.first.workingDirectory, equals("/repo"));
+      final invocation = processRunner.invocations.single;
+      expect(invocation.command, "gh");
+      expect(invocation.workingDirectory, isNull);
+      expect(invocation.arguments.take(4), ["api", "graphql", "--hostname", "github.com"]);
+      final queryArgument = invocation.arguments.singleWhere((argument) => argument.startsWith("query="));
+      expect(queryArgument, contains(r"target0: repository(owner: $owner0, name: $name0)"));
+      expect(queryArgument, contains("states: [OPEN]"));
+      expect(queryArgument, contains("states: [MERGED, CLOSED]"));
+      expect(queryArgument, contains("createdAt"));
+      expect(queryArgument, isNot(contains("feat/one")));
+      expect(invocation.arguments, containsAll(["owner0=sesori-ai", "name0=sesori_apps_monorepo", "branch0=feat/one"]));
     });
 
-    test("throws for malformed JSON", () async {
-      processRunner.enqueueResult(result: _ok(stdout: "{"));
-
-      expect(
-        () => service.getPrByNumber(
-          number: 1,
-          workingDirectory: "/repo",
-          githubRepositoryIdentity: _githubRepositoryIdentity,
+    test("queries one typed cursor page for its requested state group", () async {
+      processRunner.enqueueResult(
+        result: _ok(
+          stdout: _batchJson(
+            pages: [_pageJson(stateGroup: "terminal", nodes: const [])],
+          ),
         ),
-        throwsA(isA<FormatException>()),
+      );
+
+      final response = await service.queryPullRequestCursorPages(
+        requests: const [
+          GhPullRequestCursorRequest(
+            target: GhPullRequestTarget(
+              repositoryOwner: "sesori-ai",
+              repositoryName: "sesori_apps_monorepo",
+              branchName: "feat/one",
+            ),
+            stateGroup: GhPullRequestStateGroup.terminal,
+            cursor: "cursor-1",
+          ),
+        ],
+      );
+
+      expect(response.pages.single.stateGroup, GhPullRequestStateGroup.terminal);
+      final arguments = processRunner.invocations.single.arguments;
+      final queryArgument = arguments.singleWhere((argument) => argument.startsWith("query="));
+      expect(queryArgument, contains("states: [MERGED, CLOSED]"));
+      expect(queryArgument, contains(r"after: $cursor0"));
+      expect(arguments, contains("cursor0=cursor-1"));
+    });
+
+    test("parses nullable GraphQL PR fields into closed enums and no checks", () async {
+      processRunner.enqueueResult(
+        result: _ok(
+          stdout: _batchJson(
+            pages: [
+              _pageJson(
+                stateGroup: "open",
+                nodes: [
+                  _pullRequestJson(
+                    number: 2,
+                    state: "CLOSED",
+                    branch: "feat/one",
+                    createdAt: "2026-08-01T10:00:00Z",
+                    mergeable: "CONFLICTING",
+                    reviewDecision: null,
+                    statusCheckRollup: null,
+                  ),
+                ],
+              ),
+              _pageJson(stateGroup: "terminal", nodes: const []),
+            ],
+          ),
+        ),
+      );
+
+      final response = await service.queryInitialPullRequestPages(targets: const [_target]);
+      final pullRequest = response.pages.first.connection.nodes.single;
+      expect(pullRequest.state, PrState.closed);
+      expect(pullRequest.mergeable, PrMergeableStatus.conflicting);
+      expect(pullRequest.reviewDecision, PrReviewDecision.unknown);
+      expect(pullRequest.statusCheckRollup, PrCheckStatus.none);
+    });
+
+    test("throws a typed failure for GraphQL errors and nonzero exits", () async {
+      processRunner
+        ..enqueueResult(
+          result: _ok(stdout: _batchJson(errorCount: 1, pages: const [])),
+        )
+        ..enqueueResult(result: _fail(exitCode: 1))
+        ..enqueueError(error: TimeoutException("query timed out"));
+
+      await expectLater(
+        service.queryInitialPullRequestPages(targets: const [_target]),
+        throwsA(isA<GhPullRequestGraphqlException>().having((error) => error.errorCount, "errors", 1)),
+      );
+      await expectLater(
+        service.queryInitialPullRequestPages(targets: const [_target]),
+        throwsA(isA<GhPullRequestProcessExitException>().having((error) => error.exitCode, "exit", 1)),
+      );
+      await expectLater(
+        service.queryInitialPullRequestPages(targets: const [_target]),
+        throwsA(
+          isA<GhPullRequestWrappedException>()
+              .having((error) => error.innerError, "innerError", isA<TimeoutException>())
+              .having((error) => error.toString(), "presentation", isNot(contains("feat/one"))),
+        ),
       );
     });
 
-    test("throws for non-zero exit code", () async {
-      processRunner.enqueueResult(result: _fail(exitCode: 1));
+    test("rejects malformed output and batches larger than twenty", () async {
+      processRunner.enqueueResult(result: _ok(stdout: "not-json"));
 
-      expect(
-        () => service.getPrByNumber(
-          number: 1,
-          workingDirectory: "/repo",
-          githubRepositoryIdentity: _githubRepositoryIdentity,
+      await expectLater(
+        service.queryInitialPullRequestPages(targets: const [_target]),
+        throwsA(
+          isA<GhPullRequestWrappedException>()
+              .having((error) => error.innerError, "innerError", isA<FormatException>())
+              .having((error) => error.toString(), "presentation", isNot(contains("not-json"))),
         ),
-        throwsA(isA<Exception>()),
       );
-    });
-
-    test("throws on timeout", () async {
-      processRunner.enqueueError(error: TimeoutException("timed out"));
-
       expect(
-        () => service.getPrByNumber(
-          number: 1,
-          workingDirectory: "/repo",
-          githubRepositoryIdentity: _githubRepositoryIdentity,
+        () => service.queryInitialPullRequestPages(
+          targets: List<GhPullRequestTarget>.filled(21, _target),
         ),
-        throwsA(isA<TimeoutException>()),
-      );
-    });
-
-    test("throws on ProcessException", () async {
-      processRunner.enqueueError(
-        error: const ProcessException("gh", <String>["pr", "view", "1"], "boom", 1),
-      );
-
-      expect(
-        () => service.getPrByNumber(
-          number: 1,
-          workingDirectory: "/repo",
-          githubRepositoryIdentity: _githubRepositoryIdentity,
-        ),
-        throwsA(isA<ProcessException>()),
+        throwsArgumentError,
       );
     });
   });
+}
+
+const _target = GhPullRequestTarget(
+  repositoryOwner: "sesori-ai",
+  repositoryName: "sesori_apps_monorepo",
+  branchName: "feat/one",
+);
+
+String _batchJson({
+  int errorCount = 0,
+  required List<String> pages,
+}) {
+  return '{"errorCount":$errorCount,"viewerLogin":"OctoCat","pages":[${pages.join(",")}]}';
+}
+
+String _pageJson({
+  required String stateGroup,
+  required List<String> nodes,
+  bool hasNextPage = false,
+  String? endCursor,
+}) {
+  final cursorJson = endCursor == null ? "null" : '"$endCursor"';
+  return '{"requestIndex":0,"stateGroup":"$stateGroup","repositoryIdentity":"$_githubRepositoryIdentity",'
+      '"connection":{"nodes":[${nodes.join(",")}],"pageInfo":{"hasNextPage":$hasNextPage,'
+      '"endCursor":$cursorJson}}}';
+}
+
+String _pullRequestJson({
+  required int number,
+  required String state,
+  required String branch,
+  required String createdAt,
+  String mergeable = "MERGEABLE",
+  String? reviewDecision = "APPROVED",
+  String? statusCheckRollup = "SUCCESS",
+  bool isCrossRepository = false,
+}) {
+  final reviewJson = reviewDecision == null ? "null" : '"$reviewDecision"';
+  final statusJson = statusCheckRollup == null ? "null" : '"$statusCheckRollup"';
+  return '{"number":$number,"url":"https://example/pr/$number","title":"PR $number", '
+      '"createdAt":"$createdAt","state":"$state","headRefName":"$branch",'
+      '"isCrossRepository":$isCrossRepository,"mergeable":"$mergeable",'
+      '"reviewDecision":$reviewJson,"statusCheckRollup":$statusJson}';
 }
 
 ProcessResult _ok({String stdout = "", String stderr = ""}) {
