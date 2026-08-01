@@ -6,9 +6,9 @@
 - **Implementation base:** `origin/main` at
   `db7d62c666f88a63a05acd28fe6b8816dd6afc56`
 - **Series state:** Step 11/13 merged as [PR #670](https://github.com/sesori-ai/sesori_apps_monorepo/pull/670) (`db7d62c6`)
-- **Current step:** Step 12/13 implemented and verified; preparing PR
+- **Current step:** Step 12/13 open as [PR #674](https://github.com/sesori-ai/sesori_apps_monorepo/pull/674)
 - **Plan PR:** [#638](https://github.com/sesori-ai/sesori_apps_monorepo/pull/638)
-- **Next action:** commit, push, and open the Step 12 PR
+- **Next action:** monitor PR #674 and address CI or review findings
 
 ## Plan Review
 
@@ -37,7 +37,7 @@
 | [x] | 9/13 | `output-image-support-acp-content-mapping` | `[output-image-support] refactor(acp): centralize tool content mapping [step 9/13]` | 1,100-1,500 | [PR #661](https://github.com/sesori-ai/sesori_apps_monorepo/pull/661) merged as `f5f24240`; 879 changed lines |
 | [x] | 10/13 | `output-image-support-acp-message-images` | `[output-image-support] feat(acp): surface live message images [step 10/13]` | 1,100-1,500 | [PR #666](https://github.com/sesori-ai/sesori_apps_monorepo/pull/666) merged as `e64fb4b5`; 1,138 changed lines |
 | [x] | 11/13 | `output-image-support-acp-tool-images` | `⚙️ [output-image-support] feat(acp): surface live tool images [step 11/13]` | 1,200-1,500 | [PR #670](https://github.com/sesori-ai/sesori_apps_monorepo/pull/670) merged as `db7d62c6`; 1,477 changed lines |
-| [ ] | 12/13 | `output-image-support-acp-image-replay` | `⚙️ [output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | Implemented and verified locally; architecture review approved |
+| [ ] | 12/13 | `output-image-support-acp-image-replay` | `⚙️ [output-image-support] feat(acp): restore output image replay [step 12/13]` | 900-1,400 | [PR #674](https://github.com/sesori-ai/sesori_apps_monorepo/pull/674) open; architecture review approved |
 | [ ] | 13/13 | `output-image-support-retire-plan` | `[output-image-support] docs: retire output image support plan [step 13/13]` | 50-200 | Blocked on Step 12 merge |
 
 ## Exact PR Titles
