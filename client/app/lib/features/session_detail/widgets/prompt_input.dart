@@ -249,6 +249,15 @@ class _PromptInputState extends State<PromptInput> {
 
   _ComposerLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
 
+  /// Acknowledges the hold immediately while the recorder starts without
+  /// claiming that the underlying recording lifecycle has advanced yet.
+  _VoiceState get _displayedVoiceState {
+    if (_isRecordStartInFlight && !_releaseRequestedDuringStart) {
+      return _VoiceState.recording;
+    }
+    return _voiceState;
+  }
+
   bool get _hasSendableContent => _hasText || widget.stagedCommand != null;
 
   /// Switches to the typing layout and raises the keyboard. Focus is
@@ -319,14 +328,17 @@ class _PromptInputState extends State<PromptInput> {
 
   Future<void> _handleRecordStart() async {
     if (_voiceState != _VoiceState.idle || _isRecordStartInFlight || _isCancelInFlight) return;
+    final pinnedVoiceLayout = _restingLayout;
     _voiceInteractionId++;
-    _isRecordStartInFlight = true;
-    _releaseRequestedDuringStart = false;
     _minimumRecordingDurationTimer?.cancel();
     _minimumRecordingDurationTimer = null;
-    _minimumRecordingDurationReached = false;
     _cancelDragProgress.value = 0;
-    _pinnedVoiceLayout = _restingLayout;
+    setState(() {
+      _isRecordStartInFlight = true;
+      _releaseRequestedDuringStart = false;
+      _minimumRecordingDurationReached = false;
+      _pinnedVoiceLayout = pinnedVoiceLayout;
+    });
     await _startRecording();
     _isRecordStartInFlight = false;
     if (!mounted) {
@@ -370,7 +382,7 @@ class _PromptInputState extends State<PromptInput> {
   /// Tracks the hold as it moves, scrubbing the drag-to-cancel presentation
   /// toward the cancel target.
   void _handleRecordDragUpdate({required Offset globalPosition}) {
-    if (_voiceState != _VoiceState.recording) return;
+    if (_displayedVoiceState != _VoiceState.recording) return;
     _cancelDragProgress.value = _cancelProgressFor(globalPosition: globalPosition);
   }
 
@@ -392,7 +404,10 @@ class _PromptInputState extends State<PromptInput> {
   Future<void> _handleRecordEnd() async {
     if (_voiceState == _VoiceState.idle) {
       // A release can race a recorder that is still starting up.
-      if (_isRecordStartInFlight) _releaseRequestedDuringStart = true;
+      if (_isRecordStartInFlight) {
+        setState(() => _releaseRequestedDuringStart = true);
+        _cancelDragProgress.value = 0;
+      }
       return;
     }
     if (_voiceState != _VoiceState.recording) return;
@@ -531,6 +546,15 @@ class _PromptInputState extends State<PromptInput> {
   /// Discards the running voice interaction: a drag released on the cancel
   /// target, a tap on it mid-recording, or a tap on the X while transcribing.
   Future<void> _cancelVoiceInteraction() async {
+    if (_isRecordStartInFlight) {
+      // Cancelling the service before its start future settles can let native
+      // startup continue after cleanup. Mark the release now and let the start
+      // path cancel once the recorder has reached a stable state.
+      setState(() => _releaseRequestedDuringStart = true);
+      _cancelDragProgress.value = 0;
+      return;
+    }
+
     // Reset synchronously: a release landing while the platform cancel is
     // still in flight must read the interaction as over, not stop-and-
     // transcribe the recording being discarded. The id bump orphans any
@@ -713,7 +737,7 @@ class _PromptInputState extends State<PromptInput> {
   /// "Release to transcribe" / "Release to cancel" helper while recording.
   Widget _buildComposerTopSlot(BuildContext context) {
     final Widget child;
-    if (_voiceState == _VoiceState.recording) {
+    if (_displayedVoiceState == _VoiceState.recording) {
       child = KeyedSubtree(key: const ValueKey("release-hint"), child: _buildReleaseHint(context));
     } else {
       final headerChild = switch (widget.stagedCommand) {
@@ -816,7 +840,7 @@ class _PromptInputState extends State<PromptInput> {
   }) {
     final prego = context.prego;
     const radius = BorderRadius.all(Radius.circular(PregoRadius.full));
-    final tightenEnd = tightensTrailingWhileRecording && _voiceState == _VoiceState.recording;
+    final tightenEnd = tightensTrailingWhileRecording && _displayedVoiceState == _VoiceState.recording;
 
     return DecoratedBox(
       decoration: _containerDecoration(prego, borderColor: borderColor, borderRadius: radius),
@@ -897,7 +921,7 @@ class _PromptInputState extends State<PromptInput> {
             ),
           ),
           _buildCollapsibleTrailing(
-            visible: _voiceState != _VoiceState.recording,
+            visible: _displayedVoiceState != _VoiceState.recording,
             child: Row(
               spacing: PregoSpacing.sm,
               children: [
@@ -962,7 +986,7 @@ class _PromptInputState extends State<PromptInput> {
               // action collapses away.
               _buildMicButton(context),
               _buildCollapsibleTrailing(
-                visible: _voiceState != _VoiceState.recording,
+                visible: _displayedVoiceState != _VoiceState.recording,
                 child: _buildPrimaryActionButton(context),
               ),
             ],
@@ -1046,7 +1070,7 @@ class _PromptInputState extends State<PromptInput> {
                 child: Tooltip(
                   message: loc.sessionDetailExpandEditor,
                   child: PregoTappable(
-                    onTap: _voiceState == _VoiceState.idle ? _openEditorSheet : null,
+                    onTap: _displayedVoiceState == _VoiceState.idle ? _openEditorSheet : null,
                     borderRadius: BorderRadius.circular(PregoRadius.full),
                     containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
                     child: Icon(TablerRegular.maximize, size: 18, color: prego.colors.textSecondary),
@@ -1093,7 +1117,7 @@ class _PromptInputState extends State<PromptInput> {
             ),
           ),
           _buildCollapsibleTrailing(
-            visible: _voiceState != _VoiceState.recording,
+            visible: _displayedVoiceState != _VoiceState.recording,
             child: _buildPrimaryActionButton(context),
           ),
         ],
@@ -1120,7 +1144,7 @@ class _PromptInputState extends State<PromptInput> {
             // Gesture owner during a recording hold — never collapsed.
             _buildMicButton(context),
             _buildCollapsibleTrailing(
-              visible: _voiceState != _VoiceState.recording,
+              visible: _displayedVoiceState != _VoiceState.recording,
               child: _buildPrimaryActionButton(context),
             ),
           ],
@@ -1138,7 +1162,7 @@ class _PromptInputState extends State<PromptInput> {
 
   Widget _buildOptionsAccordion() {
     return ComposerOptionsAccordion(
-      actionsEnabled: _voiceState == _VoiceState.idle,
+      actionsEnabled: _displayedVoiceState == _VoiceState.idle,
       onSlashCommandsTap: _openCommandPicker,
     );
   }
@@ -1148,7 +1172,7 @@ class _PromptInputState extends State<PromptInput> {
   Widget _buildLeadingSlot(BuildContext context) {
     final loc = context.loc;
 
-    final Widget child = switch (_voiceState) {
+    final Widget child = switch (_displayedVoiceState) {
       _VoiceState.idle => KeyedSubtree(key: const ValueKey("accordion"), child: _buildOptionsAccordion()),
       _VoiceState.recording => KeyedSubtree(
         key: const ValueKey("cancel-target"),
@@ -1218,7 +1242,7 @@ class _PromptInputState extends State<PromptInput> {
   /// in its place while a voice interaction is running. [height] pins the
   /// slot to the resting pills' 44pt row.
   Widget _buildVoiceAwareSlot({required double height, required Widget idle}) {
-    final Widget child = switch (_voiceState) {
+    final Widget child = switch (_displayedVoiceState) {
       _VoiceState.idle => KeyedSubtree(key: const ValueKey("voice-slot-idle"), child: idle),
       _VoiceState.recording => KeyedSubtree(
         key: const ValueKey("voice-slot-recording"),

@@ -735,6 +735,51 @@ void main() {
     verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
   });
 
+  testWidgets("the recording morph starts while the recorder is still starting", (tester) async {
+    final startCompleter = Completer<void>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump();
+
+    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceWaveform), findsOneWidget);
+    expect(find.text("Release to transcribe"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.keyboard), findsNothing);
+
+    final recordingSwitcher = tester.widget<AnimatedSwitcher>(
+      find.byWidgetPredicate(
+        (widget) => widget is AnimatedSwitcher && widget.child?.key == const ValueKey("cancel-target"),
+      ),
+    );
+    expect(recordingSwitcher.duration, const Duration(milliseconds: 220));
+
+    await tester.pump(const Duration(milliseconds: 110));
+    final recordingFades = tester.widgetList<FadeTransition>(
+      find.ancestor(of: find.byType(VoiceCancelButton), matching: find.byType(FadeTransition)),
+    );
+    expect(
+      recordingFades.any((transition) => transition.opacity.value > 0 && transition.opacity.value < 1),
+      isTrue,
+    );
+
+    await tester.tap(find.byType(VoiceCancelButton));
+    await tester.pump();
+    verifyNever(() => voiceTranscriptionService.cancelRecording());
+
+    startCompleter.complete();
+    await tester.pumpAndSettle();
+    await gesture.up();
+    await tester.pumpAndSettle();
+    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+  });
+
   testWidgets("a short one-word recording still transcribes", (tester) async {
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
@@ -916,11 +961,14 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets("an unexpected recorder-start failure does not block later recordings", (tester) async {
+  testWidgets("a recorder-start failure reverts eager feedback and does not block later recordings", (
+    tester,
+  ) async {
+    final firstStartCompleter = Completer<void>();
     var startCalls = 0;
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) {
       startCalls++;
-      if (startCalls == 1) throw StateError("recorder unavailable");
+      return startCalls == 1 ? firstStartCompleter.future : Future<void>.value();
     });
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
@@ -928,14 +976,22 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    // First hold fails with an error outside the typed voice errors — it must
-    // be handled (error snackbar) rather than escaping and leaving the start
-    // guards stuck.
+    // The eager morph runs while native startup is pending.
     final first = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
-    await tester.pump(const Duration(milliseconds: 600));
-    await first.up();
+    await tester.pump();
+    expect(find.byType(VoiceCancelButton), findsOneWidget);
+
+    // A later platform/filesystem failure reverts the optimistic presentation,
+    // surfaces the error, and releases the startup guard.
+    firstStartCompleter.completeError(StateError("recorder unavailable"));
     await tester.pumpAndSettle();
+    expect(find.byType(VoiceCancelButton), findsNothing);
+    expect(find.text("Hold to talk"), findsOneWidget);
+    expect(find.text("Recording failed. Please try again."), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    await first.up();
+    await tester.pump();
 
     // Let the error snackbar time out — it floats over the composer pill and
     // would swallow the next hold.
