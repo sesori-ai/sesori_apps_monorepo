@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -294,6 +296,49 @@ void main() {
       expect(collector.build().single.parts.single.text, "one flow");
     });
 
+    test("unrenderable assistant chunks do not create empty replay messages", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
+      )
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": ""},
+        }))
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "audio", "data": "private", "mimeType": "audio/wav"},
+        }));
+
+      expect(collector.build(), isEmpty);
+    });
+
+    test("malformed replay chunks share warning state without creating a message", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        initialUserMessageId: null,
+        haltClassifier: null,
+        contentMapper: const AcpContentMapper(),
+      );
+      final output = _captureWarnings(() {
+        for (var index = 0; index < 2; index++) {
+          collector.consume(upd({
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": 42, "private": "secret"},
+          }));
+        }
+      });
+
+      expect("malformed content block".allMatches(output), hasLength(1));
+      expect(output, isNot(contains("secret")));
+      expect(collector.build(), isEmpty);
+    });
+
     test("replay records image boundaries while deferring image materialization", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",
@@ -509,4 +554,28 @@ void main() {
       expect(message.parts, isNotEmpty);
     });
   });
+}
+
+String _captureWarnings(void Function() action) {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = LogLevel.warning;
+    IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+class _BufferingStdout implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

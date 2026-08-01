@@ -50,6 +50,10 @@ void main() {
         mutations.map((mutation) => mutation.partIdSuffix),
         ["image-1", "text"],
       );
+      final boundary = mutations.first.withoutImagePayload();
+      expect(boundary, isA<AcpImageBoundaryMutation>());
+      expect(boundary.partIdSuffix, "image-1");
+      expect(boundary.toString(), isNot(contains("AA==")));
     });
 
     test("enforces count and aggregate budgets without retaining overflow bytes", () {

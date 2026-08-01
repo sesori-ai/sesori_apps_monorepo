@@ -7,6 +7,8 @@ sealed class AcpContentMutation {
   const AcpContentMutation({required this.partIdSuffix});
 
   final String partIdSuffix;
+
+  AcpContentMutation withoutImagePayload();
 }
 
 final class AcpTextDeltaMutation extends AcpContentMutation {
@@ -16,6 +18,9 @@ final class AcpTextDeltaMutation extends AcpContentMutation {
   });
 
   final String delta;
+
+  @override
+  AcpContentMutation withoutImagePayload() => this;
 }
 
 final class AcpImageMutation extends AcpContentMutation {
@@ -25,6 +30,18 @@ final class AcpImageMutation extends AcpContentMutation {
   });
 
   final PluginMessageAttachment attachment;
+
+  @override
+  AcpContentMutation withoutImagePayload() => AcpImageBoundaryMutation(
+    partIdSuffix: partIdSuffix,
+  );
+}
+
+final class AcpImageBoundaryMutation extends AcpContentMutation {
+  const AcpImageBoundaryMutation({required super.partIdSuffix});
+
+  @override
+  AcpContentMutation withoutImagePayload() => this;
 }
 
 final class AcpContentSnapshot {
@@ -47,6 +64,7 @@ final class AcpContentTracker {
   static const int _maxImageCandidates = 4;
 
   final Set<_AcpContentWarning> _warned = {};
+  final AcpContentMappingScope mappingScope = AcpContentMappingScope();
   int _textPartCount = 0;
   String? _activeTextPartIdSuffix;
   int _imageCandidateCount = 0;

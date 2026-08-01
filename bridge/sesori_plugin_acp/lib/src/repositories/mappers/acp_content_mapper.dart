@@ -70,6 +70,12 @@ final class AcpMappedToolContent {
   final AcpToolContentMutation mutation;
 }
 
+/// Deduplicates privacy-safe mapping warnings across chunks of one logical
+/// message while retaining no payload values.
+final class AcpContentMappingScope {
+  final Set<_AcpContentWarning> _warned = {};
+}
+
 /// Maps standard ACP content blocks into backend-neutral, individually
 /// validated content while retaining no URI or source-path data.
 ///
@@ -96,8 +102,14 @@ final class AcpContentMapper {
   };
 
   List<AcpMappedContentBlock> map({required Object? content}) {
-    final warned = <_AcpContentWarning>{};
-    return _mapValue(content: content, warned: warned).toList(growable: false);
+    return mapScoped(content: content, scope: AcpContentMappingScope());
+  }
+
+  List<AcpMappedContentBlock> mapScoped({
+    required Object? content,
+    required AcpContentMappingScope scope,
+  }) {
+    return _mapValue(content: content, warned: scope._warned).toList(growable: false);
   }
 
   String toolName({required Map<String, dynamic> update}) {
@@ -132,7 +144,10 @@ final class AcpContentMapper {
     }
     final contentText = buffer.toString();
     final text = contentText.isNotEmpty ? contentText : _rawOutputText(raw: update["rawOutput"]);
-    return AcpMappedToolContent(output: _boundedToolOutput(text: text), mutation: mutation);
+    return AcpMappedToolContent(
+      output: _boundedToolOutput(text: text),
+      mutation: mutation,
+    );
   }
 
   String? _boundedToolOutput({required String? text}) {

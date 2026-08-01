@@ -182,6 +182,21 @@ void main() {
       expect(output, isNot(contains("type cast")));
     });
 
+    test("a mapping scope deduplicates malformed warnings across chunks", () {
+      final scope = AcpContentMappingScope();
+      final output = _captureWarnings(() {
+        for (var index = 0; index < 2; index++) {
+          mapper.mapScoped(
+            content: {"type": "text", "text": 42, "private": "secret"},
+            scope: scope,
+          );
+        }
+      });
+
+      expect("malformed content block".allMatches(output), hasLength(1));
+      expect(output, isNot(contains("secret")));
+    });
+
     test("maps tool identity and status with fail-soft defaults", () {
       expect(mapper.toolName(update: {"kind": "read", "title": "Read file"}), "read");
       expect(mapper.toolName(update: {"kind": "", "title": "Read file"}), "Read file");

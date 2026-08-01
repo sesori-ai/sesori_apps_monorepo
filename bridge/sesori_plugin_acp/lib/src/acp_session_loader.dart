@@ -41,18 +41,18 @@ class AcpReplayCollector {
   final List<_Draft> _drafts = [];
   int _seq = 0;
   bool _hasUserDraft = false;
+  _PendingAssistantContent? _pendingAssistantContent;
 
   void consume(Map<String, dynamic> params) {
     final update = _asMap(params["update"]);
     if (update == null) return;
-    switch (update["sessionUpdate"] as String?) {
+    final sessionUpdate = update["sessionUpdate"] as String?;
+    if (sessionUpdate != "agent_message_chunk") {
+      _pendingAssistantContent = null;
+    }
+    switch (sessionUpdate) {
       case "agent_message_chunk":
-        final draft = _assistant(messageId: _chunkMessageId(update));
-        draft.contentMutations.addAll(
-          draft.contentTracker.append(
-            blocks: _contentMapper.map(content: update["content"]),
-          ),
-        );
+        _consumeAssistantContent(update: update);
       case "agent_thought_chunk":
         final t = _contentMapper.text(content: update["content"]);
         if (t != null) _assistant(messageId: _chunkMessageId(update)).reasoning.write(t);
@@ -100,6 +100,44 @@ class AcpReplayCollector {
     }
   }
 
+  void _consumeAssistantContent({required Map<String, dynamic> update}) {
+    final messageId = _chunkMessageId(update);
+    final existing = _matchingRole(role: "assistant", messageId: messageId);
+    final AcpContentTracker tracker;
+    if (existing != null) {
+      tracker = existing.contentTracker;
+      _pendingAssistantContent = null;
+    } else {
+      final pending = _pendingAssistantContent;
+      if (pending != null && pending.messageId == messageId) {
+        tracker = pending.tracker;
+      } else {
+        tracker = AcpContentTracker();
+        _pendingAssistantContent = _PendingAssistantContent(
+          messageId: messageId,
+          tracker: tracker,
+        );
+      }
+    }
+
+    final blocks = _contentMapper.mapScoped(
+      content: update["content"],
+      scope: tracker.mappingScope,
+    );
+    if (!_hasTrackableAssistantContent(blocks: blocks)) return;
+    final draft =
+        existing ??
+        _newDraft(
+          role: "assistant",
+          messageId: messageId,
+          contentTracker: tracker,
+        );
+    _pendingAssistantContent = null;
+    draft.contentMutations.addAll(
+      tracker.append(blocks: blocks).map((mutation) => mutation.withoutImagePayload()),
+    );
+  }
+
   List<PluginMessageWithParts> build() {
     return [
       for (final draft in _drafts) _buildMessage(draft),
@@ -111,11 +149,11 @@ class AcpReplayCollector {
     // lone assistant message) is surfaced as an error message so a reloaded
     // session matches the live rendering. Only a pure-text terminal notice
     // qualifies — no reasoning, no tools — matching the shape the backend emits.
-    final assistantText = _assistantText(draft);
+    final assistantText = _assistantText(draft: draft);
     if (draft.role == "assistant" &&
         draft.reasoning.isEmpty &&
         draft.tools.isEmpty &&
-        !_hasAssistantImageCandidate(draft) &&
+        !_hasAssistantImageCandidate(draft: draft) &&
         assistantText.isNotEmpty) {
       final halt = haltClassifier?.call(text: assistantText);
       if (halt != null) {
@@ -141,7 +179,7 @@ class AcpReplayCollector {
     if (draft.text.isNotEmpty) {
       parts.add(_textPart(draft, "text", PluginMessagePartType.text, draft.text.toString()));
     }
-    for (final entry in _assistantTextParts(draft).entries) {
+    for (final entry in _assistantTextParts(draft: draft).entries) {
       parts.add(_textPart(draft, entry.key, PluginMessagePartType.text, entry.value));
     }
     draft.tools.forEach((toolId, tool) {
@@ -173,7 +211,15 @@ class AcpReplayCollector {
     return PluginMessageWithParts(info: _message(draft), parts: parts);
   }
 
-  String _assistantText(_Draft draft) {
+  bool _hasTrackableAssistantContent({
+    required List<AcpMappedContentBlock> blocks,
+  }) {
+    return blocks.any(
+      (block) => block is AcpMappedImageContentBlock || (block is AcpMappedTextContentBlock && block.text.isNotEmpty),
+    );
+  }
+
+  String _assistantText({required _Draft draft}) {
     final buffer = StringBuffer();
     for (final mutation in draft.contentMutations) {
       if (mutation case AcpTextDeltaMutation(:final delta)) buffer.write(delta);
@@ -181,9 +227,9 @@ class AcpReplayCollector {
     return buffer.toString();
   }
 
-  bool _hasAssistantImageCandidate(_Draft draft) => draft.contentTracker.snapshot.imageCandidateCount > 0;
+  bool _hasAssistantImageCandidate({required _Draft draft}) => draft.contentTracker.snapshot.imageCandidateCount > 0;
 
-  Map<String, String> _assistantTextParts(_Draft draft) {
+  Map<String, String> _assistantTextParts({required _Draft draft}) {
     final buffers = <String, StringBuffer>{};
     for (final mutation in draft.contentMutations) {
       if (mutation case AcpTextDeltaMutation(:final partIdSuffix, :final delta)) {
@@ -248,7 +294,11 @@ class AcpReplayCollector {
         return last;
       }
     }
-    return _newDraft("assistant", messageId: null);
+    return _newDraft(
+      role: "assistant",
+      messageId: null,
+      contentTracker: null,
+    );
   }
 
   /// The draft the next chunk belongs to. ACP v1: chunks of one message share
@@ -258,16 +308,28 @@ class AcpReplayCollector {
   /// [_assistantForTool] because ACP does not stamp them. Comparison is against
   /// the last draft only, matching the spec's sequential semantics.
   _Draft _ensureRole(String role, {String? messageId}) {
-    if (_drafts.isNotEmpty && _drafts.last.role == role) {
-      final last = _drafts.last;
-      if (last.acpMessageId == messageId && !(messageId == null && last.tools.isNotEmpty)) {
-        return last;
-      }
-    }
-    return _newDraft(role, messageId: messageId);
+    return _matchingRole(role: role, messageId: messageId) ??
+        _newDraft(
+          role: role,
+          messageId: messageId,
+          contentTracker: null,
+        );
   }
 
-  _Draft _newDraft(String role, {required String? messageId}) {
+  _Draft? _matchingRole({required String role, required String? messageId}) {
+    if (_drafts.isEmpty || _drafts.last.role != role) return null;
+    final last = _drafts.last;
+    if (last.acpMessageId != messageId || (messageId == null && last.tools.isNotEmpty)) {
+      return null;
+    }
+    return last;
+  }
+
+  _Draft _newDraft({
+    required String role,
+    required String? messageId,
+    required AcpContentTracker? contentTracker,
+  }) {
     final isFirstUser = role == "user" && !_hasUserDraft;
     if (role == "user") _hasUserDraft = true;
     final defaultId = messageId != null && messageId.isNotEmpty
@@ -277,6 +339,7 @@ class AcpReplayCollector {
       role: role,
       id: isFirstUser && initialUserMessageId != null ? initialUserMessageId! : defaultId,
       acpMessageId: messageId,
+      contentTracker: contentTracker ?? AcpContentTracker(),
     );
     _drafts.add(draft);
     return draft;
@@ -309,7 +372,12 @@ class AcpReplayCollector {
 }
 
 class _Draft {
-  _Draft({required this.role, required this.id, required this.acpMessageId});
+  _Draft({
+    required this.role,
+    required this.id,
+    required this.acpMessageId,
+    required this.contentTracker,
+  });
 
   final String role;
   final String id;
@@ -318,9 +386,19 @@ class _Draft {
   String? acpMessageId;
   final StringBuffer text = StringBuffer();
   final StringBuffer reasoning = StringBuffer();
-  final AcpContentTracker contentTracker = AcpContentTracker();
+  final AcpContentTracker contentTracker;
   final List<AcpContentMutation> contentMutations = [];
   final Map<String, _ToolDraft> tools = {};
+}
+
+final class _PendingAssistantContent {
+  const _PendingAssistantContent({
+    required this.messageId,
+    required this.tracker,
+  });
+
+  final String? messageId;
+  final AcpContentTracker tracker;
 }
 
 class _ToolDraft {

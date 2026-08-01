@@ -411,8 +411,6 @@ class AcpEventMapper {
     required String sessionId,
     required Map<String, dynamic> update,
   }) {
-    final blocks = _contentMapper.map(content: update["content"]);
-    if (blocks.isEmpty) return const [];
     final identity = _chunkIdentity(
       sessionId: sessionId,
       update: update,
@@ -422,6 +420,11 @@ class AcpEventMapper {
       identity.messageId,
       AcpContentTracker.new,
     );
+    final blocks = _contentMapper.mapScoped(
+      content: update["content"],
+      scope: tracker.mappingScope,
+    );
+    if (blocks.isEmpty) return const [];
 
     if (tracker.snapshot.imageCandidateCount == 0 && blocks.every((block) => block is AcpMappedTextContentBlock)) {
       final text = blocks.whereType<AcpMappedTextContentBlock>().map((block) => block.text).join();
@@ -483,6 +486,8 @@ class AcpEventMapper {
               ),
             ),
           );
+        case AcpImageBoundaryMutation():
+          continue;
       }
     }
     if (!identity.hasAcpMessageId) _openIdlessAssistant.add(sessionId);
