@@ -212,13 +212,15 @@
   while retaining typed process failures; fatal-info analysis, 98 focused Git,
   source, project, and sync tests, and `git diff --check` pass. After that follow-up the PR was
   10,517 lines: 8,754 generated and 1,763 hand-authored.
-- **PR #671 Git-discovery/create-retry follow-up:** Four subsequent bot threads
-  correctly identified symlink/stray-metadata gaps, over-eager scope clearing on
-  an unchanged create retry, and delayed invalidation delivery. Git now performs
-  authoritative worktree discovery, unchanged bindings preserve scope, and a
-  changed scope publishes before the GitHub query. All 2,300 app tests,
-  fatal-info analysis, and `git diff --check` pass; the final 10,597-line PR
-  contains 8,754 generated and 1,843 hand-authored lines.
+- **PR #671 final review hardening:** Later bot rounds correctly identified
+  symlink/discovery-error handling, same-account departed-branch cache rows,
+  unchanged create retries, and delayed invalidation delivery. Git now separates
+  definitive non-repositories from typed failures, cache cleanup includes current
+  root branches, unchanged bindings preserve scope, and invalidations publish
+  before queries. One speculative request to resolve repository identity during
+  create was declined because request refresh owns that evidence. All 2,301 app
+  tests, fatal-info analysis, and `git diff --check` pass; the final 10,659-line
+  PR contains 8,754 generated and 1,905 hand-authored lines.
 
 ## Findings and Plan Deltas
 
@@ -253,6 +255,6 @@
 - **2026-08-01 — Step 2.b generated overage:** Current Drift generation emits
   both v12 and v13 migration helper classes, increasing the evidence-based target
   to 9,800–10,800 lines. Initial hand-authored production/tests remained within
-  the soft cap; required PR review fixes raised them to 1,843 lines. The generated
+  the soft cap; required PR review fixes raised them to 1,905 lines. The generated
   schema/migration bundle and coupled correctness fixes must accompany v13
   atomically, so neither overage has a smaller independently valid split.

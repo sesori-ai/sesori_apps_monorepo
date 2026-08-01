@@ -94,12 +94,18 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
     required String projectId,
     required String githubRepositoryIdentity,
     required String githubLogin,
+    required Set<String> branchNames,
   }) async {
     await (delete(pullRequestsTable)..where(
-          (table) =>
-              table.projectId.equals(projectId) &
-              (table.githubRepositoryIdentity.equals(githubRepositoryIdentity).not() |
-                  table.githubLogin.equals(githubLogin).not()),
+          (table) {
+            final branchIsOutsideScope = branchNames.isEmpty
+                ? const Constant(true)
+                : table.branchName.isIn(branchNames).not();
+            return table.projectId.equals(projectId) &
+                (table.githubRepositoryIdentity.equals(githubRepositoryIdentity).not() |
+                    table.githubLogin.equals(githubLogin).not() |
+                    branchIsOutsideScope);
+          },
         ))
         .go();
   }

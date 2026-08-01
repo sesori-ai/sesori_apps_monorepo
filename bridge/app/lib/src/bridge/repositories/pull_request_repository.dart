@@ -66,6 +66,7 @@ class PullRequestRepository {
         projectId: projectId,
         githubRepositoryIdentity: githubRepositoryIdentity,
         githubLogin: verifiedGithubLogin.login,
+        branchNames: _rootBranchNames(sessions: sessions),
       );
       final after = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
       return !_sameVisiblePullRequests(before: before, after: after);
@@ -178,6 +179,14 @@ class PullRequestRepository {
             login: pullRequest.githubLogin,
             number: pullRequest.prNumber,
           ),
+    };
+  }
+
+  Set<String> _rootBranchNames({required List<StoredSession> sessions}) {
+    return {
+      for (final session in sessions)
+        if (session.parentSessionId == null)
+          if (session.branchName case final branchName? when branchName.isNotEmpty) branchName,
     };
   }
 }

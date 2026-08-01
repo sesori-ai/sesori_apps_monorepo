@@ -112,11 +112,30 @@ void main() {
     });
 
     test("getRemoteUrl returns null when the directory is not a git repository", () async {
-      processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "not a repository"));
+      processRunner.enqueue(
+        result: _processResult(
+          exitCode: 128,
+          stderr: "fatal: not a git repository (or any of the parent directories): .git",
+        ),
+      );
       final url = await service.getRemoteUrl(projectPath: "/repo/project");
 
       expect(url, isNull);
       expect(processRunner.invocations, hasLength(1));
+    });
+
+    test("getRemoteUrl propagates an unexpected worktree discovery failure", () async {
+      processRunner.enqueue(
+        result: _processResult(
+          exitCode: 128,
+          stderr: "fatal: detected dubious ownership in repository",
+        ),
+      );
+
+      await expectLater(
+        service.getRemoteUrl(projectPath: "/repo/project"),
+        throwsA(isA<ProcessException>()),
+      );
     });
 
     test("getRemoteUrl propagates a process failure for an existing repository", () async {

@@ -176,6 +176,14 @@ void main() {
         createdAt: 3,
         lastCheckedAt: 3,
       );
+      await repository.upsertFromGhPr(
+        projectId: "X",
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: verifiedGithubLogin,
+        pr: ghPr(number: 4, branchName: "departed-branch"),
+        createdAt: 4,
+        lastCheckedAt: 4,
+      );
       final storedSessions = (await db.sessionDao.getSessionsByProject(
         projectId: "X",
       )).map((row) => row.toStoredSession()).toList(growable: false);
@@ -286,6 +294,7 @@ class _FailingScopeCleanupPullRequestDao extends PullRequestDao {
     required String projectId,
     required String githubRepositoryIdentity,
     required String githubLogin,
+    required Set<String> branchNames,
   }) {
     throw StateError("scope cleanup failed");
   }
