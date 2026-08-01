@@ -1346,4 +1346,26 @@ void main() {
     expect(composerFocus(tester).hasFocus, isFalse);
     expect(find.text("Hold to talk more"), findsOneWidget);
   });
+
+  testWidgets("long voice-first transcript rests scrolled to its end without focus", (tester) async {
+    final transcript = List.generate(80, (index) => "dictated phrase $index").join(" ");
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => transcript);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final editable = tester.widget<EditableText>(find.byType(EditableText));
+    final scrollController = editable.scrollController!;
+    expect(editable.focusNode.hasFocus, isFalse);
+    expect(editable.controller.selection, TextSelection.collapsed(offset: transcript.length));
+    expect(scrollController.position.maxScrollExtent, greaterThan(0));
+    expect(scrollController.offset, scrollController.position.maxScrollExtent);
+  });
 }
