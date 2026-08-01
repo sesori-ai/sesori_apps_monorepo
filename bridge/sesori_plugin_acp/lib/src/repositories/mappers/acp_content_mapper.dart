@@ -132,12 +132,14 @@ final class AcpContentMapper {
     }
     final contentText = buffer.toString();
     final text = contentText.isNotEmpty ? contentText : _rawOutputText(raw: update["rawOutput"]);
-    final output = switch (text) {
-      null || "" => null,
-      _ when text.length > maxToolOutputLength => "${text.substring(0, maxToolOutputLength)}…",
-      _ => text,
-    };
-    return AcpMappedToolContent(output: output, mutation: mutation);
+    return AcpMappedToolContent(output: _boundedToolOutput(text: text), mutation: mutation);
+  }
+
+  String? _boundedToolOutput({required String? text}) {
+    if (text == null || text.isEmpty) return null;
+    final prefix = text.runes.take(maxToolOutputLength + 1).toList(growable: false);
+    if (prefix.length <= maxToolOutputLength) return text;
+    return "${String.fromCharCodes(prefix.take(maxToolOutputLength))}…";
   }
 
   String? text({required Object? content}) {

@@ -287,6 +287,12 @@ void main() {
         mapper.toolContent(update: {"rawOutput": oversized}).output,
         "${"x" * maxToolOutputLength}…",
       );
+
+      final unicode = "${"x" * (maxToolOutputLength - 1)}😀z";
+      expect(
+        mapper.toolContent(update: {"rawOutput": unicode}).output,
+        "${"x" * (maxToolOutputLength - 1)}😀…",
+      );
     });
   });
 }
