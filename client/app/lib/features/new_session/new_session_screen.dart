@@ -10,6 +10,7 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
+import "../../core/widgets/composer_surface_style.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
@@ -61,11 +62,22 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
-  final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle = ValueNotifier(
-    PregoComposerSurfaceStyle.subtle,
-  );
+  late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
   late ScaffoldMessengerState _scaffoldMessenger;
   late String _launchingInBackgroundMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    final cubit = context.read<NewSessionCubit>();
+    _composerSurfaceStyle = ValueNotifier(
+      resolveInitialComposerSurfaceStyle(
+        inputMode: context.read<ChatInputModeCubit>().state,
+        draft: cubit.composerDraft,
+        stagedCommand: cubit.state.agentModelData?.stagedCommand,
+      ),
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -344,7 +356,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             ),
                             onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
                             onAbort: _dismissScreen,
-                            onSurfaceStyleChanged: (style) => _composerSurfaceStyle.value = style,
+                            surfaceStyleController: _composerSurfaceStyle,
                             header: _buildErrorBanner(state),
                             composerHeader: _buildComposerHeader(state),
                             availableCommands: composerData?.commands ?? const [],

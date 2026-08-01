@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/agent_model_buttons.dart";
+import "../../../core/widgets/composer_surface_style.dart";
 import "background_tasks_bar.dart";
 import "prompt_input.dart";
 import "session_detail_message_list.dart";
@@ -57,9 +58,19 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
   /// message list — not rebuild the whole view including the very composer
   /// being measured.
   final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(0);
-  final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle = ValueNotifier(
-    PregoComposerSurfaceStyle.subtle,
-  );
+  late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
+
+  @override
+  void initState() {
+    super.initState();
+    _composerSurfaceStyle = ValueNotifier(
+      resolveInitialComposerSurfaceStyle(
+        inputMode: context.read<ChatInputModeCubit>().state,
+        draft: context.read<SessionDetailCubit>().composerDraft,
+        stagedCommand: widget.state.stagedCommand,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -210,7 +221,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                       ),
                       onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
                       onAbort: () => context.read<SessionDetailCubit>().abort(),
-                      onSurfaceStyleChanged: (style) => _composerSurfaceStyle.value = style,
+                      surfaceStyleController: _composerSurfaceStyle,
                       header: null,
                       composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
                         valueListenable: _composerSurfaceStyle,

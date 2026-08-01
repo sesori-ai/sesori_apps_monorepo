@@ -13,6 +13,7 @@ import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
+import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
 import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
@@ -459,13 +460,13 @@ void main() {
   // design.
   FocusNode composerFocus(WidgetTester tester) => tester.widget<EditableText>(find.byType(EditableText)).focusNode;
 
-  Color composerSurfaceBorderColor(WidgetTester tester, Finder surface) {
-    final decoration = tester
-        .widgetList<DecoratedBox>(find.descendant(of: surface, matching: find.byType(DecoratedBox)))
-        .map((widget) => widget.decoration)
-        .whereType<BoxDecoration>()
-        .singleWhere((decoration) => decoration.color == PregoColorsLight.bgSurface2);
-    return (decoration.border! as Border).top.color;
+  Color composerSurfaceBorderColor({required WidgetTester tester, required Finder surface}) {
+    expect(surface, findsOneWidget);
+    final decoratedBox = find.descendant(of: surface, matching: find.byType(DecoratedBox)).first;
+    final decoration = tester.widget<DecoratedBox>(decoratedBox).decoration as BoxDecoration;
+    final border = decoration.border;
+    if (border is! Border) throw TestFailure("Expected a solid composer surface border");
+    return border.top.color;
   }
 
   // A fresh session rests in the hold-to-talk pill, which hosts no text field;
@@ -627,25 +628,60 @@ void main() {
     await tester.pumpAndSettle();
 
     final picker = find.byType(PregoPickerButton).first;
-    final taskCard = find.byType(PregoCard);
-    expect(composerSurfaceBorderColor(tester, picker), PregoColorsLight.borderSecondary);
-    expect(composerSurfaceBorderColor(tester, taskCard), PregoColorsLight.borderSecondary);
+    final taskCard = find.descendant(
+      of: find.byType(BackgroundTasksBar),
+      matching: find.byType(PregoCard),
+    );
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: picker),
+      PregoColorsLight.borderSecondary,
+    );
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: taskCard),
+      PregoColorsLight.borderSecondary,
+    );
 
-    await enterTypingMode(tester);
+    await tester.tap(find.byIcon(TablerRegular.keyboard));
+    await tester.pump();
+
+    // Adjacent surfaces switch in the same frame as the composer rather than
+    // briefly retaining the previous outline treatment.
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: picker),
+      PregoColorsLight.borderPrimary,
+    );
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: taskCard),
+      PregoColorsLight.borderPrimary,
+    );
+
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(EditableText), "draft");
     composerFocus(tester).unfocus();
     await tester.pumpAndSettle();
 
-    expect(composerSurfaceBorderColor(tester, picker), PregoColorsLight.borderPrimary);
-    expect(composerSurfaceBorderColor(tester, taskCard), PregoColorsLight.borderPrimary);
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: picker),
+      PregoColorsLight.borderPrimary,
+    );
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: taskCard),
+      PregoColorsLight.borderPrimary,
+    );
 
     await tester.tap(find.text("draft"));
     await tester.enterText(find.byType(EditableText), "");
     composerFocus(tester).unfocus();
     await tester.pumpAndSettle();
 
-    expect(composerSurfaceBorderColor(tester, picker), PregoColorsLight.borderSecondary);
-    expect(composerSurfaceBorderColor(tester, taskCard), PregoColorsLight.borderSecondary);
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: picker),
+      PregoColorsLight.borderSecondary,
+    );
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: taskCard),
+      PregoColorsLight.borderSecondary,
+    );
   });
 
   testWidgets("voice-first session with messages still rests in hold-to-talk", (tester) async {
@@ -689,6 +725,10 @@ void main() {
 
   testWidgets("text-first fresh session rests as a tap-to-type field with the mic alongside", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: ChatInputMode.textFirst));
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: find.byType(PregoPickerButton).first),
+      PregoColorsLight.borderPrimary,
+    );
     await tester.pumpAndSettle();
 
     expect(find.text("Hold to talk"), findsNothing);
@@ -1330,7 +1370,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Hold to talk"), findsOneWidget);
     expect(
-      composerSurfaceBorderColor(tester, find.byType(PregoPickerButton).first),
+      composerSurfaceBorderColor(tester: tester, surface: find.byType(PregoPickerButton).first),
       PregoColorsLight.borderSecondary,
     );
 
@@ -1341,7 +1381,7 @@ void main() {
     expect(find.text("Ask anything..."), findsOneWidget);
     expect(find.byIcon(TablerRegular.microphone), findsOneWidget);
     expect(
-      composerSurfaceBorderColor(tester, find.byType(PregoPickerButton).first),
+      composerSurfaceBorderColor(tester: tester, surface: find.byType(PregoPickerButton).first),
       PregoColorsLight.borderPrimary,
     );
   });
