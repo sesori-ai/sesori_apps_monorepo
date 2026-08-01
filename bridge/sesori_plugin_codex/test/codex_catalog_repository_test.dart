@@ -39,7 +39,7 @@ void main() {
         ],
       );
 
-      final sessions = await repository.listAllSessions();
+      final sessions = await repository.listAllSessions(knownDirectories: const {});
 
       expect(sessions, hasLength(1));
       expect(sessions[0].id, "session-with-cwd");
@@ -113,30 +113,40 @@ void main() {
       final userHome = p.join(Directory.systemTemp.path, "codex-discovery-user");
       final documentsCodex = p.join(userHome, "Documents", "Codex");
       final generatedChat = p.join(documentsCodex, "2026-08-01", "new-chat-2");
+      final existingGeneratedChat = p.join(documentsCodex, "2026-08-01", "existing-chat");
       final normalProject = p.join(userHome, "repos", "app");
+      final existingStateProject = p.join(userHome, "repos", "existing-projectless");
       final dateShapedProject = p.join(userHome, "repos", "2026-08-01", "small-slug");
       final similarlyNamedProject = p.join(userHome, "Documents", "Codexical", "app");
       final repository = _DiscoveryStubCodexCatalogRepository(
         rolloutApi: _DiscoveryRolloutApi(
           documentsCodexDirectory: documentsCodex,
-          projectlessThreadIds: const {"state-filtered"},
+          projectlessThreadIds: const {"state-filtered", "existing-state-filtered"},
           desktopStateError: null,
         ),
         records: [
           _record(id: "generated-root", cwd: documentsCodex, title: "Generated root"),
           _record(id: "generated-child", cwd: generatedChat, title: "Generated child"),
+          _record(id: "existing-generated", cwd: existingGeneratedChat, title: "Existing generated"),
           _record(id: "state-filtered", cwd: normalProject, title: "Projectless elsewhere"),
+          _record(
+            id: "existing-state-filtered",
+            cwd: existingStateProject,
+            title: "Existing projectless elsewhere",
+          ),
           _record(id: "normal", cwd: normalProject, title: "Normal"),
           _record(id: "date-shaped", cwd: dateShapedProject, title: "Date shaped"),
           _record(id: "similar-name", cwd: similarlyNamedProject, title: "Similar name"),
         ],
       );
 
-      final discovered = await repository.listAllSessions();
+      final discovered = await repository.listAllSessions(
+        knownDirectories: {existingGeneratedChat, existingStateProject},
+      );
 
       expect(
         discovered.map((session) => session.id),
-        ["normal", "date-shaped", "similar-name"],
+        ["existing-generated", "existing-state-filtered", "normal", "date-shaped", "similar-name"],
       );
       expect(
         (await repository.getSessions(projectId: generatedChat, start: null, limit: null)).map(
@@ -166,7 +176,7 @@ void main() {
         ],
       );
 
-      final discovered = await repository.listAllSessions();
+      final discovered = await repository.listAllSessions(knownDirectories: const {});
 
       expect(discovered.map((session) => session.id), ["normal"]);
     });
@@ -236,9 +246,11 @@ class _DiscoveryRolloutApi extends CodexRolloutApi {
   final Object? desktopStateError;
 
   @override
-  CodexDesktopStateDto readDesktopState() {
+  Future<CodexDesktopStateDto> readDesktopState() async {
     final error = desktopStateError;
-    if (error != null) throw error;
+    if (error != null) {
+      throw CodexDesktopStateReadException(cause: error);
+    }
     return CodexDesktopStateDto(
       projectlessThreadIds: projectlessThreadIds,
     );

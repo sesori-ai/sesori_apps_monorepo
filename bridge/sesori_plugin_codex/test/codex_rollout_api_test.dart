@@ -47,7 +47,7 @@ void main() {
       expect(rolloutApi.readSessionIndex(), isEmpty);
     });
 
-    test("desktop state tolerantly extracts only non-empty projectless thread ids", () {
+    test("desktop state tolerantly extracts only non-empty projectless thread ids", () async {
       File(p.join(codexHome.path, ".codex-global-state.json")).writeAsStringSync(
         jsonEncode({
           "future-field": {"nested": true},
@@ -64,12 +64,13 @@ void main() {
       );
 
       expect(
-        rolloutApi.readDesktopState().projectlessThreadIds,
+        (await rolloutApi.readDesktopState()).projectlessThreadIds,
         {"projectless-one", "projectless-two"},
       );
     });
 
-    test("desktop state treats a missing or future-shaped projectless field as empty", () {
+    test("desktop state treats a missing or future-shaped projectless field as empty", () async {
+      expect((await rolloutApi.readDesktopState()).projectlessThreadIds, isEmpty);
       final state = File(p.join(codexHome.path, ".codex-global-state.json"));
       for (final contents in [
         jsonEncode({"future-field": true}),
@@ -78,8 +79,27 @@ void main() {
         }),
       ]) {
         state.writeAsStringSync(contents);
-        expect(rolloutApi.readDesktopState().projectlessThreadIds, isEmpty);
+        expect((await rolloutApi.readDesktopState()).projectlessThreadIds, isEmpty);
       }
+    });
+
+    test("desktop state read failures retain a privacy-safe cause", () async {
+      File(p.join(codexHome.path, ".codex-global-state.json")).writeAsStringSync(
+        '{"projectless-thread-ids":["private-thread-id"',
+      );
+
+      await expectLater(
+        rolloutApi.readDesktopState(),
+        throwsA(
+          isA<CodexDesktopStateReadException>()
+              .having((error) => error.cause, "cause", isA<FormatException>())
+              .having(
+                (error) => error.toString(),
+                "presentation",
+                isNot(contains("private-thread-id")),
+              ),
+        ),
+      );
     });
 
     test("resolves the generated Codex chats directory from the user home", () {

@@ -566,11 +566,11 @@ class CodexPlugin implements CodexManagedApi {
   /// project list from these sessions. Each carries its real rollout cwd as its
   /// directory so the bridge groups it under the right project.
   ///
-  /// [knownDirectories] is unused: codex's rollout index already enumerates
-  /// every session globally, so the bridge's directory hints add nothing.
+  /// [knownDirectories] preserves sessions already attributed to stored
+  /// projects while discovery excludes new Codex Desktop projectless chats.
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
-      _sessionService.listAllSessions();
+      _sessionService.listAllSessions(knownDirectories: knownDirectories);
 
   @override
   String get launchDirectory => _projectCwd;

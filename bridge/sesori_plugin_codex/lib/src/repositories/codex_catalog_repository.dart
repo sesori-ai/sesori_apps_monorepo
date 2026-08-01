@@ -68,8 +68,12 @@ class CodexCatalogRepository {
 
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() => Isolate.run(listSessionRecords);
 
-  Future<List<PluginSession>> listAllSessions() async {
-    final projectlessThreadIds = _readProjectlessThreadIds();
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    final projectlessThreadIds = await _readProjectlessThreadIds();
+    final normalizedKnownDirectories = {
+      for (final directory in knownDirectories)
+        if (directory.trim().isNotEmpty) normalizeProjectDirectory(directory: directory),
+    };
     final documentsCodexDirectory = _rolloutApi.documentsCodexDirectory;
     final excludedDirectory = documentsCodexDirectory == null
         ? null
@@ -81,6 +85,7 @@ class CodexCatalogRepository {
             record: record,
             projectlessThreadIds: projectlessThreadIds,
             documentsCodexDirectory: excludedDirectory,
+            knownDirectories: normalizedKnownDirectories,
           ),
         )
         .map(_toPluginSession)
@@ -179,12 +184,14 @@ class CodexCatalogRepository {
     }
   }
 
-  Set<String> _readProjectlessThreadIds() {
+  Future<Set<String>> _readProjectlessThreadIds() async {
     try {
-      return _rolloutApi.readDesktopState().projectlessThreadIds;
-    } on Object {
-      Log.d(
+      return (await _rolloutApi.readDesktopState()).projectlessThreadIds;
+    } on CodexDesktopStateReadException catch (error, stackTrace) {
+      Log.w(
         "[codex] Codex Desktop state is unreadable; continuing discovery without its projectless thread ids",
+        error,
+        stackTrace,
       );
       return const {};
     }
@@ -194,13 +201,16 @@ class CodexCatalogRepository {
     required CodexSessionRecord record,
     required Set<String> projectlessThreadIds,
     required String? documentsCodexDirectory,
+    required Set<String> knownDirectories,
   }) {
-    if (projectlessThreadIds.contains(record.id)) return true;
     final cwd = record.cwd?.trim();
-    if (documentsCodexDirectory == null || cwd == null || cwd.isEmpty) {
-      return false;
+    String? directory;
+    if (cwd != null && cwd.isNotEmpty) {
+      directory = normalizeProjectDirectory(directory: cwd);
+      if (knownDirectories.contains(directory)) return false;
     }
-    final directory = normalizeProjectDirectory(directory: cwd);
+    if (projectlessThreadIds.contains(record.id)) return true;
+    if (documentsCodexDirectory == null || directory == null) return false;
     return p.equals(directory, documentsCodexDirectory) || p.isWithin(documentsCodexDirectory, directory);
   }
 

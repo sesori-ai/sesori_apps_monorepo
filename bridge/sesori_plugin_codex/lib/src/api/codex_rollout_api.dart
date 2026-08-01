@@ -33,6 +33,15 @@ class CodexRolloutTailPosition {
   final List<int> trailingBytes;
 }
 
+class CodexDesktopStateReadException implements Exception {
+  const CodexDesktopStateReadException({required this.cause});
+
+  final Object cause;
+
+  @override
+  String toString() => "Codex Desktop state read failed (${cause.runtimeType})";
+}
+
 /// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
 class CodexRolloutApi {
   CodexRolloutApi({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
@@ -67,18 +76,23 @@ class CodexRolloutApi {
     return home == null ? null : p.join(home, "Documents", "Codex");
   }
 
-  CodexDesktopStateDto readDesktopState() {
+  Future<CodexDesktopStateDto> readDesktopState() async {
     final path = desktopStatePath;
     if (path == null) {
       return const CodexDesktopStateDto(projectlessThreadIds: {});
     }
-    final file = File(path);
-    if (!file.existsSync()) {
+    try {
+      return CodexDesktopStateDto.fromJson(
+        jsonDecodeMap(await File(path).readAsString()),
+      );
+    } on PathNotFoundException {
       return const CodexDesktopStateDto(projectlessThreadIds: {});
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        CodexDesktopStateReadException(cause: error),
+        stackTrace,
+      );
     }
-    return CodexDesktopStateDto.fromJson(
-      jsonDecodeMap(file.readAsStringSync()),
-    );
   }
 
   List<CodexSessionIndexEntryDto> readSessionIndex() => [
