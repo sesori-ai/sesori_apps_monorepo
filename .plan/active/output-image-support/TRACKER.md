@@ -221,7 +221,7 @@
   degradation, and one-shot diff signaling have focused coverage. All 199 ACP
   tests and all 109 Cursor tests pass; fatal analysis passes in both packages;
   `aristotle-impl-review` approved with no findings. No code generation was
-  required. The 961-line implementation is below the 1,500-line soft cap; no
+  required. The 963-line implementation is below the 1,500-line soft cap; no
   neighboring scope was combined.
 
 ## Findings And Plan Deltas
