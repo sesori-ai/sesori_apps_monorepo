@@ -81,7 +81,7 @@ PrSourceRepository _repository({
   );
 }
 
-ProcessResult _result({String stdout = ""}) {
+ProcessResult _result({required String stdout}) {
   return ProcessResult(1, 0, stdout, "");
 }
 

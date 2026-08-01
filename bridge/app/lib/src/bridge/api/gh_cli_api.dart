@@ -11,7 +11,6 @@ class GhCliApi {
   final ProcessRunner _processRunner;
   bool _availabilityFailureReported = false;
   bool _authenticationFailureReported = false;
-  bool _identityVerificationFailureReported = false;
 
   GhCliApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
 
@@ -61,27 +60,16 @@ class GhCliApi {
   }
 
   Future<GhAuthenticatedIdentity?> getAuthenticatedIdentity() async {
-    try {
-      final result = await _processRunner.run(
-        "gh",
-        const ["api", "--hostname", "github.com", "user", "--jq", ".login"],
-      );
-      if (result.exitCode != 0) {
-        _reportIdentityVerificationFailure();
-        return null;
-      }
-
-      _authenticationFailureReported = false;
-      _identityVerificationFailureReported = false;
-      return GhAuthenticatedIdentity(rawLogin: result.stdout.toString());
-    } on ProcessException {
-      _reportAvailabilityFailure(
-        message:
-            "GitHub CLI (gh) is not installed or is unavailable on PATH. "
-            "GitHub pull request and CI status sync is disabled.",
-      );
+    final result = await _processRunner.run(
+      "gh",
+      const ["api", "--hostname", "github.com", "user", "--jq", ".login"],
+    );
+    if (result.exitCode != 0) {
       return null;
     }
+
+    _authenticationFailureReported = false;
+    return GhAuthenticatedIdentity(rawLogin: result.stdout.toString());
   }
 
   void _reportAvailabilityFailure({required String message}) {
@@ -96,16 +84,6 @@ class GhCliApi {
     Console.warning(
       "GitHub CLI (gh) is not authenticated for github.com. Run 'gh auth login' or set GH_TOKEN/GITHUB_TOKEN "
       "to enable GitHub pull request and CI status sync.",
-    );
-  }
-
-  void _reportIdentityVerificationFailure() {
-    if (_identityVerificationFailureReported) return;
-    _identityVerificationFailureReported = true;
-    Console.warning(
-      "GitHub CLI (gh) could not verify the active github.com account. "
-      "GitHub pull request and CI status metadata is hidden until verification succeeds. "
-      "Run 'gh auth status --hostname github.com' to check authentication and connectivity.",
     );
   }
 

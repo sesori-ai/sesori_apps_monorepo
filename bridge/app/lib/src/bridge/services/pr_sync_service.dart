@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console, Log;
 
 import "../repositories/models/stored_session.dart";
 import "../repositories/models/verified_github_login.dart";
@@ -21,6 +21,7 @@ class PrSyncService {
   final Set<String> _activeRefreshes = <String>{};
   ({bool capable, DateTime checkedAt})? _githubCliCapabilityCache;
   Future<bool>? _githubCliCapabilityCheck;
+  bool _identityVerificationFailureReported = false;
 
   static const _githubCliCapabilityCacheTtl = Duration(seconds: 30);
 
@@ -40,8 +41,15 @@ class PrSyncService {
 
   Future<VerifiedGithubLogin?> _verifyGithubIdentity() async {
     try {
-      return await _prSource.getAuthenticatedIdentity();
+      final identity = await _prSource.getAuthenticatedIdentity();
+      if (identity == null) {
+        _reportIdentityVerificationFailure();
+        return null;
+      }
+      _identityVerificationFailureReported = false;
+      return identity;
     } on Object catch (error, stackTrace) {
+      _reportIdentityVerificationFailure();
       Log.w(
         "[PrSyncService] Failed to verify the active GitHub identity; PR refresh is skipped",
         error,
@@ -49,6 +57,16 @@ class PrSyncService {
       );
       return null;
     }
+  }
+
+  void _reportIdentityVerificationFailure() {
+    if (_identityVerificationFailureReported) return;
+    _identityVerificationFailureReported = true;
+    Console.warning(
+      "GitHub CLI (gh) could not verify the active github.com account. "
+      "GitHub pull request and CI status metadata cannot be refreshed until verification succeeds. "
+      "Run 'gh auth status --hostname github.com' to check authentication and connectivity.",
+    );
   }
 
   Future<void> triggerRefresh({required String projectId, required String projectPath}) async {

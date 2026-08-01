@@ -486,8 +486,8 @@ settings screen analytics continue unchanged.
 
 ## Delivery Rules
 
-- The series has exactly nine PRs. Every title uses the fixed
-  `<emoji> [session-pull-request-monitoring] ... [step x/9]` form below.
+- The series has nine top-level steps, with Step 2 delivered through ordered
+  2.a–2.c PRs. Every title uses the fixed denominator and substep form below.
 - Step 1 raises this complete plan and updates the repository, Plan Maker, and
   Plan Worker PR communication rules. It changes `.plan/**`, root `AGENTS.md`,
   and the two agent definitions only, so it runs documentation/config validation
@@ -508,11 +508,11 @@ settings screen analytics continue unchanged.
   plan into three top-level documents while deleting several thousand lines of
   redundant stage files in the same atomic change. Splitting those files would
   leave more than one implementation authority during review.
-- Step 2 may modestly exceed 1,500 because one Drift table rekey, generated
-  schema/steps, migration callback, writer adaptation, and migration tests must
-  ship together. Record actual generated size and seek a coherent split before
-  proceeding if production/test logic—not generated migration output—causes the
-  overage.
+- Step 2.b is expected to exceed 1,500 because one Drift table rekey, generated
+  schema/steps, migration callback, transactional writer adaptation, and
+  migration tests must ship together. Its 4,200–5,200 target includes the known
+  generated bundle. Record actual generated size and seek another coherent split
+  if production/test logic—not generated migration output—causes extra overage.
 - Never hand-edit generated files. Internal Dart contracts update every
   in-repository consumer in lockstep.
 - Run `aristotle-impl-review` for Steps 2.a–8 because they alter production
@@ -911,7 +911,7 @@ Verification:
 
 The feature is complete only when:
 
-- all nine titled PRs merge in order;
+- every titled PR in the fixed top-level/substep sequence merges in order;
 - the current session branch and one selected same-repository PR obey the locked
   rules for dedicated/non-dedicated/shared/detached cases;
 - multi-device project presence and one configured bridge timer are proven;

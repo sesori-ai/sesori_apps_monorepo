@@ -175,18 +175,10 @@ void main() {
       expect(processRunner.invocations.single.workingDirectory, isNull);
     });
 
-    test("reports an identity verification failure without claiming sign-out", () async {
-      final stderrLines = <String>[];
+    test("returns null when the identity command fails", () async {
       processRunner.enqueueResult(result: _fail(exitCode: 1));
 
-      await IOOverrides.runZoned(
-        () async => expect(await service.getAuthenticatedIdentity(), isNull),
-        stderr: () => _CapturingStdout(stderrLines),
-      );
-
-      expect(stderrLines, hasLength(1));
-      expect(stderrLines.single, contains("could not verify the active github.com account"));
-      expect(stderrLines.single, isNot(contains("is not authenticated")));
+      expect(await service.getAuthenticatedIdentity(), isNull);
     });
 
     test("preserves an empty login for repository validation", () async {
@@ -195,12 +187,15 @@ void main() {
       expect((await service.getAuthenticatedIdentity())?.rawLogin, "  \n");
     });
 
-    test("returns null when gh is unavailable", () async {
+    test("propagates a process failure for the caller to handle", () async {
       processRunner.enqueueError(
         error: const ProcessException("gh", <String>["api"], "boom", 1),
       );
 
-      expect(await service.getAuthenticatedIdentity(), isNull);
+      await expectLater(
+        service.getAuthenticatedIdentity(),
+        throwsA(isA<ProcessException>()),
+      );
     });
 
     test("propagates timeout for the caller to handle", () async {

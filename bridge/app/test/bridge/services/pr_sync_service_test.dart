@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
@@ -161,6 +162,47 @@ void main() {
 
       expect(prSource.getAuthenticatedIdentityCallCount, 1);
       expect(prSource.getGithubRepositoryIdentityCalls, isEmpty);
+      expect(prSource.listOpenPrsCallCount, 0);
+    });
+
+    test("shows an actionable warning when identity verification fails", () async {
+      final stderrLines = <String>[];
+      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])..authenticatedIdentityResult = null;
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: _FakePullRequestRepository(),
+        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      await IOOverrides.runZoned(
+        () => service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
+        stderr: () => _CapturingStdout(stderrLines),
+      );
+
+      expect(stderrLines.join("\n"), contains("metadata cannot be refreshed"));
+      expect(stderrLines.join("\n"), isNot(contains("metadata is hidden")));
+    });
+
+    test("keeps an identity verification timeout visible", () async {
+      final stderrLines = <String>[];
+      final prSource = _FakePrSource(listOpenPrsResult: const <GhPullRequest>[])
+        ..authenticatedIdentityError = TimeoutException("timed out");
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: _FakePullRequestRepository(),
+        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      await IOOverrides.runZoned(
+        () => service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
+        stderr: () => _CapturingStdout(stderrLines),
+      );
+
+      expect(stderrLines.join("\n"), contains("metadata cannot be refreshed"));
       expect(prSource.listOpenPrsCallCount, 0);
     });
 
@@ -386,6 +428,7 @@ class _FakePrSource implements PrSourceRepository {
   bool isAvailableResult;
   bool isAuthenticatedResult = true;
   VerifiedGithubLogin? authenticatedIdentityResult = _verifiedGithubLogin;
+  Object? authenticatedIdentityError;
   String? githubRepositoryIdentityResult = _githubRepositoryIdentity;
   Completer<void>? availabilityBlock;
   int isAvailableFailuresRemaining = 0;
@@ -428,6 +471,9 @@ class _FakePrSource implements PrSourceRepository {
   @override
   Future<VerifiedGithubLogin?> getAuthenticatedIdentity() async {
     getAuthenticatedIdentityCallCount++;
+    if (authenticatedIdentityError case final error?) {
+      throw error;
+    }
     return authenticatedIdentityResult;
   }
 
@@ -464,6 +510,23 @@ class _FakePrSource implements PrSourceRepository {
     }
     return pr;
   }
+}
+
+class _CapturingStdout implements Stdout {
+  final List<String> lines;
+
+  _CapturingStdout(this.lines);
+
+  @override
+  bool get supportsAnsiEscapes => false;
+
+  @override
+  void writeln([Object? object = ""]) {
+    lines.add(object.toString());
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakePullRequestRepository implements PullRequestRepository {

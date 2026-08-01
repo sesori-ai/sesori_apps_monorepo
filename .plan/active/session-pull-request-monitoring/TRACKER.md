@@ -160,14 +160,19 @@
   separating it from its required writer/tests would create an untestable or
   non-compiling intermediate state.
 - **Step 2.a/9 local verification:** `dart analyze --fatal-infos` and the focused
-  `GhCliApi`, `PrSourceRepository`, and `PrSyncService` suites pass (41 tests).
-  `git diff --check` passes. The 640 changed lines remain inside the 500–900
+  `GhCliApi`, `PrSourceRepository`, and `PrSyncService` suites pass (43 tests).
+  `git diff --check` passes. The 862 changed lines remain inside the 500–900
   target, including plan/tracker drift updates and tests.
 - **Step 2.a/9 architecture review:** Aristotle rejected duplicate identity
   canonicalization in the initial API/repository models. The API model now owns
   only raw typed CLI output; `PrSourceRepository` exclusively trims, validates,
   and canonicalizes `VerifiedGithubLogin`. The required finding was addressed;
   repository policy does not re-review direct corrections.
+- **PR #662 review follow-up:** Corrected stale delivery/overage wording, generated
+  the raw API identity as a Freezed model, made identity failures and timeouts
+  user-visible without claiming cached metadata is hidden, and fixed the new test
+  helper signature. The approved `/9` denominator remains because 2.a–2.c are
+  ordered substeps of the fixed nine-step sequence, not new top-level steps.
 
 ## Findings and Plan Deltas
 

@@ -1,5 +1,8 @@
-final class GhAuthenticatedIdentity {
-  final String rawLogin;
+import "package:freezed_annotation/freezed_annotation.dart";
 
-  const GhAuthenticatedIdentity({required this.rawLogin});
+part "gh_authenticated_identity.freezed.dart";
+
+@freezed
+sealed class GhAuthenticatedIdentity with _$GhAuthenticatedIdentity {
+  const factory GhAuthenticatedIdentity({required String rawLogin}) = _GhAuthenticatedIdentity;
 }
