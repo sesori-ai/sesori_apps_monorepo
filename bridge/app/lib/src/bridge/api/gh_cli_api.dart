@@ -60,12 +60,18 @@ class GhCliApi {
   }
 
   Future<GhAuthenticatedIdentity?> getAuthenticatedIdentity() async {
+    const arguments = ["api", "--hostname", "github.com", "user", "--jq", ".login"];
     final result = await _processRunner.run(
       "gh",
-      const ["api", "--hostname", "github.com", "user", "--jq", ".login"],
+      arguments,
     );
     if (result.exitCode != 0) {
-      return null;
+      throw ProcessException(
+        "gh",
+        arguments,
+        result.stderr.toString(),
+        result.exitCode,
+      );
     }
 
     _authenticationFailureReported = false;
@@ -97,7 +103,7 @@ class GhCliApi {
         "pr",
         "list",
         "--repo",
-        githubRepositoryIdentity,
+        "github.com/$githubRepositoryIdentity",
         "--state",
         "open",
         "--json",
@@ -127,7 +133,7 @@ class GhCliApi {
         "view",
         number.toString(),
         "--repo",
-        githubRepositoryIdentity,
+        "github.com/$githubRepositoryIdentity",
         "--json",
         "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
       ],

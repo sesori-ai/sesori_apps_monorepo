@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 const _githubRepositoryIdentity = "sesori-ai/sesori_apps_monorepo";
+const _githubRepositorySelector = "github.com/$_githubRepositoryIdentity";
 
 void main() {
   group("GhCliApi.isAvailable", () {
@@ -175,10 +176,17 @@ void main() {
       expect(processRunner.invocations.single.workingDirectory, isNull);
     });
 
-    test("returns null when the identity command fails", () async {
+    test("throws a process failure when the identity command fails", () async {
       processRunner.enqueueResult(result: _fail(exitCode: 1));
 
-      expect(await service.getAuthenticatedIdentity(), isNull);
+      await expectLater(
+        service.getAuthenticatedIdentity(),
+        throwsA(
+          isA<ProcessException>()
+              .having((error) => error.executable, "executable", "gh")
+              .having((error) => error.errorCode, "errorCode", 1),
+        ),
+      );
     });
 
     test("preserves an empty login for repository validation", () async {
@@ -256,7 +264,7 @@ void main() {
           "pr",
           "list",
           "--repo",
-          _githubRepositoryIdentity,
+          _githubRepositorySelector,
           "--state",
           "open",
           "--json",
@@ -412,7 +420,7 @@ void main() {
           "view",
           "12",
           "--repo",
-          _githubRepositoryIdentity,
+          _githubRepositorySelector,
           "--json",
           "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
         ]),

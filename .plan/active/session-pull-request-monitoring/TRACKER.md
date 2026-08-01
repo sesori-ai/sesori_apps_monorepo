@@ -9,7 +9,7 @@
 - **Current step:** Step 2.a/9 — scoped GitHub source queries
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Next action:** commit and raise Step 2.a/9
+- **Next action:** monitor CI/review and merge Step 2.a/9 [PR #662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/662)
 
 ## Existing Baseline
 
@@ -39,7 +39,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | 4,000–7,000 | [PR #649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged as `f969754b` |
-| [ ] | 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | 500–900 | Implemented, locally verified, and architecture finding addressed on `edff1082` |
+| [ ] | 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | 500–900 | [PR #662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/662) open from the current branch head; locally verified against base `edff1082` |
 | [ ] | 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | 4,200–5,200 | Blocked on Step 2.a; generated migration overage is unavoidable |
 | [ ] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | Blocked on Step 2.b |
 | [ ] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 1,000–1,500 | Blocked on Step 2.c merge |
@@ -161,7 +161,7 @@
   non-compiling intermediate state.
 - **Step 2.a/9 local verification:** `dart analyze --fatal-infos` and the focused
   `GhCliApi`, `PrSourceRepository`, and `PrSyncService` suites pass (43 tests).
-  `git diff --check` passes. The 862 changed lines remain inside the 500–900
+  `git diff --check` passes. The 886 changed lines remain inside the 500–900
   target, including plan/tracker drift updates and tests.
 - **Step 2.a/9 architecture review:** Aristotle rejected duplicate identity
   canonicalization in the initial API/repository models. The API model now owns
@@ -171,8 +171,10 @@
 - **PR #662 review follow-up:** Corrected stale delivery/overage wording, generated
   the raw API identity as a Freezed model, made identity failures and timeouts
   user-visible without claiming cached metadata is hidden, and fixed the new test
-  helper signature. The approved `/9` denominator remains because 2.a–2.c are
-  ordered substeps of the fixed nine-step sequence, not new top-level steps.
+  helper signature. Follow-up review preserved nonzero command failures and pinned
+  selectors to `github.com`, while reconciling the plan/tracker state. The approved
+  `/9` denominator remains because 2.a–2.c are ordered substeps of the fixed
+  nine-step sequence, not new top-level steps.
 
 ## Findings and Plan Deltas
 

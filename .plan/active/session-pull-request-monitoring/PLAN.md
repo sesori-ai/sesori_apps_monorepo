@@ -3,14 +3,14 @@
 ## Status
 
 - **Plan slug:** `session-pull-request-monitoring`
-- **Status:** Approved — Step 1/9 plan PR [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) open
-- **Plan revision date:** 2026-07-31
+- **Status:** Approved — Step 1/9 merged; Step 2.a/9 PR [#662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/662) open
+- **Plan revision date:** 2026-08-01
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main`
-- **Latest audited tip:** `10c7afb9ff55d7fe91d15a48e1ef8ba08e7a3484`
+- **Latest audited tip:** `edff10828f17a45c40ba5bc02db109977a856411`
 - **Existing contract baseline:** [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) shipped additive
   `RelayProjectView` and `Session.pullRequestHistory` contracts.
-- **Delivery:** one plan PR, seven sequential implementation PRs, and
+- **Delivery:** one plan PR, nine sequential implementation PRs, and
   one plan-retirement PR.
 
 This document and `TRACKER.md` are the sole current implementation authority.
@@ -623,8 +623,8 @@ Verification:
 
 Scope:
 
-- Map API identity output into repository-owned `VerifiedGithubLogin` evidence
-  and require every PR-bearing `SessionRepository` read to receive it explicitly.
+- Thread the Step 2.a repository-produced `VerifiedGithubLogin` evidence into
+  every PR-bearing `SessionRepository` read explicitly.
 - Have list/detail handlers verify identity freshly before mapping cached PR
   metadata; explicit absence returns the session and branch without a PR.
 - Add the read-scoped login to persisted project/row/repository/branch joins.
