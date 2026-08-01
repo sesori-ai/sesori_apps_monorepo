@@ -206,7 +206,14 @@ class _QuestionModalState extends State<QuestionModal> {
     final draft = _currentDraft;
     draft.customFocus.unfocus();
     setState(() {
-      draft.disposition = draft.isDeclined ? _QuestionDisposition.answer : _QuestionDisposition.declined;
+      if (draft.isDeclined) {
+        draft.disposition = _QuestionDisposition.answer;
+        return;
+      }
+      draft
+        ..disposition = _QuestionDisposition.declined
+        ..customSelected = false
+        ..selectedLabels.clear();
     });
   }
 

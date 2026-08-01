@@ -569,7 +569,7 @@ void main() {
     ]);
   });
 
-  testWidgets("answering a locally declined question restores its multi-select draft", (tester) async {
+  testWidgets("answering a locally declined question starts a fresh answer", (tester) async {
     final capture = _ReplyCapture();
     final router = _createRouter(
       question: _questionAsked(
@@ -617,7 +617,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(capture.answers, [
-      const ReplyAnswer(values: ["Mobile", "Desktop", "Web preview"]),
+      const ReplyAnswer(values: ["Desktop"]),
       const ReplyAnswer(values: ["Gradual"]),
     ]);
   });
