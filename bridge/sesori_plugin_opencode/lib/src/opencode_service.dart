@@ -538,7 +538,7 @@ class OpenCodeService {
       );
     } on OpenCodeApiException catch (e) {
       if (e.statusCode != 404) rethrow;
-      Log.w("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
+      Log.d("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}");
     }
     return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);
   }

@@ -1777,6 +1777,35 @@ void main() {
       expect(tracker.lastClearedPermissionSessionId, equals("ses-1"));
     });
 
+    test("replyToPermission 404 clears tracker without warning", () async {
+      final originalLogLevel = Log.level;
+      addTearDown(() => Log.level = originalLogLevel);
+      Log.level = LogLevel.info;
+      final logLines = <String>[];
+      final repository = FakeOpenCodeRepository(
+        replyToPermissionError: OpenCodeApiException("POST /permission/perm-1/reply", 404),
+      );
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingPermissionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await io.IOOverrides.runZoned(
+        () => service.replyToPermission(
+          requestId: "perm-1",
+          sessionId: "ses-1",
+          reply: PluginPermissionReply.once,
+        ),
+        stderr: () => _CapturingStdout(logLines),
+      );
+
+      expect(logLines, isEmpty, reason: "an expected reconciliation must not emit a warning");
+      expect(result.summaryChanged, isTrue);
+      expect(tracker.lastClearedPermissionRequestId, equals("perm-1"));
+      expect(tracker.lastClearedPermissionSessionId, equals("ses-1"));
+    });
+
     test("replyToPermission 400 does not clear and rethrows", () async {
       final error = OpenCodeApiException("POST /permission/perm-1/reply", 400);
       final repository = FakeOpenCodeRepository(replyToPermissionError: error);
@@ -2406,6 +2435,18 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     pendingPermissionDirectories.add(directory);
     return _pendingPermissionsByDirectory[directory] ?? const [];
   }
+}
+
+class _CapturingStdout implements io.Stdout {
+  final List<String> lines;
+
+  _CapturingStdout(this.lines);
+
+  @override
+  void writeln([Object? object = ""]) => lines.add(object.toString());
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class FakeActiveSessionTracker extends ActiveSessionTracker {
