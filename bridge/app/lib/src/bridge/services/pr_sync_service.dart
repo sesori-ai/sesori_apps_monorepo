@@ -91,6 +91,16 @@ class PrSyncService {
         projectPath: projectPath,
       );
       if (githubRepositoryIdentity == null) {
+        final scopeChanged = await _pullRequestRepository.clearScopedRefresh(
+          projectId: projectId,
+          sessions: await _sessionRepository.getStoredSessionsByProjectId(
+            projectId: projectId,
+          ),
+        );
+        if (scopeChanged) {
+          _prChangesController.add(projectId);
+        }
+        _lastRefreshTimes[projectId] = _clock.now();
         return;
       }
 
@@ -99,10 +109,25 @@ class PrSyncService {
         return;
       }
 
+      final storedSessions = await _sessionRepository.getStoredSessionsByProjectId(
+        projectId: projectId,
+      );
+      final scopeChanged = await _pullRequestRepository.prepareScopedRefresh(
+        projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: verifiedGithubLogin,
+        sessions: storedSessions,
+      );
+      if (scopeChanged) {
+        _prChangesController.add(projectId);
+      }
+
       await _refresh(
         projectId: projectId,
         projectPath: projectPath,
         githubRepositoryIdentity: githubRepositoryIdentity,
+        verifiedGithubLogin: verifiedGithubLogin,
+        storedSessions: storedSessions,
       );
     } finally {
       _activeRefreshes.remove(projectId);
@@ -140,20 +165,26 @@ class PrSyncService {
     required String projectId,
     required String projectPath,
     required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> storedSessions,
   }) async {
+    var hasChanges = false;
+    var completed = false;
     try {
-      final (openPrs, storedSessions, activePrs) = await (
+      final (openPrs, activePrs) = await (
         _prSource.listOpenPrs(
           workingDirectory: projectPath,
           githubRepositoryIdentity: githubRepositoryIdentity,
         ),
-        _sessionRepository.getStoredSessionsByProjectId(projectId: projectId),
-        _pullRequestRepository.getActivePullRequestsByProjectId(projectId: projectId),
+        _pullRequestRepository.getActivePullRequestsByProjectId(
+          projectId: projectId,
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          verifiedGithubLogin: verifiedGithubLogin,
+        ),
       ).wait;
 
       final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
 
-      var hasChanges = false;
       final nowEpochMs = _clock.now().millisecondsSinceEpoch;
 
       final matchedOpenPrs = openPrs
@@ -174,6 +205,8 @@ class PrSyncService {
 
         await _pullRequestRepository.upsertFromGhPr(
           projectId: projectId,
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          verifiedGithubLogin: verifiedGithubLogin,
           pr: pr,
           createdAt: createdAt,
           lastCheckedAt: nowEpochMs,
@@ -199,6 +232,8 @@ class PrSyncService {
 
           await _pullRequestRepository.upsertFromGhPr(
             projectId: projectId,
+            githubRepositoryIdentity: githubRepositoryIdentity,
+            verifiedGithubLogin: verifiedGithubLogin,
             pr: finalPr,
             createdAt: disappeared.createdAt,
             lastCheckedAt: nowEpochMs,
@@ -207,19 +242,23 @@ class PrSyncService {
           Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e — removing stale record");
           await _pullRequestRepository.deletePr(
             projectId: projectId,
+            githubRepositoryIdentity: githubRepositoryIdentity,
             prNumber: disappeared.prNumber,
           );
           hasChanges = true;
         }
       }
 
+      completed = true;
+    } catch (e, st) {
+      Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
+    } finally {
       if (hasChanges) {
         _prChangesController.add(projectId);
       }
-
-      _lastRefreshTimes[projectId] = _clock.now();
-    } catch (e, st) {
-      Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
+      if (completed) {
+        _lastRefreshTimes[projectId] = _clock.now();
+      }
     }
   }
 
@@ -230,6 +269,9 @@ class PrSyncService {
   Map<String, StoredSession> _indexSessionsByBranch({required List<StoredSession> sessions}) {
     final result = <String, StoredSession>{};
     for (final session in sessions) {
+      if (session.parentSessionId != null) {
+        continue;
+      }
       final branchName = session.branchName;
       if (branchName == null || branchName.isEmpty) {
         continue;

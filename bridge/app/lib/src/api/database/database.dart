@@ -40,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -259,6 +259,27 @@ class AppDatabase extends _$AppDatabase {
       },
       from11To12: (m, schema) async {
         await m.createTable(schema.sessionOptionsCacheTable);
+      },
+      from12To13: (m, schema) async {
+        await m.addColumn(schema.projectsTable, schema.projectsTable.prCacheGithubLogin);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.currentBranchName);
+        await m.addColumn(
+          schema.sessionsTable,
+          schema.sessionsTable.currentGithubRepositoryIdentity,
+        );
+
+        // Pull-request rows are an ephemeral cache. The previous table has no
+        // repository or authenticated-login evidence that can be backfilled
+        // honestly, so rebuild it empty with the scoped key instead of exposing
+        // ambiguous rows under the new contract.
+        await customStatement("DROP TABLE pull_requests_table");
+        await m.createTable(schema.pullRequestsTable);
+        await m.createIndex(schema.idxPullRequestsScope);
+
+        final violations = await m.database.customSelect("PRAGMA foreign_key_check").get();
+        if (violations.isNotEmpty) {
+          throw StateError("Migration v12->v13 left foreign key violations: ${violations.map((row) => row.data)}");
+        }
       },
     ),
     beforeOpen: (details) async {

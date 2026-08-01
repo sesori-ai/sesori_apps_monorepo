@@ -466,6 +466,8 @@ class FakeSessionDao {
       directory: worktreePath ?? projectId,
       worktreePath: worktreePath,
       branchName: branchName,
+      currentBranchName: null,
+      currentGithubRepositoryIdentity: null,
       isDedicated: isDedicated,
       archivedAt: null,
       baseBranch: baseBranch,
@@ -538,7 +540,12 @@ class FakePullRequestRepository implements PullRequestRepository {
 
   void setPr({required String sessionId, required PullRequestDto pullRequest}) {
     _prsBySessionId.putIfAbsent(sessionId, () => <PullRequestDto>[]).add(pullRequest);
-    _prsByPrimaryKey[_key(projectId: pullRequest.projectId, prNumber: pullRequest.prNumber)] = pullRequest;
+    _prsByPrimaryKey[_key(
+          projectId: pullRequest.projectId,
+          githubRepositoryIdentity: pullRequest.githubRepositoryIdentity,
+          prNumber: pullRequest.prNumber,
+        )] =
+        pullRequest;
   }
 
   @override
@@ -554,18 +561,34 @@ class FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) {
-    return getActivePrsByProjectId(projectId: projectId);
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async {
+    return (await getActivePrsByProjectId(projectId: projectId))
+        .where(
+          (pr) =>
+              pr.githubRepositoryIdentity == githubRepositoryIdentity && pr.githubLogin == verifiedGithubLogin.login,
+        )
+        .toList(growable: false);
   }
 
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {
-    _prsByPrimaryKey[_key(projectId: record.projectId, prNumber: record.prNumber)] = record;
+    _prsByPrimaryKey[_key(
+          projectId: record.projectId,
+          githubRepositoryIdentity: record.githubRepositoryIdentity,
+          prNumber: record.prNumber,
+        )] =
+        record;
   }
 
   @override
   Future<void> upsertFromGhPr({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
     required GhPullRequest pr,
     required int createdAt,
     required int lastCheckedAt,
@@ -573,6 +596,8 @@ class FakePullRequestRepository implements PullRequestRepository {
     return upsertPullRequest(
       record: PullRequestDto(
         projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
         prNumber: pr.number,
         branchName: pr.headRefName,
         url: pr.url,
@@ -600,18 +625,52 @@ class FakePullRequestRepository implements PullRequestRepository {
         existing.checkStatus != pr.statusCheckRollup;
   }
 
-  String _key({required String projectId, required int prNumber}) {
-    return "$projectId::$prNumber";
+  String _key({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required int prNumber,
+  }) {
+    return "$projectId::$githubRepositoryIdentity::$prNumber";
   }
 
   @override
-  Future<void> deletePr({required String projectId, required int prNumber}) async {
-    _prsByPrimaryKey.remove(_key(projectId: projectId, prNumber: prNumber));
+  Future<void> deletePr({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required int prNumber,
+  }) async {
+    _prsByPrimaryKey.remove(
+      _key(
+        projectId: projectId,
+        githubRepositoryIdentity: githubRepositoryIdentity,
+        prNumber: prNumber,
+      ),
+    );
     _prsBySessionId.updateAll(
-      (_, List<PullRequestDto> list) =>
-          list.where((pr) => !(pr.projectId == projectId && pr.prNumber == prNumber)).toList(),
+      (_, List<PullRequestDto> list) => list
+          .where(
+            (pr) =>
+                !(pr.projectId == projectId &&
+                    pr.githubRepositoryIdentity == githubRepositoryIdentity &&
+                    pr.prNumber == prNumber),
+          )
+          .toList(),
     );
   }
+
+  @override
+  Future<bool> prepareScopedRefresh({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> sessions,
+  }) async => false;
+
+  @override
+  Future<bool> clearScopedRefresh({
+    required String projectId,
+    required List<StoredSession> sessions,
+  }) async => false;
 }
 
 class FakePrSyncService extends PrSyncService {
@@ -663,8 +722,11 @@ class _AlwaysReadyPrSource implements PrSourceRepository {
 
 class _NoopPullRequestRepository implements PullRequestRepository {
   @override
-  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async =>
-      const <PullRequestDto>[];
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async => const <PullRequestDto>[];
 
   @override
   Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
@@ -677,13 +739,33 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   @override
   Future<void> upsertFromGhPr({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
     required GhPullRequest pr,
     required int createdAt,
     required int lastCheckedAt,
   }) async {}
 
   @override
-  Future<void> deletePr({required String projectId, required int prNumber}) async {}
+  Future<void> deletePr({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required int prNumber,
+  }) async {}
+
+  @override
+  Future<bool> prepareScopedRefresh({
+    required String projectId,
+    required String githubRepositoryIdentity,
+    required VerifiedGithubLogin verifiedGithubLogin,
+    required List<StoredSession> sessions,
+  }) async => false;
+
+  @override
+  Future<bool> clearScopedRefresh({
+    required String projectId,
+    required List<StoredSession> sessions,
+  }) async => false;
 
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}

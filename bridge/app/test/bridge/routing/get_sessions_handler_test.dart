@@ -345,6 +345,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: 999,
           baseBranch: null,
@@ -424,6 +426,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -493,6 +497,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: 999,
           baseBranch: null,
@@ -519,6 +525,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -572,6 +580,8 @@ void main() {
           directory: "/repo/.worktrees/session-001",
           worktreePath: "/repo/.worktrees/session-001",
           branchName: "session-001",
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: true,
           archivedAt: null,
           baseBranch: null,
@@ -622,6 +632,8 @@ void main() {
           directory: "/tmp",
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -689,6 +701,8 @@ void main() {
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           prNumber: 42,
           branchName: "feature/one",
           url: "https://github.com/org/repo/pull/42",
@@ -751,6 +765,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/preserved-pr",
           prNumber: 84,
           url: "https://github.com/org/repo/pull/84",
@@ -780,6 +796,19 @@ void main() {
         updateCatalogTitle: true,
         updatedAt: 200,
         projectionUpdatedAt: 200,
+      );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/preserved-pr",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
       );
 
       final result = await realHandler.handle(
@@ -858,6 +887,8 @@ void main() {
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           prNumber: 7,
           branchName: "feature/one",
           url: "https://github.com/org/repo/pull/7",
@@ -985,6 +1016,8 @@ void main() {
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           prNumber: 99,
           branchName: "feature/enriched",
           url: "https://github.com/org/repo/pull/99",

@@ -510,9 +510,13 @@ settings screen analytics continue unchanged.
   leave more than one implementation authority during review.
 - Step 2.b is expected to exceed 1,500 because one Drift table rekey, generated
   schema/steps, migration callback, transactional writer adaptation, and
-  migration tests must ship together. Its 4,200–5,200 target includes the known
-  generated bundle. Record actual generated size and seek another coherent split
-  if production/test logic—not generated migration output—causes extra overage.
+  migration tests must ship together. Its 9,800–10,800 target reflects the
+  current generator's required v12 and v13 migration helper classes plus the v13
+  snapshot and application outputs. Splitting the v12 helper into an earlier PR
+  would ship thousands of lines of unused test support without an independently
+  valid behavior or verification outcome. Record actual generated size and seek
+  another coherent split if production/test logic—not generated migration
+  output—causes extra overage.
 - Never hand-edit generated files. Internal Dart contracts update every
   in-repository consumer in lockstep.
 - Run `aristotle-impl-review` for Steps 2.a–8 because they alter production
@@ -525,7 +529,7 @@ settings screen analytics continue unchanged.
 |---|---|---|---|---:|---|
 | 1/9 | `plan/session-pull-request-monitoring/replan-current-pr-only` | `🌿 [session-pull-request-monitoring] docs: plan current PR monitoring [step 1/9]` | Documentation/instruction/agent-definition changes only, with no runtime behavior. | 4,000–7,000 | Publish this reviewed plan/tracker and the reusable PR communication/cleanup rules. |
 | 2.a/9 | `session-pull-request-monitoring-scoped-source` | `⚙️ [session-pull-request-monitoring] feat(bridge): scope GitHub PR queries [step 2.a/9]` | Typed identity/repository evidence and deterministic repository-pinned CLI queries. | 500–900 | Make the existing request-driven source verify its active login and canonical repository before querying that repository explicitly. |
-| 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | Drift migration, generated artifacts, transactional writer ownership, and scoped cache joins. | 4,200–5,200 | Migrate current branch/repository/login scope and the repository-keyed ephemeral PR cache while preserving request-driven behavior. |
+| 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | Drift migration, generated artifacts, transactional writer ownership, and scoped cache joins. | 9,800–10,800 | Migrate current branch/repository/login scope and the repository-keyed ephemeral PR cache while preserving request-driven behavior. |
 | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | Fresh request identity gating, list/detail failure behavior, and privacy-sensitive regressions. | 1,200–1,700 | Require fresh login evidence for every PR-bearing read and fail closed without blocking session/catalog data. |
 | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | Typed dynamic GraphQL batching/pagination, identity fencing, and deterministic selection. | 1,000–1,500 | Replace repository-wide open-list CLI reads with typed exact-target GraphQL batching and open/terminal selection. |
 | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | Git/process resolution, persisted scope, cache races, and cross-layer rendering. | 1,100–1,500 | Resolve every root's current branch/repository on each request refresh, scope selected cache, and map the live branch. |

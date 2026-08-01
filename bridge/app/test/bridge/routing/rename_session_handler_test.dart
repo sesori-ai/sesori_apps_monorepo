@@ -111,9 +111,24 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/rename",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/rename",
           prNumber: 13,
           url: "https://github.com/org/repo/pull/13",

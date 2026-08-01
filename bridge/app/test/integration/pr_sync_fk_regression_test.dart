@@ -5,17 +5,16 @@
 /// With `PRAGMA foreign_keys = ON`, this caused `FOREIGN KEY constraint failed`
 /// because `pull_requests_table.projectId` references `projects_table.project_id`.
 ///
-/// This test proves that catalog reads, defensive PR upsert, and imported
+/// This test proves that catalog reads, fail-closed PR upsert, and imported
 /// session bindings all preserve the relevant foreign-key invariants.
 ///
 /// Scenario A — Primary path (catalog project before PR sync):
 ///   ProjectRepository.getProjects() reads an imported project; subsequent
 ///   PullRequestRepository.upsertFromGhPr succeeds without FK exception.
 ///
-/// Scenario B — Defensive path (skip GetProjects, go straight to upsertFromGhPr):
-///   PullRequestRepository.upsertFromGhPr calls insertProjectIfMissing
-///   defensively (T9), so even if GetProjects never ran, the PR upsert
-///   creates the project row and succeeds.
+/// Scenario B — Missing catalog path:
+///   PullRequestRepository.upsertFromGhPr preserves the FK failure instead of
+///   fabricating a project row whose path would be inferred from its id.
 ///
 /// Scenario C — GetSessions path:
 ///   SessionRepository.getSessionsForProject reads imported bindings without FK
@@ -23,6 +22,7 @@
 library;
 
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -32,6 +32,10 @@ import "package:test/test.dart";
 import "../helpers/fake_filesystem_api.dart";
 import "../helpers/fake_git_cli_api.dart";
 import "../helpers/test_database.dart";
+
+const _githubLogin = "octocat";
+const _githubRepositoryIdentity = "sesori-ai/sesori_apps_monorepo";
+final _verifiedGithubLogin = VerifiedGithubLogin.tryParse(rawLogin: _githubLogin)!;
 
 void main() {
   group("PR sync FK regression — forward-prevention paths (pre-v5 schema)", () {
@@ -53,8 +57,10 @@ void main() {
           filesystemApi: FakeFilesystemApi(),
         );
         final prRepo = PullRequestRepository(
+          database: db,
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
         );
 
         await db.projectsDao.recordOpenedProject(
@@ -78,12 +84,18 @@ void main() {
         // before querying the DB.
         await prRepo.upsertFromGhPr(
           projectId: "proj-X",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          verifiedGithubLogin: _verifiedGithubLogin,
           pr: _fakePr(),
           createdAt: 1,
           lastCheckedAt: 2,
         );
 
-        final prRows = await db.pullRequestDao.getActivePrsByProjectId(projectId: "proj-X");
+        final prRows = await db.pullRequestDao.getActivePrsByProjectId(
+          projectId: "proj-X",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+        );
         expect(
           prRows,
           hasLength(1),
@@ -95,46 +107,46 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // Scenario B — Defensive path: skip GetProjects, go straight to upsertFromGhPr
+    // Scenario B — Missing catalog path fails closed
     // -------------------------------------------------------------------------
     test(
-      "Scenario B: upsertFromGhPr creates project row defensively (T9) "
-      "even when GetProjects never ran",
+      "Scenario B: upsertFromGhPr does not fabricate a missing catalog project",
       () async {
         final db = createTestDatabase();
         addTearDown(db.close);
 
         final prRepo = PullRequestRepository(
+          database: db,
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
         );
 
         // Verify projects_table is empty — GetProjects never ran.
         final emptyRows = await db.select(db.projectsTable).get();
         expect(emptyRows, isEmpty, reason: "projects_table must be empty before the call");
 
-        // The defensive upsert path calls insertProjectIfMissing.
-        // Direct await — if FK exception were thrown, the test would fail here.
-        await prRepo.upsertFromGhPr(
-          projectId: "ghost",
-          pr: _fakePr(),
-          createdAt: 1,
-          lastCheckedAt: 2,
+        await expectLater(
+          prRepo.upsertFromGhPr(
+            projectId: "ghost",
+            githubRepositoryIdentity: _githubRepositoryIdentity,
+            verifiedGithubLogin: _verifiedGithubLogin,
+            pr: _fakePr(),
+            createdAt: 1,
+            lastCheckedAt: 2,
+          ),
+          throwsA(anything),
         );
 
-        // projects_table now has "ghost" — created by insertProjectIfMissing.
         final projectRows = await db.select(db.projectsTable).get();
-        expect(
-          projectRows.map((r) => r.projectId).toList(),
-          contains("ghost"),
-          reason: "upsertFromGhPr must insert the project row if missing",
-        );
+        expect(projectRows, isEmpty);
 
-        // pull_requests_table has the PR row.
-        final prRows = await db.pullRequestDao.getActivePrsByProjectId(projectId: "ghost");
-        expect(prRows, hasLength(1));
-        expect(prRows.first.prNumber, equals(42));
-        expect(prRows.first.projectId, equals("ghost"));
+        final prRows = await db.pullRequestDao.getActivePrsByProjectId(
+          projectId: "ghost",
+          githubRepositoryIdentity: _githubRepositoryIdentity,
+          githubLogin: _githubLogin,
+        );
+        expect(prRows, isEmpty);
       },
     );
 

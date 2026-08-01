@@ -67,6 +67,7 @@ ProjectDto _project({required String id, required String path}) {
   return ProjectDto(
     projectId: id,
     path: path,
+    prCacheGithubLogin: null,
     createdAt: 1,
     updatedAt: 1,
     projectionUpdatedAt: 1,

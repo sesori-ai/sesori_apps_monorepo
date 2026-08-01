@@ -674,6 +674,7 @@ class SessionRepository {
             ProjectDto(
               projectId: project.id,
               path: project.directory,
+              prCacheGithubLogin: null,
               createdAt: 0,
               updatedAt: 0,
               projectionUpdatedAt: 0,
@@ -757,6 +758,7 @@ class SessionRepository {
           ProjectDto(
             projectId: preferredProjectId,
             path: projectDirectory,
+            prCacheGithubLogin: null,
             createdAt: 0,
             updatedAt: 0,
             projectionUpdatedAt: 0,

@@ -2,7 +2,6 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
@@ -564,22 +563,6 @@ void main() {
         baseBranch: "main",
         baseCommit: "abc123",
       );
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "/repo",
-          branchName: "session-001",
-          prNumber: 17,
-          url: "https://github.com/org/repo/pull/17",
-          title: "Created PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.unknown,
-          reviewDecision: PrReviewDecision.unknown,
-          checkStatus: PrCheckStatus.unknown,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
@@ -599,8 +582,7 @@ void main() {
       );
 
       expect(result.hasWorktree, isTrue);
-      expect(result.pullRequest?.number, equals(17));
-      expect(result.pullRequest?.title, equals("Created PR"));
+      expect(result.pullRequest, isNull);
     });
 
     test("hasWorktree is false when dedicated=false", () async {

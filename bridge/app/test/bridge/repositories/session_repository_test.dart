@@ -233,9 +233,24 @@ void main() {
         updatedAt: 10,
         projectionUpdatedAt: 10,
       );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/one",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 7,
           url: "https://github.com/org/repo/pull/7",
@@ -251,6 +266,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 11,
           url: "https://github.com/org/repo/pull/11",
@@ -266,6 +283,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 99,
           url: "https://github.com/org/repo/pull/99",
@@ -392,9 +411,24 @@ void main() {
         updatedAt: 1234,
         projectionUpdatedAt: 1234,
       );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/one",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 5,
           url: "https://github.com/org/repo/pull/5",
@@ -812,6 +846,8 @@ void main() {
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/rename",
           prNumber: 12,
           url: "https://github.com/org/repo/pull/12",
@@ -2493,6 +2529,8 @@ class _CountingSessionDao implements SessionDao {
       directory: "/project",
       worktreePath: null,
       branchName: null,
+      currentBranchName: null,
+      currentGithubRepositoryIdentity: null,
       isDedicated: false,
       archivedAt: null,
       baseBranch: null,
