@@ -1776,7 +1776,7 @@ class OrchestratorSession {
 
     switch (msg) {
       case final RelayRequest req:
-        final pendingRoute = _router.route(req);
+        final pendingRoute = _router.route(request: req);
         final routeIdentity = pendingRoute.routeIdentity;
         Log.v("RelayRequest: ${routeIdentity.diagnosticLabel}");
         _inFlightRouteIdentity = routeIdentity;

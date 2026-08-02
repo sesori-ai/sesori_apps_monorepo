@@ -89,7 +89,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
-| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open at 1,418 changed lines |
+| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open at 1,432 changed lines |
 | [ ] | 3/10 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Blocked on Step 2 merge |
 | [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
@@ -226,9 +226,15 @@
 - **Step 2/10 verification:** 87 focused router/restart/service/dispatcher,
   debug, encrypted relay ordering/graceful-close, runtime-composition, and
   diagnostic capture tests passed. `dart analyze --fatal-infos` from `bridge/app` and
-  `git diff --check` passed. Actual change size: 1,418 lines; PR
+  `git diff --check` passed. Actual change size: 1,432 lines; PR
   [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open.
 - **Step 2/10 architecture review:** `aristotle-impl-review` rejected one valid
   service-to-routing dependency. Moving `BridgeRestartDispatcher` and its test
   beside the routing outcome applied the finding directly; per policy, the fix
   was not re-reviewed.
+- **Step 2/10 PR review:** five bot threads produced two valid corrections:
+  new routing APIs now use required named parameters, and handler diagnostics
+  retain only the closed route label rather than forwarding caught errors.
+  Two duplicate send-failure threads were declined because accepted restart
+  explicitly survives delivery failure; the dispatcher-disposal race was
+  declined because runtime disposal starts only after relay/debug route drains.

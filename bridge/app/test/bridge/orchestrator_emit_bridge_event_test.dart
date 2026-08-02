@@ -27,7 +27,7 @@ void main() {
     addTearDown(harness.close);
 
     final response =
-        (await harness.composition.session.router.route(makeRequest("GET", "/plugin")).completion).response;
+        (await harness.composition.session.router.route(request: makeRequest("GET", "/plugin")).completion).response;
     final plugins = PluginListResponse.fromJson(jsonDecodeMap(response.body!)).plugins;
 
     expect(response.status, 200);
@@ -59,7 +59,7 @@ void main() {
     final response =
         (await harness.composition.session.router
                 .route(
-                  makeRequest(
+                  request: makeRequest(
                     "PATCH",
                     "/plugin/idle-timeout",
                     body: jsonEncode(
@@ -83,7 +83,7 @@ void main() {
     final response =
         (await harness.composition.session.router
                 .route(
-                  makeRequest(
+                  request: makeRequest(
                     "POST",
                     "/plugin/missing/command",
                     body: jsonEncode(const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe).toJson()),

@@ -9,7 +9,7 @@ enum HttpMethod {
   /// Handler-only wildcard; external method parsing never produces this value.
   any;
 
-  static HttpMethod? parseExternal(String rawMethod) => switch (rawMethod.toUpperCase()) {
+  static HttpMethod? parseExternal({required String rawMethod}) => switch (rawMethod.toUpperCase()) {
     "GET" => get,
     "POST" => post,
     "PUT" => put,
@@ -20,5 +20,5 @@ enum HttpMethod {
 
   String get diagnosticLabel => this == any ? "ANY" : name.toUpperCase();
 
-  bool matches(HttpMethod requestMethod) => this == any || this == requestMethod;
+  bool matches({required HttpMethod requestMethod}) => this == any || this == requestMethod;
 }

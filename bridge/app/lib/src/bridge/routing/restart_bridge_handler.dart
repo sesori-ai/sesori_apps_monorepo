@@ -17,8 +17,8 @@ class RestartBridgeHandler extends RequestHandlerBase {
   final BridgeRestartService _restartService;
 
   @override
-  Future<RoutedRequestOutcome> routeInternal(
-    RelayRequest request, {
+  Future<RoutedRequestOutcome> routeInternal({
+    required RelayRequest request,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
@@ -45,7 +45,7 @@ class RestartBridgeHandler extends RequestHandlerBase {
     required String? fragment,
   }) async {
     return (await routeInternal(
-      request,
+      request: request,
       pathParams: pathParams,
       queryParams: queryParams,
       fragment: fragment,

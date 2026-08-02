@@ -85,7 +85,7 @@ void main() {
     final handler = RestartBridgeHandler(restartService: service);
 
     final outcome = await handler.routeInternal(
-      makeRequest('POST', '/global/restart'),
+      request: makeRequest('POST', '/global/restart'),
       pathParams: const {},
       queryParams: const {},
       fragment: null,
@@ -102,7 +102,7 @@ void main() {
     final handler = RestartBridgeHandler(restartService: service);
 
     final outcome = await handler.routeInternal(
-      makeRequest('POST', '/global/restart'),
+      request: makeRequest('POST', '/global/restart'),
       pathParams: const {},
       queryParams: const {},
       fragment: null,
@@ -120,7 +120,7 @@ void main() {
     final handler = RestartBridgeHandler(restartService: service);
 
     final outcome = await handler.routeInternal(
-      makeRequest('POST', '/global/restart'),
+      request: makeRequest('POST', '/global/restart'),
       pathParams: const {},
       queryParams: const {},
       fragment: null,

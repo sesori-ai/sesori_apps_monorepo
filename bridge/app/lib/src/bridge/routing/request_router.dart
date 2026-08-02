@@ -19,8 +19,8 @@ class RequestRouter {
   }) : _handlers = List<RequestHandlerBase>.unmodifiable(handlers);
 
   /// Selects a route synchronously and returns its asynchronous completion.
-  PendingRoutedRequest route(RelayRequest request) {
-    final requestMethod = HttpMethod.parseExternal(request.method);
+  PendingRoutedRequest route({required RelayRequest request}) {
+    final requestMethod = HttpMethod.parseExternal(rawMethod: request.method);
     if (requestMethod == null) {
       return PendingRoutedRequest(
         routeIdentity: const InvalidMethodRoute(),
@@ -72,7 +72,7 @@ class RequestRouter {
     try {
       final (:pathParams, :queryParams, :fragment) = handler.extractTargetParams(target: target);
       return await handler.routeInternal(
-        request,
+        request: request,
         pathParams: pathParams,
         queryParams: queryParams,
         fragment: fragment,

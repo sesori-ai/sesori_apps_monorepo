@@ -147,7 +147,7 @@ class DebugServer {
               )
               as RelayRequest;
 
-      final pendingRoute = _router.route(relayRequest);
+      final pendingRoute = _router.route(request: relayRequest);
       final route = pendingRoute.completion;
       final outcome = await Future.any<RoutedRequestOutcome?>([
         route,

@@ -35,7 +35,7 @@ void main() {
         ],
       );
 
-      final pending = router.route(_request(method: "GET", path: "/session/s1?view=full#messages"));
+      final pending = router.route(request: _request(method: "GET", path: "/session/s1?view=full#messages"));
 
       expect(
         pending.routeIdentity,
@@ -83,7 +83,7 @@ void main() {
     test("returns 404 when no handler matches", () async {
       final router = RequestRouter(handlers: const []);
 
-      final pending = router.route(_request(method: "GET", path: "/unknown?secret=value"));
+      final pending = router.route(request: _request(method: "GET", path: "/unknown?secret=value"));
       final response = (await pending.completion).response;
 
       expect(pending.routeIdentity, isA<UnmatchedRoute>());
@@ -96,12 +96,12 @@ void main() {
     test("returns closed identities for invalid methods and targets", () async {
       final router = RequestRouter(handlers: const []);
 
-      final invalidMethod = router.route(_request(method: "CUSTOM-secret", path: "/private/path"));
+      final invalidMethod = router.route(request: _request(method: "CUSTOM-secret", path: "/private/path"));
       expect(invalidMethod.routeIdentity, isA<InvalidMethodRoute>());
       expect(invalidMethod.routeIdentity.diagnosticLabel, "invalid method");
       expect((await invalidMethod.completion).response.status, 404);
 
-      final invalidTarget = router.route(_request(method: "GET", path: "http://[target-secret"));
+      final invalidTarget = router.route(request: _request(method: "GET", path: "http://[target-secret"));
       expect(invalidTarget.routeIdentity, isA<InvalidTargetRoute>());
       expect(invalidTarget.routeIdentity.diagnosticLabel, "GET invalid target");
       expect((await invalidTarget.completion).response.status, 502);
@@ -121,7 +121,7 @@ void main() {
         ],
       );
 
-      final pending = router.route(_request(method: "get", path: "/session/private-id"));
+      final pending = router.route(request: _request(method: "get", path: "/session/private-id"));
 
       expect(pending.routeIdentity.diagnosticLabel, "GET /session/:id");
       responseGate.complete(
@@ -229,5 +229,5 @@ RelayResponse _response({required RelayRequest request, required int status, req
 }
 
 Future<RelayResponse> _route(RequestRouter router, RelayRequest request) async {
-  return (await router.route(request).completion).response;
+  return (await router.route(request: request).completion).response;
 }

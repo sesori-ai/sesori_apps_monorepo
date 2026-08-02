@@ -39,8 +39,8 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
       return buildOkJsonResponse(request, result);
     } on ProjectNotFoundException {
       return buildErrorResponse(request, 404, "project not found");
-    } on PluginOperationException catch (err, stackTrace) {
-      Log.w("$diagnosticLabel: upstream failure", err, stackTrace);
+    } on PluginOperationException catch (err) {
+      Log.w("$diagnosticLabel: upstream failure");
       return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
@@ -51,8 +51,8 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
         // just return the error response
         return err;
       }
-    } catch (err, stackTrace) {
-      Log.w("$diagnosticLabel: handler failed", err, stackTrace);
+    } catch (err) {
+      Log.w("$diagnosticLabel: handler failed");
       return buildErrorResponse(request, 500, "Internal Server Error: $err");
     }
   }
@@ -102,8 +102,8 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
       return buildOkJsonResponse(request, result);
     } on ProjectNotFoundException {
       return buildErrorResponse(request, 404, "project not found");
-    } on PluginOperationException catch (err, stackTrace) {
-      Log.w("$diagnosticLabel: upstream failure", err, stackTrace);
+    } on PluginOperationException catch (err) {
+      Log.w("$diagnosticLabel: upstream failure");
       return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
@@ -114,8 +114,8 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
         // just return the error response
         return err;
       }
-    } catch (err, stackTrace) {
-      Log.w("$diagnosticLabel: handler failed", err, stackTrace);
+    } catch (err) {
+      Log.w("$diagnosticLabel: handler failed");
       return buildErrorResponse(request, 500, "Internal Server Error: $err");
     }
   }
@@ -160,7 +160,7 @@ abstract class RequestHandlerBase {
 
   /// Matches the router's parsed method and target against this declaration.
   bool matches({required HttpMethod requestMethod, required Uri target}) {
-    if (!method.matches(requestMethod)) return false;
+    if (!method.matches(requestMethod: requestMethod)) return false;
     if (path == "*") return true;
     return _matchPathParams(target.path, path) != null;
   }
@@ -196,8 +196,8 @@ abstract class RequestHandlerBase {
     required String? fragment,
   });
 
-  Future<RoutedRequestOutcome> routeInternal(
-    RelayRequest request, {
+  Future<RoutedRequestOutcome> routeInternal({
+    required RelayRequest request,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,

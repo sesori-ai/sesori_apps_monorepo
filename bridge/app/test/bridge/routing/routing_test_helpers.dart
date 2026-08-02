@@ -72,7 +72,7 @@ RelayRequest makeRequest(
 
 extension RequestHandlerTestMatching on RequestHandlerBase {
   bool canHandle(RelayRequest request) {
-    final method = HttpMethod.parseExternal(request.method);
+    final method = HttpMethod.parseExternal(rawMethod: request.method);
     if (method == null) return false;
     return matches(requestMethod: method, target: Uri.parse(request.path));
   }

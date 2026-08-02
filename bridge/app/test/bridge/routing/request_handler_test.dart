@@ -41,26 +41,26 @@ class _ThrowingGetHandler extends GetRequestHandler<Object> {
 void main() {
   group("HttpMethod", () {
     test("parses supported external methods case-insensitively", () {
-      expect(HttpMethod.parseExternal("GET"), HttpMethod.get);
-      expect(HttpMethod.parseExternal("Post"), HttpMethod.post);
-      expect(HttpMethod.parseExternal("put"), HttpMethod.put);
-      expect(HttpMethod.parseExternal("PATCH"), HttpMethod.patch);
-      expect(HttpMethod.parseExternal("DELETE"), HttpMethod.delete);
+      expect(HttpMethod.parseExternal(rawMethod: "GET"), HttpMethod.get);
+      expect(HttpMethod.parseExternal(rawMethod: "Post"), HttpMethod.post);
+      expect(HttpMethod.parseExternal(rawMethod: "put"), HttpMethod.put);
+      expect(HttpMethod.parseExternal(rawMethod: "PATCH"), HttpMethod.patch);
+      expect(HttpMethod.parseExternal(rawMethod: "DELETE"), HttpMethod.delete);
     });
 
     test("does not parse unsupported methods or the handler wildcard", () {
-      expect(HttpMethod.parseExternal("OPTIONS"), isNull);
-      expect(HttpMethod.parseExternal("ANY"), isNull);
+      expect(HttpMethod.parseExternal(rawMethod: "OPTIONS"), isNull);
+      expect(HttpMethod.parseExternal(rawMethod: "ANY"), isNull);
     });
 
     test("matches typed methods", () {
-      expect(HttpMethod.get.matches(HttpMethod.get), isTrue);
-      expect(HttpMethod.get.matches(HttpMethod.post), isFalse);
+      expect(HttpMethod.get.matches(requestMethod: HttpMethod.get), isTrue);
+      expect(HttpMethod.get.matches(requestMethod: HttpMethod.post), isFalse);
     });
 
     test("any matches every parsed method", () {
       for (final method in HttpMethod.values.where((method) => method != HttpMethod.any)) {
-        expect(HttpMethod.any.matches(method), isTrue, reason: method.name);
+        expect(HttpMethod.any.matches(requestMethod: method), isTrue, reason: method.name);
       }
     });
   });

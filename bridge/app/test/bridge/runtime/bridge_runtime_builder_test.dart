@@ -89,7 +89,7 @@ void main() {
     final routed =
         (await debugServer.router
                 .route(
-                  makeRequest(
+                  request: makeRequest(
                     "POST",
                     "/session/options",
                     body: jsonEncode(PluginProjectIdRequest(projectId: "missing", pluginId: plugin.id).toJson()),
