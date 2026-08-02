@@ -1168,6 +1168,9 @@ class OrchestratorSession {
 
         try {
           await _bridgeRegistrationService.ensureRegistered();
+          if (_cancelled) {
+            return;
+          }
           final reconnectFuture = _client.reconnect(connection: connection);
           if (identical(_relayConnection, connection)) {
             _relayConnection = null;

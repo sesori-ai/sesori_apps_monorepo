@@ -294,6 +294,8 @@
   per policy, the correction was not re-reviewed.
 - **Step 4/10 PR review:** two Qodo bot findings were valid. Auth setup now reaches
   a terminal disconnected state without first emitting connected, with regression
-  coverage, and new private connection helpers use required named parameters.
+  coverage, and new private connection helpers use required named parameters. A
+  valid Cubic finding added a post-registration cancellation gate so shutdown
+  cannot start a successor connection, with a blocked-registration regression test.
 - **Step 4/10 delivery:** [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699)
-  is open at 984 changed lines; the owner-provided branch/worktree are reused.
+  is open at 1,019 changed lines; the owner-provided branch/worktree are reused.

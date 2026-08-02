@@ -86,6 +86,9 @@ class FakeBridgeRegistrationRepository implements BridgeRegistrationRepository {
   /// When non-null, [register] throws this error instead of succeeding.
   Object? registerError;
 
+  /// When non-null, [register] waits for this future before settling.
+  Future<void>? registerDelay;
+
   /// The id returned from successful [register] calls.
   String nextBridgeId = "br_test1234";
 
@@ -97,6 +100,7 @@ class FakeBridgeRegistrationRepository implements BridgeRegistrationRepository {
     required String accessToken,
   }) async {
     registeredBridgeIds.add(bridgeId);
+    await registerDelay;
     if (registerError != null) {
       throw registerError!;
     }

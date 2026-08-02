@@ -148,6 +148,32 @@ void main() {
       expect(repository.registeredBridgeIds.length, greaterThanOrEqualTo(3));
       expect(authMessage["bridgeId"], equals("br_second002"));
     });
+
+    test("cancellation during re-registration does not open a successor relay connection", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      final registrationGate = Completer<void>();
+      repository
+        ..nextBridgeId = "br_second002"
+        ..registerDelay = registrationGate.future;
+      await firstSocket.close(RelayCloseCodes.bridgeRevoked);
+      await _waitFor(
+        () => repository.registeredBridgeIds.length >= 2,
+        reason: "blocked re-registration",
+      );
+
+      final cancelFuture = harness.session.cancel();
+      registrationGate.complete();
+      await cancelFuture;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(harness.relayServer.connectedClientCount, equals(1));
+    });
   });
 
   group("OrchestratorSession routed request boundaries", () {
