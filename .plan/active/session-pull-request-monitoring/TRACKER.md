@@ -362,10 +362,11 @@
   plugin response publication and bridge-identity failure semantics.
 - **Step 6/9 analytics:** No event; this bridge setting does not answer a current
   activation/retention decision, and the approved plan excludes new analytics.
-- **Step 6/9 verification:** Shared codegen, 18 focused bridge tests added, all
-  357 shared tests, all 2,364 bridge app tests, both fatal-info analyzers, and
-  `git diff --check` pass. The implementation remains within its 1,000–1,500
-  changed-line target.
+- **Step 6/9 verification:** Shared codegen, 20 focused bridge tests added, all
+  357 shared tests, all 2,366 bridge app tests, both fatal-info analyzers, and
+  `git diff --check` pass. Review-requested strict contract and invariant tests
+  raise the final change to 1,554 lines, 54 above the soft target; generated
+  contract output and its coupled boundary tests have no smaller coherent split.
 - **Step 6/9 architecture review:** `aristotle-impl-review` found two issues.
   The service now suppresses unrelated whole-settings changes, and the runtime
   runner now owns repository disposal across early startup exits. Both findings

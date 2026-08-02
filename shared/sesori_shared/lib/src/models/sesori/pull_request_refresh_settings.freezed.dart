@@ -149,7 +149,7 @@ as int,
 /// @nodoc
 mixin _$PullRequestRefreshSettingsResponse {
 
- int get intervalSeconds;
+@JsonKey(fromJson: _strictIntFromJson) int get intervalSeconds;
 /// Create a copy of PullRequestRefreshSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -182,7 +182,7 @@ abstract mixin class $PullRequestRefreshSettingsResponseCopyWith<$Res>  {
   factory $PullRequestRefreshSettingsResponseCopyWith(PullRequestRefreshSettingsResponse value, $Res Function(PullRequestRefreshSettingsResponse) _then) = _$PullRequestRefreshSettingsResponseCopyWithImpl;
 @useResult
 $Res call({
- int intervalSeconds
+@JsonKey(fromJson: _strictIntFromJson) int intervalSeconds
 });
 
 
@@ -214,10 +214,10 @@ as int,
 @JsonSerializable()
 
 class _PullRequestRefreshSettingsResponse implements PullRequestRefreshSettingsResponse {
-  const _PullRequestRefreshSettingsResponse({required this.intervalSeconds});
+  const _PullRequestRefreshSettingsResponse({@JsonKey(fromJson: _strictIntFromJson) required this.intervalSeconds});
   factory _PullRequestRefreshSettingsResponse.fromJson(Map<String, dynamic> json) => _$PullRequestRefreshSettingsResponseFromJson(json);
 
-@override final  int intervalSeconds;
+@override@JsonKey(fromJson: _strictIntFromJson) final  int intervalSeconds;
 
 /// Create a copy of PullRequestRefreshSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -252,7 +252,7 @@ abstract mixin class _$PullRequestRefreshSettingsResponseCopyWith<$Res> implemen
   factory _$PullRequestRefreshSettingsResponseCopyWith(_PullRequestRefreshSettingsResponse value, $Res Function(_PullRequestRefreshSettingsResponse) _then) = __$PullRequestRefreshSettingsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- int intervalSeconds
+@JsonKey(fromJson: _strictIntFromJson) int intervalSeconds
 });
 
 
@@ -283,7 +283,7 @@ as int,
 /// @nodoc
 mixin _$PullRequestRefreshSettingsErrorResponse {
 
-@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) PullRequestRefreshSettingsErrorCode get code; int get minimumIntervalSeconds; int get maximumIntervalSeconds;
+@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) PullRequestRefreshSettingsErrorCode get code;@JsonKey(fromJson: _strictIntFromJson) int get minimumIntervalSeconds;@JsonKey(fromJson: _strictIntFromJson) int get maximumIntervalSeconds;
 /// Create a copy of PullRequestRefreshSettingsErrorResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -316,7 +316,7 @@ abstract mixin class $PullRequestRefreshSettingsErrorResponseCopyWith<$Res>  {
   factory $PullRequestRefreshSettingsErrorResponseCopyWith(PullRequestRefreshSettingsErrorResponse value, $Res Function(PullRequestRefreshSettingsErrorResponse) _then) = _$PullRequestRefreshSettingsErrorResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) PullRequestRefreshSettingsErrorCode code, int minimumIntervalSeconds, int maximumIntervalSeconds
+@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) PullRequestRefreshSettingsErrorCode code,@JsonKey(fromJson: _strictIntFromJson) int minimumIntervalSeconds,@JsonKey(fromJson: _strictIntFromJson) int maximumIntervalSeconds
 });
 
 
@@ -350,12 +350,12 @@ as int,
 @JsonSerializable()
 
 class _PullRequestRefreshSettingsErrorResponse implements PullRequestRefreshSettingsErrorResponse {
-  const _PullRequestRefreshSettingsErrorResponse({@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) required this.code, required this.minimumIntervalSeconds, required this.maximumIntervalSeconds});
+  const _PullRequestRefreshSettingsErrorResponse({@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) required this.code, @JsonKey(fromJson: _strictIntFromJson) required this.minimumIntervalSeconds, @JsonKey(fromJson: _strictIntFromJson) required this.maximumIntervalSeconds});
   factory _PullRequestRefreshSettingsErrorResponse.fromJson(Map<String, dynamic> json) => _$PullRequestRefreshSettingsErrorResponseFromJson(json);
 
 @override@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) final  PullRequestRefreshSettingsErrorCode code;
-@override final  int minimumIntervalSeconds;
-@override final  int maximumIntervalSeconds;
+@override@JsonKey(fromJson: _strictIntFromJson) final  int minimumIntervalSeconds;
+@override@JsonKey(fromJson: _strictIntFromJson) final  int maximumIntervalSeconds;
 
 /// Create a copy of PullRequestRefreshSettingsErrorResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -390,7 +390,7 @@ abstract mixin class _$PullRequestRefreshSettingsErrorResponseCopyWith<$Res> imp
   factory _$PullRequestRefreshSettingsErrorResponseCopyWith(_PullRequestRefreshSettingsErrorResponse value, $Res Function(_PullRequestRefreshSettingsErrorResponse) _then) = __$PullRequestRefreshSettingsErrorResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) PullRequestRefreshSettingsErrorCode code, int minimumIntervalSeconds, int maximumIntervalSeconds
+@JsonKey(unknownEnumValue: PullRequestRefreshSettingsErrorCode.unknown) PullRequestRefreshSettingsErrorCode code,@JsonKey(fromJson: _strictIntFromJson) int minimumIntervalSeconds,@JsonKey(fromJson: _strictIntFromJson) int maximumIntervalSeconds
 });
 
 

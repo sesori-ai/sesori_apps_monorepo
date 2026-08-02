@@ -46,6 +46,10 @@ class PullRequestRefreshIntervalOutOfRangeException implements Exception {
 
   const PullRequestRefreshIntervalOutOfRangeException({required this.intervalSeconds});
 
+  int get minimumIntervalSeconds => minimumPullRequestRefreshIntervalSeconds;
+
+  int get maximumIntervalSeconds => maximumPullRequestRefreshIntervalSeconds;
+
   @override
   String toString() => "PullRequestRefreshIntervalOutOfRangeException";
 }

@@ -50,12 +50,11 @@ class ViewedProjectPrRefreshListener {
     _settingsService.changes
         .listen(
           (settings) => _handleIntervalChange(intervalSeconds: settings.intervalSeconds),
-          onError: (Object error, StackTrace stackTrace) {
+          onError: (Object error, StackTrace _) {
             if (_disposed) return;
             Log.w(
               "Pull request refresh settings changes failed unexpectedly",
               _PrivacySafePullRequestRefreshSettingsException(cause: error),
-              stackTrace,
             );
           },
         )

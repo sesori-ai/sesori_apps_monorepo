@@ -52,7 +52,7 @@ class BridgeSettingsRepository {
     final settings = parsed.settings;
     if (parsed.repairErrors.isNotEmpty || parsed.missingPullRequestRefreshInterval) {
       for (final error in parsed.repairErrors) {
-        Log.w('[bridge-settings] invalid config at $configFilePath: $error');
+        Log.w('[bridge-settings] invalid config at $configFilePath', error);
       }
       try {
         await _api.writeConfig(_jsonEncoder.convert(settings.toJson()));
@@ -77,6 +77,10 @@ class BridgeSettingsRepository {
         if (identical(updated, current)) {
           completer.complete(current);
           return;
+        }
+        if (updated.pullRequestRefreshIntervalSeconds < minimumPullRequestRefreshIntervalSeconds ||
+            updated.pullRequestRefreshIntervalSeconds > maximumPullRequestRefreshIntervalSeconds) {
+          throw const PullRequestRefreshIntervalFormatException();
         }
         await _api.writeConfig(_jsonEncoder.convert(updated.toJson()));
         _currentSettings = updated;

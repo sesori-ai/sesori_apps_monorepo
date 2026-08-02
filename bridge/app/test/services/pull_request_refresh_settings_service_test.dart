@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
@@ -42,7 +40,7 @@ void main() {
 
         expect(response.intervalSeconds, intervalSeconds);
         expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, intervalSeconds);
-        expect((jsonDecode(api.config!) as Map)["pullRequestRefreshIntervalSeconds"], intervalSeconds);
+        expect(jsonDecodeMap(api.config!)["pullRequestRefreshIntervalSeconds"], intervalSeconds);
       }
       expect(changes.map((change) => change.intervalSeconds), [15, 3600]);
       await subscription.cancel();

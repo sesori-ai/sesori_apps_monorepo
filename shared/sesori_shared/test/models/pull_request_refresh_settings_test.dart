@@ -11,11 +11,28 @@ void main() {
       expect(PullRequestRefreshSettingsResponse.fromJson(response.toJson()), response);
     });
 
-    test("request rejects a non-integer number", () {
-      expect(
-        () => PullRequestRefreshSettingsRequest.fromJson({"intervalSeconds": 45.5}),
-        throwsFormatException,
-      );
+    test("integer fields reject missing, null, non-numeric, and fractional values", () {
+      for (final json in <Map<String, dynamic>>[
+        const {},
+        const {"intervalSeconds": null},
+        const {"intervalSeconds": "45"},
+        const {"intervalSeconds": 45.5},
+      ]) {
+        expect(() => PullRequestRefreshSettingsRequest.fromJson(json), throwsFormatException);
+        expect(() => PullRequestRefreshSettingsResponse.fromJson(json), throwsFormatException);
+      }
+
+      for (final field in ["minimumIntervalSeconds", "maximumIntervalSeconds"]) {
+        expect(
+          () => PullRequestRefreshSettingsErrorResponse.fromJson({
+            "code": "intervalOutOfRange",
+            "minimumIntervalSeconds": 15,
+            "maximumIntervalSeconds": 3600,
+            field: 15.5,
+          }),
+          throwsFormatException,
+        );
+      }
     });
 
     test("typed error round trips and unknown codes degrade", () {

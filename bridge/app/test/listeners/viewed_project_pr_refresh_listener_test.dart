@@ -261,6 +261,25 @@ void main() {
       });
     });
 
+    test("settings stream errors log without causes or stack paths", () {
+      final harness = _Harness();
+      final logOutput = _captureLogOutput(
+        action: () {
+          harness.listener.start();
+          harness.settingsService.emitError(
+            error: StateError("secret settings cause"),
+            stackTrace: StackTrace.fromString("/private/settings/source.dart"),
+          );
+        },
+      );
+
+      expect(logOutput, contains("Pull request refresh settings changes failed unexpectedly"));
+      expect(logOutput, contains("PullRequestRefreshSettingsException"));
+      expect(logOutput, isNot(contains("secret settings cause")));
+      expect(logOutput, isNot(contains("/private/settings/source.dart")));
+      unawaited(harness.dispose());
+    });
+
     test("dispose drains admitted work and suppresses late completion", () async {
       final harness = _Harness()..service.completeImmediately = false;
       harness.listener.start();
@@ -315,6 +334,10 @@ class _FakePullRequestRefreshSettingsService implements PullRequestRefreshSettin
   void setInterval({required int intervalSeconds}) {
     _current = PullRequestRefreshSettingsResponse(intervalSeconds: intervalSeconds);
     _changes.add(_current);
+  }
+
+  void emitError({required Object error, required StackTrace stackTrace}) {
+    _changes.addError(error, stackTrace);
   }
 
   Future<void> dispose() => _changes.close();

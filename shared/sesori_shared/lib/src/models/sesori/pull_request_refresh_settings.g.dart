@@ -9,7 +9,7 @@ part of 'pull_request_refresh_settings.dart';
 _PullRequestRefreshSettingsRequest _$PullRequestRefreshSettingsRequestFromJson(
   Map json,
 ) => _PullRequestRefreshSettingsRequest(
-  intervalSeconds: _strictIntFromJson(json['intervalSeconds'] as num),
+  intervalSeconds: _strictIntFromJson(json['intervalSeconds']),
 );
 
 Map<String, dynamic> _$PullRequestRefreshSettingsRequestToJson(
@@ -19,7 +19,7 @@ Map<String, dynamic> _$PullRequestRefreshSettingsRequestToJson(
 _PullRequestRefreshSettingsResponse
 _$PullRequestRefreshSettingsResponseFromJson(Map json) =>
     _PullRequestRefreshSettingsResponse(
-      intervalSeconds: (json['intervalSeconds'] as num).toInt(),
+      intervalSeconds: _strictIntFromJson(json['intervalSeconds']),
     );
 
 Map<String, dynamic> _$PullRequestRefreshSettingsResponseToJson(
@@ -27,16 +27,17 @@ Map<String, dynamic> _$PullRequestRefreshSettingsResponseToJson(
 ) => <String, dynamic>{'intervalSeconds': instance.intervalSeconds};
 
 _PullRequestRefreshSettingsErrorResponse
-_$PullRequestRefreshSettingsErrorResponseFromJson(Map json) =>
-    _PullRequestRefreshSettingsErrorResponse(
-      code: $enumDecode(
-        _$PullRequestRefreshSettingsErrorCodeEnumMap,
-        json['code'],
-        unknownValue: PullRequestRefreshSettingsErrorCode.unknown,
-      ),
-      minimumIntervalSeconds: (json['minimumIntervalSeconds'] as num).toInt(),
-      maximumIntervalSeconds: (json['maximumIntervalSeconds'] as num).toInt(),
-    );
+_$PullRequestRefreshSettingsErrorResponseFromJson(
+  Map json,
+) => _PullRequestRefreshSettingsErrorResponse(
+  code: $enumDecode(
+    _$PullRequestRefreshSettingsErrorCodeEnumMap,
+    json['code'],
+    unknownValue: PullRequestRefreshSettingsErrorCode.unknown,
+  ),
+  minimumIntervalSeconds: _strictIntFromJson(json['minimumIntervalSeconds']),
+  maximumIntervalSeconds: _strictIntFromJson(json['maximumIntervalSeconds']),
+);
 
 Map<String, dynamic> _$PullRequestRefreshSettingsErrorResponseToJson(
   _PullRequestRefreshSettingsErrorResponse instance,

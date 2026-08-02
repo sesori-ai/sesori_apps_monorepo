@@ -186,6 +186,31 @@ void main() {
       await repository.dispose();
     });
 
+    test('rejects an invalid interval mutation before commit and keeps the tail usable', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{"pullRequestRefreshIntervalSeconds":30}');
+      final repository = BridgeSettingsRepository(api: api);
+      await repository.loadSettings();
+      final changes = <BridgeSettingsChange>[];
+      final subscription = repository.settingsChanges.listen(changes.add);
+
+      await expectLater(
+        repository.mutateSettings(
+          mutation: ({required current}) => current.copyWith(pullRequestRefreshIntervalSeconds: 14),
+        ),
+        throwsA(isA<PullRequestRefreshIntervalFormatException>()),
+      );
+
+      expect(api.writeCount, 0);
+      expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, 30);
+      expect(changes, isEmpty);
+      final recovered = await repository.mutateSettings(
+        mutation: ({required current}) => current.copyWith(pullRequestRefreshIntervalSeconds: 45),
+      );
+      expect(recovered.pullRequestRefreshIntervalSeconds, 45);
+      await subscription.cancel();
+      await repository.dispose();
+    });
+
     test('manual file edits have no live effect but load in a new repository', () async {
       final api = FakeBridgeSettingsApi(readResult: '{"pullRequestRefreshIntervalSeconds":30}');
       final repository = BridgeSettingsRepository(api: api);
