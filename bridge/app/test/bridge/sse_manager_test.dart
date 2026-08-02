@@ -302,9 +302,10 @@ void main() {
     test("stale relay delivery remains buffered for replay", () async {
       final client = _RecordingRelayClient()..nextOutcome = RelaySendOutcome.stale;
       final reporter = CapturingFailureReporter();
+      final sentByteCounts = <int>[];
       final manager = SSEManager(
         replayWindow: SSEManager.defaultReplayWindow,
-        onBytesSent: (_) {},
+        onBytesSent: sentByteCounts.add,
         failureReporter: reporter,
       );
       manager.setRoomKey(makeRoomKey());
@@ -313,13 +314,19 @@ void main() {
       manager.subscribeForTest(1, client);
       manager.enqueueEvent(_event("relay-turnover"));
       await _waitForSendCount(client, 1);
-      manager.orphanAll();
+      expect(manager.subscriberCount, 0);
+      expect(manager.pendingReplayCount, 1);
+
+      for (var index = 0; index < 5; index++) {
+        manager.enqueueEvent(_event("buffered-$index"));
+      }
 
       client.nextOutcome = RelaySendOutcome.sent;
       manager.subscribeForTest(2, client);
-      await _waitForSendCount(client, 2);
+      await _waitForSendCount(client, 7);
 
-      expect(client.sentConnIDs, [1, 2]);
+      expect(client.sentConnIDs, [1, 2, 2, 2, 2, 2, 2]);
+      expect(sentByteCounts, hasLength(6), reason: "the rejected stale attempt must not count bandwidth");
       expect(reporter.recordedIdentifiers, isEmpty);
     });
 

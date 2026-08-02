@@ -208,7 +208,6 @@ class SSEManager {
       final relayMessage = RelayMessage.sseEvent(data: eventData);
       final payloadBytes = utf8.encode(jsonEncode(relayMessage.toJson()));
       Log.v("[sse] sending ${payloadBytes.length} bytes to connID=$connID");
-      _onBytesSent(payloadBytes.length);
       final framed = await frame(payloadBytes, encryptor: encryptor!);
       final outcome = client.sendIfCurrent(
         connection: connection,
@@ -216,8 +215,10 @@ class SSEManager {
         payload: framed,
       );
       if (outcome == RelaySendOutcome.stale) {
+        unsubscribe(connID);
         throw const _StaleRelayConnectionException();
       }
+      _onBytesSent(payloadBytes.length);
     };
   }
 
