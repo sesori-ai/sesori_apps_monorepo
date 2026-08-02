@@ -8,11 +8,10 @@
 - **Series state:** Steps 1–3 merged; Step 3/10
   [#696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as
   `95178462`
-- **Current step:** Step 4/10 implemented and ready for review on
-  `plan-parallel-requests`; PR link pending
+- **Current step:** Step 4/10 PR
+  [#699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) open
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** commit, push, and open the Step 4 PR; Step 5 remains blocked
-  until Step 4 merges
+- **Next action:** review and merge Step 4; Step 5 remains blocked until then
 
 ## Incident Evidence
 
@@ -92,7 +91,7 @@
 | [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
 | [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged as `fdc8ad67` with 1,552 changed lines |
 | [x] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as `95178462` |
-| [ ] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Implemented and verified from `95178462`; PR link pending |
+| [ ] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) open from `95178462` |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
 | [ ] | 6/10 | `relay-request-concurrency-session-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Blocked on Step 5 merge |
 | [ ] | 7/10 | `relay-request-concurrency-session-visibility` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | 600–1,100 | Blocked on Step 6 merge |
@@ -293,5 +292,5 @@
   one-implementation `RelayConnection` interface under A5. Replacing it with a
   final privately constructed opaque handle applied the valid finding directly;
   per policy, the correction was not re-reviewed.
-- **Step 4/10 local delivery:** exact change size is 952 lines before recording
-  the PR link; the owner-provided branch/worktree are reused as required.
+- **Step 4/10 delivery:** [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699)
+  is open at 951 changed lines; the owner-provided branch/worktree are reused.
