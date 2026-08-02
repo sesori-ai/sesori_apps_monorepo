@@ -7,8 +7,9 @@
   `f6ec9e9dc66782197a46261de3bcc002e261a5bd`
 - **Series state:** Step 1/10 plan PR
   [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-  as `c4d42a152d52d6aa2e3479b8f445d622bbe4b9a5`; post-merge plan correction pending
-- **Current step:** Post-merge plan correction before Step 2/10
+  as `c4d42a152d52d6aa2e3479b8f445d622bbe4b9a5`; post-merge correction
+  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) open
+- **Current step:** Post-merge plan correction PR #688 before Step 2/10
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
 - **Next action:** merge the post-review correction, then start Step 2 from
   current `main`
@@ -80,13 +81,15 @@
   compatibility error; and dispatch accepted restart handoff after terminal
   sent/stale/send-failure disposition rather than suppressing it with delivery
 - **Delivery impact:** no fixed step title, denominator, branch, or line budget
-  changes; this documentation-only correction must merge before Step 2 begins
+  changes; documentation-only correction
+  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) must merge
+  before Step 2 begins
 
 ## Delivery Steps
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; post-merge correction pending |
+| [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) open |
 | [ ] | 2/10 | `relay-request-concurrency-route-outcomes` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | Blocked on post-merge plan correction |
 | [ ] | 3/10 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Blocked on Step 2 merge |
 | [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
