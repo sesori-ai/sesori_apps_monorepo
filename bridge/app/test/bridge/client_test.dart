@@ -192,6 +192,27 @@ void main() {
       expect(states[1], isA<RelayConnected>());
     });
 
+    test("auth setup failure emits disconnected without a false connected state", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: _ThrowingAccessTokenProvider(),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      final states = <RelayConnectionState>[];
+      client.connectionState.listen(states.add);
+
+      await expectLater(client.connect(), throwsA(isA<StateError>()));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(states, hasLength(2));
+      expect(states[0], isA<RelayConnecting>());
+      expect(states[1], isA<RelayDisconnected>());
+      expect(states.whereType<RelayConnected>(), isEmpty);
+    });
+
     test("remote close emits disconnected carrying the close code", () async {
       final server = await TestRelayServer.start();
       addTearDown(server.close);
@@ -679,6 +700,11 @@ void main() {
       await expectLater(client.connect(), throwsA(isA<TimeoutException>()));
     });
   });
+}
+
+class _ThrowingAccessTokenProvider extends FakeAccessTokenProvider {
+  @override
+  String get accessToken => throw StateError("auth token unavailable");
 }
 
 Future<Map<String, dynamic>> _firstTextFrame(WebSocket socket) async {

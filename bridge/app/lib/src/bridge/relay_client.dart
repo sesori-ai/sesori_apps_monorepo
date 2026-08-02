@@ -165,8 +165,6 @@ class RelayClient {
     httpClient.close();
     final connection = RelayConnection._(channel: channel);
     _connection = connection;
-    _watchConnectionDone(connection);
-    _connectionState.add(const RelayConnected());
 
     try {
       if (_accessTokenProvider.accessToken case final String token when token.isNotEmpty) {
@@ -181,9 +179,13 @@ class RelayClient {
         connection._lastAuthedToken = null;
       }
     } on Object catch (error, stackTrace) {
-      await closeIfCurrent(connection: connection);
+      final closeFuture = closeIfCurrent(connection: connection);
+      _connectionState.add(const RelayDisconnected(closeCode: null, closeReason: null));
+      await closeFuture;
       Error.throwWithStackTrace(error, stackTrace);
     }
+    _watchConnectionDone(connection: connection);
+    _connectionState.add(const RelayConnected());
     return connection;
   }
 
@@ -191,19 +193,19 @@ class RelayClient {
   /// still current. A deliberate close detaches the handle before the
   /// sink-done future settles, so this watcher stays silent for intentional
   /// teardown and only surfaces genuine drops.
-  void _watchConnectionDone(RelayConnection connection) {
+  void _watchConnectionDone({required RelayConnection connection}) {
     unawaited(
       connection._channel.sink.done.then<void>(
-        (_) => _handleConnectionDone(connection),
+        (_) => _handleConnectionDone(connection: connection),
         onError: (Object error) {
           Log.w("relay socket closed with error", error);
-          _handleConnectionDone(connection);
+          _handleConnectionDone(connection: connection);
         },
       ),
     );
   }
 
-  void _handleConnectionDone(RelayConnection connection) {
+  void _handleConnectionDone({required RelayConnection connection}) {
     if (!identical(_connection, connection)) return;
     _connectionState.add(
       RelayDisconnected(
@@ -308,10 +310,10 @@ class RelayClient {
       return Future<RelayCloseOutcome>.value(RelayCloseOutcome.stale);
     }
     _connection = null;
-    return _closeClaimedConnection(current!);
+    return _closeClaimedConnection(connection: current!);
   }
 
-  Future<RelayCloseOutcome> _closeClaimedConnection(RelayConnection connection) async {
+  Future<RelayCloseOutcome> _closeClaimedConnection({required RelayConnection connection}) async {
     await _closeChannel(
       channel: connection._channel,
       timeout: const Duration(seconds: 3),

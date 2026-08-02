@@ -292,5 +292,8 @@
   one-implementation `RelayConnection` interface under A5. Replacing it with a
   final privately constructed opaque handle applied the valid finding directly;
   per policy, the correction was not re-reviewed.
+- **Step 4/10 PR review:** two Qodo bot findings were valid. Auth setup now reaches
+  a terminal disconnected state without first emitting connected, with regression
+  coverage, and new private connection helpers use required named parameters.
 - **Step 4/10 delivery:** [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699)
-  is open at 951 changed lines; the owner-provided branch/worktree are reused.
+  is open at 984 changed lines; the owner-provided branch/worktree are reused.
