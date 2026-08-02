@@ -185,7 +185,7 @@ void main() {
       await harness.runFuture.timeout(const Duration(seconds: 5));
     });
 
-    test("routed and control diagnostics retain only closed identities", () async {
+    test("routed and control diagnostics retain useful local context", () async {
       late _RegistrationHarness harness;
       final output = await _captureLogOutput(() async {
         harness = await _RegistrationHarness.start(
@@ -229,12 +229,9 @@ void main() {
         }
       });
 
-      expect(output, contains("RelaySessionView"));
-      expect(output, contains("RelaySseSubscribe"));
-      expect(output, contains("GET /global/health"));
-      expect(output, isNot(contains("private-session-view")));
-      expect(output, isNot(contains("private-subscription-path")));
-      expect(output, isNot(contains("private-route-query")));
+      expect(output, contains("SessionView connID=9 sessionId=private-session-view"));
+      expect(output, contains("SseSubscribe: path=/events/private-subscription-path"));
+      expect(output, contains("GET /global/health?private-route-query=yes"));
     });
   });
 

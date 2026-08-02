@@ -93,10 +93,11 @@ long-running testing.
     another surface cannot mutate a partially initialized binding.
 11. Create/open/hide and Git initialization for one canonical project path
     preserve arrival order, while unrelated paths remain independent.
-12. Slow work is observable while it is still running through privacy-safe route
-   templates; logs never include request bodies, headers, query values, source
-   paths, prompts, session IDs, relay-control values, or other raw entity
-   identifiers.
+12. Slow work is observable while it is still running through stable route
+    templates, while local diagnostics retain useful errors, stack traces,
+    paths, connection/session identifiers, and relay-control context. Known
+    prompt/transcript content and other user data with no debugging value stays
+    selectively omitted.
 13. There is no wire-contract, database-schema, persisted-data, client API, or
      analytics change.
 
@@ -293,19 +294,16 @@ RoutedRequestOutcome
 
 The synchronous phase first parses the raw external method into the existing
 closed `HttpMethod` enum, excluding handler-only `any`. Unsupported or malformed
-method text becomes fixed `InvalidMethod` identity and never survives into a
-log label. A known method with an invalid URI uses `InvalidTarget(HttpMethod)`;
+method text becomes fixed `InvalidMethod` identity for routing decisions. A
+known method with an invalid URI uses `InvalidTarget(HttpMethod)`;
 a valid request with no handler uses `Unmatched(HttpMethod)`. A match exposes
-only the handler's declared template, never concrete path parameters or query
-values. No consumer repeats matching or retains a raw method/path for
-diagnostics.
+only the handler's declared template for bounded route categorization. Transport
+consumers may still log the concrete request/control context when diagnostically
+useful; they never log request bodies, headers, prompts, or transcripts.
 
 Step 2 audits every existing route log, not only the new slow timer. Receipt,
-ordinary handler failures, shutdown completion/drain, and debug diagnostics use
-the selected identity; matched handlers may format their own declared
-`HttpMethod` and path template directly. Raw request method/path remains
-available only for protocol parsing, parameter extraction, and response
-construction, never as diagnostic text.
+ordinary handler failures and shutdown completion/drain use the selected identity
+for stable categorization while preserving caught errors and stack traces.
 
 The asynchronous completion preserves current handler/error mapping. Ordinary
 successes, router errors, handler errors, restart preflight failures, unmatched
@@ -597,15 +595,11 @@ settles.
 - A disconnected write can still complete. The client retains its existing
   typed response-loss/uncertain-outcome behavior rather than receiving a false
   cancellation claim.
-- Every router, handler, relay, and debug request diagnostic uses the selected
-  closed method plus handler template (or a fixed message), not raw transport
-  method/path text. Relay-control diagnostics omit client-provided SSE paths and
-  session-view IDs. Each domain-ordering PR also audits all diagnostics reachable
-  from its routed/control inputs, including creation/mutation/auto-approval and
-  project initialization/repository failures; fixed operation labels replace raw
-  paths and identifiers. Logs never include body, headers, query/fragment values,
-  concrete path parameters, prompts, source paths, branch/repository names, or
-  raw identifiers.
+- Local bridge diagnostics preserve useful caught errors, stack traces, concrete
+  request/control paths, connection/session identifiers, and operation context;
+  users decide whether to inspect, anonymize, and share those logs. Audits remove
+  only known user data with no debugging value, such as prompt/transcript content,
+  and do so selectively rather than suppressing whole errors or categories.
 - This is internal reliability work, not a new user action or product-adoption
   question, so no analytics event is added.
 
@@ -736,9 +730,9 @@ concurrency.
 - Parse the external method once into a closed internal `HttpMethod` value, then
   make router matching synchronous and return a pending route with a typed
   matched/unmatched/invalid privacy-safe identity plus asynchronous completion.
-- Audit relay control branches as well as routed work: remove client-provided
-  `RelaySseSubscribe.path` and `RelaySessionView.sessionId` from diagnostics and
-  retain only fixed control-message labels.
+- Audit relay control branches as well as routed work: retain diagnostically
+  useful paths, connection/session identifiers, caught errors, and stack traces
+  while selectively excluding request bodies, headers, prompts, and transcripts.
 - Add sealed `ResponseOnly` and `RestartAccepted` completion variants; the latter
   constructs only the fixed successful restart response from its request ID.
 - Let the restart handler return `RestartAccepted` only for a successful preflight.
@@ -763,8 +757,8 @@ makes concurrent request completion unable to steal or suppress a restart.
 
 Risk is representing restart with an error response, acting before response
 enqueue/HTTP close, acting after a failed preflight, acting twice, losing the
-shutdown signal, disposing its dispatcher under a debug request, exposing raw
-methods/paths, or changing ordinary response/error mapping. Focus on sealed
+shutdown signal, disposing its dispatcher under a debug request, losing useful
+diagnostic context, or changing ordinary response/error mapping. Focus on sealed
 outcome construction, direct shared-dispatcher injection, duplicate handoffs,
 successful/failed handoff signal behavior and disposal, supported/unsupported
 methods, matched/unmatched/invalid-target route identity, concurrent debug
@@ -923,8 +917,8 @@ handlers, auto approval, lifecycle, failure, cleanup, and shutdown.
   intake closes, cancel plugin-event producers, await both the route barrier and
   `_pluginEventProcessingTails`, close acceptance, drain/dispose once, then
   dispose consumers and repositories.
-- Replace raw session/request identifiers in every diagnostic reachable through
-  prompt/abort/pending-choice/auto-approval with fixed operation labels.
+- Preserve useful session/request context and caught failures in these diagnostics;
+  selectively omit prompt/transcript content itself.
 
 ### Why
 
@@ -985,8 +979,8 @@ multi-service shutdown.
   writes, and worktree restoration on that family lane.
 - Preserve cleanup rejection without deletion and remove settled family/backend
   mutation state after failure or completion.
-- Replace raw session/path identifiers in mutation, lifecycle, and repository
-  diagnostics reached by these routes with fixed operation labels.
+- Preserve useful session/path identifiers and caught failures in mutation,
+  lifecycle, and repository diagnostics.
 - Replace direct-session/global-order tests with both root/child arrival orders,
   archive/delete inversion, and unrelated-root parallelism.
 
@@ -1045,8 +1039,8 @@ failure, exactly-once publication, and restart recovery.
   failure paths, before returning or rethrowing the current route outcome.
 - On process restart, treat committed rows as visible recovery state; add no
   schema field, backfill, callback, or wire change.
-- Replace raw session/path identifiers in creation/repository diagnostics reached
-  by this workflow with fixed operation labels.
+- Preserve useful session/path identifiers and caught failures in creation and
+  repository diagnostics while omitting prompt content.
 
 ### Why
 
@@ -1101,8 +1095,8 @@ cleanup, and shutdown.
 - Preserve existing typed HTTP outcomes and project IDs, remove idle lanes, and
   assign acceptance/drain/disposal to `OrchestratorSession` after the shared
   route barrier.
-- Replace raw project paths/IDs in every diagnostic reachable through the three
-  workflows with fixed operation labels.
+- Preserve useful project paths/IDs and caught failures in diagnostics reachable
+  through these workflows.
 - Do not add symlink-wide filesystem canonicalization without evidence.
 
 ### Why
@@ -1165,10 +1159,10 @@ draining on top of the already-landed route, ordering, and relay-epoch contracts
 - Detach and track initial SSE summary construction after synchronous subscribe,
   but enqueue it on the existing summary-ordering tail before building so an
   older snapshot cannot broadcast after a newer one.
-- Add ongoing privacy-safe slow-route diagnostics and honest multi-operation
-  shutdown diagnostics.
-- Run a final diagnostic audit proving routed/control values cannot reach raw
-  logging in the touched request, session, or project call graphs.
+- Add ongoing stable slow-route diagnostics and honest multi-operation shutdown
+  diagnostics without discarding useful local context.
+- Run a final diagnostic audit that preserves errors, stack traces, paths, and
+  identifiers while selectively omitting known prompt/transcript content.
 - Drain session-owned completion work plus the shared dispatcher barrier before
   route-owned dependencies are disposed.
 
@@ -1282,7 +1276,7 @@ product suite applies.
 | Same-path Git setup overlaps | Keep directory/Git setup inside the canonical project-path lane. |
 | Overlapping initial summaries regress client activity | Put initial builds and broadcasts on the existing summary-ordering tail while detaching that tracked work from frame ingestion. |
 | Concurrent mutation corrupts session order | Keep explicit root-family lanes, whole-workflow reservation, and transactional repository writes. |
-| Raw request/control input reaches local logs | Parse methods to a closed enum and use only fixed identities/templates; omit SSE paths and session-view IDs from control diagnostics. |
+| Diagnostics lose useful request/control context | Keep closed route categorization while retaining errors, stacks, paths, and identifiers; selectively omit known prompt/transcript content. |
 | Synchronous plugin code blocks the isolate | Keep synchronous work bounded; isolate/process redesign requires separate evidence and plan. |
 | PR #686 changes adjacent code | Rebase every step on current `main`, audit overlap, and keep this implementation out of the feature PR. |
 

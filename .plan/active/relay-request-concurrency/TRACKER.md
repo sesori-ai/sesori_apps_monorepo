@@ -89,7 +89,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
-| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open at 1,432 changed lines |
+| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open at 1,523 changed lines |
 | [ ] | 3/10 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Blocked on Step 2 merge |
 | [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
@@ -124,8 +124,8 @@
 - Restart handoff becomes a sealed valid-only outcome belonging to its exact
   route; only successful acceptance can construct the fixed restart response.
 - Route identity is selected synchronously by `RequestRouter` before completion;
-  external methods parse to a closed enum and no route diagnostic retains raw
-  method/path text. Relay-control logs also omit SSE paths and session-view IDs.
+  external methods parse to a closed enum for decisions while local diagnostics
+  retain useful request/control context, errors, stack traces, and identifiers.
 - Relay and debug routing share one dispatcher acceptance/drain barrier before
   shared dependencies are disposed.
 - Layer-0 relay reads/sends/closes use an opaque exact-connection handle; final
@@ -178,22 +178,20 @@
 ## Cleanup Outcomes Planned
 
 - **Step 2:** remove global restart-request flag, forwarded handoff callback,
-  serial-routing comments, and every request/control diagnostic that formats raw
-  transport method/path/session text.
+  serial-routing comments, and diagnostics that discarded useful caught errors.
 - **Step 3:** replace separate relay/debug route completion ownership with one
   shared lifecycle barrier.
 - **Step 4:** replace mutable-current-channel relay operations with explicit
   exact-connection handles.
 - **Step 5:** replace accidental relay-loop prompt/default/abort and pending-choice
-  ordering with one explicit plugin-scoped family/interaction owner; sanitize
-  diagnostics in that call graph.
+  ordering with one explicit plugin-scoped family/interaction owner; omit prompt
+  content selectively while preserving useful diagnostics.
 - **Step 6:** remove global session mutation tails and individual-session scope;
-  reserve complete family lifecycle workflows and sanitize touched diagnostics.
+  reserve complete family lifecycle workflows and retain useful diagnostics.
 - **Step 7:** replace eager visibility with a repository-owned unpublished token
-  and atomic reveal; sanitize creation diagnostics.
+  and atomic reveal; retain useful creation diagnostics.
 - **Step 8:** replace handler-level project workflow coordination and direct hide
-  persistence with one canonical-path service/dispatcher; sanitize touched
-  diagnostics.
+  persistence with one canonical-path service/dispatcher; retain useful diagnostics.
 - **Step 9:** remove the single in-flight request label and completion-only,
   shutdown-mislabeled slow-route diagnostic.
 - **No cleanup:** wire fields, database data, plugin leases/generations, request
@@ -226,15 +224,22 @@
 - **Step 2/10 verification:** 87 focused router/restart/service/dispatcher,
   debug, encrypted relay ordering/graceful-close, runtime-composition, and
   diagnostic capture tests passed. `dart analyze --fatal-infos` from `bridge/app` and
-  `git diff --check` passed. Actual change size: 1,432 lines; PR
+  `git diff --check` passed. Actual change size: 1,523 lines; PR
   [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open.
 - **Step 2/10 architecture review:** `aristotle-impl-review` rejected one valid
   service-to-routing dependency. Moving `BridgeRestartDispatcher` and its test
   beside the routing outcome applied the finding directly; per policy, the fix
   was not re-reviewed.
 - **Step 2/10 PR review:** five bot threads produced two valid corrections:
-  new routing APIs now use required named parameters, and handler diagnostics
-  retain only the closed route label rather than forwarding caught errors.
+  new routing APIs now use required named parameters, and route labels remain
+  closed for stable categorization.
   Two duplicate send-failure threads were declined because accepted restart
   explicitly survives delivery failure; the dispatcher-disposal race was
   declined because runtime disposal starts only after relay/debug route drains.
+- **Step 2/10 owner logging direction:** local logs now retain useful caught
+  errors, stack traces, paths, and connection/session/control identifiers. The
+  plan and root `AGENTS.md` require selective removal only for known user data
+  without debugging value; broad precautionary suppression is no longer allowed.
+- **Step 2/10 cap exception:** the owner's review-requested repo-wide logging
+  rule and matching plan/code corrections raised the PR 23 lines above the soft
+  cap; splitting them would leave this PR governed by contradictory diagnostics.

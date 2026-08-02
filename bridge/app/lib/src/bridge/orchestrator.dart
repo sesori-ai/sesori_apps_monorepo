@@ -1590,13 +1590,14 @@ class OrchestratorSession {
           Map<String, dynamic> control;
           try {
             control = jsonDecodeMap(utf8.decode(msg.data));
-          } catch (_) {
-            Log.v("failed to parse relay control message");
+          } on Object catch (error, stackTrace) {
+            Log.w("failed to parse relay control message", error, stackTrace);
             break processMessage;
           }
 
           final type = control["type"] as String?;
           final connID = control["connId"] as int?;
+          Log.v("control: type=$type connID=$connID");
           if (type == null || connID == null) {
             Log.v("dropping relay control message with missing fields");
             break processMessage;
@@ -1604,9 +1605,9 @@ class OrchestratorSession {
 
           switch (type) {
             case "phone_connected":
-              Log.v("RelayPhoneConnected");
+              Log.v("phone_connected connID=$connID");
             case "phone_disconnected":
-              Log.v("RelayPhoneDisconnected");
+              Log.v("phone_disconnected connID=$connID");
               activePhones.remove(connID);
               _sseManager.removeSubscriber(connID);
               _sessionViewTracker.releaseConnection(connID: connID);
@@ -1767,8 +1768,8 @@ class OrchestratorSession {
       msg = RelayMessage.fromJson(
         jsonDecodeMap(utf8.decode(decrypted)),
       );
-    } catch (_) {
-      Log.v("failed to parse encrypted relay message");
+    } on Object catch (error, stackTrace) {
+      Log.w("failed to parse encrypted relay message from connID=$connID", error, stackTrace);
       return;
     }
 
@@ -1778,7 +1779,7 @@ class OrchestratorSession {
       case final RelayRequest req:
         final pendingRoute = _router.route(request: req);
         final routeIdentity = pendingRoute.routeIdentity;
-        Log.v("RelayRequest: ${routeIdentity.diagnosticLabel}");
+        Log.v("RelayRequest: ${req.method} ${req.path}");
         _inFlightRouteIdentity = routeIdentity;
         final routeSw = Stopwatch()..start();
         // If shutdown wins the race below, this future keeps running in the
@@ -1840,7 +1841,7 @@ class OrchestratorSession {
           _inFlightRouteIdentity = null;
         }
       case final RelaySseSubscribe subscribe:
-        Log.v("RelaySseSubscribe");
+        Log.v("SseSubscribe: path=${subscribe.path}");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
           final projSummary = await _buildProjectsSummary();
@@ -1850,13 +1851,13 @@ class OrchestratorSession {
           }
           Log.v("initial projectsSummary enqueued");
         } on Object catch (error, stackTrace) {
-          Log.e("RelaySseSubscribe failed", error, stackTrace);
+          Log.e("sse subscribe failed for connId $connID", error, stackTrace);
         }
       case RelaySseUnsubscribe():
-        Log.v("RelaySseUnsubscribe");
+        Log.v("SseUnsubscribe connID=$connID");
         _sseManager.unsubscribe(connID);
       case RelaySessionView(:final sessionId):
-        Log.v("RelaySessionView");
+        Log.v("SessionView connID=$connID sessionId=$sessionId");
         _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
