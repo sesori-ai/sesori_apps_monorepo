@@ -1,48 +1,76 @@
 import "dart:async";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../bridge/services/pr_sync_service.dart";
 import "../services/project_view_tracker.dart";
+import "../services/pull_request_refresh_settings_service.dart";
 
 /// Schedules pull request refreshes while at least one project is being viewed.
 class ViewedProjectPrRefreshListener {
   final ProjectViewTracker _tracker;
   final PrSyncService _prSyncService;
-  final Duration _refreshInterval;
+  final PullRequestRefreshSettingsService _settingsService;
 
-  StreamSubscription<ProjectViewChange>? _subscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Timer? _timer;
   Future<void>? _disposeFuture;
   final Set<Future<void>> _activeRefreshes = <Future<void>>{};
   int _latestAdmission = 0;
   bool _disposed = false;
+  bool _started = false;
+  late Duration _refreshInterval;
 
   ViewedProjectPrRefreshListener({
     required ProjectViewTracker tracker,
     required PrSyncService prSyncService,
-    required Duration refreshInterval,
+    required PullRequestRefreshSettingsService settingsService,
   }) : _tracker = tracker,
        _prSyncService = prSyncService,
-       _refreshInterval = refreshInterval;
+       _settingsService = settingsService;
 
   void start() {
-    if (_subscription != null || _disposed) return;
+    if (_started || _disposed) return;
+    _started = true;
+    _refreshInterval = Duration(seconds: _settingsService.currentSettings.intervalSeconds);
 
-    _subscription = _tracker.changes.listen(
-      (change) => _handleChange(change: change),
-      onError: (Object error, StackTrace _) {
-        if (_disposed) return;
-        Log.w(
-          "Viewed-project change tracking failed unexpectedly",
-          _PrivacySafeViewedProjectRefreshException(cause: error),
-        );
-      },
-    );
+    _tracker.changes
+        .listen(
+          (change) => _handleChange(change: change),
+          onError: (Object error, StackTrace _) {
+            if (_disposed) return;
+            Log.w(
+              "Viewed-project change tracking failed unexpectedly",
+              _PrivacySafeViewedProjectRefreshException(cause: error),
+            );
+          },
+        )
+        .addTo(_subscriptions);
+    _settingsService.changes
+        .listen(
+          (settings) => _handleIntervalChange(intervalSeconds: settings.intervalSeconds),
+          onError: (Object error, StackTrace stackTrace) {
+            if (_disposed) return;
+            Log.w(
+              "Pull request refresh settings changes failed unexpectedly",
+              _PrivacySafePullRequestRefreshSettingsException(cause: error),
+              stackTrace,
+            );
+          },
+        )
+        .addTo(_subscriptions);
     final activeProjectIds = _tracker.activeProjectIds;
     if (activeProjectIds.isNotEmpty) {
       _admitRefresh(projectIds: activeProjectIds);
     }
+  }
+
+  void _handleIntervalChange({required int intervalSeconds}) {
+    if (_disposed) return;
+    _refreshInterval = Duration(seconds: intervalSeconds);
+    if (_timer == null) return;
+    _armTimer();
   }
 
   void _handleChange({required ProjectViewChange change}) {
@@ -116,8 +144,7 @@ class ViewedProjectPrRefreshListener {
   Future<void> _dispose() async {
     _disposed = true;
     _cancelSchedule();
-    await _subscription?.cancel();
-    _subscription = null;
+    await _subscriptions.cancel();
     await Future.wait(List<Future<void>>.of(_activeRefreshes));
   }
 }
@@ -129,4 +156,13 @@ final class _PrivacySafeViewedProjectRefreshException implements Exception {
 
   @override
   String toString() => "ViewedProjectRefreshException";
+}
+
+final class _PrivacySafePullRequestRefreshSettingsException implements Exception {
+  final Object cause;
+
+  const _PrivacySafePullRequestRefreshSettingsException({required this.cause});
+
+  @override
+  String toString() => "PullRequestRefreshSettingsException";
 }

@@ -4,12 +4,12 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `d38d47939e621f60077d75545e00966401e16ccf`
-- **Series state:** Steps 1/9, 2.a–2.c/9, 3/9, and 4/9 merged; Step 5 is in progress
-- **Current step:** Step 5/9 — multi-device view scheduling
+  `42161a53b8b76268d3a94157e200d07418dc880b`
+- **Series state:** Steps 1/9, 2.a–2.c/9, 3/9, 4/9, and 5/9 merged; Step 6 is in progress
+- **Current step:** Step 6/9 — bridge cadence settings
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Next action:** commit and open the verified Step 5 implementation PR
+- **Next action:** commit and open the verified Step 6 implementation PR
 
 ## Existing Baseline
 
@@ -45,8 +45,8 @@
 | [x] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | [PR #678](https://github.com/sesori-ai/sesori_apps_monorepo/pull/678) merged as `d13cc8ca` |
 | [x] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 3,100–3,500 | [PR #685](https://github.com/sesori-ai/sesori_apps_monorepo/pull/685) merged as `f6ec9e9d` |
 | [x] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 4,000–4,200 | [PR #686](https://github.com/sesori-ai/sesori_apps_monorepo/pull/686) merged as `3bbb1e8e` |
-| [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Current and unblocked; implementation complete locally, architecture review/PR pending |
-| [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Blocked on Step 5 merge |
+| [x] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | [PR #692](https://github.com/sesori-ai/sesori_apps_monorepo/pull/692) merged as `42161a53` |
+| [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Current; implementation, verification, and architecture review complete |
 | [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Blocked on Step 6 merge |
 | [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
 | [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8 merge |
@@ -89,10 +89,8 @@
 
 ## Current Drift and Open Work
 
-- Latest audited `main`: `d38d4793`, including Step 4 merged as `3bbb1e8e`, the
-  repository-rename hotfix, and unrelated client haptics. The hotfix accepts a
-  redirected canonical GitHub response while retaining local remote scope, and
-  does not overlap connection presence or scheduling ownership.
+- Latest audited `main`: `42161a53`, including Step 5 merged from PR #692. No
+  later drift affects the reviewed Step 6 settings architecture.
 - Drift schema: v13 on `main`; Step 4 leaves the merged schema and migration
   unchanged.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
@@ -350,6 +348,28 @@
   admitted refresh before `PrSyncService` teardown, and the new tracker moved
   from the legacy nested bridge path to the current top-level service layer.
   Both findings were applied and, per review rules, were not re-reviewed.
+- **Step 6/9 implementation:** `BridgeSettings` now persists a validated
+  15–3,600-second PR refresh interval, repairs missing/invalid startup values to
+  30, and exposes one repository-owned serialized mutation seam and committed
+  settings stream. Plugin writers use that seam. Shared typed GET/PATCH/error
+  contracts back `/settings/pull-request-refresh`; the focused service persists
+  committed values and the viewed-project listener rearms pending timers live.
+- **Step 6/9 compatibility and data:** The route and shared contracts are
+  additive, with no database change. Manual JSON edits remain restart-scoped;
+  older clients do not call the new route.
+- **Step 6/9 cleanup:** Removed the hard-coded listener cadence and direct
+  `saveSettings` writer. The plugin-local tail remains because it also orders
+  plugin response publication and bridge-identity failure semantics.
+- **Step 6/9 analytics:** No event; this bridge setting does not answer a current
+  activation/retention decision, and the approved plan excludes new analytics.
+- **Step 6/9 verification:** Shared codegen, 18 focused bridge tests added, all
+  357 shared tests, all 2,364 bridge app tests, both fatal-info analyzers, and
+  `git diff --check` pass. The implementation remains within its 1,000–1,500
+  changed-line target.
+- **Step 6/9 architecture review:** `aristotle-impl-review` found two issues.
+  The service now suppresses unrelated whole-settings changes, and the runtime
+  runner now owns repository disposal across early startup exits. Both findings
+  were applied and, per review rules, were not re-reviewed.
 
 ## Findings and Plan Deltas
 

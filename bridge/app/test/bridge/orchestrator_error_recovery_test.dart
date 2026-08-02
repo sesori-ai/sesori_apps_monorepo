@@ -26,11 +26,12 @@ void main() {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final pluginRuntime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode"]);
+    final bridgeSettingsRepository = createTestBridgeSettingsRepository();
     final lifecycleService =
         PluginLifecycleService(
             lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
             preferredDefaultPluginId: legacyMissingPluginId,
-            bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+            bridgeSettingsRepository: bridgeSettingsRepository,
             idleTimerScheduler: const PluginIdleTimerScheduler(),
             bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
           )
@@ -68,6 +69,7 @@ void main() {
       legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
       pluginRuntime: pluginRuntime,
+      bridgeSettingsRepository: bridgeSettingsRepository,
       clock: const ServerClock(),
       database: database,
       httpClient: httpClient,
@@ -141,6 +143,7 @@ void main() {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
       httpClient: httpClient,
@@ -192,6 +195,7 @@ void main() {
         legacyMissingPluginId: plugin.id,
         pluginLifecycleService: lifecycleService,
         pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+        bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
         clock: const ServerClock(),
         database: database,
         httpClient: httpClient,
@@ -308,6 +312,7 @@ class _TestHarness {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
       httpClient: httpClient,

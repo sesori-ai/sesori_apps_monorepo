@@ -57,6 +57,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     legacyMissingPluginId: plugin.id,
     pluginLifecycleService: lifecycleService,
     pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+    bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
     clock: const ServerClock(),
     database: db,
     httpClient: httpClient,

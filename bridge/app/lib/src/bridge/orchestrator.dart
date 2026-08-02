@@ -33,6 +33,7 @@ import "../push/push_notification_client.dart";
 import "../push/push_notification_content_builder.dart";
 import "../push/push_rate_limiter.dart";
 import "../push/push_session_state_tracker.dart";
+import "../repositories/bridge_settings_repository.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
 import "../routing/cancel_catalog_import_handler.dart";
@@ -40,13 +41,16 @@ import "../routing/get_catalog_import_statuses_handler.dart";
 import "../routing/get_plugin_management_handler.dart";
 import "../routing/get_plugin_setup_handler.dart";
 import "../routing/get_plugins_handler.dart";
+import "../routing/get_pull_request_refresh_settings_handler.dart";
 import "../routing/patch_plugin_idle_timeout_handler.dart";
+import "../routing/patch_pull_request_refresh_settings_handler.dart";
 import "../routing/post_plugin_lifecycle_command_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/catalog_import_service.dart";
 import "../services/plugin_lifecycle_service.dart";
 import "../services/project_view_tracker.dart";
+import "../services/pull_request_refresh_settings_service.dart";
 import "../version.dart";
 import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
@@ -153,6 +157,7 @@ class Orchestrator {
   final String _legacyMissingPluginId;
   final PluginLifecycleService _pluginLifecycleService;
   final PluginRuntime _pluginRuntime;
+  final BridgeSettingsRepository _bridgeSettingsRepository;
   final ServerClock _clock;
   final AppDatabase _database;
   final http.Client _httpClient;
@@ -171,6 +176,7 @@ class Orchestrator {
     required String legacyMissingPluginId,
     required PluginLifecycleService pluginLifecycleService,
     required PluginRuntime pluginRuntime,
+    required BridgeSettingsRepository bridgeSettingsRepository,
     required ServerClock clock,
     required AppDatabase database,
     required http.Client httpClient,
@@ -188,6 +194,7 @@ class Orchestrator {
        _legacyMissingPluginId = legacyMissingPluginId,
        _pluginLifecycleService = pluginLifecycleService,
        _pluginRuntime = pluginRuntime,
+       _bridgeSettingsRepository = bridgeSettingsRepository,
        _clock = clock,
        _database = database,
        _httpClient = httpClient,
@@ -313,10 +320,13 @@ class Orchestrator {
       sessionRepository: sessionRepository,
       clock: const Clock(),
     );
+    final pullRequestRefreshSettingsService = PullRequestRefreshSettingsService(
+      bridgeSettingsRepository: _bridgeSettingsRepository,
+    );
     final viewedProjectPrRefreshListener = ViewedProjectPrRefreshListener(
       tracker: projectViewTracker,
       prSyncService: prSyncService,
-      refreshInterval: const Duration(seconds: 30),
+      settingsService: pullRequestRefreshSettingsService,
     );
     final projectActivityService = ProjectActivityService(
       projectRepository: projectRepository,
@@ -463,6 +473,8 @@ class Orchestrator {
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
+        GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
+        PatchPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),

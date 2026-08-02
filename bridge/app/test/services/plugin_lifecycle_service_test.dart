@@ -2077,12 +2077,16 @@ class _MutableBridgeSettingsRepository implements BridgeSettingsRepository {
   }
 
   @override
-  Future<void> saveSettings({required BridgeSettings settings}) async {
+  Future<BridgeSettings> mutateSettings({
+    required BridgeSettings Function({required BridgeSettings current}) mutation,
+  }) async {
+    loadCalls++;
+    final updated = mutation(current: settings);
     if (!saveStarted.isCompleted) saveStarted.complete();
     await saveGate?.future;
     final error = saveError;
     if (error != null) throw error;
-    this.settings = settings;
+    return settings = updated;
   }
 
   @override

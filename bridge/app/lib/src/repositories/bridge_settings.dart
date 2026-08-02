@@ -1,6 +1,9 @@
 import '../updater/foundation/release_track.dart';
 
 const int defaultPluginIdleTimeoutMins = 10;
+const int defaultPullRequestRefreshIntervalSeconds = 30;
+const int minimumPullRequestRefreshIntervalSeconds = 15;
+const int maximumPullRequestRefreshIntervalSeconds = 3600;
 
 enum SleepPreventionMode {
   off,
@@ -183,11 +186,15 @@ class BridgeSettings {
   /// Which release channel the auto-updater follows.
   final ReleaseTrack releaseTrack;
 
+  /// Polling cadence while at least one client views a project.
+  final int pullRequestRefreshIntervalSeconds;
+
   const BridgeSettings({
     this.sleepPrevention = SleepPreventionMode.always,
     this.yolo = false,
     this.plugins = const BridgePluginSettings(),
     this.releaseTrack = ReleaseTrack.stable,
+    this.pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
   });
 
   factory BridgeSettings.fromJson(Map<String, dynamic> json) {
@@ -198,6 +205,10 @@ class BridgeSettings {
           ? BridgePluginSettings.fromJson(rawValue: json['plugins'])
           : const BridgePluginSettings(),
       releaseTrack: _parseReleaseTrack(json['releaseTrack']),
+      pullRequestRefreshIntervalSeconds: _parsePullRequestRefreshInterval(
+        isPresent: json.containsKey('pullRequestRefreshIntervalSeconds'),
+        rawValue: json['pullRequestRefreshIntervalSeconds'],
+      ),
     );
   }
 
@@ -209,6 +220,7 @@ class BridgeSettings {
       },
       'yolo': yolo,
       'releaseTrack': releaseTrack.wireValue,
+      'pullRequestRefreshIntervalSeconds': pullRequestRefreshIntervalSeconds,
       if (!plugins.isEmpty) 'plugins': plugins.toJson(),
     };
   }
@@ -218,12 +230,14 @@ class BridgeSettings {
     bool? yolo,
     BridgePluginSettings? plugins,
     ReleaseTrack? releaseTrack,
+    int? pullRequestRefreshIntervalSeconds,
   }) {
     return BridgeSettings(
       sleepPrevention: sleepPrevention ?? this.sleepPrevention,
       yolo: yolo ?? this.yolo,
       plugins: plugins ?? this.plugins,
       releaseTrack: releaseTrack ?? this.releaseTrack,
+      pullRequestRefreshIntervalSeconds: pullRequestRefreshIntervalSeconds ?? this.pullRequestRefreshIntervalSeconds,
     );
   }
 
@@ -238,6 +252,16 @@ class BridgeSettings {
   static ReleaseTrack _parseReleaseTrack(Object? rawValue) {
     return ReleaseTrack.fromWire(rawValue is String ? rawValue : null);
   }
+
+  static int _parsePullRequestRefreshInterval({required bool isPresent, required Object? rawValue}) {
+    if (!isPresent) return defaultPullRequestRefreshIntervalSeconds;
+    if (rawValue is! int ||
+        rawValue < minimumPullRequestRefreshIntervalSeconds ||
+        rawValue > maximumPullRequestRefreshIntervalSeconds) {
+      throw const PullRequestRefreshIntervalFormatException();
+    }
+    return rawValue;
+  }
 }
 
 class PluginSettingsFormatException extends FormatException {
@@ -249,4 +273,12 @@ class PluginIdleTimeoutFormatException extends PluginSettingsFormatException {
 
   PluginIdleTimeoutFormatException({required this.entryName})
     : super('"plugins.$entryName.idleTimeoutMins" must be an integer');
+}
+
+class PullRequestRefreshIntervalFormatException extends FormatException {
+  const PullRequestRefreshIntervalFormatException()
+    : super(
+        '"pullRequestRefreshIntervalSeconds" must be an integer between '
+        '$minimumPullRequestRefreshIntervalSeconds and $maximumPullRequestRefreshIntervalSeconds',
+      );
 }

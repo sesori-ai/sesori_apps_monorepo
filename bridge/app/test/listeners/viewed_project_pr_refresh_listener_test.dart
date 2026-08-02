@@ -5,7 +5,9 @@ import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/listeners/viewed_project_pr_refresh_listener.dart";
 import "package:sesori_bridge/src/services/project_view_tracker.dart";
+import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -106,6 +108,44 @@ void main() {
         expect(harness.service.calls, hasLength(2));
         async.elapse(const Duration(seconds: 1));
         expect(harness.service.calls, hasLength(3));
+        _disposeHarness(harness: harness, async: async);
+      });
+    });
+
+    test("a committed interval change cancels and rearms the pending timer", () {
+      fakeAsync((async) {
+        final harness = _Harness();
+        harness.listener.start();
+        harness.tracker.setViewing(connID: 1, projectId: "project-x");
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 10));
+
+        harness.settingsService.setInterval(intervalSeconds: 15);
+        async.elapse(const Duration(seconds: 14));
+        expect(harness.service.calls, hasLength(1));
+
+        async.elapse(const Duration(seconds: 1));
+        expect(harness.service.calls, hasLength(2));
+        _disposeHarness(harness: harness, async: async);
+      });
+    });
+
+    test("an interval change during refresh applies when completion arms the timer", () {
+      fakeAsync((async) {
+        final harness = _Harness()..service.completeImmediately = false;
+        harness.listener.start();
+        harness.tracker.setViewing(connID: 1, projectId: "project-x");
+
+        harness.settingsService.setInterval(intervalSeconds: 15);
+        async.elapse(const Duration(minutes: 1));
+        expect(harness.service.calls, hasLength(1));
+
+        harness.service.complete(callIndex: 0);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 14));
+        expect(harness.service.calls, hasLength(1));
+        async.elapse(const Duration(seconds: 1));
+        expect(harness.service.calls, hasLength(2));
         _disposeHarness(harness: harness, async: async);
       });
     });
@@ -238,6 +278,7 @@ void main() {
       harness.tracker.setViewing(connID: 2, projectId: "project-y");
       await Future<void>.delayed(Duration.zero);
       expect(harness.service.calls, hasLength(1));
+      await harness.settingsService.dispose();
       await harness.tracker.dispose();
     });
   });
@@ -246,16 +287,40 @@ void main() {
 class _Harness {
   final ProjectViewTracker tracker = ProjectViewTracker();
   final _FakePrSyncService service = _FakePrSyncService();
+  final _FakePullRequestRefreshSettingsService settingsService = _FakePullRequestRefreshSettingsService();
   late final ViewedProjectPrRefreshListener listener = ViewedProjectPrRefreshListener(
     tracker: tracker,
     prSyncService: service,
-    refreshInterval: const Duration(seconds: 30),
+    settingsService: settingsService,
   );
 
   Future<void> dispose() async {
     await listener.dispose();
+    await settingsService.dispose();
     await tracker.dispose();
   }
+}
+
+class _FakePullRequestRefreshSettingsService implements PullRequestRefreshSettingsService {
+  final StreamController<PullRequestRefreshSettingsResponse> _changes =
+      StreamController<PullRequestRefreshSettingsResponse>.broadcast(sync: true);
+  PullRequestRefreshSettingsResponse _current = const PullRequestRefreshSettingsResponse(intervalSeconds: 30);
+
+  @override
+  PullRequestRefreshSettingsResponse get currentSettings => _current;
+
+  @override
+  Stream<PullRequestRefreshSettingsResponse> get changes => _changes.stream;
+
+  void setInterval({required int intervalSeconds}) {
+    _current = PullRequestRefreshSettingsResponse(intervalSeconds: intervalSeconds);
+    _changes.add(_current);
+  }
+
+  Future<void> dispose() => _changes.close();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakePrSyncService implements PrSyncService {

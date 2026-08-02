@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
@@ -11,11 +12,19 @@ class BridgeSettingsRepository {
   static const JsonEncoder _jsonEncoder = JsonEncoder.withIndent('  ');
 
   final BridgeSettingsApi _api;
+  final StreamController<BridgeSettingsChange> _settingsChanges = StreamController<BridgeSettingsChange>.broadcast(
+    sync: true,
+  );
   BridgeSettings? _currentSettings;
+  Future<void> _mutationTail = Future<void>.value();
+  Future<void>? _disposeFuture;
+  bool _disposed = false;
 
   BridgeSettingsRepository({required BridgeSettingsApi api}) : _api = api;
 
   String get configFilePath => _api.configFilePath;
+
+  Stream<BridgeSettingsChange> get settingsChanges => _settingsChanges.stream;
 
   BridgeSettings get currentSettings {
     final settings = _currentSettings;
@@ -41,8 +50,8 @@ class BridgeSettingsRepository {
     final json = jsonDecodeMap(storedConfig);
     final parsed = _parseSettings(json);
     final settings = parsed.settings;
-    if (parsed.idleTimeoutErrors.isNotEmpty) {
-      for (final error in parsed.idleTimeoutErrors) {
+    if (parsed.repairErrors.isNotEmpty || parsed.missingPullRequestRefreshInterval) {
+      for (final error in parsed.repairErrors) {
         Log.w('[bridge-settings] invalid config at $configFilePath: $error');
       }
       try {
@@ -55,34 +64,68 @@ class BridgeSettingsRepository {
     return settings;
   }
 
-  Future<void> saveSettings({required BridgeSettings settings}) async {
-    await _api.writeConfig(_jsonEncoder.convert(settings.toJson()));
-    _currentSettings = settings;
+  Future<BridgeSettings> mutateSettings({
+    required BridgeSettings Function({required BridgeSettings current}) mutation,
+  }) {
+    if (_disposed) return Future<BridgeSettings>.error(StateError('Bridge settings repository has been disposed.'));
+
+    final completer = Completer<BridgeSettings>();
+    _mutationTail = _mutationTail.then((_) async {
+      try {
+        final current = _currentSettings ?? await loadSettings();
+        final updated = mutation(current: current);
+        if (identical(updated, current)) {
+          completer.complete(current);
+          return;
+        }
+        await _api.writeConfig(_jsonEncoder.convert(updated.toJson()));
+        _currentSettings = updated;
+        _settingsChanges.add(BridgeSettingsChange(previous: current, current: updated));
+        completer.complete(updated);
+      } on Object catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    return completer.future;
   }
 
   Future<void> updateReleaseTrack({required ReleaseTrack track}) async {
-    final current = await loadSettings();
-    await saveSettings(settings: current.copyWith(releaseTrack: track));
+    await mutateSettings(mutation: ({required current}) => current.copyWith(releaseTrack: track));
   }
 
   Future<void> updateYolo({required bool enabled}) async {
-    final current = await loadSettings();
-    await saveSettings(settings: current.copyWith(yolo: enabled));
+    await mutateSettings(mutation: ({required current}) => current.copyWith(yolo: enabled));
   }
 
   Future<BridgeSettings> updatePluginDisabled({required String pluginId, required bool disabled}) async {
-    final current = await loadSettings();
-    final updated = current.copyWith(
-      plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
+    return mutateSettings(
+      mutation: ({required current}) => current.copyWith(
+        plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
+      ),
     );
-    await saveSettings(settings: updated);
-    return updated;
   }
 
-  ({BridgeSettings settings, List<PluginIdleTimeoutFormatException> idleTimeoutErrors}) _parseSettings(
+  Future<void> dispose() => _disposeFuture ??= _dispose();
+
+  Future<void> _dispose() async {
+    _disposed = true;
+    await _mutationTail;
+    await _settingsChanges.close();
+  }
+
+  ({
+    BridgeSettings settings,
+    List<FormatException> repairErrors,
+    bool missingPullRequestRefreshInterval,
+  })
+  _parseSettings(
     Map<String, dynamic> json,
   ) {
     final repaired = Map<String, dynamic>.of(json);
+    final missingPullRequestRefreshInterval = !repaired.containsKey('pullRequestRefreshIntervalSeconds');
+    if (missingPullRequestRefreshInterval) {
+      repaired['pullRequestRefreshIntervalSeconds'] = defaultPullRequestRefreshIntervalSeconds;
+    }
     final rawPlugins = repaired['plugins'];
     if (rawPlugins is Map) {
       repaired['plugins'] = <String, dynamic>{
@@ -93,10 +136,14 @@ class BridgeSettingsRepository {
                 : entry.value,
       };
     }
-    final errors = <PluginIdleTimeoutFormatException>[];
+    final errors = <FormatException>[];
     while (true) {
       try {
-        return (settings: BridgeSettings.fromJson(repaired), idleTimeoutErrors: List.unmodifiable(errors));
+        return (
+          settings: BridgeSettings.fromJson(repaired),
+          repairErrors: List.unmodifiable(errors),
+          missingPullRequestRefreshInterval: missingPullRequestRefreshInterval,
+        );
       } on PluginIdleTimeoutFormatException catch (error) {
         final plugins = repaired['plugins'];
         if (plugins is! Map<String, dynamic>) rethrow;
@@ -105,7 +152,17 @@ class BridgeSettingsRepository {
         entry.remove('idleTimeoutMins');
         if (entry.isEmpty && error.entryName != 'default') plugins.remove(error.entryName);
         errors.add(error);
+      } on PullRequestRefreshIntervalFormatException catch (error) {
+        repaired['pullRequestRefreshIntervalSeconds'] = defaultPullRequestRefreshIntervalSeconds;
+        errors.add(error);
       }
     }
   }
+}
+
+class BridgeSettingsChange {
+  final BridgeSettings previous;
+  final BridgeSettings current;
+
+  const BridgeSettingsChange({required this.previous, required this.current});
 }

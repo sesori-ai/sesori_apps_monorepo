@@ -10,6 +10,7 @@ import "plugin_runtime_test_support.dart";
 import "test_helpers.dart";
 
 final Expando<PluginRuntime> _runtimes = Expando<PluginRuntime>();
+final Expando<BridgeSettingsRepository> _settingsRepositories = Expando<BridgeSettingsRepository>();
 
 const defaultManagementCapabilities = <PluginControlCapability>{
   PluginControlCapability.lifecycle,
@@ -27,11 +28,12 @@ Future<PluginLifecycleService> createPluginLifecycleService({
   required List<BridgePluginApi> plugins,
 }) async {
   final runtime = createTestPluginRuntime(plugins: plugins);
+  final settingsRepository = createTestBridgeSettingsRepository();
   final service =
       PluginLifecycleService(
           lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
           preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+          bridgeSettingsRepository: settingsRepository,
           idleTimerScheduler: const PluginIdleTimerScheduler(),
           bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
         )
@@ -52,6 +54,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           setupById: {for (final plugin in plugins) plugin.id: const PluginSetupReady()},
         );
   _runtimes[service] = runtime;
+  _settingsRepositories[service] = settingsRepository;
   await Future<void>.delayed(Duration.zero);
   return service;
 }
@@ -59,6 +62,12 @@ Future<PluginLifecycleService> createPluginLifecycleService({
 BridgeSettingsRepository createTestBridgeSettingsRepository({
   BridgeSettings settings = const BridgeSettings(),
 }) => _TestBridgeSettingsRepository(settings: settings);
+
+BridgeSettingsRepository settingsRepositoryForLifecycleService({required PluginLifecycleService service}) {
+  final repository = _settingsRepositories[service];
+  if (repository == null) throw StateError("No test bridge settings repository is registered for this service.");
+  return repository;
+}
 
 Future<void> activateTestPlugin({
   required PluginLifecycleService service,
@@ -88,12 +97,20 @@ class _TestBridgeSettingsRepository implements BridgeSettingsRepository {
   BridgeSettings get currentSettings => settings;
 
   @override
+  Stream<BridgeSettingsChange> get settingsChanges => const Stream<BridgeSettingsChange>.empty();
+
+  @override
   Future<BridgeSettings> loadSettings() async => settings;
 
   @override
-  Future<void> saveSettings({required BridgeSettings settings}) async {
-    this.settings = settings;
+  Future<BridgeSettings> mutateSettings({
+    required BridgeSettings Function({required BridgeSettings current}) mutation,
+  }) async {
+    return settings = mutation(current: settings);
   }
+
+  @override
+  Future<void> dispose() async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

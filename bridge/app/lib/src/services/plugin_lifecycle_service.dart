@@ -324,21 +324,24 @@ class PluginLifecycleService {
     }
     return _withSettingsMutationTail(() async {
       _requireBridgeId();
-      final current = await _bridgeSettingsRepository.loadSettings();
-      final plugins = switch (request) {
-        PluginIdleTimeoutApplyAllRequest(:final idleTimeoutMins) => current.plugins.withDefaultIdleTimeout(
-          idleTimeoutMins: idleTimeoutMins,
-          clearOverridePluginIds: _pluginIdsSupporting(capability: PluginControlCapability.idleTimeout),
-        ),
-        PluginIdleTimeoutSetOverrideRequest(:final pluginId, :final idleTimeoutMins) =>
-          current.plugins.withPluginIdleTimeout(pluginId: pluginId, idleTimeoutMins: idleTimeoutMins),
-        PluginIdleTimeoutClearOverrideRequest(:final pluginId) => current.plugins.withPluginIdleTimeout(
-          pluginId: pluginId,
-          idleTimeoutMins: null,
-        ),
-      };
-      _requireBridgeId();
-      await _bridgeSettingsRepository.saveSettings(settings: current.copyWith(plugins: plugins));
+      await _bridgeSettingsRepository.mutateSettings(
+        mutation: ({required current}) {
+          final plugins = switch (request) {
+            PluginIdleTimeoutApplyAllRequest(:final idleTimeoutMins) => current.plugins.withDefaultIdleTimeout(
+              idleTimeoutMins: idleTimeoutMins,
+              clearOverridePluginIds: _pluginIdsSupporting(capability: PluginControlCapability.idleTimeout),
+            ),
+            PluginIdleTimeoutSetOverrideRequest(:final pluginId, :final idleTimeoutMins) =>
+              current.plugins.withPluginIdleTimeout(pluginId: pluginId, idleTimeoutMins: idleTimeoutMins),
+            PluginIdleTimeoutClearOverrideRequest(:final pluginId) => current.plugins.withPluginIdleTimeout(
+              pluginId: pluginId,
+              idleTimeoutMins: null,
+            ),
+          };
+          _requireBridgeId();
+          return current.copyWith(plugins: plugins);
+        },
+      );
       _syncIdleTimers(_lifecycleRepository.snapshot);
       _publishManagementIfChanged();
       return _managementSnapshotAfterMutation;
@@ -527,12 +530,12 @@ class PluginLifecycleService {
 
   Future<void> _persistPluginDisabled({required String pluginId, required bool disabled}) {
     return _withSettingsMutationTail(() async {
-      final current = await _bridgeSettingsRepository.loadSettings();
-      if (current.plugins.isDisabled(pluginId: pluginId) == disabled) return;
-      await _bridgeSettingsRepository.saveSettings(
-        settings: current.copyWith(
-          plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
-        ),
+      await _bridgeSettingsRepository.mutateSettings(
+        mutation: ({required current}) => current.plugins.isDisabled(pluginId: pluginId) == disabled
+            ? current
+            : current.copyWith(
+                plugins: current.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
+              ),
       );
     });
   }
