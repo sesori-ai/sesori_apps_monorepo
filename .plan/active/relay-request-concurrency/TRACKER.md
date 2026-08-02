@@ -9,11 +9,10 @@
   [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) and correction
   [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688), plus Step 2/10
   [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690), merged
-- **Current step:** Step 3/10 implemented and ready for review on
-  `plan-parallel-requests`; PR link pending
+- **Current step:** Step 3/10 PR
+  [#696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) open
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** commit, push, and open the Step 3 PR; Step 4 remains blocked
-  until Step 3 is delivered and merged
+- **Next action:** review and merge Step 3; Step 4 remains blocked until then
 
 ## Incident Evidence
 
@@ -92,7 +91,7 @@
 |---|---|---|---|---:|---|
 | [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
 | [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged as `fdc8ad67` with 1,552 changed lines |
-| [ ] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Implemented and verified from `fdc8ad67`; PR link pending |
+| [ ] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) open from `fdc8ad67` |
 | [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
 | [ ] | 6/10 | `relay-request-concurrency-session-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Blocked on Step 5 merge |
@@ -271,5 +270,5 @@
   `dart analyze --fatal-infos` from `bridge/app` and `git diff --check` pass.
 - **Step 3/10 architecture review:** `aristotle-impl-review` approved all tracked
   and untracked Step 3 changes from `fdc8ad67` with no blocking findings.
-- **Step 3/10 local delivery:** actual change size is 681 lines before recording
-  the PR link; the owner-provided branch/worktree are reused as required.
+- **Step 3/10 delivery:** [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696)
+  is open at 680 changed lines; the owner-provided branch/worktree are reused.
