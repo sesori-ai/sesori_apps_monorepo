@@ -89,7 +89,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
-| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open at 1,523 changed lines |
+| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open at 1,547 changed lines |
 | [ ] | 3/10 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Blocked on Step 2 merge |
 | [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
@@ -224,7 +224,7 @@
 - **Step 2/10 verification:** 87 focused router/restart/service/dispatcher,
   debug, encrypted relay ordering/graceful-close, runtime-composition, and
   diagnostic capture tests passed. `dart analyze --fatal-infos` from `bridge/app` and
-  `git diff --check` passed. Actual change size: 1,523 lines; PR
+  `git diff --check` passed. Actual change size: 1,547 lines; PR
   [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open.
 - **Step 2/10 architecture review:** `aristotle-impl-review` rejected one valid
   service-to-routing dependency. Moving `BridgeRestartDispatcher` and its test
@@ -239,7 +239,8 @@
 - **Step 2/10 owner logging direction:** local logs now retain useful caught
   errors, stack traces, paths, and connection/session/control identifiers. The
   plan and root `AGENTS.md` require selective removal only for known user data
-  without debugging value; broad precautionary suppression is no longer allowed.
+  without debugging value; the bridge logger now emits attached errors/stacks at
+  its default info threshold rather than hiding them below debug verbosity.
 - **Step 2/10 cap exception:** the owner's review-requested repo-wide logging
-  rule and matching plan/code corrections raised the PR 23 lines above the soft
+  rule and matching plan/code corrections raised the PR 47 lines above the soft
   cap; splitting them would leave this PR governed by contradictory diagnostics.

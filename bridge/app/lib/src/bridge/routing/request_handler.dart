@@ -40,7 +40,7 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
     } on ProjectNotFoundException {
       return buildErrorResponse(request, 404, "project not found");
     } on PluginOperationException catch (err, stackTrace) {
-      Log.w("$diagnosticLabel: upstream failure", err, stackTrace);
+      Log.w("${request.method} ${request.path}: upstream failure", err, stackTrace);
       return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
@@ -52,7 +52,7 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
         return err;
       }
     } catch (err, stackTrace) {
-      Log.w("$diagnosticLabel: handler failed", err, stackTrace);
+      Log.w("${request.method} ${request.path}: handler failed", err, stackTrace);
       return buildErrorResponse(request, 500, "Internal Server Error: $err");
     }
   }
@@ -103,7 +103,7 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
     } on ProjectNotFoundException {
       return buildErrorResponse(request, 404, "project not found");
     } on PluginOperationException catch (err, stackTrace) {
-      Log.w("$diagnosticLabel: upstream failure", err, stackTrace);
+      Log.w("${request.method} ${request.path}: upstream failure", err, stackTrace);
       return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
@@ -115,7 +115,7 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
         return err;
       }
     } catch (err, stackTrace) {
-      Log.w("$diagnosticLabel: handler failed", err, stackTrace);
+      Log.w("${request.method} ${request.path}: handler failed", err, stackTrace);
       return buildErrorResponse(request, 500, "Internal Server Error: $err");
     }
   }

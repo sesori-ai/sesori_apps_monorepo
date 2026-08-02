@@ -101,6 +101,8 @@ eagerly "just in case."
   internal contracts; update every in-repository consumer in lockstep instead.
 - A recovered failure that continues must remain observable. Do not add a
   redundant log when the error is rethrown or returned as an explicit failure.
+- A failure response sent to a remote client does not replace a useful local log
+  when only that log retains the original error, stack trace, or operation context.
 - Preserve diagnostically useful errors, stack traces, paths, identifiers, and
   operation context in local bridge and client logs. Logs are not submitted
   automatically; users choose whether to inspect, anonymize, and share them.
