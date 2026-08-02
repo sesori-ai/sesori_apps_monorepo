@@ -54,6 +54,35 @@ void main() {
       expect(source.maxConcurrentSelections, 1);
     });
 
+    test("deduplicates one GitHub target shared by multiple viewed projects", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: {
+          "/one": _githubTarget(branchName: "shared-branch"),
+          "/two": _githubTarget(branchName: "shared-branch"),
+        },
+      );
+      final pullRequests = _FakePullRequestRepository();
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+          "two": [_session(id: "two", projectId: "two", directory: "/two")],
+        },
+      );
+      addTearDown(service.dispose);
+
+      final outcome = await service.triggerRefresh(
+        projectIds: {"one", "two"},
+        refreshPolicy: PrRefreshPolicy.viewedProject,
+      );
+
+      expect(outcome, PrRefreshOutcome.completed);
+      expect(source.selectionCalls, hasLength(1));
+      expect(source.selectionCalls.single, hasLength(1));
+      expect(pullRequests.replaceCalls.map((call) => call.projectId).toSet(), {"one", "two"});
+    });
+
     test("commits and emits local branch changes before unavailable GitHub work", () async {
       final source = _FakePrSource(
         targetsByDirectory: {"/one": _githubTarget(branchName: "feature/current")},
@@ -287,6 +316,38 @@ void main() {
       expect(await second, PrRefreshOutcome.completed);
     });
 
+    test("a viewed-project request after sealing gets a serialized covering follow-up", () async {
+      final firstSelection = Completer<void>();
+      final source = _FakePrSource(
+        targetsByDirectory: {"/one": _githubTarget(branchName: "branch-a")},
+        selectionBlocks: [firstSelection],
+      );
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
+      );
+      addTearDown(service.dispose);
+
+      final first = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.viewedProject,
+      );
+      await _waitFor(() => source.selectionCalls.length == 1);
+      final followUp = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.viewedProject,
+      );
+      firstSelection.complete();
+
+      expect(await first, PrRefreshOutcome.completed);
+      expect(await followUp, PrRefreshOutcome.completed);
+      expect(source.selectionCalls, hasLength(2));
+      expect(source.maxConcurrentSelections, 1);
+    });
+
     test("coalesces repeated background requests into an active project refresh", () async {
       final firstSelection = Completer<void>();
       final source = _FakePrSource(
@@ -422,6 +483,38 @@ void main() {
         refreshPolicy: PrRefreshPolicy.background,
       );
       expect(source.resolveCalls, hasLength(5));
+    });
+
+    test("viewed-project refresh bypasses the completed background debounce window", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: const {
+          "/local": PullRequestLocalBranchDirectoryTarget(branchName: "local"),
+        },
+      );
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "local": [_session(id: "local", projectId: "local", directory: "/local")],
+        },
+        debounceWindow: const Duration(minutes: 1),
+      );
+      addTearDown(service.dispose);
+
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.viewedProject,
+      );
+
+      expect(source.resolveCalls, hasLength(2));
     });
 
     test("shares and expires the gh capability cache", () async {

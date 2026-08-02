@@ -4,12 +4,12 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `f6ec9e9dc66782197a46261de3bcc002e261a5bd`
-- **Series state:** Steps 1/9, 2.a–2.c/9, and 3/9 merged; Step 4 is in review
-- **Current step:** Step 4/9 — current-branch request refresh
+  `d38d47939e621f60077d75545e00966401e16ccf`
+- **Series state:** Steps 1/9, 2.a–2.c/9, 3/9, and 4/9 merged; Step 5 is in progress
+- **Current step:** Step 5/9 — multi-device view scheduling
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Next action:** monitor Step 4 PR #686 and address CI/review feedback
+- **Next action:** commit and open the verified Step 5 implementation PR
 
 ## Existing Baseline
 
@@ -31,8 +31,9 @@
 - **Post-review drift:** `main` advanced through Harness settings, output-image
   plugin work, analytics documentation, bridge `--data-dir` expansion, and plan
   archival. The current tip is audited at `10c7afb9`; none changes this feature's
-  architecture or requested agent guidance, so metadata/path refresh did not
-  trigger another architecture review.
+  architecture or requested agent guidance. The implementation base is now the
+  repository-rename hotfix and unrelated client haptics at `d38d4793`; no plan
+  architecture changed.
 
 ## Delivery Steps
 
@@ -43,8 +44,8 @@
 | [x] | 2.b/9 | `session-pull-request-monitoring-scoped-pr-persistence` | `🚧 [session-pull-request-monitoring] feat(bridge): persist scoped PR selections [step 2.b/9]` | 9,800–10,800 | [PR #671](https://github.com/sesori-ai/sesori_apps_monorepo/pull/671) merged as `e6001fdc` |
 | [x] | 2.c/9 | `session-pull-request-monitoring-scoped-pr-reads` | `🚧 [session-pull-request-monitoring] feat(bridge): gate scoped PR reads [step 2.c/9]` | 1,200–1,700 | [PR #678](https://github.com/sesori-ai/sesori_apps_monorepo/pull/678) merged as `d13cc8ca` |
 | [x] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 3,100–3,500 | [PR #685](https://github.com/sesori-ai/sesori_apps_monorepo/pull/685) merged as `f6ec9e9d` |
-| [ ] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 4,000–4,200 | [PR #686](https://github.com/sesori-ai/sesori_apps_monorepo/pull/686) open; all valid feedback addressed, with rejected bot threads left for reviewer follow-up |
-| [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Blocked on Step 4 merge |
+| [x] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 4,000–4,200 | [PR #686](https://github.com/sesori-ai/sesori_apps_monorepo/pull/686) merged as `3bbb1e8e` |
+| [ ] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | Current and unblocked; implementation complete locally, architecture review/PR pending |
 | [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Blocked on Step 5 merge |
 | [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Blocked on Step 6 merge |
 | [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
@@ -88,9 +89,10 @@
 
 ## Current Drift and Open Work
 
-- Latest audited `main`: Step 4 branched from merged Step 3 at `f6ec9e9d`.
-  Intervening image-viewer work does not overlap this bridge current-branch
-  refresh scope.
+- Latest audited `main`: `d38d4793`, including Step 4 merged as `3bbb1e8e`, the
+  repository-rename hotfix, and unrelated client haptics. The hotfix accepts a
+  redirected canonical GitHub response while retaining local remote scope, and
+  does not overlap connection presence or scheduling ownership.
 - Drift schema: v13 on `main`; Step 4 leaves the merged schema and migration
   unchanged.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
@@ -312,6 +314,42 @@
   checkout change as its own typed target variant. Both were applied; per review
   rules, those corrections were not re-reviewed. All 13 bot threads were
   addressed in `a4016fa9` and resolved.
+- **Step 4/9 merge:** PR #686 merged as `3bbb1e8e`. Step 5 starts from current
+  `main` at `d38d4793`, which also contains the merged repository-rename hotfix
+  and unrelated client haptics.
+- **Step 5/9 implementation:** `ProjectViewTracker` owns full-state declarations
+  per physical relay connection, aggregate counts, immutable active-set changes,
+  release-one, relay-wide clear, empty/null normalization, and disposal fencing.
+  `ViewedProjectPrRefreshListener` immediately submits additions with the new
+  `viewedProject` policy, invalidates older completion admissions, and runs one
+  completion-based 30-second timer that snapshots the full active union. Empty
+  state cancels rearm; removal-only changes preserve the schedule; failed and
+  thrown refreshes retry after the interval, with thrown causes retained behind
+  a privacy-safe presentation.
+- **Step 5/9 lifecycle and policy:** `Orchestrator` accepts encrypted
+  `RelayProjectView`, releases one claim on `phone_disconnected`, clears all on
+  relay loss, and owns listener startup/teardown. `BridgeRuntime` disposes the
+  tracker. `PrRefreshPolicy.viewedProject` bypasses completed/background debounce
+  and receives a serialized covering follow-up under active work; existing
+  background coalescing and explicit behavior remain unchanged.
+- **Step 5/9 cleanup:** Keep both old-client request-driven refresh triggers and
+  `SessionViewTracker`: the former is required transport fallback and the latter
+  independently owns mark-seen/unseen semantics. No obsolete production path or
+  competing scheduler remains after routing the previously ignored shipped
+  project-view declaration.
+- **Step 5/9 analytics:** No event. This is passive freshness behavior, and its
+  project/repository identifiers are sensitive and unsuitable for analytics.
+- **Step 5/9 verification:** Dart formatting is applied. The tracker, listener,
+  sync-service, and encrypted orchestrator suites pass 48 focused tests; the
+  complete bridge app suite passes all 2,346 tests. `dart analyze --fatal-infos`
+  and `git diff --check` pass. The 1,113 changed lines, including
+  untracked files, remain within the planned 900–1,400 target, so `PLAN.md` is
+  unchanged.
+- **Step 5/9 architecture review:** `aristotle-impl-review` rejected the initial
+  working-tree scope with two findings. The listener now owns and drains every
+  admitted refresh before `PrSyncService` teardown, and the new tracker moved
+  from the legacy nested bridge path to the current top-level service layer.
+  Both findings were applied and, per review rules, were not re-reviewed.
 
 ## Findings and Plan Deltas
 
