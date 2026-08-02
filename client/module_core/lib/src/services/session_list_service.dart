@@ -60,6 +60,33 @@ class SessionListService {
     ]);
   }
 
+  /// Applies a `session.updated` catalog projection without treating its
+  /// identity-gated PR fields as authoritative absence.
+  ///
+  /// Project-scoped `sessions.updated` events trigger a REST refresh that owns
+  /// replacing or clearing PR metadata. Ordinary session updates may omit that
+  /// metadata, so they retain the last identity-gated snapshot instead.
+  List<Session> applySessionUpdatedEvent({
+    required Iterable<Session> sessions,
+    required Session session,
+  }) {
+    final currentSessions = sessions.toList();
+    Session? existing;
+    for (final candidate in currentSessions) {
+      if (candidate.id == session.id) {
+        existing = candidate;
+        break;
+      }
+    }
+    final merged = existing == null || session.pullRequest != null
+        ? session
+        : session.copyWith(
+            pullRequest: existing.pullRequest,
+            pullRequestHistory: existing.pullRequestHistory,
+          );
+    return upsertSession(sessions: currentSessions, session: merged);
+  }
+
   List<Session> removeSession({required Iterable<Session> sessions, required String sessionId}) {
     return _sortSessions(sessions.where((session) => session.id != sessionId));
   }

@@ -1243,6 +1243,60 @@ void main() {
       ],
     );
 
+    test("PR-free session.updated preserves REST PR data until sessions.updated refreshes it", () async {
+      const mergedPullRequest = PullRequestInfo(
+        number: 690,
+        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/690",
+        title: "Merged pull request",
+        state: PrState.merged,
+        mergeableStatus: PrMergeableStatus.unknown,
+        reviewDecision: PrReviewDecision.unknown,
+        checkStatus: PrCheckStatus.success,
+      );
+      final withPullRequest = testSession(id: "s1", title: "Original").copyWith(
+        pullRequest: mergedPullRequest,
+      );
+      final withoutPullRequest = testSession(id: "s1", title: "Updated");
+      final responses = <SessionListResponse>[
+        SessionListResponse(items: [withPullRequest]),
+        SessionListResponse(items: [withoutPullRequest]),
+      ];
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(responses.removeAt(0)));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      await cubit.stream.firstWhere(
+        (state) => state is SessionListLoaded && state.sessions.single.pullRequest == mergedPullRequest,
+      );
+      eventController.add(
+        SseEvent(
+          data: SesoriSseEvent.sessionUpdated(info: withoutPullRequest),
+        ),
+      );
+      final afterSessionUpdate =
+          await cubit.stream.firstWhere(
+                (state) => state is SessionListLoaded && state.sessions.single.title == "Updated",
+              )
+              as SessionListLoaded;
+      expect(afterSessionUpdate.sessions.single.pullRequest, mergedPullRequest);
+
+      eventController.add(
+        SseEvent(data: const SesoriSessionsUpdated(projectID: projectId)),
+      );
+      final afterAuthoritativeRefresh =
+          await cubit.stream.firstWhere(
+                (state) => state is SessionListLoaded && state.sessions.single.pullRequest == null,
+              )
+              as SessionListLoaded;
+      expect(afterAuthoritativeRefresh.sessions.single.pullRequest, isNull);
+    });
+
     blocTest<SessionListCubit, SessionListState>(
       "SSE session.updated timestamp reorders sessions",
       build: () {
