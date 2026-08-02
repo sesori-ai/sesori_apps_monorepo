@@ -87,7 +87,12 @@ class RequestRouter {
           body: error.toString(),
         ),
       );
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "${identity.diagnosticLabel}: routing failed for ${request.method} ${request.path}",
+        error,
+        stackTrace,
+      );
       return ResponseOnly(
         response: _failed(request: request, error: error),
       );
