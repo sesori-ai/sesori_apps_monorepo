@@ -4,14 +4,15 @@
 
 - **Plan slug:** `relay-request-concurrency`
 - **Status:** Reviewed — four architecture findings applied; revised plan not
-  re-reviewed; Step 1 PR pending
+  re-reviewed; Step 1 PR
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) open
 - **Plan date:** 2026-08-02
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at
   `f6ec9e9dc66782197a46261de3bcc002e261a5bd`
 - **Delivery:** one plan PR, five sequential implementation PRs, and one
   plan-retirement PR
-- **Plan PR:** pending
+- **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687)
 
 This document and `TRACKER.md` are the implementation authority for this
 series.

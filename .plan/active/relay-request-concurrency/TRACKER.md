@@ -5,10 +5,11 @@
 - **Plan slug:** `relay-request-concurrency`
 - **Implementation base:** `main` at
   `f6ec9e9dc66782197a46261de3bcc002e261a5bd`
-- **Series state:** Step 1/7 plan PR preparation
+- **Series state:** Step 1/7 plan PR
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) open
 - **Current step:** Step 1/7 — publish the durable plan
-- **Plan PR:** pending
-- **Next action:** validate the corrected reviewed plan and open the plan PR
+- **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687)
+- **Next action:** monitor plan PR checks/review and address valid feedback
 
 ## Incident Evidence
 
@@ -35,7 +36,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/7 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/7]` | 900–1,100; explicitly cap-exempt | Architecture findings applied; validating plan PR |
+| [ ] | 1/7 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/7]` | 900–1,100; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) open; architecture findings applied |
 | [ ] | 2/7 | `relay-request-concurrency-route-outcomes` | `⚙️ [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/7]` | 700–1,100 | Blocked on Step 1 merge |
 | [ ] | 3/7 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/7]` | 600–1,000 | Blocked on Step 2 merge |
 | [ ] | 4/7 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/7]` | 550–950 | Blocked on Step 3 merge |
@@ -110,3 +111,8 @@
   lifecycle/transport findings. All were applied directly; repository policy
   does not re-review direct corrections and no approval of the revised plan is
   claimed.
+- **Step 1/7 delivery:** opened plan PR
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 972
+  documentation-only changed lines. Exact titles/branches/step totals and
+  `git diff --check` passed; the user explicitly exempted this first
+  plan-containing PR from the 1,500-line soft cap.
