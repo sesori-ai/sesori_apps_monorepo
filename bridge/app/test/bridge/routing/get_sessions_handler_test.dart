@@ -1158,6 +1158,56 @@ void main() {
       }
     });
 
+    test("returns the original snapshot when timeout fallback enrichment stalls", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session one",
+          time: null,
+        ),
+      ];
+      sessionDao.setSession(_storedSession(currentBranchName: "feature/a"));
+      final fallbackBlockingRepository = _FallbackBlockingSessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        pullRequestRepository: pullRequestRepository,
+        persistenceDatabase: db,
+        initialBranchName: "feature/a",
+      );
+      final branchPersisted = Completer<void>();
+      final stalledRefresh = Completer<void>();
+      final timeoutHandler = GetSessionsHandler(
+        sessionRepository: fallbackBlockingRepository,
+        prSyncService: FakePrSyncService(
+          refreshAction: () async {
+            sessionDao.setSession(_storedSession(currentBranchName: "feature/b"));
+            branchPersisted.complete();
+            await stalledRefresh.future;
+          },
+        ),
+        prRefreshTimeout: const Duration(milliseconds: 40),
+      );
+
+      final result = await timeoutHandler
+          .handle(
+            makeRequest("POST", "/sessions"),
+            body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
+            pathParams: {},
+            queryParams: {},
+            fragment: null,
+          )
+          .timeout(const Duration(milliseconds: 500));
+
+      expect(branchPersisted.isCompleted, isTrue);
+      expect(fallbackBlockingRepository.fallbackEnrichmentStarted.isCompleted, isTrue);
+      expect(result.items.single.branchName, "feature/a");
+      expect(result.items.single.pullRequest, isNull);
+      expect(result.items.single.pullRequestHistory, isEmpty);
+    });
+
     test("returns the original PR-free snapshot when timeout fallback enrichment fails", () async {
       plugin.sessionsResult = const [
         PluginSession(
@@ -1462,6 +1512,53 @@ final class _FallbackFailingSessionRepository extends FakeSessionRepository {
     enrichmentAttempts++;
     if (enrichmentAttempts == 2) {
       throw StateError("fallback enrichment failed");
+    }
+    return super.enrichSessions(
+      sessions: sessions,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
+  }
+}
+
+final class _FallbackBlockingSessionRepository extends FakeSessionRepository {
+  final String initialBranchName;
+  final Completer<void> fallbackEnrichmentStarted = Completer<void>();
+  final Completer<List<Session>> _stalledFallback = Completer<List<Session>>();
+
+  _FallbackBlockingSessionRepository({
+    required super.plugin,
+    required super.sessionDao,
+    required super.pullRequestRepository,
+    required super.persistenceDatabase,
+    required this.initialBranchName,
+  });
+
+  @override
+  Future<List<Session>> getSessionsForProject({
+    required String projectId,
+    required int? start,
+    required int? limit,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
+    final sessions = await super.getSessionsForProject(
+      projectId: projectId,
+      start: start,
+      limit: limit,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
+    return [
+      for (final session in sessions) session.copyWith(branchName: initialBranchName),
+    ];
+  }
+
+  @override
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) {
+    if (verifiedGithubLogin == null) {
+      fallbackEnrichmentStarted.complete();
+      return _stalledFallback.future;
     }
     return super.enrichSessions(
       sessions: sessions,
