@@ -295,6 +295,107 @@ void main() {
       expect(ghCli.cursorCalls.map((requests) => requests.single.cursor), ["open-1", "open-2"]);
     });
 
+    test("accepts a canonical repository identity for a historical target", () async {
+      const historicalTarget = (
+        githubRepositoryIdentity: "sesori-ai/historical-name",
+        branchName: "feature/current",
+      );
+      const canonicalIdentity = "sesori-ai/current-name";
+      final createdAt = DateTime.utc(2026, 8, 1);
+      final ghCli = _FakeGhCliApi(
+        initialResponses: [
+          _batchResponse(
+            pages: [
+              _page(
+                repositoryIdentity: canonicalIdentity,
+                stateGroup: GhPullRequestStateGroup.open,
+                pullRequests: [
+                  _pullRequest(
+                    number: 30,
+                    createdAt: createdAt,
+                    state: PrState.open,
+                    isCrossRepository: true,
+                  ),
+                ],
+                hasNextPage: true,
+                endCursor: "open-1",
+              ),
+              _page(
+                repositoryIdentity: canonicalIdentity,
+                stateGroup: GhPullRequestStateGroup.terminal,
+                pullRequests: const [],
+              ),
+            ],
+          ),
+        ],
+        cursorResponses: [
+          _batchResponse(
+            pages: [
+              _page(
+                repositoryIdentity: canonicalIdentity,
+                stateGroup: GhPullRequestStateGroup.open,
+                pullRequests: [
+                  _pullRequest(
+                    number: 40,
+                    branch: "feature/other",
+                    createdAt: createdAt,
+                    state: PrState.open,
+                  ),
+                  _pullRequest(number: 7, createdAt: createdAt, state: PrState.open),
+                ],
+              ),
+            ],
+          ),
+        ],
+      );
+      final repository = _selectionRepository(ghCli: ghCli);
+
+      final outcome = await repository.selectPullRequests(
+        targets: const [historicalTarget],
+        expectedGithubLogin: _verifiedGithubLogin,
+      );
+
+      final selected = (outcome as PullRequestSelectionCompleted).selections.single as PullRequestTargetSelected;
+      expect(selected.target, historicalTarget);
+      expect(selected.number, 7);
+      final cursorTarget = ghCli.cursorCalls.single.single.target;
+      expect(cursorTarget.repositoryOwner, "sesori-ai");
+      expect(cursorTarget.repositoryName, "historical-name");
+      expect(cursorTarget.branchName, "feature/current");
+    });
+
+    test("rejects an empty returned repository identity", () async {
+      final ghCli = _FakeGhCliApi(
+        initialResponses: [
+          _batchResponse(
+            pages: [
+              _page(
+                repositoryIdentity: "",
+                stateGroup: GhPullRequestStateGroup.open,
+                pullRequests: const [],
+              ),
+              _page(stateGroup: GhPullRequestStateGroup.terminal, pullRequests: const []),
+            ],
+          ),
+        ],
+      );
+      final repository = _selectionRepository(ghCli: ghCli);
+
+      await expectLater(
+        repository.selectPullRequests(
+          targets: const [_selectionTarget],
+          expectedGithubLogin: _verifiedGithubLogin,
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            "message",
+            contains("repository identity"),
+          ),
+        ),
+      );
+    });
+
     test("rejects a repeated GraphQL cursor instead of looping", () async {
       final ghCli = _FakeGhCliApi(
         initialResponses: [
@@ -536,6 +637,7 @@ GhPullRequestBatchResponse _batchResponse({
 
 GhPullRequestCandidatePage _page({
   int requestIndex = 0,
+  String repositoryIdentity = _repositoryIdentity,
   required GhPullRequestStateGroup stateGroup,
   required List<GhPullRequest> pullRequests,
   bool hasNextPage = false,
@@ -544,7 +646,7 @@ GhPullRequestCandidatePage _page({
   return GhPullRequestCandidatePage(
     requestIndex: requestIndex,
     stateGroup: stateGroup,
-    repositoryIdentity: _repositoryIdentity,
+    repositoryIdentity: repositoryIdentity,
     connection: GhPullRequestConnection(
       nodes: pullRequests,
       pageInfo: GhPullRequestPageInfo(

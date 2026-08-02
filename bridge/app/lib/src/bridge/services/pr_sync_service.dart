@@ -13,7 +13,7 @@ import "../repositories/session_repository.dart";
 
 enum PrRefreshOutcome { completed, failed }
 
-enum PrRefreshPolicy { background, explicit }
+enum PrRefreshPolicy { background, explicit, viewedProject }
 
 typedef PullRequestRenderedChange = ({String projectId});
 

@@ -23,6 +23,7 @@ import "../listeners/session_binding_commit_listener.dart";
 import "../listeners/session_deletion_listener.dart";
 import "../listeners/session_options_changed_refresh_listener.dart";
 import "../listeners/session_options_creation_refresh_listener.dart";
+import "../listeners/viewed_project_pr_refresh_listener.dart";
 import "../push/completion_notifier.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
@@ -45,6 +46,7 @@ import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/catalog_import_service.dart";
 import "../services/plugin_lifecycle_service.dart";
+import "../services/project_view_tracker.dart";
 import "../version.dart";
 import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
@@ -140,6 +142,7 @@ typedef OrchestratorComposition = ({
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
+  ProjectViewTracker projectViewTracker,
 });
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -241,6 +244,7 @@ class Orchestrator {
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
     );
     final sessionViewTracker = SessionViewTracker();
+    final projectViewTracker = ProjectViewTracker();
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: SessionUnseenRepository(
         sessionDao: _database.sessionDao,
@@ -308,6 +312,11 @@ class Orchestrator {
       pullRequestRepository: pullRequestRepository,
       sessionRepository: sessionRepository,
       clock: const Clock(),
+    );
+    final viewedProjectPrRefreshListener = ViewedProjectPrRefreshListener(
+      tracker: projectViewTracker,
+      prSyncService: prSyncService,
+      refreshInterval: const Duration(seconds: 30),
     );
     final projectActivityService = ProjectActivityService(
       projectRepository: projectRepository,
@@ -551,8 +560,10 @@ class Orchestrator {
       failureReporter: _failureReporter,
       sessionRepository: sessionRepository,
       prSyncService: prSyncService,
+      viewedProjectPrRefreshListener: viewedProjectPrRefreshListener,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
+      projectViewTracker: projectViewTracker,
       projectActivityService: projectActivityService,
       permissionAutoApprovalService: permissionAutoApprovalService,
       sessionAbortService: sessionAbortService,
@@ -568,6 +579,7 @@ class Orchestrator {
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
+      projectViewTracker: projectViewTracker,
     );
   }
 
@@ -614,8 +626,10 @@ class OrchestratorSession {
   final StreamController<SesoriSseEvent> _localWireEventsController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
+  final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener;
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
+  final ProjectViewTracker _projectViewTracker;
   final SessionRepository _sessionRepository;
   final PermissionAutoApprovalService _permissionAutoApprovalService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
@@ -687,8 +701,10 @@ class OrchestratorSession {
     required FailureReporter failureReporter,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    required ViewedProjectPrRefreshListener viewedProjectPrRefreshListener,
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
+    required ProjectViewTracker projectViewTracker,
     required ProjectActivityService projectActivityService,
     required PermissionAutoApprovalService permissionAutoApprovalService,
     required SessionAbortService sessionAbortService,
@@ -719,8 +735,10 @@ class OrchestratorSession {
        _localWireEventsController = localWireEventsController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
+       _viewedProjectPrRefreshListener = viewedProjectPrRefreshListener,
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
+       _projectViewTracker = projectViewTracker,
        _sessionRepository = sessionRepository,
        _permissionAutoApprovalService = permissionAutoApprovalService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
@@ -770,6 +788,7 @@ class OrchestratorSession {
 
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
+    _viewedProjectPrRefreshListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
       () => _runLifecycle(readiness: readiness),
@@ -994,6 +1013,7 @@ class OrchestratorSession {
     await attempt(_completionListener.dispose);
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
+    await attempt(_viewedProjectPrRefreshListener.dispose);
     await attempt(_prSyncService.dispose);
     Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
@@ -1064,6 +1084,7 @@ class OrchestratorSession {
       // declarations so no session stays "watched" by a ghost connection.
       // Phones re-assert their current view on reconnect.
       _sessionViewTracker.clearAll();
+      _projectViewTracker.clearAll();
 
       if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
         Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
@@ -1642,6 +1663,7 @@ class OrchestratorSession {
               activePhones.remove(connID);
               _sseManager.removeSubscriber(connID);
               _sessionViewTracker.releaseConnection(connID: connID);
+              _projectViewTracker.releaseConnection(connID: connID);
           }
           break processMessage;
         }
@@ -1891,6 +1913,8 @@ class OrchestratorSession {
       case RelaySessionView(:final sessionId):
         Log.v("SessionView connID=$connID sessionId=$sessionId");
         _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
+      case RelayProjectView(:final projectId):
+        _projectViewTracker.setViewing(connID: connID, projectId: projectId);
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }
