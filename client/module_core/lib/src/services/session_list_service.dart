@@ -64,27 +64,21 @@ class SessionListService {
   /// identity-gated PR fields as authoritative absence.
   ///
   /// Project-scoped `sessions.updated` events trigger a REST refresh that owns
-  /// replacing or clearing PR metadata. Ordinary session updates may omit that
-  /// metadata, so they retain the last identity-gated snapshot instead.
+  /// replacing or clearing PR metadata. Ordinary session updates may omit
+  /// either field, so each omitted value retains its last identity-gated
+  /// snapshot instead.
   List<Session> applySessionUpdatedEvent({
     required Iterable<Session> sessions,
+    required Session existingSession,
     required Session session,
   }) {
-    final currentSessions = sessions.toList();
-    Session? existing;
-    for (final candidate in currentSessions) {
-      if (candidate.id == session.id) {
-        existing = candidate;
-        break;
-      }
-    }
-    final merged = existing == null || session.pullRequest != null
-        ? session
-        : session.copyWith(
-            pullRequest: existing.pullRequest,
-            pullRequestHistory: existing.pullRequestHistory,
-          );
-    return upsertSession(sessions: currentSessions, session: merged);
+    final merged = session.copyWith(
+      pullRequest: session.pullRequest ?? existingSession.pullRequest,
+      pullRequestHistory: session.pullRequestHistory.isEmpty
+          ? existingSession.pullRequestHistory
+          : session.pullRequestHistory,
+    );
+    return upsertSession(sessions: sessions, session: merged);
   }
 
   List<Session> removeSession({required Iterable<Session> sessions, required String sessionId}) {

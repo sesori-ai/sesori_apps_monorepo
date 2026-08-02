@@ -292,6 +292,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     _allSessions = _sessionListService.applySessionUpdatedEvent(
       sessions: _allSessions,
+      existingSession: _allSessions[index],
       session: session,
     );
     logt("[SessionList] session.updated updated id=${session.id}");
