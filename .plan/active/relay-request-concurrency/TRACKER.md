@@ -6,10 +6,12 @@
 - **Implementation base:** `main` at
   `f6ec9e9dc66782197a46261de3bcc002e261a5bd`
 - **Series state:** Step 1/10 plan PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) open
-- **Current step:** Step 1/10 — publish the durable plan
-- **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687)
-- **Next action:** monitor plan PR checks/review and address valid feedback
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
+  as `c4d42a152d52d6aa2e3479b8f445d622bbe4b9a5`; post-merge plan correction pending
+- **Current step:** Post-merge plan correction before Step 2/10
+- **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
+- **Next action:** merge the post-review correction, then start Step 2 from
+  current `main`
 
 ## Incident Evidence
 
@@ -68,12 +70,24 @@
   visibility and project-path ordering land independently before dispatch and every
   implementation PR remains below the 1,500-line soft cap
 
+## Post-Merge Review Feedback
+
+- **Source:** three `chatgpt-codex-connector` bot threads posted immediately
+  after PR #687 merged
+- **Valid corrections:** scope modern pending interactions by plugin plus stable
+  owner session plus request ID; resolve legacy sessionless rejection to one
+  family behind an OpenCode-scoped admission barrier or return an explicit
+  compatibility error; and dispatch accepted restart handoff after terminal
+  sent/stale/send-failure disposition rather than suppressing it with delivery
+- **Delivery impact:** no fixed step title, denominator, branch, or line budget
+  changes; this documentation-only correction must merge before Step 2 begins
+
 ## Delivery Steps
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) open; architecture and review findings applied |
-| [ ] | 2/10 | `relay-request-concurrency-route-outcomes` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | Blocked on Step 1 merge |
+| [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; post-merge correction pending |
+| [ ] | 2/10 | `relay-request-concurrency-route-outcomes` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | Blocked on post-merge plan correction |
 | [ ] | 3/10 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Blocked on Step 2 merge |
 | [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
@@ -114,15 +128,20 @@
   shared dependencies are disposed.
 - Layer-0 relay reads/sends/closes use an opaque exact-connection handle; final
   client validation and synchronous send have no intervening await.
-- Relay restart guarantees enqueue-before-handoff, not remote acknowledgement.
+- Relay restart guarantees current-origin enqueue-before-handoff, not remote
+  acknowledgement; stale/failing delivery does not suppress the accepted action.
+- Accepted restart action survives stale origin or current send failure; enqueue
+  remains before handoff whenever the origin is current.
 - One concrete restart dispatcher is injected directly into relay/debug,
   suppresses duplicate handoffs, and emits the orchestrator shutdown request as
   a stream; no callback is forwarded through `BridgeRuntime`.
 - Force restart and generation fencing retain their current semantics.
 - Session actions synchronously receive ordered tickets; bounded root-family
   resolution precedes per-family execution, and pending choices atomically claim
-  a plugin-scoped sealed interaction lane. Auto approval shares that owner;
-  legacy sessionless rejection maps to OpenCode; force restart does not.
+  a plugin + stable owner session + sealed interaction lane. Auto approval shares
+  that owner; legacy sessionless rejection resolves one OpenCode family behind a
+  plugin-scoped barrier or returns an explicit compatibility error; force restart
+  does not.
   `OrchestratorSession` cancels plugin-event producers and drains their tails plus
   routes before closing the dispatcher.
 - Rename, archive/unarchive, and complete subtree deletion use the same root
@@ -187,8 +206,9 @@
   a third review after the domain-ordering expansion rejected four visibility,
   isolation, lifecycle, and privacy findings. All were applied directly, and no
   approval of the latest revision is claimed.
-- **Step 1/10 delivery:** opened plan PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 1,490
-  documentation-only changed lines. Exact titles/branches/step totals and
+- **Step 1/10 delivery:** plan PR
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as
+  `c4d42a152d52d6aa2e3479b8f445d622bbe4b9a5` with 1,490 documentation-only
+  changed lines and 10/10 checks passing. Exact titles/branches/step totals and
   `git diff --check` passed; the user explicitly exempted this first
   plan-containing PR from the 1,500-line soft cap.

@@ -3,9 +3,9 @@
 ## Status
 
 - **Plan slug:** `relay-request-concurrency`
-- **Status:** Reviewed three times — twelve architecture findings applied; latest
-  revision not re-reviewed; Step 1 PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) open
+- **Status:** Active — Step 1 PR
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged;
+  post-merge review correction pending before Step 2
 - **Plan date:** 2026-08-02
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at
@@ -69,11 +69,11 @@ long-running testing.
    originated its request. Disconnect, rekey, relay reconnect, or `connId`
    reassignment makes the old response ineligible for delivery without
    cancelling a mutation that may already have been accepted.
-5. A successful bridge-restart response is synchronously enqueued on the exact
-   current relay connection (or its debug HTTP response is closed) before that
-   request's restart handoff runs. Concurrent unrelated responses cannot steal,
-   suppress, or trigger the handoff. Relay enqueue is not represented as remote
-   delivery acknowledgement.
+5. An accepted bridge restart dispatches exactly once even if its originating
+   client disconnects, rekeys, or suffers a send failure. When the origin remains
+   current, its response is synchronously enqueued (or debug HTTP is closed)
+   before handoff; stale delivery is skipped without cancelling the accepted
+   action. Relay enqueue is not represented as remote delivery acknowledgement.
 6. Initial SSE summary construction does not block relay ingestion after the
    subscription itself is registered.
 7. Shutdown stops accepting new routed work from both relay and debug consumers,
@@ -166,11 +166,14 @@ long-running testing.
   privacy-safe identity synchronously, before route completion.
 - An unsuccessful restart preflight returns an ordinary `ResponseOnly` error.
 - The debug transport closes its HTTP response before dispatching an accepted
-  handoff. The relay transport completes response encryption and synchronously
-  enqueues it on the exact current connection before dispatching. The
-  WebSocket API has no per-frame remote-delivery acknowledgement, so this plan
-  does not claim one. Graceful close retains the existing delivery opportunity.
-  No new wire field is added.
+  handoff. The relay transport first reaches a terminal delivery disposition:
+  current origins synchronously enqueue on their exact connection; stale origins
+  skip delivery; current send failure synchronously claims that handle through
+  `closeIfCurrent` and starts its asynchronous close. It then dispatches
+  `RestartAccepted` exactly once without awaiting the close handshake. The WebSocket
+  API has no per-frame remote-delivery acknowledgement, so this plan does not
+  claim one. Graceful close retains the existing delivery opportunity. No new
+  wire field is added.
 - Replace the `BridgeRuntime`-forwarded `restartHandoff` callback with one
   concrete `BridgeRestartDispatcher` composition peer. It owns duplicate
   handoff suppression, calls `BridgeRestartService.performRestartHandoff`, and
@@ -396,17 +399,26 @@ PendingInteractionRequest
   Question(questionId)
 
 ResolvedPendingInteractionKey
-  (pluginId, permission, requestId)
-  (pluginId, question, questionId)
+  (pluginId, stableOwnerSessionId, permission, requestId)
+  (pluginId, stableOwnerSessionId, question, questionId)
 ```
 
 The dispatcher appends one completion token atomically to both the resolved
-family lane and optional resolved interaction lane, then awaits all predecessors. This
-preserves first-response order for approve/reject and answer/reject without
-nested lock acquisition or cross-plugin ID assumptions. Legacy question
-rejection without `sessionId` maps at the transport compatibility boundary to
-the fixed legacy OpenCode plugin key plus question ID; modern requests also
-coordinate with their session family. Failures release every claimed lane, and
+family lane and optional resolved interaction lane, then awaits all predecessors.
+This preserves first-response order for approve/reject and answer/reject without
+nested lock acquisition or cross-plugin/session ID assumptions. Modern requests
+key by their resolved stable owner session as well as plugin and request ID, so
+reused IDs in unrelated families remain independent.
+
+Legacy question rejection without `sessionId` maps to the fixed OpenCode plugin
+and synchronously registers a plugin-scoped unresolved-family barrier before its
+first await. `PendingInteractionService` resolves the question against pending
+OpenCode questions: exactly one stable owner claims that family and interaction
+lane before releasing the barrier; zero matches returns not-found; multiple
+matches returns an explicit compatibility conflict because the old payload is
+ambiguous. Later OpenCode session operations await the earlier barrier before
+family admission, preserving delete/reject arrival order; other plugins and
+modern questions remain independent. Failures release every claimed lane, and
 settled idle lanes are removed.
 
 `SessionPromptService`, `SessionAbortService`, and a new
@@ -519,9 +531,10 @@ For each active client request the session will:
 6. immediately before the synchronous write, verify the same client incarnation
    and call `sendIfCurrent` with the captured relay handle with no intervening
    await;
-7. ask the shared restart dispatcher to handle `RestartAccepted` only after a
-   `sent` result;
-8. on current-handle send failure, call `closeIfCurrent`; and
+7. establish a terminal delivery disposition: sent, stale, or current-send
+   failure with `closeIfCurrent` synchronously claiming that exact handle;
+8. ask the shared restart dispatcher to handle `RestartAccepted` exactly once
+   after that disposition, even when no response could be delivered; and
 9. remove itself from the relay completion registry in `finally`.
 
 Every successful key exchange or resume replaces the local client incarnation.
@@ -892,8 +905,11 @@ handlers, auto approval, lifecycle, failure, cleanup, and shutdown.
   bounded in-order root-family resolver, per-family lanes, optional sealed
   permission/question interaction lanes, idle cleanup, and closed acceptance.
 - Return `(rootSessionId, pluginId)` from family resolution and key interactions
-  by plugin plus closed kind plus request ID; map legacy sessionless question
-  rejection to the existing fixed legacy OpenCode plugin identity.
+  by plugin plus stable owner session plus closed kind plus request ID.
+- For legacy sessionless rejection, synchronously register an OpenCode-scoped
+  unresolved-family barrier, resolve exactly one pending owner before execution,
+  and return explicit not-found/ambiguous compatibility errors otherwise. Later
+  OpenCode session operations await that barrier; other plugins do not.
 - Append one completion atomically to every required lane before awaiting its
   predecessors; never acquire nested locks from operation callbacks.
 - Route prompt/command plus defaults publication and abort through the family
@@ -919,13 +935,16 @@ establishes the common owner needed by Step 6.
 
 Risk is operation callbacks starting before tickets are registered, scope
 resolution completion reordering tickets, deadlock across family/interaction
-lanes, cross-plugin question-ID collisions, legacy rejects bypassing
-first-response order, auto approval bypassing the service or submitting after
-acceptance closes, defaults inversion, failure poisoning, or premature disposal. Gate
+lanes, cross-plugin/session question-ID collisions, ambiguous legacy rejection,
+legacy family resolution letting a later delete overtake, auto approval bypassing
+the service or submitting after acceptance closes, defaults inversion, failure
+poisoning, or premature disposal. Gate
 binding lookup and backend acceptance to prove prompt/abort/default FIFO,
 approve/reject and answer/reject arrival order from two surfaces, auto-approval
-competition, root versus child scope resolution, unrelated-family parallelism,
-force-restart independence, failure release, idle cleanup, and repeated drain.
+competition, same-plugin reused question IDs across families, unique/missing/
+ambiguous legacy owner resolution, legacy reject versus root delete, root versus
+child scope resolution, unrelated-family/plugin parallelism, force-restart
+independence, failure release, idle cleanup, and repeated drain.
 
 ### Expected Result
 
@@ -1135,7 +1154,10 @@ draining on top of the already-landed route, ordering, and relay-epoch contracts
 - Complete encryption first, then perform client-incarnation validation and
   epoch-bound `sendIfCurrent` with no intervening await.
 - Drop stale responses without claiming their underlying writes were cancelled.
-- Dispatch `RestartAccepted` only after `sendIfCurrent` reports `sent`.
+- For `RestartAccepted`, dispatch exactly once after terminal delivery
+  disposition: after enqueue when `sent`, without delivery when stale, or after
+  synchronously claiming the current handle on send failure without awaiting its
+  close handshake.
 - On a current-handle send failure, use `closeIfCurrent` so normal relay
   reconnection runs; obsolete failures cannot close the successor.
 - Detach and track initial SSE summary construction after synchronous subscribe,
@@ -1159,8 +1181,9 @@ force-restart capability reachable during a stalled plugin operation.
 Risk is late response delivery to a new connection, a reconnect between
 encryption and write, summary completion inversion, unhandled task failure,
 response/action execution after shutdown, reconnect loss after send failure,
-request-ID mismatch, or incomplete session-owned drain. Highest-value tests use
-intentionally gated work to prove:
+accepted restart suppression after disconnect/rekey/send failure, request-ID
+mismatch, or incomplete session-owned drain. Highest-value tests use intentionally
+gated work to prove:
 
 - a stalled request on one client does not delay another client's key exchange
   or health response;
@@ -1170,6 +1193,8 @@ intentionally gated work to prove:
   explicit causal lanes;
 - disconnect/rekey/relay reconnect invalidates the old response even if a
   numeric `connId` appears again;
+- accepted restart still dispatches exactly once after stale-origin or current
+  send-failure disposition, while a current origin enqueues first;
 - a reconnect during asynchronous encryption cannot redirect the final send,
   and an obsolete send failure cannot close the successor;
 - a current response is delivered exactly once;
@@ -1237,7 +1262,8 @@ product suite applies.
 | Old request responds to a new/reused `connId` | Fence by relay epoch plus opaque client incarnation, not numeric ID alone. |
 | Responses finish out of order | Preserve request IDs; test same-client inversion explicitly. |
 | Restart acceptance is stolen or paired with failure | Land the sealed valid-only route outcome and shared single-flight restart dispatcher before concurrency. |
-| Restart acknowledgement is overstated | Guarantee only synchronous enqueue on the exact relay handle before handoff; keep graceful close and end-to-end delivery coverage without claiming remote acknowledgement. |
+| Restart acknowledgement is overstated | For a current origin, guarantee only synchronous enqueue before handoff; for stale/failing delivery, dispatch the accepted handoff without claiming an acknowledgement. |
+| Disconnect/rekey suppresses an accepted restart | Separate delivery disposition from the request-local action and dispatch exactly once after sent, stale, or current-send-failure disposition. |
 | Disconnect falsely cancels an accepted write | Drop only delivery; preserve operation and existing uncertain-outcome semantics. |
 | Reconnect occurs during response encryption | Encrypt first, then perform incarnation validation plus epoch-bound synchronous send with no await; Layer-0 rechecks the handle. |
 | Obsolete send failure closes the successor | `closeIfCurrent` synchronously claims only the captured handle before asynchronous close. |
@@ -1245,7 +1271,8 @@ product suite applies.
 | Force restart returns while old operation later completes | Keep generation checks and durable-commit fencing; late old-generation result maps to failure and cannot commit through `useAndCommit`. |
 | Shutdown disposes dependencies under relay/debug routes | One shared dispatcher closes acceptance and drains both consumers before session-owned collaborators; each transport separately drains its surrounding work. |
 | Abort/defaults overtake earlier prompt/command work | Land root-family session admission before transport concurrency; keep force restart outside it. |
-| A later pending choice wins | Atomically claim the sealed interaction identity plus modern request's root-family lane before repository/plugin awaits; route auto approval through the same service. |
+| A later pending choice wins or reused ID blocks another family | Atomically claim plugin + stable owner + interaction identity and the modern request's family lane; route auto approval through the same service. |
+| Legacy rejection races deletion | Register an OpenCode unresolved-family barrier before lookup; resolve one owner or return an explicit not-found/ambiguity limitation before mutation. |
 | Root deletion races a child mutation | Resolve root family in admission order and reserve the complete subtree delete workflow before cleanup. |
 | Unarchive restores a worktree after delete cleanup | Put archive/unarchive and delete on the same root-family lane around their complete filesystem/database workflows. |
 | A partially initialized creation is announced | Return a typed unpublished binding and publish only after initial command and metadata rename settle. |
@@ -1294,3 +1321,9 @@ product suite applies.
   plugin with an explicit legacy OpenCode mapping; quiesced plugin-event
   producers/tails before session-dispatcher closure; and staged privacy audits
   through every touched lower-layer call graph.
+- **Post-merge review corrections:** scoped modern interactions by stable owner
+  session as well as plugin/request ID; added an OpenCode-scoped unresolved-family
+  barrier and explicit ambiguity result for legacy sessionless rejection; and
+  separated accepted restart execution from response eligibility so stale/send
+  failure cannot suppress the handoff. These corrections do not change the fixed
+  ten-step delivery series.
