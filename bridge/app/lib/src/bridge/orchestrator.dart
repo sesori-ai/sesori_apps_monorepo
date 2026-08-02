@@ -75,6 +75,7 @@ import "repositories/session_unseen_repository.dart";
 import "repositories/trackers/session_event_tracker.dart";
 import "repositories/worktree_repository.dart";
 import "routing/abort_session_handler.dart";
+import "routing/bridge_restart_dispatcher.dart";
 import "routing/create_directory_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
@@ -108,6 +109,7 @@ import "routing/reply_to_permission_handler.dart";
 import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
 import "routing/restart_bridge_handler.dart";
+import "routing/routed_request.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
@@ -137,6 +139,7 @@ typedef OrchestratorComposition = ({
   CatalogImportService catalogImportService,
   PluginCatalogHydrationListener catalogHydrationListener,
   DeletedSessionStorageCleanupService deletedSessionStorageCleanupService,
+  BridgeRestartDispatcher restartDispatcher,
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
@@ -449,6 +452,7 @@ class Orchestrator {
       sessionBindingCommitListener.start();
       sessionDeletionListener.start();
     });
+    final restartDispatcher = BridgeRestartDispatcher(restartService: _restartService);
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
@@ -557,7 +561,7 @@ class Orchestrator {
       permissionAutoApprovalService: permissionAutoApprovalService,
       sessionAbortService: sessionAbortService,
       sessionMutationDispatcher: sessionMutationDispatcher,
-      restartService: _restartService,
+      restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
     );
     return (
@@ -565,6 +569,7 @@ class Orchestrator {
       catalogImportService: catalogImportService,
       catalogHydrationListener: catalogHydrationListener,
       deletedSessionStorageCleanupService: deletedSessionStorageCleanupService,
+      restartDispatcher: restartDispatcher,
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
@@ -626,7 +631,7 @@ class OrchestratorSession {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _catalogImportSubscriptions = CompositeSubscription();
   final ProjectActivityService _projectActivityService;
-  final BridgeRestartService _restartService;
+  final BridgeRestartDispatcher _restartDispatcher;
   final ControlStatusNotifier? _statusNotifier;
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
@@ -639,18 +644,12 @@ class OrchestratorSession {
   Object? _beginShutdownError;
   StackTrace? _beginShutdownStackTrace;
 
-  /// Guards [handleRestartHandoff] so concurrent relay + debug restart triggers
-  /// spawn at most one successor.
-  bool _restartHandoffStarted = false;
-
   /// When the first [cancel] was requested. Used only for shutdown timing
   /// diagnostics (the logger emits no timestamps, so durations are explicit).
   DateTime? _cancelRequestedAt;
 
-  /// Label ("METHOD path") of the relay request currently being routed, or
-  /// `null` when the read loop is idle. Surfaces which in-flight request is
-  /// blocking the read loop when a shutdown is requested mid-route.
-  String? _inFlightRequestLabel;
+  /// Privacy-safe identity of the relay request currently being routed.
+  RouteIdentity? _inFlightRouteIdentity;
 
   /// Completes when [cancel] is first called. Allows in-flight request routing
   /// to abandon a response instead of awaiting an OpenCode HTTP call that has
@@ -693,7 +692,7 @@ class OrchestratorSession {
     required PermissionAutoApprovalService permissionAutoApprovalService,
     required SessionAbortService sessionAbortService,
     required SessionMutationDispatcher sessionMutationDispatcher,
-    required BridgeRestartService restartService,
+    required BridgeRestartDispatcher restartDispatcher,
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _pluginEvents = pluginEvents,
@@ -726,8 +725,20 @@ class OrchestratorSession {
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
-       _restartService = restartService,
+       _restartDispatcher = restartDispatcher,
        _statusNotifier = statusNotifier {
+    _restartDispatcher.shutdownRequests
+        .listen((request) {
+          switch (request) {
+            case BridgeShutdownRequest.restart:
+              unawaited(
+                cancel().catchError((Object error, StackTrace stackTrace) {
+                  Log.w("[restart] failed to cancel the session", error, stackTrace);
+                }),
+              );
+          }
+        })
+        .addTo(_subscriptions);
     catalogImportProgress
         .listen((progress) {
           _enqueueWireEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
@@ -964,7 +975,7 @@ class OrchestratorSession {
     Log.d(
       "[shutdown] session teardown begin "
       "(${sinceCancelMs == null ? "no cancel timestamp" : "${sinceCancelMs}ms since cancel()"}"
-      "${_inFlightRequestLabel == null ? "" : ", in-flight request: $_inFlightRequestLabel"})",
+      "${_inFlightRouteIdentity == null ? "" : ", in-flight request: ${_inFlightRouteIdentity!.diagnosticLabel}"})",
     );
     await Future.wait([
       attempt(_subscriptions.cancel),
@@ -1125,7 +1136,7 @@ class OrchestratorSession {
       _cancelRequestedAt = DateTime.now();
       Log.d(
         "[shutdown] cancel() requested"
-        "${_inFlightRequestLabel == null ? "" : " — in-flight request: $_inFlightRequestLabel"}",
+        "${_inFlightRouteIdentity == null ? "" : " — in-flight request: ${_inFlightRouteIdentity!.diagnosticLabel}"}",
       );
     } else {
       Log.v("[shutdown] cancel() again (already shutting down)");
@@ -1148,48 +1159,6 @@ class OrchestratorSession {
     final sw = Stopwatch()..start();
     await _client.close();
     Log.d("[shutdown] cancel(): relay client closed in ${sw.elapsedMilliseconds}ms");
-  }
-
-  /// Performs the restart handoff after the `{restarting:true}` reply has been
-  /// enqueued: delegates the run-mode strategy to [BridgeRestartService]
-  /// (standalone spawns a successor; supervised records the GUI-respawn intent),
-  /// then drives the normal graceful shutdown ([cancel]) — which flushes the
-  /// queued reply by closing the relay and lets this process exit. A standalone
-  /// successor waits for this pid to exit before it enforces single-live-bridge,
-  /// so the handoff is clean; the supervised exit code is applied by the
-  /// composition root once the session ends.
-  ///
-  /// Public because both restart triggers drive the same handoff: the relay
-  /// request loop (below) and the local [DebugServer], which reuses this
-  /// session's [RequestRouter] and so reaches the same `RestartBridgeHandler`.
-  Future<void> handleRestartHandoff() async {
-    // Single-flight: the relay and debug-server triggers share the same restart
-    // flag but run independently, so without this guard two near-simultaneous
-    // `POST /global/restart` requests could each spawn a successor. The flag is
-    // set synchronously (no await before it), so the check-and-set is atomic on
-    // the event loop. It is reset only when the spawn fails and we keep running,
-    // so a later restart can retry.
-    if (_restartHandoffStarted) {
-      Log.v("[restart] handoff already in progress; ignoring duplicate trigger");
-      return;
-    }
-    _restartHandoffStarted = true;
-    Log.i("[restart] restart requested");
-    // The restart service owns the run-mode strategy: standalone spawns a
-    // successor process; supervised records the intent so the composition root
-    // exits with the GUI-respawn sentinel (no successor spawn). A `false` return
-    // means the standalone successor could not be started, so we keep running.
-    final bool proceed = await _restartService.performRestartHandoff();
-    if (!proceed) {
-      _restartHandoffStarted = false;
-      Console.error(
-        "Restart requested but a new bridge could not be started; continuing to run. "
-        "Re-run the install script if this persists: https://sesori.com/",
-      );
-      return;
-    }
-    Log.i("[restart] handing off; shutting down");
-    await cancel();
   }
 
   Future<void> _processPluginEventInOrder(NormalizedSourcedBridgeEvent source) {
@@ -1621,24 +1590,23 @@ class OrchestratorSession {
           Map<String, dynamic> control;
           try {
             control = jsonDecodeMap(utf8.decode(msg.data));
-          } catch (e) {
-            Log.e("failed to parse control message: $e");
+          } catch (_) {
+            Log.v("failed to parse relay control message");
             break processMessage;
           }
 
           final type = control["type"] as String?;
           final connID = control["connId"] as int?;
-          Log.v("control: type=$type connID=$connID");
           if (type == null || connID == null) {
-            Log.v("dropping control: null type or connID");
+            Log.v("dropping relay control message with missing fields");
             break processMessage;
           }
 
           switch (type) {
             case "phone_connected":
-              Log.v("phone_connected connID=$connID");
+              Log.v("RelayPhoneConnected");
             case "phone_disconnected":
-              Log.v("phone_disconnected connID=$connID");
+              Log.v("RelayPhoneDisconnected");
               activePhones.remove(connID);
               _sseManager.removeSubscriber(connID);
               _sessionViewTracker.releaseConnection(connID: connID);
@@ -1799,8 +1767,8 @@ class OrchestratorSession {
       msg = RelayMessage.fromJson(
         jsonDecodeMap(utf8.decode(decrypted)),
       );
-    } catch (e) {
-      Log.v("failed to parse decrypted msg from connID=$connID: $e");
+    } catch (_) {
+      Log.v("failed to parse encrypted relay message");
       return;
     }
 
@@ -1808,52 +1776,51 @@ class OrchestratorSession {
 
     switch (msg) {
       case final RelayRequest req:
-        Log.v("RelayRequest: ${req.method} ${req.path}");
-        _inFlightRequestLabel = "${req.method} ${req.path}";
+        final pendingRoute = _router.route(req);
+        final routeIdentity = pendingRoute.routeIdentity;
+        Log.v("RelayRequest: ${routeIdentity.diagnosticLabel}");
+        _inFlightRouteIdentity = routeIdentity;
         final routeSw = Stopwatch()..start();
-        // Defensively discard any restart flag left armed before routing this
-        // relay request. The local DebugServer reuses this RequestRouter but
-        // consumes and acts on its own restart flag synchronously right after it
-        // routes, so it should never leak one here; this clear still guarantees
-        // that only a restart requested during THIS relay request can trigger a
-        // handoff from the relay path.
-        _restartService.consumeRestartRequest();
         // If shutdown wins the race below, this future keeps running in the
         // background. ignore() marks any later failure as handled so it can
         // never surface as an unhandled async exception after abandonment.
-        final routeFuture = _router.route(req)..ignore();
+        final routeFuture = pendingRoute.completion..ignore();
         try {
-          final response = await Future.any<RelayResponse>([
+          final outcome = await Future.any<RoutedRequestOutcome>([
             routeFuture,
             _shutdownCompleter.future.then((_) => throw const _ShutdownInProgressException()),
           ]);
-          // Consume the restart flag now — it was set (if at all) by THIS
-          // request during routing. Tying consumption to this request means a
-          // failed/abandoned response can never leave the flag armed to trigger
-          // a delayed, unintended restart on a later request.
-          final bool restartRequested = _restartService.consumeRestartRequest();
+          final response = outcome.response;
           if (_cancelled) {
             Log.v(
-              "[shutdown] route ${req.method} ${req.path} completed after cancel — "
+              "[shutdown] route ${routeIdentity.diagnosticLabel} completed after cancel — "
               "dropping response (status=${response.status})",
             );
             return;
           }
           if (routeSw.elapsedMilliseconds > 1000) {
             Log.d(
-              "[shutdown] slow route ${req.method} ${req.path} for connId $connID "
+              "[shutdown] slow route ${routeIdentity.diagnosticLabel} for connId $connID "
               "took ${routeSw.elapsedMilliseconds}ms (cancelled=$_cancelled)",
             );
           }
           Log.v("response: status=${response.status}");
-          await _encryptAndSend(connID: connID, message: response);
-          Log.v("response sent to connID=$connID");
-          if (restartRequested) {
-            await handleRestartHandoff();
+          try {
+            await _encryptAndSend(connID: connID, message: response);
+            Log.v("response sent to connID=$connID");
+          } finally {
+            if (!_cancelled) {
+              switch (outcome) {
+                case ResponseOnly():
+                  break;
+                case final RestartAccepted accepted:
+                  await _restartDispatcher.dispatch(restart: accepted);
+              }
+            }
           }
         } on _ShutdownInProgressException {
           Log.v(
-            "[shutdown] route ${req.method} ${req.path} will finish without sending a response",
+            "[shutdown] route ${routeIdentity.diagnosticLabel} will finish without sending a response",
           );
           // Keep route-owned services and plugin APIs alive until the operation
           // settles. The shutdown coordinator's process backstop bounds this
@@ -1861,19 +1828,19 @@ class OrchestratorSession {
           try {
             await routeFuture;
           } on Object catch (error, stackTrace) {
-            Log.w("[shutdown] route ${req.method} ${req.path} failed while draining", error, stackTrace);
+            Log.w("[shutdown] route ${routeIdentity.diagnosticLabel} failed while draining", error, stackTrace);
           }
-        } catch (e) {
+        } on Object catch (error, stackTrace) {
           if (_cancelled) {
-            Log.v("[shutdown] route ${req.method} ${req.path} failed during shutdown: $e");
+            Log.w("[shutdown] route ${routeIdentity.diagnosticLabel} failed during shutdown", error, stackTrace);
           } else {
-            Log.e("request routing failed for connId $connID: $e");
+            Log.e("route ${routeIdentity.diagnosticLabel} failed for connId $connID", error, stackTrace);
           }
         } finally {
-          _inFlightRequestLabel = null;
+          _inFlightRouteIdentity = null;
         }
       case final RelaySseSubscribe subscribe:
-        Log.v("SseSubscribe: path=${subscribe.path}");
+        Log.v("RelaySseSubscribe");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
           final projSummary = await _buildProjectsSummary();
@@ -1882,14 +1849,14 @@ class OrchestratorSession {
             _completionListener.handleSseEvent(projSummary);
           }
           Log.v("initial projectsSummary enqueued");
-        } catch (e) {
-          Log.e("sse subscribe failed for connId $connID: $e");
+        } on Object catch (error, stackTrace) {
+          Log.e("RelaySseSubscribe failed", error, stackTrace);
         }
       case RelaySseUnsubscribe():
-        Log.v("SseUnsubscribe connID=$connID");
+        Log.v("RelaySseUnsubscribe");
         _sseManager.unsubscribe(connID);
       case RelaySessionView(:final sessionId):
-        Log.v("SessionView connID=$connID sessionId=$sessionId");
+        Log.v("RelaySessionView");
         _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");

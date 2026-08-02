@@ -4,13 +4,14 @@
 
 - **Plan slug:** `relay-request-concurrency`
 - **Status:** Active — Step 1 PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged;
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) and
   post-merge correction PR
-  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) open before Step 2
+  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged;
+  Step 2 implementation ready for review
 - **Plan date:** 2026-08-02
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `main` at
-  `f6ec9e9dc66782197a46261de3bcc002e261a5bd`
+- **Current implementation base:** `main` at
+  `0e31324a9ec3cbd08d53394d7a1c6e9e3b133b0e`
 - **Delivery:** one plan PR, eight sequential implementation PRs, and one
   plan-retirement PR
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687)

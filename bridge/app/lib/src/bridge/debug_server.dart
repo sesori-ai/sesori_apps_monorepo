@@ -6,15 +6,15 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../server/services/bridge_restart_service.dart";
+import "routing/bridge_restart_dispatcher.dart";
 import "routing/request_router.dart";
+import "routing/routed_request.dart";
 
 class DebugServer {
   final Stream<SesoriSseEvent> _localWireEvents;
   final RequestRouter _router;
   final FailureReporter _failureReporter;
-  final BridgeRestartService _restartService;
-  final Future<void> Function() _restartHandoff;
+  final BridgeRestartDispatcher _restartDispatcher;
   final Future<void> Function() _drainRoutedMutations;
   final int port;
   final List<HttpResponse> _sseClients = [];
@@ -36,14 +36,12 @@ class DebugServer {
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,
-    required BridgeRestartService restartService,
-    required Future<void> Function() restartHandoff,
+    required BridgeRestartDispatcher restartDispatcher,
     required Future<void> Function() drainRoutedMutations,
   }) : _localWireEvents = localWireEvents,
        _router = router,
        _failureReporter = failureReporter,
-       _restartService = restartService,
-       _restartHandoff = restartHandoff,
+       _restartDispatcher = restartDispatcher,
        _drainRoutedMutations = drainRoutedMutations;
 
   int? get boundPort => _server?.port;
@@ -128,11 +126,8 @@ class DebugServer {
   }
 
   Future<void> _handleHTTP(HttpRequest request) async {
-    // Whether the request just routed armed a bridge restart. Consumed
-    // synchronously right after routing so a concurrently-handled relay request
-    // cannot steal the shared flag before this handler triggers the handoff.
-    bool restartRequested = false;
-    Future<RelayResponse>? routeToDrain;
+    RoutedRequestOutcome? completedOutcome;
+    Future<RoutedRequestOutcome>? routeToDrain;
     try {
       final rawBody = await utf8.decoder.bind(request).join();
       final body = rawBody.isEmpty ? null : rawBody;
@@ -152,17 +147,17 @@ class DebugServer {
               )
               as RelayRequest;
 
-      final route = _router.route(relayRequest);
-      final message = await Future.any<RelayResponse?>([
+      final pendingRoute = _router.route(relayRequest);
+      final route = pendingRoute.completion;
+      final outcome = await Future.any<RoutedRequestOutcome?>([
         route,
-        _shutdownSignal.future.then<RelayResponse?>((_) => null),
+        _shutdownSignal.future.then<RoutedRequestOutcome?>((_) => null),
       ]);
-      if (message == null) {
+      if (outcome == null) {
         routeToDrain = route;
       } else {
-        // The RestartBridgeHandler arms the shared restart flag during routing;
-        // consume it now, attributed to this request, mirroring the relay path.
-        restartRequested = _restartService.consumeRestartRequest();
+        completedOutcome = outcome;
+        final message = outcome.response;
         request.response.statusCode = message.status;
         // Skip hop-by-hop and length headers — dart:io sets them
         // automatically based on the actual response body written.
@@ -178,11 +173,19 @@ class DebugServer {
           request.response.add(utf8.encode(message.body!));
         }
       }
-    } catch (e) {
-      request.response.statusCode = HttpStatus.badGateway;
-      request.response.add(utf8.encode("Debug server proxy error: $e"));
+    } on Object catch (error, stackTrace) {
+      if (completedOutcome is RestartAccepted) {
+        Log.w("debug restart response write failed", error, stackTrace);
+      } else {
+        request.response.statusCode = HttpStatus.badGateway;
+        request.response.add(utf8.encode("Debug server proxy error: $error"));
+      }
     } finally {
-      await request.response.close();
+      try {
+        await request.response.close();
+      } on Object catch (error, stackTrace) {
+        Log.w("debug HTTP response close failed", error, stackTrace);
+      }
     }
 
     if (routeToDrain != null) {
@@ -190,19 +193,15 @@ class DebugServer {
       return;
     }
 
-    // Drive the handoff only after the `{restarting:true}` reply has been
-    // flushed and closed, so the debug client receives the response before this
-    // process spawns its successor and shuts down. The handoff itself is owned
-    // by the orchestrator and injected as an action, so a debug
-    // `POST /global/restart` behaves identically to a phone-triggered restart.
-    if (restartRequested) {
-      // The response is already closed, so a handoff failure has nowhere to go —
-      // log it instead of letting it escape this listen callback unhandled.
-      try {
-        await _restartHandoff();
-      } on Object catch (error, stackTrace) {
-        Log.w("debug server restart handoff failed: $error", error, stackTrace);
-      }
+    switch (completedOutcome) {
+      case null || ResponseOnly():
+        break;
+      case final RestartAccepted accepted:
+        try {
+          await _restartDispatcher.dispatch(restart: accepted);
+        } on Object catch (error, stackTrace) {
+          Log.w("debug server restart handoff failed", error, stackTrace);
+        }
     }
   }
 

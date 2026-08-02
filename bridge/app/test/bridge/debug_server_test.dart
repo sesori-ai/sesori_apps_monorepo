@@ -12,6 +12,10 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/routing/bridge_restart_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/routing/request_router.dart";
+import "package:sesori_bridge/src/bridge/routing/restart_bridge_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/routed_request.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
@@ -72,7 +76,6 @@ Future<_DebugServerHarness> _createDebugServerHarness({
   final runtime = BridgeRuntime(
     database: db,
     failureReporter: failureReporter,
-    restartService: effectiveRestartService,
     composition: composition,
   );
   final running = await startTestOrchestratorSession(session: composition.session);
@@ -566,6 +569,45 @@ void main() {
   });
 
   group("DebugServer restart", () {
+    test("closes the HTTP response before awaiting restart dispatch and drains the dispatch", () async {
+      final dispatcher = _BlockingRestartDispatcher();
+      final debugServer = DebugServer(
+        localWireEvents: const Stream<SesoriSseEvent>.empty(),
+        router: RequestRouter(
+          handlers: [RestartBridgeHandler(restartService: _AlwaysRestartableService())],
+        ),
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+        restartDispatcher: dispatcher,
+        drainRoutedMutations: () async {},
+      );
+      await debugServer.start();
+      addTearDown(() async {
+        dispatcher.release();
+        await debugServer.stop();
+      });
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
+      );
+      final responseFuture = request.close();
+
+      await dispatcher.started.timeout(const Duration(seconds: 2));
+      final response = await responseFuture.timeout(const Duration(seconds: 2));
+      final body = await utf8.decoder.bind(response).join().timeout(const Duration(seconds: 2));
+      expect(response.statusCode, HttpStatus.ok);
+      expect(body, contains('"restarting":true'));
+
+      var stopped = false;
+      final stop = debugServer.stop().whenComplete(() => stopped = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(stopped, isFalse);
+      dispatcher.release();
+      await stop.timeout(const Duration(seconds: 2));
+    });
+
     test("POST /global/restart replies and spawns a successor", () async {
       final plugin = _FakeBridgePlugin();
       addTearDown(plugin.close);
@@ -647,12 +689,21 @@ void main() {
       );
       addTearDown(harness.close);
 
-      // Both the relay and debug triggers funnel into handleRestartHandoff;
-      // fire two concurrently and assert the single-flight guard holds.
-      await Future.wait<void>([
-        harness.runtime.session.handleRestartHandoff(),
-        harness.runtime.session.handleRestartHandoff(),
-      ]);
+      final debugServer = harness.debugServer;
+      await debugServer.start();
+      final client = HttpClient();
+      addTearDown(client.close);
+
+      Future<void> restart() async {
+        final request = await client.postUrl(
+          Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
+        );
+        final response = await request.close();
+        expect(response.statusCode, HttpStatus.ok);
+        await utf8.decoder.bind(response).join();
+      }
+
+      await Future.wait([restart(), restart()]);
 
       expect(processRunner.startDetachedCount, equals(1));
     });
@@ -695,6 +746,46 @@ void main() {
       expect(processRunner.startDetachedCount, equals(0));
     });
   });
+}
+
+class _BlockingRestartDispatcher implements BridgeRestartDispatcher {
+  final Completer<void> _started = Completer<void>();
+  final Completer<void> _release = Completer<void>();
+
+  Future<void> get started => _started.future;
+
+  @override
+  Stream<BridgeShutdownRequest> get shutdownRequests => const Stream<BridgeShutdownRequest>.empty();
+
+  @override
+  Future<void> dispatch({required RestartAccepted restart}) async {
+    if (!_started.isCompleted) _started.complete();
+    await _release.future;
+  }
+
+  void release() {
+    if (!_release.isCompleted) _release.complete();
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+class _AlwaysRestartableService implements BridgeRestartService {
+  @override
+  bool get supervisedRestartRequested => false;
+
+  @override
+  Future<bool> canRestart() async => true;
+
+  @override
+  Future<bool> canSpawnSuccessor() async => true;
+
+  @override
+  Future<bool> performRestartHandoff() async => true;
+
+  @override
+  Future<bool> spawnSuccessor() async => true;
 }
 
 BridgeRestartService _spawnableRestartService({

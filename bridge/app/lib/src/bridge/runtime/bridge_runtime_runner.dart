@@ -816,7 +816,6 @@ class BridgeRuntimeRunner {
       runtime = BridgeRuntime(
         database: database,
         failureReporter: failureReporter,
-        restartService: restartService,
         composition: composition,
       );
       final activeRuntime = runtime;

@@ -4,15 +4,13 @@
 
 - **Plan slug:** `relay-request-concurrency`
 - **Implementation base:** `main` at
-  `f6ec9e9dc66782197a46261de3bcc002e261a5bd`
+  `0e31324a9ec3cbd08d53394d7a1c6e9e3b133b0e`
 - **Series state:** Step 1/10 plan PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-  as `c4d42a152d52d6aa2e3479b8f445d622bbe4b9a5`; post-merge correction
-  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) open
-- **Current step:** Post-merge plan correction PR #688 before Step 2/10
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) and correction
+  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged
+- **Current step:** Step 2/10 implemented and ready for review; PR link pending
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** merge the post-review correction, then start Step 2 from
-  current `main`
+- **Next action:** commit, push, and open the Step 2 PR
 
 ## Incident Evidence
 
@@ -82,15 +80,15 @@
   sent/stale/send-failure disposition rather than suppressing it with delivery
 - **Delivery impact:** no fixed step title, denominator, branch, or line budget
   changes; documentation-only correction
-  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) must merge
-  before Step 2 begins
+  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as
+  `0e31324a9ec3cbd08d53394d7a1c6e9e3b133b0e`
 
 ## Delivery Steps
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) open |
-| [ ] | 2/10 | `relay-request-concurrency-route-outcomes` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | Blocked on post-merge plan correction |
+| [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
+| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | Implementation complete at 1,416 changed lines; PR link pending |
 | [ ] | 3/10 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Blocked on Step 2 merge |
 | [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
@@ -215,3 +213,20 @@
   changed lines and 10/10 checks passing. Exact titles/branches/step totals and
   `git diff --check` passed; the user explicitly exempted this first
   plan-containing PR from the 1,500-line soft cap.
+- **Step 2/10 base and overlap:** based on `main` at `0e31324a`; adjacent PR
+  #686 was already merged at `3bbb1e8e`, so its orchestrator changes were part
+  of the base and no open overlap remained. The session-provided dedicated
+  `plan-parallel-requests` branch replaced the originally planned branch name.
+- **Step 2/10 implementation:** synchronous typed route selection now exposes
+  closed matched/unmatched/invalid identities and sealed asynchronous ordinary
+  or valid-only restart outcomes. One shared restart dispatcher owns duplicate
+  handoff suppression, service invocation, typed shutdown emission, and runtime
+  disposal after relay/debug drains; the flag and callback wiring are removed.
+- **Step 2/10 verification:** 87 focused router/restart/service/dispatcher,
+  debug, encrypted relay ordering/graceful-close, runtime-composition, and
+  diagnostic capture tests passed. `dart analyze --fatal-infos` from `bridge/app` and
+  `git diff --check` passed. Actual change size: 1,416 lines; PR link pending.
+- **Step 2/10 architecture review:** `aristotle-impl-review` rejected one valid
+  service-to-routing dependency. Moving `BridgeRestartDispatcher` and its test
+  beside the routing outcome applied the finding directly; per policy, the fix
+  was not re-reviewed.

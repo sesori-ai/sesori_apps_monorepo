@@ -1,5 +1,8 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
+import "package:sesori_bridge/src/bridge/routing/routed_request.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -32,8 +35,19 @@ void main() {
         ],
       );
 
-      final response = await router.route(_request(method: "GET", path: "/session/s1?view=full#messages"));
+      final pending = router.route(_request(method: "GET", path: "/session/s1?view=full#messages"));
 
+      expect(
+        pending.routeIdentity,
+        isA<MatchedRoute>()
+            .having((identity) => identity.method, "method", HttpMethod.get)
+            .having((identity) => identity.pathTemplate, "pathTemplate", "/session/:id"),
+      );
+      expect(pending.routeIdentity.diagnosticLabel, "GET /session/:id");
+      final outcome = await pending.completion;
+      final response = outcome.response;
+
+      expect(outcome, isA<ResponseOnly>());
       expect(response.status, 201);
       expect(response.body, "first");
       expect(calls, ["first"]);
@@ -62,17 +76,62 @@ void main() {
           ),
         );
 
-      expect((await router.route(_request(method: "GET", path: "/original"))).status, 200);
-      expect((await router.route(_request(method: "GET", path: "/replacement"))).status, 404);
+      expect((await _route(router, _request(method: "GET", path: "/original"))).status, 200);
+      expect((await _route(router, _request(method: "GET", path: "/replacement"))).status, 404);
     });
 
     test("returns 404 when no handler matches", () async {
       final router = RequestRouter(handlers: const []);
 
-      final response = await router.route(_request(method: "GET", path: "/unknown"));
+      final pending = router.route(_request(method: "GET", path: "/unknown?secret=value"));
+      final response = (await pending.completion).response;
 
+      expect(pending.routeIdentity, isA<UnmatchedRoute>());
+      expect(pending.routeIdentity.diagnosticLabel, "GET unmatched route");
+      expect(pending.routeIdentity.diagnosticLabel, isNot(contains("secret")));
       expect(response.status, 404);
-      expect(response.body, "no handler found for GET /unknown");
+      expect(response.body, "no handler found for GET /unknown?secret=value");
+    });
+
+    test("returns closed identities for invalid methods and targets", () async {
+      final router = RequestRouter(handlers: const []);
+
+      final invalidMethod = router.route(_request(method: "CUSTOM-secret", path: "/private/path"));
+      expect(invalidMethod.routeIdentity, isA<InvalidMethodRoute>());
+      expect(invalidMethod.routeIdentity.diagnosticLabel, "invalid method");
+      expect((await invalidMethod.completion).response.status, 404);
+
+      final invalidTarget = router.route(_request(method: "GET", path: "http://[target-secret"));
+      expect(invalidTarget.routeIdentity, isA<InvalidTargetRoute>());
+      expect(invalidTarget.routeIdentity.diagnosticLabel, "GET invalid target");
+      expect((await invalidTarget.completion).response.status, 502);
+    });
+
+    test("returns route identity before asynchronous completion", () async {
+      final responseGate = Completer<RelayResponse>();
+      final router = RequestRouter(
+        handlers: [
+          _TestHandler(
+            method: HttpMethod.get,
+            path: "/session/:id",
+            handle: ({required request, required pathParams, required queryParams, required fragment}) {
+              return responseGate.future;
+            },
+          ),
+        ],
+      );
+
+      final pending = router.route(_request(method: "get", path: "/session/private-id"));
+
+      expect(pending.routeIdentity.diagnosticLabel, "GET /session/:id");
+      responseGate.complete(
+        _response(
+          request: _request(method: "GET", path: "/"),
+          status: 200,
+          body: "ok",
+        ),
+      );
+      expect((await pending.completion).response.body, "ok");
     });
 
     test("maps plugin operation failures to their status", () async {
@@ -88,7 +147,7 @@ void main() {
         ],
       );
 
-      final response = await router.route(_request(method: "GET", path: "/plugin-failure"));
+      final response = await _route(router, _request(method: "GET", path: "/plugin-failure"));
 
       expect(response.status, 404);
       expect(response.body, contains("PluginOperationException"));
@@ -107,7 +166,7 @@ void main() {
         ],
       );
 
-      final response = await router.route(_request(method: "GET", path: "/failure"));
+      final response = await _route(router, _request(method: "GET", path: "/failure"));
 
       expect(response.status, 502);
       expect(response.body, contains("boom"));
@@ -167,4 +226,8 @@ RelayResponse _response({required RelayRequest request, required int status, req
     headers: const {},
     body: body,
   );
+}
+
+Future<RelayResponse> _route(RequestRouter router, RelayRequest request) async {
+  return (await router.route(request).completion).response;
 }

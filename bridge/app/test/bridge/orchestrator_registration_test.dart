@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
@@ -10,13 +11,14 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/routing/bridge_restart_dispatcher.dart";
+import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ServerClock;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel, ServerClock;
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
-import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
@@ -148,6 +150,94 @@ void main() {
     });
   });
 
+  group("OrchestratorSession routed request boundaries", () {
+    test("enqueues the correlated restart response before handoff and graceful close", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_restart001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+      harness.restartService.restartable = true;
+      final phone = await _activatePhone(harness: harness, connId: 7);
+      final sendsBeforeRestart = harness.relayClient.sendCount;
+
+      await _sendEncrypted(
+        socket: phone.socket,
+        connId: 7,
+        encryptor: phone.encryptor,
+        message: const RelayMessage.request(
+          id: "restart-request",
+          method: "POST",
+          path: "/global/restart",
+          headers: {},
+          body: null,
+        ),
+      );
+
+      final response = await _nextResponse(
+        messages: phone.messages,
+        encryptor: phone.encryptor,
+        requestId: "restart-request",
+      );
+      expect(response.status, 200);
+      expect(jsonDecodeMap(response.body!)["restarting"], isTrue);
+      expect(harness.restartService.handoffCalls, 1);
+      expect(harness.restartService.sendCountAtHandoff, sendsBeforeRestart + 1);
+      expect(harness.restartService.connIdAtHandoff, 7);
+      await harness.runFuture.timeout(const Duration(seconds: 5));
+    });
+
+    test("routed and control diagnostics retain only closed identities", () async {
+      late _RegistrationHarness harness;
+      final output = await _captureLogOutput(() async {
+        harness = await _RegistrationHarness.start(
+          repository: FakeBridgeRegistrationRepository()..nextBridgeId = "br_logs001",
+        );
+        try {
+          final phone = await _activatePhone(harness: harness, connId: 9);
+          await _sendEncrypted(
+            socket: phone.socket,
+            connId: 9,
+            encryptor: phone.encryptor,
+            message: const RelayMessage.sessionView(sessionId: "private-session-view"),
+          );
+          await _sendEncrypted(
+            socket: phone.socket,
+            connId: 9,
+            encryptor: phone.encryptor,
+            message: const RelayMessage.sseSubscribe(path: "/events/private-subscription-path"),
+          );
+          await _sendEncrypted(
+            socket: phone.socket,
+            connId: 9,
+            encryptor: phone.encryptor,
+            message: const RelayMessage.request(
+              id: "health-request",
+              method: "GET",
+              path: "/global/health?private-route-query=yes",
+              headers: {},
+              body: null,
+            ),
+          );
+
+          final response = await _nextResponse(
+            messages: phone.messages,
+            encryptor: phone.encryptor,
+            requestId: "health-request",
+          );
+          expect(response.status, 200);
+        } finally {
+          await harness.close();
+        }
+      });
+
+      expect(output, contains("RelaySessionView"));
+      expect(output, contains("RelaySseSubscribe"));
+      expect(output, contains("GET /global/health"));
+      expect(output, isNot(contains("private-session-view")));
+      expect(output, isNot(contains("private-subscription-path")));
+      expect(output, isNot(contains("private-route-query")));
+    });
+  });
+
   group("OrchestratorSession relay takeover (ADR A22)", () {
     test("a 4007 replaced-close does not reconnect within the war window", () async {
       final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
@@ -259,6 +349,9 @@ class _RegistrationHarness {
   final AppDatabase database;
   final PluginLifecycleService lifecycleService;
   final http.Client httpClient;
+  final _RecordingRelayClient relayClient;
+  final _RecordingRestartService restartService;
+  final BridgeRestartDispatcher restartDispatcher;
 
   _RegistrationHarness._({
     required this.plugin,
@@ -270,6 +363,9 @@ class _RegistrationHarness {
     required this.database,
     required this.lifecycleService,
     required this.httpClient,
+    required this.relayClient,
+    required this.restartService,
+    required this.restartDispatcher,
   });
 
   static Future<_RegistrationHarness> start({
@@ -288,6 +384,12 @@ class _RegistrationHarness {
     );
     final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
     final httpClient = http.Client();
+    final relayClient = _RecordingRelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(),
+      bridgeIdProvider: registrationService,
+    );
+    final restartService = _RecordingRestartService(relayClient: relayClient);
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -296,11 +398,7 @@ class _RegistrationHarness {
         sseReplayWindow: const Duration(minutes: 1),
         yolo: false,
       ),
-      client: RelayClient(
-        relayURL: "ws://127.0.0.1:${relayServer.port}",
-        accessTokenProvider: FakeAccessTokenProvider(),
-        bridgeIdProvider: registrationService,
-      ),
+      client: relayClient,
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
@@ -312,12 +410,13 @@ class _RegistrationHarness {
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: registrationService,
       failureReporter: FakeFailureReporter(),
-      restartService: buildTestRestartService(),
+      restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
     );
 
-    final session = orchestrator.create().session;
+    final composition = orchestrator.create();
+    final session = composition.session;
     final startFuture = session.start();
     final runFuture = session.waitUntilStopped();
     startFuture.ignore();
@@ -333,6 +432,9 @@ class _RegistrationHarness {
       database: database,
       lifecycleService: lifecycleService,
       httpClient: httpClient,
+      relayClient: relayClient,
+      restartService: restartService,
+      restartDispatcher: composition.restartDispatcher,
     );
   }
 
@@ -349,9 +451,152 @@ class _RegistrationHarness {
       // The lifecycle may have already completed with the error under test.
     }
     await lifecycleService.dispose();
+    await restartDispatcher.dispose();
     httpClient.close();
     await database.close();
     await relayServer.close();
+  }
+}
+
+class _RecordingRelayClient extends RelayClient {
+  _RecordingRelayClient({
+    required super.relayURL,
+    required super.accessTokenProvider,
+    required super.bridgeIdProvider,
+  });
+
+  int sendCount = 0;
+  int? lastConnId;
+
+  @override
+  void send(int connID, List<int> payload) {
+    super.send(connID, payload);
+    sendCount++;
+    lastConnId = connID;
+  }
+}
+
+class _RecordingRestartService implements BridgeRestartService {
+  _RecordingRestartService({required this.relayClient});
+
+  final _RecordingRelayClient relayClient;
+  bool restartable = false;
+  int handoffCalls = 0;
+  int? sendCountAtHandoff;
+  int? connIdAtHandoff;
+
+  @override
+  bool get supervisedRestartRequested => false;
+
+  @override
+  Future<bool> canRestart() async => restartable;
+
+  @override
+  Future<bool> canSpawnSuccessor() async => restartable;
+
+  @override
+  Future<bool> performRestartHandoff() async {
+    handoffCalls++;
+    sendCountAtHandoff = relayClient.sendCount;
+    connIdAtHandoff = relayClient.lastConnId;
+    return true;
+  }
+
+  @override
+  Future<bool> spawnSuccessor() async => true;
+}
+
+Future<({WebSocket socket, StreamIterator<dynamic> messages, SessionEncryptor encryptor})> _activatePhone({
+  required _RegistrationHarness harness,
+  required int connId,
+}) async {
+  final socket = await harness.relayServer.nextClient();
+  final messages = StreamIterator<dynamic>(socket);
+  expect(await messages.moveNext(), isTrue);
+  expect(jsonDecodeMap(messages.current as String)["type"], "auth");
+
+  final crypto = RelayCryptoService();
+  final phoneKeyPair = await crypto.generateKeyPair();
+  final phonePublicKey = await phoneKeyPair.extractPublicKey();
+  socket.add(<int>[
+    0,
+    connId,
+    ...utf8.encode(
+      jsonEncode(
+        RelayMessage.keyExchange(
+          publicKey: base64Url.encode(phonePublicKey.bytes).replaceAll("=", ""),
+        ).toJson(),
+      ),
+    ),
+  ]);
+
+  expect(await messages.moveNext(), isTrue);
+  final readyFrame = messages.current as List<int>;
+  expect(readyFrame.sublist(0, 2), [0, connId]);
+  final ready = await _decryptReady(response: readyFrame.sublist(2), phoneKeyPair: phoneKeyPair);
+  final roomKey = SecretKey(base64Url.decode(base64Url.normalize(ready.roomKey)));
+  await harness.session.firstPhoneConnected.timeout(const Duration(seconds: 2));
+  return (socket: socket, messages: messages, encryptor: crypto.createSessionEncryptor(roomKey));
+}
+
+Future<RelayReady> _decryptReady({required List<int> response, required SimpleKeyPair phoneKeyPair}) async {
+  final crypto = RelayCryptoService();
+  final bridgePublicKey = SimplePublicKey(response.sublist(0, 32), type: KeyPairType.x25519);
+  final secret = await crypto.deriveSharedSecret(phoneKeyPair, peerPublicKey: bridgePublicKey);
+  final encryptor = crypto.createSessionEncryptor(await crypto.deriveEncryptionKey(secret));
+  final decrypted = await unframe(response.sublist(32), encryptor: encryptor);
+  return RelayMessage.fromJson(jsonDecodeMap(utf8.decode(decrypted))) as RelayReady;
+}
+
+Future<void> _sendEncrypted({
+  required WebSocket socket,
+  required int connId,
+  required SessionEncryptor encryptor,
+  required RelayMessage message,
+}) async {
+  final payload = await frame(utf8.encode(jsonEncode(message.toJson())), encryptor: encryptor);
+  socket.add(<int>[0, connId, ...payload]);
+}
+
+Future<RelayResponse> _nextResponse({
+  required StreamIterator<dynamic> messages,
+  required SessionEncryptor encryptor,
+  required String requestId,
+}) async {
+  while (await messages.moveNext()) {
+    final wire = messages.current;
+    if (wire is! List<int> || wire.length < 3) continue;
+    final decrypted = await unframe(wire.sublist(2), encryptor: encryptor);
+    final message = RelayMessage.fromJson(jsonDecodeMap(utf8.decode(decrypted)));
+    if (message case final RelayResponse response when response.id == requestId) return response;
+  }
+  throw StateError("relay closed before response $requestId");
+}
+
+class _BufferingStdout implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+Future<String> _captureLogOutput(Future<void> Function() action) async {
+  final stderrBuffer = _BufferingStdout();
+  final previousLevel = Log.level;
+  try {
+    Log.level = LogLevel.verbose;
+    await IOOverrides.runZoned(action, stderr: () => stderrBuffer);
+    return stderrBuffer.text;
+  } finally {
+    Log.level = previousLevel;
   }
 }
 

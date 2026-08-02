@@ -81,19 +81,22 @@ void main() {
     final runtime = BridgeRuntime(
       database: database,
       failureReporter: failureReporter,
-      restartService: restartService,
       composition: composition,
     );
     final debugServer = runtime.createDebugServer(port: 0);
 
     expect(identical(debugServer.router, runtime.session.router), isTrue);
-    final routed = await debugServer.router.route(
-      makeRequest(
-        "POST",
-        "/session/options",
-        body: jsonEncode(PluginProjectIdRequest(projectId: "missing", pluginId: plugin.id).toJson()),
-      ),
-    );
+    final routed =
+        (await debugServer.router
+                .route(
+                  makeRequest(
+                    "POST",
+                    "/session/options",
+                    body: jsonEncode(PluginProjectIdRequest(projectId: "missing", pluginId: plugin.id).toJson()),
+                  ),
+                )
+                .completion)
+            .response;
     expect(routed.status, 404);
     expect(routed.headers, containsPair("content-type", "application/json"));
     expect(

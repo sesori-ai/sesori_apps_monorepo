@@ -22,6 +22,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
+import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -68,6 +69,21 @@ RelayRequest makeRequest(
           body: body,
         )
         as RelayRequest;
+
+extension RequestHandlerTestMatching on RequestHandlerBase {
+  bool canHandle(RelayRequest request) {
+    final method = HttpMethod.parseExternal(request.method);
+    if (method == null) return false;
+    return matches(requestMethod: method, target: Uri.parse(request.path));
+  }
+
+  ({
+    Map<String, String> pathParams,
+    Map<String, String> queryParams,
+    String? fragment,
+  })
+  extractParams(RelayRequest request) => extractTargetParams(target: Uri.parse(request.path));
+}
 
 /// Hand-written fake [BridgePluginApi] used across routing handler tests.
 class FakeBridgePlugin implements NativeProjectsPluginApi {
