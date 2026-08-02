@@ -990,7 +990,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(prSyncService.calls, hasLength(1));
-      expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
+      expect(prSyncService.calls.single, {"project-1"});
     });
 
     test("bounds initial identity verification and returns PR-free sessions", () async {
@@ -1044,7 +1044,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 110));
     });
 
-    test("triggers PR refresh with the stored catalog project path", () async {
+    test("triggers PR refresh with the stable project id", () async {
       sessionRepository.projectPathResult = "/tmp/project";
       await handler.handle(
         makeRequest("POST", "/sessions"),
@@ -1055,32 +1055,8 @@ void main() {
       );
 
       expect(prSyncService.calls, hasLength(1));
-      expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
+      expect(prSyncService.calls.single, {"project-1"});
       expect(plugin.lastGetCurrentProjectProjectId, isNull);
-    });
-
-    test("falls back to session directory when the catalog project path is missing", () async {
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s1",
-          projectID: "project-1",
-          directory: "/tmp/fallback-project",
-          parentID: null,
-          title: null,
-          time: null,
-        ),
-      ];
-
-      await handler.handle(
-        makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "project-1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(prSyncService.calls, hasLength(1));
-      expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/fallback-project")));
     });
 
     test("returns sessions without cached PR metadata when a waited refresh times out", () async {
@@ -1179,95 +1155,6 @@ void main() {
       expect(result.items.single.pullRequest, isNull);
       expect(result.items.single.pullRequestHistory, isEmpty);
     });
-
-    test("strips cached PR metadata when another refresh is in progress", () async {
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s1",
-          projectID: "p1",
-          directory: "/tmp",
-          parentID: null,
-          title: "session one",
-          time: null,
-        ),
-      ];
-      pullRequestRepository.setPr(
-        sessionId: "s1",
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          prNumber: 101,
-          branchName: "feature/in-progress",
-          url: "https://github.com/org/repo/pull/101",
-          title: "In-progress refresh PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
-      final inProgressHandler = GetSessionsHandler(
-        sessionRepository: sessionRepository,
-        prSyncService: FakePrSyncService(refreshOutcome: PrRefreshOutcome.inProgress),
-      );
-
-      final result = await inProgressHandler.handle(
-        makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(result.items.single.pullRequest, isNull);
-      expect(result.items.single.pullRequestHistory, isEmpty);
-    });
-
-    test("strips cached PR metadata when no refresh source is available", () async {
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s1",
-          projectID: "p1",
-          directory: "",
-          parentID: null,
-          title: "session one",
-          time: null,
-        ),
-      ];
-      pullRequestRepository.setPr(
-        sessionId: "s1",
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          prNumber: 103,
-          branchName: "feature/no-source",
-          url: "https://github.com/org/repo/pull/103",
-          title: "Unavailable refresh source PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
-
-      final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(result.items.single.pullRequest, isNull);
-      expect(result.items.single.pullRequestHistory, isEmpty);
-    });
-
     test("keeps final identity verification inside the waited deadline", () async {
       plugin.sessionsResult = const [
         PluginSession(

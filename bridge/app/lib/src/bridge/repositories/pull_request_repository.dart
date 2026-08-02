@@ -3,7 +3,9 @@ import "../../api/database/daos/pull_request_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/database.dart";
 import "../../api/database/tables/pull_requests_table.dart";
+import "../../api/database/tables/session_table.dart" show SessionDto;
 import "../../repositories/models/pull_request_selection.dart";
+import "../../repositories/models/pull_request_target.dart";
 import "models/stored_session.dart";
 import "models/verified_github_login.dart";
 
@@ -23,65 +25,122 @@ class PullRequestRepository {
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;
 
-  Future<bool> prepareScopedRefresh({
-    required String projectId,
-    required String githubRepositoryIdentity,
+  Future<Set<String>> applyResolvedTargets({
+    required Map<String, List<StoredSession>> sessionsByProject,
+    required Map<String, PullRequestDirectoryTarget> targetsByDirectory,
+  }) {
+    return _database.transaction(() async {
+      final changedProjectIds = <String>{};
+      final sortedProjectIds = sessionsByProject.keys.toList(growable: false)..sort();
+      for (final projectId in sortedProjectIds) {
+        final capturedSessions = sessionsByProject[projectId] ?? const <StoredSession>[];
+        final sessionIds = capturedSessions.map((session) => session.id).toList(growable: false);
+        final currentById = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
+        final before = await _pullRequestDao.getPrsByPersistedScopeSessionIds(sessionIds: sessionIds);
+        final updates = <SessionPullRequestScopeUpdate>[];
+        var renderedBranchChanged = false;
+
+        for (final captured in capturedSessions) {
+          final current = currentById[captured.id];
+          if (current == null ||
+              current.projectId != captured.projectId ||
+              current.parentSessionId != captured.parentSessionId ||
+              current.directory != captured.directory) {
+            continue;
+          }
+
+          final ({String? branchName, String? repositoryIdentity}) desiredScope;
+          if (captured.parentSessionId != null) {
+            desiredScope = (branchName: null, repositoryIdentity: null);
+          } else {
+            final resolution = targetsByDirectory[captured.directory];
+            desiredScope = switch (resolution) {
+              PullRequestGithubDirectoryTarget(:final target) => (
+                branchName: target.branchName,
+                repositoryIdentity: target.githubRepositoryIdentity,
+              ),
+              PullRequestLocalBranchDirectoryTarget(:final branchName) => (
+                branchName: branchName,
+                repositoryIdentity: null,
+              ),
+              PullRequestNoBranchDirectoryTarget() => (branchName: null, repositoryIdentity: null),
+              PullRequestRepositoryResolutionFailed(:final branchName) => (
+                branchName: branchName,
+                repositoryIdentity: null,
+              ),
+              PullRequestBranchResolutionFailed() || null => (
+                branchName: current.currentBranchName,
+                repositoryIdentity: current.currentGithubRepositoryIdentity,
+              ),
+            };
+          }
+
+          if (current.currentBranchName != desiredScope.branchName) {
+            renderedBranchChanged = true;
+          }
+          if (current.currentBranchName != desiredScope.branchName ||
+              current.currentGithubRepositoryIdentity != desiredScope.repositoryIdentity) {
+            updates.add((
+              sessionId: captured.id,
+              currentBranchName: desiredScope.branchName,
+              currentGithubRepositoryIdentity: desiredScope.repositoryIdentity,
+            ));
+          }
+        }
+
+        await _sessionDao.updatePullRequestScopes(updates: updates);
+        final currentSessions = await _sessionDao.getSessionsByProject(projectId: projectId);
+        final currentTargets = _currentSelectionTargets(sessions: currentSessions);
+        await _pullRequestDao.deletePrsOutsideTargets(
+          projectId: projectId,
+          targets: currentTargets,
+        );
+        if (currentTargets.isEmpty) {
+          await _projectsDao.setPrCacheGithubLogin(projectId: projectId, githubLogin: null);
+        }
+        final after = await _pullRequestDao.getPrsByPersistedScopeSessionIds(sessionIds: sessionIds);
+        if (renderedBranchChanged || !_sameVisiblePullRequests(before: before, after: after)) {
+          changedProjectIds.add(projectId);
+        }
+      }
+      return changedProjectIds;
+    });
+  }
+
+  Future<Set<String>> prepareScopedRefresh({
+    required Set<String> projectIds,
     required VerifiedGithubLogin verifiedGithubLogin,
-    required List<StoredSession> sessions,
-  }) async {
+  }) {
     return _database.transaction(() async {
-      final sessionIds = sessions.map((session) => session.id).toList(growable: false);
-      final before = await _pullRequestDao.getPrsByPersistedScopeSessionIds(sessionIds: sessionIds);
-      await _projectsDao.setPrCacheGithubLogin(
-        projectId: projectId,
-        githubLogin: verifiedGithubLogin.login,
-      );
-      await _sessionDao.updatePullRequestScopes(
-        updates: [
-          for (final session in sessions)
-            (
-              sessionId: session.id,
-              currentBranchName: session.parentSessionId == null ? session.branchName : null,
-              currentGithubRepositoryIdentity: session.parentSessionId == null ? githubRepositoryIdentity : null,
-            ),
-        ],
-      );
-      await _pullRequestDao.deletePrsOutsideScope(
-        projectId: projectId,
-        githubRepositoryIdentity: githubRepositoryIdentity,
-        githubLogin: verifiedGithubLogin.login,
-        branchNames: _rootBranchNames(sessions: sessions),
-      );
-      final after = await _pullRequestDao.getPrsByPersistedScopeSessionIds(sessionIds: sessionIds);
-      return !_sameVisiblePullRequests(before: before, after: after);
+      final changedProjectIds = <String>{};
+      final sortedProjectIds = projectIds.toList(growable: false)..sort();
+      for (final projectId in sortedProjectIds) {
+        if (await _projectsDao.getProject(projectId: projectId) == null) continue;
+        final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
+        final sessionIds = sessions.map((session) => session.sessionId).toList(growable: false);
+        final before = await _pullRequestDao.getPrsByPersistedScopeSessionIds(sessionIds: sessionIds);
+        await _projectsDao.setPrCacheGithubLogin(
+          projectId: projectId,
+          githubLogin: verifiedGithubLogin.login,
+        );
+        await _pullRequestDao.deletePrsOutsideTargets(
+          projectId: projectId,
+          targets: _currentSelectionTargets(sessions: sessions),
+        );
+        await _pullRequestDao.deletePrsForOtherGithubLogins(
+          projectId: projectId,
+          githubLogin: verifiedGithubLogin.login,
+        );
+        final after = await _pullRequestDao.getPrsByPersistedScopeSessionIds(sessionIds: sessionIds);
+        if (!_sameVisiblePullRequests(before: before, after: after)) {
+          changedProjectIds.add(projectId);
+        }
+      }
+      return changedProjectIds;
     });
   }
 
-  Future<bool> clearScopedRefresh({
-    required String projectId,
-    required List<StoredSession> sessions,
-  }) async {
-    return _database.transaction(() async {
-      final before = await _pullRequestDao.getPrsByPersistedScopeSessionIds(
-        sessionIds: sessions.map((session) => session.id).toList(growable: false),
-      );
-      await _projectsDao.setPrCacheGithubLogin(projectId: projectId, githubLogin: null);
-      await _sessionDao.updatePullRequestScopes(
-        updates: [
-          for (final session in sessions)
-            (
-              sessionId: session.id,
-              currentBranchName: null,
-              currentGithubRepositoryIdentity: null,
-            ),
-        ],
-      );
-      await _pullRequestDao.deletePrsByProjectId(projectId: projectId);
-      return before.values.any((pullRequests) => pullRequests.isNotEmpty);
-    });
-  }
-
-  Future<bool> replaceScopedPullRequests({
+  Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
     required String projectId,
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<PullRequestTargetSelection> targetSelections,
@@ -114,14 +173,23 @@ class PullRequestRepository {
             createdAt: pullRequest.createdAt.millisecondsSinceEpoch,
           ),
     ];
-    return _database.transaction(() async {
+    return _database.transaction<PullRequestReplacementOutcome>(() async {
+      final project = await _projectsDao.getProject(projectId: projectId);
+      final currentSessions = await _sessionDao.getSessionsByProject(projectId: projectId);
+      if (project?.prCacheGithubLogin != verifiedGithubLogin.login ||
+          !_sameTargets(
+            first: _currentSelectionTargets(sessions: currentSessions),
+            second: targets,
+          )) {
+        return const PullRequestReplacementScopeChanged();
+      }
       final previous = await _pullRequestDao.getPrsByProjectId(projectId: projectId);
       final changed = !_sameSelectedPullRequests(previous: previous, replacements: replacements);
       await _pullRequestDao.deletePrsByProjectId(projectId: projectId);
       for (final replacement in replacements) {
         await _pullRequestDao.upsertPr(pullRequest: replacement);
       }
-      return changed;
+      return PullRequestReplacementApplied(changed: changed);
     });
   }
 
@@ -175,11 +243,27 @@ class PullRequestRepository {
     };
   }
 
-  Set<String> _rootBranchNames({required List<StoredSession> sessions}) {
+  Set<PullRequestSelectionTarget> _currentSelectionTargets({
+    required Iterable<SessionDto> sessions,
+  }) {
     return {
       for (final session in sessions)
         if (session.parentSessionId == null)
-          if (session.branchName case final branchName? when branchName.isNotEmpty) branchName,
+          if ((session.currentGithubRepositoryIdentity, session.currentBranchName) case (
+            final repositoryIdentity?,
+            final branchName?,
+          ) when repositoryIdentity.isNotEmpty && branchName.isNotEmpty)
+            (
+              githubRepositoryIdentity: repositoryIdentity,
+              branchName: branchName,
+            ),
     };
+  }
+
+  bool _sameTargets({
+    required Set<PullRequestSelectionTarget> first,
+    required Set<PullRequestSelectionTarget> second,
+  }) {
+    return first.length == second.length && first.containsAll(second);
   }
 }

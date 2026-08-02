@@ -90,7 +90,7 @@ void main() {
     expect(session.parentID, "parent-id");
     expect(session.title, "Observed title");
     expect(session.promptDefaults?.agent, "build");
-    expect(session.branchName, "feature");
+    expect(session.branchName, "current-feature");
     expect(session.hasWorktree, isTrue);
     expect(session.unseen, isTrue);
   });

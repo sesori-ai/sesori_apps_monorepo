@@ -894,9 +894,9 @@ class OrchestratorSession {
           )
           .addTo(_subscriptions);
       Log.d("plugin event stream subscribed");
-      _prSyncService.prChanges
-          .listen((String projectId) {
-            _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
+      _prSyncService.renderedChanges
+          .listen((change) {
+            _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: change.projectId));
           })
           .addTo(_subscriptions);
       _sessionUnseenService.unseenChanges

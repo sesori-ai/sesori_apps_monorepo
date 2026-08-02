@@ -13,8 +13,9 @@
 ///   PullRequestRepository.replaceScopedPullRequests succeeds without FK exception.
 ///
 /// Scenario B — Missing catalog path:
-///   PullRequestRepository.replaceScopedPullRequests preserves the FK failure instead of
-///   fabricating a project row whose path would be inferred from its id.
+///   PullRequestRepository.replaceScopedPullRequests returns a scope-changed
+///   outcome instead of fabricating a project row whose path would be inferred
+///   from its id.
 ///
 /// Scenario C — GetSessions path:
 ///   SessionRepository.getSessionsForProject reads imported bindings without FK
@@ -25,6 +26,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/verified_github_log
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
+import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -71,6 +73,33 @@ void main() {
           updatedAt: 100,
         );
         await projectRepo.getProjects();
+        await db.sessionDao.insertSession(
+          sessionId: "session-X",
+          backendSessionId: "session-X",
+          projectId: "proj-X",
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          branchName: "created-branch",
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+          pluginId: "opencode",
+        );
+        await db.sessionDao.updatePullRequestScopes(
+          updates: const [
+            (
+              sessionId: "session-X",
+              currentBranchName: "feature-branch",
+              currentGithubRepositoryIdentity: _githubRepositoryIdentity,
+            ),
+          ],
+        );
+        await db.projectsDao.setPrCacheGithubLogin(
+          projectId: "proj-X",
+          githubLogin: _githubLogin,
+        );
 
         final projectRows = await db.select(db.projectsTable).get();
         expect(
@@ -82,12 +111,13 @@ void main() {
         // Now scoped replacement must succeed — project row already exists.
         // Direct await (not expectLater) to ensure the future is fully resolved
         // before querying the DB.
-        await prRepo.replaceScopedPullRequests(
+        final outcome = await prRepo.replaceScopedPullRequests(
           projectId: "proj-X",
           verifiedGithubLogin: _verifiedGithubLogin,
           targetSelections: [_selectedPullRequest()],
           lastCheckedAt: 2,
         );
+        expect(outcome, isA<PullRequestReplacementApplied>());
 
         final prRows = await db.pullRequestDao.getPrsByProjectId(projectId: "proj-X");
         expect(
@@ -120,15 +150,13 @@ void main() {
         final emptyRows = await db.select(db.projectsTable).get();
         expect(emptyRows, isEmpty, reason: "projects_table must be empty before the call");
 
-        await expectLater(
-          prRepo.replaceScopedPullRequests(
-            projectId: "ghost",
-            verifiedGithubLogin: _verifiedGithubLogin,
-            targetSelections: [_selectedPullRequest()],
-            lastCheckedAt: 2,
-          ),
-          throwsA(anything),
+        final outcome = await prRepo.replaceScopedPullRequests(
+          projectId: "ghost",
+          verifiedGithubLogin: _verifiedGithubLogin,
+          targetSelections: [_selectedPullRequest()],
+          lastCheckedAt: 2,
         );
+        expect(outcome, isA<PullRequestReplacementScopeChanged>());
 
         final projectRows = await db.select(db.projectsTable).get();
         expect(projectRows, isEmpty);

@@ -1,5 +1,6 @@
 import "../../api/gh_pull_request_batch.dart";
 import "../../repositories/models/pull_request_selection.dart";
+import "../../repositories/models/pull_request_target.dart";
 import "../api/gh_cli_api.dart";
 import "../api/gh_pull_request.dart";
 import "../api/git_cli_api.dart";
@@ -23,20 +24,77 @@ class PrSourceRepository {
     return VerifiedGithubLogin.tryParse(rawLogin: identity.rawLogin);
   }
 
-  Future<String?> getGithubRepositoryIdentity({required String projectPath}) async {
-    final remoteUrl = await _gitCli.getRemoteUrl(projectPath: projectPath);
-    if (remoteUrl == null) {
-      return null;
+  Future<Map<String, PullRequestDirectoryTarget>> resolvePullRequestTargets({
+    required Iterable<String> directories,
+  }) async {
+    final uniqueDirectories = directories.toSet().toList(growable: false)..sort();
+    final targets = <String, PullRequestDirectoryTarget>{};
+    for (final directory in uniqueDirectories) {
+      targets[directory] = await _resolvePullRequestTarget(directory: directory);
     }
-    final identity = _remoteIdentityParser.parse(remoteUrl: remoteUrl);
-    if (identity == null || identity.host != "github.com") {
-      return null;
+    return targets;
+  }
+
+  Future<PullRequestDirectoryTarget> _resolvePullRequestTarget({required String directory}) async {
+    final GitCurrentBranchResult currentBranch;
+    try {
+      currentBranch = await _gitCli.getCurrentBranch(projectPath: directory);
+    } on Object catch (error, stackTrace) {
+      return PullRequestBranchResolutionFailed(
+        error: PullRequestTargetResolutionException(
+          innerError: error,
+          innerStackTrace: stackTrace,
+        ),
+      );
     }
-    final segments = identity.slug.split("/");
-    if (segments.length != 2 || segments.any((segment) => segment.isEmpty)) {
-      return null;
+
+    return switch (currentBranch) {
+      GitCurrentBranchMissingDirectory() => const PullRequestNoBranchDirectoryTarget(
+        reason: PullRequestNoBranchReason.missingDirectory,
+      ),
+      GitCurrentBranchNotRepository() => const PullRequestNoBranchDirectoryTarget(
+        reason: PullRequestNoBranchReason.notGitRepository,
+      ),
+      GitCurrentBranchDetached() => const PullRequestNoBranchDirectoryTarget(
+        reason: PullRequestNoBranchReason.detachedHead,
+      ),
+      GitCurrentBranchNamed(:final branchName) => await _resolveNamedBranchTarget(
+        directory: directory,
+        branchName: branchName,
+      ),
+    };
+  }
+
+  Future<PullRequestDirectoryTarget> _resolveNamedBranchTarget({
+    required String directory,
+    required String branchName,
+  }) async {
+    final String? remoteUrl;
+    try {
+      remoteUrl = await _gitCli.getRemoteUrl(projectPath: directory);
+    } on Object catch (error, stackTrace) {
+      return PullRequestRepositoryResolutionFailed(
+        branchName: branchName,
+        error: PullRequestTargetResolutionException(
+          innerError: error,
+          innerStackTrace: stackTrace,
+        ),
+      );
     }
-    return identity.slug.toLowerCase();
+    final identity = remoteUrl == null ? null : _remoteIdentityParser.parse(remoteUrl: remoteUrl);
+    final segments = identity?.slug.split("/") ?? const <String>[];
+    if (identity == null ||
+        identity.host.toLowerCase() != "github.com" ||
+        segments.length != 2 ||
+        segments.any((segment) => segment.isEmpty)) {
+      return PullRequestLocalBranchDirectoryTarget(branchName: branchName);
+    }
+    return PullRequestGithubDirectoryTarget(
+      target: (
+        githubRepositoryIdentity: identity.slug.toLowerCase(),
+        branchName: branchName,
+      ),
+    );
   }
 
   Future<PullRequestSelectionOutcome> selectPullRequests({

@@ -7,6 +7,11 @@ import "../tables/session_table.dart";
 
 part "pull_request_dao.g.dart";
 
+typedef PullRequestPersistedTarget = ({
+  String githubRepositoryIdentity,
+  String branchName,
+});
+
 @DriftAccessor(tables: [ProjectsTable, PullRequestsTable, SessionTable])
 class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDaoMixin {
   PullRequestDao(super.attachedDatabase);
@@ -83,22 +88,31 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
     return groupedBySessionId;
   }
 
-  Future<void> deletePrsOutsideScope({
+  Future<void> deletePrsOutsideTargets({
     required String projectId,
-    required String githubRepositoryIdentity,
-    required String githubLogin,
-    required Set<String> branchNames,
+    required Set<PullRequestPersistedTarget> targets,
   }) async {
+    Expression<bool> matchesTarget = const Constant(false);
+    for (final target in targets) {
+      matchesTarget =
+          matchesTarget |
+          (pullRequestsTable.githubRepositoryIdentity.equals(target.githubRepositoryIdentity) &
+              pullRequestsTable.branchName.equals(target.branchName));
+    }
     await (delete(pullRequestsTable)..where(
           (table) {
-            final branchIsOutsideScope = branchNames.isEmpty
-                ? const Constant(true)
-                : table.branchName.isIn(branchNames).not();
-            return table.projectId.equals(projectId) &
-                (table.githubRepositoryIdentity.equals(githubRepositoryIdentity).not() |
-                    table.githubLogin.equals(githubLogin).not() |
-                    branchIsOutsideScope);
+            return table.projectId.equals(projectId) & matchesTarget.not();
           },
+        ))
+        .go();
+  }
+
+  Future<void> deletePrsForOtherGithubLogins({
+    required String projectId,
+    required String githubLogin,
+  }) async {
+    await (delete(pullRequestsTable)..where(
+          (table) => table.projectId.equals(projectId) & table.githubLogin.equals(githubLogin).not(),
         ))
         .go();
   }

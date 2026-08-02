@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
+import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -35,24 +36,27 @@ void main() {
       expect(await repository.getAuthenticatedIdentity(), isNull);
     });
 
-    test("returns a canonical lowercase GitHub owner/repository identity", () async {
+    test("resolves a named branch and canonical GitHub repository target", () async {
       final repository = _repository(
         ghResults: const [],
         gitResults: [
+          _result(stdout: "Feature/Current\n"),
           _result(stdout: "true\n"),
           _result(stdout: "origin\n"),
           _result(stdout: "git@GitHub.com:Sesori-AI/Sesori_Apps_Monorepo.git\n"),
         ],
       );
 
-      final identity = await repository.getGithubRepositoryIdentity(
-        projectPath: "/repo",
+      final targets = await repository.resolvePullRequestTargets(
+        directories: const ["/repo"],
       );
 
-      expect(identity, "sesori-ai/sesori_apps_monorepo");
+      final target = targets["/repo"]! as PullRequestGithubDirectoryTarget;
+      expect(target.target.githubRepositoryIdentity, "sesori-ai/sesori_apps_monorepo");
+      expect(target.target.branchName, "Feature/Current");
     });
 
-    test("rejects non-GitHub and nested repository identities", () async {
+    test("keeps named branches without a supported GitHub remote", () async {
       for (final remoteUrl in [
         "https://gitlab.com/sesori-ai/sesori_apps_monorepo.git",
         "https://github.com/sesori-ai/mobile/sesori_apps_monorepo.git",
@@ -60,18 +64,88 @@ void main() {
         final repository = _repository(
           ghResults: const [],
           gitResults: [
+            _result(stdout: "feature/current\n"),
             _result(stdout: "true\n"),
             _result(stdout: "origin\n"),
             _result(stdout: "$remoteUrl\n"),
           ],
         );
 
-        expect(
-          await repository.getGithubRepositoryIdentity(projectPath: "/repo"),
-          isNull,
-          reason: remoteUrl,
+        final targets = await repository.resolvePullRequestTargets(
+          directories: const ["/repo"],
         );
+        expect(targets["/repo"], isA<PullRequestLocalBranchDirectoryTarget>(), reason: remoteUrl);
       }
+    });
+
+    test("deduplicates exact directories and classifies branch absence", () async {
+      final detachedAndPlain = _repository(
+        ghResults: const [],
+        gitResults: [
+          ProcessResult(1, 1, "", ""),
+          ProcessResult(2, 128, "", "fatal: not a git repository"),
+        ],
+      );
+
+      final targets = await detachedAndPlain.resolvePullRequestTargets(
+        directories: const ["/plain", "/detached", "/detached"],
+      );
+
+      expect(
+        (targets["/detached"]! as PullRequestNoBranchDirectoryTarget).reason,
+        PullRequestNoBranchReason.detachedHead,
+      );
+      expect(
+        (targets["/plain"]! as PullRequestNoBranchDirectoryTarget).reason,
+        PullRequestNoBranchReason.notGitRepository,
+      );
+
+      final missing = _repository(
+        ghResults: const [],
+        gitResults: const [],
+        gitPathExists: false,
+      );
+      final missingTargets = await missing.resolvePullRequestTargets(
+        directories: const ["/missing"],
+      );
+      expect(
+        (missingTargets["/missing"]! as PullRequestNoBranchDirectoryTarget).reason,
+        PullRequestNoBranchReason.missingDirectory,
+      );
+    });
+
+    test("retains a named branch when repository resolution fails", () async {
+      final repository = _repository(
+        ghResults: const [],
+        gitResults: [
+          _result(stdout: "feature/current\n"),
+          ProcessResult(2, 2, "", "unexpected remote failure"),
+        ],
+      );
+
+      final targets = await repository.resolvePullRequestTargets(
+        directories: const ["/repo"],
+      );
+
+      final failed = targets["/repo"]! as PullRequestRepositoryResolutionFailed;
+      expect(failed.branchName, "feature/current");
+      expect(failed.error.innerError, isA<ProcessException>());
+      expect(failed.error.toString(), isNot(contains("unexpected remote failure")));
+    });
+
+    test("returns a typed failure when the current branch command fails", () async {
+      final repository = _repository(
+        ghResults: const [],
+        gitResults: [ProcessResult(1, 2, "", "unexpected branch failure")],
+      );
+
+      final targets = await repository.resolvePullRequestTargets(
+        directories: const ["/repo"],
+      );
+
+      final failed = targets["/repo"]! as PullRequestBranchResolutionFailed;
+      expect(failed.error.innerError, isA<ProcessException>());
+      expect(failed.error.toString(), isNot(contains("unexpected branch failure")));
     });
 
     test("selects newest open by creation time and number before terminal", () async {
@@ -446,12 +520,13 @@ GhPullRequest _pullRequest({
 PrSourceRepository _repository({
   required List<ProcessResult> ghResults,
   required List<ProcessResult> gitResults,
+  bool gitPathExists = true,
 }) {
   return PrSourceRepository(
     ghCli: GhCliApi(processRunner: _QueueProcessRunner(results: ghResults)),
     gitCli: GitCliApi(
       processRunner: _QueueProcessRunner(results: gitResults),
-      gitPathExists: ({required String gitPath}) => true,
+      gitPathExists: ({required String gitPath}) => gitPathExists,
     ),
   );
 }

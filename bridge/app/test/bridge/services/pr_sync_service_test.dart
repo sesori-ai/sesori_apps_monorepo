@@ -1,11 +1,6 @@
 import "dart:async";
-import "dart:io";
 
 import "package:clock/clock.dart";
-import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
@@ -13,699 +8,461 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:test/test.dart";
 
-const _githubRepositoryIdentity = "sesori-ai/sesori_apps_monorepo";
+const _repositoryIdentity = "sesori-ai/sesori_apps_monorepo";
 final VerifiedGithubLogin _verifiedGithubLogin = VerifiedGithubLogin.tryParse(rawLogin: "octocat")!;
 
 void main() {
   group("PrSyncService", () {
-    test("emits project id when a new matched PR is found", () async {
-      final prSource = _FakePrSource(
-        selectedPullRequestsResult: <GhPullRequest>[
-          _ghPr(number: 11, branch: "feature/new-pr", title: "New PR"),
-        ],
-      );
-      final pullRequestRepository = _FakePullRequestRepository();
-      final sessionRepository = _FakeSessionRepository(
-        sessionsByProject: <String, List<StoredSession>>{
-          "project-1": [_storedSession(id: "session-1", branchName: "feature/new-pr")],
+    test("batches multiple projects through one serialized GitHub selection", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: {
+          "/one": _githubTarget(branchName: "feature/one"),
+          "/two": _githubTarget(branchName: "feature/two"),
         },
       );
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: sessionRepository,
-        clock: const Clock(),
-        debounceWindow: const Duration(milliseconds: 1),
+      final pullRequests = _FakePullRequestRepository();
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+          "two": [_session(id: "two", projectId: "two", directory: "/two")],
+        },
       );
       addTearDown(service.dispose);
 
-      final emittedProjectIds = <String>[];
-      final sub = service.prChanges.listen(emittedProjectIds.add);
-      addTearDown(sub.cancel);
+      final outcome = await service.triggerRefresh(projectIds: {"one", "two"});
 
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => pullRequestRepository.upsertCalls == 1);
-
-      final prs = pullRequestRepository.getByProjectId(projectId: "project-1");
-      expect(prs, hasLength(1));
-      expect(prs.single.prNumber, equals(11));
-      expect(prs.single.branchName, equals("feature/new-pr"));
-      expect(prs.single.githubRepositoryIdentity, _githubRepositoryIdentity);
-      expect(prs.single.githubLogin, _verifiedGithubLogin.login);
-      expect(emittedProjectIds, equals(<String>["project-1"]));
-      expect(prSource.selectionTargets.single.single.githubRepositoryIdentity, _githubRepositoryIdentity);
-      expect(pullRequestRepository.prepareScopedRefreshCalls, hasLength(1));
+      expect(outcome, PrRefreshOutcome.completed);
+      expect(source.resolveCalls, hasLength(1));
+      expect(source.selectionCalls, hasLength(1));
+      expect(source.selectionCalls.single.map((target) => target.branchName), ["feature/one", "feature/two"]);
+      expect(pullRequests.prepareCalls, hasLength(1));
+      expect(pullRequests.prepareCalls.single.projectIds, {"one", "two"});
+      expect(pullRequests.prepareCalls.single.githubLogin, "octocat");
+      expect(pullRequests.replaceCalls.map((call) => call.projectId).toSet(), {"one", "two"});
+      expect(source.maxConcurrentSelections, 1);
     });
 
-    test("does not cache PRs matched only to child-session branches", () async {
-      final prSource = _FakePrSource(
-        selectedPullRequestsResult: <GhPullRequest>[
-          _ghPr(number: 12, branch: "child-branch", title: "Child PR"),
-        ],
+    test("commits and emits local branch changes before unavailable GitHub work", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: {"/one": _githubTarget(branchName: "feature/current")},
+      )..isAvailableResult = false;
+      final pullRequests = _FakePullRequestRepository()..localChangedProjectIds = {"one"};
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
       );
-      final pullRequestRepository = _FakePullRequestRepository();
-      final sessionRepository = _FakeSessionRepository(
-        sessionsByProject: <String, List<StoredSession>>{
-          "project-1": [
-            _storedSession(id: "root", branchName: "root-branch"),
-            const StoredSession(
+      addTearDown(service.dispose);
+      final changes = <String>[];
+      final subscription = service.renderedChanges.listen((change) => changes.add(change.projectId));
+      addTearDown(subscription.cancel);
+
+      final outcome = await service.triggerRefresh(projectIds: {"one"});
+
+      expect(outcome, PrRefreshOutcome.failed);
+      expect(pullRequests.applyCalls, hasLength(1));
+      expect(changes, ["one"]);
+      expect(source.selectionCalls, isEmpty);
+      expect(pullRequests.prepareCalls, isEmpty);
+    });
+
+    test("completes local-only and detached projects without requiring gh", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: const {
+          "/local": PullRequestLocalBranchDirectoryTarget(branchName: "feature/local"),
+          "/detached": PullRequestNoBranchDirectoryTarget(
+            reason: PullRequestNoBranchReason.detachedHead,
+          ),
+        },
+      )..isAvailableResult = false;
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "local": [_session(id: "local", projectId: "local", directory: "/local")],
+          "detached": [_session(id: "detached", projectId: "detached", directory: "/detached")],
+        },
+      );
+      addTearDown(service.dispose);
+
+      final outcome = await service.triggerRefresh(projectIds: {"local", "detached"});
+
+      expect(outcome, PrRefreshOutcome.completed);
+      expect(source.isAvailableCallCount, 0);
+      expect(source.selectionCalls, isEmpty);
+    });
+
+    test("resolves shared root directories once and excludes child directories", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: const {
+          "/shared": PullRequestLocalBranchDirectoryTarget(branchName: "shared"),
+        },
+      );
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "one": [
+            _session(id: "root-a", projectId: "one", directory: "/shared"),
+            _session(id: "root-b", projectId: "one", directory: "/shared"),
+            _session(
               id: "child",
-              backendSessionId: "child",
-              pluginId: "fake",
-              projectId: "project-1",
-              parentSessionId: "root",
-              directory: "/tmp/project-1",
-              worktreePath: null,
-              branchName: "child-branch",
-              isDedicated: false,
-              archivedAt: null,
-              baseBranch: null,
-              baseCommit: null,
+              projectId: "one",
+              directory: "/child",
+              parentSessionId: "root-a",
             ),
           ],
         },
       );
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: sessionRepository,
-        clock: const Clock(),
-      );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-
-      expect(pullRequestRepository.upsertCalls, 0);
+      expect(await service.triggerRefresh(projectIds: {"one"}), PrRefreshOutcome.completed);
+      expect(source.resolveCalls.single, ["/shared"]);
     });
 
-    test("does not emit when PR data is unchanged", () async {
-      final prSource = _FakePrSource(
-        selectedPullRequestsResult: <GhPullRequest>[
-          _ghPr(
-            number: 33,
-            branch: "feature/no-change",
-            title: "No changes",
-            reviewDecision: PrReviewDecision.approved,
-          ),
-        ],
+    test("emits identity-preparation and selected-PR rendered changes", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: {"/one": _githubTarget(branchName: "feature/current")},
       );
-      final pullRequestRepository = _FakePullRequestRepository(
-        seed: <PullRequestDto>[
-          _dto(
-            projectId: "project-1",
-            githubRepositoryIdentity: _githubRepositoryIdentity,
-            githubLogin: "octocat",
-            branchName: "feature/no-change",
-            prNumber: 33,
-            title: "No changes",
-            state: PrState.open,
-            mergeableStatus: PrMergeableStatus.mergeable,
-            reviewDecision: PrReviewDecision.approved,
-            checkStatus: PrCheckStatus.success,
-          ),
-        ],
-      );
-      final sessionRepository = _FakeSessionRepository(
-        sessionsByProject: <String, List<StoredSession>>{
-          "project-1": [_storedSession(id: "session-1", branchName: "feature/no-change")],
+      final pullRequests = _FakePullRequestRepository()
+        ..preparedChangedProjectIds = {"one"}
+        ..replacementOutcomes["one"] = const PullRequestReplacementApplied(changed: true);
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
         },
       );
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: sessionRepository,
-        clock: const Clock(),
-      );
       addTearDown(service.dispose);
+      final changes = <String>[];
+      final subscription = service.renderedChanges.listen((change) => changes.add(change.projectId));
+      addTearDown(subscription.cancel);
 
-      final emittedProjectIds = <String>[];
-      final sub = service.prChanges.listen(emittedProjectIds.add);
-      addTearDown(sub.cancel);
-
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => pullRequestRepository.upsertCalls == 1);
-
-      expect(emittedProjectIds, isEmpty);
+      expect(await service.triggerRefresh(projectIds: {"one"}), PrRefreshOutcome.completed);
+      expect(changes, ["one", "one"]);
     });
 
-    test("reports a failed outcome when the PR source query fails", () async {
-      final prSource = _FakePrSource(
-        selectedPullRequestsResult: const <GhPullRequest>[],
-        onSelection: () async => throw StateError("query failed"),
+    test("fails a project with a typed local resolution error after applying safe local state", () async {
+      final resolutionError = PullRequestTargetResolutionException(
+        innerError: StateError("private path must not be rendered"),
+        innerStackTrace: StackTrace.current,
       );
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(
-          sessionsByProject: const <String, List<StoredSession>>{},
-        ),
-        clock: const Clock(),
-      );
-      addTearDown(service.dispose);
-
-      final outcome = await service.triggerRefresh(
-        projectId: "project-1",
-        projectPath: "/tmp/project-1",
-      );
-
-      expect(outcome, PrRefreshOutcome.failed);
-    });
-
-    test("does not replace scoped rows when query identity changes", () async {
-      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
-        ..selectionOutcome = const PullRequestSelectionIdentityChanged();
-      final pullRequestRepository = _FakePullRequestRepository();
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: _FakeSessionRepository(
-          sessionsByProject: <String, List<StoredSession>>{
-            "project-1": [_storedSession(id: "session-1", branchName: "feature/identity")],
-          },
-        ),
-        clock: const Clock(),
-      );
-      addTearDown(service.dispose);
-
-      final outcome = await service.triggerRefresh(
-        projectId: "project-1",
-        projectPath: "/tmp/project-1",
-      );
-
-      expect(outcome, PrRefreshOutcome.failed);
-      expect(pullRequestRepository.replaceCalls, 0);
-    });
-
-    test("clears a prior selection after a complete exact no-match", () async {
-      final pullRequestRepository = _FakePullRequestRepository(
-        seed: [
-          _dto(
-            projectId: "project-1",
-            githubRepositoryIdentity: _githubRepositoryIdentity,
-            githubLogin: "octocat",
-            branchName: "feature/gone",
-            prNumber: 20,
-            title: "Gone PR",
-            state: PrState.open,
-            mergeableStatus: PrMergeableStatus.mergeable,
-            reviewDecision: PrReviewDecision.unknown,
-            checkStatus: PrCheckStatus.success,
+      final source = _FakePrSource(
+        targetsByDirectory: {
+          "/one": PullRequestRepositoryResolutionFailed(
+            branchName: "feature/current",
+            error: resolutionError,
           ),
-        ],
-      );
-      final service = PrSyncService(
-        prSource: _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[]),
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: _FakeSessionRepository(
-          sessionsByProject: <String, List<StoredSession>>{
-            "project-1": [_storedSession(id: "session-1", branchName: "feature/gone")],
-          },
-        ),
-        clock: const Clock(),
-      );
-      addTearDown(service.dispose);
-      final emittedProjectIds = <String>[];
-      final sub = service.prChanges.listen(emittedProjectIds.add);
-      addTearDown(sub.cancel);
-
-      final outcome = await service.triggerRefresh(
-        projectId: "project-1",
-        projectPath: "/tmp/project-1",
-      );
-      await _waitFor(() => emittedProjectIds.isNotEmpty);
-
-      expect(outcome, PrRefreshOutcome.completed);
-      expect(pullRequestRepository.getByProjectId(projectId: "project-1"), isEmpty);
-      expect(emittedProjectIds, ["project-1"]);
-    });
-
-    test("replaces an open selection with the exact terminal selection", () async {
-      final prSource = _FakePrSource(
-        selectedPullRequestsResult: <GhPullRequest>[
-          _ghPr(number: 22, branch: "feature/merged", title: "Merged PR", state: PrState.merged),
-        ],
-      );
-      final pullRequestRepository = _FakePullRequestRepository(
-        seed: <PullRequestDto>[
-          _dto(
-            projectId: "project-1",
-            githubRepositoryIdentity: _githubRepositoryIdentity,
-            githubLogin: "octocat",
-            branchName: "feature/merged",
-            prNumber: 22,
-            title: "Merged PR",
-            state: PrState.open,
-            mergeableStatus: PrMergeableStatus.mergeable,
-            reviewDecision: PrReviewDecision.unknown,
-            checkStatus: PrCheckStatus.pending,
-          ),
-        ],
-      );
-      final sessionRepository = _FakeSessionRepository(
-        sessionsByProject: <String, List<StoredSession>>{
-          "project-1": [_storedSession(id: "session-1", branchName: "feature/merged")],
         },
       );
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: sessionRepository,
-        clock: const Clock(),
+      final pullRequests = _FakePullRequestRepository()..localChangedProjectIds = {"one"};
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
       );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => pullRequestRepository.upsertCalls == 1);
-
-      final prs = pullRequestRepository.getByProjectId(projectId: "project-1");
-      expect(prs.single.state, equals(PrState.merged));
-      expect(prSource.selectPullRequestsCallCount, 1);
-    });
-
-    test("skips PR queries when fresh identity verification fails", () async {
-      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
-        ..authenticatedIdentityResult = null;
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
-        clock: const Clock(),
-      );
-      addTearDown(service.dispose);
-
-      final outcome = await service.triggerRefresh(
-        projectId: "project-1",
-        projectPath: "/tmp/project-1",
-      );
+      final outcome = await service.triggerRefresh(projectIds: {"one"});
 
       expect(outcome, PrRefreshOutcome.failed);
-      expect(prSource.getAuthenticatedIdentityCallCount, 1);
-      expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
-      expect(prSource.selectPullRequestsCallCount, 0);
+      expect(pullRequests.applyCalls, hasLength(1));
+      expect(source.selectionCalls, isEmpty);
+      expect(resolutionError.toString(), isNot(contains("private path")));
     });
 
-    test("shows an actionable warning when identity verification fails", () async {
-      final stderrLines = <String>[];
-      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
-        ..authenticatedIdentityResult = null;
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
-        clock: const Clock(),
+    test("does not replace rows when the query identity or persisted scope changes", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: {"/one": _githubTarget(branchName: "feature/current")},
+      )..selectionOutcome = const PullRequestSelectionIdentityChanged();
+      final pullRequests = _FakePullRequestRepository();
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
       );
       addTearDown(service.dispose);
 
-      await IOOverrides.runZoned(
-        () => service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
-        stderr: () => _CapturingStdout(stderrLines),
-      );
+      expect(await service.triggerRefresh(projectIds: {"one"}), PrRefreshOutcome.failed);
+      expect(pullRequests.replaceCalls, isEmpty);
 
-      expect(stderrLines.join("\n"), contains("metadata cannot be refreshed"));
-      expect(stderrLines.join("\n"), isNot(contains("metadata is hidden")));
+      source.selectionOutcome = null;
+      pullRequests.replacementOutcomes["one"] = const PullRequestReplacementScopeChanged();
+      expect(await service.triggerRefresh(projectIds: {"one"}), PrRefreshOutcome.failed);
+      expect(pullRequests.replaceCalls, hasLength(1));
     });
 
-    test("keeps an identity verification timeout visible", () async {
-      final stderrLines = <String>[];
-      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
-        ..authenticatedIdentityError = TimeoutException("timed out");
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
-        clock: const Clock(),
+    test("a same-project request after sealing waits for a follow-up generation", () async {
+      final firstSelection = Completer<void>();
+      final secondSelection = Completer<void>();
+      final source = _FakePrSource(
+        resolutionResults: [
+          {"/one": _githubTarget(branchName: "branch-a")},
+          {"/one": _githubTarget(branchName: "branch-b")},
+        ],
+        selectionBlocks: [firstSelection, secondSelection],
+      );
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
       );
       addTearDown(service.dispose);
 
-      await IOOverrides.runZoned(
-        () => service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
-        stderr: () => _CapturingStdout(stderrLines),
-      );
+      final first = service.triggerRefresh(projectIds: {"one"});
+      await _waitFor(() => source.selectionCalls.length == 1);
+      var secondCompleted = false;
+      final second = service.triggerRefresh(projectIds: {"one"});
+      unawaited(second.then((_) => secondCompleted = true));
 
-      expect(stderrLines.join("\n"), contains("metadata cannot be refreshed"));
-      expect(prSource.selectPullRequestsCallCount, 0);
+      firstSelection.complete();
+      expect(await first, PrRefreshOutcome.completed);
+      await _waitFor(() => source.selectionCalls.length == 2);
+      expect(secondCompleted, isFalse);
+      expect(source.selectionCalls[0].single.branchName, "branch-a");
+      expect(source.selectionCalls[1].single.branchName, "branch-b");
+      expect(source.maxConcurrentSelections, 1);
+
+      secondSelection.complete();
+      expect(await second, PrRefreshOutcome.completed);
     });
 
-    test("skips PR queries when the canonical GitHub repository is unavailable", () async {
-      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
-        ..githubRepositoryIdentityResult = null;
-      final pullRequestRepository = _FakePullRequestRepository();
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
-        clock: const Clock(),
+    test("coalesces pending projects into one immediate follow-up cycle", () async {
+      final firstSelection = Completer<void>();
+      final source = _FakePrSource(
+        targetsByDirectory: {
+          "/one": _githubTarget(branchName: "one"),
+          "/two": _githubTarget(branchName: "two"),
+          "/three": _githubTarget(branchName: "three"),
+        },
+        selectionBlocks: [firstSelection],
+      );
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+          "two": [_session(id: "two", projectId: "two", directory: "/two")],
+          "three": [_session(id: "three", projectId: "three", directory: "/three")],
+        },
       );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      final first = service.triggerRefresh(projectIds: {"one"});
+      await _waitFor(() => source.selectionCalls.length == 1);
+      final second = service.triggerRefresh(projectIds: {"two"});
+      final third = service.triggerRefresh(projectIds: {"three"});
+      firstSelection.complete();
 
-      expect(prSource.getAuthenticatedIdentityCallCount, 0);
-      expect(prSource.getGithubRepositoryIdentityCalls, ["/tmp/project-1"]);
-      expect(prSource.selectPullRequestsCallCount, 0);
-      expect(pullRequestRepository.clearScopedRefreshCalls, [
-        (projectId: "project-1", sessions: const <StoredSession>[]),
-      ]);
+      await Future.wait([first, second, third]);
+      expect(source.selectionCalls, hasLength(2));
+      expect(source.selectionCalls[1].map((target) => target.branchName).toSet(), {"two", "three"});
+      expect(source.maxConcurrentSelections, 1);
     });
 
-    test("emits and debounces a scope clear that hides cached PR metadata", () async {
-      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
-        ..githubRepositoryIdentityResult = null;
-      final pullRequestRepository = _FakePullRequestRepository()..clearScopedRefreshChanged = true;
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: _FakeSessionRepository(
-          sessionsByProject: const <String, List<StoredSession>>{},
-        ),
-        clock: const Clock(),
-        debounceWindow: const Duration(hours: 1),
+    test("debounces completed projects but retries failed projects", () async {
+      var now = DateTime.utc(2026, 8, 2);
+      final source = _FakePrSource(
+        targetsByDirectory: const {
+          "/local": PullRequestLocalBranchDirectoryTarget(branchName: "local"),
+        },
       );
-      addTearDown(service.dispose);
-      final emittedProjectIds = <String>[];
-      final sub = service.prChanges.listen(emittedProjectIds.add);
-      addTearDown(sub.cancel);
-
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-
-      expect(pullRequestRepository.clearScopedRefreshCalls, hasLength(1));
-      expect(emittedProjectIds, ["project-1"]);
-    });
-
-    test("emits when scope preparation hides cached PR metadata", () async {
-      final listBlock = Completer<void>();
-      addTearDown(() {
-        if (!listBlock.isCompleted) {
-          listBlock.complete();
-        }
-      });
-      final pullRequestRepository = _FakePullRequestRepository()..prepareScopedRefreshChanged = true;
-      final service = PrSyncService(
-        prSource: _FakePrSource(
-          selectedPullRequestsResult: const <GhPullRequest>[],
-          onSelection: () => listBlock.future,
-        ),
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: _FakeSessionRepository(
-          sessionsByProject: const <String, List<StoredSession>>{},
-        ),
-        clock: const Clock(),
-      );
-      addTearDown(service.dispose);
-      final emittedProjectIds = <String>[];
-      final sub = service.prChanges.listen(emittedProjectIds.add);
-      addTearDown(sub.cancel);
-
-      final refresh = service.triggerRefresh(
-        projectId: "project-1",
-        projectPath: "/tmp/project-1",
-      );
-      await _waitFor(() => pullRequestRepository.prepareScopedRefreshCalls.isNotEmpty);
-      await _waitFor(() => emittedProjectIds.isNotEmpty);
-
-      expect(emittedProjectIds, ["project-1"]);
-      listBlock.complete();
-      await refresh;
-      expect(emittedProjectIds, ["project-1"]);
-    });
-
-    test("preserves scoped cache when repository resolution fails", () async {
-      final prSource = _FakePrSource(selectedPullRequestsResult: const <GhPullRequest>[])
-        ..githubRepositoryIdentityError = const ProcessException(
-          "git",
-          ["remote"],
-          "temporary failure",
-          -1,
-        );
-      final pullRequestRepository = _FakePullRequestRepository();
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: pullRequestRepository,
-        sessionRepository: _FakeSessionRepository(
-          sessionsByProject: const <String, List<StoredSession>>{},
-        ),
-        clock: const Clock(),
-      );
-      addTearDown(service.dispose);
-
-      await expectLater(
-        service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
-        throwsA(isA<ProcessException>()),
-      );
-
-      expect(pullRequestRepository.clearScopedRefreshCalls, isEmpty);
-    });
-
-    test("caches unavailable gh capability and detects installation after the TTL", () async {
-      var now = DateTime.utc(2026, 7, 13);
-      final prSource = _FakePrSource(
-        selectedPullRequestsResult: <GhPullRequest>[],
-        isAvailableResult: false,
-      );
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "local": [_session(id: "local", projectId: "local", directory: "/local")],
+        },
         clock: Clock(() => now),
+        debounceWindow: const Duration(minutes: 1),
       );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await service.triggerRefresh(projectId: "project-2", projectPath: "/tmp/project-2");
+      await service.triggerRefresh(projectIds: {"local"});
+      await service.triggerRefresh(projectIds: {"local"});
+      expect(source.resolveCalls, hasLength(1));
 
-      expect(prSource.isAvailableCallCount, equals(1));
-      expect(prSource.isAuthenticatedCallCount, equals(0));
-      expect(prSource.getAuthenticatedIdentityCallCount, equals(0));
-      expect(prSource.selectPullRequestsCallCount, equals(0));
+      now = now.add(const Duration(minutes: 1));
+      await service.triggerRefresh(projectIds: {"local"});
+      expect(source.resolveCalls, hasLength(2));
 
-      prSource.isAvailableResult = true;
-      now = now.add(const Duration(seconds: 29));
-      await service.triggerRefresh(projectId: "project-3", projectPath: "/tmp/project-3");
-      expect(prSource.isAvailableCallCount, equals(1));
-
-      now = now.add(const Duration(seconds: 1));
-      await service.triggerRefresh(projectId: "project-4", projectPath: "/tmp/project-4");
-      expect(prSource.isAvailableCallCount, equals(2));
-      expect(prSource.isAuthenticatedCallCount, equals(1));
-      expect(prSource.getAuthenticatedIdentityCallCount, equals(1));
-      expect(prSource.selectPullRequestsCallCount, equals(1));
+      source.targetsByDirectory["/local"] = PullRequestBranchResolutionFailed(
+        error: PullRequestTargetResolutionException(
+          innerError: StateError("failed"),
+          innerStackTrace: StackTrace.current,
+        ),
+      );
+      now = now.add(const Duration(minutes: 1));
+      await service.triggerRefresh(projectIds: {"local"});
+      await service.triggerRefresh(projectIds: {"local"});
+      expect(source.resolveCalls, hasLength(4));
     });
 
-    test("shares one in-flight gh capability check across projects", () async {
-      final capabilityBlock = Completer<void>();
-      final prSource = _FakePrSource(selectedPullRequestsResult: <GhPullRequest>[])
-        ..availabilityBlock = capabilityBlock;
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
-        clock: const Clock(),
+    test("shares and expires the gh capability cache", () async {
+      var now = DateTime.utc(2026, 8, 2);
+      final source = _FakePrSource(
+        targetsByDirectory: {
+          "/one": _githubTarget(branchName: "one"),
+          "/two": _githubTarget(branchName: "two"),
+        },
+      )..isAvailableResult = false;
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+          "two": [_session(id: "two", projectId: "two", directory: "/two")],
+        },
+        clock: Clock(() => now),
         debounceWindow: Duration.zero,
       );
       addTearDown(service.dispose);
 
-      final first = service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => prSource.isAvailableCallCount == 1);
-      final second = service.triggerRefresh(projectId: "project-2", projectPath: "/tmp/project-2");
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await service.triggerRefresh(projectIds: {"one"});
+      await service.triggerRefresh(projectIds: {"two"});
+      expect(source.isAvailableCallCount, 1);
 
-      expect(prSource.isAvailableCallCount, equals(1));
-      capabilityBlock.complete();
-      await Future.wait([first, second]);
-      expect(prSource.isAuthenticatedCallCount, equals(1));
-      expect(prSource.getAuthenticatedIdentityCallCount, equals(2));
-      expect(prSource.selectPullRequestsCallCount, equals(2));
-
-      await service.triggerRefresh(projectId: "project-3", projectPath: "/tmp/project-3");
-      expect(prSource.isAvailableCallCount, equals(1));
-      expect(prSource.isAuthenticatedCallCount, equals(1));
-      expect(prSource.getAuthenticatedIdentityCallCount, equals(3));
-      expect(prSource.selectPullRequestsCallCount, equals(3));
+      now = now.add(const Duration(seconds: 30));
+      source.isAvailableResult = true;
+      await service.triggerRefresh(projectIds: {"one"});
+      expect(source.isAvailableCallCount, 2);
+      expect(source.selectionCalls, hasLength(1));
     });
 
-    test("retries a gh capability check after an unexpected failure", () async {
-      final prSource = _FakePrSource(selectedPullRequestsResult: <GhPullRequest>[])..isAvailableFailuresRemaining = 1;
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
-        clock: const Clock(),
+    test("dispose fails queued waiters without starting another cycle", () async {
+      final selectionBlock = Completer<void>();
+      final source = _FakePrSource(
+        targetsByDirectory: {"/one": _githubTarget(branchName: "one")},
+        selectionBlocks: [selectionBlock],
       );
-      addTearDown(service.dispose);
-
-      await expectLater(
-        service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
-        throwsStateError,
-      );
-      await service.triggerRefresh(projectId: "project-2", projectPath: "/tmp/project-2");
-
-      expect(prSource.isAvailableCallCount, equals(2));
-      expect(prSource.getAuthenticatedIdentityCallCount, equals(1));
-      expect(prSource.selectPullRequestsCallCount, equals(1));
-    });
-
-    test("debounces repeated refreshes for same project", () async {
-      var now = DateTime.utc(2026, 7, 13);
-      final prSource = _FakePrSource(selectedPullRequestsResult: <GhPullRequest>[]);
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
-        clock: Clock(() => now),
-        debounceWindow: const Duration(hours: 1),
-      );
-      addTearDown(service.dispose);
-
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => prSource.selectPullRequestsCallCount == 1);
-      now = now.add(const Duration(seconds: 31));
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(prSource.selectPullRequestsCallCount, equals(1));
-      expect(prSource.isAvailableCallCount, equals(1));
-      expect(prSource.isAuthenticatedCallCount, equals(1));
-    });
-
-    test("skips concurrent refresh while one is already active", () async {
-      final block = Completer<void>();
-      final prSource = _FakePrSource(
-        selectedPullRequestsResult: <GhPullRequest>[],
-        onSelection: () => block.future,
-      );
-      final service = PrSyncService(
-        prSource: prSource,
-        pullRequestRepository: _FakePullRequestRepository(),
-        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
-        clock: const Clock(),
-        debounceWindow: Duration.zero,
-      );
-      addTearDown(service.dispose);
-
-      // Start first refresh without awaiting so we can test concurrent behavior.
-      final firstRefresh = service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => prSource.selectPullRequestsCallCount == 1);
-
-      // Second refresh should report that the first is still active rather than
-      // representing unfinished work as completed.
-      final secondOutcome = await service.triggerRefresh(
-        projectId: "project-1",
-        projectPath: "/tmp/project-1",
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
       );
 
-      expect(secondOutcome, PrRefreshOutcome.inProgress);
-      expect(prSource.selectPullRequestsCallCount, equals(1));
-      expect(prSource.isAvailableCallCount, equals(1));
-      expect(prSource.isAuthenticatedCallCount, equals(1));
+      final first = service.triggerRefresh(projectIds: {"one"});
+      await _waitFor(() => source.selectionCalls.isNotEmpty);
+      final queued = service.triggerRefresh(projectIds: {"one"});
+      service.dispose();
 
-      block.complete();
-      await firstRefresh;
+      expect(await queued, PrRefreshOutcome.failed);
+      selectionBlock.complete();
+      expect(await first, PrRefreshOutcome.failed);
+      expect(source.selectionCalls, hasLength(1));
     });
   });
+}
+
+PrSyncService _service({
+  required _FakePrSource source,
+  required _FakePullRequestRepository pullRequests,
+  required Map<String, List<StoredSession>> sessionsByProject,
+  Clock clock = const Clock(),
+  Duration debounceWindow = Duration.zero,
+}) {
+  return PrSyncService(
+    prSource: source,
+    pullRequestRepository: pullRequests,
+    sessionRepository: _FakeSessionRepository(sessionsByProject: sessionsByProject),
+    clock: clock,
+    debounceWindow: debounceWindow,
+  );
+}
+
+PullRequestGithubDirectoryTarget _githubTarget({required String branchName}) {
+  return PullRequestGithubDirectoryTarget(
+    target: (
+      githubRepositoryIdentity: _repositoryIdentity,
+      branchName: branchName,
+    ),
+  );
+}
+
+StoredSession _session({
+  required String id,
+  required String projectId,
+  required String directory,
+  String? parentSessionId,
+}) {
+  return StoredSession(
+    id: id,
+    backendSessionId: id,
+    pluginId: "fake",
+    projectId: projectId,
+    parentSessionId: parentSessionId,
+    directory: directory,
+    worktreePath: directory,
+    branchName: "creation-branch",
+    isDedicated: true,
+    archivedAt: null,
+    baseBranch: null,
+    baseCommit: null,
+  );
 }
 
 Future<void> _waitFor(bool Function() condition) async {
   final timeout = DateTime.now().add(const Duration(seconds: 2));
   while (!condition()) {
-    if (DateTime.now().isAfter(timeout)) {
-      fail("Timed out waiting for condition");
-    }
+    if (DateTime.now().isAfter(timeout)) fail("Timed out waiting for condition");
     await Future<void>.delayed(const Duration(milliseconds: 10));
   }
 }
 
-GhPullRequest _ghPr({
-  required int number,
-  required String branch,
-  required String title,
-  PrState state = PrState.open,
-  PrMergeableStatus mergeable = PrMergeableStatus.mergeable,
-  PrReviewDecision? reviewDecision,
-  PrCheckStatus statusCheckRollup = PrCheckStatus.success,
-}) {
-  return GhPullRequest(
-    number: number,
-    url: "https://github.com/org/repo/pull/$number",
-    title: title,
-    createdAt: DateTime.fromMillisecondsSinceEpoch(number, isUtc: true),
-    state: state,
-    headRefName: branch,
-    mergeable: mergeable,
-    reviewDecision: reviewDecision ?? PrReviewDecision.unknown,
-    statusCheckRollup: statusCheckRollup,
-  );
-}
-
-PullRequestDto _dto({
-  required String projectId,
-  required String githubRepositoryIdentity,
-  required String githubLogin,
-  required String branchName,
-  required int prNumber,
-  required String title,
-  required PrState state,
-  required PrMergeableStatus mergeableStatus,
-  required PrReviewDecision reviewDecision,
-  required PrCheckStatus checkStatus,
-}) {
-  return PullRequestDto(
-    projectId: projectId,
-    githubRepositoryIdentity: githubRepositoryIdentity,
-    githubLogin: githubLogin,
-    prNumber: prNumber,
-    branchName: branchName,
-    url: "https://github.com/org/repo/pull/$prNumber",
-    title: title,
-    state: state,
-    mergeableStatus: mergeableStatus,
-    reviewDecision: reviewDecision,
-    checkStatus: checkStatus,
-    lastCheckedAt: 1,
-    createdAt: prNumber,
-  );
-}
-
-class _FakePrSource implements PrSourceRepository {
-  final List<GhPullRequest> selectedPullRequestsResult;
-  final Future<void> Function()? onSelection;
+final class _FakePrSource implements PrSourceRepository {
+  final List<Map<String, PullRequestDirectoryTarget>> resolutionResults;
+  final List<Completer<void>> selectionBlocks;
+  final List<List<String>> resolveCalls = <List<String>>[];
+  final List<List<PullRequestSelectionTarget>> selectionCalls = <List<PullRequestSelectionTarget>>[];
+  Map<String, PullRequestDirectoryTarget> targetsByDirectory;
   PullRequestSelectionOutcome? selectionOutcome;
-  bool isAvailableResult;
+  bool isAvailableResult = true;
   bool isAuthenticatedResult = true;
-  VerifiedGithubLogin? authenticatedIdentityResult = _verifiedGithubLogin;
-  Object? authenticatedIdentityError;
-  String? githubRepositoryIdentityResult = _githubRepositoryIdentity;
-  Object? githubRepositoryIdentityError;
-  Completer<void>? availabilityBlock;
-  int isAvailableFailuresRemaining = 0;
-
+  VerifiedGithubLogin? authenticatedIdentity = _verifiedGithubLogin;
   int isAvailableCallCount = 0;
   int isAuthenticatedCallCount = 0;
-  int getAuthenticatedIdentityCallCount = 0;
-  int selectPullRequestsCallCount = 0;
-  final List<String> getGithubRepositoryIdentityCalls = <String>[];
-  final List<List<PullRequestSelectionTarget>> selectionTargets = <List<PullRequestSelectionTarget>>[];
+  int identityCallCount = 0;
+  int _activeSelections = 0;
+  int maxConcurrentSelections = 0;
 
   _FakePrSource({
-    required this.selectedPullRequestsResult,
-    this.onSelection,
-    this.isAvailableResult = true,
-  });
+    Map<String, PullRequestDirectoryTarget> targetsByDirectory = const {},
+    this.resolutionResults = const [],
+    this.selectionBlocks = const [],
+  }) : targetsByDirectory = Map<String, PullRequestDirectoryTarget>.from(targetsByDirectory);
+
+  @override
+  Future<Map<String, PullRequestDirectoryTarget>> resolvePullRequestTargets({
+    required Iterable<String> directories,
+  }) async {
+    final uniqueDirectories = directories.toSet().toList(growable: false)..sort();
+    resolveCalls.add(uniqueDirectories);
+    final resultIndex = resolveCalls.length - 1;
+    final configured = resultIndex < resolutionResults.length ? resolutionResults[resultIndex] : targetsByDirectory;
+    return {
+      for (final directory in uniqueDirectories) directory: ?configured[directory],
+    };
+  }
 
   @override
   Future<bool> isGithubCliAvailable() async {
     isAvailableCallCount++;
-    if (availabilityBlock case final block?) {
-      await block.future;
-    }
-    if (isAvailableFailuresRemaining > 0) {
-      isAvailableFailuresRemaining--;
-      throw StateError("gh availability failed");
-    }
     return isAvailableResult;
   }
 
@@ -717,20 +474,8 @@ class _FakePrSource implements PrSourceRepository {
 
   @override
   Future<VerifiedGithubLogin?> getAuthenticatedIdentity() async {
-    getAuthenticatedIdentityCallCount++;
-    if (authenticatedIdentityError case final error?) {
-      throw error;
-    }
-    return authenticatedIdentityResult;
-  }
-
-  @override
-  Future<String?> getGithubRepositoryIdentity({required String projectPath}) async {
-    getGithubRepositoryIdentityCalls.add(projectPath);
-    if (githubRepositoryIdentityError case final error?) {
-      throw error;
-    }
-    return githubRepositoryIdentityResult;
+    identityCallCount++;
+    return authenticatedIdentity;
   }
 
   @override
@@ -738,266 +483,76 @@ class _FakePrSource implements PrSourceRepository {
     required List<PullRequestSelectionTarget> targets,
     required VerifiedGithubLogin expectedGithubLogin,
   }) async {
-    selectPullRequestsCallCount++;
-    selectionTargets.add(List<PullRequestSelectionTarget>.from(targets));
-    if (onSelection case final callback?) {
-      await callback();
+    selectionCalls.add(List<PullRequestSelectionTarget>.from(targets));
+    _activeSelections++;
+    if (_activeSelections > maxConcurrentSelections) maxConcurrentSelections = _activeSelections;
+    try {
+      final blockIndex = selectionCalls.length - 1;
+      if (blockIndex < selectionBlocks.length) {
+        await selectionBlocks[blockIndex].future;
+      }
+      if (selectionOutcome case final outcome?) return outcome;
+      return PullRequestSelectionCompleted(
+        selections: [for (final target in targets) PullRequestTargetUnmatched(target: target)],
+      );
+    } finally {
+      _activeSelections--;
     }
-    if (selectionOutcome case final outcome?) return outcome;
-    return PullRequestSelectionCompleted(
-      selections: [for (final target in targets) _selectionFor(target: target)],
-    );
-  }
-
-  PullRequestTargetSelection _selectionFor({required PullRequestSelectionTarget target}) {
-    final pullRequest = selectedPullRequestsResult
-        .where((candidate) => candidate.headRefName == target.branchName)
-        .firstOrNull;
-    if (pullRequest == null) return PullRequestTargetUnmatched(target: target);
-    return PullRequestTargetSelected(
-      target: target,
-      number: pullRequest.number,
-      url: pullRequest.url,
-      title: pullRequest.title,
-      createdAt: pullRequest.createdAt,
-      state: pullRequest.state,
-      mergeableStatus: pullRequest.mergeable,
-      reviewDecision: pullRequest.reviewDecision,
-      checkStatus: pullRequest.statusCheckRollup,
-    );
-  }
-}
-
-class _CapturingStdout implements Stdout {
-  final List<String> lines;
-
-  _CapturingStdout(this.lines);
-
-  @override
-  bool get supportsAnsiEscapes => false;
-
-  @override
-  void writeln([Object? object = ""]) {
-    lines.add(object.toString());
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakePullRequestRepository implements PullRequestRepository {
-  final Map<String, List<PullRequestDto>> _recordsByProject = <String, List<PullRequestDto>>{};
-  int upsertCalls = 0;
-  int replaceCalls = 0;
-  final List<
-    ({
-      String projectId,
-      String githubRepositoryIdentity,
-      String githubLogin,
-      List<StoredSession> sessions,
-    })
-  >
-  prepareScopedRefreshCalls = [];
-  final List<({String projectId, List<StoredSession> sessions})> clearScopedRefreshCalls = [];
-  bool prepareScopedRefreshChanged = false;
-  bool clearScopedRefreshChanged = false;
+final class _FakePullRequestRepository implements PullRequestRepository {
+  Set<String> localChangedProjectIds = const <String>{};
+  Set<String> preparedChangedProjectIds = const <String>{};
+  final Map<String, PullRequestReplacementOutcome> replacementOutcomes = <String, PullRequestReplacementOutcome>{};
+  final List<({Map<String, List<StoredSession>> sessionsByProject, Map<String, PullRequestDirectoryTarget> targets})>
+  applyCalls = [];
+  final List<({Set<String> projectIds, String githubLogin})> prepareCalls = [];
+  final List<({String projectId, List<PullRequestTargetSelection> selections})> replaceCalls = [];
 
-  _FakePullRequestRepository({List<PullRequestDto> seed = const <PullRequestDto>[]}) {
-    for (final record in seed) {
-      _recordsByProject.putIfAbsent(record.projectId, () => <PullRequestDto>[]).add(record);
-    }
+  @override
+  Future<Set<String>> applyResolvedTargets({
+    required Map<String, List<StoredSession>> sessionsByProject,
+    required Map<String, PullRequestDirectoryTarget> targetsByDirectory,
+  }) async {
+    applyCalls.add((
+      sessionsByProject: Map<String, List<StoredSession>>.from(sessionsByProject),
+      targets: Map<String, PullRequestDirectoryTarget>.from(targetsByDirectory),
+    ));
+    return localChangedProjectIds;
   }
 
   @override
-  Future<bool> replaceScopedPullRequests({
+  Future<Set<String>> prepareScopedRefresh({
+    required Set<String> projectIds,
+    required VerifiedGithubLogin verifiedGithubLogin,
+  }) async {
+    prepareCalls.add((projectIds: Set<String>.from(projectIds), githubLogin: verifiedGithubLogin.login));
+    return preparedChangedProjectIds;
+  }
+
+  @override
+  Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
     required String projectId,
     required VerifiedGithubLogin verifiedGithubLogin,
     required List<PullRequestTargetSelection> targetSelections,
     required int lastCheckedAt,
   }) async {
-    replaceCalls++;
-    final previous = _recordsByProject[projectId] ?? const <PullRequestDto>[];
-    final replacements = [
-      for (final selection in targetSelections)
-        if (selection case final PullRequestTargetSelected pullRequest)
-          PullRequestDto(
-            projectId: projectId,
-            githubRepositoryIdentity: pullRequest.target.githubRepositoryIdentity,
-            githubLogin: verifiedGithubLogin.login,
-            prNumber: pullRequest.number,
-            branchName: pullRequest.target.branchName,
-            url: pullRequest.url,
-            title: pullRequest.title,
-            state: pullRequest.state,
-            mergeableStatus: pullRequest.mergeableStatus,
-            reviewDecision: pullRequest.reviewDecision,
-            checkStatus: pullRequest.checkStatus,
-            lastCheckedAt: lastCheckedAt,
-            createdAt: pullRequest.createdAt.millisecondsSinceEpoch,
-          ),
-    ];
-    final changed =
-        previous.length != replacements.length ||
-        replacements.any((replacement) {
-          final existing = previous.where((record) => record.prNumber == replacement.prNumber).firstOrNull;
-          return existing == null ||
-              existing.githubRepositoryIdentity != replacement.githubRepositoryIdentity ||
-              existing.githubLogin != replacement.githubLogin ||
-              existing.branchName != replacement.branchName ||
-              existing.title != replacement.title ||
-              existing.state != replacement.state ||
-              existing.mergeableStatus != replacement.mergeableStatus ||
-              existing.reviewDecision != replacement.reviewDecision ||
-              existing.checkStatus != replacement.checkStatus ||
-              existing.createdAt != replacement.createdAt;
-        });
-    _recordsByProject[projectId] = replacements;
-    upsertCalls += replacements.length;
-    return changed;
-  }
-
-  List<PullRequestDto> getByProjectId({required String projectId}) {
-    return List<PullRequestDto>.from(_recordsByProject[projectId] ?? const <PullRequestDto>[]);
+    replaceCalls.add((projectId: projectId, selections: List<PullRequestTargetSelection>.from(targetSelections)));
+    return replacementOutcomes[projectId] ?? const PullRequestReplacementApplied(changed: false);
   }
 
   @override
-  Future<bool> prepareScopedRefresh({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required VerifiedGithubLogin verifiedGithubLogin,
-    required List<StoredSession> sessions,
-  }) async {
-    prepareScopedRefreshCalls.add((
-      projectId: projectId,
-      githubRepositoryIdentity: githubRepositoryIdentity,
-      githubLogin: verifiedGithubLogin.login,
-      sessions: sessions,
-    ));
-    _recordsByProject[projectId]?.removeWhere(
-      (record) =>
-          record.githubRepositoryIdentity != githubRepositoryIdentity ||
-          record.githubLogin != verifiedGithubLogin.login,
-    );
-    return prepareScopedRefreshChanged;
-  }
-
-  @override
-  Future<bool> clearScopedRefresh({
-    required String projectId,
-    required List<StoredSession> sessions,
-  }) async {
-    clearScopedRefreshCalls.add((projectId: projectId, sessions: sessions));
-    _recordsByProject.remove(projectId);
-    return clearScopedRefreshChanged;
-  }
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeSessionRepository implements SessionRepository {
-  @override
-  Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
-
-  @override
-  int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
-
-  @override
-  Future<void> dispose() async {}
-
-  @override
-  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
-
-  @override
-  Future<Session> deleteSession({required String sessionId}) async => Session(
-    branchName: null,
-    id: sessionId,
-    pluginId: "fake",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    pullRequest: null,
-    promptDefaults: null,
-  );
-
-  @override
-  Future<bool> isSessionTombstoned({required String sessionId}) async => false;
-
-  @override
-  Future<List<String>> get persistedSessionCleanupPluginIds async => const [];
-
-  @override
-  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async => const {};
-
-  @override
-  Future<void> deletePersistedSession({required String pluginId, required String backendSessionId}) async {}
-
-  @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
-
-  @override
-  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const [];
-
+final class _FakeSessionRepository implements SessionRepository {
   final Map<String, List<StoredSession>> sessionsByProject;
 
   _FakeSessionRepository({required this.sessionsByProject});
-
-  @override
-  Future<Session> createSession({
-    required String pluginId,
-    required String projectId,
-    required String directory,
-    required String? parentSessionId,
-    required List<PromptPart> parts,
-    required String? userVisibleText,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-    required bool isDedicated,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? lastAgent,
-    required AgentModel? lastAgentModel,
-  }) async => const Session(
-    branchName: null,
-    id: "",
-    pluginId: "fake",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    pullRequest: null,
-    promptDefaults: null,
-  );
-
-  @override
-  Future<List<Session>> getSessionsForProject({
-    required String projectId,
-    required int? start,
-    required int? limit,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => const <Session>[];
-
-  @override
-  Future<Session> enrichSession({
-    required Session session,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => session;
-
-  @override
-  Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async =>
-      pluginSession.toSharedSession(pluginId: pluginId);
-
-  @override
-  Future<List<Session>> enrichSessions({
-    required List<Session> sessions,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => sessions;
-
-  @override
-  Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
 
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
@@ -1005,172 +560,5 @@ class _FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<bool> hasOtherActiveSessionsSharing({
-    required String sessionId,
-    required String projectId,
-    required String? worktreePath,
-    required String? branchName,
-  }) async => false;
-
-  @override
-  Future<String?> getProjectPath({required String projectId}) async => null;
-
-  @override
-  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
-
-  @override
-  Future<StoredSession?> getStoredSessionByBackendId({
-    required String pluginId,
-    required String backendSessionId,
-  }) async => null;
-
-  @override
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
-    required String pluginId,
-    required List<String> backendSessionIds,
-  }) async => const {};
-
-  @override
-  Future<StoredSession?> updateObservedSessionProjection({
-    required String pluginId,
-    required int generation,
-    required Session observed,
-    required bool updateCatalogTitle,
-    required int projectionUpdatedAt,
-  }) async => null;
-
-  @override
-  Future<StoredSession?> insertObservedChild({
-    required String pluginId,
-    required int generation,
-    required Session observed,
-    required StoredSession parent,
-    required int projectionUpdatedAt,
-  }) async => null;
-
-  @override
-  Future<void> archiveStoredSession({
-    required String sessionId,
-    required int archivedAt,
-  }) async {}
-
-  @override
-  Future<void> unarchiveStoredSession({required String sessionId}) async {}
-
-  @override
-  Future<void> insertStoredSession({
-    required String sessionId,
-    required String backendSessionId,
-    required String pluginId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) async {}
-
-  @override
-  Future<void> updatePromptDefaults({
-    required String sessionId,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) async {}
-
-  @override
-  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
-
-  @override
-  Future<Session?> getSessionForProject({
-    required String projectId,
-    required String sessionId,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => null;
-
-  @override
-  Future<void> abortSession({required String sessionId}) async {}
-
-  @override
-  Future<void> notifySessionArchived({required String sessionId}) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required String? userVisibleArguments,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-  }) async {}
-
-  @override
-  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async =>
-      const CommandListResponse(items: []);
-
-  @override
-  Future<void> sendPrompt({
-    required String sessionId,
-    required List<PromptPart> parts,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-  }) async {}
-
-  @override
-  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
-    branchName: null,
-    id: "",
-    pluginId: "fake",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    pullRequest: null,
-    promptDefaults: null,
-  );
-
-  @override
-  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
-
-  @override
-  Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {}
-
-  @override
-  Future<Session?> getCatalogSession({required String sessionId}) async => null;
-
-  @override
-  Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
-
-  @override
-  Future<StoredSession> requireRoutableStoredSession({
-    required String sessionId,
-    required SessionOperation operation,
-  }) async {
-    throw StateError("No stored session configured for $sessionId");
-  }
-}
-
-StoredSession _storedSession({
-  required String id,
-  required String? branchName,
-}) {
-  return StoredSession(
-    id: id,
-    backendSessionId: id,
-    pluginId: "fake",
-    projectId: "project-1",
-    parentSessionId: null,
-    directory: "/tmp/project-1",
-    worktreePath: null,
-    branchName: branchName,
-    isDedicated: false,
-    archivedAt: null,
-    baseBranch: null,
-    baseCommit: null,
-  );
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
