@@ -299,6 +299,30 @@ void main() {
       expect(manager.pendingReplayCount, equals(0));
     });
 
+    test("stale relay delivery remains buffered for replay", () async {
+      final client = _RecordingRelayClient()..nextOutcome = RelaySendOutcome.stale;
+      final reporter = CapturingFailureReporter();
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: reporter,
+      );
+      manager.setRoomKey(makeRoomKey());
+      addTearDown(manager.stop);
+
+      manager.subscribeForTest(1, client);
+      manager.enqueueEvent(_event("relay-turnover"));
+      await _waitForSendCount(client, 1);
+      manager.orphanAll();
+
+      client.nextOutcome = RelaySendOutcome.sent;
+      manager.subscribeForTest(2, client);
+      await _waitForSendCount(client, 2);
+
+      expect(client.sentConnIDs, [1, 2]);
+      expect(reporter.recordedIdentifiers, isEmpty);
+    });
+
     test("stop clears subscribers and orphan queues", () {
       final manager = SSEManager(
         replayWindow: SSEManager.defaultReplayWindow,
@@ -390,6 +414,7 @@ Future<void> _pumpEventLoop() => Future<void>.delayed(const Duration(millisecond
 class _RecordingRelayClient extends RelayClient {
   final List<int> sentConnIDs = <int>[];
   final List<List<int>> sentPayloads = <List<int>>[];
+  RelaySendOutcome nextOutcome = RelaySendOutcome.sent;
 
   _RecordingRelayClient()
     : super(
@@ -406,7 +431,7 @@ class _RecordingRelayClient extends RelayClient {
   }) {
     sentConnIDs.add(connID);
     sentPayloads.add(List<int>.from(payload));
-    return RelaySendOutcome.sent;
+    return nextOutcome;
   }
 }
 

@@ -174,6 +174,27 @@ void main() {
 
       expect(harness.relayServer.connectedClientCount, equals(1));
     });
+
+    test("cancellation while the old relay closes does not open a successor connection", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      final closeGate = Completer<void>();
+      harness.relayClient.closeDelay = closeGate.future;
+      await firstSocket.close();
+      await harness.relayClient.closeStarted.future;
+
+      final cancelFuture = harness.session.cancel();
+      closeGate.complete();
+      await cancelFuture;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(harness.relayServer.connectedClientCount, equals(1));
+    });
   });
 
   group("OrchestratorSession routed request boundaries", () {
@@ -517,6 +538,18 @@ class _RecordingRelayClient extends RelayClient {
   int sendCount = 0;
   int? lastConnId;
   bool failNextSend = false;
+  Future<void>? closeDelay;
+  final Completer<void> closeStarted = Completer<void>();
+
+  @override
+  Future<RelayCloseOutcome> closeIfCurrent({required RelayConnection connection}) async {
+    final closeFuture = super.closeIfCurrent(connection: connection);
+    if (!closeStarted.isCompleted) {
+      closeStarted.complete();
+    }
+    await closeDelay;
+    return closeFuture;
+  }
 
   @override
   RelaySendOutcome sendIfCurrent({

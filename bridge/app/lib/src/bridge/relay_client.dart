@@ -207,6 +207,7 @@ class RelayClient {
 
   void _handleConnectionDone({required RelayConnection connection}) {
     if (!identical(_connection, connection)) return;
+    _connection = null;
     _connectionState.add(
       RelayDisconnected(
         closeCode: connection._channel.closeCode,

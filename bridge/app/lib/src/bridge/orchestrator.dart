@@ -1171,10 +1171,15 @@ class OrchestratorSession {
           if (_cancelled) {
             return;
           }
-          final reconnectFuture = _client.reconnect(connection: connection);
+          final closeFuture = _client.closeIfCurrent(connection: connection);
           if (identical(_relayConnection, connection)) {
             _relayConnection = null;
           }
+          await closeFuture;
+          if (_cancelled) {
+            return;
+          }
+          final reconnectFuture = _client.connect();
           final reconnected = await reconnectFuture;
           if (_cancelled) {
             await _client.closeIfCurrent(connection: reconnected);

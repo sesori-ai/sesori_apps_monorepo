@@ -163,6 +163,10 @@ class SSEManager {
 
   void Function(SesoriSseEvent, Object) _createErrorHandler(int connID) {
     return (event, error) {
+      if (error is _StaleRelayConnectionException) {
+        Log.v("[sse] retaining event ${event.runtimeType} for connID=$connID after relay turnover");
+        return;
+      }
       Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
       unawaited(
         _failureReporter
@@ -212,7 +216,7 @@ class SSEManager {
         payload: framed,
       );
       if (outcome == RelaySendOutcome.stale) {
-        Log.v("[sse] dropping event for connID=$connID on a stale relay connection");
+        throw const _StaleRelayConnectionException();
       }
     };
   }
@@ -240,4 +244,8 @@ class SSEManager {
       _orphanQueues.remove(orphan);
     }
   }
+}
+
+final class _StaleRelayConnectionException implements Exception {
+  const _StaleRelayConnectionException();
 }

@@ -403,6 +403,34 @@ void main() {
         queue.dispose();
       });
 
+      test("detached in-flight failure is retried by the replacement listener", () async {
+        final firstDelivery = Completer<void>();
+        final firstStarted = Completer<void>();
+        final errors = <Object>[];
+        final processed = <String>[];
+        final queue = EventQueue<String>();
+        final firstSubscription = queue.listen(
+          (event) async {
+            firstStarted.complete();
+            await firstDelivery.future;
+            throw StateError("obsolete delivery");
+          },
+          onError: (_, error) => errors.add(error),
+        );
+
+        queue.enqueue("retained");
+        await firstStarted.future;
+        firstSubscription.cancel();
+        queue.listen((event) async => processed.add(event));
+        firstDelivery.complete();
+        await pumpEventQueue();
+
+        expect(processed, ["retained"]);
+        expect(errors, isEmpty);
+        expect(queue.length, 0);
+        queue.dispose();
+      });
+
       test("default onError does not throw", () async {
         final queue = EventQueue<String>();
         queue.listen((e) async => throw Exception("oops"));

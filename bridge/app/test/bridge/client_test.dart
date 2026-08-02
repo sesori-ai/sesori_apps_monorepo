@@ -611,6 +611,15 @@ void main() {
       await firstSocket.close();
       await firstDone.future.timeout(const Duration(seconds: 5));
 
+      expect(
+        client.sendIfCurrent(
+          connection: firstConnection,
+          connID: 1,
+          payload: const [1],
+        ),
+        RelaySendOutcome.stale,
+      );
+
       final secondSocketFuture = server.nextClient();
       final secondConnection = await client.reconnect(connection: firstConnection);
       _closeAfterTest(client: client, connection: secondConnection);

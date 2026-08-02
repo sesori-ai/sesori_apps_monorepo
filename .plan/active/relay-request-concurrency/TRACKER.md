@@ -297,5 +297,11 @@
   coverage, and new private connection helpers use required named parameters. A
   valid Cubic finding added a post-registration cancellation gate so shutdown
   cannot start a successor connection, with a blocked-registration regression test.
+  Three Codex bot findings were also valid: observed socket closure now detaches
+  its epoch immediately; reconnect separates close from connect so cancellation
+  can stop the close-to-connect transition; and stale SSE sends remain queued for
+  replay, including listener turnover while delivery is in flight. Follow-up
+  verification passes 50 focused app tests, all 42 shared `EventQueue` tests,
+  strict app/shared analysis, and `git diff --check`.
 - **Step 4/10 delivery:** [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699)
-  is open at 1,019 changed lines; the owner-provided branch/worktree are reused.
+  is open at 1,135 changed lines; the owner-provided branch/worktree are reused.
