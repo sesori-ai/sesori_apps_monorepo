@@ -19,6 +19,7 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/product_analytics_service.dart";
+import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_viewing_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
@@ -33,6 +34,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final SessionViewingService _sessionViewingService;
+  final ProjectViewingService _projectViewingService;
+  final ProjectViewClaim _projectViewClaim;
   final LifecycleSource _lifecycleSource;
   final ComposerDraftRepository _composerDraftRepository;
   final ProductAnalyticsService _productAnalyticsService;
@@ -100,6 +103,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
     required SessionViewingService sessionViewingService,
+    required ProjectViewingService projectViewingService,
     required LifecycleSource lifecycleSource,
     required ComposerDraftRepository composerDraftRepository,
     required ProductAnalyticsService productAnalyticsService,
@@ -113,6 +117,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
        _sessionViewingService = sessionViewingService,
+       _projectViewingService = projectViewingService,
+       _projectViewClaim = projectViewingService.beginDetailClaim(projectId: projectId),
        _lifecycleSource = lifecycleSource,
        _composerDraftRepository = composerDraftRepository,
        _productAnalyticsService = productAnalyticsService,
@@ -149,6 +155,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
+        final effectiveProjectId = snapshot.projectId;
+        if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
+          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        } else {
+          _projectViewingService.markClaimReady(
+            claim: _projectViewClaim,
+            projectId: effectiveProjectId,
+          );
+        }
         // Declare the view only now that the transcript has actually loaded —
         // a load that fails or waits for connection must not mark the session
         // read (clearing its bold globally) while the user only saw a
@@ -164,6 +179,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         }
       case SessionDetailLoadResultFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
+        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
         loge("Session detail load failed", error, stackTrace);
@@ -1629,6 +1645,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   @override
   Future<void> close() {
     _sessionViewingService.clearViewingSession(_sessionId);
+    _projectViewingService.releaseClaim(claim: _projectViewClaim);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _eventSubscription.cancel();

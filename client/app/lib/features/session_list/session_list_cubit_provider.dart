@@ -27,6 +27,7 @@ class SessionListCubitProvider extends StatelessWidget {
         connectionService: getIt<ConnectionService>(),
         sseEventTracker: getIt<SseEventTracker>(),
         sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+        projectViewingService: getIt<ProjectViewingService>(),
         routeSource: getIt<RouteSource>(),
         projectId: projectId,
         initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,

@@ -31,6 +31,7 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
     late FakeSessionUnseenTracker fakeSessionUnseenTracker;
+    late MockProjectViewingService mockProjectViewingService;
     late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
@@ -48,6 +49,7 @@ void main() {
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();
+      mockProjectViewingService = stubbedProjectViewingService();
       mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -88,11 +90,55 @@ void main() {
       connectionService: mockConnectionService,
       sseEventTracker: mockSseEventTracker,
       sessionUnseenTracker: fakeSessionUnseenTracker,
+      projectViewingService: mockProjectViewingService,
       routeSource: mockRouteSource,
       projectId: projectId,
       initialSupportsDedicatedWorktrees: null,
       failureReporter: mockFailureReporter,
     );
+
+    test("successful list render readies its project claim and close releases it", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+      final cubit = buildCubit();
+
+      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+      verify(() => mockProjectViewingService.beginListClaim(projectId: projectId)).called(1);
+      verify(
+        () => mockProjectViewingService.markClaimReady(
+          claim: any(named: "claim"),
+          projectId: projectId,
+        ),
+      ).called(1);
+
+      await cubit.close();
+      verify(
+        () => mockProjectViewingService.releaseClaim(claim: any(named: "claim")),
+      ).called(1);
+    });
+
+    test("failed initial list render marks its project claim failed", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      final cubit = buildCubit();
+
+      await cubit.stream.firstWhere((state) => state is SessionListFailed);
+      verify(() => mockProjectViewingService.beginListClaim(projectId: projectId)).called(1);
+      verify(
+        () => mockProjectViewingService.markClaimFailed(claim: any(named: "claim")),
+      ).called(1);
+      await cubit.close();
+    });
 
     // -------------------------------------------------------------------------
     // 1. Constructor triggers load only — no route refresh on initial emission
@@ -1747,6 +1793,7 @@ void main() {
           connectionService: mockConnectionService,
           sseEventTracker: mockSseEventTracker,
           sessionUnseenTracker: fakeSessionUnseenTracker,
+          projectViewingService: mockProjectViewingService,
           routeSource: mockRouteSource,
           projectId: "global",
           initialSupportsDedicatedWorktrees: null,

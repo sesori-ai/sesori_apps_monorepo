@@ -19,6 +19,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ProductAnalyticsEvent,
         ProductAnalyticsService,
         ProductAnalyticsState,
+        ProjectViewClaim,
+        ProjectViewPaneClaim,
+        ProjectViewingService,
         RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
@@ -288,6 +291,38 @@ MockSessionViewingService stubbedSessionViewingService() {
   return mock;
 }
 
+class MockProjectViewingService extends Mock implements ProjectViewingService {}
+
+MockProjectViewingService stubbedProjectViewingService() {
+  final mock = MockProjectViewingService();
+  when(
+    () => mock.beginListClaim(projectId: any(named: "projectId")),
+  ).thenAnswer((_) => ProjectViewClaim());
+  when(
+    () => mock.beginDetailClaim(projectId: any(named: "projectId")),
+  ).thenAnswer((_) => ProjectViewClaim());
+  when(mock.beginWideListPaneClaim).thenAnswer((_) => ProjectViewPaneClaim());
+  when(
+    () => mock.markClaimReady(
+      claim: any(named: "claim"),
+      projectId: any(named: "projectId"),
+    ),
+  ).thenReturn(null);
+  when(() => mock.markClaimFailed(claim: any(named: "claim"))).thenReturn(null);
+  when(() => mock.releaseClaim(claim: any(named: "claim"))).thenReturn(null);
+  when(
+    () => mock.setWideListPaneVisible(
+      claim: any(named: "claim"),
+      isVisible: any(named: "isVisible"),
+    ),
+  ).thenReturn(null);
+  when(
+    () => mock.releaseWideListPaneClaim(claim: any(named: "claim")),
+  ).thenReturn(null);
+  when(mock.onDispose).thenAnswer((_) async {});
+  return mock;
+}
+
 class MockRouteSource extends Mock implements RouteSource {
   final BehaviorSubject<AppRouteDef?> _currentRoute;
 
@@ -487,6 +522,8 @@ void registerAllFallbackValues() {
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
   registerFallbackValue(AuthProvider.github);
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(ProjectViewClaim());
+  registerFallbackValue(ProjectViewPaneClaim());
   registerFallbackValue(DateTime.utc(2000));
   registerFallbackValue(
     const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),

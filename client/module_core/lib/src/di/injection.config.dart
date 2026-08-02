@@ -29,6 +29,7 @@ import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i957;
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
+import 'package:sesori_dart_core/src/api/project_view_api.dart' as _i210;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
@@ -82,6 +83,8 @@ import 'package:sesori_dart_core/src/repositories/product_analytics_preference_r
     as _i804;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
+import 'package:sesori_dart_core/src/repositories/project_view_repository.dart'
+    as _i271;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
     as _i217;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
@@ -112,6 +115,8 @@ import 'package:sesori_dart_core/src/services/product_analytics_service.dart'
     as _i204;
 import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
+import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
+    as _i413;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
@@ -287,6 +292,11 @@ extension GetItInjectableX on _i174.GetIt {
         storage: gh<_i197.ProductAnalyticsPreferenceStorage>(),
       ),
     );
+    gh.lazySingleton<_i210.ProjectViewApi>(
+      () => _i210.ProjectViewApi(
+        connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
     gh.lazySingleton<_i157.SessionViewApi>(
       () => _i157.SessionViewApi(
         connectionService: gh<_i369.ConnectionService>(),
@@ -339,6 +349,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
+    );
+    gh.lazySingleton<_i271.ProjectViewRepository>(
+      () => _i271.ProjectViewRepository(api: gh<_i210.ProjectViewApi>()),
     );
     gh.lazySingleton<_i110.PluginManagementService>(
       () => _i110.PluginManagementService(
@@ -399,6 +412,14 @@ extension GetItInjectableX on _i174.GetIt {
         analyticsService: gh<_i204.ProductAnalyticsService>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i413.ProjectViewingService>(
+      () => _i413.ProjectViewingService(
+        viewRepository: gh<_i271.ProjectViewRepository>(),
+        lifecycleSource: gh<_i903.LifecycleSource>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        routeSource: gh<_i366.RouteSource>(),
+      ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(

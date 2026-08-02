@@ -246,6 +246,13 @@ class ConnectionService {
     await _relayClient?.sendSessionView(sessionId: sessionId);
   }
 
+  /// Stateless transport primitive for this client's currently visible
+  /// project. Fire-and-forget and a no-op when not connected; route, pane,
+  /// lifecycle, and reconnect ownership stays in `ProjectViewingService`.
+  Future<void> sendProjectView({required String? projectId}) async {
+    await _relayClient?.sendProjectView(projectId: projectId);
+  }
+
   /// Connects to the server. Health-checks first, then opens SSE stream
   /// for ongoing heartbeat monitoring.
   Future<ApiResponse<HealthResponse>> connect(

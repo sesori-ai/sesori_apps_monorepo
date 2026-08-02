@@ -43,6 +43,12 @@ void main() {
       expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
       final scope = SessionSplitScope.of(tester.element(find.text("Session One")));
       expect(scope.isSplit, isFalse);
+      verifyNever(
+        () => harness.projectViewingService.setWideListPaneVisible(
+          claim: any(named: "claim"),
+          isVisible: true,
+        ),
+      );
     });
 
     testWidgets("wide layout renders left pane, divider, and right pane", (tester) async {
@@ -67,6 +73,12 @@ void main() {
       expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
       final scope = SessionSplitScope.of(tester.element(find.byKey(const ValueKey("session-detail-session-1"))));
       expect(scope.isSplit, isTrue);
+      verify(
+        () => harness.projectViewingService.setWideListPaneVisible(
+          claim: any(named: "claim"),
+          isVisible: true,
+        ),
+      ).called(1);
     });
 
     testWidgets("wide list route shows placeholder in right pane", (tester) async {
@@ -208,7 +220,10 @@ void main() {
       await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.keyboard)));
       await tester.pumpAndSettle();
       await tester.enterText(find.descendant(of: newSession, matching: find.byType(EditableText)), "do the thing");
-      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)), warnIfMissed: false);
+      await tester.tap(
+        find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)),
+        warnIfMissed: false,
+      );
       await tester.pump();
       expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
 
@@ -254,6 +269,12 @@ void main() {
       final after = BlocProvider.of<SessionListCubit>(tester.element(find.text("Session One")));
 
       expect(identical(before, after), isTrue);
+      verify(
+        () => harness.projectViewingService.setWideListPaneVisible(
+          claim: any(named: "claim"),
+          isVisible: false,
+        ),
+      ).called(1);
     });
   });
 

@@ -4,13 +4,13 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `42161a53b8b76268d3a94157e200d07418dc880b`
-- **Series state:** Steps 1/9, 2.a–2.c/9, 3/9, 4/9, and 5/9 merged; Step 6 is in progress
-- **Current step:** Step 6/9 — bridge cadence settings
+  `ba25adae6374ee1895e78564f6b457b66b172e04`
+- **Series state:** Steps 1/9, 2.a–2.c/9, and 3–6/9 merged; Step 7 is ready for PR
+- **Current step:** Step 7/9 — shared client project presence
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Step PR:** [#693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) open
-- **Next action:** monitor Step 6 CI and review feedback until merge
+- **Previous step PR:** [#693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged
+- **Next action:** raise Step 7, then investigate terminal PR loss while its PR is reviewed
 
 ## Existing Baseline
 
@@ -47,8 +47,8 @@
 | [x] | 3/9 | `session-pull-request-monitoring-graphql-selection` | `🚧 [session-pull-request-monitoring] feat(bridge): batch exact PR selection [step 3/9]` | 3,100–3,500 | [PR #685](https://github.com/sesori-ai/sesori_apps_monorepo/pull/685) merged as `f6ec9e9d` |
 | [x] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 4,000–4,200 | [PR #686](https://github.com/sesori-ai/sesori_apps_monorepo/pull/686) merged as `3bbb1e8e` |
 | [x] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | [PR #692](https://github.com/sesori-ai/sesori_apps_monorepo/pull/692) merged as `42161a53` |
-| [ ] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | Current; implementation, verification, and architecture review complete |
-| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Blocked on Step 6 merge |
+| [x] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | [PR #693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged as `ba25adae` |
+| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Current; implementation, review correction, and local verification complete |
 | [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
 | [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8 merge |
 
@@ -90,8 +90,8 @@
 
 ## Current Drift and Open Work
 
-- Latest audited `main`: `42161a53`, including Step 5 merged from PR #692. No
-  later drift affects the reviewed Step 6 settings architecture.
+- Latest audited `main`: `ba25adae`, including Step 6 merged from PR #693. No
+  later drift affects the Step 7 client-presence architecture.
 - Drift schema: v13 on `main`; Step 4 leaves the merged schema and migration
   unchanged.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
@@ -102,6 +102,11 @@
   no-new-event decision.
 - Open PR #621 touches the settings landing screen and may require Step 8 drift
   reconciliation if it merges.
+- After the Step 7 PR is raised, separately reproduce terminal PR selection loss
+  while that PR is under review. The reported sequence is: merge the PR, merge
+  `main` into the same feature branch, then hard-reset and force-push that reused
+  branch to track `main` before the next plan step. Branch deletion alone is not
+  the suspected trigger; this investigation must not delay raising Step 7.
 
 ## Interview Decisions Recorded 2026-07-31
 
@@ -378,6 +383,35 @@
   operation context. The prior whole-error privacy wrappers were removed; config
   repair now captures parse stacks, and range exceptions retain the rejected
   value and valid range. No prompt or transcript fields occur in these logs.
+- **Step 6/9 merge:** PR #693 merged into `main` as `ba25adae` on 2026-08-02.
+- **Step 7/9 implementation:** Added the client `ProjectViewApi` → repository →
+  `ProjectViewingService` path and a best-effort `ConnectionService`/`RelayClient`
+  send seam for the existing additive `RelayProjectView` contract. List and
+  detail cubits contribute identity-owned pending/ready/failed claims; route,
+  actual adaptive-pane presence, app lifecycle, and reconnect state resolve one
+  serialized, deduplicated project declaration without invoking session
+  mark-seen behavior. Successful detail loading after new-session navigation
+  immediately declares the created dedicated-worktree session's project.
+- **Step 7/9 compatibility, cleanup, and analytics:** No database or shared-wire
+  schema changed. Older clients remain request-driven and the already-supported
+  additive frame is ignored by peers that do not use project presence. Keep
+  `SessionViewingService` because it independently owns mark-seen semantics; no
+  competing client project-presence path or other directly obsolete artifact was
+  found. No analytics event was added because passive freshness does not answer
+  a current product decision and project identity is sensitive.
+- **Step 7/9 verification:** Module-core code generation and formatting pass, as
+  do `dart pub get`, all 942 module-core tests, all 872 app tests, fatal-info
+  analysis for module core and app, downstream desktop analysis, and
+  `git diff --check`. The 1,104 changed lines remain within the target. Focused
+  API/repository/service, cubit, route, and adaptive-shell regressions cover
+  readiness, failure, route precedence, wide/narrow transitions, lifecycle,
+  reconnect, stale cleanup, serialized sends, and the new-session refresh path.
+- **Step 7/9 architecture review:** `aristotle-impl-review` rejected an unowned
+  global wide-pane boolean because a replaced shell's late disposal could clear
+  its replacement. Each mounted shell now owns an opaque pane claim and the
+  service ignores stale releases; a cross-project replacement regression covers
+  the corrected ordering. The valid finding was applied and, per review rules,
+  was not re-reviewed.
 
 ## Findings and Plan Deltas
 

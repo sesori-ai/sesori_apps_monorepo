@@ -87,6 +87,7 @@ void main() {
         promptDispatcher: mockSessionRepository,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: FakeLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: stubbedProductAnalyticsService(),
