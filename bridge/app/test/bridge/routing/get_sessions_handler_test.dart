@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -994,6 +995,32 @@ void main() {
       expect(prSyncService.calls.single.refreshPolicy, PrRefreshPolicy.background);
     });
 
+    test("starts explicit PR refresh before awaiting initial GitHub identity", () async {
+      final identityBlockingService = _IdentityBlockingPrSyncService();
+      final orderingHandler = GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: identityBlockingService,
+      );
+
+      final response = orderingHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      await identityBlockingService.identityVerificationStarted.future;
+      final callsBeforeIdentityCompleted = List.of(identityBlockingService.calls);
+      identityBlockingService.identityVerification.complete(
+        VerifiedGithubLogin.tryParse(rawLogin: "octocat"),
+      );
+      await response;
+
+      expect(callsBeforeIdentityCompleted, hasLength(1));
+      expect(callsBeforeIdentityCompleted.single.projectIds, {"p1"});
+      expect(callsBeforeIdentityCompleted.single.refreshPolicy, PrRefreshPolicy.explicit);
+    });
+
     test("bounds initial identity verification and returns PR-free sessions", () async {
       plugin.sessionsResult = const [
         PluginSession(
@@ -1061,7 +1088,7 @@ void main() {
       expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
-    test("returns sessions without cached PR metadata when a waited refresh times out", () async {
+    test("returns the latest PR-free branch when a waited refresh times out", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1072,6 +1099,7 @@ void main() {
           time: null,
         ),
       ];
+      sessionDao.setSession(_storedSession(currentBranchName: "feature/a"));
       pullRequestRepository.setPr(
         sessionId: "s1",
         pullRequest: const PullRequestDto(
@@ -1090,58 +1118,47 @@ void main() {
           createdAt: 1,
         ),
       );
-      final slowPrSyncService = FakePrSyncService(delay: const Duration(seconds: 10));
+      final branchPersisted = Completer<void>();
+      final refreshBlocker = Completer<void>();
+      final refreshReleased = Completer<void>();
+      final slowPrSyncService = FakePrSyncService(
+        refreshAction: () async {
+          sessionDao.setSession(_storedSession(currentBranchName: "feature/b"));
+          branchPersisted.complete();
+          await refreshBlocker.future;
+          refreshReleased.complete();
+        },
+      );
       final timeoutHandler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: slowPrSyncService,
-        prRefreshTimeout: const Duration(milliseconds: 50),
+        prRefreshTimeout: const Duration(milliseconds: 20),
       );
 
-      final result = await timeoutHandler.handle(
+      final response = timeoutHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
+      await branchPersisted.future;
 
-      expect(result.items, hasLength(1));
-      expect(result.items.single.title, equals("session one"));
-      expect(result.items.single.pullRequest, isNull);
-      expect(result.items.single.pullRequestHistory, isEmpty);
-      expect(sessionRepository.getSessionsCallCount, equals(1));
+      try {
+        final result = await response;
+        expect(result.items, hasLength(1));
+        expect(result.items.single.branchName, "feature/b");
+        expect(result.items.single.pullRequest, isNull);
+        expect(result.items.single.pullRequestHistory, isEmpty);
+        expect(sessionRepository.getSessionsCallCount, equals(1));
+      } finally {
+        refreshBlocker.complete();
+        await refreshReleased.future;
+        await Future<void>.delayed(Duration.zero);
+      }
     });
 
-    test("strips cached PR metadata when a waited refresh fails", () async {
-      SessionDto storedSession({required String currentBranchName}) {
-        return SessionDto(
-          pluginId: "fake",
-          sessionId: "s1",
-          backendSessionId: "s1",
-          projectId: "p1",
-          parentSessionId: null,
-          directory: "/tmp",
-          worktreePath: null,
-          branchName: null,
-          currentBranchName: currentBranchName,
-          currentGithubRepositoryIdentity: "org/repo",
-          isDedicated: false,
-          archivedAt: null,
-          baseBranch: null,
-          baseCommit: null,
-          lastAgent: null,
-          lastAgentModel: null,
-          createdAt: 1,
-          updatedAt: 1,
-          projectionUpdatedAt: 1,
-          lastActivityAt: null,
-          lastSeenAt: null,
-          lastUserMessageAt: null,
-          title: null,
-          catalogTitle: null,
-        );
-      }
-
+    test("returns the original PR-free snapshot when timeout fallback enrichment fails", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1152,7 +1169,61 @@ void main() {
           time: null,
         ),
       ];
-      sessionDao.setSession(storedSession(currentBranchName: "feature/old"));
+      final fallbackFailingRepository = _FallbackFailingSessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        pullRequestRepository: pullRequestRepository,
+        persistenceDatabase: db,
+      );
+      final refreshStarted = Completer<void>();
+      final refreshBlocker = Completer<void>();
+      final refreshReleased = Completer<void>();
+      final timeoutHandler = GetSessionsHandler(
+        sessionRepository: fallbackFailingRepository,
+        prSyncService: FakePrSyncService(
+          refreshAction: () async {
+            refreshStarted.complete();
+            await refreshBlocker.future;
+            refreshReleased.complete();
+          },
+        ),
+        prRefreshTimeout: const Duration(milliseconds: 20),
+      );
+
+      final response = timeoutHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      await refreshStarted.future;
+
+      try {
+        final result = await response;
+        expect(result.items.single.title, "session one");
+        expect(result.items.single.pullRequest, isNull);
+        expect(result.items.single.pullRequestHistory, isEmpty);
+        expect(fallbackFailingRepository.enrichmentAttempts, 2);
+      } finally {
+        refreshBlocker.complete();
+        await refreshReleased.future;
+        await Future<void>.delayed(Duration.zero);
+      }
+    });
+
+    test("strips cached PR metadata when a waited refresh fails", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session one",
+          time: null,
+        ),
+      ];
+      sessionDao.setSession(_storedSession(currentBranchName: "feature/old"));
       pullRequestRepository.setPr(
         sessionId: "s1",
         pullRequest: const PullRequestDto(
@@ -1174,7 +1245,7 @@ void main() {
       final failedRefresh = FakePrSyncService(
         refreshOutcome: PrRefreshOutcome.failed,
         refreshAction: () {
-          sessionDao.setSession(storedSession(currentBranchName: "feature/new"));
+          sessionDao.setSession(_storedSession(currentBranchName: "feature/new"));
         },
       );
       final failingHandler = GetSessionsHandler(
@@ -1329,4 +1400,72 @@ void main() {
       expect(sessionRepository.getSessionsCallCount, equals(1));
     });
   });
+}
+
+SessionDto _storedSession({required String currentBranchName}) {
+  return SessionDto(
+    pluginId: "fake",
+    sessionId: "s1",
+    backendSessionId: "s1",
+    projectId: "p1",
+    parentSessionId: null,
+    directory: "/tmp",
+    worktreePath: null,
+    branchName: null,
+    currentBranchName: currentBranchName,
+    currentGithubRepositoryIdentity: "org/repo",
+    isDedicated: false,
+    archivedAt: null,
+    baseBranch: null,
+    baseCommit: null,
+    lastAgent: null,
+    lastAgentModel: null,
+    createdAt: 1,
+    updatedAt: 1,
+    projectionUpdatedAt: 1,
+    lastActivityAt: null,
+    lastSeenAt: null,
+    lastUserMessageAt: null,
+    title: null,
+    catalogTitle: null,
+  );
+}
+
+final class _IdentityBlockingPrSyncService extends FakePrSyncService {
+  final Completer<void> identityVerificationStarted = Completer<void>();
+  final Completer<VerifiedGithubLogin?> identityVerification = Completer<VerifiedGithubLogin?>();
+
+  @override
+  Future<VerifiedGithubLogin?> verifyGithubIdentity() {
+    if (!identityVerificationStarted.isCompleted) {
+      identityVerificationStarted.complete();
+    }
+    return identityVerification.future;
+  }
+}
+
+final class _FallbackFailingSessionRepository extends FakeSessionRepository {
+  int enrichmentAttempts = 0;
+
+  _FallbackFailingSessionRepository({
+    required super.plugin,
+    required super.sessionDao,
+    required super.pullRequestRepository,
+    required super.persistenceDatabase,
+  });
+
+  @override
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) {
+    enrichmentAttempts++;
+    if (enrichmentAttempts == 2) {
+      throw StateError("fallback enrichment failed");
+    }
+    return super.enrichSessions(
+      sessions: sessions,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
+  }
 }

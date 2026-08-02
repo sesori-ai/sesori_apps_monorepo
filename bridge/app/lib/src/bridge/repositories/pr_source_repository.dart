@@ -9,6 +9,7 @@ import "models/verified_github_login.dart";
 
 class PrSourceRepository {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
+  static const int _maxConcurrentDirectoryResolutions = 8;
 
   final GhCliApi _ghCli;
   final GitCliApi _gitCli;
@@ -28,9 +29,17 @@ class PrSourceRepository {
     required Iterable<String> directories,
   }) async {
     final uniqueDirectories = directories.toSet().toList(growable: false)..sort();
-    final resolutions = await Future.wait([
-      for (final directory in uniqueDirectories) _resolvePullRequestTarget(directory: directory),
-    ]);
+    final resolutions = <PullRequestDirectoryTarget>[];
+    for (final directoryChunk in _chunks(
+      values: uniqueDirectories,
+      size: _maxConcurrentDirectoryResolutions,
+    )) {
+      resolutions.addAll(
+        await Future.wait([
+          for (final directory in directoryChunk) _resolvePullRequestTarget(directory: directory),
+        ]),
+      );
+    }
     return {
       for (var index = 0; index < uniqueDirectories.length; index++) uniqueDirectories[index]: resolutions[index],
     };

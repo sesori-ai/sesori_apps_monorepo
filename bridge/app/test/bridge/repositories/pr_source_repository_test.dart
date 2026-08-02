@@ -117,14 +117,15 @@ void main() {
       );
     });
 
-    test("resolves deduplicated directories concurrently in sorted result order", () async {
-      final first = Completer<GitCurrentBranchResult>();
-      final second = Completer<GitCurrentBranchResult>();
+    test("bounds concurrent deduplicated directory resolution and preserves sorted output", () async {
+      final sortedDirectories = [
+        for (var index = 0; index < 9; index++) "/directory-${index.toString().padLeft(2, "0")}",
+      ];
+      final branchResults = {
+        for (final directory in sortedDirectories) directory: Completer<GitCurrentBranchResult>(),
+      };
       final gitCli = _CompletingGitCliApi(
-        branchResults: {
-          "/a": first,
-          "/z": second,
-        },
+        branchResults: branchResults,
       );
       final repository = PrSourceRepository(
         ghCli: _FakeGhCliApi(initialResponses: const []),
@@ -132,23 +133,26 @@ void main() {
       );
 
       final resolution = repository.resolvePullRequestTargets(
-        directories: const ["/z", "/a", "/z"],
+        directories: [...sortedDirectories.reversed, sortedDirectories.last],
       );
-      await Future<void>.delayed(Duration.zero);
+      await gitCli.resolutionLimitReached.future;
 
-      expect(gitCli.branchCalls, ["/a", "/z"]);
-      second.complete(const GitCurrentBranchDetached());
-      first.complete(const GitCurrentBranchNotRepository());
+      expect(gitCli.branchCalls, sortedDirectories.take(8));
+      expect(gitCli.nextChunkStarted.isCompleted, isFalse);
+      for (final directory in sortedDirectories.take(8)) {
+        branchResults[directory]!.complete(const GitCurrentBranchDetached());
+      }
+
+      await gitCli.nextChunkStarted.future;
+      expect(gitCli.branchCalls, sortedDirectories);
+      branchResults[sortedDirectories.last]!.complete(const GitCurrentBranchNotRepository());
 
       final targets = await resolution;
-      expect(targets.keys, ["/a", "/z"]);
+      expect(targets.keys, sortedDirectories);
+      expect(targets, hasLength(9));
       expect(
-        (targets["/a"]! as PullRequestNoBranchDirectoryTarget).reason,
+        (targets[sortedDirectories.last]! as PullRequestNoBranchDirectoryTarget).reason,
         PullRequestNoBranchReason.notGitRepository,
-      );
-      expect(
-        (targets["/z"]! as PullRequestNoBranchDirectoryTarget).reason,
-        PullRequestNoBranchReason.detachedHead,
       );
     });
 
@@ -657,12 +661,19 @@ class _QueueProcessRunner extends ProcessRunner {
 final class _CompletingGitCliApi implements GitCliApi {
   final Map<String, Completer<GitCurrentBranchResult>> branchResults;
   final List<String> branchCalls = <String>[];
+  final Completer<void> resolutionLimitReached = Completer<void>();
+  final Completer<void> nextChunkStarted = Completer<void>();
 
   _CompletingGitCliApi({required this.branchResults});
 
   @override
   Future<GitCurrentBranchResult> getCurrentBranch({required String projectPath}) {
     branchCalls.add(projectPath);
+    if (branchCalls.length == 8) {
+      resolutionLimitReached.complete();
+    } else if (branchCalls.length == 9) {
+      nextChunkStarted.complete();
+    }
     return branchResults[projectPath]!.future;
   }
 
