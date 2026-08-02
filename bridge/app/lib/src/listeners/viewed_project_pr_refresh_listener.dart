@@ -38,11 +38,12 @@ class ViewedProjectPrRefreshListener {
     _tracker.changes
         .listen(
           (change) => _handleChange(change: change),
-          onError: (Object error, StackTrace _) {
+          onError: (Object error, StackTrace stackTrace) {
             if (_disposed) return;
             Log.w(
               "Viewed-project change tracking failed unexpectedly",
-              _PrivacySafeViewedProjectRefreshException(cause: error),
+              error,
+              stackTrace,
             );
           },
         )
@@ -50,11 +51,12 @@ class ViewedProjectPrRefreshListener {
     _settingsService.changes
         .listen(
           (settings) => _handleIntervalChange(intervalSeconds: settings.intervalSeconds),
-          onError: (Object error, StackTrace _) {
+          onError: (Object error, StackTrace stackTrace) {
             if (_disposed) return;
             Log.w(
               "Pull request refresh settings changes failed unexpectedly",
-              _PrivacySafePullRequestRefreshSettingsException(cause: error),
+              error,
+              stackTrace,
             );
           },
         )
@@ -107,11 +109,12 @@ class ViewedProjectPrRefreshListener {
         projectIds: projectIds,
         refreshPolicy: PrRefreshPolicy.viewedProject,
       );
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       if (!_disposed) {
         Log.w(
           "Viewed-project pull request refresh failed unexpectedly; retrying after the configured interval",
-          _PrivacySafeViewedProjectRefreshException(cause: error),
+          error,
+          stackTrace,
         );
       }
     }
@@ -146,22 +149,4 @@ class ViewedProjectPrRefreshListener {
     await _subscriptions.cancel();
     await Future.wait(List<Future<void>>.of(_activeRefreshes));
   }
-}
-
-final class _PrivacySafeViewedProjectRefreshException implements Exception {
-  final Object cause;
-
-  const _PrivacySafeViewedProjectRefreshException({required this.cause});
-
-  @override
-  String toString() => "ViewedProjectRefreshException";
-}
-
-final class _PrivacySafePullRequestRefreshSettingsException implements Exception {
-  final Object cause;
-
-  const _PrivacySafePullRequestRefreshSettingsException({required this.cause});
-
-  @override
-  String toString() => "PullRequestRefreshSettingsException";
 }

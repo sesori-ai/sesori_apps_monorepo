@@ -239,7 +239,7 @@ void main() {
       });
     });
 
-    test("unexpected errors log without identifiers and retry after the interval", () {
+    test("unexpected errors preserve diagnostics and retry after the interval", () {
       fakeAsync((async) {
         final harness = _Harness()..service.immediateError = StateError("project-x /private/source/path");
         final logOutput = _captureLogOutput(
@@ -251,9 +251,8 @@ void main() {
         );
 
         expect(logOutput, contains("Viewed-project pull request refresh failed unexpectedly"));
-        expect(logOutput, contains("ViewedProjectRefreshException"));
-        expect(logOutput, isNot(contains("project-x")));
-        expect(logOutput, isNot(contains("/private/source/path")));
+        expect(logOutput, contains("project-x /private/source/path"));
+        expect(logOutput, contains("viewed_project_pr_refresh_listener_test.dart"));
 
         async.elapse(const Duration(seconds: 30));
         expect(harness.service.calls, hasLength(2));
@@ -261,7 +260,7 @@ void main() {
       });
     });
 
-    test("settings stream errors log without causes or stack paths", () {
+    test("settings stream errors preserve causes and stack paths", () {
       final harness = _Harness();
       final logOutput = _captureLogOutput(
         action: () {
@@ -274,9 +273,8 @@ void main() {
       );
 
       expect(logOutput, contains("Pull request refresh settings changes failed unexpectedly"));
-      expect(logOutput, contains("PullRequestRefreshSettingsException"));
-      expect(logOutput, isNot(contains("secret settings cause")));
-      expect(logOutput, isNot(contains("/private/settings/source.dart")));
+      expect(logOutput, contains("secret settings cause"));
+      expect(logOutput, contains("/private/settings/source.dart"));
       unawaited(harness.dispose());
     });
 

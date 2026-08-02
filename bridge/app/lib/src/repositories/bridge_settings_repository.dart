@@ -51,8 +51,12 @@ class BridgeSettingsRepository {
     final parsed = _parseSettings(json);
     final settings = parsed.settings;
     if (parsed.repairErrors.isNotEmpty || parsed.missingPullRequestRefreshInterval) {
-      for (final error in parsed.repairErrors) {
-        Log.w('[bridge-settings] invalid config at $configFilePath', error);
+      for (final repairError in parsed.repairErrors) {
+        Log.w(
+          '[bridge-settings] invalid config at $configFilePath',
+          repairError.error,
+          repairError.stackTrace,
+        );
       }
       try {
         await _api.writeConfig(_jsonEncoder.convert(settings.toJson()));
@@ -119,7 +123,7 @@ class BridgeSettingsRepository {
 
   ({
     BridgeSettings settings,
-    List<FormatException> repairErrors,
+    List<({FormatException error, StackTrace stackTrace})> repairErrors,
     bool missingPullRequestRefreshInterval,
   })
   _parseSettings(
@@ -140,7 +144,7 @@ class BridgeSettingsRepository {
                 : entry.value,
       };
     }
-    final errors = <FormatException>[];
+    final errors = <({FormatException error, StackTrace stackTrace})>[];
     while (true) {
       try {
         return (
@@ -148,17 +152,17 @@ class BridgeSettingsRepository {
           repairErrors: List.unmodifiable(errors),
           missingPullRequestRefreshInterval: missingPullRequestRefreshInterval,
         );
-      } on PluginIdleTimeoutFormatException catch (error) {
+      } on PluginIdleTimeoutFormatException catch (error, stackTrace) {
         final plugins = repaired['plugins'];
         if (plugins is! Map<String, dynamic>) rethrow;
         final entry = plugins[error.entryName];
         if (entry is! Map<String, dynamic> || !entry.containsKey('idleTimeoutMins')) rethrow;
         entry.remove('idleTimeoutMins');
         if (entry.isEmpty && error.entryName != 'default') plugins.remove(error.entryName);
-        errors.add(error);
-      } on PullRequestRefreshIntervalFormatException catch (error) {
+        errors.add((error: error, stackTrace: stackTrace));
+      } on PullRequestRefreshIntervalFormatException catch (error, stackTrace) {
         repaired['pullRequestRefreshIntervalSeconds'] = defaultPullRequestRefreshIntervalSeconds;
-        errors.add(error);
+        errors.add((error: error, stackTrace: stackTrace));
       }
     }
   }

@@ -9,7 +9,8 @@
 - **Current step:** Step 6/9 — bridge cadence settings
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Next action:** commit and open the verified Step 6 implementation PR
+- **Step PR:** [#693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) open
+- **Next action:** monitor Step 6 CI and review feedback until merge
 
 ## Existing Baseline
 
@@ -365,12 +366,18 @@
 - **Step 6/9 verification:** Shared codegen, 20 focused bridge tests added, all
   357 shared tests, all 2,366 bridge app tests, both fatal-info analyzers, and
   `git diff --check` pass. Review-requested strict contract and invariant tests
-  raise the final change to 1,554 lines, 54 above the soft target; generated
-  contract output and its coupled boundary tests have no smaller coherent split.
+  plus the diagnostic-logging follow-up raise the final change to 1,589 lines,
+  89 above the soft target; generated contract output, coupled boundary tests,
+  and directly caused logging-policy cleanup have no smaller coherent split.
 - **Step 6/9 architecture review:** `aristotle-impl-review` found two issues.
   The service now suppresses unrelated whole-settings changes, and the runtime
   runner now owns repository disposal across early startup exits. Both findings
   were applied and, per review rules, were not re-reviewed.
+- **Step 6/9 diagnostic logging follow-up:** All logs introduced or touched by
+  this PR preserve the original error, stack trace, paths, identifiers, and
+  operation context. The prior whole-error privacy wrappers were removed; config
+  repair now captures parse stacks, and range exceptions retain the rejected
+  value and valid range. No prompt or transcript fields occur in these logs.
 
 ## Findings and Plan Deltas
 

@@ -51,5 +51,7 @@ class PullRequestRefreshIntervalOutOfRangeException implements Exception {
   int get maximumIntervalSeconds => maximumPullRequestRefreshIntervalSeconds;
 
   @override
-  String toString() => "PullRequestRefreshIntervalOutOfRangeException";
+  String toString() =>
+      "PullRequestRefreshIntervalOutOfRangeException(intervalSeconds: $intervalSeconds, "
+      "validRange: $minimumIntervalSeconds..$maximumIntervalSeconds)";
 }

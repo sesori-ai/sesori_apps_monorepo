@@ -54,17 +54,22 @@ void main() {
         minimumPullRequestRefreshIntervalSeconds - 1,
         maximumPullRequestRefreshIntervalSeconds + 1,
       ]) {
+        final matcher = isA<PullRequestRefreshIntervalOutOfRangeException>()
+            .having(
+              (error) => error.intervalSeconds,
+              "intervalSeconds",
+              intervalSeconds,
+            )
+            .having(
+              (error) => error.toString(),
+              "diagnostic description",
+              allOf(contains("$intervalSeconds"), contains("15"), contains("3600")),
+            );
         await expectLater(
           service.update(
             request: PullRequestRefreshSettingsRequest(intervalSeconds: intervalSeconds),
           ),
-          throwsA(
-            isA<PullRequestRefreshIntervalOutOfRangeException>().having(
-              (error) => error.intervalSeconds,
-              "intervalSeconds",
-              intervalSeconds,
-            ),
-          ),
+          throwsA(matcher),
         );
       }
 
