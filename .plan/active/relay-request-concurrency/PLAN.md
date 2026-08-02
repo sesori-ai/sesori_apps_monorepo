@@ -6,12 +6,13 @@
 - **Status:** Active — Step 1 PR
   [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) and
   post-merge correction PR
-  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged;
-  Step 2 PR [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open
+  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) and Step 2 PR
+  [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged;
+  Step 3 implementation ready for review
 - **Plan date:** 2026-08-02
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main` at
-  `0e31324a9ec3cbd08d53394d7a1c6e9e3b133b0e`
+  `fdc8ad67eafe18edb774249329f707bc6394c187`
 - **Delivery:** one plan PR, eight sequential implementation PRs, and one
   plan-retirement PR
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687)

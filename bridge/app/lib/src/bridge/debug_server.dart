@@ -7,15 +7,14 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Conso
 import "package:sesori_shared/sesori_shared.dart";
 
 import "routing/bridge_restart_dispatcher.dart";
-import "routing/request_router.dart";
 import "routing/routed_request.dart";
+import "routing/routed_request_dispatcher.dart";
 
 class DebugServer {
   final Stream<SesoriSseEvent> _localWireEvents;
-  final RequestRouter _router;
+  final RoutedRequestDispatcher _routedRequestDispatcher;
   final FailureReporter _failureReporter;
   final BridgeRestartDispatcher _restartDispatcher;
-  final Future<void> Function() _drainRoutedMutations;
   final int port;
   final List<HttpResponse> _sseClients = [];
   // ignore: cancel_subscriptions - cancelled by the failure-isolated drain.
@@ -33,19 +32,17 @@ class DebugServer {
 
   DebugServer({
     required Stream<SesoriSseEvent> localWireEvents,
-    required RequestRouter router,
+    required RoutedRequestDispatcher routedRequestDispatcher,
     required this.port,
     required FailureReporter failureReporter,
     required BridgeRestartDispatcher restartDispatcher,
-    required Future<void> Function() drainRoutedMutations,
   }) : _localWireEvents = localWireEvents,
-       _router = router,
+       _routedRequestDispatcher = routedRequestDispatcher,
        _failureReporter = failureReporter,
-       _restartDispatcher = restartDispatcher,
-       _drainRoutedMutations = drainRoutedMutations;
+       _restartDispatcher = restartDispatcher;
 
   int? get boundPort => _server?.port;
-  RequestRouter get router => _router;
+  RoutedRequestDispatcher get routedRequestDispatcher => _routedRequestDispatcher;
 
   Future<void> start() async {
     if (_server != null) {
@@ -71,13 +68,17 @@ class DebugServer {
   }
 
   void beginShutdown() {
+    _routedRequestDispatcher.beginShutdown();
     if (!_shutdownSignal.isCompleted) _shutdownSignal.complete();
     final server = _server;
     _server = null;
     _serverClose ??= server?.close() ?? Future<void>.value();
   }
 
-  Future<void> drain() => _drainFuture ??= _drain();
+  Future<void> drain() {
+    beginShutdown();
+    return _drainFuture ??= _drain();
+  }
 
   Future<void> stop() {
     beginShutdown();
@@ -110,7 +111,7 @@ class DebugServer {
         await _serverClose;
       }),
     ]);
-    await attempt(_drainRoutedMutations);
+    await attempt(_routedRequestDispatcher.drain);
     if (firstError != null) {
       Error.throwWithStackTrace(firstError!, firstStackTrace!);
     }
@@ -127,6 +128,7 @@ class DebugServer {
 
   Future<void> _handleHTTP(HttpRequest request) async {
     RoutedRequestOutcome? completedOutcome;
+    RelayResponse? rejectedResponse;
     Future<RoutedRequestOutcome>? routeToDrain;
     try {
       final rawBody = await utf8.decoder.bind(request).join();
@@ -147,17 +149,24 @@ class DebugServer {
               )
               as RelayRequest;
 
-      final pendingRoute = _router.route(request: relayRequest);
-      final route = pendingRoute.completion;
-      final outcome = await Future.any<RoutedRequestOutcome?>([
-        route,
-        _shutdownSignal.future.then<RoutedRequestOutcome?>((_) => null),
-      ]);
-      if (outcome == null) {
-        routeToDrain = route;
-      } else {
-        completedOutcome = outcome;
-        final message = outcome.response;
+      final dispatch = _routedRequestDispatcher.dispatch(request: relayRequest);
+      switch (dispatch) {
+        case final RoutedRequestShutdownRejected rejected:
+          rejectedResponse = rejected.response;
+        case final RoutedRequestAccepted accepted:
+          final route = accepted.pendingRequest.completion;
+          final outcome = await Future.any<RoutedRequestOutcome?>([
+            route,
+            _shutdownSignal.future.then<RoutedRequestOutcome?>((_) => null),
+          ]);
+          if (outcome == null) {
+            routeToDrain = route;
+          } else {
+            completedOutcome = outcome;
+          }
+      }
+      final message = completedOutcome?.response ?? rejectedResponse;
+      if (message != null) {
         request.response.statusCode = message.status;
         // Skip hop-by-hop and length headers — dart:io sets them
         // automatically based on the actual response body written.

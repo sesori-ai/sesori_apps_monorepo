@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart" as runtime show PluginRuntimeState;
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
@@ -27,8 +28,10 @@ void main() {
     final harness = await _OrchestratorHarness.create(pluginIds: const ["one", "two"]);
     addTearDown(harness.close);
 
-    final response =
-        (await harness.composition.session.router.route(request: makeRequest("GET", "/plugin")).completion).response;
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest("GET", "/plugin"),
+    );
     final plugins = PluginListResponse.fromJson(jsonDecodeMap(response.body!)).plugins;
 
     expect(response.status, 200);
@@ -57,19 +60,16 @@ void main() {
     final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
     addTearDown(harness.close);
 
-    final response =
-        (await harness.composition.session.router
-                .route(
-                  request: makeRequest(
-                    "PATCH",
-                    "/plugin/idle-timeout",
-                    body: jsonEncode(
-                      const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 25).toJson(),
-                    ),
-                  ),
-                )
-                .completion)
-            .response;
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "PATCH",
+        "/plugin/idle-timeout",
+        body: jsonEncode(
+          const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 25).toJson(),
+        ),
+      ),
+    );
     final management = PluginManagementResponse.fromJson(jsonDecodeMap(response.body!));
 
     expect(response.status, 200);
@@ -81,17 +81,14 @@ void main() {
     final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
     addTearDown(harness.close);
 
-    final response =
-        (await harness.composition.session.router
-                .route(
-                  request: makeRequest(
-                    "POST",
-                    "/plugin/missing/command",
-                    body: jsonEncode(const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe).toJson()),
-                  ),
-                )
-                .completion)
-            .response;
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "POST",
+        "/plugin/missing/command",
+        body: jsonEncode(const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe).toJson()),
+      ),
+    );
 
     expect(response.status, 404);
     expect(response.body, "plugin not found");
@@ -491,6 +488,17 @@ void main() {
     }
     await runFuture.timeout(const Duration(seconds: 5));
   });
+}
+
+Future<RelayResponse> _dispatch({
+  required RoutedRequestDispatcher dispatcher,
+  required RelayRequest request,
+}) async {
+  final result = dispatcher.dispatch(request: request);
+  if (result case final RoutedRequestAccepted accepted) {
+    return (await accepted.pendingRequest.completion).response;
+  }
+  throw StateError("route was rejected during test setup");
 }
 
 void _configureBlockingProjectSummary({

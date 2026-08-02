@@ -12,6 +12,7 @@ import "../bandwidth_tracker.dart";
 import "../debug_server.dart";
 import "../orchestrator.dart";
 import "../routing/bridge_restart_dispatcher.dart";
+import "../routing/routed_request_dispatcher.dart";
 import "bridge_shutdown_coordinator.dart";
 
 class BridgeRuntime {
@@ -22,11 +23,13 @@ class BridgeRuntime {
   }) : _database = database,
        _failureReporter = failureReporter,
        _restartDispatcher = composition.restartDispatcher,
+       _routedRequestDispatcher = composition.routedRequestDispatcher,
        _composition = composition;
 
   final AppDatabase _database;
   final FailureReporter _failureReporter;
   final BridgeRestartDispatcher _restartDispatcher;
+  final RoutedRequestDispatcher _routedRequestDispatcher;
   final OrchestratorComposition _composition;
   Future<void>? _closeFuture;
 
@@ -45,11 +48,10 @@ class BridgeRuntime {
   DebugServer createDebugServer({required int port}) {
     return DebugServer(
       localWireEvents: session.localWireEvents,
-      router: session.router,
+      routedRequestDispatcher: _routedRequestDispatcher,
       port: port,
       failureReporter: _failureReporter,
       restartDispatcher: _restartDispatcher,
-      drainRoutedMutations: session.drainRoutedMutations,
     );
   }
 

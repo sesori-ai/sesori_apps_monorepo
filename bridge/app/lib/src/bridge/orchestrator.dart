@@ -116,6 +116,7 @@ import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
 import "routing/restart_bridge_handler.dart";
 import "routing/routed_request.dart";
+import "routing/routed_request_dispatcher.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
@@ -146,6 +147,7 @@ typedef OrchestratorComposition = ({
   PluginCatalogHydrationListener catalogHydrationListener,
   DeletedSessionStorageCleanupService deletedSessionStorageCleanupService,
   BridgeRestartDispatcher restartDispatcher,
+  RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
@@ -546,6 +548,7 @@ class Orchestrator {
         ),
       ],
     );
+    final routedRequestDispatcher = RoutedRequestDispatcher(router: router);
 
     final session = OrchestratorSession._(
       config: config,
@@ -566,7 +569,7 @@ class Orchestrator {
       bridgeRegistrationService: _bridgeRegistrationService,
       roomKey: roomKey,
       sseManager: sseManager,
-      router: router,
+      routedRequestDispatcher: routedRequestDispatcher,
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
       sessionPromptService: sessionPromptService,
       catalogImportProgress: catalogImportService.progress,
@@ -593,6 +596,7 @@ class Orchestrator {
       catalogHydrationListener: catalogHydrationListener,
       deletedSessionStorageCleanupService: deletedSessionStorageCleanupService,
       restartDispatcher: restartDispatcher,
+      routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
@@ -631,7 +635,7 @@ class OrchestratorSession {
   final PluginRuntime _pluginRuntime;
   final List<int> _roomKey;
   final SSEManager _sseManager;
-  final RequestRouter _router;
+  final RoutedRequestDispatcher _routedRequestDispatcher;
   final BridgeEventMapper _mapper;
   final PushDispatcher _pushDispatcher;
   final CompletionPushListener _completionListener;
@@ -702,7 +706,7 @@ class OrchestratorSession {
     required BridgeRegistrationService bridgeRegistrationService,
     required List<int> roomKey,
     required SSEManager sseManager,
-    required RequestRouter router,
+    required RoutedRequestDispatcher routedRequestDispatcher,
     required BridgeEventMapper mapper,
     required SessionPromptService sessionPromptService,
     required Stream<CatalogImportProgress> catalogImportProgress,
@@ -739,7 +743,7 @@ class OrchestratorSession {
        _bridgeRegistrationService = bridgeRegistrationService,
        _roomKey = roomKey,
        _sseManager = sseManager,
-       _router = router,
+       _routedRequestDispatcher = routedRequestDispatcher,
        _mapper = mapper,
        _sessionPromptService = sessionPromptService,
        _bytesSentController = bytesSentController,
@@ -801,8 +805,7 @@ class OrchestratorSession {
   /// Completes after the first phone finishes key exchange or resume and can
   /// send encrypted bridge traffic.
   Future<void> get firstPhoneConnected => _firstPhoneConnectedCompleter.future;
-  RequestRouter get router => _router;
-  Future<void> drainRoutedMutations() => _sessionMutationDispatcher.drain();
+  RoutedRequestDispatcher get routedRequestDispatcher => _routedRequestDispatcher;
 
   Future<OrchestratorSessionStartResult> start() {
     if (_lifecycleFuture != null) {
@@ -986,6 +989,7 @@ class OrchestratorSession {
   }
 
   Future<void> _teardown() async {
+    _routedRequestDispatcher.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError = _beginShutdownError;
     StackTrace? firstTeardownStackTrace = _beginShutdownStackTrace;
@@ -1014,10 +1018,13 @@ class OrchestratorSession {
       attempt(_catalogImportSubscriptions.cancel),
     ]);
     Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
-    await attempt(() async {
-      await Future.wait(_pluginEventProcessingTails.values);
-    });
-    Log.v("[shutdown] plugin event processing drained (+${teardownSw.elapsedMilliseconds}ms)");
+    await Future.wait([
+      attempt(() async {
+        await Future.wait(_pluginEventProcessingTails.values);
+      }),
+      attempt(_routedRequestDispatcher.drain),
+    ]);
+    Log.v("[shutdown] plugin events and routed requests drained (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_sessionPromptService.dispose);
     await Future.wait([
       for (final listener in _pluginEventListeners) attempt(listener.dispose),
@@ -1165,6 +1172,7 @@ class OrchestratorSession {
   }
 
   void beginShutdown() {
+    _routedRequestDispatcher.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(
@@ -1811,7 +1819,18 @@ class OrchestratorSession {
 
     switch (msg) {
       case final RelayRequest req:
-        final pendingRoute = _router.route(request: req);
+        final dispatch = _routedRequestDispatcher.dispatch(request: req);
+        if (dispatch case final RoutedRequestShutdownRejected rejected) {
+          if (!_cancelled) {
+            try {
+              await _encryptAndSend(connID: connID, message: rejected.response);
+            } on Object catch (error, stackTrace) {
+              Log.w("failed to send shutdown rejection to connId $connID", error, stackTrace);
+            }
+          }
+          return;
+        }
+        final pendingRoute = (dispatch as RoutedRequestAccepted).pendingRequest;
         final routeIdentity = pendingRoute.routeIdentity;
         Log.v("RelayRequest: ${req.method} ${req.path}");
         _inFlightRouteIdentity = routeIdentity;

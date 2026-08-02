@@ -3,15 +3,17 @@
 ## Current State
 
 - **Plan slug:** `relay-request-concurrency`
-- **Implementation base:** `main` at
-  `0e31324a9ec3cbd08d53394d7a1c6e9e3b133b0e`
+- **Implementation base:** merged Step 2 at
+  `fdc8ad67eafe18edb774249329f707bc6394c187`
 - **Series state:** Step 1/10 plan PR
   [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) and correction
-  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged
-- **Current step:** Step 2/10 PR
-  [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open
+  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688), plus Step 2/10
+  [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690), merged
+- **Current step:** Step 3/10 implemented and ready for review on
+  `plan-parallel-requests`; PR link pending
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** review and merge Step 2, then start Step 3 from current `main`
+- **Next action:** commit, push, and open the Step 3 PR; Step 4 remains blocked
+  until Step 3 is delivered and merged
 
 ## Incident Evidence
 
@@ -89,8 +91,8 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
-| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open at 1,552 changed lines |
-| [ ] | 3/10 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Blocked on Step 2 merge |
+| [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged as `fdc8ad67` with 1,552 changed lines |
+| [ ] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | Implemented and verified from `fdc8ad67`; PR link pending |
 | [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
 | [ ] | 6/10 | `relay-request-concurrency-session-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Blocked on Step 5 merge |
@@ -225,7 +227,8 @@
   debug, encrypted relay ordering/graceful-close, runtime-composition, and
   diagnostic capture tests passed. `dart analyze --fatal-infos` from `bridge/app` and
   `git diff --check` passed. Actual change size: 1,552 lines; PR
-  [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) open.
+  [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged as
+  `fdc8ad67eafe18edb774249329f707bc6394c187`.
 - **Step 2/10 architecture review:** `aristotle-impl-review` rejected one valid
   service-to-routing dependency. Moving `BridgeRestartDispatcher` and its test
   beside the routing outcome applied the finding directly; per policy, the fix
@@ -244,3 +247,29 @@
 - **Step 2/10 cap exception:** the owner's review-requested repo-wide logging
   rule and matching plan/code corrections raised the PR 52 lines above the soft
   cap; splitting them would leave this PR governed by contradictory diagnostics.
+- **Step 3/10 base and scope:** based directly on merged Step 2 at `fdc8ad67` on
+  the owner-provided `plan-parallel-requests` branch. The change is internal
+  bridge routing lifecycle work only: no wire, database, client, UI, analytics,
+  or plugin-interface impact, and relay request execution remains serial.
+- **Step 3/10 implementation:** one concrete `RoutedRequestDispatcher` owns the
+  sole `RequestRouter`, synchronously returns sealed accepted/shutdown-rejected
+  results, registers every accepted relay/debug route completion, fixes shutdown
+  rejection to 503, and memoizes one drain barrier. Composition constructs one
+  instance for `OrchestratorSession` and `DebugServer`; both shutdown entries
+  close acceptance and both drains await the same barrier before session route
+  collaborators are disposed. Debug full-request tracking and the current serial
+  relay lifecycle remain transport-owned.
+- **Step 3/10 cleanup:** removed direct router injection from both transports and
+  the debug-to-session mutation-drain callback. Shared route completion ownership
+  now has one lifecycle owner; domain dispatcher disposal still drains its own
+  detached backend tail through normal session teardown.
+- **Step 3/10 verification:** 63 focused dispatcher, router, debug HTTP/SSE and
+  cross-transport shutdown, runtime composition, orchestrator shutdown/restart,
+  registration, and shutdown-coordinator tests pass. The integration gate overlaps
+  one encrypted relay route with one debug route, observes a post-stop debug 503,
+  and proves both drains wait for the same route barrier. Strict
+  `dart analyze --fatal-infos` from `bridge/app` and `git diff --check` pass.
+- **Step 3/10 architecture review:** `aristotle-impl-review` approved all tracked
+  and untracked Step 3 changes from `fdc8ad67` with no blocking findings.
+- **Step 3/10 local delivery:** actual change size is 681 lines before recording
+  the PR link; the owner-provided branch/worktree are reused as required.
