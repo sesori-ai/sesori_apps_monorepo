@@ -96,9 +96,8 @@ class PrSyncService {
           _activeProjectGenerations.containsKey(projectId) || _pendingProjectGenerations.containsKey(projectId);
       final lastRefreshAt = _lastRefreshTimes[projectId];
       if (refreshPolicy == PrRefreshPolicy.background &&
-          !hasOutstandingRequest &&
-          lastRefreshAt != null &&
-          _clock.now().difference(lastRefreshAt) < _debounceWindow) {
+          (hasOutstandingRequest ||
+              lastRefreshAt != null && _clock.now().difference(lastRefreshAt) < _debounceWindow)) {
         continue;
       }
       final generation = (_nextRequestGenerations[projectId] ?? 0) + 1;
@@ -275,7 +274,7 @@ class PrSyncService {
 
       final uniqueTargets = {
         for (final projectId in networkProjectIds) ...githubTargetsByProject[projectId]!,
-      }.toList(growable: false)..sort(_compareTargets);
+      }.toList(growable: false)..sort((first, second) => _compareTargets(first: first, second: second));
       final selectionOutcome = await _prSource.selectPullRequests(
         targets: uniqueTargets,
         expectedGithubLogin: verifiedGithubLogin,
@@ -292,7 +291,8 @@ class PrSyncService {
         for (final selection in completedSelection.selections) selection.target: selection,
       };
       for (final projectId in networkProjectIds) {
-        final targets = githubTargetsByProject[projectId]!.toList(growable: false)..sort(_compareTargets);
+        final targets = githubTargetsByProject[projectId]!.toList(growable: false)
+          ..sort((first, second) => _compareTargets(first: first, second: second));
         final targetSelections = <PullRequestTargetSelection>[];
         for (final target in targets) {
           final selection = selectionsByTarget[target];
@@ -345,7 +345,10 @@ class PrSyncService {
     return outcomes;
   }
 
-  int _compareTargets(PullRequestSelectionTarget first, PullRequestSelectionTarget second) {
+  int _compareTargets({
+    required PullRequestSelectionTarget first,
+    required PullRequestSelectionTarget second,
+  }) {
     final repositoryComparison = first.githubRepositoryIdentity.compareTo(second.githubRepositoryIdentity);
     return repositoryComparison != 0 ? repositoryComparison : first.branchName.compareTo(second.branchName);
   }

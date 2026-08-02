@@ -50,6 +50,7 @@ void main() {
     for (final testCase in [
       (stdout: "Feature/Current\n", expected: "Feature/Current"),
       (stdout: "\u2003Feature/Current\u2003\r\n", expected: "\u2003Feature/Current\u2003"),
+      (stdout: "Feature/Current\r", expected: "Feature/Current"),
       (stdout: "Feature/Current\n\n", expected: "Feature/Current\n"),
     ]) {
       final processRunner = _RecordingProcessRunner(stdout: testCase.stdout);

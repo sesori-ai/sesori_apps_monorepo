@@ -88,6 +88,8 @@ class GitCliApi {
         branchName = branchName.substring(0, branchName.length - 2);
       } else if (branchName.endsWith("\n")) {
         branchName = branchName.substring(0, branchName.length - 1);
+      } else if (branchName.endsWith("\r")) {
+        branchName = branchName.substring(0, branchName.length - 1);
       }
       if (branchName.isEmpty) {
         throw const FormatException("git returned an empty current branch");

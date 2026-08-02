@@ -287,6 +287,42 @@ void main() {
       expect(await second, PrRefreshOutcome.completed);
     });
 
+    test("coalesces repeated background requests into an active project refresh", () async {
+      final firstSelection = Completer<void>();
+      final source = _FakePrSource(
+        targetsByDirectory: {"/one": _githubTarget(branchName: "branch-a")},
+        selectionBlocks: [firstSelection],
+      );
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
+      );
+      addTearDown(service.dispose);
+
+      final first = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
+      await _waitFor(() => source.selectionCalls.length == 1);
+      final backgroundRequests = [
+        for (var i = 0; i < 3; i++)
+          service.triggerRefresh(
+            projectIds: {"one"},
+            refreshPolicy: PrRefreshPolicy.background,
+          ),
+      ];
+
+      firstSelection.complete();
+
+      expect(await first, PrRefreshOutcome.completed);
+      expect(await Future.wait(backgroundRequests), everyElement(PrRefreshOutcome.completed));
+      expect(source.selectionCalls, hasLength(1));
+      expect(source.resolveCalls, hasLength(1));
+    });
+
     test("coalesces pending projects into one immediate follow-up cycle", () async {
       final firstSelection = Completer<void>();
       final source = _FakePrSource(

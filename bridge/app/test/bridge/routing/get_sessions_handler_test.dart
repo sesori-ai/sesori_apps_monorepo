@@ -1262,7 +1262,7 @@ void main() {
       }
     });
 
-    test("strips cached PR metadata when a waited refresh fails", () async {
+    test("returns the latest PR-free branch when a refresh fails near the main deadline", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1294,28 +1294,40 @@ void main() {
       );
       final failedRefresh = FakePrSyncService(
         refreshOutcome: PrRefreshOutcome.failed,
-        refreshAction: () {
+        refreshAction: () async {
           sessionDao.setSession(_storedSession(currentBranchName: "feature/new"));
+          await Future<void>.delayed(const Duration(milliseconds: 150));
         },
       );
+      final delayedFallbackRepository = _DelayedPrFreeEnrichmentSessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        pullRequestRepository: pullRequestRepository,
+        persistenceDatabase: db,
+        delay: const Duration(milliseconds: 75),
+      );
+      const prRefreshTimeout = Duration(milliseconds: 300);
       final failingHandler = GetSessionsHandler(
-        sessionRepository: sessionRepository,
+        sessionRepository: delayedFallbackRepository,
         prSyncService: failedRefresh,
+        prRefreshTimeout: prRefreshTimeout,
       );
 
-      final result = await failingHandler.handle(
-        makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
+      final result = await failingHandler
+          .handle(
+            makeRequest("POST", "/sessions"),
+            body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
+            pathParams: {},
+            queryParams: {},
+            fragment: null,
+          )
+          .timeout(prRefreshTimeout);
 
       expect(result.items.single.branchName, "feature/new");
       expect(result.items.single.pullRequest, isNull);
       expect(result.items.single.pullRequestHistory, isEmpty);
-      expect(sessionRepository.getSessionsCallCount, 1);
-      expect(sessionRepository.enrichSessionsCallCount, 2);
+      expect(delayedFallbackRepository.getSessionsCallCount, 1);
+      expect(delayedFallbackRepository.enrichSessionsCallCount, 2);
       expect(failedRefresh.calls.single.refreshPolicy, PrRefreshPolicy.explicit);
     });
     test("keeps final identity verification inside the waited deadline", () async {
@@ -1512,6 +1524,32 @@ final class _FallbackFailingSessionRepository extends FakeSessionRepository {
     enrichmentAttempts++;
     if (enrichmentAttempts == 2) {
       throw StateError("fallback enrichment failed");
+    }
+    return super.enrichSessions(
+      sessions: sessions,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
+  }
+}
+
+final class _DelayedPrFreeEnrichmentSessionRepository extends FakeSessionRepository {
+  final Duration delay;
+
+  _DelayedPrFreeEnrichmentSessionRepository({
+    required super.plugin,
+    required super.sessionDao,
+    required super.pullRequestRepository,
+    required super.persistenceDatabase,
+    required this.delay,
+  });
+
+  @override
+  Future<List<Session>> enrichSessions({
+    required List<Session> sessions,
+    required VerifiedGithubLogin? verifiedGithubLogin,
+  }) async {
+    if (verifiedGithubLogin == null) {
+      await Future<void>.delayed(delay);
     }
     return super.enrichSessions(
       sessions: sessions,

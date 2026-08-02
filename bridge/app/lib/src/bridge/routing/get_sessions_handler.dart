@@ -68,9 +68,12 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
         projectId: projectId,
         sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
         waitForPrData: body.waitForPrData,
-        timeoutStopwatch: timeoutStopwatch,
-        mainDeadline: mainDeadline,
       ).timeout(mainDeadline);
+    } on _PrRefreshFailedException {
+      return _buildPrFreeFallbackResponse(
+        sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
+        timeoutStopwatch: timeoutStopwatch,
+      );
     } on Object catch (error, stackTrace) {
       Log.w(
         "PR identity-gated read or refresh work failed after waiting up to "
@@ -78,18 +81,9 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
         error,
         stackTrace,
       );
-      final fallbackBudget = _remainingBudget(
+      return _buildPrFreeFallbackResponse(
+        sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
         timeoutStopwatch: timeoutStopwatch,
-        deadline: _prRefreshTimeout,
-      );
-      if (fallbackBudget == Duration.zero) {
-        return SessionListResponse(items: sessionsWithoutPullRequestData);
-      }
-      return SessionListResponse(
-        items: await _reEnrichWithoutPullRequestData(
-          sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
-          timeout: fallbackBudget,
-        ),
       );
     }
   }
@@ -98,8 +92,6 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     required String projectId,
     required List<Session> sessionsWithoutPullRequestData,
     required bool waitForPrData,
-    required Stopwatch timeoutStopwatch,
-    required Duration mainDeadline,
   }) async {
     final prRefreshFuture = _triggerPrRefresh(
       projectId: projectId,
@@ -126,19 +118,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 
     final refreshOutcome = await prRefreshFuture;
     if (refreshOutcome != PrRefreshOutcome.completed) {
-      final fallbackBudget = _remainingBudget(
-        timeoutStopwatch: timeoutStopwatch,
-        deadline: mainDeadline,
-      );
-      if (fallbackBudget == Duration.zero) {
-        return SessionListResponse(items: sessionsWithoutPullRequestData);
-      }
-      return SessionListResponse(
-        items: await _reEnrichWithoutPullRequestData(
-          sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
-          timeout: fallbackBudget,
-        ),
-      );
+      throw const _PrRefreshFailedException();
     }
 
     // Refresh succeeded within the shared request deadline. Verify identity
@@ -149,6 +129,25 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       verifiedGithubLogin: refreshedGithubLogin,
     );
     return SessionListResponse(items: enrichedSessions);
+  }
+
+  Future<SessionListResponse> _buildPrFreeFallbackResponse({
+    required List<Session> sessionsWithoutPullRequestData,
+    required Stopwatch timeoutStopwatch,
+  }) async {
+    final fallbackBudget = _remainingBudget(
+      timeoutStopwatch: timeoutStopwatch,
+      deadline: _prRefreshTimeout,
+    );
+    if (fallbackBudget == Duration.zero) {
+      return SessionListResponse(items: sessionsWithoutPullRequestData);
+    }
+    return SessionListResponse(
+      items: await _reEnrichWithoutPullRequestData(
+        sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
+        timeout: fallbackBudget,
+      ),
+    );
   }
 
   Future<List<Session>> _reEnrichWithoutPullRequestData({
@@ -195,4 +194,8 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       return PrRefreshOutcome.failed;
     }
   }
+}
+
+final class _PrRefreshFailedException implements Exception {
+  const _PrRefreshFailedException();
 }
