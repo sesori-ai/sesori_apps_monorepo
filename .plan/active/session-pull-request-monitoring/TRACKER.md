@@ -342,7 +342,7 @@
 - **Step 5/9 verification:** Dart formatting is applied. The tracker, listener,
   sync-service, and encrypted orchestrator suites pass 48 focused tests; the
   complete bridge app suite passes all 2,346 tests. `dart analyze --fatal-infos`
-  and `git diff --check` pass. The 1,113 changed lines, including
+  and `git diff --check` pass. The 1,116 changed lines, including
   untracked files, remain within the planned 900–1,400 target, so `PLAN.md` is
   unchanged.
 - **Step 5/9 architecture review:** `aristotle-impl-review` rejected the initial
