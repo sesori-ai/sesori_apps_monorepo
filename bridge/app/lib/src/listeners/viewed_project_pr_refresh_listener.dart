@@ -30,7 +30,7 @@ class ViewedProjectPrRefreshListener {
     if (_subscription != null || _disposed) return;
 
     _subscription = _tracker.changes.listen(
-      _handleChange,
+      (change) => _handleChange(change: change),
       onError: (Object error, StackTrace _) {
         if (_disposed) return;
         Log.w(
@@ -45,7 +45,7 @@ class ViewedProjectPrRefreshListener {
     }
   }
 
-  void _handleChange(ProjectViewChange change) {
+  void _handleChange({required ProjectViewChange change}) {
     if (_disposed) return;
     if (change.activeProjectIds.isEmpty) {
       _cancelSchedule();
