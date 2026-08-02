@@ -555,7 +555,7 @@ class _ThrowingConnectRelayClient extends RelayClient {
       );
 
   @override
-  Future<void> connect() async {
+  Future<RelayConnection> connect() async {
     throw StateError("connect failed");
   }
 }

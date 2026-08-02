@@ -46,12 +46,21 @@ class SSEManager {
   ///
   /// [path] is accepted for API compatibility with call sites but is not used
   /// by this manager.
-  void subscribePath(int connID, String path, RelayClient client) {
+  void subscribePath({
+    required int connID,
+    required String path,
+    required RelayClient client,
+    required RelayConnection connection,
+  }) {
     final orphan = _popValidOrphan();
 
     if (orphan != null) {
       _subscriptions[connID] = orphan.listen(
-        _createSendFunction(connID, client),
+        _createSendFunction(
+          connID: connID,
+          client: client,
+          connection: connection,
+        ),
         onError: _createErrorHandler(connID),
       );
       _subscribers[connID] = orphan;
@@ -60,7 +69,11 @@ class SSEManager {
 
     final queue = EventQueue<SesoriSseEvent>(maxSize: maxQueueSize);
     _subscriptions[connID] = queue.listen(
-      _createSendFunction(connID, client),
+      _createSendFunction(
+        connID: connID,
+        client: client,
+        connection: connection,
+      ),
       onError: _createErrorHandler(connID),
     );
     _subscribers[connID] = queue;
@@ -166,10 +179,11 @@ class SSEManager {
     };
   }
 
-  Future<void> Function(SesoriSseEvent) _createSendFunction(
-    int connID,
-    RelayClient client,
-  ) {
+  Future<void> Function(SesoriSseEvent) _createSendFunction({
+    required int connID,
+    required RelayClient client,
+    required RelayConnection connection,
+  }) {
     SessionEncryptor? encryptor;
 
     return (SesoriSseEvent event) async {
@@ -192,7 +206,14 @@ class SSEManager {
       Log.v("[sse] sending ${payloadBytes.length} bytes to connID=$connID");
       _onBytesSent(payloadBytes.length);
       final framed = await frame(payloadBytes, encryptor: encryptor!);
-      client.send(connID, framed);
+      final outcome = client.sendIfCurrent(
+        connection: connection,
+        connID: connID,
+        payload: framed,
+      );
+      if (outcome == RelaySendOutcome.stale) {
+        Log.v("[sse] dropping event for connID=$connID on a stale relay connection");
+      }
     };
   }
 

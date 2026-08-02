@@ -3,16 +3,16 @@
 ## Current State
 
 - **Plan slug:** `relay-request-concurrency`
-- **Implementation base:** merged Step 2 at
-  `fdc8ad67eafe18edb774249329f707bc6394c187`
-- **Series state:** Step 1/10 plan PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) and correction
-  [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688), plus Step 2/10
-  [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690), merged
-- **Current step:** Step 3/10 PR
-  [#696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) open
+- **Implementation base:** merged Step 3 at
+  `95178462b794cb485523a62740b80e8f0206d977`
+- **Series state:** Steps 1–3 merged; Step 3/10
+  [#696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as
+  `95178462`
+- **Current step:** Step 4/10 implemented and ready for review on
+  `plan-parallel-requests`; PR link pending
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** review and merge Step 3; Step 4 remains blocked until then
+- **Next action:** commit, push, and open the Step 4 PR; Step 5 remains blocked
+  until Step 4 merges
 
 ## Incident Evidence
 
@@ -91,8 +91,8 @@
 |---|---|---|---|---:|---|
 | [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
 | [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged as `fdc8ad67` with 1,552 changed lines |
-| [ ] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) open from `fdc8ad67` |
-| [ ] | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Blocked on Step 3 merge |
+| [x] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as `95178462` |
+| [ ] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | Implemented and verified from `95178462`; PR link pending |
 | [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
 | [ ] | 6/10 | `relay-request-concurrency-session-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Blocked on Step 5 merge |
 | [ ] | 7/10 | `relay-request-concurrency-session-visibility` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | 600–1,100 | Blocked on Step 6 merge |
@@ -271,4 +271,27 @@
 - **Step 3/10 architecture review:** `aristotle-impl-review` approved all tracked
   and untracked Step 3 changes from `fdc8ad67` with no blocking findings.
 - **Step 3/10 delivery:** [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696)
-  is open at 680 changed lines; the owner-provided branch/worktree are reused.
+  merged as `95178462b794cb485523a62740b80e8f0206d977` at 680 changed lines.
+- **Step 4/10 base and scope:** based directly on merged Step 3 at `95178462` on
+  the owner-provided clean `plan-parallel-requests` branch. Relay routing remains
+  serial; there is no wire, database, client, UI, analytics, or plugin-interface impact.
+- **Step 4/10 implementation:** successful connect/reconnect returns one final,
+  opaque `RelayConnection` for the exact WebSocket. Reads, auth/close metadata,
+  synchronous sent/stale writes, and closed/stale closes require that handle;
+  current close claims it before awaiting, and stale operations cannot touch a successor.
+  `OrchestratorSession` carries the handle through reconnect, re-auth, response,
+  SSE, and shutdown paths, and closes a successor returned after cancellation.
+- **Step 4/10 cleanup:** removed mutable-current channel reads/sends/metadata/close,
+  the mutable global authed-token value, and all parameterless relay close paths.
+  Tests and benchmarks use genuine returned handles rather than a test-only seam.
+- **Step 4/10 verification:** 80 focused RelayClient, SSE, orchestrator,
+  registration/reconnect, revoke/takeover, token re-auth, event-drain, and shutdown
+  tests pass. Strict `dart analyze --fatal-infos`, `git diff --check`, and minimal
+  event-projection/catalog-soak benchmark runs pass; the catalog smoke passed alone
+  after an initial parallel macOS SQLite native-asset codesign collision.
+- **Step 4/10 architecture review:** `aristotle-impl-review` rejected the initial
+  one-implementation `RelayConnection` interface under A5. Replacing it with a
+  final privately constructed opaque handle applied the valid finding directly;
+  per policy, the correction was not re-reviewed.
+- **Step 4/10 local delivery:** exact change size is 952 lines before recording
+  the PR link; the owner-provided branch/worktree are reused as required.

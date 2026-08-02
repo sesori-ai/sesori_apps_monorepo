@@ -185,6 +185,31 @@ void main() {
       await harness.runFuture.timeout(const Duration(seconds: 5));
     });
 
+    test("a current response send failure closes that handle and reconnects", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_sendfail01";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+      final phone = await _activatePhone(harness: harness, connId: 8);
+      harness.relayClient.failNextSend = true;
+
+      await _sendEncrypted(
+        socket: phone.socket,
+        connId: 8,
+        encryptor: phone.encryptor,
+        message: const RelayMessage.request(
+          id: "send-failure-request",
+          method: "GET",
+          path: "/global/health",
+          headers: {},
+          body: null,
+        ),
+      );
+
+      final successor = await harness.relayServer.nextClient(timeout: const Duration(seconds: 5));
+      final authMessage = await _firstTextMessage(successor);
+      expect(authMessage["bridgeId"], "br_sendfail01");
+    });
+
     test("routed and control diagnostics retain useful local context", () async {
       late _RegistrationHarness harness;
       final output = await _captureLogOutput(() async {
@@ -465,12 +490,27 @@ class _RecordingRelayClient extends RelayClient {
 
   int sendCount = 0;
   int? lastConnId;
+  bool failNextSend = false;
 
   @override
-  void send(int connID, List<int> payload) {
-    super.send(connID, payload);
+  RelaySendOutcome sendIfCurrent({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> payload,
+  }) {
+    if (failNextSend) {
+      failNextSend = false;
+      throw StateError("send failed intentionally");
+    }
+    final outcome = super.sendIfCurrent(
+      connection: connection,
+      connID: connID,
+      payload: payload,
+    );
+    if (outcome == RelaySendOutcome.stale) return outcome;
     sendCount++;
     lastConnId = connID;
+    return outcome;
   }
 }
 

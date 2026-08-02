@@ -215,14 +215,14 @@ Future<(HttpServer, Stream<List<int>>)> startTestRelayServer() async {
   return (server, controller.stream);
 }
 
-Future<RelayClient> connectTestRelayClient(HttpServer server) async {
+Future<({RelayClient client, RelayConnection connection})> connectTestRelayClient(HttpServer server) async {
   final client = RelayClient(
     relayURL: "ws://127.0.0.1:${server.port}",
     accessTokenProvider: FakeAccessTokenProvider(),
     bridgeIdProvider: FakeBridgeIdProvider(),
   );
-  await client.connect();
-  return client;
+  final connection = await client.connect();
+  return (client: client, connection: connection);
 }
 
 /// A test relay server that exposes individual server-side [WebSocket]

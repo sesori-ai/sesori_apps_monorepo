@@ -11,6 +11,25 @@ import "package:test/test.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
+  late TestRelayServer connectionServer;
+  late RelayClient connectionOwner;
+
+  setUpAll(() async {
+    connectionServer = await TestRelayServer.start();
+    connectionOwner = RelayClient(
+      relayURL: "ws://127.0.0.1:${connectionServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+      bridgeIdProvider: FakeBridgeIdProvider(),
+    );
+    _testRelayConnection = await connectionOwner.connect();
+    await connectionServer.nextClient();
+  });
+
+  tearDownAll(() async {
+    await connectionOwner.closeIfCurrent(connection: _testRelayConnection);
+    await connectionServer.close();
+  });
+
   group("SSEManager", () {
     test("subscribe registers subscribers", () {
       final manager = SSEManager(
@@ -24,8 +43,8 @@ void main() {
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
-      manager.subscribePath(1, "/global/event", relayClient);
-      manager.subscribePath(2, "/global/event", relayClient);
+      manager.subscribeForTest(1, relayClient);
+      manager.subscribeForTest(2, relayClient);
       addTearDown(manager.stop);
 
       expect(manager.subscriberCount, equals(2));
@@ -57,8 +76,8 @@ void main() {
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
-      manager.subscribePath(1, "/global/event", client);
-      manager.subscribePath(2, "/global/event", client);
+      manager.subscribeForTest(1, client);
+      manager.subscribeForTest(2, client);
 
       final event = _event("repo-a");
       manager.enqueueEvent(event);
@@ -98,7 +117,7 @@ void main() {
       );
       addTearDown(manager.stop);
 
-      manager.subscribePath(7, "/global/event", client);
+      manager.subscribeForTest(7, client);
       manager.enqueueEvent(_event("repo-x"));
       await _pumpEventLoop();
 
@@ -118,8 +137,8 @@ void main() {
       );
       addTearDown(manager.stop);
 
-      manager.subscribePath(1, "/global/event", relayClient);
-      manager.subscribePath(2, "/global/event", relayClient);
+      manager.subscribeForTest(1, relayClient);
+      manager.subscribeForTest(2, relayClient);
       manager.unsubscribe(1);
 
       expect(manager.subscriberCount, equals(1));
@@ -139,7 +158,7 @@ void main() {
       );
       addTearDown(manager.stop);
 
-      manager.subscribePath(1, "/global/event", relayClient);
+      manager.subscribeForTest(1, relayClient);
       manager.unsubscribe(1);
 
       expect(manager.subscriberCount, equals(0));
@@ -158,7 +177,7 @@ void main() {
       addTearDown(manager.stop);
 
       // Phone connects and receives one event.
-      manager.subscribePath(1, "/global/event", client);
+      manager.subscribeForTest(1, client);
       manager.enqueueEvent(_event("event-a"));
       await _waitForSendCount(client, 1);
       expect(client.sentConnIDs, [1]);
@@ -172,7 +191,7 @@ void main() {
       manager.enqueueEvent(_event("event-c"));
 
       // Phone reconnects with a new connID (relay assigns fresh IDs).
-      manager.subscribePath(5, "/global/event", client);
+      manager.subscribeForTest(5, client);
       await _waitForSendCount(client, 3);
 
       // The two buffered events were replayed to the new connID.
@@ -192,8 +211,8 @@ void main() {
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
-      manager.subscribePath(1, "/global/event", client);
-      manager.subscribePath(2, "/global/event", client);
+      manager.subscribeForTest(1, client);
+      manager.subscribeForTest(2, client);
 
       manager.enqueueEvent(_event("event-a"));
       await _waitForSendCount(client, 2);
@@ -202,7 +221,7 @@ void main() {
       manager.enqueueEvent(_event("event-b"));
       await _waitForSendCount(client, 3);
 
-      manager.subscribePath(3, "/global/event", client);
+      manager.subscribeForTest(3, client);
       await _waitForSendCount(client, 4);
 
       expect(client.sentConnIDs[3], equals(3));
@@ -224,8 +243,8 @@ void main() {
         manager.setRoomKey(roomKey);
         addTearDown(manager.stop);
 
-        manager.subscribePath(1, "/global/event", client);
-        manager.subscribePath(2, "/global/event", client);
+        manager.subscribeForTest(1, client);
+        manager.subscribeForTest(2, client);
 
         manager.unsubscribe(1);
         manager.enqueueEvent(_event("queued-for-orphan"));
@@ -234,7 +253,7 @@ void main() {
         now = now.add(SSEManager.defaultReplayWindow + const Duration(seconds: 1));
         final sendsBefore = client.sentConnIDs.length;
 
-        manager.subscribePath(3, "/global/event", client);
+        manager.subscribeForTest(3, client);
         await _pumpEventLoop();
 
         expect(client.sentConnIDs.length, equals(sendsBefore));
@@ -253,8 +272,8 @@ void main() {
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
-      manager.subscribePath(1, "/global/event", client);
-      manager.subscribePath(2, "/global/event", client);
+      manager.subscribeForTest(1, client);
+      manager.subscribeForTest(2, client);
 
       manager.enqueueEvent(_event("before-orphan"));
       await _waitForSendCount(client, 2);
@@ -268,13 +287,13 @@ void main() {
       manager.enqueueEvent(_event("during-reconnect"));
 
       // First phone reconnects — picks up orphan with buffered event.
-      manager.subscribePath(3, "/global/event", client);
+      manager.subscribeForTest(3, client);
       await _waitForSendCount(client, 3);
       expect(client.sentConnIDs[2], equals(3));
       expect(manager.pendingReplayCount, equals(1));
 
       // Second phone reconnects.
-      manager.subscribePath(4, "/global/event", client);
+      manager.subscribeForTest(4, client);
       await _waitForSendCount(client, 4);
       expect(client.sentConnIDs[3], equals(4));
       expect(manager.pendingReplayCount, equals(0));
@@ -292,8 +311,8 @@ void main() {
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
-      manager.subscribePath(1, "/global/event", relayClient);
-      manager.subscribePath(2, "/global/event", relayClient);
+      manager.subscribeForTest(1, relayClient);
+      manager.subscribeForTest(2, relayClient);
       manager.unsubscribe(1);
 
       manager.stop();
@@ -314,7 +333,7 @@ void main() {
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
-      manager.subscribePath(42, "/global/event", throwingClient);
+      manager.subscribeForTest(42, throwingClient);
       manager.enqueueEvent(_event("repo-err"));
 
       // Wait for the send function to throw and the onError callback to fire.
@@ -380,9 +399,14 @@ class _RecordingRelayClient extends RelayClient {
       );
 
   @override
-  void send(int connID, List<int> payload) {
+  RelaySendOutcome sendIfCurrent({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> payload,
+  }) {
     sentConnIDs.add(connID);
     sentPayloads.add(List<int>.from(payload));
+    return RelaySendOutcome.sent;
   }
 }
 
@@ -395,7 +419,24 @@ class _ThrowingRelayClient extends RelayClient {
       );
 
   @override
-  void send(int connID, List<int> payload) {
+  RelaySendOutcome sendIfCurrent({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> payload,
+  }) {
     throw Exception("send failed intentionally");
   }
 }
+
+extension on SSEManager {
+  void subscribeForTest(int connID, RelayClient client) {
+    subscribePath(
+      connID: connID,
+      path: "/global/event",
+      client: client,
+      connection: _testRelayConnection,
+    );
+  }
+}
+
+late RelayConnection _testRelayConnection;

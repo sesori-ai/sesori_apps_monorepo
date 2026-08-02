@@ -669,6 +669,8 @@ class OrchestratorSession {
   Future<void> _projectsSummaryTail = Future<void>.value();
   final Random _backoffJitter = Random();
   Future<void>? _lifecycleFuture;
+  RelayConnection? _relayConnection;
+  Future<void>? _shutdownRelayCloseFuture;
 
   bool _cancelled = false;
   Object? _beginShutdownError;
@@ -882,9 +884,11 @@ class OrchestratorSession {
     Log.d("bridge registered");
     if (_cancelled) return;
 
+    late RelayConnection relayConnection;
     try {
       Log.d("connecting to relay...");
-      await _client.connect();
+      relayConnection = await _client.connect();
+      _relayConnection = relayConnection;
       Log.d("relay connected");
       if (_cancelled) return;
 
@@ -983,6 +987,7 @@ class OrchestratorSession {
 
     await _serveRelayConnections(
       readiness: readiness,
+      initialConnection: relayConnection,
       kxManager: kxManager,
       activePhones: activePhones,
     );
@@ -1061,7 +1066,8 @@ class OrchestratorSession {
     ]);
     await attempt(() async {
       Log.v("closing relay client...");
-      await _client.close();
+      _shutdownRelayCloseFuture ??= _closeRelayConnection();
+      await _shutdownRelayCloseFuture!;
       Log.v("relay client closed (+${teardownSw.elapsedMilliseconds}ms)");
     });
     Log.d("[shutdown] session teardown complete (${teardownSw.elapsedMilliseconds}ms total)");
@@ -1072,11 +1078,15 @@ class OrchestratorSession {
 
   Future<void> _serveRelayConnections({
     required Completer<OrchestratorSessionStartResult> readiness,
+    required RelayConnection initialConnection,
     required KeyExchangeManager kxManager,
     required Map<int, bool> activePhones,
   }) async {
+    var connection = initialConnection;
     while (!_cancelled) {
-      final iterator = StreamIterator<RelayClientMessage>(_client.read());
+      final iterator = StreamIterator<RelayClientMessage>(
+        _client.read(connection: connection),
+      );
       final firstRead = iterator.moveNext();
       if (!readiness.isCompleted) {
         readiness.complete(OrchestratorSessionStartResult.ready);
@@ -1087,6 +1097,7 @@ class OrchestratorSession {
           await _runRelayLoop(
             iterator: iterator,
             firstRead: firstRead,
+            connection: connection,
             roomKey: _roomKey,
             kxManager: kxManager,
             activePhones: activePhones,
@@ -1116,7 +1127,7 @@ class OrchestratorSession {
       _sessionViewTracker.clearAll();
       _projectViewTracker.clearAll();
 
-      if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
+      if (_client.closeCode(connection: connection) == RelayCloseCodes.bridgeRevoked) {
         Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
         await _bridgeRegistrationService.handleBridgeRevoked();
       }
@@ -1128,8 +1139,8 @@ class OrchestratorSession {
       // ControlStatusNotifier (it observes the same replaced-close on the
       // connection-state stream); this loop owns only the backoff policy.
       final takenOver = RelayCloseCodes.isBridgeReplaced(
-        closeCode: _client.closeCode,
-        closeReason: _client.closeReason,
+        closeCode: _client.closeCode(connection: connection),
+        closeReason: _client.closeReason(connection: connection),
       );
       if (takenOver) {
         Console.warning(
@@ -1157,7 +1168,17 @@ class OrchestratorSession {
 
         try {
           await _bridgeRegistrationService.ensureRegistered();
-          await _client.reconnect();
+          final reconnectFuture = _client.reconnect(connection: connection);
+          if (identical(_relayConnection, connection)) {
+            _relayConnection = null;
+          }
+          final reconnected = await reconnectFuture;
+          if (_cancelled) {
+            await _client.closeIfCurrent(connection: reconnected);
+            return;
+          }
+          connection = reconnected;
+          _relayConnection = reconnected;
         } on Object catch (error, stackTrace) {
           Log.w("Reconnect failed (retrying in $backoff)", error, stackTrace);
           backoff = _nextBackoff(backoff, takenOver: takenOver);
@@ -1186,7 +1207,8 @@ class OrchestratorSession {
     if (!_shutdownCompleter.isCompleted) {
       _shutdownCompleter.complete();
     }
-    unawaited(_client.close());
+    _shutdownRelayCloseFuture ??= _closeRelayConnection();
+    unawaited(_shutdownRelayCloseFuture);
     try {
       _permissionAutoApprovalService.dispose();
     } on Object catch (error, stackTrace) {
@@ -1198,8 +1220,21 @@ class OrchestratorSession {
   Future<void> cancel() async {
     beginShutdown();
     final sw = Stopwatch()..start();
-    await _client.close();
+    await _shutdownRelayCloseFuture!;
     Log.d("[shutdown] cancel(): relay client closed in ${sw.elapsedMilliseconds}ms");
+  }
+
+  Future<void> _closeRelayConnection() async {
+    final connection = _relayConnection;
+    if (connection == null) {
+      await _client.cancelPendingConnection();
+      return;
+    }
+    final closeFuture = _client.closeIfCurrent(connection: connection);
+    if (identical(_relayConnection, connection)) {
+      _relayConnection = null;
+    }
+    await closeFuture;
   }
 
   Future<void> _processPluginEventInOrder(NormalizedSourcedBridgeEvent source) {
@@ -1561,7 +1596,8 @@ class OrchestratorSession {
   /// only when the socket's authenticated identity no longer matches the token
   /// the provider now holds:
   ///
-  /// - the last connect sent no auth at all ([RelayClient.lastAuthedToken] is
+  /// - the last connect sent no auth at all (its connection-scoped
+  ///   [RelayClient.lastAuthedToken] is
   ///   null — also covers a push landing in the gap between connect() and this
   ///   subscription on a never-authed socket);
   /// - the `userId` claim differs (supervised account switch, standalone
@@ -1573,7 +1609,9 @@ class OrchestratorSession {
   /// force-pull re-emitting the token it just authenticated with) never
   /// re-auths.
   bool _requiresRelayReauth(String token) {
-    final String? lastAuthed = _client.lastAuthedToken;
+    final connection = _relayConnection;
+    if (connection == null) return false;
+    final String? lastAuthed = _client.lastAuthedToken(connection: connection);
     if (lastAuthed == null) return true;
     if (token == lastAuthed) return false;
     final String? newUserId = parseJwtUserId(token);
@@ -1590,18 +1628,20 @@ class OrchestratorSession {
   /// so a token emit during shutdown can't fight teardown.
   Future<void> _reauthenticateRelay() async {
     if (_cancelled) return;
+    final connection = _relayConnection;
+    if (connection == null) return;
     // If the socket has already closed (closeCode is set), the read loop is
     // about to end on its own and the reconnect block will inspect the close
-    // code. Don't call close() here: it nulls the channel and discards that code,
-    // which would mask a bridgeRevoked close and skip re-registration. Let the
-    // natural drop path handle it; the fresh token is picked up on reconnect.
-    if (_client.closeCode != null) {
+    // code. Don't deliberately detach it here, which would mask a bridgeRevoked
+    // close and skip re-registration. Let the natural drop path handle it; the
+    // fresh token is picked up on reconnect.
+    if (_client.closeCode(connection: connection) != null) {
       Log.d("Token updated while the relay was already closing — letting the drop path reconnect");
       return;
     }
     Log.i("Access token updated while connected — re-authenticating relay");
     try {
-      await _client.close();
+      await _closeRelayConnection();
     } on Object catch (error, stackTrace) {
       // Best-effort: if the close fails the read loop still ends on the broken
       // socket and the reconnect block recovers, so log and continue.
@@ -1612,6 +1652,7 @@ class OrchestratorSession {
   Future<void> _runRelayLoop({
     required StreamIterator<RelayClientMessage> iterator,
     required Future<bool> firstRead,
+    required RelayConnection connection,
     required List<int> roomKey,
     required KeyExchangeManager kxManager,
     required Map<int, bool> activePhones,
@@ -1700,7 +1741,14 @@ class OrchestratorSession {
           }
 
           try {
-            _client.send(connID, encrypted);
+            final outcome = _sendIfCurrent(
+              connection: connection,
+              connID: connID,
+              payload: encrypted,
+            );
+            if (outcome == RelaySendOutcome.stale) {
+              throw StateError("relay connection changed before key exchange completed");
+            }
             Log.d("ready sent to connID=$connID");
           } catch (e) {
             if (_cancelled) {
@@ -1737,7 +1785,11 @@ class OrchestratorSession {
               break processMessage;
             }
             Log.v("decrypted OK from connID=$connID, handling...");
-            await _handleDecryptedMessage(connID, decrypted);
+            await _handleDecryptedMessage(
+              connection: connection,
+              connID: connID,
+              decrypted: decrypted,
+            );
             Log.v("handled message from connID=$connID");
             break processMessage;
           }
@@ -1748,7 +1800,11 @@ class OrchestratorSession {
               const RelayMessage.rekeyRequired().toJson(),
             );
             try {
-              _client.send(connID, utf8.encode(rekeyRequired));
+              _sendIfCurrent(
+                connection: connection,
+                connID: connID,
+                payload: utf8.encode(rekeyRequired),
+              );
             } catch (_) {
               if (_cancelled) {
                 throw StateError("cancelled");
@@ -1781,7 +1837,14 @@ class OrchestratorSession {
           }
 
           try {
-            _client.send(connID, encryptedAck);
+            final outcome = _sendIfCurrent(
+              connection: connection,
+              connID: connID,
+              payload: encryptedAck,
+            );
+            if (outcome == RelaySendOutcome.stale) {
+              throw StateError("relay connection changed before resume completed");
+            }
           } catch (e) {
             if (_cancelled) {
               throw StateError("cancelled");
@@ -1804,7 +1867,11 @@ class OrchestratorSession {
     Log.d("phone $connID is now active");
   }
 
-  Future<void> _handleDecryptedMessage(int connID, List<int> decrypted) async {
+  Future<void> _handleDecryptedMessage({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> decrypted,
+  }) async {
     RelayMessage msg;
     try {
       msg = RelayMessage.fromJson(
@@ -1823,7 +1890,11 @@ class OrchestratorSession {
         if (dispatch case final RoutedRequestShutdownRejected rejected) {
           if (!_cancelled) {
             try {
-              await _encryptAndSend(connID: connID, message: rejected.response);
+              await _encryptAndSend(
+                connection: connection,
+                connID: connID,
+                message: rejected.response,
+              );
             } on Object catch (error, stackTrace) {
               Log.w("failed to send shutdown rejection to connId $connID", error, stackTrace);
             }
@@ -1860,8 +1931,16 @@ class OrchestratorSession {
           }
           Log.v("response: status=${response.status}");
           try {
-            await _encryptAndSend(connID: connID, message: response);
-            Log.v("response sent to connID=$connID");
+            final sendOutcome = await _encryptAndSend(
+              connection: connection,
+              connID: connID,
+              message: response,
+            );
+            if (sendOutcome == RelaySendOutcome.sent) {
+              Log.v("response sent to connID=$connID");
+            } else {
+              Log.v("response dropped because its relay connection is stale");
+            }
           } finally {
             if (!_cancelled) {
               switch (outcome) {
@@ -1896,7 +1975,12 @@ class OrchestratorSession {
       case final RelaySseSubscribe subscribe:
         Log.v("SseSubscribe: path=${subscribe.path}");
         try {
-          _sseManager.subscribePath(connID, subscribe.path, _client);
+          _sseManager.subscribePath(
+            connID: connID,
+            path: subscribe.path,
+            client: _client,
+            connection: connection,
+          );
           final projSummary = await _buildProjectsSummary();
           if (projSummary != null) {
             _enqueueWireEvent(projSummary);
@@ -1965,7 +2049,8 @@ class OrchestratorSession {
     return base + Duration(milliseconds: extra);
   }
 
-  Future<void> _encryptAndSend({
+  Future<RelaySendOutcome> _encryptAndSend({
+    required RelayConnection connection,
     required int connID,
     required RelayMessage message,
   }) async {
@@ -1977,7 +2062,39 @@ class OrchestratorSession {
     final encryptionKey = SecretKey(List<int>.from(_roomKey));
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
     final framed = await frame(jsonBytes, encryptor: encryptor);
-    _client.send(connID, framed);
+    return _sendIfCurrent(
+      connection: connection,
+      connID: connID,
+      payload: framed,
+    );
+  }
+
+  RelaySendOutcome _sendIfCurrent({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> payload,
+  }) {
+    try {
+      return _client.sendIfCurrent(
+        connection: connection,
+        connID: connID,
+        payload: payload,
+      );
+    } on Object {
+      final closeFuture = _client.closeIfCurrent(connection: connection);
+      if (identical(_relayConnection, connection)) {
+        _relayConnection = null;
+      }
+      unawaited(
+        closeFuture.then<void>(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) {
+            Log.w("Failed to close relay after send failure", error, stackTrace);
+          },
+        ),
+      );
+      rethrow;
+    }
   }
 }
 
