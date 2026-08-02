@@ -565,6 +565,7 @@ class FakePullRequestRepository implements PullRequestRepository {
   Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
     required String projectId,
     required VerifiedGithubLogin verifiedGithubLogin,
+    required Map<String, String> capturedRootDirectoriesBySessionId,
     required List<PullRequestTargetSelection> targetSelections,
     required int lastCheckedAt,
   }) async {
@@ -619,11 +620,12 @@ class FakePullRequestRepository implements PullRequestRepository {
 }
 
 class FakePrSyncService extends PrSyncService {
-  final List<Set<String>> calls = <Set<String>>[];
+  final List<({Set<String> projectIds, PrRefreshPolicy refreshPolicy})> calls = [];
   final Duration? delay;
   final Object? refreshError;
   final PrRefreshOutcome refreshOutcome;
   final List<Duration> identityVerificationDelays;
+  final FutureOr<void> Function()? refreshAction;
   VerifiedGithubLogin? verifiedGithubLogin;
   int identityVerificationCallCount = 0;
 
@@ -632,6 +634,7 @@ class FakePrSyncService extends PrSyncService {
     this.refreshError,
     this.refreshOutcome = PrRefreshOutcome.completed,
     this.identityVerificationDelays = const <Duration>[],
+    this.refreshAction,
     VerifiedGithubLogin? verifiedGithubLogin,
     PrSourceRepository? prSource,
     PullRequestRepository? pullRequestRepository,
@@ -645,14 +648,21 @@ class FakePrSyncService extends PrSyncService {
        );
 
   @override
-  Future<PrRefreshOutcome> triggerRefresh({required Set<String> projectIds}) async {
-    calls.add(Set<String>.from(projectIds));
+  Future<PrRefreshOutcome> triggerRefresh({
+    required Set<String> projectIds,
+    required PrRefreshPolicy refreshPolicy,
+  }) async {
+    calls.add((
+      projectIds: Set<String>.from(projectIds),
+      refreshPolicy: refreshPolicy,
+    ));
     if (delay != null) {
       await Future<void>.delayed(delay!);
     }
     if (refreshError case final error?) {
       throw error;
     }
+    await refreshAction?.call();
     return refreshOutcome;
   }
 
@@ -697,6 +707,7 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
     required String projectId,
     required VerifiedGithubLogin verifiedGithubLogin,
+    required Map<String, String> capturedRootDirectoriesBySessionId,
     required List<PullRequestTargetSelection> targetSelections,
     required int lastCheckedAt,
   }) async => const PullRequestReplacementApplied(changed: false);
@@ -1027,6 +1038,7 @@ class FakeSessionRepository implements SessionRepository {
   final FakePullRequestRepository _pullRequestRepository;
   final AppDatabase? _persistenceDatabase;
   int getSessionsCallCount = 0;
+  int enrichSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   VerifiedGithubLogin? lastVerifiedGithubLogin;
   String? projectPathResult;
@@ -1214,6 +1226,7 @@ class FakeSessionRepository implements SessionRepository {
     required List<Session> sessions,
     required VerifiedGithubLogin? verifiedGithubLogin,
   }) async {
+    enrichSessionsCallCount++;
     lastVerifiedGithubLogin = verifiedGithubLogin;
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
     final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);

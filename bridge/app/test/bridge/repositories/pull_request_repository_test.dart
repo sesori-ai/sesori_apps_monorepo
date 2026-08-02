@@ -183,12 +183,25 @@ void main() {
       expect(changed, isEmpty);
     });
 
-    test("does not apply a target captured before the session directory moved", () async {
+    test("clears stale scope when a captured session otherwise matches but its directory moved", () async {
       await _insertRoot(
         database: db,
         sessionId: "project-root",
         worktreePath: null,
         creationBranch: "created-main",
+      );
+      await _setScopeAndLogin(
+        database: db,
+        branchName: "preserved",
+        repositoryIdentity: repositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
+      );
+      await _insertPullRequest(
+        database: db,
+        repositoryIdentity: repositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
+        branchName: "preserved",
+        number: 1,
       );
       final captured = await _storedSessions(database: db);
       await db.sessionDao.updateObservedSessionProjection(
@@ -204,7 +217,7 @@ void main() {
         sessionsByProject: {projectId: captured},
         targetsByDirectory: const {
           "/project": PullRequestGithubDirectoryTarget(
-            target: (githubRepositoryIdentity: repositoryIdentity, branchName: "stale"),
+            target: (githubRepositoryIdentity: repositoryIdentity, branchName: "preserved"),
           ),
         },
       );
@@ -212,7 +225,9 @@ void main() {
       final session = await db.sessionDao.getSession(sessionId: "project-root");
       expect(session?.directory, "/moved");
       expect(session?.currentBranchName, isNull);
-      expect(changed, isEmpty);
+      expect(session?.currentGithubRepositoryIdentity, isNull);
+      expect(await db.pullRequestDao.getPrsByProjectId(projectId: projectId), isEmpty);
+      expect(changed, {projectId});
     });
 
     test("prepares the verified account without fabricating missing projects", () async {
@@ -277,6 +292,7 @@ void main() {
       final applied = await repository.replaceScopedPullRequests(
         projectId: projectId,
         verifiedGithubLogin: verifiedGithubLogin,
+        capturedRootDirectoriesBySessionId: const {"project-root": "/project"},
         targetSelections: [selected],
         lastCheckedAt: 2,
       );
@@ -296,11 +312,58 @@ void main() {
       final stale = await repository.replaceScopedPullRequests(
         projectId: projectId,
         verifiedGithubLogin: verifiedGithubLogin,
+        capturedRootDirectoriesBySessionId: const {"project-root": "/project"},
         targetSelections: [selected],
         lastCheckedAt: 3,
       );
       expect(stale, isA<PullRequestReplacementScopeChanged>());
       expect((await db.pullRequestDao.getPrsByProjectId(projectId: projectId)).single.prNumber, 42);
+    });
+
+    test("replacement rejects a query captured before a root directory moved", () async {
+      await _insertRoot(
+        database: db,
+        sessionId: "project-root",
+        worktreePath: null,
+        creationBranch: "created-main",
+      );
+      await _setScopeAndLogin(
+        database: db,
+        branchName: "main",
+        repositoryIdentity: repositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
+      );
+      await _insertPullRequest(
+        database: db,
+        repositoryIdentity: repositoryIdentity,
+        githubLogin: verifiedGithubLogin.login,
+        branchName: "main",
+        number: 1,
+      );
+      final selected = _selectedPullRequest(
+        repositoryIdentity: repositoryIdentity,
+        branchName: "main",
+        number: 42,
+      );
+      await db.sessionDao.updateObservedSessionProjection(
+        sessionId: "project-root",
+        directory: "/moved",
+        catalogTitle: null,
+        updateCatalogTitle: false,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
+
+      final stale = await repository.replaceScopedPullRequests(
+        projectId: projectId,
+        verifiedGithubLogin: verifiedGithubLogin,
+        capturedRootDirectoriesBySessionId: const {"project-root": "/project"},
+        targetSelections: [selected],
+        lastCheckedAt: 3,
+      );
+
+      expect(stale, isA<PullRequestReplacementScopeChanged>());
+      expect((await db.pullRequestDao.getPrsByProjectId(projectId: projectId)).single.prNumber, 1);
     });
 
     test("complete no-match clears and duplicate target outcomes are rejected", () async {
@@ -324,6 +387,7 @@ void main() {
       await repository.replaceScopedPullRequests(
         projectId: projectId,
         verifiedGithubLogin: verifiedGithubLogin,
+        capturedRootDirectoriesBySessionId: const {"project-root": "/project"},
         targetSelections: [selected],
         lastCheckedAt: 2,
       );
@@ -331,6 +395,7 @@ void main() {
       final cleared = await repository.replaceScopedPullRequests(
         projectId: projectId,
         verifiedGithubLogin: verifiedGithubLogin,
+        capturedRootDirectoriesBySessionId: const {"project-root": "/project"},
         targetSelections: [PullRequestTargetUnmatched(target: selected.target)],
         lastCheckedAt: 3,
       );
@@ -341,6 +406,7 @@ void main() {
         repository.replaceScopedPullRequests(
           projectId: projectId,
           verifiedGithubLogin: verifiedGithubLogin,
+          capturedRootDirectoriesBySessionId: const {"project-root": "/project"},
           targetSelections: [
             selected,
             PullRequestTargetUnmatched(target: selected.target),

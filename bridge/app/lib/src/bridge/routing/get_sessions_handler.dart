@@ -88,7 +88,10 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       Log.w("GetSessionsHandler: post-publication enrichment failed", error, stackTrace);
     }
 
-    final prRefreshFuture = _triggerPrRefresh(projectId: projectId);
+    final prRefreshFuture = _triggerPrRefresh(
+      projectId: projectId,
+      refreshPolicy: waitForPrData ? PrRefreshPolicy.explicit : PrRefreshPolicy.background,
+    );
     if (!waitForPrData) {
       // COMPATIBILITY 2026-08-01 (v1.6.1): Released clients rely on the
       // non-waiting request to trigger background PR refresh. Remove this path
@@ -99,7 +102,11 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 
     final refreshOutcome = await prRefreshFuture;
     if (refreshOutcome != PrRefreshOutcome.completed) {
-      return SessionListResponse(items: sessionsWithoutPullRequestData);
+      final currentSessionsWithoutPullRequestData = await _sessionRepository.enrichSessions(
+        sessions: sessionsWithoutPullRequestData,
+        verifiedGithubLogin: null,
+      );
+      return SessionListResponse(items: currentSessionsWithoutPullRequestData);
     }
 
     // Refresh succeeded within the shared request deadline. Verify identity
@@ -114,9 +121,13 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 
   Future<PrRefreshOutcome> _triggerPrRefresh({
     required String projectId,
+    required PrRefreshPolicy refreshPolicy,
   }) async {
     try {
-      return await _prSyncService.triggerRefresh(projectIds: {projectId});
+      return await _prSyncService.triggerRefresh(
+        projectIds: {projectId},
+        refreshPolicy: refreshPolicy,
+      );
     } on Object catch (e, st) {
       Log.w("[GetSessionsHandler] PR refresh trigger failed", e, st);
       return PrRefreshOutcome.failed;

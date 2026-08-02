@@ -44,8 +44,20 @@ class PullRequestRepository {
           final current = currentById[captured.id];
           if (current == null ||
               current.projectId != captured.projectId ||
-              current.parentSessionId != captured.parentSessionId ||
-              current.directory != captured.directory) {
+              current.parentSessionId != captured.parentSessionId) {
+            continue;
+          }
+          if (current.directory != captured.directory) {
+            if (current.currentBranchName != null) {
+              renderedBranchChanged = true;
+            }
+            if (current.currentBranchName != null || current.currentGithubRepositoryIdentity != null) {
+              updates.add((
+                sessionId: captured.id,
+                currentBranchName: null,
+                currentGithubRepositoryIdentity: null,
+              ));
+            }
             continue;
           }
 
@@ -68,7 +80,7 @@ class PullRequestRepository {
                 branchName: branchName,
                 repositoryIdentity: null,
               ),
-              PullRequestBranchResolutionFailed() || null => (
+              PullRequestBranchResolutionFailed() || PullRequestBranchChangedDuringResolution() || null => (
                 branchName: current.currentBranchName,
                 repositoryIdentity: current.currentGithubRepositoryIdentity,
               ),
@@ -143,6 +155,7 @@ class PullRequestRepository {
   Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
     required String projectId,
     required VerifiedGithubLogin verifiedGithubLogin,
+    required Map<String, String> capturedRootDirectoriesBySessionId,
     required List<PullRequestTargetSelection> targetSelections,
     required int lastCheckedAt,
   }) async {
@@ -177,6 +190,10 @@ class PullRequestRepository {
       final project = await _projectsDao.getProject(projectId: projectId);
       final currentSessions = await _sessionDao.getSessionsByProject(projectId: projectId);
       if (project?.prCacheGithubLogin != verifiedGithubLogin.login ||
+          !_sameRootDirectories(
+            first: _rootDirectoriesBySessionId(sessions: currentSessions),
+            second: capturedRootDirectoriesBySessionId,
+          ) ||
           !_sameTargets(
             first: _currentSelectionTargets(sessions: currentSessions),
             second: targets,
@@ -265,5 +282,20 @@ class PullRequestRepository {
     required Set<PullRequestSelectionTarget> second,
   }) {
     return first.length == second.length && first.containsAll(second);
+  }
+
+  Map<String, String> _rootDirectoriesBySessionId({required Iterable<SessionDto> sessions}) {
+    return {
+      for (final session in sessions)
+        if (session.parentSessionId == null) session.sessionId: session.directory,
+    };
+  }
+
+  bool _sameRootDirectories({
+    required Map<String, String> first,
+    required Map<String, String> second,
+  }) {
+    if (first.length != second.length) return false;
+    return first.entries.every((entry) => second[entry.key] == entry.value);
   }
 }

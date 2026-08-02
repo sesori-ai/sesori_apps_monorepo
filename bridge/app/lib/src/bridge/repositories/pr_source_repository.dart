@@ -28,11 +28,12 @@ class PrSourceRepository {
     required Iterable<String> directories,
   }) async {
     final uniqueDirectories = directories.toSet().toList(growable: false)..sort();
-    final targets = <String, PullRequestDirectoryTarget>{};
-    for (final directory in uniqueDirectories) {
-      targets[directory] = await _resolvePullRequestTarget(directory: directory);
-    }
-    return targets;
+    final resolutions = await Future.wait([
+      for (final directory in uniqueDirectories) _resolvePullRequestTarget(directory: directory),
+    ]);
+    return {
+      for (var index = 0; index < uniqueDirectories.length; index++) uniqueDirectories[index]: resolutions[index],
+    };
   }
 
   Future<PullRequestDirectoryTarget> _resolvePullRequestTarget({required String directory}) async {
@@ -81,6 +82,22 @@ class PrSourceRepository {
         ),
       );
     }
+
+    final GitCurrentBranchResult confirmedBranch;
+    try {
+      confirmedBranch = await _gitCli.getCurrentBranch(projectPath: directory);
+    } on Object catch (error, stackTrace) {
+      return PullRequestBranchResolutionFailed(
+        error: PullRequestTargetResolutionException(
+          innerError: error,
+          innerStackTrace: stackTrace,
+        ),
+      );
+    }
+    if (confirmedBranch is! GitCurrentBranchNamed || confirmedBranch.branchName != branchName) {
+      return const PullRequestBranchChangedDuringResolution();
+    }
+
     final identity = remoteUrl == null ? null : _remoteIdentityParser.parse(remoteUrl: remoteUrl);
     final segments = identity?.slug.split("/") ?? const <String>[];
     if (identity == null ||

@@ -13,6 +13,8 @@ import "../repositories/session_repository.dart";
 
 enum PrRefreshOutcome { completed, failed }
 
+enum PrRefreshPolicy { background, explicit }
+
 typedef PullRequestRenderedChange = ({String projectId});
 
 class PrSyncService {
@@ -81,7 +83,10 @@ class PrSyncService {
     );
   }
 
-  Future<PrRefreshOutcome> triggerRefresh({required Set<String> projectIds}) {
+  Future<PrRefreshOutcome> triggerRefresh({
+    required Set<String> projectIds,
+    required PrRefreshPolicy refreshPolicy,
+  }) {
     if (_disposed) return Future.value(PrRefreshOutcome.failed);
 
     final requiredGenerations = <String, int>{};
@@ -90,7 +95,10 @@ class PrSyncService {
       final hasOutstandingRequest =
           _activeProjectGenerations.containsKey(projectId) || _pendingProjectGenerations.containsKey(projectId);
       final lastRefreshAt = _lastRefreshTimes[projectId];
-      if (!hasOutstandingRequest && lastRefreshAt != null && _clock.now().difference(lastRefreshAt) < _debounceWindow) {
+      if (refreshPolicy == PrRefreshPolicy.background &&
+          !hasOutstandingRequest &&
+          lastRefreshAt != null &&
+          _clock.now().difference(lastRefreshAt) < _debounceWindow) {
         continue;
       }
       final generation = (_nextRequestGenerations[projectId] ?? 0) + 1;
@@ -216,6 +224,10 @@ class PrSyncService {
             rootSessions.where((session) => session.directory == entry.key).map((session) => session.projectId),
           );
           Log.w("[PrSync] local pull request target resolution failed", error, error.innerStackTrace);
+        case PullRequestBranchChangedDuringResolution():
+          failedProjectIds.addAll(
+            rootSessions.where((session) => session.directory == entry.key).map((session) => session.projectId),
+          );
         default:
           break;
       }
@@ -289,18 +301,30 @@ class PrSyncService {
           }
           targetSelections.add(selection);
         }
-        final replacement = await _pullRequestRepository.replaceScopedPullRequests(
-          projectId: projectId,
-          verifiedGithubLogin: verifiedGithubLogin,
-          targetSelections: targetSelections,
-          lastCheckedAt: _clock.now().millisecondsSinceEpoch,
-        );
-        switch (replacement) {
-          case PullRequestReplacementApplied(:final changed):
-            if (changed) _emitRenderedChanges(projectIds: {projectId});
-            outcomes[projectId] = PrRefreshOutcome.completed;
-          case PullRequestReplacementScopeChanged():
-            outcomes[projectId] = PrRefreshOutcome.failed;
+        try {
+          final replacement = await _pullRequestRepository.replaceScopedPullRequests(
+            projectId: projectId,
+            verifiedGithubLogin: verifiedGithubLogin,
+            capturedRootDirectoriesBySessionId: {
+              for (final session in sessionsByProject[projectId] ?? const <StoredSession>[])
+                if (session.parentSessionId == null) session.id: session.directory,
+            },
+            targetSelections: targetSelections,
+            lastCheckedAt: _clock.now().millisecondsSinceEpoch,
+          );
+          switch (replacement) {
+            case PullRequestReplacementApplied(:final changed):
+              if (changed) _emitRenderedChanges(projectIds: {projectId});
+              outcomes[projectId] = PrRefreshOutcome.completed;
+            case PullRequestReplacementScopeChanged():
+              outcomes[projectId] = PrRefreshOutcome.failed;
+          }
+        } on Object catch (error, stackTrace) {
+          Log.e(
+            "[PrSync] scoped pull request replacement failed; continuing remaining projects",
+            error,
+            stackTrace,
+          );
         }
       }
     } on Object catch (error, stackTrace) {

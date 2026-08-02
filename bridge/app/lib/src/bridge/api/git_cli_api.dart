@@ -70,7 +70,12 @@ class GitCliApi {
     const arguments = ["symbolic-ref", "--quiet", "--short", "HEAD"];
     final ProcessResult result;
     try {
-      result = await runGit(projectPath: projectPath, arguments: arguments);
+      result = await _processRunner.run(
+        "git",
+        arguments,
+        workingDirectory: projectPath,
+        environment: const {"LC_ALL": "C"},
+      );
     } on ProcessException {
       if (!_gitPathExists(gitPath: projectPath)) {
         return const GitCurrentBranchMissingDirectory();
@@ -78,7 +83,12 @@ class GitCliApi {
       rethrow;
     }
     if (result.exitCode == 0) {
-      final branchName = result.stdout.toString().trim();
+      var branchName = result.stdout.toString();
+      if (branchName.endsWith("\r\n")) {
+        branchName = branchName.substring(0, branchName.length - 2);
+      } else if (branchName.endsWith("\n")) {
+        branchName = branchName.substring(0, branchName.length - 1);
+      }
       if (branchName.isEmpty) {
         throw const FormatException("git returned an empty current branch");
       }

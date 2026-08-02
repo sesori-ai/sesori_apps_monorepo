@@ -114,6 +114,7 @@ void main() {
         final outcome = await prRepo.replaceScopedPullRequests(
           projectId: "proj-X",
           verifiedGithubLogin: _verifiedGithubLogin,
+          capturedRootDirectoriesBySessionId: const {"session-X": "proj-X"},
           targetSelections: [_selectedPullRequest()],
           lastCheckedAt: 2,
         );
@@ -153,6 +154,7 @@ void main() {
         final outcome = await prRepo.replaceScopedPullRequests(
           projectId: "ghost",
           verifiedGithubLogin: _verifiedGithubLogin,
+          capturedRootDirectoriesBySessionId: const {},
           targetSelections: [_selectedPullRequest()],
           lastCheckedAt: 2,
         );

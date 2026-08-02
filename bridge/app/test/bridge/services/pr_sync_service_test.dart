@@ -34,7 +34,10 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      final outcome = await service.triggerRefresh(projectIds: {"one", "two"});
+      final outcome = await service.triggerRefresh(
+        projectIds: {"one", "two"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
 
       expect(outcome, PrRefreshOutcome.completed);
       expect(source.resolveCalls, hasLength(1));
@@ -44,6 +47,10 @@ void main() {
       expect(pullRequests.prepareCalls.single.projectIds, {"one", "two"});
       expect(pullRequests.prepareCalls.single.githubLogin, "octocat");
       expect(pullRequests.replaceCalls.map((call) => call.projectId).toSet(), {"one", "two"});
+      expect(
+        pullRequests.replaceCalls.singleWhere((call) => call.projectId == "one").capturedRootDirectories,
+        {"one": "/one"},
+      );
       expect(source.maxConcurrentSelections, 1);
     });
 
@@ -64,7 +71,10 @@ void main() {
       final subscription = service.renderedChanges.listen((change) => changes.add(change.projectId));
       addTearDown(subscription.cancel);
 
-      final outcome = await service.triggerRefresh(projectIds: {"one"});
+      final outcome = await service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
 
       expect(outcome, PrRefreshOutcome.failed);
       expect(pullRequests.applyCalls, hasLength(1));
@@ -92,7 +102,10 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      final outcome = await service.triggerRefresh(projectIds: {"local", "detached"});
+      final outcome = await service.triggerRefresh(
+        projectIds: {"local", "detached"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
 
       expect(outcome, PrRefreshOutcome.completed);
       expect(source.isAvailableCallCount, 0);
@@ -123,7 +136,13 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      expect(await service.triggerRefresh(projectIds: {"one"}), PrRefreshOutcome.completed);
+      expect(
+        await service.triggerRefresh(
+          projectIds: {"one"},
+          refreshPolicy: PrRefreshPolicy.explicit,
+        ),
+        PrRefreshOutcome.completed,
+      );
       expect(source.resolveCalls.single, ["/shared"]);
     });
 
@@ -146,7 +165,13 @@ void main() {
       final subscription = service.renderedChanges.listen((change) => changes.add(change.projectId));
       addTearDown(subscription.cancel);
 
-      expect(await service.triggerRefresh(projectIds: {"one"}), PrRefreshOutcome.completed);
+      expect(
+        await service.triggerRefresh(
+          projectIds: {"one"},
+          refreshPolicy: PrRefreshPolicy.explicit,
+        ),
+        PrRefreshOutcome.completed,
+      );
       expect(changes, ["one", "one"]);
     });
 
@@ -173,7 +198,10 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      final outcome = await service.triggerRefresh(projectIds: {"one"});
+      final outcome = await service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
 
       expect(outcome, PrRefreshOutcome.failed);
       expect(pullRequests.applyCalls, hasLength(1));
@@ -195,12 +223,24 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      expect(await service.triggerRefresh(projectIds: {"one"}), PrRefreshOutcome.failed);
+      expect(
+        await service.triggerRefresh(
+          projectIds: {"one"},
+          refreshPolicy: PrRefreshPolicy.explicit,
+        ),
+        PrRefreshOutcome.failed,
+      );
       expect(pullRequests.replaceCalls, isEmpty);
 
       source.selectionOutcome = null;
       pullRequests.replacementOutcomes["one"] = const PullRequestReplacementScopeChanged();
-      expect(await service.triggerRefresh(projectIds: {"one"}), PrRefreshOutcome.failed);
+      expect(
+        await service.triggerRefresh(
+          projectIds: {"one"},
+          refreshPolicy: PrRefreshPolicy.explicit,
+        ),
+        PrRefreshOutcome.failed,
+      );
       expect(pullRequests.replaceCalls, hasLength(1));
     });
 
@@ -223,10 +263,16 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      final first = service.triggerRefresh(projectIds: {"one"});
+      final first = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       await _waitFor(() => source.selectionCalls.length == 1);
       var secondCompleted = false;
-      final second = service.triggerRefresh(projectIds: {"one"});
+      final second = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       unawaited(second.then((_) => secondCompleted = true));
 
       firstSelection.complete();
@@ -262,10 +308,19 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      final first = service.triggerRefresh(projectIds: {"one"});
+      final first = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       await _waitFor(() => source.selectionCalls.length == 1);
-      final second = service.triggerRefresh(projectIds: {"two"});
-      final third = service.triggerRefresh(projectIds: {"three"});
+      final second = service.triggerRefresh(
+        projectIds: {"two"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
+      final third = service.triggerRefresh(
+        projectIds: {"three"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       firstSelection.complete();
 
       await Future.wait([first, second, third]);
@@ -274,7 +329,7 @@ void main() {
       expect(source.maxConcurrentSelections, 1);
     });
 
-    test("debounces completed projects but retries failed projects", () async {
+    test("debounces background refreshes, allows bypass, and retries failures", () async {
       var now = DateTime.utc(2026, 8, 2);
       final source = _FakePrSource(
         targetsByDirectory: const {
@@ -292,13 +347,28 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(projectIds: {"local"});
-      await service.triggerRefresh(projectIds: {"local"});
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
       expect(source.resolveCalls, hasLength(1));
 
-      now = now.add(const Duration(minutes: 1));
-      await service.triggerRefresh(projectIds: {"local"});
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       expect(source.resolveCalls, hasLength(2));
+
+      now = now.add(const Duration(minutes: 1));
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      expect(source.resolveCalls, hasLength(3));
 
       source.targetsByDirectory["/local"] = PullRequestBranchResolutionFailed(
         error: PullRequestTargetResolutionException(
@@ -307,9 +377,15 @@ void main() {
         ),
       );
       now = now.add(const Duration(minutes: 1));
-      await service.triggerRefresh(projectIds: {"local"});
-      await service.triggerRefresh(projectIds: {"local"});
-      expect(source.resolveCalls, hasLength(4));
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await service.triggerRefresh(
+        projectIds: {"local"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      expect(source.resolveCalls, hasLength(5));
     });
 
     test("shares and expires the gh capability cache", () async {
@@ -332,15 +408,64 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(projectIds: {"one"});
-      await service.triggerRefresh(projectIds: {"two"});
+      await service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
+      await service.triggerRefresh(
+        projectIds: {"two"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       expect(source.isAvailableCallCount, 1);
 
       now = now.add(const Duration(seconds: 30));
       source.isAvailableResult = true;
-      await service.triggerRefresh(projectIds: {"one"});
+      await service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       expect(source.isAvailableCallCount, 2);
       expect(source.selectionCalls, hasLength(1));
+    });
+
+    test("isolates replacement exceptions and continues later projects", () async {
+      final source = _FakePrSource(
+        targetsByDirectory: {
+          "/one": _githubTarget(branchName: "one"),
+          "/two": _githubTarget(branchName: "two"),
+        },
+      );
+      final pullRequests = _FakePullRequestRepository()..replacementErrors["one"] = StateError("replacement failed");
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+          "two": [_session(id: "two", projectId: "two", directory: "/two")],
+        },
+        debounceWindow: const Duration(minutes: 1),
+      );
+      addTearDown(service.dispose);
+
+      final outcome = await service.triggerRefresh(
+        projectIds: {"one", "two"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
+
+      expect(outcome, PrRefreshOutcome.failed);
+      expect(pullRequests.replaceCalls.map((call) => call.projectId), ["one", "two"]);
+
+      await service.triggerRefresh(
+        projectIds: {"two"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      expect(pullRequests.replaceCalls, hasLength(2));
+
+      await service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      expect(pullRequests.replaceCalls.map((call) => call.projectId), ["one", "two", "one"]);
     });
 
     test("dispose fails queued waiters without starting another cycle", () async {
@@ -357,9 +482,15 @@ void main() {
         },
       );
 
-      final first = service.triggerRefresh(projectIds: {"one"});
+      final first = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       await _waitFor(() => source.selectionCalls.isNotEmpty);
-      final queued = service.triggerRefresh(projectIds: {"one"});
+      final queued = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.explicit,
+      );
       service.dispose();
 
       expect(await queued, PrRefreshOutcome.failed);
@@ -508,10 +639,18 @@ final class _FakePullRequestRepository implements PullRequestRepository {
   Set<String> localChangedProjectIds = const <String>{};
   Set<String> preparedChangedProjectIds = const <String>{};
   final Map<String, PullRequestReplacementOutcome> replacementOutcomes = <String, PullRequestReplacementOutcome>{};
+  final Map<String, Object> replacementErrors = <String, Object>{};
   final List<({Map<String, List<StoredSession>> sessionsByProject, Map<String, PullRequestDirectoryTarget> targets})>
   applyCalls = [];
   final List<({Set<String> projectIds, String githubLogin})> prepareCalls = [];
-  final List<({String projectId, List<PullRequestTargetSelection> selections})> replaceCalls = [];
+  final List<
+    ({
+      String projectId,
+      Map<String, String> capturedRootDirectories,
+      List<PullRequestTargetSelection> selections,
+    })
+  >
+  replaceCalls = [];
 
   @override
   Future<Set<String>> applyResolvedTargets({
@@ -538,10 +677,16 @@ final class _FakePullRequestRepository implements PullRequestRepository {
   Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
     required String projectId,
     required VerifiedGithubLogin verifiedGithubLogin,
+    required Map<String, String> capturedRootDirectoriesBySessionId,
     required List<PullRequestTargetSelection> targetSelections,
     required int lastCheckedAt,
   }) async {
-    replaceCalls.add((projectId: projectId, selections: List<PullRequestTargetSelection>.from(targetSelections)));
+    replaceCalls.add((
+      projectId: projectId,
+      capturedRootDirectories: Map<String, String>.from(capturedRootDirectoriesBySessionId),
+      selections: List<PullRequestTargetSelection>.from(targetSelections),
+    ));
+    if (replacementErrors[projectId] case final error?) throw error;
     return replacementOutcomes[projectId] ?? const PullRequestReplacementApplied(changed: false);
   }
 

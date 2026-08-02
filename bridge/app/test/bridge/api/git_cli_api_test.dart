@@ -46,18 +46,25 @@ void main() {
     expect(processRunner.arguments, ["rev-parse", "--is-inside-work-tree"]);
   });
 
-  test("getCurrentBranch returns the exact named branch", () async {
-    final processRunner = _RecordingProcessRunner(stdout: "Feature/Current\n");
-    final api = GitCliApi(
-      processRunner: processRunner,
-      gitPathExists: ({required String gitPath}) => true,
-    );
+  test("getCurrentBranch removes one line ending without trimming the branch", () async {
+    for (final testCase in [
+      (stdout: "Feature/Current\n", expected: "Feature/Current"),
+      (stdout: "\u2003Feature/Current\u2003\r\n", expected: "\u2003Feature/Current\u2003"),
+      (stdout: "Feature/Current\n\n", expected: "Feature/Current\n"),
+    ]) {
+      final processRunner = _RecordingProcessRunner(stdout: testCase.stdout);
+      final api = GitCliApi(
+        processRunner: processRunner,
+        gitPathExists: ({required String gitPath}) => true,
+      );
 
-    final result = await api.getCurrentBranch(projectPath: "/project");
+      final result = await api.getCurrentBranch(projectPath: "/project");
 
-    expect(result, isA<GitCurrentBranchNamed>());
-    expect((result as GitCurrentBranchNamed).branchName, "Feature/Current");
-    expect(processRunner.arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+      expect(result, isA<GitCurrentBranchNamed>());
+      expect((result as GitCurrentBranchNamed).branchName, testCase.expected);
+      expect(processRunner.arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+      expect(processRunner.environment, const {"LC_ALL": "C"});
+    }
   });
 
   test("getCurrentBranch distinguishes detached, non-git, and missing directories", () async {
@@ -103,6 +110,7 @@ class _RecordingProcessRunner implements ProcessRunner {
   final int exitCode;
   List<String>? arguments;
   String? workingDirectory;
+  Map<String, String>? environment;
 
   _RecordingProcessRunner({this.stdout = "", this.stderr = "", this.exitCode = 0});
 
@@ -117,6 +125,7 @@ class _RecordingProcessRunner implements ProcessRunner {
     expect(executable, "git");
     this.arguments = arguments;
     this.workingDirectory = workingDirectory;
+    this.environment = environment;
     return ProcessResult(1, exitCode, stdout, stderr);
   }
 

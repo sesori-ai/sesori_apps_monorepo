@@ -990,7 +990,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(prSyncService.calls, hasLength(1));
-      expect(prSyncService.calls.single, {"project-1"});
+      expect(prSyncService.calls.single.projectIds, {"project-1"});
+      expect(prSyncService.calls.single.refreshPolicy, PrRefreshPolicy.background);
     });
 
     test("bounds initial identity verification and returns PR-free sessions", () async {
@@ -1055,7 +1056,8 @@ void main() {
       );
 
       expect(prSyncService.calls, hasLength(1));
-      expect(prSyncService.calls.single, {"project-1"});
+      expect(prSyncService.calls.single.projectIds, {"project-1"});
+      expect(prSyncService.calls.single.refreshPolicy, PrRefreshPolicy.explicit);
       expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
@@ -1111,6 +1113,35 @@ void main() {
     });
 
     test("strips cached PR metadata when a waited refresh fails", () async {
+      SessionDto storedSession({required String currentBranchName}) {
+        return SessionDto(
+          pluginId: "fake",
+          sessionId: "s1",
+          backendSessionId: "s1",
+          projectId: "p1",
+          parentSessionId: null,
+          directory: "/tmp",
+          worktreePath: null,
+          branchName: null,
+          currentBranchName: currentBranchName,
+          currentGithubRepositoryIdentity: "org/repo",
+          isDedicated: false,
+          archivedAt: null,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+          createdAt: 1,
+          updatedAt: 1,
+          projectionUpdatedAt: 1,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
+          title: null,
+          catalogTitle: null,
+        );
+      }
+
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1121,6 +1152,7 @@ void main() {
           time: null,
         ),
       ];
+      sessionDao.setSession(storedSession(currentBranchName: "feature/old"));
       pullRequestRepository.setPr(
         sessionId: "s1",
         pullRequest: const PullRequestDto(
@@ -1139,9 +1171,15 @@ void main() {
           createdAt: 1,
         ),
       );
+      final failedRefresh = FakePrSyncService(
+        refreshOutcome: PrRefreshOutcome.failed,
+        refreshAction: () {
+          sessionDao.setSession(storedSession(currentBranchName: "feature/new"));
+        },
+      );
       final failingHandler = GetSessionsHandler(
         sessionRepository: sessionRepository,
-        prSyncService: FakePrSyncService(refreshOutcome: PrRefreshOutcome.failed),
+        prSyncService: failedRefresh,
       );
 
       final result = await failingHandler.handle(
@@ -1152,8 +1190,12 @@ void main() {
         fragment: null,
       );
 
+      expect(result.items.single.branchName, "feature/new");
       expect(result.items.single.pullRequest, isNull);
       expect(result.items.single.pullRequestHistory, isEmpty);
+      expect(sessionRepository.getSessionsCallCount, 1);
+      expect(sessionRepository.enrichSessionsCallCount, 2);
+      expect(failedRefresh.calls.single.refreshPolicy, PrRefreshPolicy.explicit);
     });
     test("keeps final identity verification inside the waited deadline", () async {
       plugin.sessionsResult = const [

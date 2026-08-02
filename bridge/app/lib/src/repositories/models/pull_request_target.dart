@@ -30,6 +30,10 @@ final class PullRequestBranchResolutionFailed extends PullRequestDirectoryTarget
   const PullRequestBranchResolutionFailed({required this.error});
 }
 
+final class PullRequestBranchChangedDuringResolution extends PullRequestDirectoryTarget {
+  const PullRequestBranchChangedDuringResolution();
+}
+
 final class PullRequestRepositoryResolutionFailed extends PullRequestDirectoryTarget {
   final String branchName;
   final PullRequestTargetResolutionException error;

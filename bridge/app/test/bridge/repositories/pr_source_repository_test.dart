@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:collection";
 import "dart:io";
 
@@ -44,6 +45,7 @@ void main() {
           _result(stdout: "true\n"),
           _result(stdout: "origin\n"),
           _result(stdout: "git@GitHub.com:Sesori-AI/Sesori_Apps_Monorepo.git\n"),
+          _result(stdout: "Feature/Current\n"),
         ],
       );
 
@@ -68,6 +70,7 @@ void main() {
             _result(stdout: "true\n"),
             _result(stdout: "origin\n"),
             _result(stdout: "$remoteUrl\n"),
+            _result(stdout: "feature/current\n"),
           ],
         );
 
@@ -112,6 +115,58 @@ void main() {
         (missingTargets["/missing"]! as PullRequestNoBranchDirectoryTarget).reason,
         PullRequestNoBranchReason.missingDirectory,
       );
+    });
+
+    test("resolves deduplicated directories concurrently in sorted result order", () async {
+      final first = Completer<GitCurrentBranchResult>();
+      final second = Completer<GitCurrentBranchResult>();
+      final gitCli = _CompletingGitCliApi(
+        branchResults: {
+          "/a": first,
+          "/z": second,
+        },
+      );
+      final repository = PrSourceRepository(
+        ghCli: _FakeGhCliApi(initialResponses: const []),
+        gitCli: gitCli,
+      );
+
+      final resolution = repository.resolvePullRequestTargets(
+        directories: const ["/z", "/a", "/z"],
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(gitCli.branchCalls, ["/a", "/z"]);
+      second.complete(const GitCurrentBranchDetached());
+      first.complete(const GitCurrentBranchNotRepository());
+
+      final targets = await resolution;
+      expect(targets.keys, ["/a", "/z"]);
+      expect(
+        (targets["/a"]! as PullRequestNoBranchDirectoryTarget).reason,
+        PullRequestNoBranchReason.notGitRepository,
+      );
+      expect(
+        (targets["/z"]! as PullRequestNoBranchDirectoryTarget).reason,
+        PullRequestNoBranchReason.detachedHead,
+      );
+    });
+
+    test("returns a typed branch failure when checkout changes during resolution", () async {
+      final gitCli = _BranchChangingGitCliApi();
+      final repository = PrSourceRepository(
+        ghCli: _FakeGhCliApi(initialResponses: const []),
+        gitCli: gitCli,
+      );
+
+      final resolution = repository.resolvePullRequestTargets(
+        directories: const ["/repo"],
+      );
+      await gitCli.remoteReadStarted.future;
+      gitCli.allowRemoteRead.complete();
+
+      expect((await resolution)["/repo"], isA<PullRequestBranchChangedDuringResolution>());
+      expect(gitCli.branchCalls, 2);
     });
 
     test("retains a named branch when repository resolution fails", () async {
@@ -597,4 +652,44 @@ class _QueueProcessRunner extends ProcessRunner {
     }
     return _results.removeFirst();
   }
+}
+
+final class _CompletingGitCliApi implements GitCliApi {
+  final Map<String, Completer<GitCurrentBranchResult>> branchResults;
+  final List<String> branchCalls = <String>[];
+
+  _CompletingGitCliApi({required this.branchResults});
+
+  @override
+  Future<GitCurrentBranchResult> getCurrentBranch({required String projectPath}) {
+    branchCalls.add(projectPath);
+    return branchResults[projectPath]!.future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _BranchChangingGitCliApi implements GitCliApi {
+  final Completer<void> remoteReadStarted = Completer<void>();
+  final Completer<void> allowRemoteRead = Completer<void>();
+  int branchCalls = 0;
+
+  @override
+  Future<GitCurrentBranchResult> getCurrentBranch({required String projectPath}) async {
+    branchCalls++;
+    return GitCurrentBranchNamed(
+      branchName: branchCalls == 1 ? "feature/old" : "feature/new",
+    );
+  }
+
+  @override
+  Future<String?> getRemoteUrl({required String projectPath}) async {
+    remoteReadStarted.complete();
+    await allowRemoteRead.future;
+    return "git@github.com:sesori-ai/sesori_apps_monorepo.git";
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
