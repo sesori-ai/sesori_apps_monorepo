@@ -46,6 +46,7 @@ class ProjectViewingService with Disposable {
   _ProjectViewClaimState? _detailClaim;
   AppRouteDef? _route;
   String? _detailTransitionProjectId;
+  ProjectViewPaneClaim? _latestWideListPaneClaim;
   ProjectViewPaneClaim? _visibleWideListPaneClaim;
   bool _backgrounded;
   bool _wasConnected;
@@ -168,13 +169,16 @@ class ProjectViewingService with Disposable {
 
   ProjectViewPaneClaim beginWideListPaneClaim() {
     _checkUsable();
-    return ProjectViewPaneClaim();
+    final claim = ProjectViewPaneClaim();
+    _latestWideListPaneClaim = claim;
+    return claim;
   }
 
   /// Reports whether one adaptive shell is actually mounting its list pane.
   void setWideListPaneVisible({required ProjectViewPaneClaim claim, required bool isVisible}) {
     if (_disposed) return;
     if (isVisible) {
+      if (!identical(_latestWideListPaneClaim, claim)) return;
       if (identical(_visibleWideListPaneClaim, claim)) return;
       _visibleWideListPaneClaim = claim;
     } else {
@@ -185,7 +189,11 @@ class ProjectViewingService with Disposable {
   }
 
   void releaseWideListPaneClaim({required ProjectViewPaneClaim claim}) {
-    if (_disposed || !identical(_visibleWideListPaneClaim, claim)) return;
+    if (_disposed) return;
+    if (identical(_latestWideListPaneClaim, claim)) {
+      _latestWideListPaneClaim = null;
+    }
+    if (!identical(_visibleWideListPaneClaim, claim)) return;
     _visibleWideListPaneClaim = null;
     _recomputeDeclaration();
   }
@@ -246,7 +254,8 @@ class ProjectViewingService with Disposable {
       AppRouteDef.newSession || AppRouteDef.sessionDiffs => wideListPaneVisible ? listProjectId : null,
       AppRouteDef.sessionDetail => switch (_detailClaim) {
         _ProjectViewClaimReady(:final projectId) => projectId,
-        _ProjectViewClaimPending(:final projectId) => _detailTransitionProjectId == projectId ? projectId : null,
+        _ProjectViewClaimPending(:final projectId) =>
+          _detailTransitionProjectId == projectId ? projectId : (wideListPaneVisible ? listProjectId : null),
         _ProjectViewClaimFailed() => wideListPaneVisible ? listProjectId : null,
         null => _detailTransitionProjectId ?? (wideListPaneVisible ? listProjectId : null),
       },
@@ -301,13 +310,14 @@ class ProjectViewingService with Disposable {
     _disposed = true;
     try {
       await _subscriptions.dispose();
-    } catch (error, stackTrace) {
-      logw("project view subscription cleanup failed", error, stackTrace);
+    } on Object catch (_) {
+      logw("project view subscription cleanup failed");
     }
     _listClaim = null;
     _detailClaim = null;
     _detailTransitionProjectId = null;
     _route = null;
+    _latestWideListPaneClaim = null;
     _visibleWideListPaneClaim = null;
     _backgrounded = false;
     _recomputeDeclaration();

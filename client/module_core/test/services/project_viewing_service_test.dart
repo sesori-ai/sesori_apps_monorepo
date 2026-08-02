@@ -181,6 +181,34 @@ void main() {
       expect(service.declaredProjectId, "project-2");
     });
 
+    test("an obsolete wide shell cannot reclaim pane ownership with a late positive report", () async {
+      routeSource.routes.add(AppRouteDef.sessionDetail);
+      await drain();
+      readyList("project-1");
+      final obsoletePane = showWideListPane();
+      await drain();
+
+      showWideListPane();
+      service.setWideListPaneVisible(claim: obsoletePane, isVisible: true);
+      service.releaseWideListPaneClaim(claim: obsoletePane);
+      await drain();
+
+      expect(sent, ["project-1"]);
+      expect(service.declaredProjectId, "project-1");
+    });
+
+    test("a ready visible wide list remains declared while a direct detail load is pending", () async {
+      routeSource.routes.add(AppRouteDef.sessionDetail);
+      await drain();
+      service.beginDetailClaim(projectId: "project-1");
+      readyList("project-1");
+      showWideListPane();
+      await drain();
+
+      expect(sent, ["project-1"]);
+      expect(service.declaredProjectId, "project-1");
+    });
+
     test("failed detail loading releases a narrow transition handoff", () async {
       readyList("project-1");
       await drain();

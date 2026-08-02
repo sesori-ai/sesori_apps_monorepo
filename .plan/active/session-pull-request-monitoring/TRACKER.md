@@ -402,7 +402,7 @@
 - **Step 7/9 verification:** Module-core code generation and formatting pass, as
   do `dart pub get`, all 942 module-core tests, all 872 app tests, fatal-info
   analysis for module core and app, downstream desktop analysis, and
-  `git diff --check`. After review fixes, the 1,217 changed lines remain within
+  `git diff --check`. After review fixes, the 1,264 changed lines remain within
   the target. Focused
   API/repository/service, cubit, route, and adaptive-shell regressions cover
   readiness, failure, route precedence, wide/narrow transitions, lifecycle,
@@ -424,6 +424,15 @@
   implemented because GoRouter cannot match the project shell without its
   required non-empty path segment; strict service validation keeps that
   impossible state from entering presence ownership.
+- **Step 7/9 second PR review:** A newer wide-pane claim now rejects stale
+  positive reports from overlapping obsolete shells, while a ready visible wide
+  list remains the effective presence during a direct detail load. Project-view
+  cleanup failures use the same fixed privacy-safe diagnostic category as other
+  best-effort presence failures. All 15 project-view service tests and
+  module-core/app fatal-info analysis pass after these corrections. Requests to
+  persist raw transport and declaration exceptions were declined because those
+  errors can contain sensitive connection or project details and conflict with
+  the established diagnostics privacy policy.
 - **PR-status investigation:** The reported PR indicator loss was reproduced as
   an ordinary catalog-derived `session.updated` event replacing identity-gated
   REST PR metadata. The isolated client fix is under review in
