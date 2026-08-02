@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@sesori/pr-monitor-opencode@0.2.0"],
+  "plugin": ["@sesori/pr-monitor-opencode"],
   "mcp": {
     "mobile-mcp": {
       "type": "local",
