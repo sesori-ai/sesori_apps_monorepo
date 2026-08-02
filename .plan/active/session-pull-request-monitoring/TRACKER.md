@@ -293,7 +293,7 @@
   persisted login and exact current targets.
 - **Step 4/9 cleanup and size:** Removed creation-branch target generation,
   project-path/session-directory fallback routing, the per-project active-return
-  refresh path, and their obsolete tests/fakes. The 3,707-line
+  refresh path, and their obsolete tests/fakes. The approximately 3,700-line
   change replaces roughly 1,000 lines of old service coverage and roughly 700
   lines of persistence/service tests, then adds review-requested checkout and
   directory race fences, explicit-refresh debounce policy, per-project write
