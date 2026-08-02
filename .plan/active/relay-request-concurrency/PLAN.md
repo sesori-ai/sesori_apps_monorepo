@@ -857,5 +857,6 @@ product suite applies.
   replaced completion-only route metadata with a synchronous two-phase router
   identity; added an explicit epoch-bound `RelayConnection` send/close seam with
   an atomic final-send gate; weakened restart delivery wording to enforceable
-  enqueue-before-handoff semantics; split lifecycle and transport prerequisites
-  so every implementation step remains below the 1,500-line soft cap
+  enqueue-before-handoff semantics
+- **Delivery correction:** split lifecycle and transport prerequisites so every
+  implementation step remains below the 1,500-line soft cap

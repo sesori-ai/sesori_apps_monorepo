@@ -29,8 +29,9 @@
 - **Reviewed scope:** complete `.plan/active/relay-request-concurrency/`
 - **Findings applied:** one shared relay/debug routing lifecycle barrier;
   synchronous two-phase route identity; epoch-bound final relay send/close;
-  enforceable enqueue-before-restart wording; implementation split expanded to
-  preserve the 1,500-line soft cap
+  enforceable enqueue-before-restart wording
+- **Delivery correction:** expanded the implementation split to preserve the
+  1,500-line soft cap
 
 ## Delivery Steps
 
@@ -112,7 +113,7 @@
   does not re-review direct corrections and no approval of the revised plan is
   claimed.
 - **Step 1/7 delivery:** opened plan PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 979
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 981
   documentation-only changed lines. Exact titles/branches/step totals and
   `git diff --check` passed; the user explicitly exempted this first
   plan-containing PR from the 1,500-line soft cap.
