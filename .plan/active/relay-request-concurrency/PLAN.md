@@ -462,13 +462,21 @@ internal repository result to a typed `UnpublishedSessionBinding` owned by
 its transaction becomes observable and every repository read that can return a
 session identity—including project-scoped session lists—and every event
 projection filters that repository-owned set.
-`SessionCreationService` finishes optional first-command acceptance and metadata
-rename, then asks the repository to atomically reveal and publish the token.
+
+The opaque token is also the only privileged initialization capability. It
+carries repository-verified binding/root/plugin scope and is accepted by
+dedicated initial-command and initial-rename methods on the existing repository,
+mutation dispatcher, and session-operation dispatcher. Those methods do not use
+ordinary filtered lookup; no boolean/nullable bypass or raw-ID privileged API is
+added. `SessionCreationService` carries the token through both post-create steps,
+then asks the repository to atomically reveal and publish it.
+
 Reveal runs exactly once in `finally` after post-create work settles, including
 when command/rename failure will be rethrown. A process restart clears the
 in-memory gate so a committed session is recoverably visible rather than hidden
-forever; ordinary concurrent consumers cannot discover it midway through the
-same run. No callback, schema, persisted field, or wire field is added.
+forever; ordinary concurrent consumers cannot discover or operate on it midway
+through the same run. No callback, schema, persisted field, or wire field is
+added.
 
 ### 7. Canonical project-path mutation lanes
 
@@ -1008,7 +1016,10 @@ failure, exactly-once publication, and restart recovery.
   can be revealed/published.
 - Filter that repository-owned set from every session-bearing catalog read,
   project-scoped session list, and event projection.
-- Let `SessionCreationService` finish initial command and metadata rename, then
+- Carry the opaque token through dedicated initial-command and initial-rename
+  methods; use its verified family/plugin scope instead of ordinary filtered
+  lookup, and expose no boolean/nullable/raw-ID bypass.
+- Let `SessionCreationService` finish those initial operations, then
   atomically reveal and publish the token exactly once in `finally`, including
   failure paths, before returning or rethrowing the current route outcome.
 - On process restart, treat committed rows as visible recovery state; add no
@@ -1027,10 +1038,12 @@ mutating the new session before its initial workflow settles.
 Risk is marking hidden after the transaction becomes visible, a catalog/event
 path bypassing the gate, reveal happening twice or never, failure leaving a
 session hidden, rollback leaking a marker, or restart recovery suppressing
-committed data. Gate command and
-metadata work while querying every session-bearing catalog/event path; cover
-success, command failure, rename failure, exactly-once reveal/publication,
-transaction rollback, concurrent reads, and simulated new-repository recovery.
+committed data. A privileged operation that falls back to ordinary lookup would
+also self-reject initialization. Gate command and metadata work while querying
+every session-bearing catalog/event path; prove token-scoped command/rename can
+resolve while ordinary reads cannot, and cover success, command failure, rename
+failure, exactly-once reveal/publication, transaction rollback, concurrent
+reads, and simulated new-repository recovery.
 
 ### Expected Result
 

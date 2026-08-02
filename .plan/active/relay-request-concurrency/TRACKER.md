@@ -128,7 +128,8 @@
 - Rename, archive/unarchive, and complete subtree deletion use the same root
   family; the mutation dispatcher retains title/deletion/tombstone/event
   ownership. The repository hides unpublished bindings from all catalog/event
-  reads until initial command/title work settles, then reveals exactly once.
+  reads until initial command/title work settles; only the opaque unpublished
+  token authorizes those initialization operations, then reveals exactly once.
 - Project create/open/hide and Git setup use ordered canonical-path lanes;
   unrelated paths remain independent.
 - Detached initial SSE summaries use the existing summary-ordering tail so an
@@ -187,7 +188,7 @@
   isolation, lifecycle, and privacy findings. All were applied directly, and no
   approval of the latest revision is claimed.
 - **Step 1/10 delivery:** opened plan PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 1,476
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 1,490
   documentation-only changed lines. Exact titles/branches/step totals and
   `git diff --check` passed; the user explicitly exempted this first
   plan-containing PR from the 1,500-line soft cap.
