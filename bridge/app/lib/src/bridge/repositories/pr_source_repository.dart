@@ -304,8 +304,8 @@ final class _PullRequestTargetSelection {
   }
 
   void _consume({required GhPullRequestCandidatePage page}) {
-    if (page.repositoryIdentity.toLowerCase() != target.githubRepositoryIdentity) {
-      throw const FormatException("GitHub pull request query returned a different repository");
+    if (page.repositoryIdentity.isEmpty) {
+      throw const FormatException("GitHub pull request query returned an empty repository identity");
     }
 
     _eligibleCandidates.addAll(

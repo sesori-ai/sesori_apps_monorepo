@@ -112,7 +112,7 @@ class GhCliApi {
       ]);
       selections.add(
         """
-        target$index: repository(owner: \$owner$index, name: \$name$index) {
+        target$index: repository(owner: \$owner$index, name: \$name$index, followRenames: true) {
           nameWithOwner
           open: pullRequests(
             headRefName: \$branch$index
@@ -161,7 +161,7 @@ class GhCliApi {
       };
       selections.add(
         """
-        target$index: repository(owner: \$owner$index, name: \$name$index) {
+        target$index: repository(owner: \$owner$index, name: \$name$index, followRenames: true) {
           nameWithOwner
           page: pullRequests(
             headRefName: \$branch$index

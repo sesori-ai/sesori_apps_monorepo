@@ -270,7 +270,10 @@ void main() {
       expect(invocation.workingDirectory, isNull);
       expect(invocation.arguments.take(4), ["api", "graphql", "--hostname", "github.com"]);
       final queryArgument = invocation.arguments.singleWhere((argument) => argument.startsWith("query="));
-      expect(queryArgument, contains(r"target0: repository(owner: $owner0, name: $name0)"));
+      expect(
+        queryArgument,
+        contains(r"target0: repository(owner: $owner0, name: $name0, followRenames: true)"),
+      );
       expect(queryArgument, contains("states: [OPEN]"));
       expect(queryArgument, contains("states: [MERGED, CLOSED]"));
       expect(queryArgument, contains("createdAt"));
@@ -304,6 +307,10 @@ void main() {
       expect(response.pages.single.stateGroup, GhPullRequestStateGroup.terminal);
       final arguments = processRunner.invocations.single.arguments;
       final queryArgument = arguments.singleWhere((argument) => argument.startsWith("query="));
+      expect(
+        queryArgument,
+        contains(r"target0: repository(owner: $owner0, name: $name0, followRenames: true)"),
+      );
       expect(queryArgument, contains("states: [MERGED, CLOSED]"));
       expect(queryArgument, contains(r"after: $cursor0"));
       expect(arguments, contains("cursor0=cursor-1"));
