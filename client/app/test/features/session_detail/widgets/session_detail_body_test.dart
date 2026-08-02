@@ -858,7 +858,7 @@ void main() {
     verify(() => voiceTranscriptionService.prewarmRecording()).called(1);
   });
 
-  testWidgets("voice hold gives immediate start and completion feedback", (tester) async {
+  testWidgets("voice hold acknowledges touch-down and stays silent for an empty transcript", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
@@ -872,6 +872,33 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 250));
     await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(feedback, ["HapticFeedbackType.lightImpact"]);
+  });
+
+  testWidgets("a successful transcript gives feedback when its text is inserted", (tester) async {
+    final feedback = _captureHapticFeedback(throwsPlatformException: false);
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    expect(feedback, ["HapticFeedbackType.lightImpact"]);
+
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pump();
+    expect(feedback, ["HapticFeedbackType.lightImpact"]);
+
+    stopCompleter.complete("dictated words");
+    await tester.pump();
+
+    expect(find.text("dictated words"), findsOneWidget);
     expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.lightImpact"]);
 
     await tester.pump();
@@ -883,31 +910,8 @@ void main() {
     ]);
   });
 
-  testWidgets("entering the cancel target gives one dismiss feedback tick", (tester) async {
+  testWidgets("crossing into and out of the cancel target gives one tick at each boundary", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
-
-    await tester.pumpWidget(_buildApp(cubit: cubit));
-    await tester.pumpAndSettle();
-
-    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
-    expect(feedback, ["HapticFeedbackType.lightImpact"]);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    final cancelCenter = tester.getCenter(find.byType(VoiceCancelButton));
-    await gesture.moveTo(cancelCenter);
-    expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
-
-    await gesture.moveTo(cancelCenter + const Offset(1, 0));
-    await gesture.up();
-    await tester.pumpAndSettle();
-    expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
-  });
-
-  testWidgets("haptic platform failures do not interrupt voice recording", (tester) async {
-    _captureHapticFeedback(throwsPlatformException: true);
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
@@ -915,17 +919,59 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
+    final holdCenter = tester.getCenter(find.text("Hold to talk"));
+    final gesture = await tester.startGesture(holdCenter);
+    expect(feedback, ["HapticFeedbackType.lightImpact"]);
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final cancelCenter = tester.getCenter(find.byType(VoiceCancelButton));
+    await gesture.moveTo(cancelCenter);
+    expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
+
+    // A small retreat remains armed so finger tremor cannot chatter across the
+    // cancel boundary.
+    await gesture.moveTo(cancelCenter + const Offset(50, 0));
+    await tester.pump();
+    expect(find.text("Release to cancel"), findsOneWidget);
+    expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
+
+    await gesture.moveTo(holdCenter);
+    expect(feedback, [
+      "HapticFeedbackType.lightImpact",
+      "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.selectionClick",
+    ]);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    expect(feedback, [
+      "HapticFeedbackType.lightImpact",
+      "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.selectionClick",
+    ]);
+  });
+
+  testWidgets("haptic platform failures do not interrupt voice recording", (tester) async {
+    _captureHapticFeedback(throwsPlatformException: true);
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "dictated words");
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 250));
     await gesture.up();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    expect(find.text("dictated words"), findsOneWidget);
   });
 
-  testWidgets("transcription cancel replaces a pending completion pulse with a dismiss tick", (tester) async {
+  testWidgets("transcription cancel after a recovered drag gives a fresh dismiss tick", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
     final stopCompleter = Completer<String>();
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
@@ -946,17 +992,23 @@ void main() {
 
     await tester.tap(find.byTooltip("Cancel transcription"));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
 
     expect(feedback, [
       "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
-      "HapticFeedbackType.lightImpact",
+      "HapticFeedbackType.selectionClick",
       "HapticFeedbackType.selectionClick",
     ]);
 
-    stopCompleter.complete("");
+    stopCompleter.complete("stale words");
     await tester.pump();
+    expect(find.textContaining("stale words"), findsNothing);
+    expect(feedback, [
+      "HapticFeedbackType.lightImpact",
+      "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.selectionClick",
+    ]);
   });
 
   testWidgets("a very short tap starts recording immediately but never transcribes", (tester) async {
