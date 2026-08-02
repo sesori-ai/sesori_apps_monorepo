@@ -3,14 +3,14 @@
 ## Status
 
 - **Plan slug:** `relay-request-concurrency`
-- **Status:** Reviewed — four architecture findings applied; revised plan not
-  re-reviewed; Step 1 PR
+- **Status:** Reviewed twice — eight architecture findings applied; latest
+  revision not re-reviewed; Step 1 PR
   [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) open
 - **Plan date:** 2026-08-02
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at
   `f6ec9e9dc66782197a46261de3bcc002e261a5bd`
-- **Delivery:** one plan PR, five sequential implementation PRs, and one
+- **Delivery:** one plan PR, six sequential implementation PRs, and one
   plan-retirement PR
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687)
 
@@ -60,7 +60,7 @@ long-running testing.
    frame.
 2. Requests from different clients, from one client, and for different plugins
    can execute concurrently and may respond out of order through their existing
-   request IDs.
+   request IDs, except operations sharing one explicit per-session causal lane.
 3. A stalled plugin-A request does not delay key exchange, global health,
    database-only reads, plugin-B requests, or a force-restart command for
    plugin A.
@@ -79,12 +79,15 @@ long-running testing.
    prevents late sends, and drains every accepted shared route plus each
    transport's surrounding work before disposing dependencies under the
    existing process backstop.
-8. Rename/delete ordering is retained for one session, while unrelated sessions
+8. Prompt/command acceptance and abort preserve arrival order for one session,
+   while another session or plugin remains independent and force restart stays
+   outside that lane.
+9. Rename/delete ordering is retained for one session, while unrelated sessions
    and plugins no longer share the current global mutation tails.
-9. Slow work is observable while it is still running through privacy-safe route
+10. Slow work is observable while it is still running through privacy-safe route
    templates; logs never include request bodies, headers, query values, source
    paths, prompts, session IDs, or other raw entity identifiers.
-10. There is no wire-contract, database-schema, persisted-data, client API, or
+11. There is no wire-contract, database-schema, persisted-data, client API, or
     analytics change.
 
 ## Locked Decisions
@@ -106,8 +109,9 @@ long-running testing.
   restriction locally. `PluginRuntime` continues to own per-plugin generations,
   leases, durable-commit fences, and force-stop/restart behavior.
 - Domain serialization remains only where an explicit invariant requires it.
-  This plan changes the session rename/delete dispatcher from one global lane to
-  one lane per stable session ID.
+  Prompt/command acceptance and abort use one execution lane per stable session
+  ID. Rename/delete retain a separate mutation invariant but change from global
+  tails to per-session tails.
 
 ### No generic timeout or global worker pool
 
@@ -145,17 +149,26 @@ long-running testing.
   serialization dependency. A restart handler sets it, and whichever route
   next calls `consumeRestartRequest` owns the handoff.
 - Before concurrent relay routing lands, replace that global flag with a typed
-  request-local route result containing the `RelayResponse` and a closed
-  post-response action (`none` or `restartBridge`). Route selection separately
-  exposes a typed privacy-safe identity synchronously, before route completion.
-- An unsuccessful restart preflight returns an ordinary error result with no
-  post-response action.
-- The debug transport closes its HTTP response before executing the attached
-  action. The relay transport completes response encryption and synchronously
-  enqueues it on the exact current connection before executing the action. The
+  request-local sealed route outcome: ordinary `ResponseOnly` or
+  `RestartAccepted`. `RestartAccepted` carries only the request ID and constructs
+  the fixed successful `{restarting:true}` response, so an error response plus
+  restart action is unrepresentable. Route selection separately exposes a typed
+  privacy-safe identity synchronously, before route completion.
+- An unsuccessful restart preflight returns an ordinary `ResponseOnly` error.
+- The debug transport closes its HTTP response before dispatching an accepted
+  handoff. The relay transport completes response encryption and synchronously
+  enqueues it on the exact current connection before dispatching. The
   WebSocket API has no per-frame remote-delivery acknowledgement, so this plan
   does not claim one. Graceful close retains the existing delivery opportunity.
   No new wire field is added.
+- Replace the `BridgeRuntime`-forwarded `restartHandoff` callback with one
+  concrete `BridgeRestartDispatcher` composition peer. It owns duplicate
+  handoff suppression, calls `BridgeRestartService.performRestartHandoff`, and
+  emits a synchronous typed shutdown-request stream only after a successful
+  handoff. Relay and debug consumers receive the dispatcher directly;
+  `OrchestratorSession` subscribes to the stream and drives normal cancellation.
+  The runtime composition owns and disposes the dispatcher after debug and
+  session request work drains.
 
 ### Plugin restart behavior
 
@@ -216,6 +229,11 @@ At the audited `main` tip:
   and fences operation results by generation. Force restart waits for its
   bounded stop barrier and can replace a generation with outstanding work.
 - `PluginLifecycleService` coordinates active lifecycle commands per plugin.
+- `SessionPromptService.sendPrompt` awaits backend prompt/command acceptance and
+  local defaults publication, while `SessionAbortService.abortSession` calls the
+  backend independently. The serial relay loop currently prevents a later abort
+  from overtaking acceptance; no domain owner preserves that order once routes
+  are detached.
 - `SessionMutationDispatcher` has one `_tail` and one `_backendTail` for every
   session. It uses them to make persisted rename, backend rename propagation,
   and delete order correctly, but an unrelated plugin/session can wait behind a
@@ -234,32 +252,48 @@ synchronous and two-phase:
 
 ```text
 PendingRoutedRequest
-  routeIdentity: Matched(method, declaredPathTemplate)
-               | Unmatched(method)
-               | Invalid(method)
-  completion: Future<RoutedRequestResult>
+  routeIdentity: Matched(HttpMethod, declaredPathTemplate)
+               | Unmatched(HttpMethod)
+               | InvalidMethod
+               | InvalidTarget(HttpMethod)
+  completion: Future<RoutedRequestOutcome>
 
-RoutedRequestResult
-  response: RelayResponse
-  postResponseAction: none | restartBridge
+RoutedRequestOutcome
+  ResponseOnly(RelayResponse)
+  RestartAccepted(requestId) -> fixed successful RelayResponse
 ```
 
-The synchronous phase selects exactly one handler and exposes only its declared
-template, never concrete path parameters or query values. URI/matching failures
-use `Invalid(method)`; a valid request with no handler uses `Unmatched(method)`.
-No consumer repeats matching or inspects a raw request path for diagnostics.
+The synchronous phase first parses the raw external method into the existing
+closed `HttpMethod` enum, excluding handler-only `any`. Unsupported or malformed
+method text becomes fixed `InvalidMethod` identity and never survives into a
+log label. A known method with an invalid URI uses `InvalidTarget(HttpMethod)`;
+a valid request with no handler uses `Unmatched(HttpMethod)`. A match exposes
+only the handler's declared template, never concrete path parameters or query
+values. No consumer repeats matching or retains a raw method/path for
+diagnostics.
 
-The asynchronous completion preserves current handler/error mapping. A matched
-handler declares its successful post-response action. Router errors, handler
-errors, restart preflight failures, unmatched requests, and invalid requests
-carry `none`.
+Step 2 audits every existing route log, not only the new slow timer. Receipt,
+ordinary handler failures, shutdown completion/drain, and debug diagnostics use
+the selected identity; matched handlers may format their own declared
+`HttpMethod` and path template directly. Raw request method/path remains
+available only for protocol parsing, parameter extraction, and response
+construction, never as diagnostic text.
 
-Relay and debug consumers switch exhaustively over the action attached to that
-exact completion. The debug transport closes its HTTP response before acting.
-The serial relay transport encrypts and synchronously enqueues the response
-before acting. This change ships before any request concurrency, removes the
-shared restart flag, and gives later slow-route timers a privacy-safe identity
-at dispatch time.
+The asynchronous completion preserves current handler/error mapping. Ordinary
+successes, router errors, handler errors, restart preflight failures, unmatched
+requests, and invalid requests are `ResponseOnly`. Only a successful restart
+preflight returns `RestartAccepted`; that variant creates the fixed successful
+response from its request ID and cannot carry an arbitrary/error response.
+
+Relay and debug consumers switch exhaustively over the exact outcome. For
+`RestartAccepted`, the debug transport closes its HTTP response before asking a
+directly injected `BridgeRestartDispatcher` to hand off. The serial relay
+transport encrypts and synchronously enqueues the response first. The dispatcher
+owns single-flight handoff, invokes `BridgeRestartService`, and emits a typed
+shutdown request that `OrchestratorSession` observes through a stream rather
+than a callback passed through `BridgeRuntime`. This change ships before request
+concurrency, removes the shared restart flag/callback, and gives later slow-route
+timers a privacy-safe identity at dispatch time.
 
 ### 2. One lifecycle barrier for both route consumers
 
@@ -320,7 +354,76 @@ operation and cannot close the successor connection.
 This transport refactor lands while relay request routing is still serial, so
 its current behavior and reconnect tests can be reviewed independently.
 
-### 4. Concurrent relay request completion
+### 4. Per-session execution-control lanes
+
+Before detaching routes, add one concrete `SessionExecutionDispatcher` shared by
+`SessionPromptService` and `SessionAbortService`. It owns one FIFO lane per
+stable session ID and claims the lane synchronously before the first asynchronous
+plugin operation.
+
+The lane covers only backend execution causality:
+
+- prompts and commands preserve acceptance order for one session;
+- a later abort cannot reach the backend until every earlier prompt/command for
+  that session has reached accepted or failed;
+- another session, another plugin, and plugin lifecycle force restart use other
+  ownership and remain concurrent; and
+- local prompt-default persistence/publication occurs after acceptance and does
+  not extend the execution lane, so abort is delayed only by the backend causal
+  boundary it needs.
+
+A stalled acceptance can therefore delay abort for that same session, matching
+the current causal order, but it cannot block force restart of the plugin or any
+other session. Failures release the lane, settled idle lanes are removed, and
+`drain`/`dispose` await all accepted execution operations.
+
+The composition root constructs one dispatcher peer, injects it into both
+services, and stores its sole lifecycle ownership on `OrchestratorSession`.
+During teardown the session first closes shared routed-request acceptance and
+awaits the shared route barrier, so no accepted handler can enter an execution
+lane later. It then synchronously closes execution-dispatcher acceptance, drains
+and disposes it exactly once, and only afterward disposes prompt/abort services,
+the session repository, and lower-layer collaborators. Step 5 lands this full
+lifecycle while relay routing remains serial; it does not defer ownership to the
+concurrency PR.
+
+Session creation remains one atomic create-plus-first-prompt plugin operation
+and has no stable session ID before the backend returns, so it does not enter
+this dispatcher. Question/permission replies target backend-issued pending
+request identities and remain under their existing plugin validation; mark-seen
+is local presentation state. Neither is added to the execution lane without a
+demonstrated causal requirement.
+
+### 5. Per-session mutation lanes
+
+`SessionMutationDispatcher` retains sole repository deletion, tombstone, and
+`deletedSessions` event ownership while scoping its two ordering tails by stable
+session ID. Its delete contract adds a callback-scoped cleanup operation:
+
+- persisted title writes for one session stay ordered;
+- backend title propagation for that session stays ordered;
+- a delete request synchronously reserves its lane position before lifecycle
+  cleanup begins, waits for earlier rename work, and keeps later renames behind
+  cleanup, repository deletion, and tombstone recording;
+- another session, including one owned by another plugin, uses another lane;
+- failed operations release their lane and do not poison later work;
+- settled idle lanes are removed so the map does not grow with historical
+  sessions; and
+- `drain`/`dispose` snapshot and await all active lanes before closing output.
+
+Create-session metadata rename continues through the same dispatcher, so a
+later delete of that newly created session cannot overtake its title propagation.
+A focused `SessionDeletionService` depends on `SessionLifecycleService` and
+`SessionMutationDispatcher`; `DeleteSessionHandler` depends on this service
+instead of coordinating both peers itself. The service passes cleanup options to
+`SessionMutationDispatcher.deleteSession`, which synchronously reserves the
+session lane before invoking the cleanup callback. On cleanup success the
+dispatcher performs repository deletion/tombstone recording and emits
+`deletedSessions`; on typed rejection it returns that result without deletion
+and releases the lane. The service returns the typed result for the handler to
+preserve its existing 409 body. No plugin-wide queue is introduced.
+
+### 6. Concurrent relay request completion
 
 `OrchestratorSession` owns relay connection lifecycle and the detached work that
 surrounds shared routed completions; the shared dispatcher owns only router work
@@ -339,7 +442,8 @@ For each active client request the session will:
 6. immediately before the synchronous write, verify the same client incarnation
    and call `sendIfCurrent` with the captured relay handle with no intervening
    await;
-7. run that result's post-response action only after a `sent` result;
+7. ask the shared restart dispatcher to handle `RestartAccepted` only after a
+   `sent` result;
 8. on current-handle send failure, call `closeIfCurrent`; and
 9. remove itself from the relay completion registry in `finally`.
 
@@ -353,34 +457,18 @@ process disconnect/reconnect controls, key exchange/resume, later requests, SSE
 subscription controls, and session-view controls.
 
 SSE subscription registration remains synchronous, while initial project
-summary construction becomes separately tracked session work so a slow summary
-source cannot hold relay ingestion.
+summary construction becomes separately tracked session work on the existing
+`_projectsSummaryTail`. Builds and broadcasts therefore retain monotonic order
+with every other summary refresh even when subscriptions overlap, while a slow
+summary source cannot hold relay ingestion.
 
 On shutdown, the existing shutdown signal makes relay completion operations
-abandon response delivery and post-response actions. `OrchestratorSession`
+abandon response delivery and accepted-restart dispatch. `OrchestratorSession`
 awaits both its session-owned completion work and the shared route-dispatcher
 barrier before disposing repositories, services, controllers, and relay state.
 `DebugServer` awaits its HTTP work plus the same route barrier. The process-level
 coordinator retains its bounded backstop for an upstream future that never
 settles.
-
-### 5. Per-session mutation lanes
-
-`SessionMutationDispatcher` retains its current contract but scopes its two
-ordering tails by stable session ID:
-
-- persisted title writes for one session stay ordered;
-- backend title propagation for that session stays ordered;
-- deleting that session waits for its pending backend rename;
-- another session, including one owned by another plugin, uses another lane;
-- failed operations release their lane and do not poison later work;
-- settled idle lanes are removed so the map does not grow with historical
-  sessions; and
-- `drain`/`dispose` snapshot and await all active lanes before closing output.
-
-Create-session metadata rename continues through the same dispatcher, so a
-later delete of that newly created session cannot overtake its title propagation.
-No plugin-wide queue is introduced.
 
 ## User-Visible Behavior
 
@@ -416,29 +504,34 @@ No plugin-wide queue is introduced.
 - A disconnected write can still complete. The client retains its existing
   typed response-loss/uncertain-outcome behavior rather than receiving a false
   cancellation claim.
-- Slow-route diagnostics use handler templates only. They never include body,
-  headers, query/fragment values, concrete path parameters, prompts, source
-  paths, branch/repository names, or raw identifiers.
+- Every router, handler, relay, and debug route diagnostic uses the selected
+  closed method plus handler template (or fixed invalid/unmatched identity), not
+  raw transport method/path text. Logs never include body, headers,
+  query/fragment values, concrete path parameters, prompts, source paths,
+  branch/repository names, or raw identifiers.
 - This is internal reliability work, not a new user action or product-adoption
   question, so no analytics event is added.
 
 ## Cleanup Assessment
 
 - Step 2 removes the obsolete global `_restartRequested` flag,
-  `requestRestart`/`consumeRestartRequest`, their tests, comments relying on
-  serial routing, and the debug-server restart-service dependency if it has no
-  remaining use.
+  `requestRestart`/`consumeRestartRequest`, the forwarded `restartHandoff`
+  callback, their tests, comments relying on serial routing, and direct
+  debug-server restart-service dependency if it has no remaining use.
 - Step 3 replaces separate route-completion ownership with one shared dispatcher
   barrier; transport-specific HTTP/relay completion state remains with each
   transport.
 - Step 4 removes mutable-current-channel `read`/`send` assumptions in favor of
   explicit opaque relay connection handles. Internal callers update in lockstep.
-- Step 5 replaces the single `_inFlightRequestLabel` with honest tracked
-  operations and removes/mends the completion-only `[shutdown] slow route`
-  diagnostic. It does not preserve the serial route path for compatibility.
+- Step 5 replaces accidental relay-loop ordering for prompt/command acceptance
+  and abort with one explicit per-session execution owner. No obsolete wire or
+  plugin API is retained.
 - Step 6 removes the global session mutation/backend tails and tests that encode
   cross-session serialization, replacing them with per-session ordering and lane
   cleanup coverage.
+- Step 7 replaces the single `_inFlightRequestLabel` with honest tracked
+  operations and removes/mends the completion-only `[shutdown] slow route`
+  diagnostic. It does not preserve the serial route path for compatibility.
 - Keep request IDs, client pending-request maps, plugin runtime leases,
   generation fences, endpoint-specific deadlines, and the shutdown backstop;
   each remains required under concurrent routing.
@@ -447,11 +540,11 @@ No plugin-wide queue is introduced.
 
 ## Delivery Rules
 
-- The series has exactly seven steps and uses the fixed titles below.
+- The series has exactly eight steps and uses the fixed titles below.
 - Step 1 raises this complete plan and tracker. Per the user's explicit
   direction, the 1,500 changed-line soft cap does not apply to this first
   plan-containing PR. It remains plan-only and runs documentation validation.
-- Steps 2–6 are implementation PRs. Each targets no more than 1,500 additions
+- Steps 2–7 are implementation PRs. Each targets no more than 1,500 additions
   plus deletions against its own base, including tests and generated output
   (none is currently expected).
 - At roughly 1,300 projected changed lines, reassess the implementation/test
@@ -459,7 +552,7 @@ No plugin-wide queue is introduced.
   if no coherent split exists, update this plan with the evidence and reason
   before exceeding the soft cap.
 - Do not combine adjacent steps merely because one lands below its estimate.
-- Step 7 contains no production change. It records completion and moves
+- Step 8 contains no production change. It records completion and moves
   `.plan/active/relay-request-concurrency/` to
   `.plan/completed/relay-request-concurrency/`.
 - Steps merge in numeric order. Every implementation branch starts from current
@@ -467,9 +560,9 @@ No plugin-wide queue is introduced.
   PR #686 if it has merged.
 - Every implementation PR updates `TRACKER.md` with its base, actual changed-line
   count, verification, review result, and cleanup outcome.
-- Run `aristotle-impl-review` for Steps 2–6 because they change routing contracts,
-  lifecycle ownership, transport connection identity, concurrency, and mutation
-  ordering. Do not run it for documentation-only Steps 1 or 7.
+- Run `aristotle-impl-review` for Steps 2–7 because they change routing contracts,
+  lifecycle ownership, transport connection identity, execution/mutation
+  ordering, and concurrency. Do not run it for documentation-only Steps 1 or 8.
 - No implementation starts until the Step 1 plan PR merges and the user-approved
   design remains unchanged.
 
@@ -477,15 +570,16 @@ No plugin-wide queue is introduced.
 
 | Step | Branch | Exact PR title | Complexity rationale | Changed-line target | Outcome |
 |---|---|---|---|---:|---|
-| 1/7 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/7]` | Plan/tracker documentation only; no runtime behavior. | 900–1,100; explicitly cap-exempt | Publish the reviewed architecture, fixed delivery sequence, boundaries, and verification gates. |
-| 2/7 | `relay-request-concurrency-route-outcomes` | `⚙️ [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/7]` | Two-phase internal routing contract crosses handlers, router, relay/debug consumers, diagnostics, and restart sequencing. | 700–1,100 | Expose route identity before completion and replace the shared restart flag with a request-local post-response action while preserving serial relay behavior. |
-| 3/7 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/7]` | One cross-transport acceptance/drain barrier changes composition and shared-dependency shutdown ordering. | 600–1,000 | Ensure relay and debug route work drains through one lifecycle owner before shared collaborators are disposed. |
-| 4/7 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/7]` | Explicit connection handles update connect/read/send/close and reconnect fencing across transport lifecycle. | 550–950 | Make old relay generations unable to send through or close a successor while preserving serial request execution. |
-| 5/7 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 5/7]` | Concurrent request completion, client-incarnation fencing, encrypted sends, reconnect, SSE startup, shutdown draining, and multi-client regressions. | 950–1,450 | Remove relay head-of-line blocking using the already-scoped route, lifecycle, and connection contracts. |
-| 6/7 | `relay-request-concurrency-session-mutations` | `⚙️ [relay-request-concurrency] refactor(bridge): scope session mutation ordering [step 6/7]` | Keyed asynchronous ordering and drain/cleanup invariants across session persistence and plugin propagation. | 450–850 | Preserve same-session rename/delete order while allowing unrelated sessions/plugins to mutate concurrently. |
-| 7/7 | `relay-request-concurrency-retire-plan` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 7/7]` | Mechanical documentation state update and directory move. | 50–150 | Record completion and move the plan from active to completed. |
+| 1/8 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/8]` | Plan/tracker documentation only; no runtime behavior. | 1,150–1,250; explicitly cap-exempt | Publish the reviewed architecture, fixed delivery sequence, boundaries, and verification gates. |
+| 2/8 | `relay-request-concurrency-route-outcomes` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/8]` | Two-phase routing, valid-only outcomes, all-route diagnostics, and a shared restart dispatcher cross handler, relay/debug, runtime, and shutdown ownership. | 900–1,300 | Expose closed privacy-safe route identity before completion and replace the shared restart flag/callback with a valid-only route outcome plus directly injected dispatcher while preserving serial relay behavior. |
+| 3/8 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/8]` | One cross-transport acceptance/drain barrier changes composition and shared-dependency shutdown ordering. | 600–1,000 | Ensure relay and debug route work drains through one lifecycle owner before shared collaborators are disposed. |
+| 4/8 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/8]` | Explicit connection handles update connect/read/send/close and reconnect fencing across transport lifecycle. | 550–950 | Make old relay generations unable to send through or close a successor while preserving serial request execution. |
+| 5/8 | `relay-request-concurrency-session-execution` | `⚙️ [relay-request-concurrency] refactor(bridge): preserve session execution order [step 5/8]` | A new keyed causal owner crosses prompt and abort services with failure, cleanup, and shutdown invariants. | 500–900 | Preserve prompt/command acceptance-before-abort ordering for one session without serializing another session, plugin, or force restart. |
+| 6/8 | `relay-request-concurrency-session-mutations` | `⚙️ [relay-request-concurrency] refactor(bridge): scope session mutation ordering [step 6/8]` | Keyed asynchronous ordering and drain/cleanup invariants across session persistence and plugin propagation. | 450–850 | Preserve same-session rename/delete order while allowing unrelated sessions/plugins to mutate concurrently. |
+| 7/8 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 7/8]` | Concurrent request completion, client-incarnation fencing, encrypted sends, reconnect, SSE startup, shutdown draining, and multi-client regressions. | 950–1,450 | Remove relay head-of-line blocking after every required domain and lifecycle owner is explicit. |
+| 8/8 | `relay-request-concurrency-retire-plan` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 8/8]` | Mechanical documentation state update and directory move. | 50–150 | Record completion and move the plan from active to completed. |
 
-## Step 1/7 — Publish The Plan
+## Step 1/8 — Publish The Plan
 
 ### Complexity
 
@@ -516,7 +610,7 @@ source owner. No product suite applies.
 
 - **User-visible:** None.
 - **Persisted/database:** None.
-- **Internal:** One reviewed implementation authority and fixed seven-PR series.
+- **Internal:** One reviewed implementation authority and fixed eight-PR series.
 
 ### Verification
 
@@ -524,25 +618,34 @@ source owner. No product suite applies.
 - exact title/branch/step-total comparison between plan and tracker
 - plan files only in the diff
 
-## Step 2/7 — Scope Restart Handoffs
+## Step 2/8 — Scope Restart Handoffs
 
 ### Complexity
 
-`⚙️` moderate: a two-phase internal route contract changes both transport
-consumers, privacy-safe diagnostics, and restart lifecycle sequencing, but does
-not yet add concurrency.
+`🚧` complex: a two-phase internal route contract changes both transport
+consumers and every route diagnostic while a new shared restart dispatcher
+replaces cross-layer callback/flag lifecycle wiring; it does not yet add request
+concurrency.
 
 ### What
 
-- Make router matching synchronous and return a pending route with a typed
+- Parse the external method once into a closed internal `HttpMethod` value, then
+  make router matching synchronous and return a pending route with a typed
   matched/unmatched/invalid privacy-safe identity plus asynchronous completion.
-- Add a typed completion with response and closed post-response action.
-- Let the restart handler declare `restartBridge` only for a successful preflight.
+- Add sealed `ResponseOnly` and `RestartAccepted` completion variants; the latter
+  constructs only the fixed successful restart response from its request ID.
+- Let the restart handler return `RestartAccepted` only for a successful preflight.
+- Add one concrete `BridgeRestartDispatcher` that owns single-flight handoff,
+  invokes `BridgeRestartService`, and emits a typed shutdown-request stream.
+- Inject that dispatcher directly into relay and debug consumers, subscribe from
+  `OrchestratorSession`, and remove the `BridgeRuntime` callback forwarding.
 - Update `RequestRouter`, `OrchestratorSession`, and `DebugServer` in lockstep.
 - Close the debug HTTP response or synchronously enqueue the encrypted relay
-  response on the current socket before exhaustively applying its action. Do not
+  response on the current socket before dispatching `RestartAccepted`. Do not
   claim WebSocket remote-delivery acknowledgement.
-- Remove the shared restart-request flag and causal obsolete wiring/tests.
+- Dispose the restart dispatcher from runtime composition only after debug and
+  session work drains.
+- Remove the shared restart-request flag/callback and causal obsolete wiring/tests.
 
 ### Why
 
@@ -551,9 +654,13 @@ makes concurrent request completion unable to steal or suppress a restart.
 
 ### Risk And Test Focus
 
-Risk is acting before response enqueue/HTTP close, acting after a failed
-preflight, acting twice, exposing raw paths, or changing ordinary response/error
-mapping. Focus on matched/unmatched/invalid route identity, concurrent debug
+Risk is representing restart with an error response, acting before response
+enqueue/HTTP close, acting after a failed preflight, acting twice, losing the
+shutdown signal, disposing its dispatcher under a debug request, exposing raw
+methods/paths, or changing ordinary response/error mapping. Focus on sealed
+outcome construction, direct shared-dispatcher injection, duplicate handoffs,
+successful/failed handoff signal behavior and disposal, supported/unsupported
+methods, matched/unmatched/invalid-target route identity, concurrent debug
 requests, relay restart enqueue-before-handoff ordering, duplicate restart
 requests, failed preflight, router errors, and shutdown races. A relay integration
 gate must observe the correlated restart response being enqueued for the
@@ -566,7 +673,8 @@ describing it as a protocol acknowledgement.
 - **User-visible:** Restart keeps its existing best-effort acknowledgement then
   reconnect behavior; normal routes behave identically.
 - **Persisted/database:** None.
-- **Internal:** Restart intent belongs to its routed result; no shared request flag.
+- **Internal:** Restart acceptance is a valid-only route variant; one concrete
+  dispatcher replaces the shared flag and cross-layer callback.
 
 ### Verification
 
@@ -576,7 +684,7 @@ describing it as a protocol acknowledgement.
 - full `bridge/app` tests if focused changes expose wider routing assumptions
 - `git diff --check`, changed-line count, and `aristotle-impl-review`
 
-## Step 3/7 — Coordinate Routed Request Shutdown
+## Step 3/8 — Coordinate Routed Request Shutdown
 
 ### Complexity
 
@@ -629,7 +737,7 @@ begin/drain calls.
 - full `bridge/app` tests if focused changes expose wider shutdown assumptions
 - `git diff --check`, changed-line count, and `aristotle-impl-review`
 
-## Step 4/7 — Bind Relay Connection Epochs
+## Step 4/8 — Bind Relay Connection Epochs
 
 ### Complexity
 
@@ -677,13 +785,124 @@ normal reconnect, revoke, and bridge takeover.
 - full `bridge/app` tests if focused changes expose wider transport assumptions
 - `git diff --check`, changed-line count, and `aristotle-impl-review`
 
-## Step 5/7 — Route Requests Concurrently
+## Step 5/8 — Preserve Session Execution Order
+
+### Complexity
+
+`⚙️` moderate: a new keyed causal owner crosses prompt/command and abort
+services and must define acceptance, failure release, idle cleanup, and shutdown
+drain without becoming a plugin-wide queue.
+
+### What
+
+- Add one concrete `SessionExecutionDispatcher`, injected into
+  `SessionPromptService` and `SessionAbortService`.
+- Synchronously reserve a FIFO lane by stable session ID before awaiting backend
+  prompt, command, or abort work.
+- Hold prompt/command entries through backend acceptance or failure, but not
+  through later local defaults persistence/publication.
+- Let a later abort enter the backend only after earlier prompt/command
+  acceptance settles; keep other sessions/plugins and force restart independent.
+- Release failed entries, remove settled idle lanes, and drain accepted work on
+  dispose.
+- Construct one composition peer and store sole lifecycle ownership on
+  `OrchestratorSession`; after shared route acceptance closes and its barrier
+  drains, close execution acceptance, drain/dispose exactly once, then dispose
+  prompt/abort services and repositories.
+
+### Why
+
+Concurrent transport routing must not let an abort report success and then allow
+an earlier slow prompt to be accepted and continue running. This makes the
+existing causal invariant explicit before the serial relay loop is removed.
+
+### Risk And Test Focus
+
+Risk is claiming a lane after the first await, holding abort behind unrelated
+local publication, failure poisoning later work, or disposal missing accepted
+operations. Gate backend acceptance to prove prompt-before-abort and
+command-before-abort order, same-session FIFO, cross-session/plugin parallelism,
+force-restart independence, failure release, idle cleanup, and repeated drain.
+
+### Expected Result
+
+- **User-visible:** Prompt/command followed by abort retains current behavior;
+  unrelated sessions remain independent.
+- **Persisted/database:** No schema change; prompt defaults retain their existing
+  post-acceptance persistence behavior.
+- **Internal:** Backend execution causality has an explicit per-session owner.
+
+### Verification
+
+- focused `SessionExecutionDispatcher`, prompt service, abort service, and route
+  handler tests
+- `dart analyze --fatal-infos` from `bridge/app`
+- full `bridge/app` tests if focused changes expose wider assumptions
+- `git diff --check`, changed-line count, and `aristotle-impl-review`
+
+## Step 6/8 — Scope Session Mutation Ordering
+
+### Complexity
+
+`⚙️` moderate: keyed asynchronous lanes must preserve same-session persistence,
+backend propagation, deletion, failure release, cleanup, and shutdown drain.
+
+### What
+
+- Replace global session mutation/backend tails with per-session lanes.
+- Keep rename persistence before backend propagation.
+- Add `SessionDeletionService(SessionLifecycleService,
+  SessionMutationDispatcher)` and inject only it into `DeleteSessionHandler`.
+- Make `SessionMutationDispatcher.deleteSession` synchronously reserve the same
+  session lane before invoking callback-scoped lifecycle cleanup; keep repository
+  deletion, tombstone recording, and `deletedSessions` emission in the dispatcher
+  after cleanup succeeds.
+- Keep earlier renames before the complete delete workflow and later renames
+  behind it; preserve the typed cleanup-rejection response without deletion.
+- Allow unrelated sessions and plugins to progress independently.
+- Remove settled idle lanes and drain every active lane on dispose.
+- Replace global-order tests with same-session and cross-session concurrency
+  coverage.
+
+### Why
+
+Once the transport stops imposing global order, this directly caused secondary
+bottleneck should represent its real invariant rather than serializing unrelated
+plugins.
+
+### Risk And Test Focus
+
+Risk is reserving delete only after cleanup, delete overtaking an earlier rename,
+a later rename overtaking cleanup, lane removal losing queued work, failure
+poisoning a lane, or dispose missing accepted work. Focus on completion inversion
+with gated cleanup, both rename/delete arrival orders, cleanup rejection,
+metadata rename/delete, unrelated plugin/session parallelism, failures, repeated
+drain, and disposal.
+
+### Expected Result
+
+- **User-visible:** A slow rename/delete for one session no longer delays an
+  unrelated session; same-session behavior remains ordered.
+- **Persisted/database:** No schema change; existing title and deletion writes
+  retain their order.
+- **Internal:** Mutation serialization is keyed to the stable session resource
+  instead of the whole bridge.
+
+### Verification
+
+- focused `SessionMutationDispatcher`, `SessionDeletionService`,
+  create/rename/delete handler, and session creation service tests
+- `dart analyze --fatal-infos` from `bridge/app`
+- full `bridge/app` tests if focused changes expose wider assumptions
+- `git diff --check`, changed-line count, and `aristotle-impl-review`
+
+## Step 7/8 — Route Requests Concurrently
 
 ### Complexity
 
 `🚧` complex: this changes cross-client request scheduling, client-incarnation
 identity, encrypted response delivery, SSE startup, and session-owned completion
-draining on top of the already-landed route and relay-epoch contracts.
+draining on top of the already-landed route, ordering, and relay-epoch contracts.
 
 ### What
 
@@ -696,10 +915,12 @@ draining on top of the already-landed route and relay-epoch contracts.
 - Complete encryption first, then perform client-incarnation validation and
   epoch-bound `sendIfCurrent` with no intervening await.
 - Drop stale responses without claiming their underlying writes were cancelled.
-- Run a post-response action only after `sendIfCurrent` reports `sent`.
+- Dispatch `RestartAccepted` only after `sendIfCurrent` reports `sent`.
 - On a current-handle send failure, use `closeIfCurrent` so normal relay
   reconnection runs; obsolete failures cannot close the successor.
-- Detach and track initial SSE summary construction after synchronous subscribe.
+- Detach and track initial SSE summary construction after synchronous subscribe,
+  but enqueue it on the existing summary-ordering tail before building so an
+  older snapshot cannot broadcast after a newer one.
 - Add ongoing privacy-safe slow-route diagnostics and honest multi-operation
   shutdown diagnostics.
 - Drain session-owned completion work plus the shared dispatcher barrier before
@@ -714,20 +935,24 @@ force-restart capability reachable during a stalled plugin operation.
 ### Risk And Test Focus
 
 Risk is late response delivery to a new connection, a reconnect between
-encryption and write, unhandled task failure, response/action execution after
-shutdown, reconnect loss after send failure, request-ID mismatch, or incomplete
-session-owned drain. Highest-value tests use intentionally gated routes to prove:
+encryption and write, summary completion inversion, unhandled task failure,
+response/action execution after shutdown, reconnect loss after send failure,
+request-ID mismatch, or incomplete session-owned drain. Highest-value tests use
+intentionally gated work to prove:
 
 - a stalled request on one client does not delay another client's key exchange
   or health response;
 - a later request from the same client can complete first;
 - plugin-B/global work and plugin-A force-restart routing remain reachable;
+- same-session execution and mutation requests still follow their explicit
+  causal lanes;
 - disconnect/rekey/relay reconnect invalidates the old response even if a
   numeric `connId` appears again;
 - a reconnect during asynchronous encryption cannot redirect the final send,
   and an obsolete send failure cannot close the successor;
 - a current response is delivered exactly once;
-- initial SSE summary work does not hold frame ingestion; and
+- initial SSE summary work does not hold frame ingestion and two overlapping
+  builds cannot broadcast an older snapshot after a newer one; and
 - shutdown prevents late sends and drains tracked work under existing bounds.
 
 ### Expected Result
@@ -736,65 +961,19 @@ session-owned drain. Highest-value tests use intentionally gated routes to prove
   stalls; only the dependent request remains pending or uncertain.
 - **Persisted/database:** None; accepted operations retain existing commit rules.
 - **Internal:** Relay ingestion and business routing become separate lifecycles
-  with connection-fenced completion.
+  with connection-fenced, domain-ordered completion.
 
 ### Verification
 
 - new focused orchestrator request-concurrency integration suite
 - existing relay client, registration/reconnect, token re-auth, debug-server,
-  plugin-runtime force-restart, and shutdown/error-recovery suites
+  plugin-runtime force-restart, summary-ordering, and shutdown/error-recovery
+  suites
 - `dart analyze --fatal-infos` from `bridge/app`
 - full `bridge/app` tests
 - `git diff --check`, changed-line count, and `aristotle-impl-review`
 
-## Step 6/7 — Scope Session Mutation Ordering
-
-### Complexity
-
-`⚙️` moderate: keyed asynchronous lanes must preserve same-session persistence,
-backend propagation, deletion, failure release, cleanup, and shutdown drain.
-
-### What
-
-- Replace global session mutation/backend tails with per-session lanes.
-- Keep rename persistence before backend propagation and keep delete behind the
-  same session's pending backend rename.
-- Allow unrelated sessions and plugins to progress independently.
-- Remove settled idle lanes and drain every active lane on dispose.
-- Replace global-order tests with same-session and cross-session concurrency
-  coverage.
-
-### Why
-
-Once the transport stops imposing global order, this directly caused secondary
-bottleneck should represent its real invariant rather than serializing unrelated
-plugins.
-
-### Risk And Test Focus
-
-Risk is delete overtaking rename, lane removal losing queued work, failure
-poisoning a lane, or dispose missing an operation added before shutdown. Focus on
-same-session rename/delete, metadata rename/delete, unrelated plugin/session
-parallelism, failures, repeated drain, and disposal.
-
-### Expected Result
-
-- **User-visible:** A slow rename/delete for one session no longer delays an
-  unrelated session; same-session behavior remains ordered.
-- **Persisted/database:** No schema change; existing title and deletion writes
-  retain their order.
-- **Internal:** Mutation serialization is keyed to the stable session resource
-  instead of the whole bridge.
-
-### Verification
-
-- focused `SessionMutationDispatcher`, create/rename/delete handler, and session
-  creation service tests
-- `dart analyze --fatal-infos` from `bridge/app`
-- full `bridge/app` tests if focused changes expose wider assumptions
-- `git diff --check`, changed-line count, and `aristotle-impl-review`
-
-## Step 7/7 — Retire The Plan
+## Step 8/8 — Retire The Plan
 
 ### Complexity
 
@@ -835,7 +1014,7 @@ product suite applies.
 |---|---|
 | Old request responds to a new/reused `connId` | Fence by relay epoch plus opaque client incarnation, not numeric ID alone. |
 | Responses finish out of order | Preserve request IDs; test same-client inversion explicitly. |
-| Restart action is stolen by another response | Land typed request-local post-response action before concurrency. |
+| Restart acceptance is stolen or paired with failure | Land the sealed valid-only route outcome and shared single-flight restart dispatcher before concurrency. |
 | Restart acknowledgement is overstated | Guarantee only synchronous enqueue on the exact relay handle before handoff; keep graceful close and end-to-end delivery coverage without claiming remote acknowledgement. |
 | Disconnect falsely cancels an accepted write | Drop only delivery; preserve operation and existing uncertain-outcome semantics. |
 | Reconnect occurs during response encryption | Encrypt first, then perform incarnation validation plus epoch-bound synchronous send with no await; Layer-0 rechecks the handle. |
@@ -843,15 +1022,22 @@ product suite applies.
 | Stalled operations accumulate | Track and observe them; do not introduce a global pool that can starve control work. Reassess per-plugin bulkheads only with evidence. |
 | Force restart returns while old operation later completes | Keep generation checks and durable-commit fencing; late old-generation result maps to failure and cannot commit through `useAndCommit`. |
 | Shutdown disposes dependencies under relay/debug routes | One shared dispatcher closes acceptance and drains both consumers before session-owned collaborators; each transport separately drains its surrounding work. |
-| Concurrent mutation corrupts session order | Keep explicit per-session lanes and transactional repository writes. |
+| Abort overtakes earlier prompt/command acceptance | Land the per-session execution dispatcher before transport concurrency; keep force restart outside it. |
+| Delete cleanup lets a later rename reserve the lane first | Reserve the complete delete workflow synchronously at handler/service acceptance, before awaiting cleanup. |
+| Overlapping initial summaries regress client activity | Put initial builds and broadcasts on the existing summary-ordering tail while detaching that tracked work from frame ingestion. |
+| Concurrent mutation corrupts session order | Keep explicit per-session lanes, whole-delete reservation, and transactional repository writes. |
+| Raw route input reaches local logs | Parse method to a closed enum and use only fixed identities or declared handler templates in every route diagnostic. |
 | Synchronous plugin code blocks the isolate | Keep synchronous work bounded; isolate/process redesign requires separate evidence and plan. |
 | PR #686 changes adjacent code | Rebase every step on current `main`, audit overlap, and keep this implementation out of the feature PR. |
 
 ## Plan Review
 
 - **Reviewer:** `aristotle-plan-review`
-- **Verdict:** rejected with four actionable findings; all findings applied
-  directly; revised plan not re-reviewed
+- **Initial verdict:** rejected with four actionable findings; all findings
+  applied directly
+- **Second verdict after considerable PR-feedback changes:** rejected with four
+  actionable findings; all findings applied directly; latest revision not
+  re-reviewed
 - **Reviewed scope:** complete `PLAN.md` and `TRACKER.md`
 - **Findings applied:** added one shared relay/debug route-dispatch barrier;
   replaced completion-only route metadata with a synchronous two-phase router
@@ -860,3 +1046,14 @@ product suite applies.
   enqueue-before-handoff semantics
 - **Delivery correction:** split lifecycle and transport prerequisites so every
   implementation step remains below the 1,500-line soft cap
+- **PR review corrections:** five valid bot findings added closed method parsing,
+  a complete raw-route diagnostic audit, per-session execution ordering,
+  whole-delete reservation before cleanup, and monotonic detached summary
+  delivery. The fixed series expanded to eight steps so the new execution owner
+  lands independently before concurrent dispatch.
+- **Second-review findings applied:** made ordinary/restart route outcomes sealed
+  valid-only variants; replaced the forwarded restart callback with a concrete
+  dispatcher and shutdown stream; assigned sole execution-dispatcher lifecycle
+  ownership and exact teardown order; and kept repository deletion, tombstones,
+  and deletion events unambiguously in `SessionMutationDispatcher` behind the
+  callback-scoped cleanup lane.
