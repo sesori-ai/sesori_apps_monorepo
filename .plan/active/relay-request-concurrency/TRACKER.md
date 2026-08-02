@@ -112,7 +112,7 @@
   does not re-review direct corrections and no approval of the revised plan is
   claimed.
 - **Step 1/7 delivery:** opened plan PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 972
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 979
   documentation-only changed lines. Exact titles/branches/step totals and
   `git diff --check` passed; the user explicitly exempted this first
   plan-containing PR from the 1,500-line soft cap.
