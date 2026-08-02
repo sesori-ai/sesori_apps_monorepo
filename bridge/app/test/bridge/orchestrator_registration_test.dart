@@ -195,6 +195,33 @@ void main() {
 
       expect(harness.relayServer.connectedClientCount, equals(1));
     });
+
+    test("cancellation while initial connect returns closes the promoted connection", () async {
+      final connectReturnGate = Completer<void>();
+      final harness = await _RegistrationHarness.start(
+        repository: FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001",
+        connectReturnDelay: connectReturnGate.future,
+      );
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+      await harness.relayClient.connectPromoted.future;
+
+      final cancelFuture = harness.session.cancel();
+      connectReturnGate.complete();
+      await cancelFuture;
+      await harness.runFuture.timeout(const Duration(seconds: 5));
+
+      expect(
+        harness.relayClient.sendIfCurrent(
+          connection: harness.relayClient.promotedConnection!,
+          connID: 1,
+          payload: const [1],
+        ),
+        RelaySendOutcome.stale,
+      );
+    });
   });
 
   group("OrchestratorSession routed request boundaries", () {
@@ -255,6 +282,34 @@ void main() {
       final successor = await harness.relayServer.nextClient(timeout: const Duration(seconds: 5));
       final authMessage = await _firstTextMessage(successor);
       expect(authMessage["bridgeId"], "br_sendfail01");
+    });
+
+    test("a stale routed response does not count unsent bandwidth", () async {
+      final harness = await _RegistrationHarness.start(
+        repository: FakeBridgeRegistrationRepository()..nextBridgeId = "br_stale001",
+      );
+      addTearDown(harness.close);
+      final phone = await _activatePhone(harness: harness, connId: 10);
+      final sentByteCounts = <int>[];
+      final subscription = harness.session.bytesSent.listen(sentByteCounts.add);
+      addTearDown(subscription.cancel);
+      harness.relayClient.staleNextSend = true;
+
+      await _sendEncrypted(
+        socket: phone.socket,
+        connId: 10,
+        encryptor: phone.encryptor,
+        message: const RelayMessage.request(
+          id: "stale-response-request",
+          method: "GET",
+          path: "/global/health",
+          headers: {},
+          body: null,
+        ),
+      );
+      await _waitFor(() => !harness.relayClient.staleNextSend, reason: "stale response attempt");
+
+      expect(sentByteCounts, isEmpty);
     });
 
     test("routed and control diagnostics retain useful local context", () async {
@@ -439,6 +494,7 @@ class _RegistrationHarness {
 
   static Future<_RegistrationHarness> start({
     required FakeBridgeRegistrationRepository repository,
+    Future<void>? connectReturnDelay,
   }) async {
     final relayServer = await _CountingRelayServer.start();
     final database = createTestDatabase();
@@ -457,6 +513,7 @@ class _RegistrationHarness {
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: registrationService,
+      connectReturnDelay: connectReturnDelay,
     );
     final restartService = _RecordingRestartService(relayClient: relayClient);
 
@@ -533,13 +590,29 @@ class _RecordingRelayClient extends RelayClient {
     required super.relayURL,
     required super.accessTokenProvider,
     required super.bridgeIdProvider,
+    required this.connectReturnDelay,
   });
 
   int sendCount = 0;
   int? lastConnId;
   bool failNextSend = false;
+  bool staleNextSend = false;
+  final Future<void>? connectReturnDelay;
+  final Completer<void> connectPromoted = Completer<void>();
+  RelayConnection? promotedConnection;
   Future<void>? closeDelay;
   final Completer<void> closeStarted = Completer<void>();
+
+  @override
+  Future<RelayConnection> connect() async {
+    final connection = await super.connect();
+    promotedConnection = connection;
+    if (!connectPromoted.isCompleted) {
+      connectPromoted.complete();
+    }
+    await connectReturnDelay;
+    return connection;
+  }
 
   @override
   Future<RelayCloseOutcome> closeIfCurrent({required RelayConnection connection}) async {
@@ -560,6 +633,10 @@ class _RecordingRelayClient extends RelayClient {
     if (failNextSend) {
       failNextSend = false;
       throw StateError("send failed intentionally");
+    }
+    if (staleNextSend) {
+      staleNextSend = false;
+      return RelaySendOutcome.stale;
     }
     final outcome = super.sendIfCurrent(
       connection: connection,

@@ -330,6 +330,31 @@ void main() {
       expect(reporter.recordedIdentifiers, isEmpty);
     });
 
+    test("stale callback cannot unsubscribe a successor reusing the connection id", () async {
+      final client = _RecordingRelayClient()..nextOutcome = RelaySendOutcome.stale;
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
+      manager.setRoomKey(makeRoomKey());
+      addTearDown(manager.stop);
+
+      manager.subscribeForTest(1, client);
+      client.onNextSend = () {
+        client.onNextSend = null;
+        manager.orphanAll();
+        manager.subscribeForTest(1, client);
+        client.nextOutcome = RelaySendOutcome.sent;
+      };
+      manager.enqueueEvent(_event("reused-connection-id"));
+      await _waitForSendCount(client, 2);
+
+      expect(manager.subscriberCount, 1);
+      expect(manager.pendingReplayCount, 0);
+      expect(client.sentConnIDs, [1, 1]);
+    });
+
     test("stop clears subscribers and orphan queues", () {
       final manager = SSEManager(
         replayWindow: SSEManager.defaultReplayWindow,
@@ -422,6 +447,7 @@ class _RecordingRelayClient extends RelayClient {
   final List<int> sentConnIDs = <int>[];
   final List<List<int>> sentPayloads = <List<int>>[];
   RelaySendOutcome nextOutcome = RelaySendOutcome.sent;
+  void Function()? onNextSend;
 
   _RecordingRelayClient()
     : super(
@@ -438,7 +464,9 @@ class _RecordingRelayClient extends RelayClient {
   }) {
     sentConnIDs.add(connID);
     sentPayloads.add(List<int>.from(payload));
-    return nextOutcome;
+    final outcome = nextOutcome;
+    onNextSend?.call();
+    return outcome;
   }
 }
 

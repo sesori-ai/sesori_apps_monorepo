@@ -890,7 +890,14 @@ class OrchestratorSession {
       relayConnection = await _client.connect();
       _relayConnection = relayConnection;
       Log.d("relay connected");
-      if (_cancelled) return;
+      if (_cancelled) {
+        final closeFuture = _client.closeIfCurrent(connection: relayConnection);
+        if (identical(_relayConnection, relayConnection)) {
+          _relayConnection = null;
+        }
+        await closeFuture;
+        return;
+      }
 
       _sessionAbortService.abortStartedSessions
           .listen(_completionListener.markSessionAbortPending)
@@ -2065,16 +2072,19 @@ class OrchestratorSession {
     final respJson = jsonEncode(message.toJson());
     final jsonBytes = utf8.encode(respJson);
     Log.v("[response] sending ${jsonBytes.length} bytes to connID=$connID");
-    _bytesSentController.add(jsonBytes.length);
     final cryptoService = RelayCryptoService();
     final encryptionKey = SecretKey(List<int>.from(_roomKey));
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
     final framed = await frame(jsonBytes, encryptor: encryptor);
-    return _sendIfCurrent(
+    final outcome = _sendIfCurrent(
       connection: connection,
       connID: connID,
       payload: framed,
     );
+    if (outcome == RelaySendOutcome.sent) {
+      _bytesSentController.add(jsonBytes.length);
+    }
+    return outcome;
   }
 
   RelaySendOutcome _sendIfCurrent({

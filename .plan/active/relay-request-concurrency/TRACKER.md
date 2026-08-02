@@ -306,5 +306,10 @@
   feedback identified two consequences of stale retries: the stale callback now
   detaches its subscriber immediately so a burst cannot consume the poison-event
   budget, and bandwidth accounting occurs only after a successful relay send.
+  Follow-up Kody/Cubic/Codex feedback then closed the remaining exact-ownership
+  gaps: initial-connect cancellation closes its promoted handle, stale SSE
+  callbacks detach only their exact subscription owner, and ordinary routed
+  responses also count bytes only after a successful send. All 30 focused
+  registration/routing/SSE tests and strict app analysis pass after these fixes.
 - **Step 4/10 delivery:** [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699)
-  is open at 1,154 changed lines; the owner-provided branch/worktree are reused.
+  is open at 1,318 changed lines; the owner-provided branch/worktree are reused.
