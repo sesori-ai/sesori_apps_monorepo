@@ -85,7 +85,7 @@ class PromptInput extends StatefulWidget {
 class _PromptInputState extends State<PromptInput> {
   static const _draftCalculator = ComposerDraftCalculator();
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
-  static const _completionFeedbackPulseDelay = Duration(milliseconds: 100);
+  static const _successFeedbackPulseDelay = Duration(milliseconds: 100);
   final _controller = TextEditingController();
   final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
@@ -103,9 +103,9 @@ class _PromptInputState extends State<PromptInput> {
   int? _recordingPointer;
   Offset? _recordingPointerPosition;
 
-  /// Keeps the cancel commitment from buzzing repeatedly while the pointer
-  /// remains inside the target. Cleared when the pointer leaves.
-  bool _dismissFeedbackPlayed = false;
+  /// Whether release currently commits cancellation. The transition in either
+  /// direction receives one tactile tick.
+  bool _cancelTargetEngaged = false;
 
   /// Keeps the typing layout mounted after the keyboard affordance was tapped
   /// while the field wasn't in the tree yet (hold-to-talk / compact layouts),
@@ -367,7 +367,7 @@ class _PromptInputState extends State<PromptInput> {
 
   Future<void> _handleRecordStart() async {
     if (_voiceState != _VoiceState.idle || _isRecordStartInFlight || _isCancelInFlight) return;
-    _dismissFeedbackPlayed = false;
+    _cancelTargetEngaged = false;
     // Fire before recorder startup or rebuilding so touch-down feels immediate.
     unawaited(_playHapticFeedback(play: HapticFeedback.lightImpact));
     final pinnedVoiceLayout = _restingLayout;
@@ -428,26 +428,29 @@ class _PromptInputState extends State<PromptInput> {
   void _handleRecordDragUpdate({required Offset globalPosition}) {
     if (_displayedVoiceState != _VoiceState.recording) return;
     final progress = _cancelProgressFor(globalPosition: globalPosition);
-    if (progress >= 1) {
-      _playDismissFeedback();
-    } else {
-      _dismissFeedbackPlayed = false;
+    final cancelTargetEngaged = progress >= 1;
+    if (cancelTargetEngaged != _cancelTargetEngaged) {
+      _cancelTargetEngaged = cancelTargetEngaged;
+      unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
     }
     _cancelDragProgress.value = progress;
   }
 
   /// The finger starts engaging the cancel affordance within this distance of
   /// the target's centre, and is committed to cancelling within
-  /// [_cancelCommitRadius] — roughly the 44pt button plus touch slop.
+  /// [_cancelCommitRadius] — roughly the 44pt button plus touch slop. Once
+  /// committed, the wider disengage radius prevents chatter at the boundary.
   static const double _cancelReachRadius = 170;
   static const double _cancelCommitRadius = 44;
+  static const double _cancelDisengageRadius = 56;
 
   double _cancelProgressFor({required Offset globalPosition}) {
     final target = _cancelTargetKey.currentContext?.findRenderObject();
     if (target is! RenderBox || !target.hasSize || !target.attached) return 0;
     final center = target.localToGlobal(target.size.center(Offset.zero));
     final distance = (globalPosition - center).distance;
-    final fraction = (distance - _cancelCommitRadius) / (_cancelReachRadius - _cancelCommitRadius);
+    final thresholdRadius = _cancelTargetEngaged ? _cancelDisengageRadius : _cancelCommitRadius;
+    final fraction = (distance - thresholdRadius) / (_cancelReachRadius - thresholdRadius);
     return (1 - fraction).clamp(0.0, 1.0);
   }
 
@@ -528,8 +531,7 @@ class _PromptInputState extends State<PromptInput> {
     // long before a slow upload errors out); every continuation below is a
     // no-op once a newer interaction owns the composer.
     final interactionId = _voiceInteractionId;
-    _dismissFeedbackPlayed = false;
-    unawaited(_playCompletionFeedback(interactionId: interactionId));
+    _cancelTargetEngaged = false;
     _minimumRecordingDurationTimer?.cancel();
     _minimumRecordingDurationTimer = null;
     _updateComposerState(
@@ -551,6 +553,8 @@ class _PromptInputState extends State<PromptInput> {
         transcript: transcript,
       );
       _applyDraft(draft: nextDraft);
+      // Reward the completed outcome, not release that merely starts transcription.
+      unawaited(_playSuccessFeedback(interactionId: interactionId));
       _scrollToDraftEndAfterLayout();
       widget.onVoiceTranscriptionCompleted();
       // Text-first raises the keyboard so the transcript can be extended
@@ -650,14 +654,13 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   void _playDismissFeedback() {
-    if (_dismissFeedbackPlayed) return;
-    _dismissFeedbackPlayed = true;
+    if (_cancelTargetEngaged) return;
     unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
   }
 
-  Future<void> _playCompletionFeedback({required int interactionId}) async {
+  Future<void> _playSuccessFeedback({required int interactionId}) async {
     await _playHapticFeedback(play: HapticFeedback.lightImpact);
-    await Future<void>.delayed(_completionFeedbackPulseDelay);
+    await Future<void>.delayed(_successFeedbackPulseDelay);
     if (!mounted || interactionId != _voiceInteractionId) return;
     await _playHapticFeedback(play: HapticFeedback.heavyImpact);
   }
