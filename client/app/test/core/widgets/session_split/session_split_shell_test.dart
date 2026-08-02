@@ -10,6 +10,7 @@ import "package:sesori_mobile/core/widgets/sesori_background_widget.dart";
 import "package:sesori_mobile/core/widgets/session_split/empty_session_detail_panel.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_breakpoints.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
+import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -22,6 +23,41 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("SessionSplitShell", () {
+    testWidgets("moves the visible pane claim when its viewing service changes", (tester) async {
+      final firstService = stubbedProjectViewingService();
+      final replacementService = stubbedProjectViewingService();
+      await tester.binding.setSurfaceSize(const Size(1024, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      Widget buildShell({required ProjectViewingService service}) {
+        return MaterialApp(
+          home: SessionSplitShell(
+            projectViewingService: service,
+            list: const SizedBox(),
+            child: const SizedBox(),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildShell(service: firstService));
+      await tester.pump();
+      clearInteractions(firstService);
+
+      await tester.pumpWidget(buildShell(service: replacementService));
+      await tester.pump();
+
+      verify(
+        () => firstService.releaseWideListPaneClaim(claim: any(named: "claim")),
+      ).called(1);
+      verify(replacementService.beginWideListPaneClaim).called(1);
+      verify(
+        () => replacementService.setWideListPaneVisible(
+          claim: any(named: "claim"),
+          isVisible: true,
+        ),
+      ).called(1);
+    });
+
     testWidgets("narrow route exposes isSplit=false and hides split panes", (tester) async {
       final harness = AdaptiveSessionRouterTestHarness();
       await tester.binding.setSurfaceSize(const Size(390, 800));

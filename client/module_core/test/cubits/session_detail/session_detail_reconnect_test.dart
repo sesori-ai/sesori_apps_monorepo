@@ -120,6 +120,7 @@ void main() {
     final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     final globalEvents = StreamController<SseEvent>.broadcast();
     final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
+    final projectViewingService = stubbedProjectViewingService();
 
     addTearDown(sessionEvents.close);
     addTearDown(globalEvents.close);
@@ -181,7 +182,7 @@ void main() {
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
-      projectViewingService: stubbedProjectViewingService(),
+      projectViewingService: projectViewingService,
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
@@ -196,6 +197,9 @@ void main() {
 
     verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
     verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verify(
+      () => projectViewingService.markClaimFailed(claim: any(named: "claim")),
+    ).called(1);
     expect(cubit.state, isA<SessionDetailLoaded>());
   });
 

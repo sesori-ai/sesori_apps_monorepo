@@ -65,12 +65,12 @@ class ProjectViewingService with Disposable {
     required RouteSource routeSource,
   }) : _viewRepository = viewRepository,
        _route = routeSource.currentRoute,
-       _backgrounded = _isBackgroundState(lifecycleSource.lifecycleState),
+       _backgrounded = _isBackgroundState(state: lifecycleSource.lifecycleState),
        _wasConnected = connectionService.currentStatus is ConnectionConnected {
     _subscriptions
       ..add(
         routeSource.currentRouteStream.distinct().listen(
-          _onRouteChanged,
+          (route) => _onRouteChanged(route: route),
           onError: (Object error, StackTrace stackTrace) {
             logw("project view route tracking failed", error, stackTrace);
           },
@@ -78,7 +78,7 @@ class ProjectViewingService with Disposable {
       )
       ..add(
         lifecycleSource.lifecycleStateStream.listen(
-          _onLifecycleChanged,
+          (state) => _onLifecycleChanged(state: state),
           onError: (Object error, StackTrace stackTrace) {
             logw("project view lifecycle tracking failed", error, stackTrace);
           },
@@ -86,7 +86,7 @@ class ProjectViewingService with Disposable {
       )
       ..add(
         connectionService.status.listen(
-          _onConnectionStatusChanged,
+          (status) => _onConnectionStatusChanged(status: status),
           onError: (Object error, StackTrace stackTrace) {
             logw("project view connection tracking failed", error, stackTrace);
           },
@@ -96,7 +96,7 @@ class ProjectViewingService with Disposable {
 
   ProjectViewClaim beginListClaim({required String projectId}) {
     _checkUsable();
-    _validateProjectId(projectId);
+    _validateProjectId(projectId: projectId);
     final claim = ProjectViewClaim();
     _listClaim = _ProjectViewClaimPending(claim: claim, projectId: projectId);
     _recomputeDeclaration();
@@ -105,7 +105,7 @@ class ProjectViewingService with Disposable {
 
   ProjectViewClaim beginDetailClaim({required String projectId}) {
     _checkUsable();
-    _validateProjectId(projectId);
+    _validateProjectId(projectId: projectId);
     final previousVisibleProjectId = _resolveVisibleProjectId();
     _detailTransitionProjectId = previousVisibleProjectId == projectId ? projectId : null;
     final claim = ProjectViewClaim();
@@ -116,7 +116,7 @@ class ProjectViewingService with Disposable {
 
   void markClaimReady({required ProjectViewClaim claim, required String projectId}) {
     if (_disposed) return;
-    _validateProjectId(projectId);
+    _validateProjectId(projectId: projectId);
     final listClaim = _listClaim;
     if (listClaim != null && identical(listClaim.claim, claim)) {
       _listClaim = _ProjectViewClaimReady(claim: claim, projectId: projectId);
@@ -196,7 +196,7 @@ class ProjectViewingService with Disposable {
   @visibleForTesting
   String? get declaredProjectId => _declaredProjectId;
 
-  void _onRouteChanged(AppRouteDef? route) {
+  void _onRouteChanged({required AppRouteDef? route}) {
     if (_disposed || _route == route) return;
     final previousVisibleProjectId = _resolveVisibleProjectId();
     final previousRoute = _route;
@@ -209,15 +209,15 @@ class ProjectViewingService with Disposable {
     _recomputeDeclaration();
   }
 
-  void _onLifecycleChanged(LifecycleState state) {
+  void _onLifecycleChanged({required LifecycleState state}) {
     if (_disposed || state == LifecycleState.inactive) return;
-    final backgrounded = _isBackgroundState(state);
+    final backgrounded = _isBackgroundState(state: state);
     if (_backgrounded == backgrounded) return;
     _backgrounded = backgrounded;
     _recomputeDeclaration();
   }
 
-  void _onConnectionStatusChanged(ConnectionStatus status) {
+  void _onConnectionStatusChanged({required ConnectionStatus status}) {
     if (_disposed) return;
     final connected = status is ConnectionConnected;
     final reconnected = connected && !_wasConnected;
@@ -231,7 +231,7 @@ class ProjectViewingService with Disposable {
     final nextProjectId = _backgrounded ? null : _resolveVisibleProjectId();
     if (_declaredProjectId == nextProjectId) return;
     _declaredProjectId = nextProjectId;
-    _enqueueSend();
+    _enqueueSend(force: false);
   }
 
   String? _resolveVisibleProjectId() {
@@ -261,7 +261,7 @@ class ProjectViewingService with Disposable {
     };
   }
 
-  void _enqueueSend({bool force = false}) {
+  void _enqueueSend({required bool force}) {
     _forceNextSend = _forceNextSend || force;
     _sendTail = _sendTail
         .then((_) async {
@@ -274,8 +274,8 @@ class ProjectViewingService with Disposable {
           _lastSentProjectId = projectId;
           _hasSent = true;
         })
-        .catchError((Object error, StackTrace stackTrace) {
-          logw("project view declaration failed", error, stackTrace);
+        .catchError((Object _) {
+          logw("project view declaration failed");
         });
     unawaited(_sendTail);
   }
@@ -284,11 +284,11 @@ class ProjectViewingService with Disposable {
     if (_disposed) throw StateError("ProjectViewingService has been disposed");
   }
 
-  static void _validateProjectId(String projectId) {
+  static void _validateProjectId({required String projectId}) {
     if (projectId.isEmpty) throw ArgumentError.value(projectId, "projectId", "must not be empty");
   }
 
-  static bool _isBackgroundState(LifecycleState state) => switch (state) {
+  static bool _isBackgroundState({required LifecycleState state}) => switch (state) {
     LifecycleState.detached || LifecycleState.hidden || LifecycleState.paused => true,
     LifecycleState.resumed || LifecycleState.inactive => false,
   };
@@ -298,7 +298,12 @@ class ProjectViewingService with Disposable {
 
   Future<void> _dispose() async {
     if (_disposed) return;
-    await _subscriptions.dispose();
+    _disposed = true;
+    try {
+      await _subscriptions.dispose();
+    } catch (error, stackTrace) {
+      logw("project view subscription cleanup failed", error, stackTrace);
+    }
     _listClaim = null;
     _detailClaim = null;
     _detailTransitionProjectId = null;
@@ -307,7 +312,6 @@ class ProjectViewingService with Disposable {
     _backgrounded = false;
     _recomputeDeclaration();
     await _sendTail;
-    _disposed = true;
   }
 }
 

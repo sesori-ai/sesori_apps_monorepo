@@ -5,12 +5,12 @@
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
   `ba25adae6374ee1895e78564f6b457b66b172e04`
-- **Series state:** Steps 1/9, 2.a–2.c/9, and 3–6/9 merged; Step 7 is ready for PR
+- **Series state:** Steps 1/9, 2.a–2.c/9, and 3–6/9 merged; Step 7 is under review in PR #697
 - **Current step:** Step 7/9 — shared client project presence
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
 - **Previous step PR:** [#693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged
-- **Next action:** raise Step 7, then investigate terminal PR loss while its PR is reviewed
+- **Next action:** finish Step 7 review in PR #697 and monitor the isolated PR-metadata fix in PR #698
 
 ## Existing Baseline
 
@@ -48,7 +48,7 @@
 | [x] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 4,000–4,200 | [PR #686](https://github.com/sesori-ai/sesori_apps_monorepo/pull/686) merged as `3bbb1e8e` |
 | [x] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | [PR #692](https://github.com/sesori-ai/sesori_apps_monorepo/pull/692) merged as `42161a53` |
 | [x] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | [PR #693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged as `ba25adae` |
-| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | Current; implementation, review correction, and local verification complete |
+| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | [PR #697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) under review; feedback fixes verified locally |
 | [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
 | [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8 merge |
 
@@ -402,7 +402,8 @@
 - **Step 7/9 verification:** Module-core code generation and formatting pass, as
   do `dart pub get`, all 942 module-core tests, all 872 app tests, fatal-info
   analysis for module core and app, downstream desktop analysis, and
-  `git diff --check`. The 1,104 changed lines remain within the target. Focused
+  `git diff --check`. After review fixes, the 1,217 changed lines remain within
+  the target. Focused
   API/repository/service, cubit, route, and adaptive-shell regressions cover
   readiness, failure, route precedence, wide/narrow transitions, lifecycle,
   reconnect, stale cleanup, serialized sends, and the new-session refresh path.
@@ -412,6 +413,23 @@
   service ignores stale releases; a cross-project replacement regression covers
   the corrected ordering. The valid finding was applied and, per review rules,
   was not re-reviewed.
+- **Step 7/9 PR review:** PR #697 feedback now transfers a visible pane claim
+  when its injected service changes, marks detail presence unavailable while a
+  reload waits for connection, uses required named helper parameters, emits
+  privacy-safe fixed categories for project-view transport failures, and blocks
+  new claims as soon as service disposal starts while isolating subscription
+  cleanup failure. The 16 directly relevant module-core tests, 11 adaptive-shell
+  tests, module-core/app fatal-info analysis, formatting, and `git diff --check`
+  pass after these corrections. The malformed-empty-route suggestion was not
+  implemented because GoRouter cannot match the project shell without its
+  required non-empty path segment; strict service validation keeps that
+  impossible state from entering presence ownership.
+- **PR-status investigation:** The reported PR indicator loss was reproduced as
+  an ordinary catalog-derived `session.updated` event replacing identity-gated
+  REST PR metadata. The isolated client fix is under review in
+  [PR #698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/698); it keeps
+  project-scoped `sessions.updated` REST refreshes authoritative for clearing
+  metadata.
 
 ## Findings and Plan Deltas
 

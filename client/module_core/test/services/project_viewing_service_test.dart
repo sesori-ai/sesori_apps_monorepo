@@ -12,7 +12,12 @@ class _MockProjectViewRepository extends Mock implements ProjectViewRepository {
 class _MockConnectionService extends Mock implements ConnectionService {}
 
 class _FakeLifecycleSource implements LifecycleSource {
-  final BehaviorSubject<LifecycleState> states = BehaviorSubject.seeded(LifecycleState.resumed);
+  final BehaviorSubject<LifecycleState> states;
+
+  _FakeLifecycleSource() : states = BehaviorSubject.seeded(LifecycleState.resumed);
+
+  _FakeLifecycleSource.blocking({required FutureOr<void> Function() onCancel})
+    : states = BehaviorSubject.seeded(LifecycleState.resumed, onCancel: onCancel);
 
   @override
   ValueStream<LifecycleState> get lifecycleStateStream => states.stream;
@@ -274,6 +279,36 @@ void main() {
       await drain();
 
       expect(sent, ["project-1", "project-2"]);
+    });
+
+    test("disposal rejects new claims while subscription cancellation is pending", () async {
+      await service.onDispose();
+      await lifecycleSource.states.close();
+      final cancellationStarted = Completer<void>();
+      final allowCancellation = Completer<void>();
+      lifecycleSource = _FakeLifecycleSource.blocking(
+        onCancel: () {
+          cancellationStarted.complete();
+          return allowCancellation.future;
+        },
+      );
+      service = ProjectViewingService(
+        viewRepository: repository,
+        lifecycleSource: lifecycleSource,
+        connectionService: connectionService,
+        routeSource: routeSource,
+      );
+
+      final disposal = service.onDispose();
+      await cancellationStarted.future;
+
+      expect(
+        () => service.beginListClaim(projectId: "project-during-disposal"),
+        throwsStateError,
+      );
+
+      allowCancellation.complete();
+      await disposal;
     });
   });
 }

@@ -172,6 +172,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _drainPendingEvents();
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
+        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
         _waitingForConnection = true;
         if (_connectionService.currentStatus is ConnectionConnected) {
           _waitingForConnection = false;

@@ -23,8 +23,8 @@ class SessionSplitShell extends StatefulWidget {
 }
 
 class _SessionSplitShellState extends State<SessionSplitShell> {
-  late final ProjectViewingService _projectViewingService;
-  late final ProjectViewPaneClaim _paneClaim;
+  late ProjectViewingService _projectViewingService;
+  late ProjectViewPaneClaim _paneClaim;
   bool _listPaneVisible = false;
 
   @override
@@ -32,6 +32,21 @@ class _SessionSplitShellState extends State<SessionSplitShell> {
     super.initState();
     _projectViewingService = widget.projectViewingService;
     _paneClaim = _projectViewingService.beginWideListPaneClaim();
+  }
+
+  @override
+  void didUpdateWidget(covariant SessionSplitShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.projectViewingService, widget.projectViewingService)) return;
+    _projectViewingService.releaseWideListPaneClaim(claim: _paneClaim);
+    _projectViewingService = widget.projectViewingService;
+    _paneClaim = _projectViewingService.beginWideListPaneClaim();
+    if (_listPaneVisible) {
+      _projectViewingService.setWideListPaneVisible(
+        claim: _paneClaim,
+        isVisible: true,
+      );
+    }
   }
 
   void _reportListPanePresence({required bool isVisible}) {
