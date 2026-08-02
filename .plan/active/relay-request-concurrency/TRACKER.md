@@ -50,10 +50,16 @@
 
 - **Reviewer:** `chatgpt-codex-connector` (GitHub actor type `Bot`)
 - **Date:** 2026-08-02
-- **Nine valid findings applied:** closed method parsing and complete
-  route/control diagnostic audit in Step 2; prompt/default/abort and conflicting
-  pending-choice ordering in Step 5; whole root/child and archive/delete mutation
-  ordering in Step 6; and monotonic initial summaries in Step 9
+- **Nine valid findings applied:**
+  1. closed external-method parsing;
+  2. removal of raw route diagnostics;
+  3. prompt-before-abort ordering;
+  4. delete-lane reservation before cleanup;
+  5. monotonic detached initial summaries;
+  6. removal of raw relay-control diagnostics;
+  7. conflicting pending-choice ordering;
+  8. root/descendant mutation coordination; and
+  9. archive/unarchive ordering against deletion.
 - **Plausibility audit:** included prompt-default FIFO, delayed creation
   publication, and project open/create/hide/Git ordering because ordinary
   multi-surface flows can produce wrong persisted state or filesystem effects;
@@ -181,7 +187,7 @@
   isolation, lifecycle, and privacy findings. All were applied directly, and no
   approval of the latest revision is claimed.
 - **Step 1/10 delivery:** opened plan PR
-  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 1,470
+  [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) with 1,476
   documentation-only changed lines. Exact titles/branches/step totals and
   `git diff --check` passed; the user explicitly exempted this first
   plan-containing PR from the 1,500-line soft cap.
