@@ -1291,6 +1291,10 @@ void main() {
       ]);
       final events = <BridgeSseEvent>[];
       final subscription = plugin.events.listen(events.add);
+      final canonicalCallObserved = plugin.events
+          .where((event) => event is BridgeSseMessagePartUpdated)
+          .cast<BridgeSseMessagePartUpdated>()
+          .firstWhere((event) => event.part.messageID == "call-immediate");
 
       await plugin.sendPrompt(
         sessionId: sessionId,
@@ -1306,6 +1310,7 @@ void main() {
           callId: "call-immediate",
           name: "exec_command",
           arguments: '{"cmd":"printf \'LIVE-EVENT-TEST immediate-complete\\\\n\'"}',
+          turnId: "u-live",
         ),
         _toolOutput(
           callId: "call-immediate",
@@ -1417,6 +1422,31 @@ void main() {
         mode: FileMode.append,
       );
 
+      await canonicalCallObserved.timeout(const Duration(seconds: 1));
+      fake
+        ..pushNotification("item/started", {
+          "threadId": sessionId,
+          "turnId": "u-live",
+          "item": {
+            "type": "commandExecution",
+            "id": "exec-immediate",
+            "command": "/bin/zsh -lc \"printf 'LIVE-EVENT-TEST immediate-complete\\n'\"",
+            "status": "inProgress",
+          },
+        })
+        ..pushNotification("item/completed", {
+          "threadId": sessionId,
+          "turnId": "u-live",
+          "item": {
+            "type": "commandExecution",
+            "id": "exec-immediate",
+            "command": "/bin/zsh -lc \"printf 'LIVE-EVENT-TEST immediate-complete\\n'\"",
+            "aggregatedOutput": "LIVE-EVENT-TEST immediate-complete\n",
+            "exitCode": 0,
+            "status": "completed",
+          },
+        });
+
       fake.pushNotification("turn/completed", {
         "threadId": sessionId,
         "turn": {"id": "u-live"},
@@ -1449,6 +1479,7 @@ void main() {
         "call-recovery",
         "image-live",
       });
+      expect(finalLiveParts, isNot(contains("exec-immediate")));
       expect(history, hasLength(finalLiveParts.length));
       for (final message in history) {
         final historicalPart = message.parts.single;
@@ -1816,6 +1847,7 @@ Map<String, Object?> _toolCall({
   required String callId,
   required String name,
   required String arguments,
+  String? turnId,
 }) => {
   "timestamp": "2026-07-23T08:00:01Z",
   "type": "response_item",
@@ -1825,6 +1857,10 @@ Map<String, Object?> _toolCall({
     "call_id": callId,
     "name": name,
     "arguments": arguments,
+    if (turnId != null)
+      "internal_chat_message_metadata_passthrough": {
+        "turn_id": turnId,
+      },
   },
 };
 

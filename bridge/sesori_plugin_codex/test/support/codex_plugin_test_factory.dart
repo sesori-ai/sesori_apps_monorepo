@@ -4,6 +4,7 @@ import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
+import "package:codex_plugin/src/services/codex_tool_correlation_tracker.dart";
 
 CodexPlugin createInjectedCodexPlugin({
   required String serverUrl,
@@ -48,6 +49,9 @@ CodexPlugin createInjectedCodexPlugin({
       rolloutApi: rolloutApi,
       catalogRepository: catalogRepository,
       pollInterval: rolloutPollInterval,
+    ),
+    toolCorrelationTracker: CodexToolCorrelationTracker(
+      rolloutToolMapper: rolloutToolMapper,
     ),
     projectCwd: projectCwd,
     onConnected: null,

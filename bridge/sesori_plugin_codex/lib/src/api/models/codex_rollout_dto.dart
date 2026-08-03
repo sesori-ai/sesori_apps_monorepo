@@ -90,6 +90,16 @@ sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPay
       _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 }
 
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexRolloutItemMetadataDto with _$CodexRolloutItemMetadataDto {
+  const factory CodexRolloutItemMetadataDto({
+    @JsonKey(name: "turn_id") required String? turnId,
+  }) = _CodexRolloutItemMetadataDto;
+
+  factory CodexRolloutItemMetadataDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutItemMetadataDtoFromJson(json);
+}
+
 @Freezed(
   unionKey: "type",
   fallbackUnion: "unknown",
@@ -114,6 +124,7 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
     @JsonKey(name: "call_id") required String callId,
     required String name,
     required String arguments,
+    @JsonKey(name: "internal_chat_message_metadata_passthrough") required CodexRolloutItemMetadataDto? metadata,
   }) = CodexRolloutFunctionCallDto;
 
   @FreezedUnionValue("function_call_output")
@@ -128,6 +139,7 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
     @JsonKey(name: "call_id") required String callId,
     required String name,
     required String input,
+    @JsonKey(name: "internal_chat_message_metadata_passthrough") required CodexRolloutItemMetadataDto? metadata,
   }) = CodexRolloutCustomToolCallDto;
 
   @FreezedUnionValue("custom_tool_call_output")
