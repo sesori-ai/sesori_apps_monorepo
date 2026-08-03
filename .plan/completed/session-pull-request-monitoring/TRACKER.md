@@ -32,12 +32,12 @@
 - **Date:** 2026-07-31
 - **Findings applied:** none; pre-review gate and bridge/client/shared
   architecture all passed
-- **Post-review drift:** `main` advanced through Harness settings, output-image
-  plugin work, analytics documentation, bridge `--data-dir` expansion, and plan
-  archival. The current tip is audited at `10c7afb9`; none changes this feature's
-  architecture or requested agent guidance. The implementation base is now the
-  repository-rename hotfix and unrelated client haptics at `d38d4793`; no plan
-  architecture changed.
+- **Historical post-review drift:** After the original review, `main` advanced
+  through Harness settings, output-image plugin work, analytics documentation,
+  bridge `--data-dir` expansion, plan archival, the repository-rename hotfix,
+  and unrelated client haptics. `10c7afb9` and `d38d4793` are historical audit
+  anchors only; neither changed this feature's architecture. The unambiguous
+  final completion base is `ceaa6758` above.
 
 ## Delivery Steps
 
@@ -93,25 +93,23 @@
 - After each merge, update this tracker in the next step and proceed in order
   unless a material decision or blocker requires the user.
 
-## Current Drift and Open Work
+## Final Drift and Resolved Work
 
-- Latest audited `main`: `ba25adae`, including Step 6 merged from PR #693. No
-  later drift affects the Step 7 client-presence architecture.
+- Final audited `main`: `ceaa6758`, the merge commit for final implementation
+  PR #707. The earlier `ba25adae` Step 6 audit remains historical evidence only.
 - Drift schema: v13 on `main`; Step 4 leaves the merged schema and migration
   unchanged.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
 - PR #647 is merged and consolidates Harness settings into one screen. Its
-  numeric-input/mutation pattern is current evidence for Step 8; PR cadence
-  remains a separate bridge setting.
-- Open PR #641 is analytics warehouse-only and does not change this feature's
-  no-new-event decision.
-- Open PR #621 touches the settings landing screen and may require Step 8 drift
-  reconciliation if it merges.
-- After the Step 7 PR is raised, separately reproduce terminal PR selection loss
-  while that PR is under review. The reported sequence is: merge the PR, merge
-  `main` into the same feature branch, then hard-reset and force-push that reused
-  branch to track `main` before the next plan step. Branch deletion alone is not
-  the suspected trigger; this investigation must not delay raising Step 7.
+  numeric-input/mutation pattern informed Step 8; PR cadence remains a separate
+  bridge setting.
+- PR #641 closed without merging; its analytics warehouse scope never changed
+  this feature's no-new-event decision.
+- PR #621 merged as `6583e7b2`; Step 8 reconciled its settings landing-screen
+  changes before completion.
+- The terminal PR selection-loss investigation completed in PR #698, merged as
+  `26701509`; project-scoped REST refreshes remain authoritative for clearing PR
+  metadata.
 
 ## Interview Decisions Recorded 2026-07-31
 
