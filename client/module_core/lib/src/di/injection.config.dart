@@ -31,8 +31,6 @@ import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/project_view_api.dart' as _i210;
-import 'package:sesori_dart_core/src/api/pull_request_refresh_settings_api.dart'
-    as _i431;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
@@ -265,11 +263,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i733.ProjectApi>(
       () => _i733.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i431.PullRequestRefreshSettingsApi>(
-      () => _i431.PullRequestRefreshSettingsApi(
-        client: gh<_i857.RelayHttpApiClient>(),
-      ),
-    );
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
@@ -374,6 +367,11 @@ extension GetItInjectableX on _i174.GetIt {
         connectionService: gh<_i369.ConnectionService>(),
       ),
     );
+    gh.lazySingleton<_i106.PullRequestRefreshSettingsRepository>(
+      () => _i106.PullRequestRefreshSettingsRepository(
+        bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
+      ),
+    );
     gh.lazySingleton<_i12.SessionService>(
       () => _i12.SessionService(repository: gh<_i7.SessionRepository>()),
     );
@@ -392,13 +390,6 @@ extension GetItInjectableX on _i174.GetIt {
         api: gh<_i733.ProjectApi>(),
         filesystemApi: gh<_i1068.FilesystemApi>(),
         sessionApi: gh<_i603.SessionApi>(),
-      ),
-    );
-    gh.lazySingleton<_i106.PullRequestRefreshSettingsRepository>(
-      () => _i106.PullRequestRefreshSettingsRepository(
-        pullRequestRefreshSettingsApi:
-            gh<_i431.PullRequestRefreshSettingsApi>(),
-        bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
       ),
     );
     gh.lazySingleton<_i150.SessionViewRepository>(

@@ -959,28 +959,26 @@ Scope:
   existing settings owner; custom integer seconds, default display 30, range
   15–3,600.
 - Keep current session row/`PrStatusRow` presentation; add no history UI.
-- Complete fake Git/GitHub/relay integration for view -> branch -> batch ->
-  selected cache -> `sessionsUpdated` -> refetch -> shared row.
+- Complete focused client settings integration for read, edit, rejection,
+  uncertainty reconciliation, reconnect fencing, and compatibility states.
 - Run final bridge/shared/client/mobile/desktop verification.
 
 Concrete classes and ownership:
 
-- Add `PullRequestRefreshSettingsApi({required RelayHttpApiClient client})` in
-  `client/module_core/lib/src/api/pull_request_refresh_settings_api.dart` for the
-  focused GET `/settings/pull-request-refresh` only. Add
-  `BridgeSettingsApi({required RelayHttpApiClient client})` in
+- Add `BridgeSettingsApi({required RelayHttpApiClient client})` in
   `client/module_core/lib/src/api/bridge_settings_api.dart` as the single client
-  wrapper for generic `PATCH /settings` mutations.
-- `BridgeSettingsApi` returns a sealed typed API-layer result: committed
+  settings transport owner. It exposes the focused GET
+  `/settings/pull-request-refresh` and generic `PATCH /settings`; do not add a
+  second feature-specific API wrapper.
+- For PATCH, `BridgeSettingsApi` returns a sealed typed API-layer result: committed
   `BridgeSettingUpdate`, rejected `BridgeSettingUpdateRejection`, or transport
   `ApiError`. It passes `BridgeSettingUpdate.fromJson` to the relay client for
   success parsing and parses a 400 raw body immediately at the API boundary with
   `BridgeSettingUpdateRejection.fromJson`; malformed rejection JSON remains the
   original explicit API failure. A 404 and every other transport error remain
   typed `ApiError` outcomes. No raw response body crosses into a repository.
-- Add `PullRequestRefreshSettingsRepository({required
-  PullRequestRefreshSettingsApi pullRequestRefreshSettingsApi, required
-  BridgeSettingsApi bridgeSettingsApi})` and its sealed result models under
+- Add `PullRequestRefreshSettingsRepository({required BridgeSettingsApi
+  bridgeSettingsApi})` and its sealed result models under
   `client/module_core/lib/src/repositories/`. It consumes only typed API
   outcomes and maps them into domain results: GET/PATCH 404 to unsupported, a
   matching sealed rejection to validated bounds, post-dispatch

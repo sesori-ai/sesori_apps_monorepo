@@ -18,6 +18,23 @@ void main() {
     api = BridgeSettingsApi(client: client);
   });
 
+  test("GET parses the committed pull request refresh interval", () async {
+    when(
+      () => client.get<PullRequestRefreshSettingsResponse>(
+        "/settings/pull-request-refresh",
+        fromJson: any(named: "fromJson"),
+      ),
+    ).thenAnswer((invocation) async {
+      final fromJson =
+          invocation.namedArguments[#fromJson] as PullRequestRefreshSettingsResponse Function(Map<String, dynamic>);
+      return ApiResponse.success(fromJson({"intervalSeconds": 30}));
+    });
+
+    final result = await api.getPullRequestRefreshSettings();
+
+    expect((result as SuccessResponse<PullRequestRefreshSettingsResponse>).data.intervalSeconds, 30);
+  });
+
   test("PATCH serializes and parses a committed setting variant", () async {
     when(
       () => client.patch<BridgeSettingUpdate>(

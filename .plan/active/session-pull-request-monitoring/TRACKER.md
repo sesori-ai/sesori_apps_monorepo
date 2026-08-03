@@ -470,9 +470,9 @@
   both fatal-info analyzers and `git diff --check` pass after the fixes.
 - **Step 8.a/9 merge:** PR #704 merged into `main` as `480a6bfd` on
   2026-08-03.
-- **Step 8.b/9 implementation:** Added generic `BridgeSettingsApi` PATCH
-  ownership and focused cadence GET API ownership. The API parses committed and
-  rejected shared unions before the repository maps supported, rejected,
+- **Step 8.b/9 implementation:** Added unified `BridgeSettingsApi` ownership of
+  the focused cadence GET and generic settings PATCH. The API parses committed
+  and rejected shared unions before the repository maps supported, rejected,
   uncertain, unsupported, and failed outcomes. The service owns integer planning;
   the focused cubit owns connection epochs, bounds, modal fencing, serialized
   operations, and uncertainty reconciliation; mobile Settings remains a thin
@@ -491,8 +491,8 @@
   tests, 48 focused mobile tests, and 18 focused bridge integration tests pass.
   Full suites pass all 972 module-core, 883 mobile, and 15 desktop tests; all
   three fatal-info analyzers and `git diff --check` pass. Review and cleanup
-  follow-ups reduce the final scope to 2,207 changed lines (2,188 additions and
-  19 deletions).
+  follow-ups reduce the final scope to 2,193 changed lines (2,159 additions and
+  34 deletions).
 - **Step 8.b/9 architecture review:** `aristotle-impl-review` approved the full
   working-tree scope with no findings, confirming the typed API boundary,
   focused layer ownership, DI, state lifecycle, and thin Settings integration.
@@ -510,6 +510,15 @@
   uncertain state, one duplicate localization key/helper, the service
   pass-through test, and a redundant cubit validation-delegation test. Focused
   cleanup verification passes 15 core and 22 Settings tests.
+- **PR #707 transport-owner cleanup:** Removed the redundant
+  `PullRequestRefreshSettingsApi` source, export, DI registration, and dedicated
+  test. `BridgeSettingsApi` now owns both settings transport calls while the
+  focused repository retains cadence-domain mapping. The bridge still exposes
+  its focused GET; only the duplicate client wrapper was obsolete. All 24
+  focused API/repository/service/cubit tests and the module-core, mobile, and
+  desktop fatal-info analyzers pass. Both `aristotle-plan-review` and
+  `aristotle-impl-review` approved the unified transport ownership with no
+  findings.
 
 ## Findings and Plan Deltas
 
@@ -556,7 +565,7 @@
   production release v1.6.0 predates this settings capability.
 - **2026-08-03 — Redesign architecture review:** The first plan review rejected
   Step 8 as too vague; the clarified re-review found one API-boundary violation.
-  Step 8.b now gives generic PATCH ownership to `BridgeSettingsApi`, which
-  parses both committed and rejected shared DTOs before returning a typed API
-  result. The focused repository receives no raw rejection JSON. Per review
-  rules, this applied finding is not re-reviewed.
+  Step 8.b now gives settings transport ownership to `BridgeSettingsApi`, which
+  performs the focused cadence GET and parses both committed and rejected PATCH
+  DTOs before returning typed API outcomes. The focused repository receives no
+  raw rejection JSON. Per review rules, this applied finding is not re-reviewed.

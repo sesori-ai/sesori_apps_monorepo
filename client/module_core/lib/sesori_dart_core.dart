@@ -41,7 +41,6 @@ export "src/api/notification_preferences_api.dart";
 export "src/api/plugin_preference_api.dart";
 export "src/api/product_analytics_preference_api.dart";
 export "src/api/project_api.dart";
-export "src/api/pull_request_refresh_settings_api.dart";
 export "src/api/storage/composer_draft_storage.dart";
 export "src/api/storage/product_analytics_preference_storage.dart";
 export "src/capabilities/notifications/register_token_request.dart";

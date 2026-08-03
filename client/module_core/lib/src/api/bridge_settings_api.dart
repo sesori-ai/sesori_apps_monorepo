@@ -10,6 +10,13 @@ class BridgeSettingsApi {
 
   final RelayHttpApiClient _client;
 
+  Future<ApiResponse<PullRequestRefreshSettingsResponse>> getPullRequestRefreshSettings() {
+    return _client.get<PullRequestRefreshSettingsResponse>(
+      "/settings/pull-request-refresh",
+      fromJson: PullRequestRefreshSettingsResponse.fromJson,
+    );
+  }
+
   Future<BridgeSettingUpdateApiResult> update({required BridgeSettingUpdate update}) async {
     return switch (await _client.patch<BridgeSettingUpdate>(
       "/settings",

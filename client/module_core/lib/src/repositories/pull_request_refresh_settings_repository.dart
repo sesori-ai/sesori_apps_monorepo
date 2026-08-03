@@ -5,23 +5,18 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/bridge_settings_api.dart";
-import "../api/pull_request_refresh_settings_api.dart";
 import "../capabilities/relay/relay_client.dart";
 import "models/pull_request_refresh_settings_result.dart";
 
 @lazySingleton
 class PullRequestRefreshSettingsRepository {
-  PullRequestRefreshSettingsRepository({
-    required PullRequestRefreshSettingsApi pullRequestRefreshSettingsApi,
-    required BridgeSettingsApi bridgeSettingsApi,
-  }) : _pullRequestRefreshSettingsApi = pullRequestRefreshSettingsApi,
-       _bridgeSettingsApi = bridgeSettingsApi;
+  PullRequestRefreshSettingsRepository({required BridgeSettingsApi bridgeSettingsApi})
+    : _bridgeSettingsApi = bridgeSettingsApi;
 
-  final PullRequestRefreshSettingsApi _pullRequestRefreshSettingsApi;
   final BridgeSettingsApi _bridgeSettingsApi;
 
   Future<PullRequestRefreshSettingsLoadResult> load() async {
-    return switch (await _pullRequestRefreshSettingsApi.getSettings()) {
+    return switch (await _bridgeSettingsApi.getPullRequestRefreshSettings()) {
       SuccessResponse(:final data) => PullRequestRefreshSettingsLoadSupported(response: data),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const PullRequestRefreshSettingsLoadUnsupported(),
       ErrorResponse(:final error) => PullRequestRefreshSettingsLoadFailure(error: error),

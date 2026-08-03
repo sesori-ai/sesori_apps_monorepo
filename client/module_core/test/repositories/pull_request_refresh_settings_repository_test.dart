@@ -3,7 +3,6 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/bridge_settings_api.dart";
-import "package:sesori_dart_core/src/api/pull_request_refresh_settings_api.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/repositories/models/pull_request_refresh_settings_result.dart";
 import "package:sesori_dart_core/src/repositories/pull_request_refresh_settings_repository.dart";
@@ -12,11 +11,8 @@ import "package:test/test.dart";
 
 class _MockBridgeSettingsApi extends Mock implements BridgeSettingsApi {}
 
-class _MockPullRequestRefreshSettingsApi extends Mock implements PullRequestRefreshSettingsApi {}
-
 void main() {
   late _MockBridgeSettingsApi bridgeSettingsApi;
-  late _MockPullRequestRefreshSettingsApi pullRequestRefreshSettingsApi;
   late PullRequestRefreshSettingsRepository repository;
 
   setUpAll(() {
@@ -25,25 +21,23 @@ void main() {
 
   setUp(() {
     bridgeSettingsApi = _MockBridgeSettingsApi();
-    pullRequestRefreshSettingsApi = _MockPullRequestRefreshSettingsApi();
-    repository = PullRequestRefreshSettingsRepository(
-      bridgeSettingsApi: bridgeSettingsApi,
-      pullRequestRefreshSettingsApi: pullRequestRefreshSettingsApi,
-    );
+    repository = PullRequestRefreshSettingsRepository(bridgeSettingsApi: bridgeSettingsApi);
   });
 
   test("load distinguishes supported, unsupported, and failed responses", () async {
-    when(pullRequestRefreshSettingsApi.getSettings).thenAnswer(
+    when(bridgeSettingsApi.getPullRequestRefreshSettings).thenAnswer(
       (_) async => ApiResponse.success(const PullRequestRefreshSettingsResponse(intervalSeconds: 30)),
     );
     expect(await repository.load(), isA<PullRequestRefreshSettingsLoadSupported>());
 
-    when(pullRequestRefreshSettingsApi.getSettings).thenAnswer(
+    when(bridgeSettingsApi.getPullRequestRefreshSettings).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),
     );
     expect(await repository.load(), isA<PullRequestRefreshSettingsLoadUnsupported>());
 
-    when(pullRequestRefreshSettingsApi.getSettings).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    when(bridgeSettingsApi.getPullRequestRefreshSettings).thenAnswer(
+      (_) async => ApiResponse.error(ApiError.generic()),
+    );
     expect(await repository.load(), isA<PullRequestRefreshSettingsLoadFailure>());
   });
 
