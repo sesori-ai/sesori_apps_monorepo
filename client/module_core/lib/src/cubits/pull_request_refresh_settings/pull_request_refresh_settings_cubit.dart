@@ -51,11 +51,11 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     final operationEpoch = _connectionEpoch;
     final validationBounds = switch (state) {
       PullRequestRefreshSettingsReady(:final validationBounds) => validationBounds,
+      PullRequestRefreshSettingsFailure(:final validationBounds) => validationBounds,
+      PullRequestRefreshSettingsUncertain(:final validationBounds) => validationBounds,
       PullRequestRefreshSettingsLoading() ||
       PullRequestRefreshSettingsDisconnected() ||
-      PullRequestRefreshSettingsUnsupported() ||
-      PullRequestRefreshSettingsFailure() ||
-      PullRequestRefreshSettingsUncertain() => null,
+      PullRequestRefreshSettingsUnsupported() => null,
     };
     emit(const PullRequestRefreshSettingsLoading());
     try {
@@ -65,7 +65,12 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     } on Object catch (error, stackTrace) {
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       loge("Pull request refresh settings load failed unexpectedly", error, stackTrace);
-      emit(PullRequestRefreshSettingsFailure(error: ApiError.dartHttpClient(error)));
+      emit(
+        PullRequestRefreshSettingsFailure(
+          error: ApiError.dartHttpClient(error),
+          validationBounds: validationBounds,
+        ),
+      );
     } finally {
       _finishOperation();
     }
@@ -189,6 +194,7 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
             PullRequestRefreshSettingsUncertain(
               lastKnownIntervalSeconds: lastKnownIntervalSeconds,
               refreshError: error,
+              validationBounds: validationBounds,
             ),
           );
       }
@@ -199,6 +205,7 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
         PullRequestRefreshSettingsUncertain(
           lastKnownIntervalSeconds: lastKnownIntervalSeconds,
           refreshError: ApiError.dartHttpClient(error),
+          validationBounds: validationBounds,
         ),
       );
     }
@@ -207,11 +214,11 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
   PullRequestRefreshSettingsUpdatePlan _planUpdate({required String input}) {
     final validationBounds = switch (state) {
       PullRequestRefreshSettingsReady(:final validationBounds) => validationBounds,
+      PullRequestRefreshSettingsFailure(:final validationBounds) => validationBounds,
+      PullRequestRefreshSettingsUncertain(:final validationBounds) => validationBounds,
       PullRequestRefreshSettingsLoading() ||
       PullRequestRefreshSettingsDisconnected() ||
-      PullRequestRefreshSettingsUnsupported() ||
-      PullRequestRefreshSettingsFailure() ||
-      PullRequestRefreshSettingsUncertain() => null,
+      PullRequestRefreshSettingsUnsupported() => null,
     };
     return _service.planUpdate(input: input, bounds: validationBounds);
   }
@@ -255,7 +262,12 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
       case PullRequestRefreshSettingsLoadUnsupported():
         emit(const PullRequestRefreshSettingsUnsupported());
       case PullRequestRefreshSettingsLoadFailure(:final error):
-        emit(PullRequestRefreshSettingsFailure(error: error));
+        emit(
+          PullRequestRefreshSettingsFailure(
+            error: error,
+            validationBounds: validationBounds,
+          ),
+        );
     }
   }
 

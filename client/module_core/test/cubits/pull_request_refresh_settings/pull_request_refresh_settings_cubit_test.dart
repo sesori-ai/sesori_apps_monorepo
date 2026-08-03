@@ -57,6 +57,48 @@ void main() {
     expect(failed.state, isA<PullRequestRefreshSettingsReady>());
   });
 
+  test("preserves bridge validation bounds across failed refresh retries", () async {
+    final bounds = PullRequestRefreshSettingsBounds(
+      minimumIntervalSeconds: 20,
+      maximumIntervalSeconds: 120,
+    );
+    var loadCalls = 0;
+    when(service.load).thenAnswer((_) async {
+      loadCalls++;
+      return switch (loadCalls) {
+        1 || 3 => const PullRequestRefreshSettingsLoadSupported(
+          response: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+        ),
+        _ => PullRequestRefreshSettingsLoadFailure(error: ApiError.generic()),
+      };
+    });
+    when(
+      () => service.planUpdate(input: "10", bounds: null),
+    ).thenReturn(
+      const PullRequestRefreshSettingsUpdateRequest(
+        request: PullRequestRefreshSettingsRequest(intervalSeconds: 10),
+      ),
+    );
+    when(
+      () => service.planUpdate(input: "10", bounds: bounds),
+    ).thenReturn(const PullRequestRefreshSettingsUpdateInvalid());
+    when(
+      () => service.update(request: any(named: "request")),
+    ).thenAnswer((_) async => PullRequestRefreshSettingsMutationRejected(bounds: bounds));
+    final cubit = PullRequestRefreshSettingsCubit(service: service, connectionService: connection);
+    addTearDown(cubit.close);
+    await _waitForState<PullRequestRefreshSettingsReady>(cubit);
+
+    await _update(cubit, input: "10");
+    await cubit.refresh();
+    expect(cubit.state, isA<PullRequestRefreshSettingsFailure>());
+
+    await cubit.refresh();
+
+    expect(cubit.validateUpdateInput(input: "10"), PullRequestRefreshSettingsInputValidation.invalid);
+    verify(() => service.planUpdate(input: "10", bounds: bounds)).called(1);
+  });
+
   test("invalid input dispatches no mutation", () async {
     _stubLoad(service, intervalSeconds: 30);
     when(
