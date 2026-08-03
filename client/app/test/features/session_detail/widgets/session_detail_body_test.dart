@@ -524,6 +524,7 @@ void main() {
         text: "ship it",
         command: null,
         inputMode: ComposerInputMode.typed,
+        attachments: const [],
       ),
     ).thenAnswer((_) async {});
 
