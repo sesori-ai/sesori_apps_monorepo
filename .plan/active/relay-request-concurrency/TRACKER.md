@@ -347,5 +347,15 @@
   fixed legacy OpenCode plugin's root query explicitly includes descendant
   questions; and timing out its plugin barrier would not cancel owner discovery
   and would let later same-plugin work violate the required arrival order.
+  Follow-up Cubic/Codex findings were valid: every accepted abort now emits one
+  terminal failure even when family admission fails before backend execution,
+  and legacy owner discovery waits for all earlier accepted work on that plugin
+  while continuing to block only later same-plugin admissions. The redundant
+  legacy-barrier bookkeeping was removed; the ticketed resolution and plugin
+  admission lanes own the actual reservation. Cache and concurrent-scan
+  suggestions were declined as speculative machinery for bounded local catalog
+  walks and a compatibility-only path without demonstrated load evidence.
 - **Step 5/10 delivery:** [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700)
-  is open at 1,490 changed lines.
+  is open at 1,534 changed lines. The 34-line soft-cap overage is directly caused
+  by review-required terminal abort signaling and prior-plugin settlement coverage;
+  splitting it would leave the ordering fix incomplete.

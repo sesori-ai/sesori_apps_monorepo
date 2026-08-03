@@ -27,17 +27,18 @@ class SessionAbortService {
       operation: SessionOperation.abortSession,
       interaction: null,
       body: () async {
-        try {
-          await _sessionRepository.abortSession(sessionId: sessionId);
-          _abortedSessionsController.add(sessionId);
-        } catch (_) {
-          _abortFailedSessionsController.add(sessionId);
-          rethrow;
-        }
+        await _sessionRepository.abortSession(sessionId: sessionId);
+        _abortedSessionsController.add(sessionId);
       },
     );
     _abortStartedSessionsController.add(sessionId);
-    return operation;
+    return operation.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {
+        _abortFailedSessionsController.add(sessionId);
+        Error.throwWithStackTrace(error, stackTrace);
+      },
+    );
   }
 
   Future<void> dispose() async {

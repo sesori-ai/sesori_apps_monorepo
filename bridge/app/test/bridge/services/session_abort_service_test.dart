@@ -78,12 +78,28 @@ void main() {
       expect(emittedSessionIds, isEmpty);
       expect(failedSessionIds, equals(["session-1"]));
     });
+
+    test("emits abort failure when family resolution fails before execution", () async {
+      final startedSessionIds = <String>[];
+      final failedSessionIds = <String>[];
+      sessionRepository.resolutionError = StateError("family unavailable");
+      final startedSubscription = service.abortStartedSessions.listen(startedSessionIds.add);
+      final failedSubscription = service.abortFailedSessions.listen(failedSessionIds.add);
+      addTearDown(startedSubscription.cancel);
+      addTearDown(failedSubscription.cancel);
+
+      await expectLater(service.abortSession(sessionId: "missing"), throwsStateError);
+
+      expect(startedSessionIds, ["missing"]);
+      expect(failedSessionIds, ["missing"]);
+    });
   });
 }
 
 class _FakeSessionRepository implements SessionRepository {
   final Completer<void> abortCompleter = Completer<void>();
   Future<void> Function({required String sessionId})? onAbort;
+  Object? resolutionError;
 
   @override
   Future<void> abortSession({required String sessionId}) async {
@@ -94,7 +110,10 @@ class _FakeSessionRepository implements SessionRepository {
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
     required SessionOperation operation,
-  }) async => (rootSessionId: sessionId, pluginId: "fake");
+  }) async {
+    if (resolutionError case final error?) throw error;
+    return (rootSessionId: sessionId, pluginId: "fake");
+  }
 
   @override
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {}

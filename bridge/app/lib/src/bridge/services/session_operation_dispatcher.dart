@@ -36,7 +36,7 @@ class SessionOperationDispatcher {
   final Map<_FamilyKey, _LaneToken> _familyLanes = {};
   final Map<_InteractionKey, _LaneToken> _interactionLanes = {};
   final Map<String, _LaneToken> _pluginAdmissionLanes = {};
-  final Map<String, Set<int>> _legacyBarriers = {};
+  final Map<String, Set<Future<void>>> _pluginSettlements = {};
   final Set<Future<void>> _inFlightSettlements = {};
 
   Future<void> _resolutionTail = Future<void>.value();
@@ -86,9 +86,8 @@ class SessionOperationDispatcher {
     return result.future;
   }
 
-  /// Reserves [pluginId] synchronously while a sessionless question owner is
-  /// unresolved. The global resolver only installs this reservation in ticket
-  /// order; owner discovery itself blocks this plugin's admissions only.
+  /// Queues a sessionless question ticket synchronously. Its plugin admission
+  /// waits for prior plugin work, then blocks later admissions while resolving.
   Future<T> dispatchLegacyQuestion<T>({
     required String pluginId,
     required String questionId,
@@ -100,7 +99,6 @@ class SessionOperationDispatcher {
 
     final ticket = _nextTicket++;
     final result = Completer<T>();
-    (_legacyBarriers[pluginId] ??= <int>{}).add(ticket);
     _track(result: result);
     _enqueueResolution(
       ticket: ticket,
@@ -109,42 +107,32 @@ class SessionOperationDispatcher {
           pluginId: pluginId,
           ticket: ticket,
           action: () async {
-            try {
-              final ownerSessionId = await resolveOwnerSessionId();
-              final family = await _sessionRepository.resolveSessionFamily(
-                sessionId: ownerSessionId,
-                operation: operation,
+            await Future.wait(_pluginSettlements[pluginId]?.toList(growable: false) ?? const []);
+            final ownerSessionId = await resolveOwnerSessionId();
+            final family = await _sessionRepository.resolveSessionFamily(
+              sessionId: ownerSessionId,
+              operation: operation,
+            );
+            if (family.pluginId != pluginId) {
+              throw PluginOperationException(
+                operation.name,
+                statusCode: 409,
+                message: "question $questionId resolved to plugin ${family.pluginId}, expected $pluginId",
               );
-              if (family.pluginId != pluginId) {
-                throw PluginOperationException(
-                  operation.name,
-                  statusCode: 409,
-                  message: "question $questionId resolved to plugin ${family.pluginId}, expected $pluginId",
-                );
-              }
-              _registerOperation(
-                ticket: ticket,
-                family: family,
-                ownerSessionId: ownerSessionId,
-                interaction: PendingQuestionInteraction(requestId: questionId),
-                body: () => body(ownerSessionId: ownerSessionId),
-                result: result,
-              );
-            } finally {
-              final barriers = _legacyBarriers[pluginId];
-              barriers?.remove(ticket);
-              if (barriers?.isEmpty ?? false) _legacyBarriers.remove(pluginId);
             }
+            _registerOperation(
+              ticket: ticket,
+              family: family,
+              ownerSessionId: ownerSessionId,
+              interaction: PendingQuestionInteraction(requestId: questionId),
+              body: () => body(ownerSessionId: ownerSessionId),
+              result: result,
+            );
           },
           onError: result.completeError,
         );
       },
-      onError: (error, stackTrace) {
-        final barriers = _legacyBarriers[pluginId];
-        barriers?.remove(ticket);
-        if (barriers?.isEmpty ?? false) _legacyBarriers.remove(pluginId);
-        result.completeError(error, stackTrace);
-      },
+      onError: result.completeError,
     );
     return result.future;
   }
@@ -161,8 +149,7 @@ class SessionOperationDispatcher {
   }
 
   @visibleForTesting
-  int get activeLaneCount =>
-      _familyLanes.length + _interactionLanes.length + _pluginAdmissionLanes.length + _legacyBarriers.length;
+  int get activeLaneCount => _familyLanes.length + _interactionLanes.length + _pluginAdmissionLanes.length;
 
   Future<void> _drain() async {
     beginShutdown();
@@ -251,6 +238,7 @@ class SessionOperationDispatcher {
       );
       _interactionLanes[interactionKey] = token;
     }
+    _trackPlugin(result: result, pluginId: family.pluginId);
 
     unawaited(() async {
       await Future.wait(predecessors);
@@ -274,6 +262,16 @@ class SessionOperationDispatcher {
       _inFlightSettlements.remove(settlement);
     });
     _inFlightSettlements.add(settlement);
+  }
+
+  void _trackPlugin<T>({required Completer<T> result, required String pluginId}) {
+    late final Future<void> settlement;
+    settlement = result.future.then<void>((_) {}, onError: (Object _, StackTrace __) {}).whenComplete(() {
+      final settlements = _pluginSettlements[pluginId];
+      settlements?.remove(settlement);
+      if (settlements?.isEmpty ?? false) _pluginSettlements.remove(pluginId);
+    });
+    (_pluginSettlements[pluginId] ??= {}).add(settlement);
   }
 }
 

@@ -112,11 +112,14 @@ void main() {
 
     test("legacy owner resolution blocks only later admissions for its plugin", () async {
       final repository = _FamilyRepository({
+        "earlier": (rootSessionId: "earlier", pluginId: "legacy"),
         "legacy-owner": (rootSessionId: "legacy-owner", pluginId: "legacy"),
         "other-plugin": (rootSessionId: "other-plugin", pluginId: "other"),
       });
       final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
       addTearDown(dispatcher.dispose);
+      final earlierGate = Completer<void>();
+      final earlierStarted = Completer<void>();
       final ownerLookupStarted = Completer<void>();
       final ownerGate = Completer<void>();
       final legacyBodyStarted = Completer<void>();
@@ -124,6 +127,16 @@ void main() {
       final laterStarted = Completer<void>();
       final otherPluginStarted = Completer<void>();
 
+      final earlier = dispatcher.dispatch<void>(
+        sessionId: "earlier",
+        operation: SessionOperation.replyToQuestion,
+        interaction: const PendingQuestionInteraction(requestId: "question"),
+        body: () async {
+          earlierStarted.complete();
+          await earlierGate.future;
+        },
+      );
+      await earlierStarted.future;
       final legacy = dispatcher.dispatchLegacyQuestion<void>(
         pluginId: "legacy",
         questionId: "question",
@@ -151,13 +164,16 @@ void main() {
         body: () async => otherPluginStarted.complete(),
       );
 
-      await Future.wait([ownerLookupStarted.future, otherPluginStarted.future]);
+      await otherPluginStarted.future;
+      expect(ownerLookupStarted.isCompleted, isFalse);
       expect(laterStarted.isCompleted, isFalse);
+      earlierGate.complete();
+      await ownerLookupStarted.future;
       ownerGate.complete();
       await legacyBodyStarted.future;
       expect(laterStarted.isCompleted, isFalse);
       legacyBodyGate.complete();
-      await Future.wait([legacy, later, otherPlugin]);
+      await Future.wait([earlier, legacy, later, otherPlugin]);
       expect(laterStarted.isCompleted, isTrue);
       expect(dispatcher.activeLaneCount, isZero);
     });
