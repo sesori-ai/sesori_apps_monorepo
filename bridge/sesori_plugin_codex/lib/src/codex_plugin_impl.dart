@@ -348,7 +348,7 @@ class CodexPlugin implements CodexManagedApi {
     if (commandProjection case CodexAppServerCommandCanonicalError(
       :final sessionId,
       :final callId,
-    )) {
+    ) when !_deletedThreadIds.contains(sessionId)) {
       try {
         await _sessionService.recordStructuredToolError(
           sessionId: sessionId,

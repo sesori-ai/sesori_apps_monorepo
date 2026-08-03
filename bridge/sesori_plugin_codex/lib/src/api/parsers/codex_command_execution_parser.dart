@@ -24,24 +24,28 @@ class CodexCommandExecutionParser {
       if (item.type != CodexCommandExecutionItemType.commandExecution) {
         return null;
       }
-      final threadId = _usefulText(params.threadId);
-      final itemId = _usefulText(item.id);
+      final threadId = _usefulText(value: params.threadId);
+      final itemId = _usefulText(value: item.id);
       if (threadId == null || itemId == null) return null;
       return CodexCommandExecutionEventDto(
         lifecycle: lifecycle,
         threadId: threadId,
-        turnId: _usefulText(params.turnId),
+        turnId: _usefulText(value: params.turnId),
         itemId: itemId,
         status: item.status,
         exitCode: item.exitCode,
       );
-    } on Object {
-      Log.w("[codex] skipping malformed command-execution notification");
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[codex] skipping malformed command-execution notification",
+        error,
+        stackTrace,
+      );
       return null;
     }
   }
 
-  String? _usefulText(String? value) {
+  String? _usefulText({required String? value}) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }

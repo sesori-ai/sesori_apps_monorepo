@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
@@ -48,6 +49,29 @@ void main() {
     expect(
       store.files.keys,
       contains("${CodexToolOutcomeStorage.fileName}.corrupt-1785758400000000"),
+    );
+  });
+
+  test("quarantines an empty storage file instead of treating it as absent", () async {
+    final store = _MemoryHostJsonStore()..files[CodexToolOutcomeStorage.fileName] = " \n";
+
+    expect(
+      await _repository(store: store).readStatuses(sessionId: "session-1"),
+      isEmpty,
+    );
+    expect(store.files, isNot(contains(CodexToolOutcomeStorage.fileName)));
+    expect(
+      store.files.keys,
+      contains("${CodexToolOutcomeStorage.fileName}.corrupt-1785758400000000"),
+    );
+  });
+
+  test("surfaces storage read failures to the service layer", () async {
+    final repository = _repository(store: _ReadFailingHostJsonStore());
+
+    await expectLater(
+      repository.readStatuses(sessionId: "session-1"),
+      throwsA(isA<FileSystemException>()),
     );
   });
 }
@@ -105,5 +129,12 @@ class _MemoryHostJsonStore implements HostJsonStore {
       files[name] = contents;
     }
     return contents;
+  }
+}
+
+class _ReadFailingHostJsonStore extends _MemoryHostJsonStore {
+  @override
+  Future<String?> read({required String name}) {
+    throw const FileSystemException("denied");
   }
 }

@@ -38,7 +38,9 @@ class CodexToolOutcomeRepository {
             sessionId: sessionId,
             callId: callId,
           ),
-        ]..sort(_compareErrors);
+        ]..sort(
+          (left, right) => _compareErrors(left: left, right: right),
+        );
       },
     );
   }
@@ -52,10 +54,10 @@ class CodexToolOutcomeRepository {
     );
   }
 
-  int _compareErrors(
-    CodexStoredToolErrorDto left,
-    CodexStoredToolErrorDto right,
-  ) {
+  int _compareErrors({
+    required CodexStoredToolErrorDto left,
+    required CodexStoredToolErrorDto right,
+  }) {
     final sessionOrder = left.sessionId.compareTo(right.sessionId);
     return sessionOrder != 0 ? sessionOrder : left.callId.compareTo(right.callId);
   }

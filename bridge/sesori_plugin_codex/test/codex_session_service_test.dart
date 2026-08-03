@@ -1,5 +1,9 @@
+import "dart:io";
+
 import "package:codex_plugin/src/api/codex_app_server_api.dart";
 import "package:codex_plugin/src/api/codex_rollout_api.dart";
+import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
+import "package:codex_plugin/src/api/models/codex_tool_outcome_dto.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/codex_config_reader.dart";
 import "package:codex_plugin/src/codex_metadata_repository.dart";
@@ -269,30 +273,115 @@ void main() {
 
     expect(await outcomes.readStatuses(sessionId: "session-1"), isEmpty);
   });
+
+  test("keeps structured tool errors when session deletion fails", () async {
+    final outcomes = createMemoryCodexToolOutcomeRepository();
+    await outcomes.recordError(sessionId: "session-1", callId: "call-1");
+    final service = _newService(
+      catalogRepository: _DeleteFailingCatalogRepository(),
+      toolOutcomeRepository: outcomes,
+    );
+
+    await service.deleteSession(sessionId: "session-1");
+
+    expect(
+      await outcomes.readStatuses(sessionId: "session-1"),
+      {"call-1": PluginToolStatus.error},
+    );
+  });
+
+  test("reads history without overlays when outcome storage fails", () async {
+    final messageRepository = _RecordingMessageRepository();
+    final service = _newService(
+      catalogRepository: _FixedPathCatalogRepository(),
+      messageRepository: messageRepository,
+      toolOutcomeRepository: CodexToolOutcomeRepository(
+        storage: _ReadFailingToolOutcomeStorage(),
+      ),
+    );
+
+    expect(await service.getSessionMessages(sessionId: "session-1"), isEmpty);
+    expect(messageRepository.statuses, isEmpty);
+  });
 }
 
 CodexSessionService _newService({
+  CodexCatalogRepository? catalogRepository,
+  CodexMessageRepository? messageRepository,
   CodexMetadataRepository? metadataRepository,
   CodexToolOutcomeRepository? toolOutcomeRepository,
 }) {
   final rolloutApi = CodexRolloutApi(environment: const {});
   return CodexSessionService(
-    catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
-    messageRepository: CodexMessageRepository(
-      rolloutApi: rolloutApi,
-      rolloutToolMapper: const CodexRolloutToolMapper(
-        imageAttachmentMapper: CodexImageAttachmentMapper(),
-      ),
-    ),
+    catalogRepository: catalogRepository ?? CodexCatalogRepository(rolloutApi: rolloutApi),
+    messageRepository:
+        messageRepository ??
+        CodexMessageRepository(
+          rolloutApi: rolloutApi,
+          rolloutToolMapper: const CodexRolloutToolMapper(
+            imageAttachmentMapper: CodexImageAttachmentMapper(),
+          ),
+        ),
     metadataRepository:
         metadataRepository ??
         CodexMetadataRepository(
           configReader: CodexConfigReader(environment: const {}),
         ),
-    toolOutcomeRepository:
-        toolOutcomeRepository ?? createMemoryCodexToolOutcomeRepository(),
+    toolOutcomeRepository: toolOutcomeRepository ?? createMemoryCodexToolOutcomeRepository(),
     launchDirectory: "/repo",
   );
+}
+
+class _DeleteFailingCatalogRepository extends CodexCatalogRepository {
+  _DeleteFailingCatalogRepository() : super(rolloutApi: CodexRolloutApi(environment: const {}));
+
+  @override
+  bool deleteSession({required String sessionId}) => false;
+}
+
+class _FixedPathCatalogRepository extends CodexCatalogRepository {
+  _FixedPathCatalogRepository() : super(rolloutApi: CodexRolloutApi(environment: const {}));
+
+  @override
+  String? findRolloutPath({required String sessionId}) => "/rollout.jsonl";
+}
+
+class _RecordingMessageRepository extends CodexMessageRepository {
+  _RecordingMessageRepository()
+    : super(
+        rolloutApi: CodexRolloutApi(environment: const {}),
+        rolloutToolMapper: const CodexRolloutToolMapper(
+          imageAttachmentMapper: CodexImageAttachmentMapper(),
+        ),
+      );
+
+  Map<String, PluginToolStatus>? statuses;
+
+  @override
+  List<PluginMessageWithParts> readMessages({
+    required String rolloutPath,
+    required String sessionId,
+    required Map<String, PluginToolStatus> structuredToolStatusByCallId,
+    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+  }) {
+    statuses = structuredToolStatusByCallId;
+    return const [];
+  }
+}
+
+class _ReadFailingToolOutcomeStorage implements CodexToolOutcomeStorage {
+  @override
+  Future<List<CodexStoredToolErrorDto>> readErrors() {
+    throw const FileSystemException("denied");
+  }
+
+  @override
+  Future<void> updateErrors({
+    required List<CodexStoredToolErrorDto> Function(
+      List<CodexStoredToolErrorDto> current,
+    )
+    transform,
+  }) async {}
 }
 
 class _StubMetadataRepository extends CodexMetadataRepository {

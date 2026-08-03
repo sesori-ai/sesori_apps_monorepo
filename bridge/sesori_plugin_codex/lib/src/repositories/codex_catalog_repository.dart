@@ -121,7 +121,17 @@ class CodexCatalogRepository {
   }
 
   String? findRolloutPath({required String sessionId}) {
-    for (final path in _listRolloutPaths()) {
+    return _findRolloutPath(
+      sessionId: sessionId,
+      rolloutPaths: _listRolloutPaths(),
+    );
+  }
+
+  String? _findRolloutPath({
+    required String sessionId,
+    required List<String> rolloutPaths,
+  }) {
+    for (final path in rolloutPaths) {
       if (_sessionIdFromRolloutName(p.basename(path)) == sessionId) {
         return path;
       }
@@ -129,14 +139,24 @@ class CodexCatalogRepository {
     return null;
   }
 
-  void deleteSession({required String sessionId}) {
-    final rolloutPath = findRolloutPath(sessionId: sessionId);
+  bool deleteSession({required String sessionId}) {
+    final List<String> rolloutPaths;
+    try {
+      rolloutPaths = _rolloutApi.listRolloutPaths();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to enumerate rollout files", error, stackTrace);
+      return false;
+    }
+    final rolloutPath = _findRolloutPath(
+      sessionId: sessionId,
+      rolloutPaths: rolloutPaths,
+    );
     if (rolloutPath != null) {
       try {
         _rolloutApi.deleteRollout(rolloutPath: rolloutPath);
       } on Object catch (error, stackTrace) {
         Log.w("[codex] failed to delete rollout for $sessionId", error, stackTrace);
-        return;
+        return false;
       }
     }
 
@@ -145,7 +165,7 @@ class CodexCatalogRepository {
       for (final line in indexLines)
         if (line.entry?.id != sessionId) line.raw,
     ];
-    if (filtered.length == indexLines.length) return;
+    if (filtered.length == indexLines.length) return true;
     try {
       _rolloutApi.writeSessionIndex(lines: filtered);
     } on Object catch (error, stackTrace) {
@@ -155,6 +175,7 @@ class CodexCatalogRepository {
         stackTrace,
       );
     }
+    return true;
   }
 
   List<String> _listRolloutPaths() {

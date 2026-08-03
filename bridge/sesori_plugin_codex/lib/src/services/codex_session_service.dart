@@ -366,16 +366,18 @@ class CodexSessionService {
   }
 
   Future<void> deleteSession({required String sessionId}) async {
-    try {
-      await _toolOutcomeRepository.deleteSession(sessionId: sessionId);
-    } on Object catch (error, stackTrace) {
-      Log.w(
-        "[codex] failed to delete persisted tool outcomes for $sessionId",
-        error,
-        stackTrace,
-      );
+    final deleted = _catalogRepository.deleteSession(sessionId: sessionId);
+    if (deleted) {
+      try {
+        await _toolOutcomeRepository.deleteSession(sessionId: sessionId);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "[codex] failed to delete persisted tool outcomes for $sessionId",
+          error,
+          stackTrace,
+        );
+      }
     }
-    _catalogRepository.deleteSession(sessionId: sessionId);
     _loadedThreads.remove(sessionId);
     _threadModels.remove(sessionId);
   }
@@ -395,9 +397,19 @@ class CodexSessionService {
   }) async {
     final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
     if (path == null) return const [];
-    final structuredToolStatusByCallId = await _toolOutcomeRepository.readStatuses(
-      sessionId: sessionId,
-    );
+    Map<String, PluginToolStatus> structuredToolStatusByCallId;
+    try {
+      structuredToolStatusByCallId = await _toolOutcomeRepository.readStatuses(
+        sessionId: sessionId,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[codex] failed to read persisted tool outcomes for $sessionId",
+        error,
+        stackTrace,
+      );
+      structuredToolStatusByCallId = const {};
+    }
     return _messageRepository.readMessages(
       rolloutPath: path,
       sessionId: sessionId,
