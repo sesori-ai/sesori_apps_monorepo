@@ -41,9 +41,10 @@ class CodexMessageRepository {
       rolloutToolMapper: _rolloutToolMapper,
     );
     final toolOutputs = <String, CodexRolloutToolResult>{};
-    final submittedUserMessages = <String>{};
+    final submittedUserTextByLineIndex = <int, String>{};
     final submittedUserLineIndexes = <int>[];
     final terminalTurns = <String, _TerminalTurnStatus>{};
+    int? pendingUserMessageLineIndex;
     for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       final line = lines[lineIndex];
       final toolProjection = toolTracker.observeRolloutLine(
@@ -52,6 +53,9 @@ class CodexMessageRepository {
       );
       switch (line) {
         case CodexRolloutResponseItemLineDto(payload: final payload):
+          if (payload case CodexRolloutMessageDto(role: CodexRolloutRole.user)) {
+            pendingUserMessageLineIndex = lineIndex;
+          }
           final result = _rolloutToolMapper.mapResult(payload);
           if (result != null) {
             switch (toolProjection) {
@@ -70,15 +74,21 @@ class CodexMessageRepository {
         case CodexRolloutEventMessageLineDto(
           payload: CodexRolloutUserMessageEventDto(:final message),
         ):
-          submittedUserMessages.add(message);
+          final userMessageLineIndex = pendingUserMessageLineIndex;
+          if (userMessageLineIndex != null) {
+            submittedUserTextByLineIndex[userMessageLineIndex] = message;
+          }
+          pendingUserMessageLineIndex = null;
           submittedUserLineIndexes.add(lineIndex);
         case CodexRolloutEventMessageLineDto(
           payload: CodexRolloutTaskCompleteEventDto(:final turnId),
         ):
+          pendingUserMessageLineIndex = null;
           terminalTurns[turnId] = _TerminalTurnStatus.completed;
         case CodexRolloutEventMessageLineDto(
           payload: CodexRolloutTurnAbortedEventDto(:final turnId),
         ):
+          pendingUserMessageLineIndex = null;
           terminalTurns[turnId] = _TerminalTurnStatus.aborted;
         case CodexRolloutEventMessageLineDto() ||
             CodexRolloutSessionMetadataLineDto() ||
@@ -251,15 +261,12 @@ class CodexMessageRepository {
           if (role != CodexRolloutRole.user && role != CodexRolloutRole.assistant) {
             continue;
           }
-          if (role == CodexRolloutRole.user &&
-              !submittedUserMessages.contains(_firstInputText(content: content)) &&
-              _isGeneratedUserContext(content: content)) {
+          final submittedUserText = role == CodexRolloutRole.user ? submittedUserTextByLineIndex[lineIndex] : null;
+          if (role == CodexRolloutRole.user && submittedUserText == null && _isGeneratedUserContext(content: content)) {
             continue;
           }
-          final firstInputText = _firstInputText(content: content);
-          final isSubmittedUser = role == CodexRolloutRole.user && submittedUserMessages.contains(firstInputText);
-          final texts = isSubmittedUser
-              ? [if (firstInputText != null && firstInputText.isNotEmpty) firstInputText]
+          final texts = submittedUserText != null
+              ? [if (submittedUserText.isNotEmpty) submittedUserText]
               : [
                   for (final item in content)
                     if (item case CodexRolloutInputTextDto(:final text) || CodexRolloutOutputTextDto(:final text)
@@ -330,13 +337,6 @@ class CodexMessageRepository {
       }
     }
     return messages;
-  }
-
-  String? _firstInputText({required List<CodexRolloutContentDto> content}) {
-    for (final item in content) {
-      if (item case CodexRolloutInputTextDto(:final text)) return text;
-    }
-    return null;
   }
 
   PluginToolStatus _statusWithoutResult({

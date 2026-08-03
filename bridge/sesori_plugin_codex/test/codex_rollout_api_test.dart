@@ -870,11 +870,12 @@ void main() {
               "id": "user-1",
               "role": "user",
               "content": [
-                {"type": "input_text", "text": "hello, codex"},
                 {
                   "type": "input_text",
                   "text": '<image name=[Image #1] path="/private/prompt.png">',
                 },
+                {"type": "input_text", "text": "hello, "},
+                {"type": "input_text", "text": "codex"},
                 {
                   "type": "input_image",
                   "image_url": "data:image/png;base64,AA==",
@@ -915,6 +916,7 @@ void main() {
       expect(messages, hasLength(2));
       expect(messages[0].info, isA<PluginMessageUser>());
       expect(messages[0].parts.first.text, equals("hello, codex"));
+      expect(messages[0].parts.first.text, isNot(contains("/private/prompt.png")));
       expect(messages[0].parts, hasLength(2));
       expect(messages[0].parts.first.attachment, isNull);
       expect(messages[0].parts.last.type, PluginMessagePartType.file);
