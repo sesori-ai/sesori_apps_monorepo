@@ -49,7 +49,7 @@ class OpenProjectHandler extends BodyRequestHandler<OpenProjectRequest, Project>
     } on FilesystemPermissionDeniedException {
       throw buildErrorResponse(request, 403, "permission denied: $path");
     } on FileSystemException catch (error, stackTrace) {
-      Log.w("OpenProjectHandler: failed to classify $path", error, stackTrace);
+      Log.w("OpenProjectHandler: failed to open project at $path", error, stackTrace);
       throw buildErrorResponse(request, 500, "failed to open directory");
     }
 
