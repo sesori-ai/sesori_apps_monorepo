@@ -76,7 +76,7 @@ class NotificationPreferencesService {
     } on Object catch (error, stackTrace) {
       if (!_isCurrent(operation: operation)) return false;
       if (error is TimeoutException) {
-        _repository.clearCache(userId: operation.userId);
+        _repository.evictActiveFetch(userId: operation.userId);
       }
       logw(
         "Failed to load notification preferences; defaulting ${category.name} to enabled",

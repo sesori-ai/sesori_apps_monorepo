@@ -162,7 +162,7 @@ void main() {
       async.elapse(const Duration(seconds: 2));
       async.flushMicrotasks();
       expect(enabled, isTrue);
-      verify(() => repository.clearCache(userId: _userA.id)).called(1);
+      verify(() => repository.evictActiveFetch(userId: _userA.id)).called(1);
     });
   });
 }

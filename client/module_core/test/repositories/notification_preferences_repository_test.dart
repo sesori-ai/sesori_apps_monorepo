@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -65,6 +66,35 @@ void main() {
       expect(await first, isTrue);
       expect(await second, isTrue);
       verify(() => api.getPreferences(userId: _userA, deviceId: _deviceId)).called(1);
+    });
+
+    test("evicting an active fetch permits a replacement without invalidating existing callers", () async {
+      final originalResponse = Completer<NotificationPreferencesApiRecord>();
+      final replacementResponse = Completer<NotificationPreferencesApiRecord>();
+      var requestCount = 0;
+      when(
+        () => api.getPreferences(userId: _userA, deviceId: _deviceId),
+      ).thenAnswer((_) {
+        requestCount++;
+        return requestCount == 1 ? originalResponse.future : replacementResponse.future;
+      });
+
+      final original = repository.getAll(userId: _userA);
+      await Future<void>.delayed(Duration.zero);
+      repository.evictActiveFetch(userId: _userA);
+      final replacement = repository.getAll(userId: _userA);
+      replacementResponse.complete(_record(notifications: _updatedNotifications));
+      expect(
+        (await replacement)[NotificationCategory.aiInteraction],
+        isFalse,
+      );
+
+      originalResponse.complete(_record());
+      expect(
+        (await original)[NotificationCategory.aiInteraction],
+        isFalse,
+      );
+      verify(() => api.getPreferences(userId: _userA, deviceId: _deviceId)).called(2);
     });
 
     test("setEnabled applies only the category confirmed by its PATCH", () async {
@@ -144,6 +174,49 @@ void main() {
       );
     });
 
+    test("an older same-category PATCH cannot replace a newer confirmation", () async {
+      final olderResponse = Completer<NotificationPreferencesApiRecord>();
+      final newerResponse = Completer<NotificationPreferencesApiRecord>();
+      when(
+        () => api.getPreferences(userId: _userA, deviceId: _deviceId),
+      ).thenAnswer((_) async => _record());
+      when(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.aiInteraction(enabled: false),
+        ),
+      ).thenAnswer((_) => olderResponse.future);
+      when(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.aiInteraction(enabled: true),
+        ),
+      ).thenAnswer((_) => newerResponse.future);
+      await repository.getAll(userId: _userA);
+
+      final olderUpdate = repository.setEnabled(
+        userId: _userA,
+        category: NotificationCategory.aiInteraction,
+        enabled: false,
+      );
+      final newerUpdate = repository.setEnabled(
+        userId: _userA,
+        category: NotificationCategory.aiInteraction,
+        enabled: true,
+      );
+      newerResponse.complete(_record());
+      await newerUpdate;
+      olderResponse.complete(_record(notifications: _updatedNotifications));
+
+      expect(await olderUpdate, isTrue);
+      expect(
+        await repository.isEnabled(userId: _userA, category: NotificationCategory.aiInteraction),
+        isTrue,
+      );
+    });
+
     test("an older refresh does not replace a newer PATCH confirmation", () async {
       final refreshResponse = Completer<NotificationPreferencesApiRecord>();
       var fetchCount = 0;
@@ -206,6 +279,46 @@ void main() {
       expect(
         await repository.isEnabled(userId: _userA, category: NotificationCategory.sessionMessage),
         isFalse,
+      );
+    });
+
+    test("a PATCH stops waiting and preserves the cache after its deadline", () async {
+      final response = Completer<NotificationPreferencesApiRecord>();
+      when(
+        () => api.getPreferences(userId: _userA, deviceId: _deviceId),
+      ).thenAnswer((_) async => _record());
+      when(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.aiInteraction(enabled: false),
+        ),
+      ).thenAnswer((_) => response.future);
+      await repository.getAll(userId: _userA);
+
+      fakeAsync((async) {
+        Object? failure;
+        repository
+            .setEnabled(
+              userId: _userA,
+              category: NotificationCategory.aiInteraction,
+              enabled: false,
+            )
+            .onError((error, _) {
+              failure = error;
+              return true;
+            });
+        async.flushMicrotasks();
+        expect(failure, isNull);
+
+        async.elapse(const Duration(seconds: 10));
+        async.flushMicrotasks();
+        expect(failure, isA<TimeoutException>());
+      });
+
+      expect(
+        await repository.isEnabled(userId: _userA, category: NotificationCategory.aiInteraction),
+        isTrue,
       );
     });
 
