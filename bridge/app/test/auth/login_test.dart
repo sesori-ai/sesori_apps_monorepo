@@ -222,7 +222,7 @@ void main() {
         );
         final service = LoginOAuthService(
           api: api,
-          browserLauncher: (_) async {},
+          browserLauncher: ({required String url, required DateTime deadline}) async {},
           browserOpenability: _alwaysOpenableBrowser,
           pollTimeout: const Duration(seconds: 1),
           perRequestTimeout: const Duration(milliseconds: 10),
@@ -239,6 +239,45 @@ void main() {
         expect(client.maximumActiveStatusRequests, 1);
         expect(client.activeStatusRequests, 0);
         expect(client.statusAbortCount, 1);
+      });
+
+      test('browser launcher receives the same absolute deadline after an OAuth restart', () async {
+        final authServer = await _OAuthLongPollTestServer.start(
+          statusResponses: [
+            (statusCode: 503, retryAfter: '0'),
+            AuthSessionStatusResponse.complete(
+              accessToken: 'access',
+              refreshToken: 'refresh',
+              user: const AuthUser(
+                id: 'user-1',
+                provider: AuthProvider.github,
+                providerUserId: 'github-1',
+                providerUsername: null,
+              ),
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+        final deadlines = <DateTime>[];
+        final service = LoginOAuthService(
+          api: LoginOAuthApi(
+            authBackendUrl: authServer.baseUrl,
+            client: authServer.client,
+            clientType: AuthClientType.bridgeMacos,
+            device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
+          ),
+          browserLauncher: ({required String url, required DateTime deadline}) async {
+            deadlines.add(deadline);
+          },
+          browserOpenability: _alwaysOpenableBrowser,
+          pollInterval: Duration.zero,
+          pollTimeout: const Duration(seconds: 1),
+        );
+
+        await service.performOAuthLogin(AuthProvider.github);
+
+        expect(deadlines, hasLength(2));
+        expect(deadlines.toSet(), hasLength(1));
       });
 
       for (final hangingOperation in ['init', 'browser']) {
@@ -545,6 +584,93 @@ void main() {
     });
   });
 
+  group('openOAuthBrowser', () {
+    test('reports collected stderr when the launcher exits non-zero', () async {
+      final process = _CompletedBrowserProcess();
+
+      await expectLater(
+        openOAuthBrowser(
+          url: 'https://example.com/oauth?state=failed-launch',
+          deadline: DateTime.now().add(const Duration(seconds: 1)),
+          processStarter: (_, __) async => process,
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (error) => error.toString(),
+            'message',
+            contains('Browser launcher exited with code 7: launcher failed'),
+          ),
+        ),
+      );
+
+      expect(process.killSignals, isEmpty);
+    });
+
+    test('gracefully terminates then force-kills a hanging launcher and awaits completed drains', () async {
+      final process = _HangingBrowserProcess();
+      String? executable;
+      List<String>? arguments;
+      const authUrl = 'https://example.com/oauth?state=state-1';
+      final deadline = DateTime.now().add(const Duration(milliseconds: 30));
+      final stopwatch = Stopwatch()..start();
+
+      await expectLater(
+        openOAuthBrowser(
+          url: authUrl,
+          deadline: deadline,
+          processStarter: (startedExecutable, startedArguments) async {
+            executable = startedExecutable;
+            arguments = startedArguments;
+            return process;
+          },
+          gracefulTerminationTimeout: const Duration(milliseconds: 5),
+          forcedTerminationTimeout: const Duration(milliseconds: 20),
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+      stopwatch.stop();
+
+      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 500)));
+      expect(executable, isNotEmpty);
+      expect(arguments, contains(authUrl));
+      expect(process.killSignals, [ProcessSignal.sigterm, ProcessSignal.sigkill]);
+      expect(process.exited, isTrue);
+      expect(process.stdoutDrained, isTrue);
+      expect(process.stderrDrained, isTrue);
+    });
+
+    test('preserves a bounded OAuth timeout when forced cleanup cannot finish', () async {
+      final process = _HangingBrowserProcess(exitsOnSigkill: false);
+      final stopwatch = Stopwatch()..start();
+
+      await expectLater(
+        openOAuthBrowser(
+          url: 'https://example.com/oauth?state=state-2',
+          deadline: DateTime.now().add(const Duration(milliseconds: 5)),
+          processStarter: (_, __) async => process,
+          gracefulTerminationTimeout: const Duration(milliseconds: 5),
+          forcedTerminationTimeout: const Duration(milliseconds: 20),
+        ),
+        throwsA(
+          isA<TimeoutException>().having(
+            (error) => error.message,
+            'message',
+            'timed out waiting for authorization',
+          ),
+        ),
+      );
+      stopwatch.stop();
+
+      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 500)));
+      expect(process.killSignals, [ProcessSignal.sigterm, ProcessSignal.sigkill]);
+      expect(process.exited, isFalse);
+      expect(process.stdoutDrained, isFalse);
+      expect(process.stderrDrained, isFalse);
+      expect(process.stdoutCanceled, isTrue);
+      expect(process.stderrCanceled, isTrue);
+    });
+  });
+
   group('resolveBrowserOpenability', () {
     BrowserOpenability resolve({
       bool isLinux = false,
@@ -732,7 +858,7 @@ LoginOAuthService _createOAuthService({
       clientType: AuthClientType.bridgeMacos,
       device: DeviceInfo(name: 'Test Mac', osVersion: 'macOS 14.5', appVersion: '1.2.0'),
     ),
-    browserLauncher: browserLauncher,
+    browserLauncher: ({required String url, required DateTime deadline}) => browserLauncher(url),
     browserOpenability: browserOpenability,
     pollTimeout: pollTimeout,
     pollInterval: pollInterval,
@@ -1124,4 +1250,95 @@ class _CapturingStdout implements Stdout {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _HangingBrowserProcess implements Process {
+  _HangingBrowserProcess({this.exitsOnSigkill = true}) {
+    _stdout = StreamController<List<int>>(onCancel: () => stdoutCanceled = true);
+    _stderr = StreamController<List<int>>(onCancel: () => stderrCanceled = true);
+  }
+
+  final bool exitsOnSigkill;
+  final Completer<int> _exitCode = Completer<int>();
+  late final StreamController<List<int>> _stdout;
+  late final StreamController<List<int>> _stderr;
+  final List<ProcessSignal> killSignals = [];
+  bool stdoutDrained = false;
+  bool stderrDrained = false;
+  bool stdoutCanceled = false;
+  bool stderrCanceled = false;
+
+  bool get exited => _exitCode.isCompleted;
+
+  @override
+  Future<int> get exitCode => _exitCode.future;
+
+  @override
+  IOSink get stdin => throw UnimplementedError();
+
+  @override
+  Stream<List<int>> get stdout async* {
+    yield* _stdout.stream;
+    stdoutDrained = true;
+  }
+
+  @override
+  Stream<List<int>> get stderr async* {
+    yield* _stderr.stream;
+    stderrDrained = true;
+  }
+
+  @override
+  int get pid => 12345;
+
+  @override
+  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
+    killSignals.add(signal);
+    if (signal != ProcessSignal.sigkill || !exitsOnSigkill) {
+      return true;
+    }
+
+    _completeExit();
+    return true;
+  }
+
+  void _completeExit() {
+    if (_exitCode.isCompleted) {
+      return;
+    }
+
+    _stdout.add(utf8.encode('launcher stdout'));
+    _stderr.add(utf8.encode('launcher stderr'));
+    unawaited(_stdout.close());
+    unawaited(_stderr.close());
+    _exitCode.complete(-9);
+  }
+}
+
+class _CompletedBrowserProcess implements Process {
+  final List<ProcessSignal> killSignals = [];
+
+  @override
+  Future<int> get exitCode => Future.value(7);
+
+  @override
+  IOSink get stdin => throw UnimplementedError();
+
+  @override
+  Stream<List<int>> get stdout => Stream.value(utf8.encode('launcher stdout'));
+
+  @override
+  Stream<List<int>> get stderr => Stream.fromIterable([
+    utf8.encode('launcher '),
+    utf8.encode('failed'),
+  ]);
+
+  @override
+  int get pid => 12346;
+
+  @override
+  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
+    killSignals.add(signal);
+    return false;
+  }
 }

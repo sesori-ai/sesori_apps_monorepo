@@ -26,7 +26,22 @@ http.StreamedResponse _streamedResponse({required http.Response response}) {
   );
 }
 
-class MockHttpClient extends Mock implements http.Client {}
+abstract interface class _MockHttpClientSend {
+  Future<http.StreamedResponse> recordedSend(http.BaseRequest request);
+}
+
+class MockHttpClient extends Mock implements http.Client, _MockHttpClientSend {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    if (request is http.Request && request.method == "POST" && request.url.path.endsWith("/init")) {
+      return post(request.url, headers: request.headers, body: request.body).then(
+        (response) => _streamedResponse(response: response),
+      );
+    }
+
+    return recordedSend(request);
+  }
+}
 
 class MockTokenStorageService extends Mock implements TokenStorageService {}
 
@@ -34,6 +49,7 @@ class MockOAuthStorageService extends Mock implements OAuthStorageService {}
 
 class _HangingStatusClient extends http.BaseClient {
   bool aborted = false;
+  http.RequestAbortedException? abortError;
   http.BaseRequest? request;
 
   @override
@@ -44,7 +60,30 @@ class _HangingStatusClient extends http.BaseClient {
       unawaited(
         abortTrigger.then<void>((_) {
           aborted = true;
-          response.completeError(http.RequestAbortedException(request.url));
+          abortError = http.RequestAbortedException(request.url);
+          response.completeError(abortError!);
+        }),
+      );
+    }
+    return response.future;
+  }
+}
+
+class _HangingInitClient extends http.BaseClient {
+  bool aborted = false;
+  http.RequestAbortedException? abortError;
+  http.BaseRequest? request;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    this.request = request;
+    final response = Completer<http.StreamedResponse>();
+    if (request case http.Abortable(:final abortTrigger?)) {
+      unawaited(
+        abortTrigger.then<void>((_) {
+          aborted = true;
+          abortError = http.RequestAbortedException(request.url);
+          response.completeError(abortError!);
         }),
       );
     }
@@ -381,6 +420,46 @@ void main() {
       );
     });
 
+    test("startOAuthFlow aborts a hanging init request at the absolute deadline", () async {
+      final hangingClient = _HangingInitClient();
+      authManager = AuthManager(
+        hangingClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
+      );
+      final deadline = DateTime.now().add(const Duration(milliseconds: 40));
+      final stopwatch = Stopwatch()..start();
+
+      Object? initError;
+      try {
+        await authManager.startOAuthFlow(provider: AuthProvider.github, deadline: deadline);
+      } catch (error) {
+        initError = error;
+      }
+      stopwatch.stop();
+
+      expect(initError, isA<OAuthRequestTimeoutException>());
+      final timeoutError = initError! as OAuthRequestTimeoutException;
+      expect(timeoutError, isA<TimeoutException>());
+      expect(timeoutError.cause, same(hangingClient.abortError));
+      expect(timeoutError.uri, Uri.parse("$authBaseUrl/auth/github/init"));
+      expect((timeoutError.cause as http.RequestAbortedException).uri, timeoutError.uri);
+      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 500)));
+      expect(hangingClient.aborted, isTrue);
+      expect(hangingClient.request, isA<http.AbortableRequest>());
+      final request = hangingClient.request! as http.Request;
+      expect(request.method, "POST");
+      expect(request.url, Uri.parse("$authBaseUrl/auth/github/init"));
+      expect(request.headers["Accept"], "application/json");
+      expect(request.headers["Content-Type"], "application/json");
+      expect(request.headers[_sessionTokenHeaderForTest], matches(RegExp(r"^[0-9a-f]{64}$")));
+      expect(jsonDecode(request.body), {
+        "clientType": "app_ios",
+        "device": {"name": "Test iPhone", "osVersion": "iOS 17.5", "appVersion": "1.2.0"},
+      });
+    });
+
     test("init 503 clears its session and exposes bounded restart timing before parsing JSON", () async {
       final deadline = DateTime.now().add(const Duration(minutes: 2));
       when(
@@ -497,6 +576,10 @@ void main() {
       });
 
       final stalePoll = authManager.pollForResult();
+      final staleFailure = expectLater(
+        stalePoll,
+        throwsA(allOf(isA<Exception>(), isNot(isA<OAuthSessionRestartRequiredException>()))),
+      );
       await untilCalled(mockOAuthStorage.getOAuthSession);
       final replacement = authManager.startOAuthFlow(
         provider: AuthProvider.google,
@@ -506,10 +589,7 @@ void main() {
       storedSessionRead.complete((sessionToken: "old-session-token", expiresAt: oldDeadline));
 
       await replacement;
-      await expectLater(
-        stalePoll,
-        throwsA(allOf(isA<Exception>(), isNot(isA<OAuthSessionRestartRequiredException>()))),
-      );
+      await staleFailure;
 
       expect(statusRequest?.headers[_sessionTokenHeaderForTest], "old-session-token");
       expect(storedSession.expiresAt, replacementDeadline);
@@ -1280,6 +1360,7 @@ void main() {
     });
 
     test("pollForResult surfaces status request timeout as recoverable client exception", () async {
+      late http.RequestAbortedException abortError;
       when(
         () => mockHttpClient.post(
           Uri.parse("$authBaseUrl/auth/google/init"),
@@ -1307,22 +1388,67 @@ void main() {
         () => mockHttpClient.send(any()),
       ).thenAnswer((invocation) {
         final request = invocation.positionalArguments.single as http.BaseRequest;
-        return Future<http.StreamedResponse>.error(http.RequestAbortedException(request.url));
+        abortError = http.RequestAbortedException(request.url);
+        return Future<http.StreamedResponse>.error(abortError);
       });
 
       await authManager.startOAuthFlow(provider: AuthProvider.google, deadline: null);
 
-      await expectLater(
-        authManager.pollForResult(),
-        throwsA(
-          isA<http.ClientException>().having(
-            (error) => error.uri,
-            "uri",
-            Uri.parse("$authBaseUrl/auth/session/status"),
-          ),
+      Object? pollError;
+      try {
+        await authManager.pollForResult();
+      } catch (error) {
+        pollError = error;
+      }
+
+      expect(
+        pollError,
+        isA<OAuthSessionStatusClientException>().having(
+          (error) => error.uri,
+          "uri",
+          Uri.parse("$authBaseUrl/auth/session/status"),
         ),
       );
+      final clientError = pollError! as OAuthSessionStatusClientException;
+      expect(clientError, isA<http.ClientException>());
+      expect(clientError.cause, same(abortError));
+      expect((clientError.cause as http.RequestAbortedException).uri, abortError.uri);
 
+      expect(await authManager.hasActiveOAuthSession(), isTrue);
+      verifyNever(mockOAuthStorage.clearOAuthSession);
+    });
+
+    test("pollForResult preserves a direct timeout as the recoverable client exception cause", () async {
+      final transportTimeout = TimeoutException("transport timed out", const Duration(seconds: 35));
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
+        (_) async => (
+          sessionToken: "stored-session-token",
+          expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+        ),
+      );
+      when(
+        () => mockHttpClient.send(any()),
+      ).thenAnswer((_) => Future<http.StreamedResponse>.error(transportTimeout));
+
+      Object? pollError;
+      try {
+        await authManager.pollForResult();
+      } catch (error) {
+        pollError = error;
+      }
+
+      expect(
+        pollError,
+        isA<OAuthSessionStatusClientException>().having(
+          (error) => error.uri,
+          "uri",
+          Uri.parse("$authBaseUrl/auth/session/status"),
+        ),
+      );
+      final clientError = pollError! as OAuthSessionStatusClientException;
+      expect(clientError, isA<http.ClientException>());
+      expect(clientError.cause, same(transportTimeout));
+      expect(clientError.cause, isA<TimeoutException>());
       expect(await authManager.hasActiveOAuthSession(), isTrue);
       verifyNever(mockOAuthStorage.clearOAuthSession);
     });
@@ -1343,19 +1469,69 @@ void main() {
           expiresAt: DateTime.now().add(const Duration(milliseconds: 30)),
         ),
       );
-      await expectLater(
-        authManager.pollForResult(),
-        throwsA(
-          isA<TimeoutException>().having(
-            (error) => error.message,
-            "message",
-            "OAuth authorization timed out",
-          ),
+      Object? pollError;
+      try {
+        await authManager.pollForResult();
+      } catch (error) {
+        pollError = error;
+      }
+
+      expect(
+        pollError,
+        isA<OAuthRequestTimeoutException>().having(
+          (error) => error.message,
+          "message",
+          "OAuth authorization timed out",
         ),
       );
+      final timeoutError = pollError! as OAuthRequestTimeoutException;
+      expect(timeoutError, isA<TimeoutException>());
+      expect(timeoutError.cause, same(hangingClient.abortError));
+      expect(timeoutError.uri, Uri.parse("$authBaseUrl/auth/session/status"));
+      expect((timeoutError.cause as http.RequestAbortedException).uri, timeoutError.uri);
 
       expect(hangingClient.aborted, isTrue);
       expect(hangingClient.request, isA<http.AbortableRequest>());
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
+    });
+
+    test("pollForResult preserves a direct timeout as the final OAuth timeout cause", () async {
+      final transportTimeout = TimeoutException("transport timed out", const Duration(milliseconds: 30));
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
+        (_) async => (
+          sessionToken: "stored-session-token",
+          expiresAt: DateTime.now().add(const Duration(milliseconds: 30)),
+        ),
+      );
+      when(
+        () => mockHttpClient.send(any()),
+      ).thenAnswer((_) => Future<http.StreamedResponse>.error(transportTimeout));
+
+      Object? pollError;
+      try {
+        await authManager.pollForResult();
+      } catch (error) {
+        pollError = error;
+      }
+
+      expect(
+        pollError,
+        isA<OAuthRequestTimeoutException>()
+            .having(
+              (error) => error.message,
+              "message",
+              "OAuth authorization timed out",
+            )
+            .having(
+              (error) => error.uri,
+              "uri",
+              Uri.parse("$authBaseUrl/auth/session/status"),
+            ),
+      );
+      final timeoutError = pollError! as OAuthRequestTimeoutException;
+      expect(timeoutError, isA<TimeoutException>());
+      expect(timeoutError.cause, same(transportTimeout));
+      expect(timeoutError.cause, isA<TimeoutException>());
       verify(mockOAuthStorage.clearOAuthSession).called(1);
     });
 

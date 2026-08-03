@@ -130,13 +130,11 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         operation: _deviceDescriptorProvider.describe,
       );
       final uri = Uri.parse("$authBaseUrl/auth/${provider.key}/init");
-      final response = await _beforeOAuthDeadline(
+      final response = await _postOAuthInit(
+        uri: uri,
         deadline: flowDeadline,
-        operation: () => _post(
-          uri,
-          body: AuthInitRequest(clientType: descriptor.clientType, device: descriptor.device).toJson(),
-          headers: {_sessionTokenHeader: sessionToken},
-        ),
+        body: AuthInitRequest(clientType: descriptor.clientType, device: descriptor.device),
+        headers: {_sessionTokenHeader: sessionToken},
       );
       if (response.statusCode == 503) {
         throw OAuthSessionRestartRequiredException(
@@ -316,6 +314,42 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     return seconds != null && seconds <= 5 ? Duration(seconds: seconds) : const Duration(seconds: 1);
   }
 
+  Future<http.Response> _postOAuthInit({
+    required Uri uri,
+    required DateTime deadline,
+    required AuthInitRequest body,
+    required Map<String, String> headers,
+  }) async {
+    final remaining = deadline.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      throw TimeoutException("OAuth authorization timed out");
+    }
+
+    final abortTrigger = Completer<void>();
+    final requestTimer = Timer(remaining, abortTrigger.complete);
+    try {
+      final request = http.AbortableRequest("POST", uri, abortTrigger: abortTrigger.future)
+        ..headers.addAll({
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          ...headers,
+        })
+        ..body = jsonEncode(body.toJson());
+      return await http.Response.fromStream(await _client.send(request));
+    } on http.RequestAbortedException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        OAuthRequestTimeoutException(
+          message: "OAuth authorization timed out",
+          uri: uri,
+          cause: error,
+        ),
+        stackTrace,
+      );
+    } finally {
+      requestTimer.cancel();
+    }
+  }
+
   Future<http.Response> _getSessionStatus({
     required Uri uri,
     required String sessionToken,
@@ -332,15 +366,17 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
           _sessionTokenHeader: sessionToken,
         });
       return await http.Response.fromStream(await _client.send(request));
-    } on http.RequestAbortedException catch (_, stackTrace) {
+    } on http.RequestAbortedException catch (error, stackTrace) {
       _throwSessionStatusTimeout(
+        cause: error,
         expiresAt: expiresAt,
         isFinalRequest: isFinalRequest,
         stackTrace: stackTrace,
         uri: uri,
       );
-    } on TimeoutException catch (_, stackTrace) {
+    } on TimeoutException catch (error, stackTrace) {
       _throwSessionStatusTimeout(
+        cause: error,
         expiresAt: expiresAt,
         isFinalRequest: isFinalRequest,
         stackTrace: stackTrace,
@@ -352,6 +388,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   Never _throwSessionStatusTimeout({
+    required Exception cause,
     required DateTime? expiresAt,
     required bool isFinalRequest,
     required StackTrace stackTrace,
@@ -359,12 +396,16 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }) {
     if (isFinalRequest || (expiresAt != null && !DateTime.now().isBefore(expiresAt))) {
       Error.throwWithStackTrace(
-        TimeoutException("OAuth authorization timed out"),
+        OAuthRequestTimeoutException(
+          message: "OAuth authorization timed out",
+          uri: uri,
+          cause: cause,
+        ),
         stackTrace,
       );
     }
     Error.throwWithStackTrace(
-      http.ClientException("OAuth session status request timed out", uri),
+      OAuthSessionStatusClientException(uri: uri, cause: cause),
       stackTrace,
     );
   }
@@ -926,4 +967,24 @@ final class _OAuthSessionSupersededException implements Exception {
 
 final class _OAuthMutationPoisonedException implements Exception {
   const _OAuthMutationPoisonedException();
+}
+
+final class OAuthRequestTimeoutException extends TimeoutException {
+  OAuthRequestTimeoutException({
+    required String message,
+    required this.uri,
+    required this.cause,
+  }) : super(message);
+
+  final Uri uri;
+  final Exception cause;
+}
+
+final class OAuthSessionStatusClientException extends http.ClientException {
+  OAuthSessionStatusClientException({
+    required Uri uri,
+    required this.cause,
+  }) : super("OAuth session status request timed out", uri);
+
+  final Exception cause;
 }
