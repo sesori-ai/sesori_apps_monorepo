@@ -56,12 +56,14 @@ class CodexMessageRepository {
           if (result != null) {
             switch (toolProjection) {
               case CodexRolloutToolPassthrough():
-                toolOutputs[result.callId] = result;
+                toolOutputs[result.callId] = result.withPreviousResult(
+                  previous: toolOutputs[result.callId],
+                );
               case CodexRolloutToolSuppressed():
                 break;
               case CodexRolloutToolCanonical(:final callId):
-                toolOutputs[callId] = result.withFallbackAttachments(
-                  fallback: toolOutputs[callId]?.attachments ?? const [],
+                toolOutputs[callId] = result.withPreviousResult(
+                  previous: toolOutputs[callId],
                 );
             }
           }
@@ -153,6 +155,12 @@ class CodexMessageRepository {
           final call = _rolloutToolMapper.mapCall(payload);
           if (call == null) continue;
           final result = toolOutputs[call.id];
+          final fallbackStatus = _statusWithoutResult(
+            call: call,
+            callLineIndex: lineIndex,
+            terminalTurns: terminalTurns,
+            submittedUserLineIndexes: submittedUserLineIndexes,
+          );
           messages.add(
             _toolMessage(
               messageId: call.id,
@@ -160,14 +168,7 @@ class CodexMessageRepository {
               info: assistantInfo(id: call.id, time: messageTime),
               tool: call.tool,
               title: call.title,
-              status:
-                  result?.status ??
-                  _statusWithoutResult(
-                    call: call,
-                    callLineIndex: lineIndex,
-                    terminalTurns: terminalTurns,
-                    submittedUserLineIndexes: submittedUserLineIndexes,
-                  ),
+              status: result == null || result.status == PluginToolStatus.running ? fallbackStatus : result.status,
               output: result?.output,
               attachments: result?.attachments ?? const [],
             ),

@@ -176,6 +176,85 @@ void main() {
       ),
     );
   });
+
+  test("correlates waits chronologically without turn metadata", () {
+    final tracker = CodexToolCorrelationTracker(
+      rolloutToolMapper: const CodexRolloutToolMapper(
+        imageAttachmentMapper: CodexImageAttachmentMapper(),
+      ),
+    );
+
+    tracker
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-shell", turnId: null),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-shell",
+          output: "Script running with cell ID 7\nOutput:\nearly output\n",
+        ),
+      );
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _waitCall(
+          callId: "call-wait",
+          turnId: null,
+          cellId: "7",
+        ),
+      ),
+      isA<CodexRolloutToolSuppressed>(),
+    );
+
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-wait",
+          output: "Script completed with exit code 0\nFinal output:\nlate output\n",
+        ),
+      ),
+      isA<CodexRolloutToolCanonical>().having(
+        (value) => value.callId,
+        "callId",
+        "call-shell",
+      ),
+    );
+  });
+
+  test("recognizes executor control markers only at the envelope start", () {
+    const mapper = CodexRolloutToolMapper(
+      imageAttachmentMapper: CodexImageAttachmentMapper(),
+    );
+
+    final completedWithRunningStdout = mapper.mapResult(
+      (_toolOutput(
+                callId: "call-running-text",
+                output:
+                    "Script completed with exit code 0\n"
+                    "Final output:\n"
+                    "Script running with cell ID 7\n",
+              )
+              as CodexRolloutResponseItemLineDto)
+          .payload,
+    );
+    final completedWithAbortedStdout = mapper.mapResult(
+      (_toolOutput(
+                callId: "call-aborted-text",
+                output:
+                    "Script completed with exit code 0\n"
+                    "Final output:\n"
+                    "aborted by user after 1.0s\n",
+              )
+              as CodexRolloutResponseItemLineDto)
+          .payload,
+    );
+
+    expect(completedWithRunningStdout, isA<CodexRolloutToolCompletedResult>());
+    expect(completedWithAbortedStdout, isA<CodexRolloutToolCompletedResult>());
+  });
 }
 
 CodexRolloutLineDto _shellCall({
@@ -217,7 +296,7 @@ CodexRolloutLineDto _rawExecCall({
 
 CodexRolloutLineDto _waitCall({
   required String callId,
-  required String turnId,
+  required String? turnId,
   required String cellId,
 }) {
   return CodexRolloutLineDto.fromJson({
@@ -227,9 +306,10 @@ CodexRolloutLineDto _waitCall({
       "call_id": callId,
       "name": "wait",
       "arguments": '{"cell_id":"$cellId"}',
-      "internal_chat_message_metadata_passthrough": {
-        "turn_id": turnId,
-      },
+      if (turnId != null)
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": turnId,
+        },
     },
   });
 }

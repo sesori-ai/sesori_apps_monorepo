@@ -12,12 +12,19 @@ class CodexRolloutToolCall {
     required this.turnId,
     required this.tool,
     required this.title,
+    required this.completionSource,
   });
 
   final String id;
   final String? turnId;
   final String tool;
   final String? title;
+  final CodexRolloutToolCompletionSource completionSource;
+}
+
+enum CodexRolloutToolCompletionSource {
+  appServer,
+  rollout,
 }
 
 sealed class CodexRolloutToolResult {
@@ -37,28 +44,44 @@ sealed class CodexRolloutToolResult {
     CodexRolloutToolErrorResult() => PluginToolStatus.error,
   };
 
-  CodexRolloutToolResult withFallbackAttachments({
-    required List<PluginMessageAttachment> fallback,
+  CodexRolloutToolResult withPreviousResult({
+    required CodexRolloutToolResult? previous,
   }) {
-    if (attachments.isNotEmpty || fallback.isEmpty) return this;
+    if (previous == null) return this;
+    final mergedOutput = _mergeToolOutput(
+      previous: previous.output,
+      current: output,
+    );
+    final mergedAttachments = attachments.isNotEmpty ? attachments : previous.attachments;
     return switch (this) {
       CodexRolloutToolRunningResult(:final cellId) => CodexRolloutToolRunningResult(
         callId: callId,
-        output: output,
-        attachments: fallback,
+        output: mergedOutput,
+        attachments: mergedAttachments,
         cellId: cellId,
       ),
       CodexRolloutToolCompletedResult() => CodexRolloutToolCompletedResult(
         callId: callId,
-        output: output,
-        attachments: fallback,
+        output: mergedOutput,
+        attachments: mergedAttachments,
       ),
       CodexRolloutToolErrorResult() => CodexRolloutToolErrorResult(
         callId: callId,
-        output: output,
-        attachments: fallback,
+        output: mergedOutput,
+        attachments: mergedAttachments,
       ),
     };
+  }
+
+  String? _mergeToolOutput({
+    required String? previous,
+    required String? current,
+  }) {
+    if (previous == null || previous.isEmpty) return current;
+    if (current == null || current.isEmpty) return previous;
+    return String.fromCharCodes(
+      "$previous$current".runes.take(maxToolOutputLength),
+    );
   }
 }
 
@@ -188,6 +211,7 @@ class CodexRolloutToolMapper {
           turnId: metadata?.turnId,
           name: name,
           input: arguments,
+          completionSource: CodexRolloutToolCompletionSource.appServer,
         ),
       CodexRolloutCustomToolCallDto(
         :final id,
@@ -202,6 +226,9 @@ class CodexRolloutToolMapper {
           turnId: metadata?.turnId,
           name: name,
           input: input,
+          completionSource: name.toLowerCase() == "exec"
+              ? CodexRolloutToolCompletionSource.rollout
+              : CodexRolloutToolCompletionSource.appServer,
         ),
       CodexRolloutMessageDto() ||
       CodexRolloutReasoningDto() ||
@@ -274,6 +301,7 @@ class CodexRolloutToolMapper {
     required String? turnId,
     required String name,
     required String input,
+    required CodexRolloutToolCompletionSource completionSource,
   }) {
     final usefulId = _usefulText(callId) ?? _usefulText(id);
     if (usefulId == null) return null;
@@ -283,6 +311,7 @@ class CodexRolloutToolMapper {
       turnId: _usefulText(turnId),
       tool: normalizeToolName(usefulName),
       title: toolCallTitle(input),
+      completionSource: completionSource,
     );
   }
 
@@ -432,7 +461,7 @@ class CodexRolloutToolMapper {
   /// exposes one, while continuing to read these strings for old histories.
   bool _toolOutputFailed({required String? output}) {
     if (output == null) return false;
-    if (RegExp(r"^aborted by user\b", caseSensitive: false, multiLine: true).hasMatch(output)) {
+    if (RegExp(r"^aborted by user\b", caseSensitive: false).hasMatch(output)) {
       return true;
     }
     final match = RegExp(
@@ -448,9 +477,8 @@ class CodexRolloutToolMapper {
   String? _runningCellId({required String? output}) {
     if (output == null) return null;
     final match = RegExp(
-      r"^Script running with cell ID\s+(\S+)\s*$",
+      r"^Script running with cell ID[ \t]+(\S+)[ \t]*(?:\r?\n|$)",
       caseSensitive: false,
-      multiLine: true,
     ).firstMatch(output);
     return _usefulText(match?.group(1));
   }

@@ -282,6 +282,23 @@ class CodexEventMapper {
     required CodexRolloutToolProjection toolProjection,
   }) {
     if (toolProjection is CodexRolloutToolSuppressed) return const [];
+    if (line case CodexRolloutEventMessageLineDto(payload: final event)) {
+      return switch (event) {
+        CodexRolloutTaskCompleteEventDto(:final turnId) => _terminalRolloutToolEvents(
+          threadId: threadId,
+          turnId: turnId,
+          status: PluginToolStatus.completed,
+        ),
+        CodexRolloutTurnAbortedEventDto(:final turnId) => _terminalRolloutToolEvents(
+          threadId: threadId,
+          turnId: turnId,
+          status: PluginToolStatus.error,
+        ),
+        CodexRolloutUserMessageEventDto() ||
+        CodexRolloutTaskStartedEventDto() ||
+        CodexRolloutUnknownEventDto() => const [],
+      };
+    }
     final payload = switch (line) {
       CodexRolloutResponseItemLineDto(payload: final payload) => payload,
       CodexRolloutSessionMetadataLineDto() ||
@@ -332,8 +349,8 @@ class CodexEventMapper {
     final key = _rolloutToolKey(threadId, canonicalCallId);
     final originalCall = _rolloutToolCalls[key];
     if (originalCall == null) return const [];
-    final projectedResult = result.withFallbackAttachments(
-      fallback: _rolloutToolResults[key]?.attachments ?? const [],
+    final projectedResult = result.withPreviousResult(
+      previous: _rolloutToolResults[key],
     );
     _rolloutToolResults[key] = projectedResult;
     return _toolItemEvents(
@@ -345,6 +362,52 @@ class CodexEventMapper {
       output: projectedResult.output,
       attachments: projectedResult.attachments,
     );
+  }
+
+  List<BridgeSseEvent> _terminalRolloutToolEvents({
+    required String threadId,
+    required String turnId,
+    required PluginToolStatus status,
+  }) {
+    final prefix = "$threadId\u0000";
+    final events = <BridgeSseEvent>[];
+    for (final entry in _rolloutToolCalls.entries) {
+      if (!entry.key.startsWith(prefix)) continue;
+      final call = entry.value;
+      if (call.completionSource != CodexRolloutToolCompletionSource.rollout) {
+        continue;
+      }
+      if (call.turnId != null && call.turnId != turnId) continue;
+      final previous = _rolloutToolResults[entry.key];
+      if (previous != null && previous.status != PluginToolStatus.running) {
+        continue;
+      }
+      final callId = entry.key.substring(prefix.length);
+      final terminal = status == PluginToolStatus.error
+          ? CodexRolloutToolErrorResult(
+              callId: callId,
+              output: previous?.output,
+              attachments: previous?.attachments ?? const [],
+            )
+          : CodexRolloutToolCompletedResult(
+              callId: callId,
+              output: previous?.output,
+              attachments: previous?.attachments ?? const [],
+            );
+      _rolloutToolResults[entry.key] = terminal;
+      events.addAll(
+        _toolItemEvents(
+          threadId: threadId,
+          itemId: callId,
+          tool: call.tool,
+          title: call.title,
+          status: terminal.status,
+          output: terminal.output,
+          attachments: terminal.attachments,
+        ),
+      );
+    }
+    return events;
   }
 
   void clearRolloutTurn({required String threadId}) {
