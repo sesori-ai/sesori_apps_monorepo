@@ -139,6 +139,10 @@ class VoiceTranscriptionService {
         autoGain: true,
         noiseSuppress: true,
         audioInterruption: AudioInterruptionMode.none,
+        // iOS silences every haptic and system sound while an audio session is
+        // recording unless the session opts in, which mutes the whole
+        // hold-to-speak feedback (cancel-target ticks included) on device.
+        iosConfig: const IosRecordConfig(allowHapticsAndSystemSoundsDuringRecording: true),
       );
       logt(
         "[voice] starting recorder — encoder=${config.encoder.name} "

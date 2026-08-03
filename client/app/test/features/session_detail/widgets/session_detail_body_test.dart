@@ -22,6 +22,7 @@ import "package:sesori_mobile/features/session_detail/widgets/session_detail_bod
 import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
@@ -518,6 +519,14 @@ void main() {
   }
 
   testWidgets("pressing send keeps the composer field focused", (tester) async {
+    when(
+      () => cubit.sendMessage(
+        text: "ship it",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      ),
+    ).thenAnswer((_) async {});
+
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
@@ -525,12 +534,35 @@ void main() {
     await enterTypingMode(tester);
     expect(composerFocus(tester).hasFocus, isTrue);
 
-    // Send with an empty field: `_handleSend` is a no-op that does not
-    // re-request focus, so focus retention here proves the tap itself didn't
-    // unfocus the field (which is what produced the hide/re-show flicker).
+    await tester.enterText(find.byType(EditableText), "ship it");
+    await tester.pump();
+
+    // Focus retention here proves the tap itself didn't unfocus the field
+    // (which is what produced the hide/re-show flicker).
     await tester.tap(find.byIcon(TablerRegular.arrow_up));
     await tester.pump();
     expect(composerFocus(tester).hasFocus, isTrue, reason: "send must not dismiss the keyboard");
+  });
+
+  testWidgets("send stays disabled until the composer holds text", (tester) async {
+    VoidCallback? sendAction() => tester
+        .widget<PregoButtonsSolid>(find.widgetWithIcon(PregoButtonsSolid, TablerRegular.arrow_up))
+        .onPressed;
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    expect(sendAction(), isNull, reason: "an empty composer has nothing to send");
+
+    await tester.enterText(find.byType(EditableText), "ship it");
+    await tester.pump();
+    expect(sendAction(), isNotNull);
+
+    // Whitespace alone is not sendable content either.
+    await tester.enterText(find.byType(EditableText), "   ");
+    await tester.pump();
+    expect(sendAction(), isNull);
   });
 
   testWidgets("system back dismisses the composer keyboard before popping the route", (tester) async {
