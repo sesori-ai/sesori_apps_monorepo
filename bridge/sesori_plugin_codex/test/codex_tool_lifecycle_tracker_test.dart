@@ -210,6 +210,68 @@ void main() {
     expect(completed?.status, PluginToolStatus.completed);
   });
 
+  test("correlates a code-mode patch with its app-server file change", () {
+    final target = tracker();
+    final call = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-patch",
+        "name": "exec",
+        "input":
+            'const patch = "*** Begin Patch\\n*** Add File: marker.txt\\n+ALPHA\\n*** End Patch";\n'
+            "text(await tools.apply_patch(patch));\n",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "turn-1",
+        },
+      },
+    });
+
+    final rolloutCall = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: call,
+        )
+        .single;
+    final started = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _fileChangeNotification(
+        method: "item/started",
+        itemId: "exec-file-1",
+        turnId: "turn-1",
+      ),
+    );
+    final completed = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _fileChangeNotification(
+        method: "item/completed",
+        itemId: "exec-file-1",
+        turnId: "turn-1",
+        status: "completed",
+      ),
+    );
+    final rolloutResult = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: _toolOutput(
+            callId: "call-patch",
+            output: "Script completed\nOutput:\n{}",
+          ),
+        )
+        .single;
+
+    expect(rolloutCall.tool, "edit");
+    expect(rolloutCall.title, "marker.txt");
+    expect(rolloutCall.output, contains("*** Add File: marker.txt"));
+    expect(started?.canonicalId, "call-patch");
+    expect(started?.tool, "edit");
+    expect(completed?.canonicalId, "call-patch");
+    expect(completed?.status, PluginToolStatus.completed);
+    expect(rolloutResult.tool, "edit");
+    expect(rolloutResult.output, contains("*** Add File: marker.txt"));
+    expect(rolloutResult.output, isNot(contains("Script completed")));
+  });
+
   test("suppresses only complete generated image wrapper invocations", () {
     final target = tracker();
     final wrapper = CodexRolloutLineDto.fromJson({
@@ -1368,6 +1430,33 @@ CodexServerNotification _commandNotification({
         "status": ?status,
         "exitCode": ?exitCode,
         "aggregatedOutput": ?output,
+      },
+    },
+  );
+}
+
+CodexServerNotification _fileChangeNotification({
+  required String method,
+  required String itemId,
+  required String turnId,
+  String status = "inProgress",
+}) {
+  return CodexServerNotification(
+    method: method,
+    params: {
+      "threadId": "thread-1",
+      "turnId": turnId,
+      "item": {
+        "type": "fileChange",
+        "id": itemId,
+        "status": status,
+        "changes": [
+          {
+            "path": "marker.txt",
+            "kind": {"type": "add"},
+            "diff": "+ALPHA",
+          },
+        ],
       },
     },
   );

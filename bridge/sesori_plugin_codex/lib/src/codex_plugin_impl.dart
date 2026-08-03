@@ -326,10 +326,13 @@ class CodexPlugin implements CodexManagedApi {
       _rolloutTailer.start(sessionId: threadId);
     }
     final item = notification.params["item"];
-    final isCommandStarted = notification.method == "item/started" && item is Map && item["type"] == "commandExecution";
-    if (threadId != null && (notification.method == "item/completed" || isCommandStarted)) {
+    final isCorrelatableItemStarted =
+        notification.method == "item/started" &&
+        item is Map &&
+        (item["type"] == "commandExecution" || item["type"] == "fileChange");
+    if (threadId != null && (notification.method == "item/completed" || isCorrelatableItemStarted)) {
       // Codex persists the response item before emitting its stable lifecycle
-      // event. Drain now so polling latency cannot split one command identity.
+      // event. Drain now so polling latency cannot split one tool identity.
       _rolloutTailer.drain(sessionId: threadId);
     }
     final terminalHistory =
