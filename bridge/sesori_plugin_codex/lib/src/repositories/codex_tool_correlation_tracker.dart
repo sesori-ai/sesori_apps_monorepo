@@ -118,13 +118,17 @@ class CodexToolCorrelationTracker {
     }
     final waitedCell = _waitCellByCall[resultKey];
     final outstandingCells = _outstandingCellsByCall[canonicalKey];
-    if (waitTarget != null && waitedCell != null && result.status != PluginToolStatus.running) {
+    if (waitTarget != null &&
+        waitedCell != null &&
+        (result.status != PluginToolStatus.running || !cellIds.contains(waitedCell))) {
       outstandingCells?.remove(waitedCell);
       if (outstandingCells?.isEmpty ?? false) {
         _outstandingCellsByCall.remove(canonicalKey);
       }
     }
-    if (result.status == PluginToolStatus.completed && outstandingCells?.isNotEmpty == true) {
+    if (result.status != PluginToolStatus.running && waitTarget == null) {
+      _outstandingCellsByCall.remove(canonicalKey);
+    } else if (result.status == PluginToolStatus.completed && outstandingCells?.isNotEmpty == true) {
       return CodexRolloutToolCanonicalRunning(
         callId: canonicalCallId,
         remainingCellIds: outstandingCells!.toList(growable: false),
