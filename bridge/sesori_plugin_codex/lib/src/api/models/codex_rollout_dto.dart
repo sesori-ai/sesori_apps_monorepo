@@ -54,6 +54,12 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
     required CodexRolloutResponseItemDto payload,
   }) = CodexRolloutResponseItemLineDto;
 
+  @FreezedUnionValue("event_msg")
+  const factory CodexRolloutLineDto.eventMessage({
+    required String? timestamp,
+    required CodexRolloutEventDto payload,
+  }) = CodexRolloutEventMessageLineDto;
+
   @FreezedUnionValue("compacted")
   const factory CodexRolloutLineDto.compacted({
     required String? timestamp,
@@ -64,6 +70,23 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
   }) = CodexRolloutUnknownLineDto;
 
   factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(json);
+}
+
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
+  @FreezedUnionValue("user_message")
+  const factory CodexRolloutEventDto.userMessage({
+    required String message,
+  }) = CodexRolloutUserMessageEventDto;
+
+  const factory CodexRolloutEventDto.unknown() = CodexRolloutUnknownEventDto;
+
+  factory CodexRolloutEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutEventDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)

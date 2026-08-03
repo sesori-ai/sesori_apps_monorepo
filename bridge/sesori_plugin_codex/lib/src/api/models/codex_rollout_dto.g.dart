@@ -43,6 +43,16 @@ CodexRolloutResponseItemLineDto _$CodexRolloutResponseItemLineDtoFromJson(
   $type: json['type'] as String?,
 );
 
+CodexRolloutEventMessageLineDto _$CodexRolloutEventMessageLineDtoFromJson(
+  Map json,
+) => CodexRolloutEventMessageLineDto(
+  timestamp: json['timestamp'] as String?,
+  payload: CodexRolloutEventDto.fromJson(
+    Map<String, dynamic>.from(json['payload'] as Map),
+  ),
+  $type: json['type'] as String?,
+);
+
 CodexRolloutCompactedLineDto _$CodexRolloutCompactedLineDtoFromJson(Map json) =>
     CodexRolloutCompactedLineDto(
       timestamp: json['timestamp'] as String?,
@@ -54,6 +64,16 @@ CodexRolloutUnknownLineDto _$CodexRolloutUnknownLineDtoFromJson(Map json) =>
       timestamp: json['timestamp'] as String?,
       $type: json['type'] as String?,
     );
+
+CodexRolloutUserMessageEventDto _$CodexRolloutUserMessageEventDtoFromJson(
+  Map json,
+) => CodexRolloutUserMessageEventDto(
+  message: json['message'] as String,
+  $type: json['type'] as String?,
+);
+
+CodexRolloutUnknownEventDto _$CodexRolloutUnknownEventDtoFromJson(Map json) =>
+    CodexRolloutUnknownEventDto($type: json['type'] as String?);
 
 _CodexRolloutSessionMetadataPayloadDto
 _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>

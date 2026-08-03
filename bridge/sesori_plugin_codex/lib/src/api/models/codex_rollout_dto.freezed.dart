@@ -162,6 +162,10 @@ CodexRolloutLineDto _$CodexRolloutLineDtoFromJson(
           return CodexRolloutResponseItemLineDto.fromJson(
             json
           );
+                case 'event_msg':
+          return CodexRolloutEventMessageLineDto.fromJson(
+            json
+          );
                 case 'compacted':
           return CodexRolloutCompactedLineDto.fromJson(
             json
@@ -483,6 +487,87 @@ $CodexRolloutResponseItemDtoCopyWith<$Res> get payload {
 /// @nodoc
 @JsonSerializable(createToJson: false)
 
+class CodexRolloutEventMessageLineDto implements CodexRolloutLineDto {
+  const CodexRolloutEventMessageLineDto({required this.timestamp, required this.payload, final  String? $type}): $type = $type ?? 'event_msg';
+  factory CodexRolloutEventMessageLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutEventMessageLineDtoFromJson(json);
+
+@override final  String? timestamp;
+ final  CodexRolloutEventDto payload;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutLineDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutEventMessageLineDtoCopyWith<CodexRolloutEventMessageLineDto> get copyWith => _$CodexRolloutEventMessageLineDtoCopyWithImpl<CodexRolloutEventMessageLineDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutEventMessageLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,timestamp,payload);
+
+@override
+String toString() {
+  return 'CodexRolloutLineDto.eventMessage(timestamp: $timestamp, payload: $payload)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutEventMessageLineDtoCopyWith<$Res> implements $CodexRolloutLineDtoCopyWith<$Res> {
+  factory $CodexRolloutEventMessageLineDtoCopyWith(CodexRolloutEventMessageLineDto value, $Res Function(CodexRolloutEventMessageLineDto) _then) = _$CodexRolloutEventMessageLineDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String? timestamp, CodexRolloutEventDto payload
+});
+
+
+$CodexRolloutEventDtoCopyWith<$Res> get payload;
+
+}
+/// @nodoc
+class _$CodexRolloutEventMessageLineDtoCopyWithImpl<$Res>
+    implements $CodexRolloutEventMessageLineDtoCopyWith<$Res> {
+  _$CodexRolloutEventMessageLineDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutEventMessageLineDto _self;
+  final $Res Function(CodexRolloutEventMessageLineDto) _then;
+
+/// Create a copy of CodexRolloutLineDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? timestamp = freezed,Object? payload = null,}) {
+  return _then(CodexRolloutEventMessageLineDto(
+timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
+as String?,payload: null == payload ? _self.payload : payload // ignore: cast_nullable_to_non_nullable
+as CodexRolloutEventDto,
+  ));
+}
+
+/// Create a copy of CodexRolloutLineDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexRolloutEventDtoCopyWith<$Res> get payload {
+  
+  return $CodexRolloutEventDtoCopyWith<$Res>(_self.payload, (value) {
+    return _then(_self.copyWith(payload: value));
+  });
+}
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
 class CodexRolloutCompactedLineDto implements CodexRolloutLineDto {
   const CodexRolloutCompactedLineDto({required this.timestamp, final  String? $type}): $type = $type ?? 'compacted';
   factory CodexRolloutCompactedLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompactedLineDtoFromJson(json);
@@ -619,6 +704,160 @@ as String?,
 
 
 }
+
+CodexRolloutEventDto _$CodexRolloutEventDtoFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'user_message':
+          return CodexRolloutUserMessageEventDto.fromJson(
+            json
+          );
+        
+          default:
+            return CodexRolloutUnknownEventDto.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$CodexRolloutEventDto {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutEventDto);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto()';
+}
+
+
+}
+
+/// @nodoc
+class $CodexRolloutEventDtoCopyWith<$Res>  {
+$CodexRolloutEventDtoCopyWith(CodexRolloutEventDto _, $Res Function(CodexRolloutEventDto) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutUserMessageEventDto implements CodexRolloutEventDto {
+  const CodexRolloutUserMessageEventDto({required this.message, final  String? $type}): $type = $type ?? 'user_message';
+  factory CodexRolloutUserMessageEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUserMessageEventDtoFromJson(json);
+
+ final  String message;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutUserMessageEventDtoCopyWith<CodexRolloutUserMessageEventDto> get copyWith => _$CodexRolloutUserMessageEventDtoCopyWithImpl<CodexRolloutUserMessageEventDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUserMessageEventDto&&(identical(other.message, message) || other.message == message));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message);
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.userMessage(message: $message)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutUserMessageEventDtoCopyWith<$Res> implements $CodexRolloutEventDtoCopyWith<$Res> {
+  factory $CodexRolloutUserMessageEventDtoCopyWith(CodexRolloutUserMessageEventDto value, $Res Function(CodexRolloutUserMessageEventDto) _then) = _$CodexRolloutUserMessageEventDtoCopyWithImpl;
+@useResult
+$Res call({
+ String message
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutUserMessageEventDtoCopyWithImpl<$Res>
+    implements $CodexRolloutUserMessageEventDtoCopyWith<$Res> {
+  _$CodexRolloutUserMessageEventDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutUserMessageEventDto _self;
+  final $Res Function(CodexRolloutUserMessageEventDto) _then;
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? message = null,}) {
+  return _then(CodexRolloutUserMessageEventDto(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutUnknownEventDto implements CodexRolloutEventDto {
+  const CodexRolloutUnknownEventDto({final  String? $type}): $type = $type ?? 'unknown';
+  factory CodexRolloutUnknownEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUnknownEventDtoFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownEventDto);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.unknown()';
+}
+
+
+}
+
+
+
 
 
 /// @nodoc

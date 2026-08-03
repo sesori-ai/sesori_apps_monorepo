@@ -246,7 +246,10 @@ class CodexCatalogRepository {
         case CodexRolloutTurnContextLineDto(:final payload):
           final candidate = payload.model;
           if (candidate != null && candidate.isNotEmpty) model = candidate;
-        case CodexRolloutResponseItemLineDto() || CodexRolloutCompactedLineDto() || CodexRolloutUnknownLineDto():
+        case CodexRolloutResponseItemLineDto() ||
+            CodexRolloutEventMessageLineDto() ||
+            CodexRolloutCompactedLineDto() ||
+            CodexRolloutUnknownLineDto():
           break;
       }
     }
