@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -23,6 +24,7 @@ void main() {
     late _FakePlugin plugin;
     late _FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
+    late SessionOperationDispatcher operationDispatcher;
     late SessionMutationDispatcher mutationDispatcher;
     late SessionCreationService service;
 
@@ -49,7 +51,11 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
+      operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      mutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: repository,
+        sessionOperationDispatcher: operationDispatcher,
+      );
       service = SessionCreationService(
         metadataService: metadataService,
         worktreeService: worktreeService,
@@ -59,6 +65,7 @@ void main() {
     });
 
     tearDown(() async {
+      await operationDispatcher.dispose();
       await mutationDispatcher.dispose();
       await db.close();
     });

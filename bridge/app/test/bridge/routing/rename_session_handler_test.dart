@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/rename_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -18,6 +19,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
+    late SessionOperationDispatcher sessionOperationDispatcher;
     late SessionMutationDispatcher sessionMutationDispatcher;
     late RenameSessionHandler handler;
 
@@ -31,7 +33,11 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
+      sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      sessionMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: sessionRepository,
+        sessionOperationDispatcher: sessionOperationDispatcher,
+      );
       handler = RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher);
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
@@ -50,6 +56,7 @@ void main() {
     });
 
     tearDown(() async {
+      await sessionOperationDispatcher.dispose();
       await sessionMutationDispatcher.dispose();
       await plugin.close();
       await db.close();

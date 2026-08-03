@@ -3,15 +3,14 @@
 ## Current State
 
 - **Plan slug:** `relay-request-concurrency`
-- **Implementation base:** merged Step 4 at
-  `9ac855a3f64930a118675fa93786476337a987c9`
-- **Series state:** Steps 1–4 merged; Step 4/10
-  [#699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as
-  `9ac855a3`
-- **Current step:** Step 5/10 PR
-  [#700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) open
+- **Implementation base:** merged Step 5 at
+  `5ba0d3a6029cdb699120e6254bd248c806fa2f95`
+- **Series state:** Steps 1–5 merged; Step 5/10
+  [#700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged as
+  `5ba0d3a6`
+- **Current step:** Step 6/10 implemented on `plan-parallel-requests`
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** open, review, and merge Step 5; Step 6 remains blocked until then
+- **Next action:** open, review, and merge Step 6; Step 7 remains blocked until then
 
 ## Incident Evidence
 
@@ -92,8 +91,8 @@
 | [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged as `fdc8ad67` with 1,552 changed lines |
 | [x] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as `95178462` |
 | [x] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as `9ac855a3` with 1,326 changed lines |
-| [ ] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) open from `9ac855a3` |
-| [ ] | 6/10 | `relay-request-concurrency-session-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Blocked on Step 5 merge |
+| [x] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged as `5ba0d3a6` with 1,534 changed lines |
+| [ ] | 6/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Implemented from `5ba0d3a6`; ready to open |
 | [ ] | 7/10 | `relay-request-concurrency-session-visibility` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | 600–1,100 | Blocked on Step 6 merge |
 | [ ] | 8/10 | `relay-request-concurrency-project-mutations` | `🚧 [relay-request-concurrency] refactor(bridge): order project path mutations [step 8/10]` | 650–1,100 | Blocked on Step 7 merge |
 | [ ] | 9/10 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | Blocked on Step 8 merge |
@@ -356,6 +355,30 @@
   suggestions were declined as speculative machinery for bounded local catalog
   walks and a compatibility-only path without demonstrated load evidence.
 - **Step 5/10 delivery:** [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700)
-  is open at 1,534 changed lines. The 34-line soft-cap overage is directly caused
+  merged as `5ba0d3a6029cdb699120e6254bd248c806fa2f95` at 1,534 changed
+  lines. The 34-line soft-cap overage was directly caused
   by review-required terminal abort signaling and prior-plugin settlement coverage;
   splitting it would leave the ordering fix incomplete.
+- **Step 6/10 base and scope:** based directly on merged Step 5 at `5ba0d3a6`
+  on the owner-provided `plan-parallel-requests` branch. The change scopes
+  rename, archive/unarchive, cleanup, and complete deletion to stable root-family
+  operations. There is no wire, database, client, UI, analytics, or plugin-interface change.
+- **Step 6/10 implementation:** `SessionMutationDispatcher` owns family admission
+  for rename and callback-scoped cleanup/deletion, repository subtree deletion,
+  tombstones, and `deletedSessions`. `SessionDeletionService` composes lifecycle
+  cleanup with that owner without nested dispatch. Archive/unarchive holds one
+  family lane through stored-session lookup, cleanup/restore, persistence, and
+  best-effort backend archive notification.
+- **Step 6/10 cleanup:** removed the mutation dispatcher's bridge-wide mutation
+  and backend tails plus their drain helpers. Already-reserved cleanup is explicit,
+  settled family state is removed by `SessionOperationDispatcher`, and direct
+  handler coordination was replaced with the deletion service.
+- **Step 6/10 verification:** 2,408 full `bridge/app` tests pass. Focused family,
+  lifecycle, mutation, deletion, rename, and archive tests pass, along with strict
+  `dart analyze --fatal-infos` and `git diff --check`.
+- **Step 6/10 architecture review:** `aristotle-impl-review` rejected the initial
+  split deletion-admission ownership and detached backend archive notification.
+  Both valid findings were applied directly: mutation dispatch now owns deletion
+  admission with callback-scoped cleanup, and archive notification settles inside
+  the family lane. Per policy, the corrected implementation was not re-reviewed.
+- **Step 6/10 delivery:** ready to open at 1,052 changed lines.

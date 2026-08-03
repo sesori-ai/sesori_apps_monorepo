@@ -11,7 +11,9 @@ import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart
 import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -24,12 +26,14 @@ void main() {
     late AppDatabase db;
     late _FakeWorktreeService worktreeService;
     late _FakeSessionRepository sessionRepository;
+    late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
 
     setUp(() {
       db = createTestDatabase();
       worktreeService = _FakeWorktreeService(database: db);
       sessionRepository = _FakeSessionRepository();
+      operationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionLifecycleService(
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
@@ -37,10 +41,12 @@ void main() {
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
         ),
+        sessionOperationDispatcher: operationDispatcher,
       );
     });
 
     tearDown(() async {
+      await operationDispatcher.dispose();
       await db.close();
     });
 
@@ -64,7 +70,7 @@ void main() {
 
     test("missing root binding is an explicit not-found failure", () async {
       await expectLater(
-        service.cleanup(
+        service.cleanupAlreadyReserved(
           sessionId: "missing",
           deleteWorktree: true,
           deleteBranch: true,
@@ -424,6 +430,7 @@ void main() {
   group("SessionLifecycleService archive binding", () {
     late AppDatabase db;
     late _FakeBridgePlugin plugin;
+    late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
 
     setUp(() async {
@@ -437,6 +444,7 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       service = SessionLifecycleService(
         worktreeService: _FakeWorktreeService(database: db),
         sessionRepository: repository,
@@ -444,6 +452,7 @@ void main() {
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
         ),
+        sessionOperationDispatcher: operationDispatcher,
       );
       await db.sessionDao.insertSession(
         sessionId: "root-session",
@@ -461,7 +470,10 @@ void main() {
       );
     });
 
-    tearDown(() => db.close());
+    tearDown(() async {
+      await operationDispatcher.dispose();
+      await db.close();
+    });
 
     test("archive routes plugin I/O through the stored backend id", () async {
       final update = await service.updateArchiveStatus(
@@ -527,7 +539,7 @@ Future<CleanupResult> _cleanup({
     baseBranch: null,
     baseCommit: null,
   );
-  return service.cleanup(
+  return service.cleanupAlreadyReserved(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
     deleteBranch: deleteBranch,
@@ -580,6 +592,21 @@ class _FakeSessionRepository implements SessionRepository {
     }
     await ensurePluginRoutable(pluginId: session.pluginId, operation: operation);
     return session;
+  }
+
+  @override
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final session = storedSession;
+    if (session == null) {
+      throw PluginOperationException.notFound(
+        operation.name,
+        message: "session $sessionId was not found",
+      );
+    }
+    return (rootSessionId: session.id, pluginId: session.pluginId);
   }
 
   @override

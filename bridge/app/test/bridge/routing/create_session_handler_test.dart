@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -62,6 +63,7 @@ void main() {
     late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late SessionRepository sessionRepository;
+    late SessionOperationDispatcher sessionOperationDispatcher;
     late SessionMutationDispatcher sessionMutationDispatcher;
     late CreateSessionHandler handler;
     late AppDatabase db;
@@ -79,7 +81,11 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
+      sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      sessionMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: sessionRepository,
+        sessionOperationDispatcher: sessionOperationDispatcher,
+      );
       handler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
@@ -91,6 +97,7 @@ void main() {
     });
 
     tearDown(() async {
+      await sessionOperationDispatcher.dispose();
       await sessionMutationDispatcher.dispose();
       await plugin.close();
       await db.close();
@@ -472,7 +479,10 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: localRepository,
-          sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: localRepository),
+          sessionMutationDispatcher: SessionMutationDispatcher(
+            sessionRepository: localRepository,
+            sessionOperationDispatcher: SessionOperationDispatcher(sessionRepository: localRepository),
+          ),
         ),
       );
       worktreeService.prepareResult = WorktreeSuccess(
@@ -724,7 +734,6 @@ void main() {
       expect(worktreeService.lastPreparePreferredBranchName, equals("fix-login-bug"));
       expect(result.title, equals("Fix Login Bug"));
       expect((await db.sessionDao.getSession(sessionId: result.id))?.title, equals("Fix Login Bug"));
-      await sessionMutationDispatcher.drain();
       expect(plugin.lastRenameSessionTitle, equals("Fix Login Bug"));
     });
 
@@ -937,7 +946,10 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: orderedRepository,
-          sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: orderedRepository),
+          sessionMutationDispatcher: SessionMutationDispatcher(
+            sessionRepository: orderedRepository,
+            sessionOperationDispatcher: SessionOperationDispatcher(sessionRepository: orderedRepository),
+          ),
         ),
       );
 
@@ -1126,7 +1138,11 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final throwingDispatcher = SessionMutationDispatcher(sessionRepository: throwingRepository);
+      final throwingOperationDispatcher = SessionOperationDispatcher(sessionRepository: throwingRepository);
+      final throwingDispatcher = SessionMutationDispatcher(
+        sessionRepository: throwingRepository,
+        sessionOperationDispatcher: throwingOperationDispatcher,
+      );
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
@@ -1156,6 +1172,7 @@ void main() {
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(result.title, "Fix Login Bug");
       expect((await db.sessionDao.getSession(sessionId: result.id))?.title, "Fix Login Bug");
+      await throwingOperationDispatcher.dispose();
       await throwingDispatcher.dispose();
       await throwingPlugin.close();
     });

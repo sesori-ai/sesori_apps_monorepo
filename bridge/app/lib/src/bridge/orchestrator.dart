@@ -129,6 +129,7 @@ import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_creation_service.dart";
+import "services/session_deletion_service.dart";
 import "services/session_diff_service.dart";
 import "services/session_event_dispatcher.dart";
 import "services/session_event_service.dart";
@@ -281,7 +282,10 @@ class Orchestrator {
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
-    final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
+    final sessionMutationDispatcher = SessionMutationDispatcher(
+      sessionRepository: sessionRepository,
+      sessionOperationDispatcher: sessionOperationDispatcher,
+    );
     final pushTracker = PushSessionStateTracker(now: clock.now);
     final pushRateLimiter = PushRateLimiter(now: clock.now);
     final completionNotifier = CompletionNotifier(
@@ -432,6 +436,11 @@ class Orchestrator {
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       filesystemRepository: filesystemRepository,
+      sessionOperationDispatcher: sessionOperationDispatcher,
+    );
+    final sessionDeletionService = SessionDeletionService(
+      sessionLifecycleService: sessionLifecycleService,
+      sessionMutationDispatcher: sessionMutationDispatcher,
     );
     final sessionAbortService = SessionAbortService(
       sessionRepository: sessionRepository,
@@ -525,10 +534,7 @@ class Orchestrator {
           sessionLifecycleService: sessionLifecycleService,
           sessionUnseenService: sessionUnseenService,
         ),
-        DeleteSessionHandler(
-          sessionLifecycleService: sessionLifecycleService,
-          sessionMutationDispatcher: sessionMutationDispatcher,
-        ),
+        DeleteSessionHandler(sessionDeletionService: sessionDeletionService),
         SendPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
         GetProvidersHandler(providerRepository),

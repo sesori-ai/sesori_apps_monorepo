@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -26,6 +27,7 @@ void main() {
     late AppDatabase db;
     late FakeBridgePlugin plugin;
     late _FakeWorktreeService worktreeService;
+    late SessionOperationDispatcher operationDispatcher;
     late SessionUnseenService unseenService;
     late UpdateSessionArchiveStatusHandler handler;
 
@@ -44,17 +46,20 @@ void main() {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       );
+      operationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       handler = UpdateSessionArchiveStatusHandler(
         sessionLifecycleService: SessionLifecycleService(
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
           filesystemRepository: filesystemRepository,
+          sessionOperationDispatcher: operationDispatcher,
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
       );
     });
 
     tearDown(() async {
+      await operationDispatcher.dispose();
       await plugin.close();
       await db.close();
     });
@@ -732,7 +737,7 @@ void main() {
       expect(result.time?.archived, equals(persisted?.archivedAt));
     });
 
-    test("archive does not await plugin archiveSession", () async {
+    test("archive holds its family operation through plugin notification", () async {
       await _insertSession(
         db: db,
         sessionId: "s1",
@@ -754,10 +759,10 @@ void main() {
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
         ),
       ];
-      // Plugin never completes — if handler awaited, this test would hang.
-      plugin.archiveSessionCompleter = Completer<void>();
+      final archiveGate = Completer<void>();
+      plugin.archiveSessionCompleter = archiveGate;
 
-      final result = await handler.handle(
+      final resultFuture = handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
@@ -770,6 +775,15 @@ void main() {
         queryParams: {},
         fragment: null,
       );
+      var completed = false;
+      unawaited(resultFuture.then<void>((_) => completed = true));
+      while (plugin.lastArchiveSessionId == null) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(completed, isFalse);
+
+      archiveGate.complete();
+      final result = await resultFuture;
 
       expect(result.id, equals("s1"));
       expect(result.time?.archived, isNotNull);
