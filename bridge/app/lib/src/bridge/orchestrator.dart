@@ -42,8 +42,8 @@ import "../routing/get_plugin_management_handler.dart";
 import "../routing/get_plugin_setup_handler.dart";
 import "../routing/get_plugins_handler.dart";
 import "../routing/get_pull_request_refresh_settings_handler.dart";
+import "../routing/patch_bridge_settings_handler.dart";
 import "../routing/patch_plugin_idle_timeout_handler.dart";
-import "../routing/patch_pull_request_refresh_settings_handler.dart";
 import "../routing/post_plugin_lifecycle_command_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
@@ -495,7 +495,9 @@ class Orchestrator {
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
-        PatchPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
+        PatchBridgeSettingsHandler(
+          pullRequestRefreshSettingsService: pullRequestRefreshSettingsService,
+        ),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),

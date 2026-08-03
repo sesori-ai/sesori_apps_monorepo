@@ -16,5 +16,5 @@ class GetPullRequestRefreshSettingsHandler extends GetRequestHandler<PullRequest
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
-  }) async => _settingsService.currentSettings;
+  }) => _settingsService.readCommittedSettings();
 }

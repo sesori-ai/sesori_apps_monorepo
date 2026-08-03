@@ -4,13 +4,14 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `ba25adae6374ee1895e78564f6b457b66b172e04`
-- **Series state:** Steps 1/9, 2.a–2.c/9, and 3–6/9 merged; Step 7 is under review in PR #697
-- **Current step:** Step 7/9 — shared client project presence
+  `5ba0d3a6`
+- **Series state:** Steps 1/9, 2.a–2.c/9, and 3–7/9 merged; Step 8 split into 8.a–8.b after closing PR #701 for redesign
+- **Current step:** Step 8.a/9 — generic bridge setting mutations
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Previous step PR:** [#693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged
-- **Next action:** finish Step 7 review in PR #697 and monitor the isolated PR-metadata fix in PR #698
+- **Previous step PR:** [#697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) merged
+- **Closed replacement source:** [#701](https://github.com/sesori-ai/sesori_apps_monorepo/pull/701) closed for generic settings redesign
+- **Next action:** replace the internal-only cadence PATCH with one generic sealed settings mutation endpoint in Step 8.a
 
 ## Existing Baseline
 
@@ -48,9 +49,10 @@
 | [x] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 4,000–4,200 | [PR #686](https://github.com/sesori-ai/sesori_apps_monorepo/pull/686) merged as `3bbb1e8e` |
 | [x] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | [PR #692](https://github.com/sesori-ai/sesori_apps_monorepo/pull/692) merged as `42161a53` |
 | [x] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | [PR #693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged as `ba25adae` |
-| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | [PR #697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) under review; feedback fixes verified locally |
-| [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
-| [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8 merge |
+| [x] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | [PR #697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) merged as `d543b1f7` |
+| [ ] | 8.a/9 | `session-pull-request-monitoring-generic-settings` | `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]` | 1,000–1,500 | In progress from current `main`; replaces internal-only feature PATCH without fallback |
+| [ ] | 8.b/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | 2,000–2,400 | Rebuild the closed PR #701 client change on generic mutation transport after 8.a merges |
+| [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8.b merge |
 
 ## Exact PR Titles
 
@@ -63,7 +65,8 @@
 5. `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]`
 6. `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]`
 7. `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]`
-8. `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]`
+8.a. `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]`
+8.b. `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]`
 9. `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]`
 
 ## Execution Rules
@@ -439,6 +442,26 @@
   [PR #698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/698); it keeps
   project-scoped `sessions.updated` REST refreshes authoritative for clearing
   metadata.
+- **Step 8.a/9 implementation:** Added the shared `BridgeSettingUpdate` and
+  `BridgeSettingUpdateRejection` Freezed unions with explicit `type`
+  discriminators and unknown-peer fallbacks. `PatchBridgeSettingsHandler` now
+  owns generic `PATCH /settings`, dispatches the cadence variant to the focused
+  service, returns the committed variant, and maps range rejection to sealed
+  JSON. The focused GET waits behind admitted repository mutations.
+- **Step 8.a/9 compatibility and cleanup:** Public production v1.6.0 predates
+  this settings capability. Removed the internal-only feature PATCH handler,
+  request/error DTOs, generated output, tests, import, and route registration;
+  no fallback, dual route, database change, or analytics event remains. Root
+  guidance now makes public production releases the compatibility baseline.
+- **Step 8.a/9 verification:** Shared codegen and formatting pass, as do all 363
+  shared tests, all 2,400 bridge app tests, both fatal-info analyzers, focused
+  handler/service/config tests, and `git diff --check`. Final scope is 1,360
+  changed lines (874 additions/486 deletions): 629 generated, 274 tests, 259
+  plan/instructions, and 198 hand-authored production lines.
+- **Step 8.a/9 architecture review:** `aristotle-impl-review` approved the full
+  working-tree scope with no findings. It confirmed the public-release-only
+  compatibility decision, generic boundary dispatch, focused service ownership,
+  shared union placement, and direct obsolete-contract cleanup.
 
 ## Findings and Plan Deltas
 
@@ -476,3 +499,15 @@
   the soft cap; required PR review fixes raised them to 1,989 lines. The generated
   schema/migration bundle and coupled correctness fixes must accompany v13
   atomically, so neither overage has a smaller independently valid split.
+- **2026-08-03 — Step 8 redesign:** Closed PR #701 at the user's request and
+  split Step 8 into 8.a generic bridge setting mutations and 8.b client settings
+  so the new shared wire/routing boundary is independently reviewable. The
+  feature-specific PATCH route and request/error contracts appeared only in
+  internal prereleases, so 8.a removes them completely without fallback; public
+  production release v1.6.0 predates this settings capability.
+- **2026-08-03 — Redesign architecture review:** The first plan review rejected
+  Step 8 as too vague; the clarified re-review found one API-boundary violation.
+  Step 8.b now gives generic PATCH ownership to `BridgeSettingsApi`, which
+  parses both committed and rejected shared DTOs before returning a typed API
+  result. The focused repository receives no raw rejection JSON. Per review
+  rules, this applied finding is not re-reviewed.

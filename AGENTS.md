@@ -95,6 +95,12 @@ eagerly "just in case."
   wire contracts with honest defaults or graceful degradation where possible;
   when an older peer cannot support new behavior, surface that limitation
   explicitly instead of silently breaking an existing flow.
+- Compatibility baselines include only public production releases. Internal,
+  prerelease, development, and otherwise unpublished builds do not create a
+  compatibility obligation. When a route or wire shape has appeared only in
+  those builds, replace it cleanly and remove the obsolete code, models, tests,
+  and handlers; do not add fallbacks, shims, dual routes, or retained contracts
+  solely for unpublished peers.
 - Dart/Flutter modules and plugin interfaces/packages have no external
   consumers outside this repository and update together. Do not add
   compatibility shims, optional parameters, or legacy API paths for those

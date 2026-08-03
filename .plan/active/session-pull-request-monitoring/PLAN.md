@@ -3,11 +3,11 @@
 ## Status
 
 - **Plan slug:** `session-pull-request-monitoring`
-- **Status:** Approved — Step 1/9 merged; Step 2.a/9 PR [#662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/662) open
-- **Plan revision date:** 2026-08-01
+- **Status:** Approved — Steps 1–7 merged; Step 8.a/9 in progress after the settings transport redesign
+- **Plan revision date:** 2026-08-03
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main`
-- **Latest audited tip:** `edff10828f17a45c40ba5bc02db109977a856411`
+- **Latest audited tip:** `5ba0d3a6`
 - **Existing contract baseline:** [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) shipped additive
   `RelayProjectView` and `Session.pullRequestHistory` contracts.
 - **Delivery:** one plan PR, nine sequential implementation PRs, and
@@ -66,8 +66,9 @@ OpenCode, Codex, Cursor, ACP, or future backend behavior crosses
     attempt, pause, or resume path is introduced.
 11. `Session.pullRequestHistory` remains empty. No multiple-PR/history UI or
     desktop-shell-specific implementation is added.
-12. Every implementation PR is independently releasable, preserves old/new
-    client-bridge compatibility, and passes directly relevant analysis/tests.
+12. Every implementation PR is independently releasable, preserves compatibility
+    between public production client/bridge releases, and passes directly relevant
+    analysis/tests. Internal prereleases do not retain superseded wire contracts.
 
 ## Locked Product Decisions
 
@@ -111,9 +112,10 @@ OpenCode, Codex, Cursor, ACP, or future backend behavior crosses
 - Use a fixed interval, not the old 15/90-second adaptive state machine.
 - Default to 30 seconds. Persist a custom integer in seconds per bridge. The
   implementation validates a conservative 15–3,600 second range.
-- A client settings PATCH updates the running listener immediately. Manual
-  edits to `~/.config/sesori/config.json` require bridge restart because no file
-  watcher is added.
+- A generic `PATCH /settings` accepts a shared sealed setting-update variant and
+  updates the running listener immediately. Manual edits to
+  `~/.config/sesori/config.json` require bridge restart because no file watcher
+  is added.
 - Explicit pull-to-refresh retains the existing five-second bounded wait.
 
 ### Presentation and lifecycle
@@ -367,10 +369,13 @@ used by plugin and PR settings writers so concurrent devices/settings domains
 cannot lose each other's fields. Successful writes publish the in-memory
 settings stream.
 
-New shared request/response models back GET/PATCH
-`/settings/pull-request-refresh`. A focused bridge settings service validates
-15–3,600 seconds, persists through the repository, and returns the committed
-value. The listener consumes the repository/service stream and updates live.
+The focused GET `/settings/pull-request-refresh` returns the committed cadence.
+Generic `PATCH /settings` accepts and returns a shared Freezed
+`BridgeSettingUpdate` sealed union keyed by `type`; its initial variant updates
+the PR refresh interval. A sealed rejection union carries variant-specific
+validation evidence. The focused bridge settings service validates 15–3,600
+seconds and persists through the repository. The listener consumes the
+repository/service stream and updates live.
 
 ### Shared client behavior
 
@@ -403,9 +408,9 @@ reports only whether the wide list pane is actually mounted.
 
 Client settings use a focused API, repository, service, and cubit. The current
 settings screen adds one bridge section row and Prego numeric bottom sheet; it
-does not add another route. A successful PATCH updates the displayed committed
-value. Older bridges returning 404 are rendered as unsupported rather than an
-app failure.
+does not add another route. A successful generic settings PATCH updates the
+displayed committed value. Public production bridges predating the settings API
+return 404 and are rendered as unsupported rather than an app failure.
 
 ## Compatibility, Security, and Failure Behavior
 
@@ -422,7 +427,9 @@ app failure.
   that never declare presence. Keep `waitForPrData: true` as explicit refresh
   with its existing five-second budget. Add the exact dated compatibility marker
   only to the non-wait legacy trigger.
-- New settings APIs return 404 on old bridges; clients show unsupported.
+- Public production bridges predating settings mutation return 404; clients show
+  unsupported. The feature-specific PATCH contract appeared only in internal
+  prereleases, so Step 8.a removes it without a fallback or compatibility shim.
 
 ### Identity and source privacy
 
@@ -553,7 +560,8 @@ settings screen analytics continue unchanged.
 | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | Multi-device connection lifecycle and serialized add-during-flight scheduling. | 900–1,400 | Route per-connection project presence and run one fixed 30-second aggregate scheduler. |
 | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | Localized persisted settings flow with concurrent writes and live timer updates. | 1,000–1,500 | Persist/validate interval settings, expose GET/PATCH, serialize settings writes, and rearm the live timer. |
 | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | Shared list/detail lifecycle, reconnect ordering, and multi-device bridge behavior. | 1,000–1,500 | Add layered client project presence with list/detail, lifecycle, reconnect, and multi-device-safe bridge behavior. |
-| 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | Shared settings layers, compatibility UI, and end-to-end bridge/client regression coverage. | 1,000–1,500 | Add shared client interval settings, compatibility UI, final integration verification, and current-branch/PR regressions. |
+| 8.a/9 | `session-pull-request-monitoring-generic-settings` | `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]` | Shared sealed wire unions, generic routing, generated contracts, and direct cleanup of an unpublished endpoint. | 1,000–1,500 | Replace the internal-only cadence PATCH with one generic setting-update endpoint while retaining the focused GET. |
+| 8.b/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | Shared settings layers, connection lifecycle, mutation reconciliation, compatibility UI, and end-to-end bridge/client regression coverage. | 2,000–2,400 | Add the shared client interval setting against the generic mutation route, compatibility UI, final integration verification, and current-branch/PR regressions. |
 | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | Mechanical documentation state/move after implementation completion. | 50–200 | Record completion and move the plan directory from active to completed. |
 
 ## Implementation Steps
@@ -856,14 +864,97 @@ Verification:
 - module-core codegen, fatal-info analysis, and tests
 - mobile and desktop downstream analysis/tests required by shared changes
 
-### Step 8/9 — Shared client settings and final integration
+### Step 8.a/9 — Generic bridge setting mutations
+
+Scope:
+
+- Add one shared Freezed `BridgeSettingUpdate` sealed union with an explicit
+  `type` discriminator and a pull-request refresh interval variant.
+- Add a sealed setting-update rejection union for variant-specific validation
+  evidence and expose one `PATCH /settings` bridge handler.
+- Keep the focused cadence GET and focused service/stream ownership; the generic
+  handler dispatches typed variants to the owning service rather than persisting
+  arbitrary settings directly.
+- Remove the feature-specific PATCH handler, request/error contracts, route
+  registration, and tests. They shipped only in internal prereleases and have no
+  public-production compatibility obligation.
+- Record the public-release-only compatibility rule in root repository guidance.
+
+Concrete contract and ownership:
+
+- Add `shared/sesori_shared/lib/src/models/sesori/bridge_setting_update.dart`
+  and generated `.freezed.dart`/`.g.dart` output, export it from
+  `sesori_shared.dart`, and cover it in
+  `test/models/bridge_setting_update_test.dart`.
+- `BridgeSettingUpdate` is a `type`-discriminated Freezed union. Its initial
+  `pullRequestRefreshInterval` discriminator maps to
+  `PullRequestRefreshIntervalSettingUpdate` with strict non-null integer
+  `intervalSeconds`. The successful response is the same union variant carrying
+  the bridge-committed value, avoiding duplicate request/response DTOs. An
+  explicit `UnknownBridgeSettingUpdate` fallback represents discriminators from
+  newer peers and is rejected without mutation when received as a request.
+- `BridgeSettingUpdateRejection` is a separate `type`-discriminated Freezed
+  union. Its initial `pullRequestRefreshIntervalOutOfRange` discriminator maps
+  to `PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection` with strict
+  integer `minimumIntervalSeconds` and `maximumIntervalSeconds`; an explicit
+  unknown fallback lets older public clients fail gracefully on future
+  rejection variants.
+- Add `bridge/app/lib/src/routing/patch_bridge_settings_handler.dart` with
+  `PatchBridgeSettingsHandler({required PullRequestRefreshSettingsService
+  pullRequestRefreshSettingsService})`. It extends
+  `BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate>`, owns
+  `PATCH /settings`, switches exhaustively on the sealed request, delegates the
+  cadence variant to the focused service, wraps the committed value in the same
+  variant, and translates `PullRequestRefreshIntervalOutOfRangeException` into
+  HTTP 400 plus the sealed rejection JSON.
+- Change `PullRequestRefreshSettingsService.update` to accept required scalar
+  `intervalSeconds`; the service retains range validation, repository mutation,
+  committed response mapping, and filtered settings-change stream ownership.
+  The generic handler never mutates `BridgeSettingsRepository` directly.
+- Add `BridgeSettingsRepository.readCommittedSettings()` to await its existing
+  mutation tail, expose it through
+  `PullRequestRefreshSettingsService.readCommittedSettings()`, and make
+  `GetPullRequestRefreshSettingsHandler` use that ordered read. This guarantees
+  a reconciliation GET cannot observe pre-commit state from an active generic
+  PATCH without adding another lock or mutation owner.
+- Replace the handler registration in
+  `bridge/app/lib/src/bridge/orchestrator.dart`. Replace PATCH coverage in
+  `bridge/app/test/routing/pull_request_refresh_settings_handlers_test.dart` and
+  update focused service tests for the scalar service seam.
+- Delete `patch_pull_request_refresh_settings_handler.dart`. Remove
+  `PullRequestRefreshSettingsRequest`, `PullRequestRefreshSettingsErrorCode`, and
+  `PullRequestRefreshSettingsErrorResponse` from
+  `pull_request_refresh_settings.dart`; regenerate that file's outputs and keep
+  only `PullRequestRefreshSettingsResponse` for the focused GET. Remove their
+  obsolete shared tests. No old route or fallback remains.
+
+Acceptance:
+
+- A typed cadence update through `PATCH /settings` persists and returns the
+  bridge-committed sealed variant; range rejection returns a typed sealed 400.
+- A concurrent focused GET waits behind an admitted settings mutation and
+  returns its committed value.
+- Invalid or unknown JSON is rejected at the handler boundary and cannot write.
+- The focused GET and live listener rearming continue unchanged.
+- No legacy PATCH route, fallback, retained request/error DTO, database change,
+  or analytics event remains.
+
+Verification:
+
+- shared code generation, sealed-union JSON round-trip/strict parsing tests
+- bridge generic-handler persistence/rejection/malformed-body tests
+- focused settings service/listener tests plus shared/bridge fatal-info analysis
+- architecture implementation review and `git diff --check`
+
+### Step 8.b/9 — Shared client settings and final integration
 
 Scope:
 
 - Re-audit current settings ownership before editing, using merged PR #647's
   consolidated Harness screen only as a proven input/mutation pattern.
-- Add module-core settings API/repository/service/cubit for GET/PATCH, numeric
-  planning, unsupported old bridge, mutation uncertainty, and committed value.
+- Add module-core settings API/repository/service/cubit for the focused GET and
+  generic settings PATCH, numeric planning, unsupported public-release bridge,
+  mutation uncertainty, and committed value.
 - Add one localized Prego settings row/bottom sheet in the product client's
   existing settings owner; custom integer seconds, default display 30, range
   15–3,600.
@@ -871,6 +962,75 @@ Scope:
 - Complete fake Git/GitHub/relay integration for view -> branch -> batch ->
   selected cache -> `sessionsUpdated` -> refetch -> shared row.
 - Run final bridge/shared/client/mobile/desktop verification.
+
+Concrete classes and ownership:
+
+- Add `PullRequestRefreshSettingsApi({required RelayHttpApiClient client})` in
+  `client/module_core/lib/src/api/pull_request_refresh_settings_api.dart` for the
+  focused GET `/settings/pull-request-refresh` only. Add
+  `BridgeSettingsApi({required RelayHttpApiClient client})` in
+  `client/module_core/lib/src/api/bridge_settings_api.dart` as the single client
+  wrapper for generic `PATCH /settings` mutations.
+- `BridgeSettingsApi` returns a sealed typed API-layer result: committed
+  `BridgeSettingUpdate`, rejected `BridgeSettingUpdateRejection`, or transport
+  `ApiError`. It passes `BridgeSettingUpdate.fromJson` to the relay client for
+  success parsing and parses a 400 raw body immediately at the API boundary with
+  `BridgeSettingUpdateRejection.fromJson`; malformed rejection JSON remains the
+  original explicit API failure. A 404 and every other transport error remain
+  typed `ApiError` outcomes. No raw response body crosses into a repository.
+- Add `PullRequestRefreshSettingsRepository({required
+  PullRequestRefreshSettingsApi pullRequestRefreshSettingsApi, required
+  BridgeSettingsApi bridgeSettingsApi})` and its sealed result models under
+  `client/module_core/lib/src/repositories/`. It consumes only typed API
+  outcomes and maps them into domain results: GET/PATCH 404 to unsupported, a
+  matching sealed rejection to validated bounds, post-dispatch
+  timeout/response-loss/empty-or-unparseable success to an uncertain mutation,
+  committed update variants to the focused response, and all other errors to
+  explicit failures.
+- Add `PullRequestRefreshSettingsService({required
+  PullRequestRefreshSettingsRepository repository})`. It owns trimming/integer
+  parsing and planning against optional bridge-reported bounds, then delegates
+  load/update. It has no Flutter or connection dependency.
+- Add the focused `PullRequestRefreshSettingsCubit({required
+  PullRequestRefreshSettingsService service, required ConnectionService
+  connectionService})` and sealed states under
+  `client/module_core/lib/src/cubits/pull_request_refresh_settings/`.
+  `SettingsCubit` remains unchanged and continues to own account/logout only.
+  The focused cubit owns connection epochs, one in-flight operation, coalesced
+  refresh, bridge-derived bounds, stale modal fencing, uncertain-PATCH GET
+  reconciliation, and disconnected/loading/unsupported/failure/uncertain/ready
+  presentation state.
+- Export these types from `client/module_core/lib/sesori_dart_core.dart`, annotate
+  API/repository/service with `@lazySingleton`, and regenerate
+  `client/module_core/lib/src/di/injection.config.dart`; cubits remain
+  product-shell constructed and are not registered in DI.
+- Modify `client/app/lib/features/settings/settings_screen.dart` to provide the
+  focused cubit with `getIt<PullRequestRefreshSettingsService>()` and
+  `getIt<ConnectionService>()`, without extending `SettingsCubit`. Add
+  `widgets/pull_request_refresh_settings_section.dart`, source strings in
+  `app_en.arb`, and generated localization output. The widget consumes only
+  cubit state/intents and binds modal submission to its opening ready state.
+
+Complete flow:
+
+1. On a connected epoch the focused cubit calls service → repository → API GET;
+   a committed response emits ready, 404 emits unsupported, and a failure emits
+   retryable failure while disconnect/reconnect clears old-bridge state and
+   fences late responses.
+2. Input is planned by the service. Invalid syntax or known bridge bounds emits
+   an inline mutation failure without transport. Valid input reaches API PATCH
+   as the sealed cadence variant.
+3. A matching committed variant becomes the displayed value; sealed range
+   rejection becomes repository-validated authoritative bounds and keeps the
+   editor usable; 404 becomes unsupported; ordinary failures remain retryable.
+4. A post-dispatch uncertain result blocks further PATCH work and performs an
+   ordered focused GET. Success restores ready committed state; GET failure
+   remains uncertain until explicit retry. Every publication and modal submit is
+   fenced to the connection/ready state that initiated it.
+
+Each class exists for a stable layer responsibility—transport, outcome mapping,
+input planning, connection-aware state orchestration, or Flutter rendering—not
+for file length or test substitution.
 
 Acceptance:
 
