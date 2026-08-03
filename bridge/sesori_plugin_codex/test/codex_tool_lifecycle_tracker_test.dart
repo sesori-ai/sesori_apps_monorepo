@@ -208,6 +208,16 @@ void main() {
         "input": "const result = await tools.image_gen__generate({prompt: 'private'}); generatedImage(result);",
       },
     });
+    final directedForwardedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
+      },
+    });
     final unrelatedForwarding = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -230,6 +240,13 @@ void main() {
       target.observeRolloutLine(
         threadId: "thread-1",
         line: forwardedWrapper,
+      ),
+      isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedForwardedWrapper,
       ),
       isEmpty,
     );

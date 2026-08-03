@@ -616,6 +616,10 @@ final RegExp _generatedImageInvocationPattern = RegExp(
   r"^\s*(?:await\s+)?tools\.image_gen__[A-Za-z0-9_]+\s*\([\s\S]*\)\s*;?\s*$",
 );
 
+final RegExp _generatedExecDirectivePattern = RegExp(
+  r"^\s*//\s*@exec:\s*\{[^\r\n]*\}[ \t]*(?:\r?\n|$)",
+);
+
 final RegExp _forwardedGeneratedImageInvocationPattern = RegExp(
   r"^\s*(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*await\s+"
   r"tools\.image_gen__[A-Za-z0-9_]+\s*\([\s\S]*\)\s*;\s*"
@@ -623,7 +627,11 @@ final RegExp _forwardedGeneratedImageInvocationPattern = RegExp(
 );
 
 bool _isGeneratedImageInvocation(String input) {
-  if (_generatedImageInvocationPattern.hasMatch(input)) return true;
-  final forwarded = _forwardedGeneratedImageInvocationPattern.firstMatch(input);
+  final directive = _generatedExecDirectivePattern.firstMatch(input);
+  final invocation = directive == null ? input : input.substring(directive.end);
+  if (_generatedImageInvocationPattern.hasMatch(invocation)) return true;
+  final forwarded = _forwardedGeneratedImageInvocationPattern.firstMatch(
+    invocation,
+  );
   return forwarded != null && forwarded.group(1) == forwarded.group(2);
 }
