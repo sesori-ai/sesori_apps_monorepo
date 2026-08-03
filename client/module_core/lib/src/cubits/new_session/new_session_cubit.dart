@@ -575,6 +575,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final trimmed = text.trim();
     if (trimmed.isEmpty && !hasCommand && attachments.isEmpty) return;
 
+    // The bridge's command paths carry only the text part, so sending this
+    // combination would drop the images without telling anyone. Refuse it at
+    // the seam that formats the wire payload, not only in the composer.
+    if (hasCommand && attachments.isNotEmpty) {
+      logw("Refused a /$normalizedCommand submission carrying ${attachments.length} attachment(s)");
+      return;
+    }
+
     // TEMPORARY 2026-08-03: see [harnessSupportsPromptAttachments]. The
     // composer hides the attach action for harnesses that drop image parts;
     // hold that line here too, at the seam that formats the wire payload.
@@ -582,6 +590,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       logw("Refused ${attachments.length} attachment(s) for harness ${selectedPlugin.id}");
       return;
     }
+
     final analyticsSubmission = hasCommand
         ? const AnalyticsSubmission.command()
         : AnalyticsSubmission.text(inputMode: _analyticsInputMode(inputMode));

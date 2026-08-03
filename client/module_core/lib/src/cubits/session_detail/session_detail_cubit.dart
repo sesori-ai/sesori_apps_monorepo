@@ -1061,10 +1061,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     // TEMPORARY 2026-08-03: see [harnessSupportsPromptAttachments]. The
     // composer hides the attach action for harnesses that drop image parts;
     // hold that line here too, at the seam that formats the wire payload.
-    if (attachments.isNotEmpty &&
-        current is SessionDetailLoaded &&
-        !harnessSupportsPromptAttachments(pluginId: current.pluginId)) {
-      logw("Refused ${attachments.length} attachment(s) for harness ${current.pluginId}");
+    // An unresolved harness refuses as well, so nothing reaches the queue that
+    // the drain would later hand to a harness that cannot carry it.
+    final harness = current is SessionDetailLoaded ? current.pluginId : null;
+    if (attachments.isNotEmpty && !harnessSupportsPromptAttachments(pluginId: harness)) {
+      logw("Refused ${attachments.length} attachment(s) for harness $harness");
       return;
     }
 

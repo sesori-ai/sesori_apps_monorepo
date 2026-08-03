@@ -1368,11 +1368,14 @@ class _PromptInputState extends State<PromptInput> {
   Future<void> _handleAttachImage() async {
     // The pick can settle after this state was reused for another session
     // (didUpdateWidget cleared the strip) — a late result must not leak into
-    // the new session's composer.
+    // the new session's composer. It can equally settle after the harness
+    // stopped supporting attachments, which the strip must not outlive.
     final draftIdentity = widget.draftIdentity;
     try {
       final attachment = await _imagePicker.pickImage();
-      if (!mounted || draftIdentity != widget.draftIdentity || attachment == null) return;
+      if (!mounted || draftIdentity != widget.draftIdentity || !widget.attachmentsSupported || attachment == null) {
+        return;
+      }
       if (_attachmentsDecodedSizeWith(attachment: attachment) > maxInlineMessageAttachmentBytes) {
         _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
         return;

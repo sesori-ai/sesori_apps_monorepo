@@ -264,6 +264,41 @@ void main() {
       ],
     );
 
+    blocTest<NewSessionCubit, NewSessionState>(
+      "createSession refuses a command carrying attachments instead of dropping them",
+      skip: 1,
+      build: buildCubit,
+      act: (cubit) async {
+        await waitForComposer(cubit);
+        await cubit.createSession(
+          text: "look at this",
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          dedicatedWorktree: false,
+          command: "review",
+          inputMode: ComposerInputMode.typed,
+        );
+      },
+      // The bridge's command paths carry only text, so the send is refused
+      // outright rather than reaching the service with the images stripped.
+      expect: () => [isA<NewSessionIdle>()],
+      verify: (_) {
+        verifyNever(
+          () => mockSessionService.createSessionWithMessage(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
+          ),
+        );
+      },
+    );
+
     // TEMPORARY 2026-08-03: these two cover the harness gate — remove them
     // with it once every harness carries image parts. See
     // harnessSupportsPromptAttachments.
