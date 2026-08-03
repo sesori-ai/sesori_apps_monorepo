@@ -293,6 +293,47 @@ void main() {
       );
     });
 
+    test("does not send a PATCH after the same account starts a new auth session", () async {
+      AuthState currentState = AuthState.authenticated(user: _userA.copyWith());
+      final tokenResponse = Completer<String?>();
+      when(() => mockAuth.currentState).thenAnswer((_) => currentState);
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) => tokenResponse.future);
+      when(
+        () => mockHttpApiClient.patch<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success("stale"));
+
+      final responseFuture = client.patchForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: "{}",
+      );
+      await Future<void>.delayed(Duration.zero);
+      currentState = const AuthState.unauthenticated();
+      currentState = AuthState.authenticated(user: _userA.copyWith());
+      tokenResponse.complete(accessToken);
+
+      final response = await responseFuture;
+      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+      verifyNever(
+        () => mockHttpApiClient.patch<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      );
+    });
+
     test("does not retry a 401 with a token refreshed after an account switch", () async {
       AuthState currentState = const AuthState.authenticated(user: _userA);
       when(() => mockAuth.currentState).thenAnswer((_) => currentState);

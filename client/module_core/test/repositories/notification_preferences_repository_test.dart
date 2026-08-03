@@ -205,7 +205,7 @@ void main() {
       );
     });
 
-    test("an older same-category PATCH cannot replace a newer confirmation", () async {
+    test("same-category PATCHes reach the server in invocation order", () async {
       final olderResponse = Completer<NotificationPreferencesApiRecord>();
       final newerResponse = Completer<NotificationPreferencesApiRecord>();
       when(
@@ -237,11 +237,35 @@ void main() {
         category: NotificationCategory.aiInteraction,
         enabled: true,
       );
-      newerResponse.complete(_record());
-      await newerUpdate;
-      olderResponse.complete(_record(notifications: _updatedNotifications));
+      await Future<void>.delayed(Duration.zero);
+      verify(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.aiInteraction(enabled: false),
+        ),
+      ).called(1);
+      verifyNever(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.aiInteraction(enabled: true),
+        ),
+      );
 
-      expect(await olderUpdate, isTrue);
+      olderResponse.complete(_record(notifications: _updatedNotifications));
+      expect(await olderUpdate, isFalse);
+      await Future<void>.delayed(Duration.zero);
+      verify(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.aiInteraction(enabled: true),
+        ),
+      ).called(1);
+      newerResponse.complete(_record());
+
+      expect(await newerUpdate, isTrue);
       expect(
         await repository.isEnabled(userId: _userA, category: NotificationCategory.aiInteraction),
         isTrue,
@@ -279,10 +303,9 @@ void main() {
         category: NotificationCategory.aiInteraction,
         enabled: true,
       );
-      await expectLater(newerUpdate, throwsA(isA<GenericError>()));
       olderResponse.complete(_record(notifications: _updatedNotifications));
-
       expect(await olderUpdate, isFalse);
+      await expectLater(newerUpdate, throwsA(isA<GenericError>()));
       expect(
         await repository.isEnabled(userId: _userA, category: NotificationCategory.aiInteraction),
         isFalse,

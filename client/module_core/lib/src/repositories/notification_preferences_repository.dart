@@ -19,7 +19,7 @@ class NotificationPreferencesRepository {
   final Map<String, Future<Map<NotificationCategory, bool>>> _activeFetches = {};
   final Map<String, int> _cacheGenerations = {};
   final Map<String, int> _fetchSequences = {};
-  final Map<(String, NotificationCategory), ({int started, int confirmed})> _updateSequences = {};
+  final Map<(String, NotificationCategory), Future<void>> _updateTails = {};
 
   NotificationPreferencesRepository({
     required NotificationPreferencesApi api,
@@ -49,14 +49,41 @@ class NotificationPreferencesRepository {
       throw ArgumentError.value(category, "category", "Unsupported notification category");
     }
     final updateKey = (userId, category);
-    final updateState = _updateSequences[updateKey] ?? (started: 0, confirmed: 0);
-    final updateSequence = updateState.started + 1;
-    _updateSequences[updateKey] = (started: updateSequence, confirmed: updateState.confirmed);
+    final precedingUpdate = _updateTails[updateKey];
+    final turn = Completer<void>();
+    final turnFuture = turn.future;
+    _updateTails[updateKey] = turnFuture;
+    final cacheGeneration = _cacheGeneration(userId: userId);
 
+    if (precedingUpdate != null) {
+      await precedingUpdate;
+    }
+    try {
+      _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
+      return await _setEnabled(
+        userId: userId,
+        category: category,
+        enabled: enabled,
+        cacheGeneration: cacheGeneration,
+      );
+    } finally {
+      turn.complete();
+      if (identical(_updateTails[updateKey], turnFuture)) {
+        final _ = _updateTails.remove(updateKey);
+      }
+    }
+  }
+
+  Future<bool> _setEnabled({
+    required String userId,
+    required NotificationCategory category,
+    required bool enabled,
+    required int cacheGeneration,
+  }) async {
     if (_cachedPreferences[userId] == null) {
       await _fetch(userId: userId);
     }
-    final cacheGeneration = _cacheGeneration(userId: userId);
+    _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
     if (_cachedPreferences[userId] == null) throw ApiError.notAuthenticated();
 
     final deviceId = await _deviceIdStorage.getOrCreate();
@@ -72,12 +99,6 @@ class NotificationPreferencesRepository {
     final confirmed = _preferenceFrom(notifications: record.notifications, category: category);
     final latest = _cachedPreferences[userId];
     if (latest == null) throw ApiError.notAuthenticated();
-    final latestUpdateState = _updateSequences[updateKey];
-    if (latestUpdateState == null) throw ApiError.notAuthenticated();
-    if (updateSequence < latestUpdateState.confirmed) {
-      return _cachedPreference(preferences: latest, category: category);
-    }
-    _updateSequences[updateKey] = (started: latestUpdateState.started, confirmed: updateSequence);
     _cachedPreferences[userId] = Map.unmodifiable({...latest, category: confirmed});
     return confirmed;
   }
@@ -152,8 +173,6 @@ class NotificationPreferencesRepository {
     _activeFetches.remove(userId);
     _cacheGenerations[userId] = _cacheGeneration(userId: userId) + 1;
     _fetchSequences.remove(userId);
-    final updateKeys = _updateSequences.keys.where((key) => key.$1 == userId).toList();
-    updateKeys.forEach(_updateSequences.remove);
   }
 
   int _cacheGeneration({required String userId}) => _cacheGenerations[userId] ?? 0;
