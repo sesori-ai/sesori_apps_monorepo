@@ -116,6 +116,21 @@ void main() {
     );
   });
 
+  test("foreground lookup uses current auth state before its stream event arrives", () async {
+    when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
+
+    expect(
+      await service.isEnabled(category: NotificationCategory.aiInteraction),
+      isFalse,
+    );
+    verifyNever(
+      () => repository.isEnabled(
+        userId: _userA.id,
+        category: NotificationCategory.aiInteraction,
+      ),
+    );
+  });
+
   test("unknown foreground category is disabled when no account is available", () async {
     authStates.add(const AuthState.unauthenticated());
     await Future<void>.delayed(Duration.zero);
@@ -138,6 +153,22 @@ void main() {
     final enabled = service.isEnabled(category: NotificationCategory.aiInteraction);
     authStates.add(const AuthState.authenticated(user: _userB));
     await Future<void>.delayed(Duration.zero);
+    response.complete(true);
+
+    expect(await enabled, isFalse);
+  });
+
+  test("in-flight foreground lookup rechecks current auth state before its stream event arrives", () async {
+    final response = Completer<bool>();
+    when(
+      () => repository.isEnabled(
+        userId: _userA.id,
+        category: NotificationCategory.aiInteraction,
+      ),
+    ).thenAnswer((_) => response.future);
+
+    final enabled = service.isEnabled(category: NotificationCategory.aiInteraction);
+    when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
     response.complete(true);
 
     expect(await enabled, isFalse);

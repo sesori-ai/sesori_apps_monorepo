@@ -183,7 +183,9 @@ class NotificationPreferencesRepository {
 
   void _validateDeviceId({required NotificationPreferencesApiRecord record, required String expected}) {
     if (record.deviceId != expected) {
-      throw const FormatException("Invalid notification preferences device ID");
+      throw FormatException(
+        "Notification preferences response device ID ${record.deviceId} did not match requested device ID $expected",
+      );
     }
   }
 

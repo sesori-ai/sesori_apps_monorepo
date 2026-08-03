@@ -10,7 +10,7 @@ import "../repositories/notification_preferences_repository.dart";
 
 enum NotificationPreferencesAccountStatus { unavailable, available }
 
-typedef _AccountOperation = ({int generation, String userId});
+typedef _AccountOperation = ({AuthState authState, int generation, String userId});
 
 @lazySingleton
 class NotificationPreferencesService {
@@ -108,13 +108,17 @@ class NotificationPreferencesService {
     if (!_isCurrent(operation: operation)) throw ApiError.notAuthenticated();
   }
 
-  _AccountOperation? _currentOperation() => switch (_currentUserId) {
-    final String userId => (generation: _accountGeneration, userId: userId),
-    null => null,
-  };
+  _AccountOperation? _currentOperation() {
+    final authState = _authSession.currentState;
+    final userId = _userIdFrom(state: authState);
+    if (userId == null || userId != _currentUserId) return null;
+    return (authState: authState, generation: _accountGeneration, userId: userId);
+  }
 
   bool _isCurrent({required _AccountOperation operation}) =>
-      operation.generation == _accountGeneration && operation.userId == _currentUserId;
+      identical(operation.authState, _authSession.currentState) &&
+      operation.generation == _accountGeneration &&
+      operation.userId == _currentUserId;
 
   static String? _userIdFrom({required AuthState state}) => switch (state) {
     AuthAuthenticated(:final user) => user.id,

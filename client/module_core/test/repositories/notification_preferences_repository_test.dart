@@ -455,15 +455,20 @@ void main() {
     });
 
     test("rejects a response for another device", () async {
+      const unexpectedDeviceId = "223e4567-e89b-42d3-a456-426614174000";
       when(
         () => api.getPreferences(userId: _userA, deviceId: _deviceId),
       ).thenAnswer(
-        (_) async => _record(deviceId: "223e4567-e89b-42d3-a456-426614174000"),
+        (_) async => _record(deviceId: unexpectedDeviceId),
       );
 
       await expectLater(
         repository.getAll(userId: _userA),
-        throwsFormatException,
+        throwsA(
+          isA<FormatException>()
+              .having((error) => error.message, "message", contains(_deviceId))
+              .having((error) => error.message, "message", contains(unexpectedDeviceId)),
+        ),
       );
     });
 
