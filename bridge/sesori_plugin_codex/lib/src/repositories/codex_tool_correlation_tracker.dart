@@ -1,7 +1,7 @@
 import "../api/models/codex_rollout_dto.dart";
 import "../codex_app_server_client.dart";
-import "../repositories/mappers/codex_rollout_tool_mapper.dart";
-import "../repositories/models/codex_command_projection.dart";
+import "mappers/codex_rollout_tool_mapper.dart";
+import "models/codex_command_projection.dart";
 
 /// Correlates Codex's two live identities for one logical shell command.
 ///
@@ -25,6 +25,7 @@ class CodexToolCorrelationTracker {
       CodexRolloutResponseItemLineDto(payload: final payload) => payload,
       CodexRolloutSessionMetadataLineDto() ||
       CodexRolloutTurnContextLineDto() ||
+      CodexRolloutEventMessageLineDto() ||
       CodexRolloutCompactedLineDto() ||
       CodexRolloutUnknownLineDto() => null,
     };
