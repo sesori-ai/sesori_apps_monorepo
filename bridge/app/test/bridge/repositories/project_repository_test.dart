@@ -172,10 +172,12 @@ void main() {
 
       final newProject = await db.projectsDao.getProject(projectId: "new-project");
       expect(newProject?.path, "/projects/new");
+      expect(newProject?.hidden, isTrue);
       expect(newProject?.createdAt, 10);
       expect(newProject?.updatedAt, 20);
       final movedProject = await db.projectsDao.getProject(projectId: "moved-project");
       expect(movedProject?.path, "/projects/moved");
+      expect(movedProject?.hidden, isFalse);
       expect(movedProject?.updatedAt, 60, reason: "stable native identity must retain activity after a move");
     });
 

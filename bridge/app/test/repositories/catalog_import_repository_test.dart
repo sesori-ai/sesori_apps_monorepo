@@ -171,6 +171,48 @@ void main() {
       );
     });
 
+    test("native import hides new projects while preserving existing visibility", () async {
+      final visiblePath = "${directory.path}/visible";
+      final importedPath = "${directory.path}/imported";
+      await database.projectsDao.upsertProjectRows(
+        rows: [_projectRow(id: "visible-project", path: visiblePath)],
+      );
+      final plugin = _NativeImportPlugin(
+        projects: [
+          PluginProject(id: "visible-project", directory: visiblePath),
+          PluginProject(id: "imported-project", directory: importedPath),
+        ],
+        rootsByProject: {
+          importedPath: [_pluginSession(id: "imported-root", directory: importedPath)],
+        },
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: plugin)
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      expect((await database.projectsDao.getProject(projectId: "visible-project"))?.hidden, isFalse);
+      expect((await database.projectsDao.getProject(projectId: "imported-project"))?.hidden, isTrue);
+      expect(
+        (await database.projectsDao.getCatalogProjects()).map((project) => project.projectId),
+        ["visible-project"],
+      );
+      expect(
+        (await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "imported-root",
+        ))?.projectId,
+        "imported-project",
+      );
+    });
+
     test("native import gives an exact project id precedence during a move", () async {
       final oldPath = "${directory.path}/old";
       final movedPath = "${directory.path}/moved";
