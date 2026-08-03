@@ -433,6 +433,19 @@ class RelayClient {
     }
   }
 
+  /// Declares to the bridge which project this client is currently viewing.
+  /// Best-effort control message; no-op when not connected.
+  Future<void> sendProjectView({required String? projectId}) async {
+    if (!isConnected || _sessionEncryptor == null) {
+      return;
+    }
+    try {
+      await _sendEncryptedMessage(RelayMessage.projectView(projectId: projectId));
+    } on Object catch (_) {
+      logw("sendProjectView failed: disconnect race");
+    }
+  }
+
   Future<void> disconnect() async {
     if (_disposed) {
       return;

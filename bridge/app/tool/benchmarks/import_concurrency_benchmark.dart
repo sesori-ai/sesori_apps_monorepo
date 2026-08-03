@@ -270,6 +270,7 @@ class _ImportConcurrencyBenchmark {
             path: projectPaths[index],
             hidden: false,
             baseBranch: null,
+            prCacheGithubLogin: null,
             displayName: null,
             createdAt: _defaultTimestamp,
             updatedAt: _defaultTimestamp,

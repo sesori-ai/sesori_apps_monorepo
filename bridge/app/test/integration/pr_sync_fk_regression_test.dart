@@ -1,30 +1,32 @@
 /// End-to-end regression test for the PR sync FK constraint bug.
 ///
-/// Background: `PrSyncService` calls `PullRequestRepository.upsertFromGhPr`
+/// Background: `PrSyncService` calls `PullRequestRepository.replaceScopedPullRequests`
 /// for projects that exist in plugin memory but NOT in `projects_table`.
 /// With `PRAGMA foreign_keys = ON`, this caused `FOREIGN KEY constraint failed`
 /// because `pull_requests_table.projectId` references `projects_table.project_id`.
 ///
-/// This test proves that catalog reads, defensive PR upsert, and imported
+/// This test proves that catalog reads, fail-closed PR upsert, and imported
 /// session bindings all preserve the relevant foreign-key invariants.
 ///
 /// Scenario A — Primary path (catalog project before PR sync):
 ///   ProjectRepository.getProjects() reads an imported project; subsequent
-///   PullRequestRepository.upsertFromGhPr succeeds without FK exception.
+///   PullRequestRepository.replaceScopedPullRequests succeeds without FK exception.
 ///
-/// Scenario B — Defensive path (skip GetProjects, go straight to upsertFromGhPr):
-///   PullRequestRepository.upsertFromGhPr calls insertProjectIfMissing
-///   defensively (T9), so even if GetProjects never ran, the PR upsert
-///   creates the project row and succeeds.
+/// Scenario B — Missing catalog path:
+///   PullRequestRepository.replaceScopedPullRequests returns a scope-changed
+///   outcome instead of fabricating a project row whose path would be inferred
+///   from its id.
 ///
 /// Scenario C — GetSessions path:
 ///   SessionRepository.getSessionsForProject reads imported bindings without FK
 ///   exceptions.
 library;
 
-import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
+import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -33,6 +35,10 @@ import "../helpers/fake_filesystem_api.dart";
 import "../helpers/fake_git_cli_api.dart";
 import "../helpers/test_database.dart";
 
+const _githubLogin = "octocat";
+const _githubRepositoryIdentity = "sesori-ai/sesori_apps_monorepo";
+final _verifiedGithubLogin = VerifiedGithubLogin.tryParse(rawLogin: _githubLogin)!;
+
 void main() {
   group("PR sync FK regression — forward-prevention paths (pre-v5 schema)", () {
     // -------------------------------------------------------------------------
@@ -40,7 +46,7 @@ void main() {
     // -------------------------------------------------------------------------
     test(
       "Scenario A: ProjectRepository.getProjects reads a catalog project; "
-      "subsequent upsertFromGhPr succeeds without FK exception",
+      "subsequent scoped replacement succeeds without FK exception",
       () async {
         final db = createTestDatabase();
         addTearDown(db.close);
@@ -53,8 +59,10 @@ void main() {
           filesystemApi: FakeFilesystemApi(),
         );
         final prRepo = PullRequestRepository(
+          database: db,
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
         );
 
         await db.projectsDao.recordOpenedProject(
@@ -65,6 +73,33 @@ void main() {
           updatedAt: 100,
         );
         await projectRepo.getProjects();
+        await db.sessionDao.insertSession(
+          sessionId: "session-X",
+          backendSessionId: "session-X",
+          projectId: "proj-X",
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          branchName: "created-branch",
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+          pluginId: "opencode",
+        );
+        await db.sessionDao.updatePullRequestScopes(
+          updates: const [
+            (
+              sessionId: "session-X",
+              currentBranchName: "feature-branch",
+              currentGithubRepositoryIdentity: _githubRepositoryIdentity,
+            ),
+          ],
+        );
+        await db.projectsDao.setPrCacheGithubLogin(
+          projectId: "proj-X",
+          githubLogin: _githubLogin,
+        );
 
         final projectRows = await db.select(db.projectsTable).get();
         expect(
@@ -73,17 +108,19 @@ void main() {
           reason: "the imported project row must remain available",
         );
 
-        // Now upsertFromGhPr must succeed — project row already exists.
+        // Now scoped replacement must succeed — project row already exists.
         // Direct await (not expectLater) to ensure the future is fully resolved
         // before querying the DB.
-        await prRepo.upsertFromGhPr(
+        final outcome = await prRepo.replaceScopedPullRequests(
           projectId: "proj-X",
-          pr: _fakePr(),
-          createdAt: 1,
+          verifiedGithubLogin: _verifiedGithubLogin,
+          capturedRootDirectoriesBySessionId: const {"session-X": "proj-X"},
+          targetSelections: [_selectedPullRequest()],
           lastCheckedAt: 2,
         );
+        expect(outcome, isA<PullRequestReplacementApplied>());
 
-        final prRows = await db.pullRequestDao.getActivePrsByProjectId(projectId: "proj-X");
+        final prRows = await db.pullRequestDao.getPrsByProjectId(projectId: "proj-X");
         expect(
           prRows,
           hasLength(1),
@@ -95,46 +132,39 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // Scenario B — Defensive path: skip GetProjects, go straight to upsertFromGhPr
+    // Scenario B — Missing catalog path fails closed
     // -------------------------------------------------------------------------
     test(
-      "Scenario B: upsertFromGhPr creates project row defensively (T9) "
-      "even when GetProjects never ran",
+      "Scenario B: scoped replacement does not fabricate a missing catalog project",
       () async {
         final db = createTestDatabase();
         addTearDown(db.close);
 
         final prRepo = PullRequestRepository(
+          database: db,
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
         );
 
         // Verify projects_table is empty — GetProjects never ran.
         final emptyRows = await db.select(db.projectsTable).get();
         expect(emptyRows, isEmpty, reason: "projects_table must be empty before the call");
 
-        // The defensive upsert path calls insertProjectIfMissing.
-        // Direct await — if FK exception were thrown, the test would fail here.
-        await prRepo.upsertFromGhPr(
+        final outcome = await prRepo.replaceScopedPullRequests(
           projectId: "ghost",
-          pr: _fakePr(),
-          createdAt: 1,
+          verifiedGithubLogin: _verifiedGithubLogin,
+          capturedRootDirectoriesBySessionId: const {},
+          targetSelections: [_selectedPullRequest()],
           lastCheckedAt: 2,
         );
+        expect(outcome, isA<PullRequestReplacementScopeChanged>());
 
-        // projects_table now has "ghost" — created by insertProjectIfMissing.
         final projectRows = await db.select(db.projectsTable).get();
-        expect(
-          projectRows.map((r) => r.projectId).toList(),
-          contains("ghost"),
-          reason: "upsertFromGhPr must insert the project row if missing",
-        );
+        expect(projectRows, isEmpty);
 
-        // pull_requests_table has the PR row.
-        final prRows = await db.pullRequestDao.getActivePrsByProjectId(projectId: "ghost");
-        expect(prRows, hasLength(1));
-        expect(prRows.first.prNumber, equals(42));
-        expect(prRows.first.projectId, equals("ghost"));
+        final prRows = await db.pullRequestDao.getPrsByProjectId(projectId: "ghost");
+        expect(prRows, isEmpty);
       },
     );
 
@@ -188,6 +218,7 @@ void main() {
           projectId: "sess-proj",
           start: null,
           limit: null,
+          verifiedGithubLogin: null,
         );
 
         // projects_table has "sess-proj".
@@ -229,16 +260,20 @@ void main() {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Constructs a minimal [GhPullRequest] for use in PR upsert tests.
-GhPullRequest _fakePr() => const GhPullRequest(
+/// Constructs a target-bound selected PR for persistence tests.
+PullRequestTargetSelected _selectedPullRequest() => PullRequestTargetSelected(
+  target: (
+    githubRepositoryIdentity: _githubRepositoryIdentity,
+    branchName: "feature-branch",
+  ),
   number: 42,
   url: "https://github.com/org/repo/pull/42",
   title: "Test PR",
+  createdAt: DateTime.fromMillisecondsSinceEpoch(1, isUtc: true),
   state: PrState.open,
-  headRefName: "feature-branch",
-  mergeable: PrMergeableStatus.mergeable,
+  mergeableStatus: PrMergeableStatus.mergeable,
   reviewDecision: PrReviewDecision.reviewRequired,
-  statusCheckRollup: PrCheckStatus.success,
+  checkStatus: PrCheckStatus.success,
 );
 
 /// Constructs a minimal [PluginSession] for use in session publication tests.

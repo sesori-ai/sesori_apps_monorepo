@@ -13,6 +13,7 @@ void main() {
       projectId: "project-1",
       path: "/projects/repository",
       displayName: null,
+      prCacheGithubLogin: null,
       createdAt: 10,
       updatedAt: 20,
       projectionUpdatedAt: 20,
@@ -63,6 +64,8 @@ void main() {
       directory: "/projects/one",
       worktreePath: "/worktrees/one",
       branchName: "feature",
+      currentBranchName: "current-feature",
+      currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
       isDedicated: true,
       archivedAt: null,
       baseBranch: "main",
@@ -87,7 +90,7 @@ void main() {
     expect(session.parentID, "parent-id");
     expect(session.title, "Observed title");
     expect(session.promptDefaults?.agent, "build");
-    expect(session.branchName, "feature");
+    expect(session.branchName, "current-feature");
     expect(session.hasWorktree, isTrue);
     expect(session.unseen, isTrue);
   });
@@ -101,6 +104,8 @@ void main() {
       directory: "/projects/one",
       worktreePath: "/worktrees/one",
       branchName: "feature",
+      currentBranchName: "current-feature",
+      currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
       isDedicated: true,
       archivedAt: 30,
       baseBranch: "main",

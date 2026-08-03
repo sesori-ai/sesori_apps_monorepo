@@ -461,6 +461,7 @@ class BridgeRuntimeRunner {
       final BridgeSettings bridgeSettings;
       try {
         bridgeSettingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+        shutdownCoordinator.add(disposable: bridgeSettingsRepository.dispose);
         bridgeSettings = await bridgeSettingsRepository.loadSettings();
       } on Object catch (error, stackTrace) {
         Log.e("Failed to resolve bridge settings", error, stackTrace);
@@ -801,6 +802,7 @@ class BridgeRuntimeRunner {
         legacyMissingPluginId: legacyMissingPluginId,
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
+        bridgeSettingsRepository: bridgeSettingsRepository,
         clock: serverClock,
         database: database,
         httpClient: httpClient,
@@ -816,7 +818,6 @@ class BridgeRuntimeRunner {
       runtime = BridgeRuntime(
         database: database,
         failureReporter: failureReporter,
-        restartService: restartService,
         composition: composition,
       );
       final activeRuntime = runtime;

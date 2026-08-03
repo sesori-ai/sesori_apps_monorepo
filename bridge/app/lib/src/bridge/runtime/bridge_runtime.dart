@@ -7,27 +7,29 @@ import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
 
 import "../../api/database/database.dart";
 import "../../listeners/plugin_catalog_hydration_listener.dart";
-import "../../server/services/bridge_restart_service.dart";
 import "../../services/catalog_import_service.dart";
 import "../bandwidth_tracker.dart";
 import "../debug_server.dart";
 import "../orchestrator.dart";
+import "../routing/bridge_restart_dispatcher.dart";
+import "../routing/routed_request_dispatcher.dart";
 import "bridge_shutdown_coordinator.dart";
 
 class BridgeRuntime {
   BridgeRuntime({
     required AppDatabase database,
     required FailureReporter failureReporter,
-    required BridgeRestartService restartService,
     required OrchestratorComposition composition,
   }) : _database = database,
        _failureReporter = failureReporter,
-       _restartService = restartService,
+       _restartDispatcher = composition.restartDispatcher,
+       _routedRequestDispatcher = composition.routedRequestDispatcher,
        _composition = composition;
 
   final AppDatabase _database;
   final FailureReporter _failureReporter;
-  final BridgeRestartService _restartService;
+  final BridgeRestartDispatcher _restartDispatcher;
+  final RoutedRequestDispatcher _routedRequestDispatcher;
   final OrchestratorComposition _composition;
   Future<void>? _closeFuture;
 
@@ -46,12 +48,10 @@ class BridgeRuntime {
   DebugServer createDebugServer({required int port}) {
     return DebugServer(
       localWireEvents: session.localWireEvents,
-      router: session.router,
+      routedRequestDispatcher: _routedRequestDispatcher,
       port: port,
       failureReporter: _failureReporter,
-      restartService: _restartService,
-      restartHandoff: session.handleRestartHandoff,
-      drainRoutedMutations: session.drainRoutedMutations,
+      restartDispatcher: _restartDispatcher,
     );
   }
 
@@ -70,8 +70,10 @@ class BridgeRuntime {
       }
     }
 
+    await step(_restartDispatcher.dispose);
     await step(_composition.sessionUnseenService.dispose);
     await step(_composition.sessionViewTracker.dispose);
+    await step(_composition.projectViewTracker.dispose);
     await step(_composition.sessionRepository.dispose);
     await step(_composition.catalogHydrationListener.dispose);
     await step(_composition.catalogImportService.dispose);

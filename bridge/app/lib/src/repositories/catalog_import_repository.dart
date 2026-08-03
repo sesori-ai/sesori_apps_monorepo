@@ -481,6 +481,7 @@ class CatalogImportRepository {
       path: observation.path,
       hidden: existing?.hidden ?? false,
       baseBranch: existing?.baseBranch,
+      prCacheGithubLogin: existing?.prCacheGithubLogin,
       displayName: existing?.displayName ?? observation.displayName,
       createdAt: existing?.createdAt ?? observation.createdAt ?? importStartedAt,
       updatedAt: switch ((observation.updatedAt, existing?.updatedAt)) {
@@ -514,6 +515,8 @@ class CatalogImportRepository {
       directory: existing?.directory ?? _normalizeRequiredPath(session.directory),
       worktreePath: existing?.worktreePath,
       branchName: existing?.branchName,
+      currentBranchName: existing?.currentBranchName,
+      currentGithubRepositoryIdentity: existing?.currentGithubRepositoryIdentity,
       isDedicated: existing?.isDedicated ?? false,
       archivedAt: existing == null ? time?.archived : existing.archivedAt,
       baseBranch: existing?.baseBranch,

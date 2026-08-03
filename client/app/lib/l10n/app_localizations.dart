@@ -1405,11 +1405,59 @@ abstract class AppLocalizations {
   /// **'Question'**
   String get questionModalTitle;
 
-  /// No description provided for @questionModalReject.
+  /// No description provided for @questionModalDecline.
   ///
   /// In en, this message translates to:
-  /// **'Reject'**
-  String get questionModalReject;
+  /// **'Decline'**
+  String get questionModalDecline;
+
+  /// No description provided for @questionModalDeclineAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline all'**
+  String get questionModalDeclineAll;
+
+  /// No description provided for @questionModalDeclineQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline this question'**
+  String get questionModalDeclineQuestion;
+
+  /// No description provided for @questionModalDeclineQuestionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant will see it as unanswered.'**
+  String get questionModalDeclineQuestionHint;
+
+  /// No description provided for @questionModalQuestionDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Question declined'**
+  String get questionModalQuestionDeclined;
+
+  /// No description provided for @questionModalQuestionDeclinedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an answer to undo.'**
+  String get questionModalQuestionDeclinedHint;
+
+  /// No description provided for @questionModalDeclineAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline all questions?'**
+  String get questionModalDeclineAllTitle;
+
+  /// No description provided for @questionModalDeclineAllMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'None of your draft answers will be sent. Your coding session will remain active.'**
+  String get questionModalDeclineAllMessage;
+
+  /// No description provided for @questionModalKeepAnswering.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep answering'**
+  String get questionModalKeepAnswering;
 
   /// No description provided for @questionModalCustomHint.
   ///
@@ -1420,7 +1468,7 @@ abstract class AppLocalizations {
   /// No description provided for @questionModalSubmit.
   ///
   /// In en, this message translates to:
-  /// **'Submit'**
+  /// **'Submit answers'**
   String get questionModalSubmit;
 
   /// No description provided for @questionModalNext.
@@ -1429,11 +1477,47 @@ abstract class AppLocalizations {
   /// **'Next'**
   String get questionModalNext;
 
+  /// No description provided for @questionModalResolveAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer or decline every question to submit.'**
+  String get questionModalResolveAll;
+
+  /// No description provided for @questionModalResolveAllCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer or decline all'**
+  String get questionModalResolveAllCompact;
+
+  /// No description provided for @questionModalStatusUnanswered.
+  ///
+  /// In en, this message translates to:
+  /// **'unanswered'**
+  String get questionModalStatusUnanswered;
+
+  /// No description provided for @questionModalStatusAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'answered'**
+  String get questionModalStatusAnswered;
+
+  /// No description provided for @questionModalStatusDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'declined'**
+  String get questionModalStatusDeclined;
+
   /// No description provided for @questionModalStepIndicator.
   ///
   /// In en, this message translates to:
   /// **'Question {current} of {total}'**
   String questionModalStepIndicator(int current, int total);
+
+  /// No description provided for @questionModalStepSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Question {current} of {total}, {status}'**
+  String questionModalStepSemantics(int current, int total, String status);
 
   /// No description provided for @questionBannerSingle.
   ///

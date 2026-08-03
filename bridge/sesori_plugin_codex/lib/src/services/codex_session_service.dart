@@ -61,7 +61,8 @@ class CodexSessionService {
     _threadModels.clear();
   }
 
-  Future<List<PluginSession>> listAllSessions() => _catalogRepository.listAllSessions();
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) =>
+      _catalogRepository.listAllSessions(knownDirectories: knownDirectories);
 
   Future<List<PluginSession>> getSessions({
     required String projectId,

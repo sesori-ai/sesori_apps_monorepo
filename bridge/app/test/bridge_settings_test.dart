@@ -10,12 +10,14 @@ void main() {
       expect(settings.sleepPrevention, SleepPreventionMode.always);
       expect(settings.yolo, isFalse);
       expect(settings.releaseTrack, ReleaseTrack.stable);
+      expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
       expect(settings.plugins.disabledPluginIds, isEmpty);
       expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), defaultPluginIdleTimeoutMins);
       expect(settings.toJson(), {
         'sleepPrevention': 'always',
         'yolo': false,
         'releaseTrack': 'stable',
+        'pullRequestRefreshIntervalSeconds': defaultPullRequestRefreshIntervalSeconds,
       });
     });
 
@@ -24,11 +26,46 @@ void main() {
         'sleepPrevention': 'off',
         'yolo': true,
         'releaseTrack': 'internal',
+        'pullRequestRefreshIntervalSeconds': 45,
       });
 
       expect(settings.sleepPrevention, SleepPreventionMode.off);
       expect(settings.yolo, isTrue);
       expect(settings.releaseTrack, ReleaseTrack.internal);
+      expect(settings.pullRequestRefreshIntervalSeconds, 45);
+    });
+
+    test('uses the default for a missing PR refresh interval', () {
+      final settings = BridgeSettings.fromJson(const {});
+
+      expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
+    });
+
+    test('accepts PR refresh interval boundaries and round trips the value', () {
+      for (final interval in [
+        minimumPullRequestRefreshIntervalSeconds,
+        maximumPullRequestRefreshIntervalSeconds,
+      ]) {
+        final settings = BridgeSettings.fromJson({'pullRequestRefreshIntervalSeconds': interval});
+
+        expect(settings.pullRequestRefreshIntervalSeconds, interval);
+        expect(settings.toJson()['pullRequestRefreshIntervalSeconds'], interval);
+      }
+    });
+
+    test('rejects malformed and out-of-range PR refresh intervals', () {
+      for (final value in <Object?>[
+        null,
+        '30',
+        30.0,
+        minimumPullRequestRefreshIntervalSeconds - 1,
+        maximumPullRequestRefreshIntervalSeconds + 1,
+      ]) {
+        expect(
+          () => BridgeSettings.fromJson({'pullRequestRefreshIntervalSeconds': value}),
+          throwsA(isA<PullRequestRefreshIntervalFormatException>()),
+        );
+      }
     });
 
     test('invalid legacy scalar values retain their established defaults', () {
@@ -220,6 +257,7 @@ void main() {
       expect(updated.plugins.disabledPluginIds, {'cursor'});
       expect(updated.releaseTrack, ReleaseTrack.internal);
       expect(updated.yolo, isTrue);
+      expect(updated.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
     });
   });
 }

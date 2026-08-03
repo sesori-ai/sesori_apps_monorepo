@@ -127,14 +127,12 @@ class CodexEventMapper {
   void setThreadTime(CodexThreadRecord record) {
     final createdAt = record.createdAt;
     final previousCreatedAt = _threadCreatedAt[record.id];
-    if (createdAt != null &&
-        (previousCreatedAt == null || createdAt < previousCreatedAt)) {
+    if (createdAt != null && (previousCreatedAt == null || createdAt < previousCreatedAt)) {
       _threadCreatedAt[record.id] = createdAt;
     }
     final updatedAt = record.updatedAt;
     final previousUpdatedAt = _threadUpdatedAt[record.id];
-    if (updatedAt != null &&
-        (previousUpdatedAt == null || updatedAt > previousUpdatedAt)) {
+    if (updatedAt != null && (previousUpdatedAt == null || updatedAt > previousUpdatedAt)) {
       _threadUpdatedAt[record.id] = updatedAt;
     }
   }
@@ -280,6 +278,20 @@ class CodexEventMapper {
       CodexRolloutUnknownLineDto() => null,
     };
     if (payload == null) return const [];
+    if (payload case final CodexRolloutImageGenerationDto item) {
+      final generation = _rolloutToolMapper.mapImageGeneration(item: item);
+      final itemId = generation.id;
+      // Id-less history remains replayable through the repository's
+      // deterministic fallback, but cannot safely enrich a live item.
+      if (itemId == null) return const [];
+      return _toolItemEvents(
+        threadId: threadId,
+        itemId: itemId,
+        tool: "image_generation",
+        status: generation.status,
+        attachments: generation.attachments,
+      );
+    }
     final call = _rolloutToolMapper.mapCall(payload);
     if (call != null) {
       _rolloutToolCalls[_rolloutToolKey(threadId, call.id)] = call;
@@ -305,7 +317,7 @@ class CodexEventMapper {
       title: originalCall.title,
       status: result.status,
       output: result.output,
-      attachments: const [],
+      attachments: result.attachments,
     );
   }
 
@@ -382,6 +394,10 @@ class CodexEventMapper {
         :final content,
         :final error,
       ):
+        final canonical = _canonicalRolloutTool(
+          threadId: threadId,
+          itemId: itemId,
+        );
         return _toolItemEvents(
           threadId: threadId,
           itemId: itemId,
@@ -390,7 +406,8 @@ class CodexEventMapper {
           status: _parsedToolStatus(status: status, completed: completed),
           output: _imageBearingToolOutput(content: content),
           error: error,
-          attachments: _imageAttachmentMapper.map(
+          attachments: _rolloutAttachmentsOrMap(
+            result: canonical?.result,
             candidates: [
               for (final item in content)
                 if (item case CodexMcpImageContentDto(:final data, :final mimeType))
@@ -428,7 +445,8 @@ class CodexEventMapper {
               _rolloutToolMapper.clipOutput(
                 _imageBearingToolOutput(content: content),
               ),
-          attachments: _imageAttachmentMapper.map(
+          attachments: _rolloutAttachmentsOrMap(
+            result: canonical?.result,
             candidates: [
               for (final item in content)
                 if (item case CodexDynamicImageContentDto(:final imageUrl))
@@ -503,7 +521,7 @@ class CodexEventMapper {
               _rolloutToolMapper.clipOutput(
                 item["aggregatedOutput"] as String?,
               ),
-          attachments: const [],
+          attachments: canonical?.result.attachments ?? const [],
         );
       case "fileChange":
         return _toolItemEvents(
@@ -640,6 +658,17 @@ class CodexEventMapper {
     final call = _rolloutToolCalls[key];
     final result = _rolloutToolResults[key];
     return call == null || result == null ? null : (call: call, result: result);
+  }
+
+  List<PluginMessageAttachment> _rolloutAttachmentsOrMap({
+    required CodexRolloutToolResult? result,
+    required Iterable<CodexImageAttachmentCandidate> candidates,
+  }) {
+    final rolloutAttachments = result?.attachments;
+    if (rolloutAttachments != null && rolloutAttachments.isNotEmpty) {
+      return rolloutAttachments;
+    }
+    return _imageAttachmentMapper.map(candidates: candidates);
   }
 
   String _rolloutToolKey(String threadId, String callId) => "$threadId\u0000$callId";
@@ -785,9 +814,7 @@ class CodexEventMapper {
         ? (timestampSeconds * Duration.millisecondsPerSecond).round()
         : DateTime.now().millisecondsSinceEpoch;
     final previousUpdated = _threadUpdatedAt[threadId];
-    final updatedAt = previousUpdated != null && previousUpdated > observedAt
-        ? previousUpdated
-        : observedAt;
+    final updatedAt = previousUpdated != null && previousUpdated > observedAt ? previousUpdated : observedAt;
     _threadUpdatedAt[threadId] = updatedAt;
     return BridgeSseSessionUpdated(
       info: _minimalSession(

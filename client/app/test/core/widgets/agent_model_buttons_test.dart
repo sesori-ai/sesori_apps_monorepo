@@ -1,6 +1,5 @@
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_mobile/core/widgets/agent_model_buttons.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -18,6 +17,11 @@ final _agents = [
 AgentInfo _agent({required String name, required String description}) =>
     AgentInfo(name: name, description: description, model: null, mode: AgentMode.all);
 
+Finder _menuItem(String label) => find.descendant(
+  of: find.byType(SingleChildScrollView),
+  matching: find.widgetWithText(InkWell, label),
+);
+
 Widget _buildApp({required List<AgentInfo> agents, required void Function(String) onAgentSelected}) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -29,6 +33,7 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           AgentModelButtons(
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
             agents: agents,
             selectedAgent: "sesori-plan-worker",
             onAgentSelected: onAgentSelected,
@@ -56,7 +61,7 @@ void main() {
       // the picker used to under-size itself around its subtitled rows, clipping
       // the last agent with no way to scroll to it.
       for (final agent in _agents) {
-        expect(find.widgetWithText(GlassMenuItem, agent.name), findsOneWidget);
+        expect(_menuItem(agent.name), findsOneWidget);
       }
       final popup = tester.state<ScrollableState>(find.byType(Scrollable)).position;
       expect(popup.maxScrollExtent, equals(0.0));
@@ -71,7 +76,7 @@ void main() {
 
       // Aimed at the lower edge of a row, where the popup's tap arithmetic used
       // to have drifted far enough to select the agent below it.
-      final row = find.widgetWithText(GlassMenuItem, "plan");
+      final row = _menuItem("plan");
       await tester.tapAt(tester.getRect(row).bottomCenter - const Offset(0, 4));
       await tester.pumpAndSettle();
 

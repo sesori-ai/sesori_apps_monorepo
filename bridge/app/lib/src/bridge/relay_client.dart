@@ -19,13 +19,28 @@ class RelayClientMessage {
   const RelayClientMessage({required this.isText, required this.data});
 }
 
+/// Opaque handle for one exact relay WebSocket generation.
+///
+/// Callers can retain and pass the handle back to [RelayClient], but cannot
+/// inspect the underlying socket.
+final class RelayConnection {
+  RelayConnection._({required IOWebSocketChannel channel}) : _channel = channel;
+
+  final IOWebSocketChannel _channel;
+  String? _lastAuthedToken;
+}
+
+enum RelaySendOutcome { sent, stale }
+
+enum RelayCloseOutcome { closed, stale }
+
 /// Live connection state of the relay WebSocket, emitted on
 /// [RelayClient.connectionState].
 ///
 /// This is internal lifecycle state, NOT a wire-protocol type. A remote drop
 /// carries the WebSocket [RelayDisconnected.closeCode] so observers can key on
 /// close semantics (e.g. revoked/replaced) without racing the reconnect loop's
-/// own [RelayClient.closeCode] read.
+/// own connection-scoped close-code read.
 sealed class RelayConnectionState {
   const RelayConnectionState();
 }
@@ -63,8 +78,7 @@ class RelayClient {
   final Duration _connectTimeout;
   final StreamController<RelayConnectionState> _connectionState = StreamController<RelayConnectionState>.broadcast();
   _RelayConnectionAttempt? _pendingConnection;
-  IOWebSocketChannel? _channel;
-  String? _lastAuthedToken;
+  RelayConnection? _connection;
 
   RelayClient({
     required String relayURL,
@@ -78,29 +92,28 @@ class RelayClient {
        _pingInterval = pingInterval,
        _connectTimeout = connectTimeout;
 
-  /// The WebSocket close code of the current connection, available once the
-  /// connection has closed and until [close] or [reconnect] discards it.
-  int? get closeCode => _channel?.closeCode;
+  /// The WebSocket close code of [connection], available once it has closed.
+  int? closeCode({required RelayConnection connection}) => connection._channel.closeCode;
 
-  /// The WebSocket close reason of the current connection, paired with
+  /// The WebSocket close reason of [connection], paired with
   /// [closeCode]. Only meaningful for the bridge-replaced rollout fallback
   /// (`1000 + "replaced"`); close reason strings are fragile, so close-code
   /// semantics are authoritative everywhere else.
-  String? get closeReason => _channel?.closeReason;
+  String? closeReason({required RelayConnection connection}) => connection._channel.closeReason;
 
-  /// The access token most recently sent in an auth message by [connect], or
-  /// `null` if the last connect sent no auth (empty token). Lets a live re-auth
+  /// The access token sent in [connection]'s auth message, or `null` if that
+  /// connect sent no auth (empty token). Lets a live re-auth
   /// trigger compare a freshly emitted token against the one this socket is
   /// actually authenticated with, so it re-auths only on a real change.
-  String? get lastAuthedToken => _lastAuthedToken;
+  String? lastAuthedToken({required RelayConnection connection}) => connection._lastAuthedToken;
 
   /// Live connection-state transitions of the relay socket.
   ///
   /// A connect attempt emits [RelayConnecting] then [RelayConnected] on
   /// success or [RelayDisconnected] on failure; a remote drop emits
-  /// [RelayDisconnected] with the socket's close code. A deliberate [close]
-  /// emits nothing — a clean shutdown is not an outage (same contract as the
-  /// control channel's connection-state stream).
+  /// [RelayDisconnected] with the socket's close code. A deliberate
+  /// [closeIfCurrent] emits nothing — a clean shutdown is not an outage (same
+  /// contract as the control channel's connection-state stream).
   ///
   /// Remote-drop detection rides on the socket's close handshake, which
   /// `dart:io` only processes while the inbound message stream is being
@@ -108,12 +121,12 @@ class RelayClient {
   /// (it always drains [read] on a live connection).
   Stream<RelayConnectionState> get connectionState => _connectionState.stream;
 
-  Future<void> connect() async {
+  Future<RelayConnection> connect() async {
     // Build (and thereby validate) the URL before announcing the attempt: a
     // throwing parse must not leave observers stuck on a connecting state
     // that never resolves to a terminal one.
     final wsURL = _buildWebSocketURL(_relayURL);
-    if (_pendingConnection != null || _channel != null) {
+    if (_pendingConnection != null || _connection != null) {
       throw StateError("Relay connection already exists or is in progress");
     }
     _connectionState.add(const RelayConnecting());
@@ -129,8 +142,8 @@ class RelayClient {
     try {
       await channel.ready.timeout(_connectTimeout);
     } on Object catch (error, stackTrace) {
-      // A detached attempt belongs to deliberate close(); only a still-owned
-      // failure reports disconnected and cleans up here.
+      // A detached attempt belongs to deliberate cancellation; only a
+      // still-owned failure reports disconnected and cleans up here.
       if (identical(_pendingConnection, attempt)) {
         _pendingConnection = null;
         _connectionState.add(const RelayDisconnected(closeCode: null, closeReason: null));
@@ -150,60 +163,70 @@ class RelayClient {
     }
     _pendingConnection = null;
     httpClient.close();
-    _channel = channel;
-    _watchChannelDone(channel);
-    _connectionState.add(const RelayConnected());
+    final connection = RelayConnection._(channel: channel);
+    _connection = connection;
 
-    if (_accessTokenProvider.accessToken case final String token when token.isNotEmpty) {
-      final authMessage = RelayMessage.auth(
-        token: token,
-        role: _bridgeRole,
-        bridgeId: _bridgeIdProvider.bridgeId,
-      );
-      channel.sink.add(jsonEncode(authMessage.toJson()));
-      _lastAuthedToken = token;
-    } else {
-      _lastAuthedToken = null;
+    try {
+      if (_accessTokenProvider.accessToken case final String token when token.isNotEmpty) {
+        final authMessage = RelayMessage.auth(
+          token: token,
+          role: _bridgeRole,
+          bridgeId: _bridgeIdProvider.bridgeId,
+        );
+        channel.sink.add(jsonEncode(authMessage.toJson()));
+        connection._lastAuthedToken = token;
+      } else {
+        connection._lastAuthedToken = null;
+      }
+    } on Object catch (error, stackTrace) {
+      final closeFuture = closeIfCurrent(connection: connection);
+      _connectionState.add(const RelayDisconnected(closeCode: null, closeReason: null));
+      await closeFuture;
+      Error.throwWithStackTrace(error, stackTrace);
     }
+    _watchConnectionDone(connection: connection);
+    _connectionState.add(const RelayConnected());
+    return connection;
   }
 
-  /// Emits [RelayDisconnected] when [channel]'s socket closes while it is
-  /// still the current channel. A deliberate [close] (or [reconnect]) nulls
-  /// [_channel] before the sink-done future settles, so this watcher stays
-  /// silent for intentional teardown and only surfaces genuine drops.
-  void _watchChannelDone(IOWebSocketChannel channel) {
+  /// Emits [RelayDisconnected] when [connection]'s socket closes while it is
+  /// still current. A deliberate close detaches the handle before the
+  /// sink-done future settles, so this watcher stays silent for intentional
+  /// teardown and only surfaces genuine drops.
+  void _watchConnectionDone({required RelayConnection connection}) {
     unawaited(
-      channel.sink.done.then<void>(
-        (_) => _handleChannelDone(channel),
+      connection._channel.sink.done.then<void>(
+        (_) => _handleConnectionDone(connection: connection),
         onError: (Object error) {
           Log.w("relay socket closed with error", error);
-          _handleChannelDone(channel);
+          _handleConnectionDone(connection: connection);
         },
       ),
     );
   }
 
-  void _handleChannelDone(IOWebSocketChannel channel) {
-    if (!identical(_channel, channel)) return;
+  void _handleConnectionDone({required RelayConnection connection}) {
+    if (!identical(_connection, connection)) return;
+    _connection = null;
     _connectionState.add(
-      RelayDisconnected(closeCode: channel.closeCode, closeReason: channel.closeReason),
+      RelayDisconnected(
+        closeCode: connection._channel.closeCode,
+        closeReason: connection._channel.closeReason,
+      ),
     );
   }
 
-  Future<void> reconnect() async {
+  Future<RelayConnection> reconnect({required RelayConnection connection}) async {
     try {
-      await close();
-    } catch (e) {
-      Log.d("reconnect: close failed (ignored): $e");
+      await closeIfCurrent(connection: connection);
+    } on Object catch (error, stackTrace) {
+      Log.w("reconnect: close failed; continuing with a fresh connection", error, stackTrace);
     }
-    await connect();
+    return connect();
   }
 
-  Stream<RelayClientMessage> read() {
-    final channel = _channel;
-    if (channel == null) {
-      throw StateError("WebSocket connection is not established");
-    }
+  Stream<RelayClientMessage> read({required RelayConnection connection}) {
+    final channel = connection._channel;
 
     return channel.stream.map((dynamic message) {
       if (message is String) {
@@ -234,46 +257,71 @@ class RelayClient {
     });
   }
 
-  void send(int connID, List<int> payload) {
+  RelaySendOutcome sendIfCurrent({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> payload,
+  }) {
     if (connID < 0 || connID > 0xFFFF) {
       throw RangeError.range(connID, 0, 0xFFFF, "connID");
     }
 
-    final channel = _channel;
-    if (channel == null) {
-      throw StateError("WebSocket connection is not established");
-    }
+    final current = _connection;
+    if (!identical(current, connection)) return RelaySendOutcome.stale;
 
     final framed = Uint8List(2 + payload.length);
     final byteData = ByteData.sublistView(framed);
     byteData.setUint16(0, connID, Endian.big);
     framed.setRange(2, framed.length, payload);
 
-    channel.sink.add(framed);
+    try {
+      current!._channel.sink.add(framed);
+    } on Object {
+      // This call claims the exact handle before returning its close future.
+      // An obsolete send can therefore never close a successor connection.
+      unawaited(closeIfCurrent(connection: connection));
+      rethrow;
+    }
+    return RelaySendOutcome.sent;
   }
 
-  Future<void> close() async {
+  /// Closes a pending handshake that has not produced a [RelayConnection].
+  ///
+  /// Detachment is synchronous so a cancelled attempt cannot be promoted by a
+  /// later `ready` completion.
+  Future<void> cancelPendingConnection() {
     final pendingConnection = _pendingConnection;
     _pendingConnection = null;
     pendingConnection?.httpClient.close(force: true);
-    final channel = _channel;
-    _channel = null;
-    await Future.wait([
-      if (pendingConnection != null)
-        _closeChannel(
-          channel: pendingConnection.channel,
-          timeout: const Duration(seconds: 3),
-          timeoutMessage: "Pending WebSocket close timed out — connection abandoned",
-          failureMessage: "Pending WebSocket close failed — connection abandoned",
-        ),
-      if (channel != null)
-        _closeChannel(
-          channel: channel,
-          timeout: const Duration(seconds: 3),
-          timeoutMessage: "WebSocket close handshake timed out — connection abandoned",
-          failureMessage: "WebSocket close failed — connection abandoned",
-        ),
-    ]);
+    if (pendingConnection == null) return Future<void>.value();
+    return _closeChannel(
+      channel: pendingConnection.channel,
+      timeout: const Duration(seconds: 3),
+      timeoutMessage: "Pending WebSocket close timed out — connection abandoned",
+      failureMessage: "Pending WebSocket close failed — connection abandoned",
+    );
+  }
+
+  /// Claims and detaches [connection] synchronously, then closes its socket.
+  ///
+  /// A stale handle is a typed no-op and can never close the current socket.
+  Future<RelayCloseOutcome> closeIfCurrent({required RelayConnection connection}) {
+    final current = _connection;
+    if (!identical(current, connection)) {
+      return Future<RelayCloseOutcome>.value(RelayCloseOutcome.stale);
+    }
+    _connection = null;
+    return _closeClaimedConnection(connection: current!);
+  }
+
+  Future<RelayCloseOutcome> _closeClaimedConnection({required RelayConnection connection}) async {
+    await _closeChannel(
+      channel: connection._channel,
+      timeout: const Duration(seconds: 3),
+      timeoutMessage: "WebSocket close handshake timed out — connection abandoned",
+      failureMessage: "WebSocket close failed — connection abandoned",
+    );
+    return RelayCloseOutcome.closed;
   }
 
   Future<void> _closeChannel({

@@ -164,6 +164,7 @@ export "src/services/notification_registration_service.dart";
 export "src/services/plugin_management_service.dart";
 export "src/services/product_analytics_service.dart";
 export "src/services/project_list_service.dart";
+export "src/services/project_viewing_service.dart";
 export "src/services/registered_bridges_service.dart";
 export "src/services/session_detail_load_service.dart";
 export "src/services/session_list_service.dart";

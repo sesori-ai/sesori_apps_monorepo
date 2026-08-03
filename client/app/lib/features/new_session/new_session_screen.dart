@@ -10,6 +10,7 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
+import "../../core/widgets/composer_surface_style.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
@@ -61,8 +62,22 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
+  late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
   late ScaffoldMessengerState _scaffoldMessenger;
   late String _launchingInBackgroundMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    final cubit = context.read<NewSessionCubit>();
+    _composerSurfaceStyle = ValueNotifier(
+      resolveInitialComposerSurfaceStyle(
+        inputMode: context.read<ChatInputModeCubit>().state,
+        draft: cubit.composerDraft,
+        stagedCommand: cubit.state.agentModelData?.stagedCommand,
+      ),
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -83,6 +98,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
         );
       });
     }
+    _composerSurfaceStyle.dispose();
     super.dispose();
   }
 
@@ -119,15 +135,19 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     if (data == null || (data.agents.isEmpty && data.providers.isEmpty)) return null;
 
     final cubit = context.read<NewSessionCubit>();
-    return AgentModelButtons(
-      agents: data.agents,
-      selectedAgent: selectedAgent,
-      onAgentSelected: cubit.selectAgent,
-      providers: data.providers,
-      selectedAgentModel: data.agentModel,
-      onModelSelected: cubit.selectModel,
-      availableVariants: data.availableVariants,
-      onVariantSelected: cubit.selectVariant,
+    return ValueListenableBuilder<PregoComposerSurfaceStyle>(
+      valueListenable: _composerSurfaceStyle,
+      builder: (context, surfaceStyle, _) => AgentModelButtons(
+        surfaceStyle: surfaceStyle,
+        agents: data.agents,
+        selectedAgent: selectedAgent,
+        onAgentSelected: cubit.selectAgent,
+        providers: data.providers,
+        selectedAgentModel: data.agentModel,
+        onModelSelected: cubit.selectModel,
+        availableVariants: data.availableVariants,
+        onVariantSelected: cubit.selectVariant,
+      ),
     );
   }
 
@@ -232,6 +252,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       },
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,
+        // Toolbar navigation is explicit: unlike Android system back, it must
+        // not be vetoed by the composer's keyboard-dismissal PopScope.
+        onBack: _dismissScreen,
         // The options own their scroll while the composer remains fixed, so
         // use the full viewport behind a fixed title just like session chat.
         titleMode: PregoTopNavigationTitleMode.inline,
@@ -334,6 +357,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             ),
                             onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
                             onAbort: _dismissScreen,
+                            surfaceStyleController: _composerSurfaceStyle,
                             header: _buildErrorBanner(state),
                             composerHeader: _buildComposerHeader(state),
                             availableCommands: composerData?.commands ?? const [],

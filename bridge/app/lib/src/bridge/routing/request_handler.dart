@@ -4,25 +4,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/project_not_found_exception.dart";
+import "http_method.dart";
+import "routed_request.dart";
 
-/// HTTP methods supported by [RequestHandler].
-enum HttpMethod {
-  get,
-  post,
-  put,
-  patch,
-  delete,
-
-  /// Matches any HTTP method.
-  any
-  ;
-
-  /// Returns `true` when this matches the raw method string from a request.
-  bool matches(String rawMethod) {
-    if (this == any) return true;
-    return name.toUpperCase() == rawMethod.toUpperCase();
-  }
-}
+export "http_method.dart";
 
 abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase {
   GetRequestHandler(
@@ -54,8 +39,8 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
       return buildOkJsonResponse(request, result);
     } on ProjectNotFoundException {
       return buildErrorResponse(request, 404, "project not found");
-    } on PluginOperationException catch (err) {
-      Log.w("${request.method} ${request.path}: upstream failure: $err");
+    } on PluginOperationException catch (err, stackTrace) {
+      Log.w("${request.method} ${request.path}: upstream failure", err, stackTrace);
       return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
@@ -67,7 +52,7 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
         return err;
       }
     } catch (err, stackTrace) {
-      Log.w("${request.method} ${request.path}: handler failed: $err\n$stackTrace");
+      Log.w("${request.method} ${request.path}: handler failed", err, stackTrace);
       return buildErrorResponse(request, 500, "Internal Server Error: $err");
     }
   }
@@ -117,8 +102,8 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
       return buildOkJsonResponse(request, result);
     } on ProjectNotFoundException {
       return buildErrorResponse(request, 404, "project not found");
-    } on PluginOperationException catch (err) {
-      Log.w("${request.method} ${request.path}: upstream failure: $err");
+    } on PluginOperationException catch (err, stackTrace) {
+      Log.w("${request.method} ${request.path}: upstream failure", err, stackTrace);
       return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
@@ -130,7 +115,7 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
         return err;
       }
     } catch (err, stackTrace) {
-      Log.w("${request.method} ${request.path}: handler failed: $err\n$stackTrace");
+      Log.w("${request.method} ${request.path}: handler failed", err, stackTrace);
       return buildErrorResponse(request, 500, "Internal Server Error: $err");
     }
   }
@@ -147,9 +132,8 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
 /// A single interceptor in the request routing chain.
 ///
 /// Subclasses declare their [method] and [path] pattern in the constructor.
-/// [canHandle] is implemented here and never needs to be overridden — it
-/// compares the incoming request against [method] and [path], resolving
-/// `:param` placeholders automatically.
+/// [RequestRouter] compares the parsed request method and target against
+/// [method] and [path], resolving `:param` placeholders automatically.
 ///
 /// Example:
 /// ```dart
@@ -170,28 +154,25 @@ abstract class RequestHandlerBase {
 
   const RequestHandlerBase(this.method, this.path);
 
+  String get diagnosticLabel => "${method.diagnosticLabel} $path";
+
   // ── Matching ────────────────────────────────────────────────────────────────
 
-  /// Returns `true` if this handler is responsible for [request].
-  ///
-  /// Matches on [method] and the [path] pattern. Subclasses must NOT override
-  /// this — declare [method] and [path] in the constructor instead.
-  bool canHandle(RelayRequest request) {
-    if (!method.matches(request.method)) return false;
+  /// Matches the router's parsed method and target against this declaration.
+  bool matches({required HttpMethod requestMethod, required Uri target}) {
+    if (!method.matches(requestMethod: requestMethod)) return false;
     if (path == "*") return true;
-    return _matchPathParams(Uri.parse(request.path).path, path) != null;
+    return _matchPathParams(target.path, path) != null;
   }
 
-  /// Extracts path params, query params, and URL fragment from [request].
-  ///
-  /// Only call this after [canHandle] returned `true` for the same request.
+  /// Extracts route values from the target parsed once by [RequestRouter].
   ({
     Map<String, String> pathParams,
     Map<String, String> queryParams,
     String? fragment,
   })
-  extractParams(RelayRequest request) {
-    final uri = Uri.parse(request.path);
+  extractTargetParams({required Uri target}) {
+    final uri = target;
     final pathParams = path == "*" ? <String, String>{} : (_matchPathParams(uri.path, path) ?? {});
     final queryParams = Map<String, String>.from(uri.queryParameters);
     final fragment = uri.fragment.isEmpty ? null : uri.fragment;
@@ -202,7 +183,7 @@ abstract class RequestHandlerBase {
 
   /// Produces a [RelayResponse] for [request].
   ///
-  /// Only called when [canHandle] returned `true` for the same request.
+  /// Only called when [matches] returned `true` for the same request.
   ///
   /// - [pathParams] — values extracted from `:param` placeholders in [path],
   ///   e.g. `"/session/:id/message"` yields `{"id": "abc"}`.
@@ -214,6 +195,22 @@ abstract class RequestHandlerBase {
     required Map<String, String> queryParams,
     required String? fragment,
   });
+
+  Future<RoutedRequestOutcome> routeInternal({
+    required RelayRequest request,
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    required String? fragment,
+  }) async {
+    return ResponseOnly(
+      response: await handleInternal(
+        request,
+        pathParams: pathParams,
+        queryParams: queryParams,
+        fragment: fragment,
+      ),
+    );
+  }
 
   // ── Shared helpers ──────────────────────────────────────────────────────────
 

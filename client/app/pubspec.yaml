@@ -88,6 +88,11 @@ dependencies:
   flutter_chat_ui: ^2.11.1
   flutter_chat_core: ^2.9.0
   image_picker: ^1.2.3
+  flutter_keyboard_visibility:
+    git:
+      url: https://github.com/vespr-wallet/flutter_keyboard_visibility.git
+      ref: a640afe883868faf2709c41daa391e2cd6f1fc7b
+      path: flutter_keyboard_visibility
 
 dev_dependencies:
   flutter_test:

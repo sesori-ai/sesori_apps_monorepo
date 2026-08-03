@@ -24,10 +24,10 @@ import '../repositories/process_repository.dart';
 ///   `--control-url` into a detached child with no off-argv secret and fail
 ///   closed, so supervised mode must never call [spawnSuccessor].
 ///
-/// It deliberately does NOT shut the current process down — the consumer
-/// (orchestrator) drives the existing graceful-shutdown path after the
-/// `{restarting:true}` reply has been flushed to the phone, so the relay
-/// disconnect → reconnect carries the handoff.
+/// It deliberately does NOT shut the current process down. The restart
+/// dispatcher emits a shutdown request only after the debug response closes or
+/// the relay response is synchronously enqueued. Relay delivery remains
+/// best-effort through the existing graceful close.
 class BridgeRestartService {
   BridgeRestartService({
     required ProcessRepository processRepository,
@@ -50,7 +50,6 @@ class BridgeRestartService {
   final int _currentPid;
   final bool _isSupervised;
 
-  bool _restartRequested = false;
   bool _supervisedRestartRequested = false;
 
   /// Whether a supervised restart handoff has been performed, so the composition
@@ -58,19 +57,6 @@ class BridgeRestartService {
   /// ever set in supervised mode; standalone spawns a successor and leaves this
   /// false.
   bool get supervisedRestartRequested => _supervisedRestartRequested;
-
-  /// Marks that a restart has been accepted (after the handler validates it),
-  /// so the consumer performs the handoff once the response is sent.
-  void requestRestart() {
-    _restartRequested = true;
-  }
-
-  /// Returns whether a restart was requested and clears the flag.
-  bool consumeRestartRequest() {
-    final bool requested = _restartRequested;
-    _restartRequested = false;
-    return requested;
-  }
 
   /// Whether an explicit restart can be delivered right now, so the handler only
   /// promises a restart it can actually carry out.
@@ -109,8 +95,7 @@ class BridgeRestartService {
   }
 
   /// Performs the restart handoff for the active run mode and reports whether the
-  /// caller should now proceed to shut down (flush the queued reply, then cancel
-  /// the session).
+  /// caller should now request graceful shutdown.
   ///
   /// - **supervised:** records [supervisedRestartRequested] and returns `true`
   ///   without spawning a successor — the desktop GUI respawns this process after

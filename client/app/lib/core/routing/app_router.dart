@@ -22,6 +22,7 @@ import "../../features/settings/notification_settings_screen.dart";
 import "../../features/settings/profile_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
+import "../di/injection.dart";
 import "../extensions/build_context_x.dart";
 import "../widgets/sesori_logo.dart";
 import "imperative_pane_route.dart";
@@ -253,12 +254,14 @@ List<RouteBase> _buildAppRoutes({
                   _ => null,
                 };
             final selectedSessionId = state.pathParameters[sessionIdPathParam];
+            final projectViewingService = getIt<ProjectViewingService>();
 
             return SessionListCubitProvider(
               key: ValueKey("session-list-cubit-$projectId"),
               projectId: projectId,
               initialSupportsDedicatedWorktrees: supportsDedicatedWorktrees,
               child: SessionSplitShell(
+                projectViewingService: projectViewingService,
                 list: _SessionListPane(
                   projectId: projectId,
                   projectName: projectName,

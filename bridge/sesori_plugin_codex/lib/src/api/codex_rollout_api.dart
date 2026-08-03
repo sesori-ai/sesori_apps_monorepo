@@ -6,6 +6,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "models/codex_desktop_state_dto.dart";
 import "models/codex_rollout_dto.dart";
 
 typedef CodexSessionIndexLine = ({CodexSessionIndexEntryDto? entry, String raw});
@@ -32,7 +33,16 @@ class CodexRolloutTailPosition {
   final List<int> trailingBytes;
 }
 
-/// Layer-1 filesystem boundary for Codex's on-disk rollout history.
+class CodexDesktopStateReadException implements Exception {
+  const CodexDesktopStateReadException({required this.cause});
+
+  final Object cause;
+
+  @override
+  String toString() => "Codex Desktop state read failed (${cause.runtimeType})";
+}
+
+/// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
 class CodexRolloutApi {
   CodexRolloutApi({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
 
@@ -54,6 +64,35 @@ class CodexRolloutApi {
   String? get sessionsDirectory {
     final home = codexHome;
     return home == null ? null : p.join(home, "sessions");
+  }
+
+  String? get desktopStatePath {
+    final home = codexHome;
+    return home == null ? null : p.join(home, ".codex-global-state.json");
+  }
+
+  String? get documentsCodexDirectory {
+    final home = resolveUserHomeDirectory(environment: _environment);
+    return home == null ? null : p.join(home, "Documents", "Codex");
+  }
+
+  Future<CodexDesktopStateDto> readDesktopState() async {
+    final path = desktopStatePath;
+    if (path == null) {
+      return const CodexDesktopStateDto(projectlessThreadIds: {});
+    }
+    try {
+      return CodexDesktopStateDto.fromJson(
+        jsonDecodeMap(await File(path).readAsString()),
+      );
+    } on PathNotFoundException {
+      return const CodexDesktopStateDto(projectlessThreadIds: {});
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        CodexDesktopStateReadException(cause: error),
+        stackTrace,
+      );
+    }
   }
 
   List<CodexSessionIndexEntryDto> readSessionIndex() => [
@@ -321,6 +360,8 @@ const _rolloutSchemaKeyNames = {
   "action",
   "query",
   "text",
+  "status",
+  "result",
 };
 
 /// Describes malformed Codex records without logging source or tool input.
@@ -403,7 +444,9 @@ String _renderRolloutSchemaForLog({
 
 bool _isRolloutEnumValuePath({required List<String> path}) {
   if (path.length == 1) return path.single == "type";
-  return path.length == 2 && path.first == "payload" && (path.last == "type" || path.last == "role");
+  return path.length == 2 &&
+      path.first == "payload" &&
+      (path.last == "type" || path.last == "role" || path.last == "status");
 }
 
 class _RolloutSchemaBudget {

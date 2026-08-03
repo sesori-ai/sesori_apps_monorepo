@@ -19,6 +19,12 @@ void main() {
       );
     });
 
+    void enqueueInsideWorktree() {
+      processRunner.enqueue(
+        result: _processResult(exitCode: 0, stdout: "true\n"),
+      );
+    }
+
     test("isGitInitialized returns true when .git exists", () async {
       gitDirectoryExists = true;
 
@@ -56,19 +62,21 @@ void main() {
     });
 
     test("getRemoteUrl prefers origin over other remotes", () async {
+      enqueueInsideWorktree();
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "upstream\norigin\n"));
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "git@github.com:org/repo.git\n"));
 
       final url = await service.getRemoteUrl(projectPath: "/repo/project");
 
       expect(url, equals("git@github.com:org/repo.git"));
-      expect(processRunner.invocations, hasLength(2));
-      expect(processRunner.invocations.first.arguments, equals(["remote"]));
+      expect(processRunner.invocations, hasLength(3));
+      expect(processRunner.invocations.first.arguments, equals(["rev-parse", "--is-inside-work-tree"]));
       expect(processRunner.invocations.last.arguments, equals(["remote", "get-url", "origin"]));
       expect(processRunner.invocations.last.workingDirectory, equals("/repo/project"));
     });
 
     test("getRemoteUrl falls back to the first listed remote without origin", () async {
+      enqueueInsideWorktree();
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "upstream\nfork\n"));
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "https://github.com/org/repo.git\n"));
 
@@ -78,43 +86,131 @@ void main() {
       expect(processRunner.invocations.last.arguments, equals(["remote", "get-url", "upstream"]));
     });
 
-    test("getRemoteUrl returns null when the directory is not a git repository", () async {
-      processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "fatal: not a git repository"));
+    test("getRemoteUrl discovers an enclosing worktree from a nested project", () async {
+      enqueueInsideWorktree();
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"));
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "https://github.com/org/repo.git\n"));
 
+      final url = await service.getRemoteUrl(
+        projectPath: "/repo/packages/nested-project",
+      );
+
+      expect(url, "https://github.com/org/repo.git");
+      expect(processRunner.invocations, hasLength(3));
+      expect(processRunner.invocations.first.workingDirectory, "/repo/packages/nested-project");
+    });
+
+    test("getRemoteUrl lets Git discover a symlinked project directory", () async {
+      enqueueInsideWorktree();
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"));
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "https://github.com/org/repo.git\n"));
+
+      final url = await service.getRemoteUrl(projectPath: "/links/project");
+
+      expect(url, "https://github.com/org/repo.git");
+      expect(processRunner.invocations.first.workingDirectory, "/links/project");
+    });
+
+    test("getRemoteUrl returns null when the directory is not a git repository", () async {
+      processRunner.enqueue(
+        result: _processResult(
+          exitCode: 128,
+          stderr: "fatal: not a git repository (or any of the parent directories): .git",
+        ),
+      );
       final url = await service.getRemoteUrl(projectPath: "/repo/project");
 
       expect(url, isNull);
       expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations.single.environment, {"LC_ALL": "C"});
     });
 
-    test("getRemoteUrl returns null when the git process cannot start", () async {
-      // Process.start throws (rather than exiting non-zero) when the stored
-      // project directory was moved or deleted.
+    test("getRemoteUrl returns null when the project directory is missing", () async {
       processRunner.enqueueError(
-        error: const ProcessException("git", ["remote"], "No such file or directory", -1),
+        error: const ProcessException(
+          "git",
+          ["rev-parse", "--is-inside-work-tree"],
+          "No such file or directory",
+          2,
+        ),
       );
 
-      final url = await service.getRemoteUrl(projectPath: "/repo/deleted");
+      final url = await service.getRemoteUrl(projectPath: "/missing/project");
 
       expect(url, isNull);
     });
 
+    test("getRemoteUrl propagates a discovery start failure for an existing directory", () async {
+      gitDirectoryExists = true;
+      processRunner.enqueueError(
+        error: const ProcessException(
+          "git",
+          ["rev-parse", "--is-inside-work-tree"],
+          "Failed to start process",
+          2,
+        ),
+      );
+
+      await expectLater(
+        service.getRemoteUrl(projectPath: "/repo/project"),
+        throwsA(isA<ProcessException>()),
+      );
+    });
+
+    test("getRemoteUrl propagates an unexpected worktree discovery failure", () async {
+      processRunner.enqueue(
+        result: _processResult(
+          exitCode: 128,
+          stderr: "fatal: detected dubious ownership in repository",
+        ),
+      );
+
+      await expectLater(
+        service.getRemoteUrl(projectPath: "/repo/project"),
+        throwsA(isA<ProcessException>()),
+      );
+    });
+
+    test("getRemoteUrl propagates a process failure for an existing repository", () async {
+      enqueueInsideWorktree();
+      processRunner.enqueueError(
+        error: const ProcessException("git", ["remote"], "temporary failure", -1),
+      );
+
+      await expectLater(
+        service.getRemoteUrl(projectPath: "/repo/project"),
+        throwsA(isA<ProcessException>()),
+      );
+    });
+
     test("getRemoteUrl returns null when the repository has no remotes", () async {
+      enqueueInsideWorktree();
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "\n"));
 
       final url = await service.getRemoteUrl(projectPath: "/repo/project");
 
       expect(url, isNull);
-      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations, hasLength(2));
     });
 
-    test("getRemoteUrl returns null when get-url fails or is empty", () async {
+    test("getRemoteUrl returns null when the configured URL is empty", () async {
+      enqueueInsideWorktree();
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"));
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "  \n"));
 
       final url = await service.getRemoteUrl(projectPath: "/repo/project");
 
       expect(url, isNull);
+    });
+
+    test("getRemoteUrl propagates a nonzero git result for an existing repository", () async {
+      enqueueInsideWorktree();
+      processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "temporary failure"));
+
+      await expectLater(
+        service.getRemoteUrl(projectPath: "/repo/project"),
+        throwsA(isA<ProcessException>()),
+      );
     });
 
     test("resolveDefaultBranch uses origin HEAD symbolic-ref when available", () async {

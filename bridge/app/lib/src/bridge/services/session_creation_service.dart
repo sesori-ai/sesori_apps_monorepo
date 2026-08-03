@@ -92,6 +92,7 @@ class SessionCreationService {
     // phone and the bridge key on — mirroring project-scoped session fetches.
     return _sessionRepository.enrichSession(
       session: finalSession.copyWith(projectID: request.projectId),
+      verifiedGithubLogin: null,
     );
   }
 

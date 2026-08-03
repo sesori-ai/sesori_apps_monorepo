@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/agent_model_buttons.dart";
+import "../../../core/widgets/composer_surface_style.dart";
 import "background_tasks_bar.dart";
 import "prompt_input.dart";
 import "session_detail_message_list.dart";
@@ -57,10 +58,24 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
   /// message list — not rebuild the whole view including the very composer
   /// being measured.
   final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(0);
+  late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
+
+  @override
+  void initState() {
+    super.initState();
+    _composerSurfaceStyle = ValueNotifier(
+      resolveInitialComposerSurfaceStyle(
+        inputMode: context.read<ChatInputModeCubit>().state,
+        draft: context.read<SessionDetailCubit>().composerDraft,
+        stagedCommand: widget.state.stagedCommand,
+      ),
+    );
+  }
 
   @override
   void dispose() {
     _bottomControlsHeight.dispose();
+    _composerSurfaceStyle.dispose();
     super.dispose();
   }
 
@@ -168,10 +183,14 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (state.children.isNotEmpty)
-                    BackgroundTasksBar(
-                      projectId: widget.projectId,
-                      children: state.children,
-                      childStatuses: state.childStatuses,
+                    ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                      valueListenable: _composerSurfaceStyle,
+                      builder: (context, surfaceStyle, _) => BackgroundTasksBar(
+                        surfaceStyle: surfaceStyle,
+                        projectId: widget.projectId,
+                        children: state.children,
+                        childStatuses: state.childStatuses,
+                      ),
                     ),
                   if (state.queuedMessages.isNotEmpty)
                     SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
@@ -203,16 +222,21 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                       ),
                       onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
                       onAbort: () => context.read<SessionDetailCubit>().abort(),
+                      surfaceStyleController: _composerSurfaceStyle,
                       header: null,
-                      composerHeader: AgentModelButtons(
-                        agents: state.availableAgents,
-                        selectedAgent: state.selectedAgent,
-                        onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
-                        providers: state.availableProviders,
-                        selectedAgentModel: state.selectedAgentModel,
-                        onModelSelected: context.read<SessionDetailCubit>().selectModel,
-                        availableVariants: state.availableVariants,
-                        onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                      composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                        valueListenable: _composerSurfaceStyle,
+                        builder: (context, surfaceStyle, _) => AgentModelButtons(
+                          surfaceStyle: surfaceStyle,
+                          agents: state.availableAgents,
+                          selectedAgent: state.selectedAgent,
+                          onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
+                          providers: state.availableProviders,
+                          selectedAgentModel: state.selectedAgentModel,
+                          onModelSelected: context.read<SessionDetailCubit>().selectModel,
+                          availableVariants: state.availableVariants,
+                          onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                        ),
                       ),
                       availableCommands: state.availableCommands,
                       stagedCommand: state.stagedCommand,

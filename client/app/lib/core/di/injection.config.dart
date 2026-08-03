@@ -27,6 +27,8 @@ import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
     as _i140;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
+import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
+    as _i361;
 import 'package:sesori_mobile/capabilities/voice/recording_file_provider.dart'
     as _i62;
 import 'package:sesori_mobile/capabilities/voice/voice_transcription_service.dart'
@@ -63,6 +65,8 @@ import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
 import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
+import 'package:sesori_mobile/core/platform/temporary_directory_client.dart'
+    as _i908;
 import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i901;
 import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -80,6 +84,9 @@ extension GetItInjectableX on _i174.GetIt {
     final registerModule = _$RegisterModule();
     final firebaseRegisterModule = _$FirebaseRegisterModule();
     gh.lazySingleton<_i430.AudioFormatConfig>(() => _i430.AudioFormatConfig());
+    gh.lazySingleton<_i361.RecorderPrewarmClient>(
+      () => _i361.RecorderPrewarmClient(),
+    );
     gh.lazySingleton<_i511.WakeLockService>(() => _i511.WakeLockService());
     gh.lazySingleton<_i519.Client>(() => registerModule.httpClient);
     gh.lazySingleton<_i553.RelayCryptoService>(
@@ -100,6 +107,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
     gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
+    gh.lazySingleton<_i908.TemporaryDirectoryClient>(
+      () => _i908.TemporaryDirectoryClient(),
+    );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
     gh.lazySingleton<_i948.LocalNotificationClient>(
@@ -117,9 +127,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
-    );
-    gh.lazySingleton<_i62.RecordingFileProvider>(
-      () => _i62.RecordingFileProvider(gh<_i430.AudioFormatConfig>()),
     );
     gh.lazySingleton<_i140.ComposerImagePicker>(
       () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),
@@ -161,20 +168,16 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i833.DeviceInfoPlugin>(),
       ),
     );
-    gh.lazySingleton<_i1038.VoiceTranscriptionService>(
-      () => _i1038.VoiceTranscriptionService(
-        gh<_i948.VoiceApi>(),
-        gh<_i1039.AudioRecorder>(),
-        gh<_i62.RecordingFileProvider>(),
-        gh<_i511.WakeLockService>(),
-        gh<_i430.AudioFormatConfig>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i948.ImageSaver>(
       () => registerModule.imageSaver(
         galClient: gh<_i227.GalClient>(),
         fileSaveClient: gh<_i223.FileSaveClient>(),
+      ),
+    );
+    gh.lazySingleton<_i62.RecordingFileProvider>(
+      () => _i62.RecordingFileProvider(
+        audioFormat: gh<_i430.AudioFormatConfig>(),
+        temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
       ),
     );
     gh.lazySingleton<_i948.ImageClipboard>(
@@ -204,6 +207,17 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i982.FirebaseApp>(),
       ),
       registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i1038.VoiceTranscriptionService>(
+      () => _i1038.VoiceTranscriptionService(
+        voiceApi: gh<_i948.VoiceApi>(),
+        recorder: gh<_i1039.AudioRecorder>(),
+        recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
+        fileProvider: gh<_i62.RecordingFileProvider>(),
+        wakeLockService: gh<_i511.WakeLockService>(),
+        audioFormat: gh<_i430.AudioFormatConfig>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i901.DeepLinkService>(
       () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),

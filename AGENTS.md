@@ -73,15 +73,22 @@ eagerly "just in case."
 - Never hand-edit generated files. Change their source and run the generator.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
+- Every PR title starts with one implementation-complexity emoji: `🌱` trivial,
+  `🌿` straightforward, `⚙️` moderate, `🚧` complex, or `🚨` very complex.
+  Complexity is implementation/review difficulty, not the risk rating.
+  Single-PR tasks use `<emoji> <normal title>`.
+- Every PR body includes concise `## Complexity`, `## What`, `## Why`,
+  `## Risk and test focus`, and `## Expected result` sections. State explicitly
+  when there is no user-visible or database impact; keep verification as an
+  additional section.
 - Assume the user will not inspect local-only changes unless they explicitly say
   they will. Once a task is complete and ready for code review or implementation
   testing, commit, push, and open a PR by default. Leave changes local only when
   the user explicitly requests that.
 - When splitting any task across multiple PRs, title every PR
-  `[<slug>] <description> [step <x>/<y>]`. For planned work, `<slug>` is the
-  plan directory name under `.plan`; otherwise choose one stable, lowercase
-  kebab-case slug. Keep one total for the whole series. Single-PR tasks keep the
-  normal title style.
+  `<emoji> [<slug>] <description> [step <x>/<y>]`. For planned work,
+  `<slug>` is the plan directory name under `.plan`; otherwise choose one
+  stable, lowercase kebab-case slug. Keep one total for the whole series.
 - Backward and forward compatibility is required only for transport
   contracts exchanged between the client and bridge, because an older app can
   use a newer bridge and a newer app can use an older bridge. Preserve those
@@ -94,6 +101,14 @@ eagerly "just in case."
   internal contracts; update every in-repository consumer in lockstep instead.
 - A recovered failure that continues must remain observable. Do not add a
   redundant log when the error is rethrown or returned as an explicit failure.
+- A failure response sent to a remote client does not replace a useful local log
+  when only that log retains the original error, stack trace, or operation context.
+- Preserve diagnostically useful errors, stack traces, paths, identifiers, and
+  operation context in local bridge and client logs. Logs are not submitted
+  automatically; users choose whether to inspect, anonymize, and share them.
+  Strip only known user data that has no debugging value (for example prompt or
+  transcript content), and remove that field selectively rather than suppressing
+  an entire error or category because it might contain sensitive data.
 - When translating a caught error into another error, retain the original in a
   typed `innerError` or `cause` field instead of discarding it. Keep the
   wrapper's presentation privacy-safe when the original may contain sensitive

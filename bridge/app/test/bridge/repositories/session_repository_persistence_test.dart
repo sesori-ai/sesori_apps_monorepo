@@ -37,16 +37,19 @@ void main() {
         projectId: "project-X",
         start: 0,
         limit: 2,
+        verifiedGithubLogin: null,
       );
       final unboundedTail = await repository.getSessionsForProject(
         projectId: "project-X",
         start: 1,
         limit: null,
+        verifiedGithubLogin: null,
       );
       final zeroLimit = await repository.getSessionsForProject(
         projectId: "project-X",
         start: 0,
         limit: 0,
+        verifiedGithubLogin: null,
       );
 
       expect(firstPage.map((session) => session.id), ["root-c", "root-b"]);
@@ -77,10 +80,12 @@ void main() {
         projectId: "project-X",
         start: null,
         limit: null,
+        verifiedGithubLogin: null,
       );
       final detail = await repository.getSessionForProject(
         projectId: "project-X",
         sessionId: "stable-id",
+        verifiedGithubLogin: null,
       );
 
       expect(listed.single.id, "stable-id");
@@ -124,10 +129,19 @@ void main() {
       await _insertRoot(database: database, sessionId: "root", updatedAt: 1);
 
       final roots = await repository
-          .getSessionsForProject(projectId: "project-X", start: null, limit: null)
+          .getSessionsForProject(
+            projectId: "project-X",
+            start: null,
+            limit: null,
+            verifiedGithubLogin: null,
+          )
           .timeout(const Duration(seconds: 1));
       final detail = await repository
-          .getSessionForProject(projectId: "project-X", sessionId: "root")
+          .getSessionForProject(
+            projectId: "project-X",
+            sessionId: "root",
+            verifiedGithubLogin: null,
+          )
           .timeout(const Duration(seconds: 1));
       final children = await repository.getChildSessions(sessionId: "root").timeout(const Duration(seconds: 1));
 
@@ -142,11 +156,20 @@ void main() {
       addTearDown(repository.dispose);
 
       await expectLater(
-        repository.getSessionsForProject(projectId: "missing", start: null, limit: null),
+        repository.getSessionsForProject(
+          projectId: "missing",
+          start: null,
+          limit: null,
+          verifiedGithubLogin: null,
+        ),
         throwsA(isA<ProjectNotFoundException>()),
       );
       expect(
-        await repository.getSessionForProject(projectId: "project-X", sessionId: "missing"),
+        await repository.getSessionForProject(
+          projectId: "project-X",
+          sessionId: "missing",
+          verifiedGithubLogin: null,
+        ),
         isNull,
       );
       await expectLater(

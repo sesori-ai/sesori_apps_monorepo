@@ -2,10 +2,12 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
-import "acp_content.dart";
 import "acp_protocol.dart";
 import "acp_session_configuration_tracker.dart";
 import "acp_stdio_client.dart";
+import "repositories/mappers/acp_content_mapper.dart";
+import "repositories/trackers/acp_content_tracker.dart";
+import "repositories/trackers/acp_tool_content_tracker.dart";
 
 /// A backend "halt notice": the agent ended a turn without doing the requested
 /// work and instead streamed a terminal notice telling the user to change
@@ -53,7 +55,9 @@ class AcpEventMapper {
     required this.agentId,
     required this.pluginId,
     required AcpSessionConfigurationTracker configurationTracker,
+    required AcpContentMapper contentMapper,
   }) : _configurationTracker = configurationTracker,
+       _contentMapper = contentMapper,
        launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   /// The bridge launch directory (canonicalized) — the fallback project
@@ -67,6 +71,7 @@ class AcpEventMapper {
   final String pluginId;
 
   final AcpSessionConfigurationTracker _configurationTracker;
+  final AcpContentMapper _contentMapper;
 
   /// The model/provider to stamp on [sessionId]'s assistant messages.
   String? modelForSession({required String sessionId}) =>
@@ -158,6 +163,7 @@ class AcpEventMapper {
     _sessionSnapshots.remove(sessionId);
     _turnSeq.remove(sessionId);
     _startedParts.remove(sessionId);
+    _contentTrackers.remove(sessionId);
     _sentUserSeq.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
@@ -169,7 +175,7 @@ class AcpEventMapper {
 
   /// sessionId -> (toolCallId -> last-rendered live tool state). ACP
   /// `tool_call_update` notifications are partial, so this preserves the tool's
-  /// name/title/status/output across updates that omit them. Nested (not a
+  /// name/title/status/content across updates that omit them. Nested (not a
   /// composite "sessionId:toolCallId" key) so cleanup is exact regardless of
   /// characters in the opaque agent-supplied ids.
   final Map<String, Map<String, _LiveTool>> _liveTools = {};
@@ -181,6 +187,10 @@ class AcpEventMapper {
   /// current turn. Scoped per session and pruned on [beginTurn] so it cannot
   /// grow without bound across a long-running session.
   final Map<String, Set<String>> _startedParts = {};
+
+  /// Per-session, per-message ordered content state. Nested keys keep cleanup
+  /// exact for opaque session and ACP message identifiers.
+  final Map<String, Map<String, AcpContentTracker>> _contentTrackers = {};
 
   /// Sequence for user messages accepted by this plugin. These are emitted
   /// locally because ACP agents do not reliably echo `user_message_chunk`.
@@ -199,6 +209,7 @@ class AcpEventMapper {
     // The new turn uses fresh (turn-numbered) part ids, so the prior turn's are
     // dead weight — drop them to bound memory in long sessions.
     _startedParts.remove(sessionId);
+    _contentTrackers.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
     // Tool state is retained across a turn (so a reordered late `tool_call_update`
@@ -231,6 +242,7 @@ class AcpEventMapper {
           sessionId: sessionId,
           type: PluginMessagePartType.text,
           text: text,
+          attachment: null,
         ),
       ),
     ];
@@ -259,6 +271,7 @@ class AcpEventMapper {
             sessionId: sessionId,
             type: PluginMessagePartType.text,
             text: textParts[index].text,
+            attachment: null,
           ),
         ),
     ];
@@ -305,13 +318,7 @@ class AcpEventMapper {
 
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
-        return _textChunk(
-          sessionId: sessionId,
-          update: update,
-          role: _ChunkRole.assistant,
-          partSuffix: "text",
-          partType: PluginMessagePartType.text,
-        );
+        return _assistantContentChunk(sessionId: sessionId, update: update);
       case "agent_thought_chunk":
         return _textChunk(
           sessionId: sessionId,
@@ -401,6 +408,99 @@ class AcpEventMapper {
   /// way it did live.
   AcpHaltNotice? classifyHaltNotice({required String text}) => null;
 
+  List<BridgeSseEvent> _assistantContentChunk({
+    required String sessionId,
+    required Map<String, dynamic> update,
+  }) {
+    final identity = _chunkIdentity(
+      sessionId: sessionId,
+      update: update,
+      role: _ChunkRole.assistant,
+    );
+    final tracker = (_contentTrackers[sessionId] ??= {}).putIfAbsent(
+      identity.messageId,
+      AcpContentTracker.new,
+    );
+    final blocks = _contentMapper.mapScoped(
+      content: update["content"],
+      scope: tracker.mappingScope,
+    );
+    if (blocks.isEmpty) return const [];
+    final hasTrackableContent = blocks.any(
+      (block) => block is AcpMappedImageContentBlock || (block is AcpMappedTextContentBlock && block.text.isNotEmpty),
+    );
+    if (identity.hasAcpMessageId && hasTrackableContent) {
+      _closeCurrentIdlessAssistantContent(sessionId: sessionId);
+    }
+
+    if (!identity.hasAcpMessageId &&
+        tracker.snapshot.composition != AcpContentComposition.mixed &&
+        blocks.every((block) => block is AcpMappedTextContentBlock)) {
+      final text = blocks.whereType<AcpMappedTextContentBlock>().map((block) => block.text).join();
+      if (text.isNotEmpty) {
+        final halt = classifyHaltNotice(text: text);
+        if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt);
+      }
+    }
+
+    final mutations = tracker.append(blocks: blocks);
+    if (mutations.isEmpty) return const [];
+    final events = <BridgeSseEvent>[];
+    final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
+    if (started.add(identity.messageId)) {
+      events.add(
+        BridgeSseMessageUpdated(
+          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId).toJson(),
+        ),
+      );
+    }
+    for (final mutation in mutations) {
+      final partId = "${identity.messageId}-${mutation.partIdSuffix}";
+      switch (mutation) {
+        case AcpTextDeltaMutation(:final delta):
+          if (started.add(partId)) {
+            events.add(
+              BridgeSseMessagePartUpdated(
+                part: _part(
+                  partId: partId,
+                  messageId: identity.messageId,
+                  sessionId: sessionId,
+                  type: PluginMessagePartType.text,
+                  text: "",
+                  attachment: null,
+                ),
+              ),
+            );
+          }
+          events.add(
+            BridgeSseMessagePartDelta(
+              sessionID: sessionId,
+              messageID: identity.messageId,
+              partID: partId,
+              field: "text",
+              delta: delta,
+            ),
+          );
+        case AcpImageMutation(:final attachment):
+          started.add(partId);
+          events.add(
+            BridgeSseMessagePartUpdated(
+              part: _part(
+                partId: partId,
+                messageId: identity.messageId,
+                sessionId: sessionId,
+                type: PluginMessagePartType.file,
+                text: null,
+                attachment: attachment,
+              ),
+            ),
+          );
+      }
+    }
+    if (!identity.hasAcpMessageId) _openIdlessAssistant.add(sessionId);
+    return events;
+  }
+
   List<BridgeSseEvent> _textChunk({
     required String sessionId,
     required Map<String, dynamic> update,
@@ -408,7 +508,7 @@ class AcpEventMapper {
     required String partSuffix,
     required PluginMessagePartType partType,
   }) {
-    final text = acpContentText(update["content"]);
+    final text = _contentMapper.text(content: update["content"]);
     if (text == null || text.isEmpty) return const [];
 
     // A backend may end a turn without doing the requested work and instead
@@ -430,20 +530,18 @@ class AcpEventMapper {
     // role stays in the id so a pathological cross-role id reuse can't merge a
     // user chunk into an assistant envelope. Absent (Cursor today) → the
     // synthesized per-turn id.
-    final acpMessageId = update["messageId"];
-    final hasAcpMessageId = acpMessageId is String && acpMessageId.isNotEmpty;
-    final fallbackSuffix = role == _ChunkRole.assistant ? "-a${_idlessAssistantSeq[sessionId] ?? 0}" : "";
-    final messageId = hasAcpMessageId
-        ? "$sessionId-m$acpMessageId-${role.name}"
-        : "$sessionId-t${_turn(sessionId)}-${role.name}$fallbackSuffix";
+    final identity = _chunkIdentity(sessionId: sessionId, update: update, role: role);
+    final messageId = identity.messageId;
     final partId = "$messageId-$partSuffix";
 
     final events = <BridgeSseEvent>[];
     final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
     if (started.add(partId)) {
-      events.add(
-        BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId).toJson()),
-      );
+      if (started.add(messageId)) {
+        events.add(
+          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId).toJson()),
+        );
+      }
       events.add(
         BridgeSseMessagePartUpdated(
           part: _part(
@@ -452,6 +550,7 @@ class AcpEventMapper {
             sessionId: sessionId,
             type: partType,
             text: "",
+            attachment: null,
           ),
         ),
       );
@@ -465,10 +564,26 @@ class AcpEventMapper {
         delta: text,
       ),
     );
-    if (role == _ChunkRole.assistant && !hasAcpMessageId) {
+    if (role == _ChunkRole.assistant && !identity.hasAcpMessageId) {
       _openIdlessAssistant.add(sessionId);
     }
     return events;
+  }
+
+  ({String messageId, bool hasAcpMessageId}) _chunkIdentity({
+    required String sessionId,
+    required Map<String, dynamic> update,
+    required _ChunkRole role,
+  }) {
+    final acpMessageId = update["messageId"];
+    final hasAcpMessageId = acpMessageId is String && acpMessageId.isNotEmpty;
+    final fallbackSuffix = role == _ChunkRole.assistant ? "-a${_idlessAssistantSeq[sessionId] ?? 0}" : "";
+    return (
+      messageId: hasAcpMessageId
+          ? "$sessionId-m$acpMessageId-${role.name}"
+          : "$sessionId-t${_turn(sessionId)}-${role.name}$fallbackSuffix",
+      hasAcpMessageId: hasAcpMessageId,
+    );
   }
 
   /// Emits a backend halt [notice] (see [classifyHaltNotice]) as a single
@@ -489,7 +604,7 @@ class AcpEventMapper {
     // message id and opens a new envelope rather than appending a delta to the
     // abandoned one. (The dedupe return above runs first, so a repeated halt
     // chunk can't double-bump the sequence.)
-    _closeIdlessAssistantEnvelope(sessionId);
+    _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     return [
       BridgeSseMessageUpdated(
         info: shared.Message.error(
@@ -512,31 +627,45 @@ class AcpEventMapper {
   }) {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
-    if (_liveTools[sessionId]?[toolCallId] == null) {
-      _closeIdlessAssistantEnvelope(sessionId);
+    final prior = _liveTools[sessionId]?[toolCallId];
+    if (prior == null) {
+      _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
     final messageId = "$sessionId-tool-$toolCallId";
+    final contentMutation = _contentMapper.toolContent(update: update);
+    final contentTracker = prior?.contentTracker ?? AcpToolContentTracker();
+    contentTracker.applyInitial(mutation: contentMutation);
+    final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
+    final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
+    final useCallTool = prior == null || (!prior.hasExplicitKind && (hasKind || prior.tool == "tool"));
     final state = _LiveTool(
       // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
       // title (schema drift / malformed agent data) renders as null rather than
       // throwing and aborting the notification.
-      tool: acpToolName(update),
-      title: update["title"] is String ? update["title"] as String? : null,
-      status: acpToolStatus(update["status"]),
-      output: acpToolOutputText(update),
-      isFileMutation: _isFileMutation(update),
-      diffEmitted: false,
+      tool: useCallTool ? _contentMapper.toolName(update: update) : prior.tool,
+      title: prior?.title ?? (update["title"] is String ? update["title"] as String? : null),
+      status: prior?.hasExplicitStatus ?? false ? prior!.status : mappedStatus ?? PluginToolStatus.pending,
+      contentTracker: contentTracker,
+      isFileMutation:
+          (prior?.isFileMutation ?? false) ||
+          _isFileMutation(
+            update: update,
+            contentMutation: contentMutation,
+          ),
+      diffEmitted: prior?.diffEmitted ?? false,
+      hasExplicitKind: (prior?.hasExplicitKind ?? false) || hasKind,
+      hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || mappedStatus != null,
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
     final events = <BridgeSseEvent>[
-      _toolEnvelope(sessionId: sessionId, messageId: messageId),
+      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
     _appendCompletedMutationDiff(
       events: events,
       sessionId: sessionId,
       state: state,
-      mutationAvailable: _hasDiffContent(update),
+      mutationAvailable: _reportsDiff(mutation: contentMutation),
     );
     return events;
   }
@@ -550,28 +679,38 @@ class AcpEventMapper {
     final messageId = "$sessionId-tool-$toolCallId";
     // A `tool_call_update` is a PARTIAL update: an agent may send only the
     // changed fields (e.g. `{status: completed}`). Merge onto the tool's prior
-    // state so an omitted name/title/output/status isn't reset to a default,
+    // state so omitted name/title/content/status fields aren't reset to defaults,
     // which would blank an existing tool card. Mirrors the replay collector,
     // which already merges — keeping live and history renderings consistent.
     final prior = _liveTools[sessionId]?[toolCallId];
     if (prior == null) {
-      _closeIdlessAssistantEnvelope(sessionId);
+      _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
     // Only re-resolve the tool identifier when `kind` is explicitly present; a
     // title-only update must NOT overwrite the canonical id (e.g. "edit") with
     // the title text (`title` lives separately in PluginToolState.title). This
     // matches the replay collector, which preserves the original tool name.
     final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
-    final newOutput = acpToolOutputText(update);
+    final contentMutation = _contentMapper.toolContent(update: update);
+    final contentTracker = prior?.contentTracker ?? AcpToolContentTracker();
+    contentTracker.apply(mutation: contentMutation);
+    final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
     final state = _LiveTool(
-      tool: hasKind ? acpToolName(update) : (prior?.tool ?? acpToolName(update)),
+      tool: hasKind
+          ? _contentMapper.toolName(update: update)
+          : (prior?.tool ?? _contentMapper.toolName(update: update)),
       title: update.containsKey("title") && update["title"] is String ? update["title"] as String? : prior?.title,
-      status: update.containsKey("status")
-          ? acpToolStatus(update["status"])
-          : (prior?.status ?? PluginToolStatus.pending),
-      output: newOutput ?? prior?.output,
-      isFileMutation: (prior?.isFileMutation ?? false) || _isFileMutation(update),
+      status: mappedStatus ?? prior?.status ?? PluginToolStatus.pending,
+      contentTracker: contentTracker,
+      isFileMutation:
+          (prior?.isFileMutation ?? false) ||
+          _isFileMutation(
+            update: update,
+            contentMutation: contentMutation,
+          ),
       diffEmitted: prior?.diffEmitted ?? false,
+      hasExplicitKind: (prior?.hasExplicitKind ?? false) || hasKind,
+      hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || mappedStatus != null,
     );
     final events = <BridgeSseEvent>[
       // ACP events can be reordered (reconnect / resume / replay), so a
@@ -590,7 +729,7 @@ class AcpEventMapper {
       events: events,
       sessionId: sessionId,
       state: state,
-      mutationAvailable: _hasDiffContent(update),
+      mutationAvailable: _reportsDiff(mutation: contentMutation),
     );
     return events;
   }
@@ -598,6 +737,15 @@ class AcpEventMapper {
   void _closeIdlessAssistantEnvelope(String sessionId) {
     if (!_openIdlessAssistant.remove(sessionId)) return;
     _idlessAssistantSeq[sessionId] = (_idlessAssistantSeq[sessionId] ?? 0) + 1;
+  }
+
+  void _closeCurrentIdlessAssistantContent({required String sessionId}) {
+    final messageId =
+        "$sessionId-t${_turn(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
+    final sessionTrackers = _contentTrackers[sessionId];
+    sessionTrackers?.remove(messageId);
+    if (sessionTrackers?.isEmpty ?? false) _contentTrackers.remove(sessionId);
+    _closeIdlessAssistantEnvelope(sessionId);
   }
 
   BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {
@@ -620,6 +768,7 @@ class AcpEventMapper {
     required String messageId,
     required _LiveTool state,
   }) {
+    final content = state.contentTracker.snapshot;
     return BridgeSseMessagePartUpdated(
       part: _toolPart(
         partId: "$messageId-call",
@@ -629,9 +778,9 @@ class AcpEventMapper {
         state: PluginToolState(
           status: state.status,
           title: state.title,
-          output: state.output,
-          error: state.status == PluginToolStatus.error ? state.output : null,
-          attachments: const [],
+          output: content.output,
+          error: state.status == PluginToolStatus.error ? content.output : null,
+          attachments: content.attachments,
         ),
       ),
     );
@@ -701,7 +850,8 @@ class AcpEventMapper {
     required String messageId,
     required String sessionId,
     required PluginMessagePartType type,
-    required String text,
+    required String? text,
+    required PluginMessageAttachment? attachment,
   }) {
     return PluginMessagePart(
       id: partId,
@@ -717,7 +867,7 @@ class AcpEventMapper {
       agentName: null,
       attempt: null,
       retryError: null,
-      attachment: null,
+      attachment: attachment,
     );
   }
 
@@ -750,20 +900,20 @@ class AcpEventMapper {
   /// a mutating `kind`, or a standard tool `content` entry of `type: "diff"`
   /// (a spec-compliant agent may report an edit only through the diff content
   /// shape, with a non-mutating or absent kind).
-  bool _isFileMutation(Map<String, dynamic> update) {
+  bool _isFileMutation({
+    required Map<String, dynamic> update,
+    required AcpToolContentMutation contentMutation,
+  }) {
     final kind = update["kind"];
     if (kind == "edit" || kind == "delete" || kind == "move") return true;
-    return _hasDiffContent(update);
+    return _reportsDiff(mutation: contentMutation);
   }
 
-  bool _hasDiffContent(Map<String, dynamic> update) {
-    final content = update["content"];
-    if (content is List) {
-      for (final entry in content) {
-        if (entry is Map && entry["type"] == "diff") return true;
-      }
-    }
-    return false;
+  bool _reportsDiff({required AcpToolContentMutation mutation}) {
+    return switch (mutation) {
+      AcpReplaceToolContentMutation(:final hasDiff) => hasDiff,
+      AcpUpdateToolOutputMutation() || AcpUnchangedToolContentMutation() => false,
+    };
   }
 
   void _appendCompletedMutationDiff({
@@ -775,7 +925,7 @@ class AcpEventMapper {
     if (!state.isFileMutation || state.diffEmitted) {
       return;
     }
-    if (!mutationAvailable && !_isTerminalToolStatus(state.status)) {
+    if (!_isTerminalToolStatus(state.status) && (!mutationAvailable || state.hasExplicitStatus)) {
       return;
     }
     state.diffEmitted = true;
@@ -812,15 +962,19 @@ class _LiveTool {
     required this.tool,
     required this.title,
     required this.status,
-    required this.output,
+    required this.contentTracker,
     required this.isFileMutation,
     required this.diffEmitted,
+    required this.hasExplicitKind,
+    required this.hasExplicitStatus,
   });
 
   final String tool;
   final String? title;
   final PluginToolStatus status;
-  final String? output;
+  final AcpToolContentTracker contentTracker;
   final bool isFileMutation;
   bool diffEmitted;
+  final bool hasExplicitKind;
+  final bool hasExplicitStatus;
 }

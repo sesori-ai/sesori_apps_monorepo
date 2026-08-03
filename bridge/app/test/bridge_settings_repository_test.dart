@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
@@ -15,13 +16,15 @@ void main() {
       final settings = await repository.loadSettings();
 
       expect(settings.plugins.disabledPluginIds, isEmpty);
+      expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
       expect(repository.currentSettings, same(settings));
       expect(api.lastWrittenConfig, _defaultJson);
     });
 
     test('loads valid plugin settings without rewriting', () async {
       final api = FakeBridgeSettingsApi(
-        readResult: '{"sleepPrevention":"off","plugins":{"disabled":["cursor"]}}',
+        readResult:
+            '{"sleepPrevention":"off","pullRequestRefreshIntervalSeconds":30,"plugins":{"disabled":["cursor"]}}',
       );
       final repository = BridgeSettingsRepository(api: api);
 
@@ -30,6 +33,30 @@ void main() {
       expect(settings.sleepPrevention, SleepPreventionMode.off);
       expect(settings.plugins.disabledPluginIds, {'cursor'});
       expect(api.writeCount, 0);
+    });
+
+    test('writes the default when the PR refresh interval key is missing', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"off"}');
+      final repository = BridgeSettingsRepository(api: api);
+
+      final settings = await repository.loadSettings();
+
+      expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
+      expect((jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>)['pullRequestRefreshIntervalSeconds'], 30);
+    });
+
+    test('repairs malformed and out-of-range PR refresh intervals', () async {
+      for (final rawValue in <Object?>['30', 14, 3601, null]) {
+        final api = FakeBridgeSettingsApi(
+          readResult: jsonEncode({'pullRequestRefreshIntervalSeconds': rawValue}),
+        );
+        final repository = BridgeSettingsRepository(api: api);
+
+        final settings = await repository.loadSettings();
+
+        expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
+        expect((jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>)['pullRequestRefreshIntervalSeconds'], 30);
+      }
     });
 
     test('does not replace corrupted JSON with an empty denylist', () async {
@@ -107,18 +134,95 @@ void main() {
       expect(api.writeCount, 0);
     });
 
-    test('saveSettings pretty prints and updates the current snapshot', () async {
+    test('mutateSettings pretty prints, updates, and publishes the current snapshot', () async {
       final api = FakeBridgeSettingsApi(readResult: null);
       final repository = BridgeSettingsRepository(api: api);
-      const settings = BridgeSettings(
-        sleepPrevention: SleepPreventionMode.off,
-        plugins: BridgePluginSettings(disabledPluginIds: {'cursor'}),
-      );
+      await repository.loadSettings();
+      final changes = <BridgeSettingsChange>[];
+      final subscription = repository.settingsChanges.listen(changes.add);
 
-      await repository.saveSettings(settings: settings);
+      final settings = await repository.mutateSettings(
+        mutation: ({required current}) => current.copyWith(
+          sleepPrevention: SleepPreventionMode.off,
+          plugins: const BridgePluginSettings(disabledPluginIds: {'cursor'}),
+        ),
+      );
 
       expect(repository.currentSettings, same(settings));
       expect(api.lastWrittenConfig, contains('"disabled": [\n      "cursor"'));
+      expect(changes, hasLength(1));
+      expect(changes.single.previous.pullRequestRefreshIntervalSeconds, 30);
+      expect(changes.single.current, same(settings));
+      await subscription.cancel();
+      await repository.dispose();
+    });
+
+    test('serializes plugin and PR interval mutations without losing either field', () async {
+      final api = FakeBridgeSettingsApi(
+        readResult: '{"pullRequestRefreshIntervalSeconds":30}',
+      );
+      final repository = BridgeSettingsRepository(api: api);
+      await repository.loadSettings();
+      api.writeGate = Completer<void>();
+
+      final pluginMutation = repository.mutateSettings(
+        mutation: ({required current}) => current.copyWith(
+          plugins: current.plugins.withPluginDisabled(pluginId: 'cursor', disabled: true),
+        ),
+      );
+      await api.writeStarted.future;
+      final intervalMutation = repository.mutateSettings(
+        mutation: ({required current}) => current.copyWith(pullRequestRefreshIntervalSeconds: 45),
+      );
+
+      api.writeGate!.complete();
+      await Future.wait([pluginMutation, intervalMutation]);
+
+      expect(repository.currentSettings.plugins.disabledPluginIds, {'cursor'});
+      expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, 45);
+      final written = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      expect((written['plugins'] as Map)['disabled'], ['cursor']);
+      expect(written['pullRequestRefreshIntervalSeconds'], 45);
+      await repository.dispose();
+    });
+
+    test('rejects an invalid interval mutation before commit and keeps the tail usable', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{"pullRequestRefreshIntervalSeconds":30}');
+      final repository = BridgeSettingsRepository(api: api);
+      await repository.loadSettings();
+      final changes = <BridgeSettingsChange>[];
+      final subscription = repository.settingsChanges.listen(changes.add);
+
+      await expectLater(
+        repository.mutateSettings(
+          mutation: ({required current}) => current.copyWith(pullRequestRefreshIntervalSeconds: 14),
+        ),
+        throwsA(isA<PullRequestRefreshIntervalFormatException>()),
+      );
+
+      expect(api.writeCount, 0);
+      expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, 30);
+      expect(changes, isEmpty);
+      final recovered = await repository.mutateSettings(
+        mutation: ({required current}) => current.copyWith(pullRequestRefreshIntervalSeconds: 45),
+      );
+      expect(recovered.pullRequestRefreshIntervalSeconds, 45);
+      await subscription.cancel();
+      await repository.dispose();
+    });
+
+    test('manual file edits have no live effect but load in a new repository', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{"pullRequestRefreshIntervalSeconds":30}');
+      final repository = BridgeSettingsRepository(api: api);
+      await repository.loadSettings();
+
+      api.readResult = '{"pullRequestRefreshIntervalSeconds":60}';
+
+      expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, 30);
+      final restartedRepository = BridgeSettingsRepository(api: api);
+      expect((await restartedRepository.loadSettings()).pullRequestRefreshIntervalSeconds, 60);
+      await repository.dispose();
+      await restartedRepository.dispose();
     });
 
     test('updates denylist while preserving plugin objects and dropping abandoned allowlists', () async {
@@ -167,15 +271,18 @@ void main() {
   });
 }
 
-const _defaultJson = '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable"\n}';
+const _defaultJson =
+    '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable",\n  "pullRequestRefreshIntervalSeconds": 30\n}';
 
 class FakeBridgeSettingsApi implements BridgeSettingsApi {
   @override
   final String configFilePath;
 
-  final String? readResult;
+  String? readResult;
   String? lastWrittenConfig;
   int writeCount = 0;
+  Completer<void>? writeGate;
+  final Completer<void> writeStarted = Completer<void>();
 
   FakeBridgeSettingsApi({
     required this.readResult,
@@ -187,6 +294,8 @@ class FakeBridgeSettingsApi implements BridgeSettingsApi {
 
   @override
   Future<void> writeConfig(String jsonContent) async {
+    if (!writeStarted.isCompleted) writeStarted.complete();
+    await writeGate?.future;
     lastWrittenConfig = jsonContent;
     writeCount += 1;
   }

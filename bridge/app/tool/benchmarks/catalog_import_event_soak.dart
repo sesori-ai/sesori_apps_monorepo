@@ -11,7 +11,6 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -27,6 +26,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "benchmark_plugin_runtime.dart";
+import "benchmark_relay_fixture.dart";
 
 const _defaultProjectCount = 2000;
 const _defaultSessionCount = 50000;
@@ -177,8 +177,18 @@ class _CatalogImportEventSoak {
       );
       final bridgeEventMapper = BridgeEventMapper(failureReporter: failureReporter);
       sseManager = _CountingSSEManager(failureReporter: failureReporter);
-      sseManager.subscribePath(1, "/global/event", _BenchmarkRelayClient());
-      sseManager.unsubscribe(1);
+      final relay = await BenchmarkRelayFixture.start();
+      try {
+        sseManager.subscribePath(
+          connID: 1,
+          path: "/global/event",
+          client: relay.client,
+          connection: relay.connection,
+        );
+        sseManager.unsubscribe(1);
+      } finally {
+        await relay.dispose();
+      }
       if (sseManager.pendingReplayCount != 1) {
         throw StateError("benchmark relay replay queue was not created");
       }
@@ -469,6 +479,7 @@ class _CatalogImportEventSoak {
             path: fixture.projectPaths[index],
             hidden: false,
             baseBranch: null,
+            prCacheGithubLogin: null,
             displayName: "Project $index",
             createdAt: _catalogTimestamp + index,
             updatedAt: _catalogTimestamp + index,
@@ -486,6 +497,8 @@ class _CatalogImportEventSoak {
           directory: fixture.projectPaths.first,
           worktreePath: null,
           branchName: null,
+          currentBranchName: null,
+          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -519,6 +532,7 @@ class _CatalogImportEventSoak {
       projectId: sentinelProjectId,
       start: null,
       limit: null,
+      verifiedGithubLogin: null,
     );
     if (sessions.length != 1 || sessions.single.id != _sentinelSessionId) {
       throw StateError("last-committed sentinel was not readable while import was blocked");
@@ -880,11 +894,6 @@ class _ExistingFilesystemApi implements FilesystemApi {
   @override
   bool directoryExists(String path) => true;
 
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _BenchmarkRelayClient implements RelayClient {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

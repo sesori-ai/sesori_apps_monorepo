@@ -445,10 +445,23 @@
     "description": "Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages."
   },
   "questionModalTitle": "Question",
-  "questionModalReject": "Reject",
+  "questionModalDecline": "Decline",
+  "questionModalDeclineAll": "Decline all",
+  "questionModalDeclineQuestion": "Decline this question",
+  "questionModalDeclineQuestionHint": "The assistant will see it as unanswered.",
+  "questionModalQuestionDeclined": "Question declined",
+  "questionModalQuestionDeclinedHint": "Choose an answer to undo.",
+  "questionModalDeclineAllTitle": "Decline all questions?",
+  "questionModalDeclineAllMessage": "None of your draft answers will be sent. Your coding session will remain active.",
+  "questionModalKeepAnswering": "Keep answering",
   "questionModalCustomHint": "Type your own answer",
-  "questionModalSubmit": "Submit",
+  "questionModalSubmit": "Submit answers",
   "questionModalNext": "Next",
+  "questionModalResolveAll": "Answer or decline every question to submit.",
+  "questionModalResolveAllCompact": "Answer or decline all",
+  "questionModalStatusUnanswered": "unanswered",
+  "questionModalStatusAnswered": "answered",
+  "questionModalStatusDeclined": "declined",
   "questionModalStepIndicator": "Question {current} of {total}",
   "@questionModalStepIndicator": {
     "placeholders": {
@@ -457,6 +470,20 @@
       },
       "total": {
         "type": "int"
+      }
+    }
+  },
+  "questionModalStepSemantics": "Question {current} of {total}, {status}",
+  "@questionModalStepSemantics": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "status": {
+        "type": "String"
       }
     }
   },

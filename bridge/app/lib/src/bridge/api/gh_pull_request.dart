@@ -120,6 +120,7 @@ sealed class GhPullRequest with _$GhPullRequest {
     required int number,
     required String url,
     required String title,
+    required DateTime createdAt,
     @JsonKey(fromJson: _prStateFromString) required PrState state,
     required String headRefName,
     @Default(false) bool isCrossRepository,

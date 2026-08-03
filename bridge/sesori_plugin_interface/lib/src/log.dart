@@ -62,11 +62,12 @@ class Log {
       }
     }
     buffer.write(rawMessage);
-    if (error != null && level.index < LogLevel.info.index) {
-      buffer.write("\n -- Error on next line(s)");
+    if (error != null) {
+      buffer.write("\n -- Error on next line(s)\n");
       buffer.write(error.toString());
     }
-    if (st != null && level.index < LogLevel.info.index) {
+    if (st != null) {
+      buffer.write("\n");
       buffer.write(st.toString());
     }
 

@@ -9,13 +9,14 @@ import "../extensions/build_context_x.dart";
 import "model_picker_sheet.dart";
 
 /// Composer header exposing the available agent / model / variant selections
-/// as glass pill buttons ([PregoButtonsGlass]). Tapping a pill opens its
+/// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its
 /// [PregoAnchorMenu] popup listing the pickable values (instead of a modal
 /// bottom sheet).
 ///
 /// The widget owns the menu contents, so it receives the selectable data and
 /// the selection callbacks directly rather than a "open picker" callback.
 class AgentModelButtons extends StatefulWidget {
+  final PregoComposerSurfaceStyle surfaceStyle;
   final List<AgentInfo> agents;
   final String? selectedAgent;
   final ValueChanged<String> onAgentSelected;
@@ -29,6 +30,7 @@ class AgentModelButtons extends StatefulWidget {
 
   const AgentModelButtons({
     super.key,
+    required this.surfaceStyle,
     required this.agents,
     required this.selectedAgent,
     required this.onAgentSelected,
@@ -89,6 +91,7 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
           if (hasAgentSelection) ...[
             Expanded(
               child: _AgentMenu(
+                surfaceStyle: widget.surfaceStyle,
                 agents: widget.agents,
                 selectedAgent: selectedAgent,
                 onAgentSelected: widget.onAgentSelected,
@@ -98,6 +101,7 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
           ],
           Expanded(
             child: _ModelMenu(
+              surfaceStyle: widget.surfaceStyle,
               sections: _modelSections,
               selected: selected,
               providers: widget.providers,
@@ -109,6 +113,7 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
             const SizedBox(width: 8),
             Expanded(
               child: _VariantMenu(
+                surfaceStyle: widget.surfaceStyle,
                 availableVariants: widget.availableVariants,
                 selectedVariant: selected?.variant,
                 onVariantSelected: widget.onVariantSelected,
@@ -146,11 +151,13 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
 /// Agent-selection pill + its popup. Extracted as a widget (rather than a build
 /// method) so it gets its own element subtree and only rebuilds with its inputs.
 class _AgentMenu extends StatelessWidget {
+  final PregoComposerSurfaceStyle surfaceStyle;
   final List<AgentInfo> agents;
   final String selectedAgent;
   final ValueChanged<String> onAgentSelected;
 
   const _AgentMenu({
+    required this.surfaceStyle,
     required this.agents,
     required this.selectedAgent,
     required this.onAgentSelected,
@@ -160,11 +167,13 @@ class _AgentMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     return PregoAnchorMenu(
+      flat: true,
       menuWidth: 240,
       menuMaxHeight: _pickerMaxHeight,
-      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+      triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.smart_toy_outlined,
         label: selectedAgent,
+        surfaceStyle: surfaceStyle,
         onPressed: toggle,
       ),
       entriesBuilder: () => [
@@ -184,6 +193,7 @@ class _AgentMenu extends StatelessWidget {
 /// Model-selection pill + its quick-pick popup (search affordance pinned at the
 /// top, then each provider's representative models).
 class _ModelMenu extends StatelessWidget {
+  final PregoComposerSurfaceStyle surfaceStyle;
   final List<ModelPickerSection> sections;
   final AgentModel? selected;
   final List<ProviderInfo> providers;
@@ -191,6 +201,7 @@ class _ModelMenu extends StatelessWidget {
   final VoidCallback onSearchTap;
 
   const _ModelMenu({
+    required this.surfaceStyle,
     required this.sections,
     required this.selected,
     required this.providers,
@@ -231,11 +242,13 @@ class _ModelMenu extends StatelessWidget {
     }
 
     return PregoAnchorMenu(
+      flat: true,
       menuWidth: 320,
       menuMaxHeight: _pickerMaxHeight,
-      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+      triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.memory_outlined,
         label: _resolveModelName(context, providers: providers, selected: selected),
+        surfaceStyle: surfaceStyle,
         onPressed: toggle,
       ),
       entriesBuilder: () => entries,
@@ -245,11 +258,13 @@ class _ModelMenu extends StatelessWidget {
 
 /// Variant-selection pill + its popup.
 class _VariantMenu extends StatelessWidget {
+  final PregoComposerSurfaceStyle surfaceStyle;
   final List<SessionVariant> availableVariants;
   final String? selectedVariant;
   final ValueChanged<SessionVariant?> onVariantSelected;
 
   const _VariantMenu({
+    required this.surfaceStyle,
     required this.availableVariants,
     required this.selectedVariant,
     required this.onVariantSelected,
@@ -259,11 +274,13 @@ class _VariantMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     return PregoAnchorMenu(
+      flat: true,
       menuWidth: 220,
       menuMaxHeight: _pickerMaxHeight,
-      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+      triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.speed_outlined,
         label: selectedVariant ?? loc.sessionDetailVariantDefault,
+        surfaceStyle: surfaceStyle,
         onPressed: toggle,
       ),
       entriesBuilder: () => [

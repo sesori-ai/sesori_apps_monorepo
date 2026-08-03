@@ -370,6 +370,9 @@ void main() {
     if (getIt.isRegistered<FailureReporter>()) {
       getIt.unregister<FailureReporter>();
     }
+    if (getIt.isRegistered<ProjectViewingService>()) {
+      getIt.unregister<ProjectViewingService>();
+    }
   });
 
   // ---------------------------------------------------------------------------
@@ -533,6 +536,7 @@ void main() {
     testWidgets("renders the PR row when a session has pullRequest data", (tester) async {
       final getIt = GetIt.instance;
       final session = _testSessionWithPullRequest();
+      final projectViewingService = stubbedProjectViewingService();
 
       when(
         () => mockProjectRepository.listSessions(
@@ -540,7 +544,6 @@ void main() {
           waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
-
       getIt.registerSingleton<SessionService>(mockSessionService);
       getIt.registerSingleton<ProjectRepository>(mockProjectRepository);
       registerListServices(
@@ -551,6 +554,7 @@ void main() {
       getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
       getIt.registerSingleton<RouteSource>(mockRouteSource);
       getIt.registerSingleton<FailureReporter>(mockFailureReporter);
+      getIt.registerSingleton<ProjectViewingService>(projectViewingService);
 
       await tester.pumpWidget(
         _buildScreenApp(

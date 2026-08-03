@@ -17,6 +17,7 @@ import "../../repositories/models/repo_provider.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/project_viewing_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
@@ -31,6 +32,8 @@ class SessionListCubit extends Cubit<SessionListState> {
   final ConnectionService _connectionService;
   final SseEventTracker _sseEventTracker;
   final SessionUnseenTracker _sessionUnseenTracker;
+  final ProjectViewingService _projectViewingService;
+  final ProjectViewClaim _projectViewClaim;
   final RouteSource _routeSource;
   final String _projectId;
   final bool? initialSupportsDedicatedWorktrees;
@@ -54,6 +57,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     required ConnectionService connectionService,
     required SseEventTracker sseEventTracker,
     required SessionUnseenTracker sessionUnseenTracker,
+    required ProjectViewingService projectViewingService,
     required RouteSource routeSource,
     required String projectId,
     required this.initialSupportsDedicatedWorktrees,
@@ -64,6 +68,8 @@ class SessionListCubit extends Cubit<SessionListState> {
        _connectionService = connectionService,
        _sseEventTracker = sseEventTracker,
        _sessionUnseenTracker = sessionUnseenTracker,
+       _projectViewingService = projectViewingService,
+       _projectViewClaim = projectViewingService.beginListClaim(projectId: projectId),
        _routeSource = routeSource,
        _projectId = projectId,
        _failureReporter = failureReporter,
@@ -290,7 +296,11 @@ class SessionListCubit extends Cubit<SessionListState> {
       return;
     }
 
-    _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
+    _allSessions = _sessionListService.applySessionUpdatedEvent(
+      sessions: _allSessions,
+      existingSession: _allSessions[index],
+      session: session,
+    );
     logt("[SessionList] session.updated updated id=${session.id}");
     _emitFiltered();
   }
@@ -688,12 +698,14 @@ class SessionListCubit extends Cubit<SessionListState> {
           sinceTick: unseenTick,
         );
         _emitFiltered();
+        _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: _projectId);
         return true;
 
       case ErrorResponse(:final error):
         if (silent) {
           logw("Failed to refresh sessions: ${error.toString()}");
         } else {
+          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
           loge("Session list load failed", error);
           emit(SessionListState.failed(reason: error.remoteFailureReason));
         }
@@ -703,6 +715,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   @override
   Future<void> close() {
+    _projectViewingService.releaseClaim(claim: _projectViewClaim);
     _subscriptions.dispose();
     return super.close();
   }

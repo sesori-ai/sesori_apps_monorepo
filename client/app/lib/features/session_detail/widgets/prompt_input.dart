@@ -1,8 +1,10 @@
 import "dart:async";
 
+import "package:flutter/gestures.dart" show kPrimaryButton;
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -16,16 +18,12 @@ import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/command_picker_sheet.dart";
+import "../../../core/widgets/composer_surface_style.dart";
 import "composer_options_accordion.dart";
 import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
 enum _VoiceState { idle, recording, transcribing }
-
-/// The composer's three visual states: the hold-to-talk pill (voice-first
-/// resting state), the compact tap-to-type pill (text-first resting state),
-/// and the expanded typing container.
-enum _ComposerLayout { holdToTalk, compact, typing }
 
 typedef PromptSubmitCallback =
     void Function({
@@ -47,6 +45,7 @@ class PromptInput extends StatefulWidget {
   final ValueChanged<ComposerDraft> onDraftChanged;
   final VoidCallback onDraftCleared;
   final VoidCallback onAbort;
+  final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController;
   final Widget? composerHeader;
   final List<CommandInfo> availableCommands;
   final CommandInfo? stagedCommand;
@@ -70,6 +69,7 @@ class PromptInput extends StatefulWidget {
     required this.onDraftChanged,
     required this.onDraftCleared,
     required this.onAbort,
+    required this.surfaceStyleController,
     required this.composerHeader,
     required this.availableCommands,
     required this.stagedCommand,
@@ -86,13 +86,28 @@ class PromptInput extends StatefulWidget {
 
 class _PromptInputState extends State<PromptInput> {
   static const _draftCalculator = ComposerDraftCalculator();
+  static const _minimumRecordingDuration = Duration(milliseconds: 200);
+  static const _successFeedbackPulseDelay = Duration(milliseconds: 100);
   final _controller = TextEditingController();
+  final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
   _VoiceState _voiceState = _VoiceState.idle;
   StreamSubscription<void>? _maxDurationSub;
+  StreamSubscription<ChatInputMode>? _chatInputModeSub;
+  Timer? _minimumRecordingDurationTimer;
+  bool _minimumRecordingDurationReached = false;
+
+  /// The pointer that owns the current hold. Raw pointer events start the
+  /// recorder on touch-down without Flutter's long-press recognition delay.
+  int? _recordingPointer;
+  Offset? _recordingPointerPosition;
+
+  /// Whether release currently commits cancellation. The transition in either
+  /// direction receives one tactile tick.
+  bool _cancelTargetEngaged = false;
 
   /// Keeps the typing layout mounted after the keyboard affordance was tapped
   /// while the field wasn't in the tree yet (hold-to-talk / compact layouts),
@@ -103,16 +118,17 @@ class _PromptInputState extends State<PromptInput> {
   /// composer only rebuilds when emptiness flips (layout + send/stop swap),
   /// not on every keystroke.
   bool _hasText = false;
+  late ChatInputMode _chatInputMode;
 
   /// Layout pinned for the duration of a voice interaction. Swapping the
   /// composer's slots for the recording/transcribing chrome must not relayout
   /// the composer mid-hold — the gesture-owning elements would be reparented
   /// and never receive the release.
-  _ComposerLayout? _pinnedVoiceLayout;
+  ComposerSurfaceLayout? _pinnedVoiceLayout;
 
   /// Set when the hold is released while [_startRecording] is still awaiting
-  /// the recorder, so the start path stops immediately once recording begins
-  /// instead of letting it outlive the gesture.
+  /// the recorder, so the start path discards the incomplete recording once
+  /// startup settles instead of letting it outlive the gesture.
   bool _releaseRequestedDuringStart = false;
 
   /// True while [_startRecording] is awaiting the recorder ([_voiceState] is
@@ -154,10 +170,18 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void initState() {
     super.initState();
+    final chatInputModeCubit = context.read<ChatInputModeCubit>();
+    _chatInputMode = chatInputModeCubit.state;
+    _chatInputModeSub = chatInputModeCubit.stream.listen((inputMode) {
+      if (!mounted || _chatInputMode == inputMode) return;
+      _updateComposerState(update: () => _chatInputMode = inputMode);
+    });
     _restoreDraft(draft: widget.initialDraft);
+    _syncSurfaceStyle();
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
+    unawaited(_voiceService.prewarmRecording());
     _maxDurationSub = _voiceService.onMaxDurationReached.listen((_) {
       if (_voiceState == _VoiceState.recording && mounted) {
         _showRecordingLimitReached();
@@ -169,12 +193,15 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void dispose() {
     _maxDurationSub?.cancel();
+    _chatInputModeSub?.cancel();
+    _minimumRecordingDurationTimer?.cancel();
     // Fire-and-forget cancel if the widget is disposed mid-recording or mid-transcription.
     if (_voiceState != _VoiceState.idle) {
       _voiceService.cancelRecording();
     }
     _cancelDragProgress.dispose();
     _controller.dispose();
+    _textScrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -214,7 +241,7 @@ class _PromptInputState extends State<PromptInput> {
     _previousEditingValue = currentValue;
     final hasText = currentValue.text.trim().isNotEmpty;
     if (hasText != _hasText && mounted) {
-      setState(() => _hasText = hasText);
+      _updateComposerState(update: () => _hasText = hasText);
     }
   }
 
@@ -223,15 +250,17 @@ class _PromptInputState extends State<PromptInput> {
     // Rebuild on both edges: gaining focus keeps the typing layout up via the
     // focus check; losing it (with nothing to show) collapses back to the
     // resting pill.
-    setState(() {
-      if (!_focusNode.hasFocus) _typingRequested = false;
-    });
+    _updateComposerState(
+      update: () {
+        if (!_focusNode.hasFocus) _typingRequested = false;
+      },
+    );
   }
 
   /// Whether the session composer leads with hold-to-talk voice input (the
   /// default) or with the tap-to-type field. Chosen in settings; the cubit
   /// lives above the router, so flipping it re-shapes this composer live.
-  bool get _isVoiceFirst => context.read<ChatInputModeCubit>().state == ChatInputMode.voiceFirst;
+  bool get _isVoiceFirst => _chatInputMode == ChatInputMode.voiceFirst;
 
   /// Whether the expanded typing container is showing (vs. the resting
   /// hold-to-talk / compact pills).
@@ -240,12 +269,35 @@ class _PromptInputState extends State<PromptInput> {
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
-  _ComposerLayout get _restingLayout {
-    if (_showsTypingLayout) return _ComposerLayout.typing;
-    return _isVoiceFirst ? _ComposerLayout.holdToTalk : _ComposerLayout.compact;
+  ComposerSurfaceLayout get _restingLayout => resolveComposerSurfaceLayout(
+    inputMode: _chatInputMode,
+    showsTypingLayout: _showsTypingLayout,
+  );
+
+  ComposerSurfaceLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
+
+  PregoComposerSurfaceStyle get _surfaceStyle => _layout.surfaceStyle;
+
+  void _updateComposerState({required VoidCallback update}) {
+    setState(update);
+    _syncSurfaceStyle();
   }
 
-  _ComposerLayout get _layout => _pinnedVoiceLayout ?? _restingLayout;
+  void _syncSurfaceStyle() {
+    final surfaceStyle = _surfaceStyle;
+    if (widget.surfaceStyleController.value != surfaceStyle) {
+      widget.surfaceStyleController.value = surfaceStyle;
+    }
+  }
+
+  /// Acknowledges the hold immediately while the recorder starts without
+  /// claiming that the underlying recording lifecycle has advanced yet.
+  _VoiceState get _displayedVoiceState {
+    if (_isRecordStartInFlight && !_releaseRequestedDuringStart) {
+      return _VoiceState.recording;
+    }
+    return _voiceState;
+  }
 
   bool get _hasSendableContent => _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
 
@@ -257,12 +309,14 @@ class _PromptInputState extends State<PromptInput> {
   /// and lands its transcript in the now-focused field.
   void _enterTypingMode() {
     if (_voiceState == _VoiceState.recording || _isRecordStartInFlight) return;
-    setState(() {
-      _typingRequested = true;
-      // Safe to unpin while transcribing: no gesture is in flight once the
-      // hold has been released.
-      _pinnedVoiceLayout = null;
-    });
+    _updateComposerState(
+      update: () {
+        _typingRequested = true;
+        // Safe to unpin while transcribing: no gesture is in flight once the
+        // hold has been released.
+        _pinnedVoiceLayout = null;
+      },
+    );
     _focusComposerField();
   }
 
@@ -321,7 +375,9 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void didUpdateWidget(covariant PromptInput oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.draftIdentity != widget.draftIdentity) {
+    final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
+    final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
+    if (draftChanged) {
       // The state was reused for another session without initState/dispose.
       // The owning Cubit already persisted each edit, so only restore the new
       // immutable snapshot here. Staged attachments belong to the previous
@@ -329,18 +385,32 @@ class _PromptInputState extends State<PromptInput> {
       _attachments.clear();
       _restoreDraft(draft: widget.initialDraft);
     }
-    if (oldWidget.stagedCommand?.name != widget.stagedCommand?.name && widget.stagedCommand != null) {
+    if (oldWidget.surfaceStyleController != widget.surfaceStyleController || draftChanged || stagedCommandChanged) {
+      _syncSurfaceStyle();
+    }
+    if (stagedCommandChanged && widget.stagedCommand != null) {
       _focusComposerField();
     }
   }
 
   Future<void> _handleRecordStart() async {
     if (_voiceState != _VoiceState.idle || _isRecordStartInFlight || _isCancelInFlight) return;
+    _cancelTargetEngaged = false;
+    // Fire before recorder startup or rebuilding so touch-down feels immediate.
+    unawaited(_playHapticFeedback(play: HapticFeedback.lightImpact));
+    final pinnedVoiceLayout = _restingLayout;
     _voiceInteractionId++;
-    _isRecordStartInFlight = true;
-    _releaseRequestedDuringStart = false;
+    _minimumRecordingDurationTimer?.cancel();
+    _minimumRecordingDurationTimer = null;
     _cancelDragProgress.value = 0;
-    _pinnedVoiceLayout = _restingLayout;
+    _updateComposerState(
+      update: () {
+        _isRecordStartInFlight = true;
+        _releaseRequestedDuringStart = false;
+        _minimumRecordingDurationReached = false;
+        _pinnedVoiceLayout = pinnedVoiceLayout;
+      },
+    );
     await _startRecording();
     _isRecordStartInFlight = false;
     if (!mounted) {
@@ -352,47 +422,82 @@ class _PromptInputState extends State<PromptInput> {
     if (_voiceState == _VoiceState.idle) {
       // Recording never started (permission denied / recorder error), so no
       // later transition will release the pin.
-      setState(() => _pinnedVoiceLayout = null);
+      _updateComposerState(update: () => _pinnedVoiceLayout = null);
     } else if (_releaseRequestedDuringStart) {
-      // The hold ended while the recorder was still starting up — stop right
-      // away so recording never outlives the gesture.
-      await _stopAndTranscribe();
+      // The hold ended while the recorder was still starting up, leaving no
+      // meaningful captured duration to transcribe.
+      await _cancelVoiceInteraction();
     }
+  }
+
+  void _handleRecordPointerDown(PointerDownEvent event) {
+    if (_recordingPointer != null || (event.buttons & kPrimaryButton) == 0) return;
+    _recordingPointer = event.pointer;
+    _recordingPointerPosition = event.position;
+    unawaited(_handleRecordStart());
+  }
+
+  void _handleRecordPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _recordingPointer) return;
+    _recordingPointerPosition = event.position;
+    _handleRecordDragUpdate(globalPosition: event.position);
+  }
+
+  void _handleRecordPointerEnd(PointerEvent event) {
+    if (event.pointer != _recordingPointer) return;
+    _handleRecordDragUpdate(globalPosition: event.position);
+    _recordingPointer = null;
+    _recordingPointerPosition = null;
+    unawaited(_handleRecordEnd());
   }
 
   /// Tracks the hold as it moves, scrubbing the drag-to-cancel presentation
   /// toward the cancel target.
   void _handleRecordDragUpdate({required Offset globalPosition}) {
-    if (_voiceState != _VoiceState.recording) return;
-    _cancelDragProgress.value = _cancelProgressFor(globalPosition: globalPosition);
+    if (_displayedVoiceState != _VoiceState.recording) return;
+    final progress = _cancelProgressFor(globalPosition: globalPosition);
+    final cancelTargetEngaged = progress >= 1;
+    if (cancelTargetEngaged != _cancelTargetEngaged) {
+      _cancelTargetEngaged = cancelTargetEngaged;
+      unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
+    }
+    _cancelDragProgress.value = progress;
   }
 
   /// The finger starts engaging the cancel affordance within this distance of
   /// the target's centre, and is committed to cancelling within
-  /// [_cancelCommitRadius] — roughly the 44pt button plus touch slop.
+  /// [_cancelCommitRadius] — roughly the 44pt button plus touch slop. Once
+  /// committed, the wider disengage radius prevents chatter at the boundary.
   static const double _cancelReachRadius = 170;
   static const double _cancelCommitRadius = 44;
+  static const double _cancelDisengageRadius = 56;
 
   double _cancelProgressFor({required Offset globalPosition}) {
     final target = _cancelTargetKey.currentContext?.findRenderObject();
     if (target is! RenderBox || !target.hasSize || !target.attached) return 0;
     final center = target.localToGlobal(target.size.center(Offset.zero));
     final distance = (globalPosition - center).distance;
-    final fraction = (distance - _cancelCommitRadius) / (_cancelReachRadius - _cancelCommitRadius);
+    final thresholdRadius = _cancelTargetEngaged ? _cancelDisengageRadius : _cancelCommitRadius;
+    final fraction = (distance - thresholdRadius) / (_cancelReachRadius - thresholdRadius);
     return (1 - fraction).clamp(0.0, 1.0);
   }
 
   Future<void> _handleRecordEnd() async {
     if (_voiceState == _VoiceState.idle) {
-      // The release raced a recorder that is still starting up (or was a
-      // stray pointer event); [_handleRecordStart] consumes this after the
-      // start completes.
-      _releaseRequestedDuringStart = true;
+      // A release can race a recorder that is still starting up.
+      if (_isRecordStartInFlight) {
+        _updateComposerState(update: () => _releaseRequestedDuringStart = true);
+        _cancelDragProgress.value = 0;
+      }
       return;
     }
     if (_voiceState != _VoiceState.recording) return;
     if (_cancelDragProgress.value >= 1) {
       // Released on the cancel target — discard instead of transcribing.
+      await _cancelVoiceInteraction();
+      return;
+    }
+    if (!_minimumRecordingDurationReached) {
       await _cancelVoiceInteraction();
       return;
     }
@@ -415,7 +520,26 @@ class _PromptInputState extends State<PromptInput> {
     try {
       await _voiceService.startRecording();
       if (!mounted) return;
-      setState(() => _voiceState = _VoiceState.recording);
+      final interactionId = _voiceInteractionId;
+      _updateComposerState(update: () => _voiceState = _VoiceState.recording);
+      // Startup can finish after the user has already dragged toward cancel.
+      // Reapply the latest position once the newly mounted target has layout.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final position = _recordingPointerPosition;
+        if (!mounted ||
+            _voiceState != _VoiceState.recording ||
+            interactionId != _voiceInteractionId ||
+            _recordingPointer == null ||
+            position == null) {
+          return;
+        }
+        _handleRecordDragUpdate(globalPosition: position);
+      });
+      _minimumRecordingDurationTimer = Timer(_minimumRecordingDuration, () {
+        if (_voiceState == _VoiceState.recording && interactionId == _voiceInteractionId) {
+          _minimumRecordingDurationReached = true;
+        }
+      });
     } on MicrophonePermissionDeniedError {
       if (!mounted) return;
       _showComposerNotice(context.loc.voiceErrorPermission);
@@ -435,10 +559,15 @@ class _PromptInputState extends State<PromptInput> {
     // long before a slow upload errors out); every continuation below is a
     // no-op once a newer interaction owns the composer.
     final interactionId = _voiceInteractionId;
-    setState(() {
-      _voiceState = _VoiceState.transcribing;
-      _cancelDragProgress.value = 0;
-    });
+    _cancelTargetEngaged = false;
+    _minimumRecordingDurationTimer?.cancel();
+    _minimumRecordingDurationTimer = null;
+    _updateComposerState(
+      update: () {
+        _voiceState = _VoiceState.transcribing;
+        _cancelDragProgress.value = 0;
+      },
+    );
 
     bool stale() => !mounted || interactionId != _voiceInteractionId;
 
@@ -452,6 +581,9 @@ class _PromptInputState extends State<PromptInput> {
         transcript: transcript,
       );
       _applyDraft(draft: nextDraft);
+      // Reward the completed outcome, not release that merely starts transcription.
+      unawaited(_playSuccessFeedback(interactionId: interactionId));
+      _scrollToDraftEndAfterLayout();
       widget.onVoiceTranscriptionCompleted();
       // Text-first raises the keyboard so the transcript can be extended
       // right away. Voice-first rests the transcript in the typing container
@@ -475,11 +607,13 @@ class _PromptInputState extends State<PromptInput> {
       _showComposerNotice(context.loc.voiceErrorTranscription);
     } finally {
       if (!stale()) {
-        setState(() {
-          _voiceState = _VoiceState.idle;
-          _pinnedVoiceLayout = null;
-          _cancelDragProgress.value = 0;
-        });
+        _updateComposerState(
+          update: () {
+            _voiceState = _VoiceState.idle;
+            _pinnedVoiceLayout = null;
+            _cancelDragProgress.value = 0;
+          },
+        );
       }
     }
   }
@@ -498,19 +632,45 @@ class _PromptInputState extends State<PromptInput> {
     widget.onDraftChanged(draft);
   }
 
+  void _scrollToDraftEndAfterLayout() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_textScrollController.hasClients) return;
+      _textScrollController.jumpTo(_textScrollController.position.maxScrollExtent);
+    });
+  }
+
   /// Discards the running voice interaction: a drag released on the cancel
   /// target, a tap on it mid-recording, or a tap on the X while transcribing.
+  Future<void> _cancelVoiceInteractionWithFeedback() async {
+    _playDismissFeedback();
+    await _cancelVoiceInteraction();
+  }
+
   Future<void> _cancelVoiceInteraction() async {
+    if (_isRecordStartInFlight) {
+      // Cancelling the service before its start future settles can let native
+      // startup continue after cleanup. Mark the release now and let the start
+      // path cancel once the recorder has reached a stable state.
+      _updateComposerState(update: () => _releaseRequestedDuringStart = true);
+      _cancelDragProgress.value = 0;
+      return;
+    }
+
     // Reset synchronously: a release landing while the platform cancel is
     // still in flight must read the interaction as over, not stop-and-
     // transcribe the recording being discarded. The id bump orphans any
     // still-pending transcription continuation of this interaction.
     _voiceInteractionId++;
-    setState(() {
-      _voiceState = _VoiceState.idle;
-      _pinnedVoiceLayout = null;
-      _cancelDragProgress.value = 0;
-    });
+    _minimumRecordingDurationTimer?.cancel();
+    _minimumRecordingDurationTimer = null;
+    _minimumRecordingDurationReached = false;
+    _updateComposerState(
+      update: () {
+        _voiceState = _VoiceState.idle;
+        _pinnedVoiceLayout = null;
+        _cancelDragProgress.value = 0;
+      },
+    );
     _isCancelInFlight = true;
     try {
       await _voiceService.cancelRecording();
@@ -518,6 +678,26 @@ class _PromptInputState extends State<PromptInput> {
       loge("Failed to cancel the voice interaction", error);
     } finally {
       _isCancelInFlight = false;
+    }
+  }
+
+  void _playDismissFeedback() {
+    if (_cancelTargetEngaged) return;
+    unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
+  }
+
+  Future<void> _playSuccessFeedback({required int interactionId}) async {
+    await _playHapticFeedback(play: HapticFeedback.lightImpact);
+    await Future<void>.delayed(_successFeedbackPulseDelay);
+    if (!mounted || interactionId != _voiceInteractionId) return;
+    await _playHapticFeedback(play: HapticFeedback.heavyImpact);
+  }
+
+  static Future<void> _playHapticFeedback({required Future<void> Function() play}) async {
+    try {
+      await play();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to play voice haptic feedback", error, stackTrace);
     }
   }
 
@@ -583,8 +763,6 @@ class _PromptInputState extends State<PromptInput> {
 
   @override
   Widget build(BuildContext context) {
-    // The resting layout follows the settings choice live.
-    context.watch<ChatInputModeCubit>();
     final prego = context.prego;
 
     return DecoratedBox(
@@ -610,7 +788,21 @@ class _PromptInputState extends State<PromptInput> {
         mainAxisSize: .min,
         children: [
           ?widget.header,
-          _buildComposerTopSlot(context),
+          // A focused composer consumes the first route pop so Android back
+          // dismisses the keyboard before a later back leaves the screen.
+          KeyboardVisibilityBuilder(
+            builder: (context, isKeyboardVisible) {
+              final shouldDismissKeyboardBeforePop =
+                  Theme.of(context).platform == TargetPlatform.android && _focusNode.hasFocus && isKeyboardVisible;
+              return PopScope(
+                canPop: !shouldDismissKeyboardBeforePop,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
+                },
+                child: _buildComposerTopSlot(context),
+              );
+            },
+          ),
 
           // Group only the input container with the text field via a
           // TextFieldTapRegion. The field's default `onTapOutside` unfocuses
@@ -643,9 +835,9 @@ class _PromptInputState extends State<PromptInput> {
                     // [_layout], so a switch never happens mid-hold.
                     key: ValueKey(_layout),
                     child: switch (_layout) {
-                      _ComposerLayout.typing => _buildTypingComposer(context),
-                      _ComposerLayout.compact => _buildCompactComposer(context),
-                      _ComposerLayout.holdToTalk => _buildHoldToTalkComposer(context),
+                      ComposerSurfaceLayout.typing => _buildTypingComposer(context),
+                      ComposerSurfaceLayout.compact => _buildCompactComposer(context),
+                      ComposerSurfaceLayout.holdToTalk => _buildHoldToTalkComposer(context),
                     },
                   ),
                 ),
@@ -666,7 +858,7 @@ class _PromptInputState extends State<PromptInput> {
   /// "Release to transcribe" / "Release to cancel" helper while recording.
   Widget _buildComposerTopSlot(BuildContext context) {
     final Widget child;
-    if (_voiceState == _VoiceState.recording) {
+    if (_displayedVoiceState == _VoiceState.recording) {
       child = KeyedSubtree(key: const ValueKey("release-hint"), child: _buildReleaseHint(context));
     } else {
       final headerChild = switch (widget.stagedCommand) {
@@ -685,7 +877,9 @@ class _PromptInputState extends State<PromptInput> {
       };
       child = KeyedSubtree(
         key: ValueKey(widget.stagedCommand == null ? "header" : "staged-command"),
-        child: headerChild ?? const SizedBox(width: double.infinity),
+        // Older bridges can provide no picker header. Reserve its footprint so
+        // the recording helper does not grow the composer when it appears.
+        child: headerChild ?? const SizedBox(width: double.infinity, height: _actionButtonSize),
       );
     }
 
@@ -707,7 +901,7 @@ class _PromptInputState extends State<PromptInput> {
     return Padding(
       // The design floats the helper spacing-3xl above the pill, less the
       // padding the tap-region below already contributes.
-      padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md, bottom: PregoSpacing.xl),
+      padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs, bottom: PregoSpacing.xl),
       child: SizedBox(
         width: double.infinity,
         child: ValueListenableBuilder<double>(
@@ -738,21 +932,6 @@ class _PromptInputState extends State<PromptInput> {
   // Composer layouts
   // ---------------------------------------------------------------------------
 
-  BoxDecoration _containerDecoration(
-    PregoDesignSystem prego, {
-    required Color borderColor,
-    required BorderRadius borderRadius,
-  }) {
-    return BoxDecoration(
-      color: prego.colors.bgSurface2,
-      borderRadius: borderRadius,
-      border: Border.all(color: borderColor),
-      boxShadow: [
-        BoxShadow(color: prego.colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
-      ],
-    );
-  }
-
   /// A resting pill surface with the destructive drag-to-cancel gradient
   /// sandwiched between its background and [child]. The gradient layer is
   /// always mounted (invisible at zero progress) so entering the recording
@@ -763,16 +942,20 @@ class _PromptInputState extends State<PromptInput> {
   /// end inset eases down so the waveform ends the spec's 12pt from the edge.
   Widget _buildVoicePillSurface(
     BuildContext context, {
-    required Color borderColor,
+    required PregoComposerSurfaceStyle surfaceStyle,
     required Widget child,
     bool tightensTrailingWhileRecording = false,
   }) {
     final prego = context.prego;
     const radius = BorderRadius.all(Radius.circular(PregoRadius.full));
-    final tightenEnd = tightensTrailingWhileRecording && _voiceState == _VoiceState.recording;
+    final tightenEnd = tightensTrailingWhileRecording && _displayedVoiceState == _VoiceState.recording;
 
     return DecoratedBox(
-      decoration: _containerDecoration(prego, borderColor: borderColor, borderRadius: radius),
+      decoration: pregoComposerSurfaceDecoration(
+        prego: prego,
+        style: surfaceStyle,
+        borderRadius: radius,
+      ),
       child: Stack(
         children: [
           Positioned.fill(child: _buildCancelGradient(context, borderRadius: radius)),
@@ -829,7 +1012,7 @@ class _PromptInputState extends State<PromptInput> {
 
     return _buildVoicePillSurface(
       context,
-      borderColor: prego.colors.borderSecondary,
+      surfaceStyle: PregoComposerSurfaceStyle.subtle,
       tightensTrailingWhileRecording: true,
       child: Row(
         spacing: PregoSpacing.md,
@@ -850,7 +1033,7 @@ class _PromptInputState extends State<PromptInput> {
             ),
           ),
           _buildCollapsibleTrailing(
-            visible: _voiceState != _VoiceState.recording,
+            visible: _displayedVoiceState != _VoiceState.recording,
             child: Row(
               spacing: PregoSpacing.sm,
               children: [
@@ -881,7 +1064,7 @@ class _PromptInputState extends State<PromptInput> {
 
     return _buildVoicePillSurface(
       context,
-      borderColor: prego.colors.borderPrimary,
+      surfaceStyle: PregoComposerSurfaceStyle.emphasized,
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -915,7 +1098,7 @@ class _PromptInputState extends State<PromptInput> {
               // action collapses away.
               _buildMicButton(context),
               _buildCollapsibleTrailing(
-                visible: _voiceState != _VoiceState.recording,
+                visible: _displayedVoiceState != _VoiceState.recording,
                 child: _buildPrimaryActionButton(context),
               ),
             ],
@@ -945,9 +1128,9 @@ class _PromptInputState extends State<PromptInput> {
 
     return Container(
       padding: const EdgeInsets.all(PregoSpacing.sm),
-      decoration: _containerDecoration(
-        prego,
-        borderColor: prego.colors.borderPrimary,
+      decoration: pregoComposerSurfaceDecoration(
+        prego: prego,
+        style: PregoComposerSurfaceStyle.emphasized,
         borderRadius: borderRadius,
       ),
       child: Column(
@@ -970,6 +1153,7 @@ class _PromptInputState extends State<PromptInput> {
                   },
                   child: TextField(
                     controller: _controller,
+                    scrollController: _textScrollController,
                     focusNode: _focusNode,
                     minLines: 1,
                     maxLines: 6,
@@ -1000,7 +1184,7 @@ class _PromptInputState extends State<PromptInput> {
                 child: Tooltip(
                   message: loc.sessionDetailExpandEditor,
                   child: PregoTappable(
-                    onTap: _voiceState == _VoiceState.idle ? _openEditorSheet : null,
+                    onTap: _displayedVoiceState == _VoiceState.idle ? _openEditorSheet : null,
                     borderRadius: BorderRadius.circular(PregoRadius.full),
                     containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
                     child: Icon(TablerRegular.maximize, size: 18, color: prego.colors.textSecondary),
@@ -1093,7 +1277,7 @@ class _PromptInputState extends State<PromptInput> {
 
     return _buildVoicePillSurface(
       context,
-      borderColor: prego.colors.borderSecondary,
+      surfaceStyle: PregoComposerSurfaceStyle.subtle,
       tightensTrailingWhileRecording: true,
       child: Row(
         spacing: PregoSpacing.md,
@@ -1116,7 +1300,7 @@ class _PromptInputState extends State<PromptInput> {
             ),
           ),
           _buildCollapsibleTrailing(
-            visible: _voiceState != _VoiceState.recording,
+            visible: _displayedVoiceState != _VoiceState.recording,
             child: _buildPrimaryActionButton(context),
           ),
         ],
@@ -1143,7 +1327,7 @@ class _PromptInputState extends State<PromptInput> {
             // Gesture owner during a recording hold — never collapsed.
             _buildMicButton(context),
             _buildCollapsibleTrailing(
-              visible: _voiceState != _VoiceState.recording,
+              visible: _displayedVoiceState != _VoiceState.recording,
               child: _buildPrimaryActionButton(context),
             ),
           ],
@@ -1161,7 +1345,7 @@ class _PromptInputState extends State<PromptInput> {
 
   Widget _buildOptionsAccordion() {
     return ComposerOptionsAccordion(
-      actionsEnabled: _voiceState == _VoiceState.idle,
+      actionsEnabled: _displayedVoiceState == _VoiceState.idle,
       onSlashCommandsTap: _openCommandPicker,
       onAttachImageTap: _handleAttachImage,
     );
@@ -1213,14 +1397,14 @@ class _PromptInputState extends State<PromptInput> {
   Widget _buildLeadingSlot(BuildContext context) {
     final loc = context.loc;
 
-    final Widget child = switch (_voiceState) {
+    final Widget child = switch (_displayedVoiceState) {
       _VoiceState.idle => KeyedSubtree(key: const ValueKey("accordion"), child: _buildOptionsAccordion()),
       _VoiceState.recording => KeyedSubtree(
         key: const ValueKey("cancel-target"),
         child: VoiceCancelButton(
           key: _cancelTargetKey,
           progress: _cancelDragProgress,
-          onCancel: _cancelVoiceInteraction,
+          onCancel: _cancelVoiceInteractionWithFeedback,
         ),
       ),
       _VoiceState.transcribing => KeyedSubtree(
@@ -1231,7 +1415,7 @@ class _PromptInputState extends State<PromptInput> {
             leadingIcon: TablerRegular.x,
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.lg,
-            onPressed: _cancelVoiceInteraction,
+            onPressed: _cancelVoiceInteractionWithFeedback,
           ),
         ),
       ),
@@ -1242,7 +1426,7 @@ class _PromptInputState extends State<PromptInput> {
 
   /// Wraps a resting pill's centre in the press-and-hold recording gesture.
   ///
-  /// The detector wraps the voice-aware slot (not the other way around) so it
+  /// The listener wraps the voice-aware slot (not the other way around) so it
   /// stays mounted when the waveform swaps in and still receives the release
   /// that ends the hold. Semantic taps toggle recording — assistive
   /// technologies cannot express the press-and-hold gesture.
@@ -1255,18 +1439,12 @@ class _PromptInputState extends State<PromptInput> {
       excludeSemantics: true,
       onTap: _handleSemanticRecordToggle,
       child: Listener(
-        // A pointer cancel mid-hold (incoming call, system gesture) resets
-        // the accepted long-press silently — no onLongPressEnd — so the raw
-        // pointer stream is the only place to keep the recording bounded by
-        // the gesture.
-        onPointerCancel: (_) => _handleRecordEnd(),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onLongPressStart: (_) => _handleRecordStart(),
-          onLongPressMoveUpdate: (details) => _handleRecordDragUpdate(globalPosition: details.globalPosition),
-          onLongPressEnd: (_) => _handleRecordEnd(),
-          child: child,
-        ),
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: _handleRecordPointerDown,
+        onPointerMove: _handleRecordPointerMove,
+        onPointerUp: _handleRecordPointerEnd,
+        onPointerCancel: _handleRecordPointerEnd,
+        child: child,
       ),
     );
   }
@@ -1289,7 +1467,7 @@ class _PromptInputState extends State<PromptInput> {
   /// in its place while a voice interaction is running. [height] pins the
   /// slot to the resting pills' 44pt row.
   Widget _buildVoiceAwareSlot({required double height, required Widget idle}) {
-    final Widget child = switch (_voiceState) {
+    final Widget child = switch (_displayedVoiceState) {
       _VoiceState.idle => KeyedSubtree(key: const ValueKey("voice-slot-idle"), child: idle),
       _VoiceState.recording => KeyedSubtree(
         key: const ValueKey("voice-slot-recording"),
@@ -1347,29 +1525,24 @@ class _PromptInputState extends State<PromptInput> {
 
     // No Tooltip here: its long-press trigger would race the recording hold.
     // The button keeps its enabled look and swallows plain taps via
-    // [_ignoreTap]; holds outlast the tap recognizer, so the surrounding
-    // detector wins the arena and drives the recording. Semantic taps toggle
-    // recording — assistive technologies cannot express the hold.
+    // [_ignoreTap]; the surrounding raw pointer listener drives recording.
+    // Semantic taps toggle recording because assistive technologies cannot
+    // express the hold.
     return Semantics(
       button: true,
       label: loc.voiceRecord,
       excludeSemantics: true,
       onTap: _handleSemanticRecordToggle,
       child: Listener(
-        // A pointer cancel mid-hold resets the accepted long-press silently —
-        // no onLongPressEnd — so the raw pointer stream is the only place to
-        // keep the recording bounded by the gesture.
-        onPointerCancel: (_) => _handleRecordEnd(),
-        child: GestureDetector(
-          onLongPressStart: (_) => _handleRecordStart(),
-          onLongPressMoveUpdate: (details) => _handleRecordDragUpdate(globalPosition: details.globalPosition),
-          onLongPressEnd: (_) => _handleRecordEnd(),
-          child: const PregoButtonsSolid.iconOnly(
-            leadingIcon: TablerRegular.microphone,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.lg,
-            onPressed: _ignoreTap,
-          ),
+        onPointerDown: _handleRecordPointerDown,
+        onPointerMove: _handleRecordPointerMove,
+        onPointerUp: _handleRecordPointerEnd,
+        onPointerCancel: _handleRecordPointerEnd,
+        child: const PregoButtonsSolid.iconOnly(
+          leadingIcon: TablerRegular.microphone,
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.lg,
+          onPressed: _ignoreTap,
         ),
       ),
     );

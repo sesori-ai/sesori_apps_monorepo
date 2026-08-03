@@ -7,6 +7,28 @@ import "../foundation/process_runner.dart";
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 
+sealed class GitCurrentBranchResult {
+  const GitCurrentBranchResult();
+}
+
+final class GitCurrentBranchNamed extends GitCurrentBranchResult {
+  final String branchName;
+
+  const GitCurrentBranchNamed({required this.branchName});
+}
+
+final class GitCurrentBranchDetached extends GitCurrentBranchResult {
+  const GitCurrentBranchDetached();
+}
+
+final class GitCurrentBranchMissingDirectory extends GitCurrentBranchResult {
+  const GitCurrentBranchMissingDirectory();
+}
+
+final class GitCurrentBranchNotRepository extends GitCurrentBranchResult {
+  const GitCurrentBranchNotRepository();
+}
+
 class GitWorktreeSafetySnapshot {
   final bool worktreeExists;
   final bool hasUnstagedChanges;
@@ -39,6 +61,50 @@ class GitCliApi {
       arguments: const ["rev-parse", "--is-inside-work-tree"],
     );
     return result.exitCode == 0 && result.stdout.toString().trim() == "true";
+  }
+
+  Future<GitCurrentBranchResult> getCurrentBranch({required String projectPath}) async {
+    if (!_gitPathExists(gitPath: projectPath)) {
+      return const GitCurrentBranchMissingDirectory();
+    }
+    const arguments = ["symbolic-ref", "--quiet", "--short", "HEAD"];
+    final ProcessResult result;
+    try {
+      result = await _processRunner.run(
+        "git",
+        arguments,
+        workingDirectory: projectPath,
+        environment: const {"LC_ALL": "C"},
+      );
+    } on ProcessException {
+      if (!_gitPathExists(gitPath: projectPath)) {
+        return const GitCurrentBranchMissingDirectory();
+      }
+      rethrow;
+    }
+    if (result.exitCode == 0) {
+      var branchName = result.stdout.toString();
+      if (branchName.endsWith("\r\n")) {
+        branchName = branchName.substring(0, branchName.length - 2);
+      } else if (branchName.endsWith("\n")) {
+        branchName = branchName.substring(0, branchName.length - 1);
+      } else if (branchName.endsWith("\r")) {
+        branchName = branchName.substring(0, branchName.length - 1);
+      }
+      if (branchName.isEmpty) {
+        throw const FormatException("git returned an empty current branch");
+      }
+      return GitCurrentBranchNamed(branchName: branchName);
+    }
+
+    final stderr = result.stderr.toString();
+    if (stderr.toLowerCase().contains("not a git repository")) {
+      return const GitCurrentBranchNotRepository();
+    }
+    if (result.exitCode == 1 && stderr.trim().isEmpty) {
+      return const GitCurrentBranchDetached();
+    }
+    throw ProcessException("git", arguments, stderr, result.exitCode);
   }
 
   /// Initializes a new git repository at [path]. Returns `true` on success.
@@ -115,36 +181,75 @@ class GitCliApi {
   }
 
   /// URL of the repository's remote in [projectPath], preferring `origin` and
-  /// falling back to the first listed remote. Null when the directory is
-  /// missing (git cannot even start there — e.g. a stored project folder that
-  /// was moved or deleted), is not a git repository, has no remotes, or the
-  /// remote has no URL configured.
+  /// falling back to the first listed remote. Null when the directory is not a
+  /// git repository, has no remotes, or the remote has no URL configured.
+  /// Unexpected failures from an existing repository remain observable.
   Future<String?> getRemoteUrl({required String projectPath}) async {
-    try {
-      final remotesResult = await runGit(projectPath: projectPath, arguments: const ["remote"]);
-      if (remotesResult.exitCode != 0) {
-        return null;
-      }
-      final remotes = remotesResult.stdout
-          .toString()
-          .split("\n")
-          .map((line) => line.trim())
-          .where((line) => line.isNotEmpty)
-          .toList();
-      if (remotes.isEmpty) {
-        return null;
-      }
-      final remote = remotes.contains("origin") ? "origin" : remotes.first;
-      final urlResult = await runGit(projectPath: projectPath, arguments: ["remote", "get-url", remote]);
-      if (urlResult.exitCode != 0) {
-        return null;
-      }
-      final url = urlResult.stdout.toString().trim();
-      return url.isEmpty ? null : url;
-    } on Object catch (e) {
-      Log.w("[GitCli] failed to read remote url: $e");
+    if (!await _isInsideGitWorkTreeForRemote(projectPath: projectPath)) {
       return null;
     }
+    const remoteArguments = ["remote"];
+    final remotesResult = await runGit(projectPath: projectPath, arguments: remoteArguments);
+    if (remotesResult.exitCode != 0) {
+      throw ProcessException(
+        "git",
+        remoteArguments,
+        remotesResult.stderr.toString(),
+        remotesResult.exitCode,
+      );
+    }
+    final remotes = remotesResult.stdout
+        .toString()
+        .split("\n")
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (remotes.isEmpty) {
+      return null;
+    }
+    final remote = remotes.contains("origin") ? "origin" : remotes.first;
+    final getUrlArguments = ["remote", "get-url", remote];
+    final urlResult = await runGit(projectPath: projectPath, arguments: getUrlArguments);
+    if (urlResult.exitCode != 0) {
+      throw ProcessException(
+        "git",
+        getUrlArguments,
+        urlResult.stderr.toString(),
+        urlResult.exitCode,
+      );
+    }
+    final url = urlResult.stdout.toString().trim();
+    return url.isEmpty ? null : url;
+  }
+
+  Future<bool> _isInsideGitWorkTreeForRemote({required String projectPath}) async {
+    const arguments = ["rev-parse", "--is-inside-work-tree"];
+    final ProcessResult result;
+    try {
+      result = await _processRunner.run(
+        "git",
+        arguments,
+        workingDirectory: projectPath,
+        environment: const {"LC_ALL": "C"},
+      );
+    } on ProcessException {
+      if (!_gitPathExists(gitPath: projectPath)) {
+        return false;
+      }
+      rethrow;
+    }
+    if (result.exitCode == 0) {
+      return result.stdout.toString().trim() == "true";
+    }
+    if (result.stderr.toString().toLowerCase().contains("not a git repository")) {
+      return false;
+    }
+    throw ProcessException(
+      "git",
+      arguments,
+      result.stderr.toString(),
+      result.exitCode,
+    );
   }
 
   Future<bool> branchExists({

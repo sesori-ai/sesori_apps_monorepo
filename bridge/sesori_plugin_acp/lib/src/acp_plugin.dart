@@ -14,6 +14,7 @@ import "acp_protocol.dart";
 import "acp_session_loader.dart";
 import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
+import "repositories/mappers/acp_content_mapper.dart";
 
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
 /// Client Protocol) agent driven over stdio.
@@ -39,11 +40,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required this.launchSpec,
     required String launchDirectory,
     required this.eventMapper,
+    required AcpContentMapper contentMapper,
     required AcpCommandTracker commandTracker,
     required AcpSessionOptionsService sessionOptionsService,
     AcpProcessFactory? processFactory,
   }) : launchDirectory = normalizeProjectDirectory(directory: launchDirectory),
        _processFactory = processFactory,
+       _contentMapper = contentMapper,
        _commandTracker = commandTracker,
        _sessionOptionsService = sessionOptionsService,
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
@@ -66,6 +69,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   final AcpEventMapper eventMapper;
 
   final AcpProcessFactory? _processFactory;
+  final AcpContentMapper _contentMapper;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
 
   /// Snapshot of the agent's advertised slash commands, fed by the
@@ -1300,6 +1304,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,
+      contentMapper: _contentMapper,
     );
     StreamSubscription<AcpNotification>? sub;
     AcpCommandListener? commandListener;

@@ -759,6 +759,8 @@ void main() {
           .insert(
             PullRequestsTableCompanion.insert(
               projectId: 'p1',
+              githubRepositoryIdentity: 'sesori-ai/sesori_apps_monorepo',
+              githubLogin: 'octocat',
               prNumber: 1,
               branchName: 'feat/one',
               url: 'https://example.com/pr/1',
@@ -776,6 +778,8 @@ void main() {
           .insert(
             PullRequestsTableCompanion.insert(
               projectId: 'p1',
+              githubRepositoryIdentity: 'sesori-ai/sesori_apps_monorepo',
+              githubLogin: 'octocat',
               prNumber: 2,
               branchName: 'feat/two',
               url: 'https://example.com/pr/2',
@@ -1113,7 +1117,9 @@ void main() {
               (await newDb.select(newDb.projectsTable).get()).single;
           expect(project.projectionUpdatedAt, 200);
           expect(project.displayName, 'One');
-          final projectColumns = await newDb.customSelect("PRAGMA table_info('projects_table')").get();
+          final projectColumns = await newDb
+              .customSelect("PRAGMA table_info('projects_table')")
+              .get();
           expect(
             projectColumns.map((row) => row.read<String>('name')),
             isNot(contains('worktree_counter')),
@@ -1250,7 +1256,9 @@ void main() {
     final connection = await verifier.startAt(11);
     final db = AppDatabase(connection);
 
-    await db.validateDatabaseSchema(
+    await verifier.migrateAndValidate(
+      db,
+      12,
       options: const ValidationOptions(validateDropped: true),
     );
     await db.close();
@@ -1431,6 +1439,209 @@ void main() {
       );
     },
   );
+
+  test('migration v12 → v13 structural validation', () async {
+    final connection = await verifier.startAt(12);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(
+      db,
+      13,
+      options: const ValidationOptions(validateDropped: true),
+    );
+    await db.close();
+  });
+
+  test(
+    'migration v12 → v13 preserves catalog identity and resets the PR cache',
+    () async {
+      final schema = await verifier.schemaAt(12);
+      schema.rawDatabase.execute(
+        'INSERT INTO projects_table '
+        '(project_id, path, hidden, base_branch, display_name, created_at, '
+        'updated_at, projection_updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ['project-1', '/projects/one', 1, 'main', 'One', 100, 200, 150],
+      );
+      schema.rawDatabase.execute(
+        'INSERT INTO sessions_table '
+        '(session_id, backend_session_id, project_id, parent_session_id, '
+        'directory, worktree_path, branch_name, is_dedicated, archived_at, '
+        'base_branch, base_commit, last_agent, last_agent_model, created_at, '
+        'updated_at, projection_updated_at, last_activity_at, last_seen_at, '
+        'last_user_message_at, plugin_id, title, catalog_title) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          'session-1',
+          'backend-session-1',
+          'project-1',
+          null,
+          '/worktrees/one',
+          '/worktrees/one',
+          'feature/cleanup-branch',
+          1,
+          null,
+          'main',
+          'abc123',
+          'build',
+          'anthropic|claude-sonnet',
+          300,
+          400,
+          350,
+          390,
+          380,
+          370,
+          'opencode',
+          'Bridge title',
+          'Catalog title',
+        ],
+      );
+      schema.rawDatabase.execute(
+        'INSERT INTO pull_requests_table '
+        '(project_id, pr_number, branch_name, url, title, state, '
+        'mergeable_status, review_decision, check_status, last_checked_at, '
+        'created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          'project-1',
+          42,
+          'feature/cleanup-branch',
+          'https://github.com/sesori-ai/sesori_apps_monorepo/pull/42',
+          'Legacy unscoped PR',
+          'open',
+          'mergeable',
+          'approved',
+          'success',
+          500,
+          450,
+        ],
+      );
+
+      final db = AppDatabase(schema.newConnection());
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(
+        db,
+        13,
+        options: const ValidationOptions(validateDropped: true),
+      );
+
+      final project = (await db.select(db.projectsTable).get()).single;
+      expect(project.projectId, 'project-1');
+      expect(project.path, '/projects/one');
+      expect(project.displayName, 'One');
+      expect(project.prCacheGithubLogin, isNull);
+
+      final session = (await db.select(db.sessionTable).get()).single;
+      expect(session.sessionId, 'session-1');
+      expect(session.backendSessionId, 'backend-session-1');
+      expect(session.projectId, 'project-1');
+      expect(session.directory, '/worktrees/one');
+      expect(session.branchName, 'feature/cleanup-branch');
+      expect(session.currentBranchName, isNull);
+      expect(session.currentGithubRepositoryIdentity, isNull);
+      expect(session.pluginId, 'opencode');
+      expect(session.title, 'Bridge title');
+      expect(session.catalogTitle, 'Catalog title');
+      expect(await db.select(db.pullRequestsTable).get(), isEmpty);
+      expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+    },
+  );
+
+  test('v13 PR key, scope index, and project FK remain enforced', () async {
+    final db = await _migrateFromV12(verifier: verifier);
+    addTearDown(db.close);
+
+    final requiredScopeColumns = await db
+        .customSelect(
+          'SELECT name, "notnull" AS is_not_null '
+          "FROM pragma_table_info('pull_requests_table') "
+          "WHERE name IN ('github_repository_identity', 'github_login')",
+        )
+        .get();
+    expect(
+      {
+        for (final row in requiredScopeColumns)
+          row.read<String>('name'): row.read<int>('is_not_null'),
+      },
+      const {'github_repository_identity': 1, 'github_login': 1},
+    );
+
+    final primaryKeyColumns = await db
+        .customSelect(
+          "SELECT name FROM pragma_table_info('pull_requests_table') "
+          'WHERE pk > 0 ORDER BY pk',
+        )
+        .get();
+    expect(
+      primaryKeyColumns.map((row) => row.read<String>('name')),
+      const ['project_id', 'github_repository_identity', 'pr_number'],
+    );
+
+    final scopeIndexColumns = await db
+        .customSelect(
+          "SELECT name FROM pragma_index_info('idx_pull_requests_scope') "
+          'ORDER BY seqno',
+        )
+        .get();
+    expect(
+      scopeIndexColumns.map((row) => row.read<String>('name')),
+      const [
+        'project_id',
+        'github_repository_identity',
+        'branch_name',
+        'github_login',
+      ],
+    );
+
+    await expectLater(
+      _insertScopedPullRequest(
+        db: db,
+        projectId: 'missing',
+        githubRepositoryIdentity: 'sesori-ai/sesori_apps_monorepo',
+        githubLogin: 'octocat',
+        prNumber: 1,
+      ),
+      throwsA(_isForeignKeyViolation),
+    );
+
+    await db
+        .into(db.projectsTable)
+        .insert(
+          ProjectsTableCompanion.insert(
+            projectId: 'p1',
+            path: '/projects/one',
+            projectionUpdatedAt: 1,
+          ),
+        );
+    await _insertScopedPullRequest(
+      db: db,
+      projectId: 'p1',
+      githubRepositoryIdentity: 'sesori-ai/sesori_apps_monorepo',
+      githubLogin: 'octocat',
+      prNumber: 42,
+    );
+    await _insertScopedPullRequest(
+      db: db,
+      projectId: 'p1',
+      githubRepositoryIdentity: 'sesori-ai/other-repository',
+      githubLogin: 'octocat',
+      prNumber: 42,
+    );
+    await expectLater(
+      _insertScopedPullRequest(
+        db: db,
+        projectId: 'p1',
+        githubRepositoryIdentity: 'sesori-ai/sesori_apps_monorepo',
+        githubLogin: 'another-login',
+        prNumber: 42,
+      ),
+      throwsA(isA<SqliteException>()),
+    );
+
+    await (db.delete(
+      db.projectsTable,
+    )..where((table) => table.projectId.equals('p1'))).go();
+    expect(await db.select(db.pullRequestsTable).get(), isEmpty);
+    expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+  });
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -1441,7 +1652,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    11,
+    13,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;
@@ -1450,10 +1661,51 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
 Future<AppDatabase> _migrateFromV11({required SchemaVerifier verifier}) async {
   final connection = await verifier.startAt(11);
   final db = AppDatabase(connection);
-  await db.validateDatabaseSchema(
+  await verifier.migrateAndValidate(
+    db,
+    12,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;
+}
+
+Future<AppDatabase> _migrateFromV12({required SchemaVerifier verifier}) async {
+  final connection = await verifier.startAt(12);
+  final db = AppDatabase(connection);
+  await verifier.migrateAndValidate(
+    db,
+    13,
+    options: const ValidationOptions(validateDropped: true),
+  );
+  return db;
+}
+
+Future<void> _insertScopedPullRequest({
+  required AppDatabase db,
+  required String projectId,
+  required String githubRepositoryIdentity,
+  required String githubLogin,
+  required int prNumber,
+}) async {
+  await db
+      .into(db.pullRequestsTable)
+      .insert(
+        PullRequestsTableCompanion.insert(
+          projectId: projectId,
+          githubRepositoryIdentity: githubRepositoryIdentity,
+          githubLogin: githubLogin,
+          prNumber: prNumber,
+          branchName: 'feature-$prNumber',
+          url: 'https://example.com/pr/$prNumber',
+          title: 'PR $prNumber',
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 2,
+          createdAt: 1,
+        ),
+      );
 }
 
 final Matcher _isForeignKeyViolation = isA<SqliteException>().having(

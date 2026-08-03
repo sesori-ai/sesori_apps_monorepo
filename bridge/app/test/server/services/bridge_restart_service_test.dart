@@ -78,15 +78,6 @@ void main() {
     );
   }
 
-  test('requestRestart is consumed exactly once', () {
-    final service = buildService(binaryPath: '/x');
-
-    expect(service.consumeRestartRequest(), isFalse);
-    service.requestRestart();
-    expect(service.consumeRestartRequest(), isTrue);
-    expect(service.consumeRestartRequest(), isFalse);
-  });
-
   test('canSpawnSuccessor reflects whether the binary exists and is executable', () async {
     final existing = p.join(tempDir.path, 'sesori-bridge');
     File(existing).writeAsStringSync('binary');

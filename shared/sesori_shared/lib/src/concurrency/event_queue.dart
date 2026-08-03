@@ -194,6 +194,7 @@ class EventQueue<T extends Object> {
 
         final onData = _onData;
         if (onData == null) break;
+        final activeSubscription = _activeSubscription;
 
         final event = _buffer.first;
         try {
@@ -201,6 +202,12 @@ class EventQueue<T extends Object> {
           _buffer.removeFirst();
           _headAttempts = 0;
         } catch (e) {
+          // A detached listener no longer owns the in-flight delivery. Keep
+          // the head untouched so a replacement listener can retry it without
+          // charging the obsolete attempt against the poison-event limit.
+          if (!identical(_activeSubscription, activeSubscription)) {
+            continue;
+          }
           _headAttempts++;
           _onError(event, e);
 

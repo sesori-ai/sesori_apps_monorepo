@@ -10,7 +10,9 @@ void main() {
       expect(config.encoder, AudioEncoder.aacLc);
       expect(config.mimeType, "audio/mp4");
       expect(config.fileExtension, "m4a");
+      expect(config.bitRate, 128000);
       expect(config.sampleRate, 44100);
+      expect(config.numChannels, 1);
     });
 
     test("Android: AAC encoder, 16 kHz sample rate (Whisper native rate)", () {
@@ -19,7 +21,9 @@ void main() {
       expect(config.encoder, AudioEncoder.aacLc);
       expect(config.mimeType, "audio/mp4");
       expect(config.fileExtension, "m4a");
+      expect(config.bitRate, 128000);
       expect(config.sampleRate, 16000);
+      expect(config.numChannels, 1);
     });
 
     test("web platform: WAV encoder, default sample rate", () {
@@ -28,7 +32,9 @@ void main() {
       expect(config.encoder, AudioEncoder.wav);
       expect(config.mimeType, "audio/wav");
       expect(config.fileExtension, "wav");
+      expect(config.bitRate, 128000);
       expect(config.sampleRate, 44100);
+      expect(config.numChannels, 1);
     });
 
     test("default constructor uses platform detection", () {
@@ -38,7 +44,9 @@ void main() {
       expect(config.encoder, AudioEncoder.aacLc);
       expect(config.mimeType, "audio/mp4");
       expect(config.fileExtension, "m4a");
+      expect(config.bitRate, 128000);
       expect(config.sampleRate, 44100);
+      expect(config.numChannels, 1);
     });
   });
 }

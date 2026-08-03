@@ -68,9 +68,29 @@ class CodexCatalogRepository {
 
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() => Isolate.run(listSessionRecords);
 
-  Future<List<PluginSession>> listAllSessions() async {
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    final projectlessThreadIds = await _readProjectlessThreadIds();
+    final normalizedKnownDirectories = {
+      for (final directory in knownDirectories)
+        if (directory.trim().isNotEmpty) normalizeProjectDirectory(directory: directory),
+    };
+    final documentsCodexDirectory = _rolloutApi.documentsCodexDirectory;
+    final excludedDirectory = documentsCodexDirectory == null
+        ? null
+        : normalizeProjectDirectory(directory: documentsCodexDirectory);
     final records = await listSessionRecordsInIsolate();
-    return records.map(_toPluginSession).nonNulls.toList(growable: false);
+    return records
+        .where(
+          (record) => !_isExcludedFromDiscovery(
+            record: record,
+            projectlessThreadIds: projectlessThreadIds,
+            documentsCodexDirectory: excludedDirectory,
+            knownDirectories: normalizedKnownDirectories,
+          ),
+        )
+        .map(_toPluginSession)
+        .nonNulls
+        .toList(growable: false);
   }
 
   /// Filters by normalized rollout CWD before applying pagination.
@@ -162,6 +182,36 @@ class CodexCatalogRepository {
       Log.w("[codex] failed to read the session index", error, stackTrace);
       return const [];
     }
+  }
+
+  Future<Set<String>> _readProjectlessThreadIds() async {
+    try {
+      return (await _rolloutApi.readDesktopState()).projectlessThreadIds;
+    } on CodexDesktopStateReadException catch (error, stackTrace) {
+      Log.w(
+        "[codex] Codex Desktop state is unreadable; continuing discovery without its projectless thread ids",
+        error,
+        stackTrace,
+      );
+      return const {};
+    }
+  }
+
+  bool _isExcludedFromDiscovery({
+    required CodexSessionRecord record,
+    required Set<String> projectlessThreadIds,
+    required String? documentsCodexDirectory,
+    required Set<String> knownDirectories,
+  }) {
+    final cwd = record.cwd?.trim();
+    String? directory;
+    if (cwd != null && cwd.isNotEmpty) {
+      directory = normalizeProjectDirectory(directory: cwd);
+      if (knownDirectories.contains(directory)) return false;
+    }
+    if (projectlessThreadIds.contains(record.id)) return true;
+    if (documentsCodexDirectory == null || directory == null) return false;
+    return p.equals(directory, documentsCodexDirectory) || p.isWithin(documentsCodexDirectory, directory);
   }
 
   _CodexSessionMetadata? _readMetadata(String rolloutPath) {

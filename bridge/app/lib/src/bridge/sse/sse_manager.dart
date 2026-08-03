@@ -25,6 +25,7 @@ class SSEManager {
 
   final Map<int, EventQueue<SesoriSseEvent>> _subscribers = {};
   final Map<int, EventQueueSubscription<SesoriSseEvent>> _subscriptions = {};
+  final Map<int, Object> _subscriptionOwners = {};
   final Queue<({EventQueue<SesoriSseEvent> queue, DateTime expiry})> _orphanQueues =
       Queue<({EventQueue<SesoriSseEvent> queue, DateTime expiry})>();
 
@@ -46,24 +47,48 @@ class SSEManager {
   ///
   /// [path] is accepted for API compatibility with call sites but is not used
   /// by this manager.
-  void subscribePath(int connID, String path, RelayClient client) {
+  void subscribePath({
+    required int connID,
+    required String path,
+    required RelayClient client,
+    required RelayConnection connection,
+  }) {
     final orphan = _popValidOrphan();
+    final subscriptionOwner = Object();
+    _subscriptionOwners[connID] = subscriptionOwner;
 
-    if (orphan != null) {
-      _subscriptions[connID] = orphan.listen(
-        _createSendFunction(connID, client),
+    try {
+      if (orphan != null) {
+        _subscriptions[connID] = orphan.listen(
+          _createSendFunction(
+            connID: connID,
+            client: client,
+            connection: connection,
+            subscriptionOwner: subscriptionOwner,
+          ),
+          onError: _createErrorHandler(connID),
+        );
+        _subscribers[connID] = orphan;
+        return;
+      }
+
+      final queue = EventQueue<SesoriSseEvent>(maxSize: maxQueueSize);
+      _subscriptions[connID] = queue.listen(
+        _createSendFunction(
+          connID: connID,
+          client: client,
+          connection: connection,
+          subscriptionOwner: subscriptionOwner,
+        ),
         onError: _createErrorHandler(connID),
       );
-      _subscribers[connID] = orphan;
-      return;
+      _subscribers[connID] = queue;
+    } on Object {
+      if (identical(_subscriptionOwners[connID], subscriptionOwner)) {
+        _subscriptionOwners.remove(connID);
+      }
+      rethrow;
     }
-
-    final queue = EventQueue<SesoriSseEvent>(maxSize: maxQueueSize);
-    _subscriptions[connID] = queue.listen(
-      _createSendFunction(connID, client),
-      onError: _createErrorHandler(connID),
-    );
-    _subscribers[connID] = queue;
   }
 
   /// Removes [connID] from active subscribers.
@@ -72,6 +97,7 @@ class SSEManager {
   /// [replayWindow]. If the phone reconnects within that window, the orphan
   /// is resumed via [subscribePath] and all buffered events are delivered.
   void unsubscribe(int connID) {
+    _subscriptionOwners.remove(connID);
     final queue = _subscribers.remove(connID);
     _subscriptions.remove(connID)?.cancel();
     if (queue == null) return;
@@ -99,6 +125,7 @@ class SSEManager {
       ));
     }
     _subscribers.clear();
+    _subscriptionOwners.clear();
   }
 
   /// Clears all subscribers and orphan state.
@@ -108,6 +135,7 @@ class SSEManager {
       sub.dispose();
     }
     _subscribers.clear();
+    _subscriptionOwners.clear();
     _disposeOrphans();
   }
 
@@ -150,6 +178,10 @@ class SSEManager {
 
   void Function(SesoriSseEvent, Object) _createErrorHandler(int connID) {
     return (event, error) {
+      if (error is _StaleRelayConnectionException) {
+        Log.v("[sse] retaining event ${event.runtimeType} for connID=$connID after relay turnover");
+        return;
+      }
       Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
       unawaited(
         _failureReporter
@@ -166,10 +198,12 @@ class SSEManager {
     };
   }
 
-  Future<void> Function(SesoriSseEvent) _createSendFunction(
-    int connID,
-    RelayClient client,
-  ) {
+  Future<void> Function(SesoriSseEvent) _createSendFunction({
+    required int connID,
+    required RelayClient client,
+    required RelayConnection connection,
+    required Object subscriptionOwner,
+  }) {
     SessionEncryptor? encryptor;
 
     return (SesoriSseEvent event) async {
@@ -190,10 +224,23 @@ class SSEManager {
       final relayMessage = RelayMessage.sseEvent(data: eventData);
       final payloadBytes = utf8.encode(jsonEncode(relayMessage.toJson()));
       Log.v("[sse] sending ${payloadBytes.length} bytes to connID=$connID");
-      _onBytesSent(payloadBytes.length);
       final framed = await frame(payloadBytes, encryptor: encryptor!);
-      client.send(connID, framed);
+      final outcome = client.sendIfCurrent(
+        connection: connection,
+        connID: connID,
+        payload: framed,
+      );
+      if (outcome == RelaySendOutcome.stale) {
+        _unsubscribeIfOwned(connID: connID, subscriptionOwner: subscriptionOwner);
+        throw const _StaleRelayConnectionException();
+      }
+      _onBytesSent(payloadBytes.length);
     };
+  }
+
+  void _unsubscribeIfOwned({required int connID, required Object subscriptionOwner}) {
+    if (!identical(_subscriptionOwners[connID], subscriptionOwner)) return;
+    unsubscribe(connID);
   }
 
   /// Converts a [SesoriSseEvent] to the OpenCode wire format expected by the
@@ -219,4 +266,8 @@ class SSEManager {
       _orphanQueues.remove(orphan);
     }
   }
+}
+
+final class _StaleRelayConnectionException implements Exception {
+  const _StaleRelayConnectionException();
 }

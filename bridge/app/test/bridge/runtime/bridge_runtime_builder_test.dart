@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
@@ -44,7 +45,7 @@ void main() {
     });
   });
 
-  test("runtime-created debug server reuses the session router", () async {
+  test("runtime-created debug server reuses the composed routed request dispatcher", () async {
     final plugin = FakeBridgePlugin();
     final database = createTestDatabase();
     final httpClient = http.Client();
@@ -66,6 +67,7 @@ void main() {
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+      bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
       httpClient: httpClient,
@@ -81,19 +83,20 @@ void main() {
     final runtime = BridgeRuntime(
       database: database,
       failureReporter: failureReporter,
-      restartService: restartService,
       composition: composition,
     );
     final debugServer = runtime.createDebugServer(port: 0);
 
-    expect(identical(debugServer.router, runtime.session.router), isTrue);
-    final routed = await debugServer.router.route(
-      makeRequest(
+    expect(identical(debugServer.routedRequestDispatcher, runtime.session.routedRequestDispatcher), isTrue);
+    final dispatch = debugServer.routedRequestDispatcher.dispatch(
+      request: makeRequest(
         "POST",
         "/session/options",
         body: jsonEncode(PluginProjectIdRequest(projectId: "missing", pluginId: plugin.id).toJson()),
       ),
     );
+    expect(dispatch, isA<RoutedRequestAccepted>());
+    final routed = (await (dispatch as RoutedRequestAccepted).pendingRequest.completion).response;
     expect(routed.status, 404);
     expect(routed.headers, containsPair("content-type", "application/json"));
     expect(
@@ -101,7 +104,13 @@ void main() {
       SessionOptionsErrorCode.projectNotFound,
     );
 
-    await debugServer.stop();
+    debugServer.beginShutdown();
+    final rejected = runtime.session.routedRequestDispatcher.dispatch(
+      request: makeRequest("GET", "/global/health"),
+    );
+    expect(rejected, isA<RoutedRequestShutdownRejected>());
+    expect((rejected as RoutedRequestShutdownRejected).response.status, 503);
+    await debugServer.drain();
     await runtime.close();
     await lifecycleService.dispose();
     httpClient.close();

@@ -1,6 +1,7 @@
 import "package:flutter/cupertino.dart" show CupertinoPage;
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
@@ -20,7 +21,11 @@ import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/features/splash/splash_screen.dart";
 
+import "../../helpers/test_helpers.dart";
+
 void main() {
+  setUpAll(registerAllFallbackValues);
+
   group("AppRoute", () {
     test("each value has a non-empty path starting with /", () {
       for (final def in AppRouteDef.values) {
@@ -253,6 +258,10 @@ void main() {
     });
 
     test("session shell builder hoists cubit provider above split shell", () {
+      final getIt = GetIt.instance;
+      getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
+      addTearDown(() => getIt.unregister<ProjectViewingService>());
+
       final shell = _sessionShellRoute();
       final widget = shell.builder!(
         _FakeBuildContext(),

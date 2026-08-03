@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -122,6 +123,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -170,6 +172,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -192,6 +195,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -239,6 +243,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -289,6 +294,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -338,6 +344,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -366,6 +373,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -447,6 +455,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -488,6 +497,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -548,6 +558,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -613,6 +624,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -654,6 +666,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -687,6 +700,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -739,6 +753,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -772,6 +787,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -807,6 +823,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -842,6 +859,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -877,6 +895,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -910,6 +929,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -943,6 +963,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -990,6 +1011,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1023,6 +1045,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1075,6 +1098,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1148,6 +1172,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1195,6 +1220,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1236,6 +1262,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1266,6 +1293,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1318,6 +1346,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1383,6 +1412,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1449,6 +1479,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -1522,6 +1553,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1608,6 +1640,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1690,6 +1723,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1780,6 +1814,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1843,6 +1878,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -1939,6 +1975,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -2020,12 +2057,18 @@ void main() {
     group("viewing declaration", () {
       test("declares the view once the transcript loads and clears it on close", () async {
         final viewingService = stubbedSessionViewingService();
+        final projectViewingService = stubbedProjectViewingService();
+        final projectClaim = ProjectViewClaim();
+        when(
+          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
+        ).thenReturn(projectClaim);
         final cubit = SessionDetailCubit(
           mockConnectionService,
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: viewingService,
+          projectViewingService: projectViewingService,
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -2037,9 +2080,19 @@ void main() {
         await _awaitLoaded(cubit);
 
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
+        verify(
+          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
+        ).called(1);
+        verify(
+          () => projectViewingService.markClaimReady(
+            claim: projectClaim,
+            projectId: "project-1",
+          ),
+        ).called(1);
 
         await cubit.close();
         verify(() => viewingService.clearViewingSession(sessionId)).called(1);
+        verify(() => projectViewingService.releaseClaim(claim: projectClaim)).called(1);
       });
 
       test("a failed load never declares the view", () async {
@@ -2047,12 +2100,18 @@ void main() {
           () => mockSessionService.getMessages(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final viewingService = stubbedSessionViewingService();
+        final projectViewingService = stubbedProjectViewingService();
+        final projectClaim = ProjectViewClaim();
+        when(
+          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
+        ).thenReturn(projectClaim);
         final cubit = SessionDetailCubit(
           mockConnectionService,
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: viewingService,
+          projectViewingService: projectViewingService,
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -2065,6 +2124,10 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 20));
 
         verifyNever(() => viewingService.setViewingSession(any()));
+        verify(
+          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
+        ).called(1);
+        verify(() => projectViewingService.markClaimFailed(claim: projectClaim)).called(1);
       });
 
       test("a stale reconnect refreshes AND re-asserts the view", () async {
@@ -2080,6 +2143,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: viewingService,
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: MockLifecycleSource(),
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,
@@ -2131,6 +2195,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: viewingService,
+          projectViewingService: stubbedProjectViewingService(),
           lifecycleSource: lifecycle,
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: mockProductAnalyticsService,

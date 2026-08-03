@@ -11,7 +11,10 @@ class SessionCatalogMapper {
     required bool unseen,
   }) {
     return Session(
-      branchName: row.branchName,
+      // COMPATIBILITY 2026-08-02 (v1.6.1): Older bridges map the creation
+      // branch to Session.branchName. Modern bridges map current_branch_name;
+      // remove this comment when bridge versions before v1.6.1 are unsupported.
+      branchName: row.currentBranchName,
       id: row.sessionId,
       pluginId: row.pluginId,
       projectID: row.projectId,

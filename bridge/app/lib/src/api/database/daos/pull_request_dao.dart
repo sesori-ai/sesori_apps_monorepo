@@ -1,13 +1,18 @@
 import "package:drift/drift.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../database.dart";
+import "../tables/projects_table.dart";
 import "../tables/pull_requests_table.dart";
 import "../tables/session_table.dart";
 
 part "pull_request_dao.g.dart";
 
-@DriftAccessor(tables: [PullRequestsTable, SessionTable])
+typedef PullRequestPersistedTarget = ({
+  String githubRepositoryIdentity,
+  String branchName,
+});
+
+@DriftAccessor(tables: [ProjectsTable, PullRequestsTable, SessionTable])
 class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDaoMixin {
   PullRequestDao(super.attachedDatabase);
 
@@ -23,18 +28,53 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
 
   Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({
     required List<String> sessionIds,
+    required String verifiedGithubLogin,
+  }) {
+    return _getPrsBySessionIds(
+      sessionIds: sessionIds,
+      verifiedGithubLogin: verifiedGithubLogin,
+    );
+  }
+
+  Future<Map<String, List<PullRequestDto>>> getPrsByPersistedScopeSessionIds({
+    required List<String> sessionIds,
+  }) {
+    return _getPrsBySessionIds(
+      sessionIds: sessionIds,
+      verifiedGithubLogin: null,
+    );
+  }
+
+  Future<Map<String, List<PullRequestDto>>> _getPrsBySessionIds({
+    required List<String> sessionIds,
+    required String? verifiedGithubLogin,
   }) async {
     if (sessionIds.isEmpty) {
       return <String, List<PullRequestDto>>{};
     }
 
-    final query = select(pullRequestsTable).join([
-      innerJoin(
-        sessionTable,
-        pullRequestsTable.projectId.equalsExp(sessionTable.projectId) &
-            pullRequestsTable.branchName.equalsExp(sessionTable.branchName),
-      ),
-    ])..where(sessionTable.sessionId.isIn(sessionIds));
+    final readLoginScope = verifiedGithubLogin == null
+        ? const Constant(true)
+        : pullRequestsTable.githubLogin.equals(verifiedGithubLogin) &
+              projectsTable.prCacheGithubLogin.equals(verifiedGithubLogin);
+    final query =
+        select(pullRequestsTable).join([
+          innerJoin(
+            sessionTable,
+            pullRequestsTable.projectId.equalsExp(sessionTable.projectId) &
+                pullRequestsTable.githubRepositoryIdentity.equalsExp(
+                  sessionTable.currentGithubRepositoryIdentity,
+                ) &
+                pullRequestsTable.branchName.equalsExp(sessionTable.currentBranchName),
+          ),
+          innerJoin(
+            projectsTable,
+            projectsTable.projectId.equalsExp(sessionTable.projectId) &
+                projectsTable.prCacheGithubLogin.equalsExp(pullRequestsTable.githubLogin),
+          ),
+        ])..where(
+          sessionTable.sessionId.isIn(sessionIds) & sessionTable.parentSessionId.isNull() & readLoginScope,
+        );
 
     final joinedRows = await query.get();
     final groupedBySessionId = <String, List<PullRequestDto>>{};
@@ -48,20 +88,36 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
     return groupedBySessionId;
   }
 
-  Future<List<PullRequestDto>> getActivePrsByProjectId({
+  Future<void> deletePrsOutsideTargets({
     required String projectId,
+    required Set<PullRequestPersistedTarget> targets,
   }) async {
-    return (select(
-      pullRequestsTable,
-    )..where((t) => t.projectId.equals(projectId) & t.state.equals(PrState.open.name))).get();
+    Expression<bool> matchesTarget = const Constant(false);
+    for (final target in targets) {
+      matchesTarget =
+          matchesTarget |
+          (pullRequestsTable.githubRepositoryIdentity.equals(target.githubRepositoryIdentity) &
+              pullRequestsTable.branchName.equals(target.branchName));
+    }
+    await (delete(pullRequestsTable)..where(
+          (table) {
+            return table.projectId.equals(projectId) & matchesTarget.not();
+          },
+        ))
+        .go();
   }
 
-  Future<void> deletePr({
+  Future<void> deletePrsForOtherGithubLogins({
     required String projectId,
-    required int prNumber,
+    required String githubLogin,
   }) async {
-    await (delete(
-      pullRequestsTable,
-    )..where((t) => t.projectId.equals(projectId) & t.prNumber.equals(prNumber))).go();
+    await (delete(pullRequestsTable)..where(
+          (table) => table.projectId.equals(projectId) & table.githubLogin.equals(githubLogin).not(),
+        ))
+        .go();
+  }
+
+  Future<void> deletePrsByProjectId({required String projectId}) async {
+    await (delete(pullRequestsTable)..where((table) => table.projectId.equals(projectId))).go();
   }
 }

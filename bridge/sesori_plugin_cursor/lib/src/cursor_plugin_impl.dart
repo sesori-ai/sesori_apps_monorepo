@@ -48,6 +48,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     final commandTracker = AcpCommandTracker();
     final stagedCommandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
+    const contentMapper = AcpContentMapper();
     final acpSessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
@@ -79,7 +80,9 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
         launchDirectory: cwd,
         pluginId: pluginId,
         configurationTracker: configurationTracker,
+        contentMapper: contentMapper,
       ),
+      contentMapper: contentMapper,
       processFactory: processFactory,
       catalogService: catalogService,
       catalogCommandListener: catalogCommandListener,
@@ -95,6 +98,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   CursorPlugin._({
     required super.launchSpec,
     required super.launchDirectory,
+    required super.contentMapper,
     required CursorEventMapper mapper,
     required CursorCatalogService catalogService,
     required AcpCommandListener catalogCommandListener,

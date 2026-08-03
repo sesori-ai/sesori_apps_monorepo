@@ -23,6 +23,7 @@ import "../listeners/session_binding_commit_listener.dart";
 import "../listeners/session_deletion_listener.dart";
 import "../listeners/session_options_changed_refresh_listener.dart";
 import "../listeners/session_options_creation_refresh_listener.dart";
+import "../listeners/viewed_project_pr_refresh_listener.dart";
 import "../push/completion_notifier.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
@@ -32,6 +33,7 @@ import "../push/push_notification_client.dart";
 import "../push/push_notification_content_builder.dart";
 import "../push/push_rate_limiter.dart";
 import "../push/push_session_state_tracker.dart";
+import "../repositories/bridge_settings_repository.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
 import "../routing/cancel_catalog_import_handler.dart";
@@ -39,12 +41,16 @@ import "../routing/get_catalog_import_statuses_handler.dart";
 import "../routing/get_plugin_management_handler.dart";
 import "../routing/get_plugin_setup_handler.dart";
 import "../routing/get_plugins_handler.dart";
+import "../routing/get_pull_request_refresh_settings_handler.dart";
 import "../routing/patch_plugin_idle_timeout_handler.dart";
+import "../routing/patch_pull_request_refresh_settings_handler.dart";
 import "../routing/post_plugin_lifecycle_command_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/catalog_import_service.dart";
 import "../services/plugin_lifecycle_service.dart";
+import "../services/project_view_tracker.dart";
+import "../services/pull_request_refresh_settings_service.dart";
 import "../version.dart";
 import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
@@ -75,6 +81,7 @@ import "repositories/session_unseen_repository.dart";
 import "repositories/trackers/session_event_tracker.dart";
 import "repositories/worktree_repository.dart";
 import "routing/abort_session_handler.dart";
+import "routing/bridge_restart_dispatcher.dart";
 import "routing/create_directory_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
@@ -108,6 +115,8 @@ import "routing/reply_to_permission_handler.dart";
 import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
 import "routing/restart_bridge_handler.dart";
+import "routing/routed_request.dart";
+import "routing/routed_request_dispatcher.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
@@ -137,9 +146,12 @@ typedef OrchestratorComposition = ({
   CatalogImportService catalogImportService,
   PluginCatalogHydrationListener catalogHydrationListener,
   DeletedSessionStorageCleanupService deletedSessionStorageCleanupService,
+  BridgeRestartDispatcher restartDispatcher,
+  RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
+  ProjectViewTracker projectViewTracker,
 });
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -150,6 +162,7 @@ class Orchestrator {
   final String _legacyMissingPluginId;
   final PluginLifecycleService _pluginLifecycleService;
   final PluginRuntime _pluginRuntime;
+  final BridgeSettingsRepository _bridgeSettingsRepository;
   final ServerClock _clock;
   final AppDatabase _database;
   final http.Client _httpClient;
@@ -168,6 +181,7 @@ class Orchestrator {
     required String legacyMissingPluginId,
     required PluginLifecycleService pluginLifecycleService,
     required PluginRuntime pluginRuntime,
+    required BridgeSettingsRepository bridgeSettingsRepository,
     required ServerClock clock,
     required AppDatabase database,
     required http.Client httpClient,
@@ -185,6 +199,7 @@ class Orchestrator {
        _legacyMissingPluginId = legacyMissingPluginId,
        _pluginLifecycleService = pluginLifecycleService,
        _pluginRuntime = pluginRuntime,
+       _bridgeSettingsRepository = bridgeSettingsRepository,
        _clock = clock,
        _database = database,
        _httpClient = httpClient,
@@ -241,6 +256,7 @@ class Orchestrator {
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
     );
     final sessionViewTracker = SessionViewTracker();
+    final projectViewTracker = ProjectViewTracker();
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: SessionUnseenRepository(
         sessionDao: _database.sessionDao,
@@ -295,8 +311,10 @@ class Orchestrator {
       ),
     );
     final pullRequestRepository = PullRequestRepository(
+      database: _database,
       pullRequestDao: _database.pullRequestDao,
       projectsDao: _database.projectsDao,
+      sessionDao: _database.sessionDao,
     );
     final prSyncService = PrSyncService(
       prSource: PrSourceRepository(
@@ -306,6 +324,14 @@ class Orchestrator {
       pullRequestRepository: pullRequestRepository,
       sessionRepository: sessionRepository,
       clock: const Clock(),
+    );
+    final pullRequestRefreshSettingsService = PullRequestRefreshSettingsService(
+      bridgeSettingsRepository: _bridgeSettingsRepository,
+    );
+    final viewedProjectPrRefreshListener = ViewedProjectPrRefreshListener(
+      tracker: projectViewTracker,
+      prSyncService: prSyncService,
+      settingsService: pullRequestRefreshSettingsService,
     );
     final projectActivityService = ProjectActivityService(
       projectRepository: projectRepository,
@@ -447,11 +473,14 @@ class Orchestrator {
       sessionBindingCommitListener.start();
       sessionDeletionListener.start();
     });
+    final restartDispatcher = BridgeRestartDispatcher(restartService: _restartService);
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
+        GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
+        PatchPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
@@ -465,7 +494,10 @@ class Orchestrator {
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
         GetChildSessionsHandler(sessionRepository: sessionRepository),
-        GetSessionHandler(sessionRepository),
+        GetSessionHandler(
+          sessionRepository: sessionRepository,
+          prSyncService: prSyncService,
+        ),
         GetSessionMessagesHandler(sessionRepository: sessionRepository),
         GetSessionsHandler(
           sessionRepository: sessionRepository,
@@ -516,6 +548,7 @@ class Orchestrator {
         ),
       ],
     );
+    final routedRequestDispatcher = RoutedRequestDispatcher(router: router);
 
     final session = OrchestratorSession._(
       config: config,
@@ -536,7 +569,7 @@ class Orchestrator {
       bridgeRegistrationService: _bridgeRegistrationService,
       roomKey: roomKey,
       sseManager: sseManager,
-      router: router,
+      routedRequestDispatcher: routedRequestDispatcher,
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
       sessionPromptService: sessionPromptService,
       catalogImportProgress: catalogImportService.progress,
@@ -546,13 +579,15 @@ class Orchestrator {
       failureReporter: _failureReporter,
       sessionRepository: sessionRepository,
       prSyncService: prSyncService,
+      viewedProjectPrRefreshListener: viewedProjectPrRefreshListener,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
+      projectViewTracker: projectViewTracker,
       projectActivityService: projectActivityService,
       permissionAutoApprovalService: permissionAutoApprovalService,
       sessionAbortService: sessionAbortService,
       sessionMutationDispatcher: sessionMutationDispatcher,
-      restartService: _restartService,
+      restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
     );
     return (
@@ -560,9 +595,12 @@ class Orchestrator {
       catalogImportService: catalogImportService,
       catalogHydrationListener: catalogHydrationListener,
       deletedSessionStorageCleanupService: deletedSessionStorageCleanupService,
+      restartDispatcher: restartDispatcher,
+      routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
+      projectViewTracker: projectViewTracker,
     );
   }
 
@@ -597,7 +635,7 @@ class OrchestratorSession {
   final PluginRuntime _pluginRuntime;
   final List<int> _roomKey;
   final SSEManager _sseManager;
-  final RequestRouter _router;
+  final RoutedRequestDispatcher _routedRequestDispatcher;
   final BridgeEventMapper _mapper;
   final PushDispatcher _pushDispatcher;
   final CompletionPushListener _completionListener;
@@ -609,8 +647,10 @@ class OrchestratorSession {
   final StreamController<SesoriSseEvent> _localWireEventsController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
+  final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener;
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
+  final ProjectViewTracker _projectViewTracker;
   final SessionRepository _sessionRepository;
   final PermissionAutoApprovalService _permissionAutoApprovalService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
@@ -621,7 +661,7 @@ class OrchestratorSession {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _catalogImportSubscriptions = CompositeSubscription();
   final ProjectActivityService _projectActivityService;
-  final BridgeRestartService _restartService;
+  final BridgeRestartDispatcher _restartDispatcher;
   final ControlStatusNotifier? _statusNotifier;
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
@@ -629,23 +669,19 @@ class OrchestratorSession {
   Future<void> _projectsSummaryTail = Future<void>.value();
   final Random _backoffJitter = Random();
   Future<void>? _lifecycleFuture;
+  RelayConnection? _relayConnection;
+  Future<void>? _shutdownRelayCloseFuture;
 
   bool _cancelled = false;
   Object? _beginShutdownError;
   StackTrace? _beginShutdownStackTrace;
 
-  /// Guards [handleRestartHandoff] so concurrent relay + debug restart triggers
-  /// spawn at most one successor.
-  bool _restartHandoffStarted = false;
-
   /// When the first [cancel] was requested. Used only for shutdown timing
   /// diagnostics (the logger emits no timestamps, so durations are explicit).
   DateTime? _cancelRequestedAt;
 
-  /// Label ("METHOD path") of the relay request currently being routed, or
-  /// `null` when the read loop is idle. Surfaces which in-flight request is
-  /// blocking the read loop when a shutdown is requested mid-route.
-  String? _inFlightRequestLabel;
+  /// Privacy-safe identity of the relay request currently being routed.
+  RouteIdentity? _inFlightRouteIdentity;
 
   /// Completes when [cancel] is first called. Allows in-flight request routing
   /// to abandon a response instead of awaiting an OpenCode HTTP call that has
@@ -672,7 +708,7 @@ class OrchestratorSession {
     required BridgeRegistrationService bridgeRegistrationService,
     required List<int> roomKey,
     required SSEManager sseManager,
-    required RequestRouter router,
+    required RoutedRequestDispatcher routedRequestDispatcher,
     required BridgeEventMapper mapper,
     required SessionPromptService sessionPromptService,
     required Stream<CatalogImportProgress> catalogImportProgress,
@@ -682,13 +718,15 @@ class OrchestratorSession {
     required FailureReporter failureReporter,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    required ViewedProjectPrRefreshListener viewedProjectPrRefreshListener,
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
+    required ProjectViewTracker projectViewTracker,
     required ProjectActivityService projectActivityService,
     required PermissionAutoApprovalService permissionAutoApprovalService,
     required SessionAbortService sessionAbortService,
     required SessionMutationDispatcher sessionMutationDispatcher,
-    required BridgeRestartService restartService,
+    required BridgeRestartDispatcher restartDispatcher,
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _pluginEvents = pluginEvents,
@@ -707,22 +745,36 @@ class OrchestratorSession {
        _bridgeRegistrationService = bridgeRegistrationService,
        _roomKey = roomKey,
        _sseManager = sseManager,
-       _router = router,
+       _routedRequestDispatcher = routedRequestDispatcher,
        _mapper = mapper,
        _sessionPromptService = sessionPromptService,
        _bytesSentController = bytesSentController,
        _localWireEventsController = localWireEventsController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
+       _viewedProjectPrRefreshListener = viewedProjectPrRefreshListener,
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
+       _projectViewTracker = projectViewTracker,
        _sessionRepository = sessionRepository,
        _permissionAutoApprovalService = permissionAutoApprovalService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
-       _restartService = restartService,
+       _restartDispatcher = restartDispatcher,
        _statusNotifier = statusNotifier {
+    _restartDispatcher.shutdownRequests
+        .listen((request) {
+          switch (request) {
+            case BridgeShutdownRequest.restart:
+              unawaited(
+                cancel().catchError((Object error, StackTrace stackTrace) {
+                  Log.w("[restart] failed to cancel the session", error, stackTrace);
+                }),
+              );
+          }
+        })
+        .addTo(_subscriptions);
     catalogImportProgress
         .listen((progress) {
           _enqueueWireEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
@@ -755,8 +807,7 @@ class OrchestratorSession {
   /// Completes after the first phone finishes key exchange or resume and can
   /// send encrypted bridge traffic.
   Future<void> get firstPhoneConnected => _firstPhoneConnectedCompleter.future;
-  RequestRouter get router => _router;
-  Future<void> drainRoutedMutations() => _sessionMutationDispatcher.drain();
+  RoutedRequestDispatcher get routedRequestDispatcher => _routedRequestDispatcher;
 
   Future<OrchestratorSessionStartResult> start() {
     if (_lifecycleFuture != null) {
@@ -765,6 +816,7 @@ class OrchestratorSession {
 
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
+    _viewedProjectPrRefreshListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
       () => _runLifecycle(readiness: readiness),
@@ -832,11 +884,20 @@ class OrchestratorSession {
     Log.d("bridge registered");
     if (_cancelled) return;
 
+    final RelayConnection relayConnection;
     try {
       Log.d("connecting to relay...");
-      await _client.connect();
+      relayConnection = await _client.connect();
+      _relayConnection = relayConnection;
       Log.d("relay connected");
-      if (_cancelled) return;
+      if (_cancelled) {
+        final closeFuture = _client.closeIfCurrent(connection: relayConnection);
+        if (identical(_relayConnection, relayConnection)) {
+          _relayConnection = null;
+        }
+        await closeFuture;
+        return;
+      }
 
       _sessionAbortService.abortStartedSessions
           .listen(_completionListener.markSessionAbortPending)
@@ -889,9 +950,9 @@ class OrchestratorSession {
           )
           .addTo(_subscriptions);
       Log.d("plugin event stream subscribed");
-      _prSyncService.prChanges
-          .listen((String projectId) {
-            _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
+      _prSyncService.renderedChanges
+          .listen((change) {
+            _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: change.projectId));
           })
           .addTo(_subscriptions);
       _sessionUnseenService.unseenChanges
@@ -933,12 +994,14 @@ class OrchestratorSession {
 
     await _serveRelayConnections(
       readiness: readiness,
+      initialConnection: relayConnection,
       kxManager: kxManager,
       activePhones: activePhones,
     );
   }
 
   Future<void> _teardown() async {
+    _routedRequestDispatcher.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError = _beginShutdownError;
     StackTrace? firstTeardownStackTrace = _beginShutdownStackTrace;
@@ -959,7 +1022,7 @@ class OrchestratorSession {
     Log.d(
       "[shutdown] session teardown begin "
       "(${sinceCancelMs == null ? "no cancel timestamp" : "${sinceCancelMs}ms since cancel()"}"
-      "${_inFlightRequestLabel == null ? "" : ", in-flight request: $_inFlightRequestLabel"})",
+      "${_inFlightRouteIdentity == null ? "" : ", in-flight request: ${_inFlightRouteIdentity!.diagnosticLabel}"})",
     );
     await Future.wait([
       attempt(_subscriptions.cancel),
@@ -967,10 +1030,13 @@ class OrchestratorSession {
       attempt(_catalogImportSubscriptions.cancel),
     ]);
     Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
-    await attempt(() async {
-      await Future.wait(_pluginEventProcessingTails.values);
-    });
-    Log.v("[shutdown] plugin event processing drained (+${teardownSw.elapsedMilliseconds}ms)");
+    await Future.wait([
+      attempt(() async {
+        await Future.wait(_pluginEventProcessingTails.values);
+      }),
+      attempt(_routedRequestDispatcher.drain),
+    ]);
+    Log.v("[shutdown] plugin events and routed requests drained (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_sessionPromptService.dispose);
     await Future.wait([
       for (final listener in _pluginEventListeners) attempt(listener.dispose),
@@ -989,6 +1055,7 @@ class OrchestratorSession {
     await attempt(_completionListener.dispose);
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
+    await attempt(_viewedProjectPrRefreshListener.dispose);
     await attempt(_prSyncService.dispose);
     Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
@@ -1006,7 +1073,8 @@ class OrchestratorSession {
     ]);
     await attempt(() async {
       Log.v("closing relay client...");
-      await _client.close();
+      _shutdownRelayCloseFuture ??= _closeRelayConnection();
+      await _shutdownRelayCloseFuture!;
       Log.v("relay client closed (+${teardownSw.elapsedMilliseconds}ms)");
     });
     Log.d("[shutdown] session teardown complete (${teardownSw.elapsedMilliseconds}ms total)");
@@ -1017,11 +1085,15 @@ class OrchestratorSession {
 
   Future<void> _serveRelayConnections({
     required Completer<OrchestratorSessionStartResult> readiness,
+    required RelayConnection initialConnection,
     required KeyExchangeManager kxManager,
     required Map<int, bool> activePhones,
   }) async {
+    var connection = initialConnection;
     while (!_cancelled) {
-      final iterator = StreamIterator<RelayClientMessage>(_client.read());
+      final iterator = StreamIterator<RelayClientMessage>(
+        _client.read(connection: connection),
+      );
       final firstRead = iterator.moveNext();
       if (!readiness.isCompleted) {
         readiness.complete(OrchestratorSessionStartResult.ready);
@@ -1032,6 +1104,7 @@ class OrchestratorSession {
           await _runRelayLoop(
             iterator: iterator,
             firstRead: firstRead,
+            connection: connection,
             roomKey: _roomKey,
             kxManager: kxManager,
             activePhones: activePhones,
@@ -1059,8 +1132,9 @@ class OrchestratorSession {
       // declarations so no session stays "watched" by a ghost connection.
       // Phones re-assert their current view on reconnect.
       _sessionViewTracker.clearAll();
+      _projectViewTracker.clearAll();
 
-      if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
+      if (_client.closeCode(connection: connection) == RelayCloseCodes.bridgeRevoked) {
         Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
         await _bridgeRegistrationService.handleBridgeRevoked();
       }
@@ -1072,8 +1146,8 @@ class OrchestratorSession {
       // ControlStatusNotifier (it observes the same replaced-close on the
       // connection-state stream); this loop owns only the backoff policy.
       final takenOver = RelayCloseCodes.isBridgeReplaced(
-        closeCode: _client.closeCode,
-        closeReason: _client.closeReason,
+        closeCode: _client.closeCode(connection: connection),
+        closeReason: _client.closeReason(connection: connection),
       );
       if (takenOver) {
         Console.warning(
@@ -1101,7 +1175,25 @@ class OrchestratorSession {
 
         try {
           await _bridgeRegistrationService.ensureRegistered();
-          await _client.reconnect();
+          if (_cancelled) {
+            return;
+          }
+          final closeFuture = _client.closeIfCurrent(connection: connection);
+          if (identical(_relayConnection, connection)) {
+            _relayConnection = null;
+          }
+          await closeFuture;
+          if (_cancelled) {
+            return;
+          }
+          final reconnectFuture = _client.connect();
+          final reconnected = await reconnectFuture;
+          if (_cancelled) {
+            await _client.closeIfCurrent(connection: reconnected);
+            return;
+          }
+          connection = reconnected;
+          _relayConnection = reconnected;
         } on Object catch (error, stackTrace) {
           Log.w("Reconnect failed (retrying in $backoff)", error, stackTrace);
           backoff = _nextBackoff(backoff, takenOver: takenOver);
@@ -1116,11 +1208,12 @@ class OrchestratorSession {
   }
 
   void beginShutdown() {
+    _routedRequestDispatcher.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(
         "[shutdown] cancel() requested"
-        "${_inFlightRequestLabel == null ? "" : " — in-flight request: $_inFlightRequestLabel"}",
+        "${_inFlightRouteIdentity == null ? "" : " — in-flight request: ${_inFlightRouteIdentity!.diagnosticLabel}"}",
       );
     } else {
       Log.v("[shutdown] cancel() again (already shutting down)");
@@ -1129,7 +1222,8 @@ class OrchestratorSession {
     if (!_shutdownCompleter.isCompleted) {
       _shutdownCompleter.complete();
     }
-    unawaited(_client.close());
+    _shutdownRelayCloseFuture ??= _closeRelayConnection();
+    unawaited(_shutdownRelayCloseFuture);
     try {
       _permissionAutoApprovalService.dispose();
     } on Object catch (error, stackTrace) {
@@ -1141,50 +1235,25 @@ class OrchestratorSession {
   Future<void> cancel() async {
     beginShutdown();
     final sw = Stopwatch()..start();
-    await _client.close();
+    final shutdownRelayCloseFuture = _shutdownRelayCloseFuture;
+    if (shutdownRelayCloseFuture == null) {
+      throw StateError("Relay shutdown was not started");
+    }
+    await shutdownRelayCloseFuture;
     Log.d("[shutdown] cancel(): relay client closed in ${sw.elapsedMilliseconds}ms");
   }
 
-  /// Performs the restart handoff after the `{restarting:true}` reply has been
-  /// enqueued: delegates the run-mode strategy to [BridgeRestartService]
-  /// (standalone spawns a successor; supervised records the GUI-respawn intent),
-  /// then drives the normal graceful shutdown ([cancel]) — which flushes the
-  /// queued reply by closing the relay and lets this process exit. A standalone
-  /// successor waits for this pid to exit before it enforces single-live-bridge,
-  /// so the handoff is clean; the supervised exit code is applied by the
-  /// composition root once the session ends.
-  ///
-  /// Public because both restart triggers drive the same handoff: the relay
-  /// request loop (below) and the local [DebugServer], which reuses this
-  /// session's [RequestRouter] and so reaches the same `RestartBridgeHandler`.
-  Future<void> handleRestartHandoff() async {
-    // Single-flight: the relay and debug-server triggers share the same restart
-    // flag but run independently, so without this guard two near-simultaneous
-    // `POST /global/restart` requests could each spawn a successor. The flag is
-    // set synchronously (no await before it), so the check-and-set is atomic on
-    // the event loop. It is reset only when the spawn fails and we keep running,
-    // so a later restart can retry.
-    if (_restartHandoffStarted) {
-      Log.v("[restart] handoff already in progress; ignoring duplicate trigger");
+  Future<void> _closeRelayConnection() async {
+    final connection = _relayConnection;
+    if (connection == null) {
+      await _client.cancelPendingConnection();
       return;
     }
-    _restartHandoffStarted = true;
-    Log.i("[restart] restart requested");
-    // The restart service owns the run-mode strategy: standalone spawns a
-    // successor process; supervised records the intent so the composition root
-    // exits with the GUI-respawn sentinel (no successor spawn). A `false` return
-    // means the standalone successor could not be started, so we keep running.
-    final bool proceed = await _restartService.performRestartHandoff();
-    if (!proceed) {
-      _restartHandoffStarted = false;
-      Console.error(
-        "Restart requested but a new bridge could not be started; continuing to run. "
-        "Re-run the install script if this persists: https://sesori.com/",
-      );
-      return;
+    final closeFuture = _client.closeIfCurrent(connection: connection);
+    if (identical(_relayConnection, connection)) {
+      _relayConnection = null;
     }
-    Log.i("[restart] handing off; shutting down");
-    await cancel();
+    await closeFuture;
   }
 
   Future<void> _processPluginEventInOrder(NormalizedSourcedBridgeEvent source) {
@@ -1546,7 +1615,8 @@ class OrchestratorSession {
   /// only when the socket's authenticated identity no longer matches the token
   /// the provider now holds:
   ///
-  /// - the last connect sent no auth at all ([RelayClient.lastAuthedToken] is
+  /// - the last connect sent no auth at all (its connection-scoped
+  ///   [RelayClient.lastAuthedToken] is
   ///   null — also covers a push landing in the gap between connect() and this
   ///   subscription on a never-authed socket);
   /// - the `userId` claim differs (supervised account switch, standalone
@@ -1558,7 +1628,9 @@ class OrchestratorSession {
   /// force-pull re-emitting the token it just authenticated with) never
   /// re-auths.
   bool _requiresRelayReauth(String token) {
-    final String? lastAuthed = _client.lastAuthedToken;
+    final connection = _relayConnection;
+    if (connection == null) return false;
+    final String? lastAuthed = _client.lastAuthedToken(connection: connection);
     if (lastAuthed == null) return true;
     if (token == lastAuthed) return false;
     final String? newUserId = parseJwtUserId(token);
@@ -1575,18 +1647,20 @@ class OrchestratorSession {
   /// so a token emit during shutdown can't fight teardown.
   Future<void> _reauthenticateRelay() async {
     if (_cancelled) return;
+    final connection = _relayConnection;
+    if (connection == null) return;
     // If the socket has already closed (closeCode is set), the read loop is
     // about to end on its own and the reconnect block will inspect the close
-    // code. Don't call close() here: it nulls the channel and discards that code,
-    // which would mask a bridgeRevoked close and skip re-registration. Let the
-    // natural drop path handle it; the fresh token is picked up on reconnect.
-    if (_client.closeCode != null) {
+    // code. Don't deliberately detach it here, which would mask a bridgeRevoked
+    // close and skip re-registration. Let the natural drop path handle it; the
+    // fresh token is picked up on reconnect.
+    if (_client.closeCode(connection: connection) != null) {
       Log.d("Token updated while the relay was already closing — letting the drop path reconnect");
       return;
     }
     Log.i("Access token updated while connected — re-authenticating relay");
     try {
-      await _client.close();
+      await _closeRelayConnection();
     } on Object catch (error, stackTrace) {
       // Best-effort: if the close fails the read loop still ends on the broken
       // socket and the reconnect block recovers, so log and continue.
@@ -1597,6 +1671,7 @@ class OrchestratorSession {
   Future<void> _runRelayLoop({
     required StreamIterator<RelayClientMessage> iterator,
     required Future<bool> firstRead,
+    required RelayConnection connection,
     required List<int> roomKey,
     required KeyExchangeManager kxManager,
     required Map<int, bool> activePhones,
@@ -1616,8 +1691,8 @@ class OrchestratorSession {
           Map<String, dynamic> control;
           try {
             control = jsonDecodeMap(utf8.decode(msg.data));
-          } catch (e) {
-            Log.e("failed to parse control message: $e");
+          } on Object catch (error, stackTrace) {
+            Log.w("failed to parse relay control message", error, stackTrace);
             break processMessage;
           }
 
@@ -1625,7 +1700,7 @@ class OrchestratorSession {
           final connID = control["connId"] as int?;
           Log.v("control: type=$type connID=$connID");
           if (type == null || connID == null) {
-            Log.v("dropping control: null type or connID");
+            Log.v("dropping relay control message with missing fields");
             break processMessage;
           }
 
@@ -1637,6 +1712,7 @@ class OrchestratorSession {
               activePhones.remove(connID);
               _sseManager.removeSubscriber(connID);
               _sessionViewTracker.releaseConnection(connID: connID);
+              _projectViewTracker.releaseConnection(connID: connID);
           }
           break processMessage;
         }
@@ -1684,7 +1760,14 @@ class OrchestratorSession {
           }
 
           try {
-            _client.send(connID, encrypted);
+            final outcome = _sendIfCurrent(
+              connection: connection,
+              connID: connID,
+              payload: encrypted,
+            );
+            if (outcome == RelaySendOutcome.stale) {
+              throw StateError("relay connection changed before key exchange completed");
+            }
             Log.d("ready sent to connID=$connID");
           } catch (e) {
             if (_cancelled) {
@@ -1721,7 +1804,11 @@ class OrchestratorSession {
               break processMessage;
             }
             Log.v("decrypted OK from connID=$connID, handling...");
-            await _handleDecryptedMessage(connID, decrypted);
+            await _handleDecryptedMessage(
+              connection: connection,
+              connID: connID,
+              decrypted: decrypted,
+            );
             Log.v("handled message from connID=$connID");
             break processMessage;
           }
@@ -1732,7 +1819,11 @@ class OrchestratorSession {
               const RelayMessage.rekeyRequired().toJson(),
             );
             try {
-              _client.send(connID, utf8.encode(rekeyRequired));
+              _sendIfCurrent(
+                connection: connection,
+                connID: connID,
+                payload: utf8.encode(rekeyRequired),
+              );
             } catch (_) {
               if (_cancelled) {
                 throw StateError("cancelled");
@@ -1765,7 +1856,14 @@ class OrchestratorSession {
           }
 
           try {
-            _client.send(connID, encryptedAck);
+            final outcome = _sendIfCurrent(
+              connection: connection,
+              connID: connID,
+              payload: encryptedAck,
+            );
+            if (outcome == RelaySendOutcome.stale) {
+              throw StateError("relay connection changed before resume completed");
+            }
           } catch (e) {
             if (_cancelled) {
               throw StateError("cancelled");
@@ -1788,14 +1886,18 @@ class OrchestratorSession {
     Log.d("phone $connID is now active");
   }
 
-  Future<void> _handleDecryptedMessage(int connID, List<int> decrypted) async {
+  Future<void> _handleDecryptedMessage({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> decrypted,
+  }) async {
     RelayMessage msg;
     try {
       msg = RelayMessage.fromJson(
         jsonDecodeMap(utf8.decode(decrypted)),
       );
-    } catch (e) {
-      Log.v("failed to parse decrypted msg from connID=$connID: $e");
+    } on Object catch (error, stackTrace) {
+      Log.w("failed to parse encrypted relay message from connID=$connID", error, stackTrace);
       return;
     }
 
@@ -1803,52 +1905,74 @@ class OrchestratorSession {
 
     switch (msg) {
       case final RelayRequest req:
+        final dispatch = _routedRequestDispatcher.dispatch(request: req);
+        if (dispatch case final RoutedRequestShutdownRejected rejected) {
+          if (!_cancelled) {
+            try {
+              await _encryptAndSend(
+                connection: connection,
+                connID: connID,
+                message: rejected.response,
+              );
+            } on Object catch (error, stackTrace) {
+              Log.w("failed to send shutdown rejection to connId $connID", error, stackTrace);
+            }
+          }
+          return;
+        }
+        final pendingRoute = (dispatch as RoutedRequestAccepted).pendingRequest;
+        final routeIdentity = pendingRoute.routeIdentity;
         Log.v("RelayRequest: ${req.method} ${req.path}");
-        _inFlightRequestLabel = "${req.method} ${req.path}";
+        _inFlightRouteIdentity = routeIdentity;
         final routeSw = Stopwatch()..start();
-        // Defensively discard any restart flag left armed before routing this
-        // relay request. The local DebugServer reuses this RequestRouter but
-        // consumes and acts on its own restart flag synchronously right after it
-        // routes, so it should never leak one here; this clear still guarantees
-        // that only a restart requested during THIS relay request can trigger a
-        // handoff from the relay path.
-        _restartService.consumeRestartRequest();
         // If shutdown wins the race below, this future keeps running in the
         // background. ignore() marks any later failure as handled so it can
         // never surface as an unhandled async exception after abandonment.
-        final routeFuture = _router.route(req)..ignore();
+        final routeFuture = pendingRoute.completion..ignore();
         try {
-          final response = await Future.any<RelayResponse>([
+          final outcome = await Future.any<RoutedRequestOutcome>([
             routeFuture,
             _shutdownCompleter.future.then((_) => throw const _ShutdownInProgressException()),
           ]);
-          // Consume the restart flag now — it was set (if at all) by THIS
-          // request during routing. Tying consumption to this request means a
-          // failed/abandoned response can never leave the flag armed to trigger
-          // a delayed, unintended restart on a later request.
-          final bool restartRequested = _restartService.consumeRestartRequest();
+          final response = outcome.response;
           if (_cancelled) {
             Log.v(
-              "[shutdown] route ${req.method} ${req.path} completed after cancel — "
+              "[shutdown] route ${routeIdentity.diagnosticLabel} completed after cancel — "
               "dropping response (status=${response.status})",
             );
             return;
           }
           if (routeSw.elapsedMilliseconds > 1000) {
             Log.d(
-              "[shutdown] slow route ${req.method} ${req.path} for connId $connID "
+              "[shutdown] slow route ${routeIdentity.diagnosticLabel} for connId $connID "
               "took ${routeSw.elapsedMilliseconds}ms (cancelled=$_cancelled)",
             );
           }
           Log.v("response: status=${response.status}");
-          await _encryptAndSend(connID: connID, message: response);
-          Log.v("response sent to connID=$connID");
-          if (restartRequested) {
-            await handleRestartHandoff();
+          try {
+            final sendOutcome = await _encryptAndSend(
+              connection: connection,
+              connID: connID,
+              message: response,
+            );
+            if (sendOutcome == RelaySendOutcome.sent) {
+              Log.v("response sent to connID=$connID");
+            } else {
+              Log.v("response dropped because its relay connection is stale");
+            }
+          } finally {
+            if (!_cancelled) {
+              switch (outcome) {
+                case ResponseOnly():
+                  break;
+                case final RestartAccepted accepted:
+                  await _restartDispatcher.dispatch(restart: accepted);
+              }
+            }
           }
         } on _ShutdownInProgressException {
           Log.v(
-            "[shutdown] route ${req.method} ${req.path} will finish without sending a response",
+            "[shutdown] route ${routeIdentity.diagnosticLabel} will finish without sending a response",
           );
           // Keep route-owned services and plugin APIs alive until the operation
           // settles. The shutdown coordinator's process backstop bounds this
@@ -1856,29 +1980,34 @@ class OrchestratorSession {
           try {
             await routeFuture;
           } on Object catch (error, stackTrace) {
-            Log.w("[shutdown] route ${req.method} ${req.path} failed while draining", error, stackTrace);
+            Log.w("[shutdown] route ${routeIdentity.diagnosticLabel} failed while draining", error, stackTrace);
           }
-        } catch (e) {
+        } on Object catch (error, stackTrace) {
           if (_cancelled) {
-            Log.v("[shutdown] route ${req.method} ${req.path} failed during shutdown: $e");
+            Log.w("[shutdown] route ${routeIdentity.diagnosticLabel} failed during shutdown", error, stackTrace);
           } else {
-            Log.e("request routing failed for connId $connID: $e");
+            Log.e("route ${routeIdentity.diagnosticLabel} failed for connId $connID", error, stackTrace);
           }
         } finally {
-          _inFlightRequestLabel = null;
+          _inFlightRouteIdentity = null;
         }
       case final RelaySseSubscribe subscribe:
         Log.v("SseSubscribe: path=${subscribe.path}");
         try {
-          _sseManager.subscribePath(connID, subscribe.path, _client);
+          _sseManager.subscribePath(
+            connID: connID,
+            path: subscribe.path,
+            client: _client,
+            connection: connection,
+          );
           final projSummary = await _buildProjectsSummary();
           if (projSummary != null) {
             _enqueueWireEvent(projSummary);
             _completionListener.handleSseEvent(projSummary);
           }
           Log.v("initial projectsSummary enqueued");
-        } catch (e) {
-          Log.e("sse subscribe failed for connId $connID: $e");
+        } on Object catch (error, stackTrace) {
+          Log.e("sse subscribe failed for connId $connID", error, stackTrace);
         }
       case RelaySseUnsubscribe():
         Log.v("SseUnsubscribe connID=$connID");
@@ -1886,6 +2015,8 @@ class OrchestratorSession {
       case RelaySessionView(:final sessionId):
         Log.v("SessionView connID=$connID sessionId=$sessionId");
         _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
+      case RelayProjectView(:final projectId):
+        _projectViewTracker.setViewing(connID: connID, projectId: projectId);
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }
@@ -1937,19 +2068,55 @@ class OrchestratorSession {
     return base + Duration(milliseconds: extra);
   }
 
-  Future<void> _encryptAndSend({
+  Future<RelaySendOutcome> _encryptAndSend({
+    required RelayConnection connection,
     required int connID,
     required RelayMessage message,
   }) async {
     final respJson = jsonEncode(message.toJson());
     final jsonBytes = utf8.encode(respJson);
     Log.v("[response] sending ${jsonBytes.length} bytes to connID=$connID");
-    _bytesSentController.add(jsonBytes.length);
     final cryptoService = RelayCryptoService();
     final encryptionKey = SecretKey(List<int>.from(_roomKey));
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
     final framed = await frame(jsonBytes, encryptor: encryptor);
-    _client.send(connID, framed);
+    final outcome = _sendIfCurrent(
+      connection: connection,
+      connID: connID,
+      payload: framed,
+    );
+    if (outcome == RelaySendOutcome.sent) {
+      _bytesSentController.add(jsonBytes.length);
+    }
+    return outcome;
+  }
+
+  RelaySendOutcome _sendIfCurrent({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> payload,
+  }) {
+    try {
+      return _client.sendIfCurrent(
+        connection: connection,
+        connID: connID,
+        payload: payload,
+      );
+    } on Object {
+      final closeFuture = _client.closeIfCurrent(connection: connection);
+      if (identical(_relayConnection, connection)) {
+        _relayConnection = null;
+      }
+      unawaited(
+        closeFuture.then<void>(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) {
+            Log.w("Failed to close relay after send failure", error, stackTrace);
+          },
+        ),
+      );
+      rethrow;
+    }
   }
 }
 

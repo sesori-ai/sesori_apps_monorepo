@@ -19,6 +19,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ProductAnalyticsEvent,
         ProductAnalyticsService,
         ProductAnalyticsState,
+        ProjectViewClaim,
+        ProjectViewPaneClaim,
+        ProjectViewingService,
         RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
@@ -52,6 +55,7 @@ import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
+import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
 import "package:sesori_mobile/core/di/injection.dart";
@@ -131,6 +135,8 @@ class MockRelayClient extends Mock implements RelayClient {}
 class MockVoiceApi extends Mock implements VoiceApi {}
 
 class MockAudioRecorder extends Mock implements AudioRecorder {}
+
+class MockRecorderPrewarmClient extends Mock implements RecorderPrewarmClient {}
 
 class MockRecordingFileProvider extends Mock implements RecordingFileProvider {}
 
@@ -282,6 +288,38 @@ MockSessionViewingService stubbedSessionViewingService() {
   final mock = MockSessionViewingService();
   when(() => mock.setViewingSession(any())).thenReturn(null);
   when(() => mock.clearViewingSession(any())).thenReturn(null);
+  return mock;
+}
+
+class MockProjectViewingService extends Mock implements ProjectViewingService {}
+
+MockProjectViewingService stubbedProjectViewingService() {
+  final mock = MockProjectViewingService();
+  when(
+    () => mock.beginListClaim(projectId: any(named: "projectId")),
+  ).thenAnswer((_) => ProjectViewClaim());
+  when(
+    () => mock.beginDetailClaim(projectId: any(named: "projectId")),
+  ).thenAnswer((_) => ProjectViewClaim());
+  when(mock.beginWideListPaneClaim).thenAnswer((_) => ProjectViewPaneClaim());
+  when(
+    () => mock.markClaimReady(
+      claim: any(named: "claim"),
+      projectId: any(named: "projectId"),
+    ),
+  ).thenReturn(null);
+  when(() => mock.markClaimFailed(claim: any(named: "claim"))).thenReturn(null);
+  when(() => mock.releaseClaim(claim: any(named: "claim"))).thenReturn(null);
+  when(
+    () => mock.setWideListPaneVisible(
+      claim: any(named: "claim"),
+      isVisible: any(named: "isVisible"),
+    ),
+  ).thenReturn(null);
+  when(
+    () => mock.releaseWideListPaneClaim(claim: any(named: "claim")),
+  ).thenReturn(null);
+  when(mock.onDispose).thenAnswer((_) async {});
   return mock;
 }
 
@@ -484,6 +522,8 @@ void registerAllFallbackValues() {
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
   registerFallbackValue(AuthProvider.github);
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(ProjectViewClaim());
+  registerFallbackValue(ProjectViewPaneClaim());
   registerFallbackValue(DateTime.utc(2000));
   registerFallbackValue(
     const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),

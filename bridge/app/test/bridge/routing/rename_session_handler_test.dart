@@ -94,7 +94,7 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("New Title"));
     });
 
-    test("returns the authoritative catalog Session", () async {
+    test("returns the authoritative catalog Session without ungated PR metadata", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: "fake",
@@ -111,9 +111,24 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/rename",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/rename",
           prNumber: 13,
           url: "https://github.com/org/repo/pull/13",
@@ -152,8 +167,7 @@ void main() {
       expect(result.time?.created, equals(1));
       expect(result.time?.updated, greaterThan(1));
       expect(result.time?.archived, isNull);
-      expect(result.pullRequest?.number, equals(13));
-      expect(result.pullRequest?.title, equals("Rename PR"));
+      expect(result.pullRequest, isNull);
       await sessionMutationDispatcher.dispose();
       expect(plugin.lastRenameSessionId, equals("backend-s1"));
     });

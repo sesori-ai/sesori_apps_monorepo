@@ -655,6 +655,7 @@ SessionDetailCubit _buildCubit({
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
     sessionViewingService: stubbedSessionViewingService(),
+    projectViewingService: stubbedProjectViewingService(),
     lifecycleSource: FakeLifecycleSource(),
     composerDraftRepository: inMemoryComposerDraftRepository(),
     productAnalyticsService: productAnalyticsService ?? stubbedProductAnalyticsService(),

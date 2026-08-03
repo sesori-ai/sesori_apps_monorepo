@@ -1348,12 +1348,13 @@ void main() {
               'const r = await tools.exec_command({cmd:"sleep 2"}); '
               "text(r.output);",
         ),
-        _customToolOutput(
+        _customToolOutputWithImage(
           callId: "call-exec-2",
           output:
               "Script running with cell ID 2\n"
               "Wall time: 0.01 seconds\n"
               "Output:\n",
+          imageUrl: "data:image/png;base64,AA==",
         ),
         _toolCall(
           id: "fc-wait-2",
@@ -1395,6 +1396,17 @@ void main() {
             output: "LIVE-EVENT-TEST recovery-complete\n",
           ),
         ),
+        {
+          "timestamp": "2026-07-23T08:00:03Z",
+          "type": "response_item",
+          "payload": {
+            "type": "image_generation_call",
+            "id": "image-live",
+            "status": "completed",
+            "revised_prompt": "private prompt",
+            "result": "AA==",
+          },
+        },
       ];
       final encodedRecords = records.map(jsonEncode).toList();
       final finalRecord = encodedRecords.removeLast();
@@ -1435,6 +1447,7 @@ void main() {
         "call-wait-2",
         "call-failed",
         "call-recovery",
+        "image-live",
       });
       expect(history, hasLength(finalLiveParts.length));
       for (final message in history) {
@@ -1447,7 +1460,10 @@ void main() {
         expect(livePart?.state?.status, historicalPart.state?.status);
         expect(livePart?.state?.output, historicalPart.state?.output);
         expect(livePart?.state?.error, historicalPart.state?.error);
+        expect(livePart?.state?.attachments, historicalPart.state?.attachments);
       }
+      expect(finalLiveParts["call-exec-2"]?.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(finalLiveParts["image-live"]?.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
       expect(
         finalLiveParts["call-immediate"]?.state?.title,
         r"printf 'LIVE-EVENT-TEST immediate-complete\n'",
@@ -1852,6 +1868,23 @@ Map<String, Object?> _customToolOutput({
     "call_id": callId,
     "output": [
       {"type": "input_text", "text": output},
+    ],
+  },
+};
+
+Map<String, Object?> _customToolOutputWithImage({
+  required String callId,
+  required String output,
+  required String imageUrl,
+}) => {
+  "timestamp": "2026-07-23T08:00:02Z",
+  "type": "response_item",
+  "payload": {
+    "type": "custom_tool_call_output",
+    "call_id": callId,
+    "output": [
+      {"type": "input_text", "text": output},
+      {"type": "input_image", "image_url": imageUrl},
     ],
   },
 };

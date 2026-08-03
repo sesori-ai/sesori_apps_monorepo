@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -12,6 +13,11 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/routing/bridge_restart_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/routing/request_router.dart";
+import "package:sesori_bridge/src/bridge/routing/restart_bridge_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/routed_request.dart";
+import "package:sesori_bridge/src/bridge/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
@@ -57,6 +63,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     legacyMissingPluginId: plugin.id,
     pluginLifecycleService: lifecycleService,
     pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
+    bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
     clock: const ServerClock(),
     database: db,
     httpClient: httpClient,
@@ -72,12 +79,11 @@ Future<_DebugServerHarness> _createDebugServerHarness({
   final runtime = BridgeRuntime(
     database: db,
     failureReporter: failureReporter,
-    restartService: effectiveRestartService,
     composition: composition,
   );
   final running = await startTestOrchestratorSession(session: composition.session);
   final runFuture = running.stopped;
-  await relayServer.nextClient();
+  final bridgeSocket = await relayServer.nextClient();
   await activateTestPlugin(service: lifecycleService, pluginId: plugin.id);
   if (plugin case final _SubscriptionAwarePlugin subscriptionAware) {
     await subscriptionAware.eventsSubscribed.timeout(const Duration(seconds: 2));
@@ -89,6 +95,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     httpClient: httpClient,
     lifecycleService: lifecycleService,
     relayServer: relayServer,
+    bridgeSocket: bridgeSocket,
     runFuture: runFuture,
   );
 }
@@ -167,9 +174,24 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
+      await db.projectsDao.setPrCacheGithubLogin(
+        projectId: "p1",
+        githubLogin: "octocat",
+      );
+      await db.sessionDao.updatePullRequestScopes(
+        updates: [
+          (
+            sessionId: "s1",
+            currentBranchName: "feature/one",
+            currentGithubRepositoryIdentity: "org/repo",
+          ),
+        ],
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
           branchName: "feature/one",
           prNumber: 11,
           url: "https://github.com/org/repo/pull/11",
@@ -213,10 +235,7 @@ void main() {
 
       expect(firstEvent["type"], equals("session.created"));
       expect(secondEvent["type"], equals("session.diff"));
-      expect(
-        ((firstEvent["info"] as Map<String, dynamic>)["pullRequest"] as Map<String, dynamic>)["number"],
-        equals(11),
-      );
+      expect((firstEvent["info"] as Map<String, dynamic>)["pullRequest"], isNull);
     });
 
     test("debug client disconnect does not tear down the orchestrator plugin listeners", () async {
@@ -473,6 +492,99 @@ void main() {
   });
 
   group("DebugServer shutdown", () {
+    test("session and debug drains share one relay and debug route barrier", () async {
+      final db = createTestDatabase();
+      final plugin = _BlockingRoutesPlugin();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
+      await db.sessionDao.insertSession(
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "/tmp/test",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      final harness = await _createDebugServerHarness(
+        plugin: plugin,
+        db: db,
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+      );
+      addTearDown(plugin.close);
+      addTearDown(harness.close);
+      addTearDown(() {
+        plugin
+          ..releaseAbort()
+          ..releaseMessages();
+      });
+      final debugServer = harness.debugServer;
+      await debugServer.start();
+      final phone = await _activatePhone(harness: harness, connId: 7);
+
+      await _sendEncryptedRelayMessage(
+        socket: harness.bridgeSocket,
+        connId: 7,
+        encryptor: phone.encryptor,
+        message: RelayMessage.request(
+          id: "relay-route",
+          method: "POST",
+          path: "/session/messages",
+          headers: const {"content-type": "application/json"},
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1").toJson()),
+        ),
+      );
+      await plugin.messagesStarted.timeout(const Duration(seconds: 2));
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final abortRequest = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session/abort"),
+      );
+      abortRequest.headers.contentType = ContentType.json;
+      abortRequest.write(jsonEncode(const SessionIdRequest(sessionId: "s1").toJson()));
+      final abortResponseFuture = abortRequest.close();
+      await plugin.abortStarted.timeout(const Duration(seconds: 2));
+
+      var sessionStopped = false;
+      unawaited(harness.runFuture.whenComplete(() => sessionStopped = true));
+      await harness.runtime.session.cancel();
+
+      final rejectedRequest = await client.getUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/health"),
+      );
+      final rejectedResponse = await rejectedRequest.close();
+      expect(rejectedResponse.statusCode, HttpStatus.serviceUnavailable);
+      expect(await utf8.decoder.bind(rejectedResponse).join(), "bridge is shutting down");
+      await Future<void>.delayed(Duration.zero);
+      expect(sessionStopped, isFalse);
+
+      plugin.releaseAbort();
+      final abortResponse = await abortResponseFuture.timeout(const Duration(seconds: 2));
+      await utf8.decoder.bind(abortResponse).join().timeout(const Duration(seconds: 2));
+      expect(abortResponse.statusCode, HttpStatus.ok);
+
+      debugServer.beginShutdown();
+      var debugDrained = false;
+      final debugDrain = debugServer.drain().whenComplete(() => debugDrained = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(sessionStopped, isFalse);
+      expect(debugDrained, isFalse);
+
+      plugin.releaseMessages();
+      await Future.wait([
+        harness.runFuture.timeout(const Duration(seconds: 2)),
+        debugDrain.timeout(const Duration(seconds: 2)),
+      ]);
+      expect(sessionStopped, isTrue);
+      expect(debugDrained, isTrue);
+    });
+
     test("drains and persists a routed mutation before disposing its plugin API", () async {
       final db = createTestDatabase();
       String? persistedTitleAtDispose;
@@ -513,7 +625,15 @@ void main() {
             )
             ..addPhase(
               phase: BridgeShutdownPhase.signal,
+              action: harness.runtime.session.beginShutdown,
+            )
+            ..addPhase(
+              phase: BridgeShutdownPhase.signal,
               action: debugServer.beginShutdown,
+            )
+            ..addPhase(
+              phase: BridgeShutdownPhase.drain,
+              action: () => harness.runFuture,
             )
             ..addPhase(
               phase: BridgeShutdownPhase.drain,
@@ -554,6 +674,46 @@ void main() {
   });
 
   group("DebugServer restart", () {
+    test("closes the HTTP response before awaiting restart dispatch and drains the dispatch", () async {
+      final dispatcher = _BlockingRestartDispatcher();
+      final debugServer = DebugServer(
+        localWireEvents: const Stream<SesoriSseEvent>.empty(),
+        routedRequestDispatcher: RoutedRequestDispatcher(
+          router: RequestRouter(
+            handlers: [RestartBridgeHandler(restartService: _AlwaysRestartableService())],
+          ),
+        ),
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+        restartDispatcher: dispatcher,
+      );
+      await debugServer.start();
+      addTearDown(() async {
+        dispatcher.release();
+        await debugServer.stop();
+      });
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
+      );
+      final responseFuture = request.close();
+
+      await dispatcher.started.timeout(const Duration(seconds: 2));
+      final response = await responseFuture.timeout(const Duration(seconds: 2));
+      final body = await utf8.decoder.bind(response).join().timeout(const Duration(seconds: 2));
+      expect(response.statusCode, HttpStatus.ok);
+      expect(body, contains('"restarting":true'));
+
+      var stopped = false;
+      final stop = debugServer.stop().whenComplete(() => stopped = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(stopped, isFalse);
+      dispatcher.release();
+      await stop.timeout(const Duration(seconds: 2));
+    });
+
     test("POST /global/restart replies and spawns a successor", () async {
       final plugin = _FakeBridgePlugin();
       addTearDown(plugin.close);
@@ -635,13 +795,24 @@ void main() {
       );
       addTearDown(harness.close);
 
-      // Both the relay and debug triggers funnel into handleRestartHandoff;
-      // fire two concurrently and assert the single-flight guard holds.
-      await Future.wait<void>([
-        harness.runtime.session.handleRestartHandoff(),
-        harness.runtime.session.handleRestartHandoff(),
-      ]);
+      final debugServer = harness.debugServer;
+      await debugServer.start();
+      final client = HttpClient();
+      addTearDown(client.close);
 
+      Future<int> restart() async {
+        final request = await client.postUrl(
+          Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
+        );
+        final response = await request.close();
+        await utf8.decoder.bind(response).join();
+        return response.statusCode;
+      }
+
+      final statuses = await Future.wait([restart(), restart()]);
+
+      expect(statuses, contains(HttpStatus.ok));
+      expect(statuses, everyElement(anyOf(HttpStatus.ok, HttpStatus.serviceUnavailable)));
       expect(processRunner.startDetachedCount, equals(1));
     });
 
@@ -683,6 +854,106 @@ void main() {
       expect(processRunner.startDetachedCount, equals(0));
     });
   });
+}
+
+Future<({StreamIterator<dynamic> messages, SessionEncryptor encryptor})> _activatePhone({
+  required _DebugServerHarness harness,
+  required int connId,
+}) async {
+  final messages = StreamIterator<dynamic>(harness.bridgeSocket);
+  expect(await messages.moveNext(), isTrue);
+  expect(jsonDecodeMap(messages.current as String)["type"], "auth");
+
+  final crypto = RelayCryptoService();
+  final phoneKeyPair = await crypto.generateKeyPair();
+  final phonePublicKey = await phoneKeyPair.extractPublicKey();
+  harness.bridgeSocket.add(<int>[
+    0,
+    connId,
+    ...utf8.encode(
+      jsonEncode(
+        RelayMessage.keyExchange(
+          publicKey: base64Url.encode(phonePublicKey.bytes).replaceAll("=", ""),
+        ).toJson(),
+      ),
+    ),
+  ]);
+
+  expect(await messages.moveNext(), isTrue);
+  final readyFrame = messages.current as List<int>;
+  expect(readyFrame.sublist(0, 2), [0, connId]);
+  final ready = await _decryptReady(
+    response: readyFrame.sublist(2),
+    phoneKeyPair: phoneKeyPair,
+  );
+  final roomKey = SecretKey(base64Url.decode(base64Url.normalize(ready.roomKey)));
+  await harness.runtime.session.firstPhoneConnected.timeout(const Duration(seconds: 2));
+  return (messages: messages, encryptor: crypto.createSessionEncryptor(roomKey));
+}
+
+Future<RelayReady> _decryptReady({
+  required List<int> response,
+  required SimpleKeyPair phoneKeyPair,
+}) async {
+  final crypto = RelayCryptoService();
+  final bridgePublicKey = SimplePublicKey(response.sublist(0, 32), type: KeyPairType.x25519);
+  final secret = await crypto.deriveSharedSecret(phoneKeyPair, peerPublicKey: bridgePublicKey);
+  final encryptor = crypto.createSessionEncryptor(await crypto.deriveEncryptionKey(secret));
+  final decrypted = await unframe(response.sublist(32), encryptor: encryptor);
+  return RelayMessage.fromJson(jsonDecodeMap(utf8.decode(decrypted))) as RelayReady;
+}
+
+Future<void> _sendEncryptedRelayMessage({
+  required WebSocket socket,
+  required int connId,
+  required SessionEncryptor encryptor,
+  required RelayMessage message,
+}) async {
+  final payload = await frame(
+    utf8.encode(jsonEncode(message.toJson())),
+    encryptor: encryptor,
+  );
+  socket.add(<int>[0, connId, ...payload]);
+}
+
+class _BlockingRestartDispatcher implements BridgeRestartDispatcher {
+  final Completer<void> _started = Completer<void>();
+  final Completer<void> _release = Completer<void>();
+
+  Future<void> get started => _started.future;
+
+  @override
+  Stream<BridgeShutdownRequest> get shutdownRequests => const Stream<BridgeShutdownRequest>.empty();
+
+  @override
+  Future<void> dispatch({required RestartAccepted restart}) async {
+    if (!_started.isCompleted) _started.complete();
+    await _release.future;
+  }
+
+  void release() {
+    if (!_release.isCompleted) _release.complete();
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+class _AlwaysRestartableService implements BridgeRestartService {
+  @override
+  bool get supervisedRestartRequested => false;
+
+  @override
+  Future<bool> canRestart() async => true;
+
+  @override
+  Future<bool> canSpawnSuccessor() async => true;
+
+  @override
+  Future<bool> performRestartHandoff() async => true;
+
+  @override
+  Future<bool> spawnSuccessor() async => true;
 }
 
 BridgeRestartService _spawnableRestartService({
@@ -746,6 +1017,7 @@ class _DebugServerHarness {
   final http.Client httpClient;
   final PluginLifecycleService lifecycleService;
   final TestRelayServer relayServer;
+  final WebSocket bridgeSocket;
   final Future<void> runFuture;
 
   const _DebugServerHarness({
@@ -754,6 +1026,7 @@ class _DebugServerHarness {
     required this.httpClient,
     required this.lifecycleService,
     required this.relayServer,
+    required this.bridgeSocket,
     required this.runFuture,
   });
 
@@ -991,6 +1264,37 @@ class _BlockingMutationPlugin extends _FakeBridgePlugin {
   Future<void> dispose() async {
     disposeCalls++;
     await onDispose();
+  }
+}
+
+class _BlockingRoutesPlugin extends _FakeBridgePlugin {
+  final Completer<void> _messagesStarted = Completer<void>();
+  final Completer<void> _messagesRelease = Completer<void>();
+  final Completer<void> _abortStarted = Completer<void>();
+  final Completer<void> _abortRelease = Completer<void>();
+
+  Future<void> get messagesStarted => _messagesStarted.future;
+  Future<void> get abortStarted => _abortStarted.future;
+
+  void releaseMessages() {
+    if (!_messagesRelease.isCompleted) _messagesRelease.complete();
+  }
+
+  void releaseAbort() {
+    if (!_abortRelease.isCompleted) _abortRelease.complete();
+  }
+
+  @override
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
+    _messagesStarted.complete();
+    await _messagesRelease.future;
+    return [];
+  }
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {
+    _abortStarted.complete();
+    await _abortRelease.future;
   }
 }
 

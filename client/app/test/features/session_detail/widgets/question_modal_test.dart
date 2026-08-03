@@ -1,3 +1,6 @@
+import "dart:async";
+import "dart:ui" show SemanticsAction;
+
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -9,10 +12,17 @@ import "package:theme_prego/module_prego.dart";
 class _ReplyCapture {
   String? requestId;
   List<ReplyAnswer>? answers;
+  String? rejectedRequestId;
+  Stream<bool> pendingStream = const Stream.empty();
+  bool isPending = true;
 
-  void onReply(String requestId, List<ReplyAnswer> answers) {
+  void onReply({required String requestId, required List<ReplyAnswer> answers}) {
     this.requestId = requestId;
     this.answers = answers;
+  }
+
+  void onReject({required String requestId}) {
+    rejectedRequestId = requestId;
   }
 }
 
@@ -33,10 +43,13 @@ GoRouter _createRouter({
                   QuestionModal.show(
                     context,
                     question: question,
-                    onReply: capture.onReply,
-                    onReject: (_) {},
-                    isPendingStream: const Stream<bool>.empty(),
-                    isPending: () => true,
+                    onReply: (requestId, answers) => capture.onReply(
+                      requestId: requestId,
+                      answers: answers,
+                    ),
+                    onReject: (requestId) => capture.onReject(requestId: requestId),
+                    isPendingStream: capture.pendingStream,
+                    isPending: () => capture.isPending,
                   );
                 },
                 child: const Text("Open question modal"),
@@ -334,7 +347,7 @@ void main() {
     ]);
   });
 
-  testWidgets("advancing to the next question resets current question state", (tester) async {
+  testWidgets("each question starts with an independent draft", (tester) async {
     final capture = _ReplyCapture();
     final router = _createRouter(
       question: _questionAsked(
@@ -388,5 +401,508 @@ void main() {
         const ReplyAnswer(values: ["Gradual"]),
       ],
     );
+  });
+
+  testWidgets("questions can be visited unanswered and edited in either direction", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose platforms",
+            header: "Platforms",
+            multiple: true,
+            custom: true,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+            ],
+          ),
+          QuestionInfo(
+            question: "Choose rollout speed",
+            header: "Rollout",
+            custom: false,
+            options: [
+              QuestionOption(label: "Gradual", description: "Ramp slowly"),
+            ],
+          ),
+          QuestionInfo(
+            question: "Add release notes",
+            header: "Notes",
+            options: [],
+            custom: true,
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.tap(find.text("Mobile"));
+    await tester.enterText(find.byType(TextField), "Notify QA");
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Choose rollout speed"), findsOneWidget);
+    final unansweredNext = tester.widget<FilledButton>(
+      find.byKey(const Key("question-primary-action")),
+    );
+    expect(unansweredNext.onPressed, isNotNull);
+
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+    expect(find.text("Add release notes"), findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_left));
+    await tester.pumpAndSettle();
+    expect(find.text("Choose rollout speed"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("question-step-0")));
+    await tester.pumpAndSettle();
+    expect(find.text("Choose platforms"), findsOneWidget);
+    expect(find.text("Notify QA"), findsOneWidget);
+
+    await tester.tap(find.text("Mobile"));
+    await tester.enterText(find.byType(TextField), "Notify QA and Docs");
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key("question-step-1")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Gradual"));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key("question-step-2")));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), "Include the migration guide");
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+
+    expect(capture.answers, [
+      const ReplyAnswer(values: ["Notify QA and Docs"]),
+      const ReplyAnswer(values: ["Gradual"]),
+      const ReplyAnswer(values: ["Include the migration guide"]),
+    ]);
+  });
+
+  testWidgets("submit requires every question to be answered or explicitly declined", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a language",
+            header: "Language",
+            custom: false,
+            options: [
+              QuestionOption(label: "Dart", description: "Flutter language"),
+            ],
+          ),
+          QuestionInfo(
+            question: "Choose an IDE",
+            header: "IDE",
+            custom: false,
+            options: [
+              QuestionOption(label: "VS Code", description: "Microsoft editor"),
+            ],
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            custom: false,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Answer or decline every question to submit."), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key("question-primary-action"))).onPressed,
+      isNull,
+    );
+
+    await tester.tap(find.byKey(const Key("question-step-0")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Dart"));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key("question-step-1")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("decline-current-question")));
+    await tester.pump();
+    expect(find.text("Question declined"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("question-step-2")));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(TablerRegular.minus), findsOneWidget);
+    await tester.tap(find.text("Mobile"));
+    await tester.pump();
+
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key("question-primary-action"))).onPressed,
+      isNotNull,
+    );
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+
+    expect(capture.answers, [
+      const ReplyAnswer(values: ["Dart"]),
+      const ReplyAnswer(values: []),
+      const ReplyAnswer(values: ["Mobile"]),
+    ]);
+  });
+
+  testWidgets("answering a locally declined question starts a fresh answer", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose targets",
+            header: "Targets",
+            multiple: true,
+            custom: true,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+              QuestionOption(label: "Desktop", description: "Desktop app"),
+            ],
+          ),
+          QuestionInfo(
+            question: "Choose rollout speed",
+            header: "Rollout",
+            custom: false,
+            options: [
+              QuestionOption(label: "Gradual", description: "Ramp slowly"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.tap(find.text("Mobile"));
+    await tester.enterText(find.byType(TextField), "Web preview");
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("decline-current-question")));
+    await tester.pump();
+    await tester.tap(find.text("Desktop"));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Gradual"));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+
+    expect(capture.answers, [
+      const ReplyAnswer(values: ["Desktop"]),
+      const ReplyAnswer(values: ["Gradual"]),
+    ]);
+  });
+
+  testWidgets("decline all confirms before rejecting the complete request", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a language",
+            header: "Language",
+            options: [],
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            options: [],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.tap(find.byKey(const Key("decline-question-request")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Decline all questions?"), findsOneWidget);
+    expect(capture.rejectedRequestId, isNull);
+
+    await tester.tap(find.text("Keep answering"));
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("decline-question-request")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, "Decline all"));
+    await tester.pumpAndSettle();
+
+    expect(capture.rejectedRequestId, "question-1");
+    expect(capture.answers, isNull);
+    expect(find.byType(PregoBottomSheet), findsNothing);
+  });
+
+  testWidgets("system back cancels decline-all confirmation without dismissing drafts", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a language",
+            header: "Language",
+            custom: false,
+            options: [
+              QuestionOption(label: "Dart", description: "Flutter language"),
+            ],
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            custom: false,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+    await tester.tap(find.text("Dart"));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("decline-question-request")));
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.text("Choose a language"), findsOneWidget);
+    expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+    expect(capture.rejectedRequestId, isNull);
+  });
+
+  testWidgets("external resolution dismisses an open decline-all confirmation", (tester) async {
+    final capture = _ReplyCapture();
+    final pendingController = StreamController<bool>();
+    capture.pendingStream = pendingController.stream;
+    addTearDown(pendingController.close);
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a language",
+            header: "Language",
+            options: [],
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            options: [],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+    await tester.tap(find.byKey(const Key("decline-question-request")));
+    await tester.pumpAndSettle();
+    expect(find.text("Decline all questions?"), findsOneWidget);
+
+    capture.isPending = false;
+    pendingController.add(false);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(capture.rejectedRequestId, isNull);
+  });
+
+  testWidgets("question-step semantics announce current resolution", (tester) async {
+    final semantics = tester.ensureSemantics();
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a language",
+            header: "Language",
+            custom: false,
+            options: [
+              QuestionOption(label: "Dart", description: "Flutter language"),
+            ],
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            custom: false,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    final firstStep = find.bySemanticsLabel("Question 1 of 2, unanswered");
+    expect(firstStep, findsOneWidget);
+    expect(
+      tester.getSemantics(firstStep).getSemanticsData().hasAction(SemanticsAction.tap),
+      isTrue,
+    );
+    await tester.tap(find.text("Dart"));
+    await tester.pump();
+    expect(find.bySemanticsLabel("Question 1 of 2, answered"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("decline-current-question")));
+    await tester.pump();
+    expect(find.bySemanticsLabel("Question 2 of 2, declined"), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets("rapid return to a custom question keeps one text field mounted", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Add release notes",
+            header: "Notes",
+            options: [],
+            custom: true,
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            custom: false,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pump(const Duration(milliseconds: 30));
+    await tester.tap(find.byKey(const Key("question-step-0")));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets("compact keyboard viewport keeps the action row overflow-free", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(700, 300);
+    addTearDown(tester.view.reset);
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Add release notes",
+            header: "Notes",
+            options: [],
+            custom: true,
+          ),
+          QuestionInfo(
+            question: "Choose a platform",
+            header: "Platform",
+            custom: false,
+            options: [
+              QuestionOption(label: "Mobile", description: "Phone app"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+    await tester.tap(find.byKey(const Key("question-primary-action")));
+    await tester.pumpAndSettle();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 180);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text("Answer or decline all"), findsOneWidget);
+    expect(find.byKey(const Key("question-primary-action")), findsOneWidget);
+    expect(find.byKey(const Key("question-step-0")), findsNothing);
+  });
+
+  testWidgets("single questions expose only the request-level decline", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose a language",
+            header: "Language",
+            custom: false,
+            options: [
+              QuestionOption(label: "Dart", description: "Flutter language"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    expect(find.byKey(const Key("decline-current-question")), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, "Decline"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("decline-question-request")));
+    await tester.pumpAndSettle();
+
+    expect(capture.rejectedRequestId, "question-1");
+    expect(find.byType(PregoBottomSheet), findsNothing);
   });
 }

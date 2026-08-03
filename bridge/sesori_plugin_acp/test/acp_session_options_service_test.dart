@@ -17,6 +17,7 @@ void main() {
       agentId: "agent",
       pluginId: "plugin",
       configurationTracker: tracker,
+      contentMapper: const AcpContentMapper(),
     );
 
     final defaultEvents = mapper.map(_messageUpdate(sessionId: "other"));
