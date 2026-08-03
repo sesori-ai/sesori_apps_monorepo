@@ -19,7 +19,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("codex 0.145.0\n"),
+            stdoutBytes: utf8.encode("codex 0.146.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -110,7 +110,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 3,
-            stdoutBytes: utf8.encode("codex 0.145.0\n"),
+            stdoutBytes: utf8.encode("codex 0.146.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -141,7 +141,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 5,
-            stdoutBytes: utf8.encode("codex 0.145.0\n"),
+            stdoutBytes: utf8.encode("codex 0.146.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -169,7 +169,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 7,
-            stdoutBytes: utf8.encode("codex 0.145.0\n"),
+            stdoutBytes: utf8.encode("codex 0.146.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(

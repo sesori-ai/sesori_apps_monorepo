@@ -20,7 +20,7 @@ void main() {
 
     test("tracks the installer target separately from the compatibility floor", () {
       expect(CursorPluginDescriptor.minVersion, "2026.07.16");
-      expect(CursorPluginDescriptor.targetVersion, "2026.07.20-8cc9c0b");
+      expect(CursorPluginDescriptor.targetVersion, "2026.07.23-e383d2b");
     });
 
     test("declares plugin-scoped session options", () {

@@ -75,7 +75,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
 
   /// Latest official-installer build targeted for the future bundled Cursor
   /// runtime. This records the preferred build without changing availability.
-  static const String targetVersion = "2026.07.20-8cc9c0b";
+  static const String targetVersion = "2026.07.23-e383d2b";
 
   /// CLI option naming the Cursor CLI binary (path or PATH name). Declared
   /// as the bare local name — the bridge's [PluginCliOptionsMapper] namespaces
