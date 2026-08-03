@@ -196,6 +196,9 @@ class CodexMessageRepository {
           if (role != CodexRolloutRole.user && role != CodexRolloutRole.assistant) {
             continue;
           }
+          if (role == CodexRolloutRole.user && _isGeneratedUserContext(content)) {
+            continue;
+          }
           final texts = [
             for (final item in content)
               if (item case CodexRolloutInputTextDto(:final text) || CodexRolloutOutputTextDto(:final text)
@@ -245,6 +248,23 @@ class CodexMessageRepository {
       }
     }
     return messages;
+  }
+
+  bool _isGeneratedUserContext(List<CodexRolloutContentDto> content) {
+    if (content.isEmpty || content.any((item) => item is! CodexRolloutInputTextDto)) {
+      return false;
+    }
+    final texts = [
+      for (final item in content)
+        if (item case CodexRolloutInputTextDto(:final text)) text.trim(),
+    ];
+    return texts.every(
+      (text) => const [
+        "recommended_plugins",
+        "environment_context",
+        "turn_aborted",
+      ].any((tag) => text.startsWith("<$tag>") && text.endsWith("</$tag>")),
+    );
   }
 
   PluginMessageWithParts _toolMessage({
