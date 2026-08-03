@@ -117,6 +117,16 @@ void main() {
     );
   });
 
+  test("unknown foreground category is disabled when no account is available", () async {
+    authStates.add(const AuthState.unauthenticated());
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      await service.isEnabled(category: NotificationCategory.unknown),
+      isFalse,
+    );
+  });
+
   test("foreground lookup is disabled when its account becomes obsolete", () async {
     final response = Completer<bool>();
     when(

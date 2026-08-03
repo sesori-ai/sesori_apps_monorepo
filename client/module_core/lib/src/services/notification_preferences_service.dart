@@ -63,9 +63,9 @@ class NotificationPreferencesService {
   }
 
   Future<bool> isEnabled({required NotificationCategory category}) async {
-    if (category == NotificationCategory.unknown) return true;
     final operation = _currentOperation();
     if (operation == null) return false;
+    if (category == NotificationCategory.unknown) return true;
 
     try {
       final enabled = await _repository
