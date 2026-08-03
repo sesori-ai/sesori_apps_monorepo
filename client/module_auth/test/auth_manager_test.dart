@@ -598,6 +598,33 @@ void main() {
       verify(mockOAuthStorage.clearOAuthSession).called(1);
     });
 
+    test("a cleanup timeout preserves the original init failure", () async {
+      final cleanup = Completer<void>();
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/github/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => http.Response("upstream failed", 500));
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) => cleanup.future);
+
+      Object? captured;
+      try {
+        await authManager.startOAuthFlow(
+          provider: AuthProvider.github,
+          deadline: DateTime.now().add(const Duration(milliseconds: 100)),
+        );
+      } catch (error) {
+        captured = error;
+      }
+
+      expect(captured, isNot(isA<TimeoutException>()));
+      expect(captured.toString(), contains("Failed to start GitHub auth flow"));
+      cleanup.complete();
+      await Future<void>.delayed(Duration.zero);
+    });
+
     test("a failed poison cleanup is retried before OAuth mutations resume", () async {
       final firstSave = Completer<void>();
       var saveCount = 0;

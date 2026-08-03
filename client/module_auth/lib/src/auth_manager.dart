@@ -182,9 +182,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
             mutation: cleanup,
           );
         } on TimeoutException {
-          if (error is! TimeoutException) {
-            rethrow;
-          }
+          // Poison recovery owns the late cleanup. Preserve the original
+          // operation failure rather than replacing it with rollback timing.
         }
       }
       Error.throwWithStackTrace(error, stackTrace);
