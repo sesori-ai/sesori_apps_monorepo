@@ -31,6 +31,7 @@ class PullRequestRefreshSettingsSection extends StatelessWidget {
                   when mutation is! PullRequestRefreshSettingsMutationInProgress =>
                 () => unawaited(_editInterval(context: context, state: state)),
               PullRequestRefreshSettingsLoading() ||
+              PullRequestRefreshSettingsDisconnected() ||
               PullRequestRefreshSettingsUnsupported() ||
               PullRequestRefreshSettingsFailure() ||
               PullRequestRefreshSettingsUncertain() ||
@@ -47,6 +48,7 @@ class PullRequestRefreshSettingsSection extends StatelessWidget {
 String _description({required BuildContext context, required PullRequestRefreshSettingsState state}) {
   return switch (state) {
     PullRequestRefreshSettingsLoading() => context.loc.settingsPullRequestRefreshLoading,
+    PullRequestRefreshSettingsDisconnected() => context.loc.settingsPullRequestRefreshDisconnected,
     PullRequestRefreshSettingsUnsupported() => context.loc.settingsPullRequestRefreshUnsupported,
     PullRequestRefreshSettingsFailure() => context.loc.settingsPullRequestRefreshLoadFailed,
     PullRequestRefreshSettingsUncertain() => context.loc.settingsPullRequestRefreshUncertain,
@@ -78,6 +80,10 @@ Widget _trailing({required BuildContext context, required PullRequestRefreshSett
     ),
     PullRequestRefreshSettingsUnsupported() => Text(
       context.loc.settingsPullRequestRefreshUnavailable,
+      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+    ),
+    PullRequestRefreshSettingsDisconnected() => Text(
+      context.loc.settingsPullRequestRefreshOffline,
       style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
     ),
     PullRequestRefreshSettingsFailure() || PullRequestRefreshSettingsUncertain() => IconButton(

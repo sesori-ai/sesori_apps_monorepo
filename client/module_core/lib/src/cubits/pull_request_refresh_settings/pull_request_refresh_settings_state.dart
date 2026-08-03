@@ -10,6 +10,10 @@ final class PullRequestRefreshSettingsLoading extends PullRequestRefreshSettings
   const PullRequestRefreshSettingsLoading();
 }
 
+final class PullRequestRefreshSettingsDisconnected extends PullRequestRefreshSettingsState {
+  const PullRequestRefreshSettingsDisconnected();
+}
+
 final class PullRequestRefreshSettingsUnsupported extends PullRequestRefreshSettingsState {
   const PullRequestRefreshSettingsUnsupported();
 }

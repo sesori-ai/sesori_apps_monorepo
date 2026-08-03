@@ -244,6 +244,18 @@ void main() {
     expect(find.text("30 seconds"), findsOneWidget);
   });
 
+  testWidgets("shows a stable offline setting before a bridge connects", (tester) async {
+    _useTallSurface(tester);
+    connectionStatuses.add(const ConnectionStatus.disconnected());
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Connect to a bridge to configure this setting."), findsOneWidget);
+    expect(find.text("Offline"), findsOneWidget);
+    verifyNever(pullRequestRefreshSettingsRepository.load);
+  });
+
   testWidgets("saves a custom interval and displays the committed response", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));

@@ -16,7 +16,11 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     required ConnectionService connectionService,
   }) : _service = service,
        _connected = connectionService.currentStatus is ConnectionConnected,
-       super(const PullRequestRefreshSettingsLoading()) {
+       super(
+         connectionService.currentStatus is ConnectionConnected
+             ? const PullRequestRefreshSettingsLoading()
+             : const PullRequestRefreshSettingsDisconnected(),
+       ) {
     _connectionStatusSubscription = connectionService.status.skip(1).listen(_onConnectionStatus);
     if (_connected) unawaited(refresh());
   }
@@ -48,6 +52,7 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     final validationBounds = switch (state) {
       PullRequestRefreshSettingsReady(:final validationBounds) => validationBounds,
       PullRequestRefreshSettingsLoading() ||
+      PullRequestRefreshSettingsDisconnected() ||
       PullRequestRefreshSettingsUnsupported() ||
       PullRequestRefreshSettingsFailure() ||
       PullRequestRefreshSettingsUncertain() => null,
@@ -199,6 +204,7 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     final validationBounds = switch (state) {
       PullRequestRefreshSettingsReady(:final validationBounds) => validationBounds,
       PullRequestRefreshSettingsLoading() ||
+      PullRequestRefreshSettingsDisconnected() ||
       PullRequestRefreshSettingsUnsupported() ||
       PullRequestRefreshSettingsFailure() ||
       PullRequestRefreshSettingsUncertain() => null,
@@ -211,7 +217,9 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     _connectionEpoch++;
     _connected = status is ConnectionConnected;
     _refreshPending = false;
-    emit(const PullRequestRefreshSettingsLoading());
+    emit(
+      _connected ? const PullRequestRefreshSettingsLoading() : const PullRequestRefreshSettingsDisconnected(),
+    );
     if (_connected) unawaited(refresh());
   }
 

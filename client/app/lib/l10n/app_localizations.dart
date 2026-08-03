@@ -427,6 +427,12 @@ abstract class AppLocalizations {
   /// **'Loading the bridge setting…'**
   String get settingsPullRequestRefreshLoading;
 
+  /// No description provided for @settingsPullRequestRefreshDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to configure this setting.'**
+  String get settingsPullRequestRefreshDisconnected;
+
   /// No description provided for @settingsPullRequestRefreshUnsupported.
   ///
   /// In en, this message translates to:
@@ -456,6 +462,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unavailable'**
   String get settingsPullRequestRefreshUnavailable;
+
+  /// No description provided for @settingsPullRequestRefreshOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get settingsPullRequestRefreshOffline;
 
   /// No description provided for @settingsPullRequestRefreshRetry.
   ///

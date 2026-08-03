@@ -446,10 +446,10 @@
   962 module-core, 880 mobile, 15 desktop, 358 shared, and 2,388 bridge tests pass.
   Post-review all 21 focused core tests, all 20 Settings tests, three fatal-info
   analyzers, and `git diff --check` pass; CI passed before the feedback commit.
-- **Step 8/9 review:** Initial Aristotle feedback moved validation out of Flutter.
-  PR #701 feedback added connection-epoch fencing and observable unexpected failures.
-  Second Aristotle feedback consolidated validated bounds in the repository. The
-  final 2,027 lines exceed target because these fixes cannot ship separately.
+- **Step 8/9 review:** Initial Aristotle moved validation out of Flutter; PR #701
+  added connection fencing, offline state, and observable failures; second Aristotle
+  consolidated bounds. Final: 2,078 lines — 2,041 additions/37 deletions, including
+  218 generated, 900 tests, and 923 production/plan; 578 over for coupled fixes.
 
 ## Findings and Plan Deltas
 

@@ -187,6 +187,7 @@ void main() {
     });
     addTearDown(subscription.cancel);
 
+    expect(cubit.state, isA<PullRequestRefreshSettingsDisconnected>());
     await Future<void>.delayed(Duration.zero);
     expect(loadCalls, 0);
 

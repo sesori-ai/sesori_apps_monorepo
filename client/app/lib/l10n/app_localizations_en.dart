@@ -189,6 +189,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPullRequestRefreshLoading => 'Loading the bridge setting…';
 
   @override
+  String get settingsPullRequestRefreshDisconnected => 'Connect to a bridge to configure this setting.';
+
+  @override
   String get settingsPullRequestRefreshUnsupported => 'Update the connected bridge to configure this setting.';
 
   @override
@@ -204,6 +207,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPullRequestRefreshUnavailable => 'Unavailable';
+
+  @override
+  String get settingsPullRequestRefreshOffline => 'Offline';
 
   @override
   String get settingsPullRequestRefreshRetry => 'Retry pull request refresh setting';
