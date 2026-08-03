@@ -5,11 +5,11 @@
 - **Started:** 2026-08-03
 - **Completed:** 2026-08-04
 - **Merged baseline:** `2408b574` on `origin/main`
-- **Deep-test branches:** local `codex-stability-deep-test-*` stack
+- **Deep-test branches:** `codex-stability-deep-test-*` stack
 - **Status:** Complete
 - **Release decision:** Ready for code review. No reproduced user-visible Codex stability defect remains unresolved.
 
-The final local stack, in order, is:
+The final production stack, in order, is:
 
 1. `c3ab5fcb` `fix(codex): recognize directed image wrappers`
 2. `58585e1f` `fix(codex): unify code-mode command identity`
@@ -18,6 +18,7 @@ The final local stack, in order, is:
 5. `9da8f2e1` `fix(codex): unify file change identity`
 6. `8f0f4ece` `fix(codex): settle interrupted tools after restart`
 7. `cdd3a305` `fix(codex): preserve locally archived history`
+8. `d4e30b87` `refactor(codex): type replay and item boundaries`
 
 No pull requests were opened for the deep-test stack.
 
@@ -190,7 +191,8 @@ summaries and only the identifiers needed to correlate a finding.
   code-mode commands, and the wrapper patch was not projected as an edit.
 - **Fix:** Local commit `9da8f2e1` recognizes the exact single-patch wrapper,
   correlates app-server file changes to its canonical rollout ID, and preserves
-  the patch as edit output.
+  the patch as edit output. Follow-up `d4e30b87` parses file-change lifecycle
+  data into a sealed typed event before coordination and repository tracking.
 - **Result:** A fresh create/update/delete sequence produced exactly three edit
   cards with stable IDs, titles, patches, and completed status after restart.
 
@@ -202,8 +204,9 @@ summaries and only the identifiers needed to correlate a finding.
   call still displayed `Running` with no way to stop it.
 - **Cause:** The last chronology segment had neither output nor later turn
   evidence. History reconstruction did not receive authoritative session status.
-- **Fix:** Local commit `8f0f4ece` passes session status into rollout replay and
-  terminalizes unresolved tools only when the session is idle.
+- **Fix:** Local commit `8f0f4ece` makes replay honor session activity. Follow-up
+  `d4e30b87` keeps the policy in `CodexSessionService`, which maps session status
+  to an explicit preserve-or-terminalize replay disposition.
 - **Result:** The interrupted call replays as `Failed`. A separate live
   30-second call remained `Running` during active snapshots and completed
   normally, proving active work is not closed prematurely.
@@ -242,12 +245,14 @@ summaries and only the identifiers needed to correlate a finding.
 
 ## Automated Verification
 
-- `dart test` in `bridge/sesori_plugin_codex`: 301 tests passed on the final
+- `dart test` in `bridge/sesori_plugin_codex`: 305 tests passed on the final
   stack.
 - `dart analyze --fatal-infos` in `bridge/sesori_plugin_codex`: no issues.
 - Targeted tests cover generated image wrappers, canonical shell and file-change
   identity, late abort completion, active-versus-idle rollout replay, and
   local-only archive behavior.
+- Architecture review approved the eight production commits after typed
+  app-server event parsing and service-owned replay policy were verified.
 - `git diff --check` is part of final report validation.
 
 ## Residual Observations
@@ -283,4 +288,5 @@ and deletion all converged across bridge snapshots and the iOS UI.
 
 The empty upstream reasoning summaries and one non-reproduced shutdown stall are
 documented residual coverage limits, not demonstrated release blockers. The
-seven deep-test commits are ready for review as a stack; no PRs were created.
+eight deep-test production commits are ready for review as a stack; no PRs were
+created.
