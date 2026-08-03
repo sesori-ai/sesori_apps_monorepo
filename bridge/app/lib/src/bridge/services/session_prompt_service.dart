@@ -45,7 +45,6 @@ class SessionPromptService {
       operation: normalizedCommand == null || normalizedCommand.isEmpty
           ? SessionOperation.sendPrompt
           : SessionOperation.sendCommand,
-      interaction: null,
       body: () => _sendPrompt(
         sessionId: sessionId,
         parts: parts,

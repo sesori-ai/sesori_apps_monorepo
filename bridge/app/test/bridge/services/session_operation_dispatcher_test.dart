@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
 import "package:test/test.dart";
 
 void main() {
@@ -25,7 +26,6 @@ void main() {
       final root = dispatcher.dispatch<void>(
         sessionId: "root",
         operation: SessionOperation.sendPrompt,
-        interaction: null,
         body: () async {
           rootStarted.complete();
           await rootGate.future;
@@ -34,19 +34,16 @@ void main() {
       final child = dispatcher.dispatch<void>(
         sessionId: "child",
         operation: SessionOperation.abortSession,
-        interaction: null,
         body: () async => childStarted.complete(),
       );
       final other = dispatcher.dispatch<void>(
         sessionId: "other",
         operation: SessionOperation.sendPrompt,
-        interaction: null,
         body: () async => otherStarted.complete(),
       );
       final pluginTwo = dispatcher.dispatch<void>(
         sessionId: "plugin-two",
         operation: SessionOperation.sendPrompt,
-        interaction: null,
         body: () async => pluginTwoStarted.complete(),
       );
 
@@ -58,7 +55,7 @@ void main() {
       expect(dispatcher.activeLaneCount, isZero);
     });
 
-    test("isolates reused interaction IDs and releases a failed lane", () async {
+    test("releases a failed family lane while unrelated families run", () async {
       final repository = _FamilyRepository({
         "a": (rootSessionId: "a", pluginId: "one"),
         "b": (rootSessionId: "b", pluginId: "one"),
@@ -75,7 +72,6 @@ void main() {
       final first = dispatcher.dispatch<void>(
         sessionId: "a",
         operation: SessionOperation.replyToQuestion,
-        interaction: const PendingQuestionInteraction(requestId: "reused"),
         body: () async {
           firstStarted.complete();
           await gate.future;
@@ -85,19 +81,16 @@ void main() {
       final same = dispatcher.dispatch<void>(
         sessionId: "a",
         operation: SessionOperation.rejectQuestion,
-        interaction: const PendingQuestionInteraction(requestId: "reused"),
         body: () async => sameStarted.complete(),
       );
       final otherFamily = dispatcher.dispatch<void>(
         sessionId: "b",
         operation: SessionOperation.rejectQuestion,
-        interaction: const PendingQuestionInteraction(requestId: "reused"),
         body: () async => otherFamilyStarted.complete(),
       );
       final otherPlugin = dispatcher.dispatch<void>(
         sessionId: "c",
         operation: SessionOperation.rejectQuestion,
-        interaction: const PendingQuestionInteraction(requestId: "reused"),
         body: () async => otherPluginStarted.complete(),
       );
 
@@ -130,7 +123,6 @@ void main() {
       final earlier = dispatcher.dispatch<void>(
         sessionId: "earlier",
         operation: SessionOperation.replyToQuestion,
-        interaction: const PendingQuestionInteraction(requestId: "question"),
         body: () async {
           earlierStarted.complete();
           await earlierGate.future;
@@ -154,13 +146,11 @@ void main() {
       final later = dispatcher.dispatch<void>(
         sessionId: "legacy-owner",
         operation: SessionOperation.abortSession,
-        interaction: null,
         body: () async => laterStarted.complete(),
       );
       final otherPlugin = dispatcher.dispatch<void>(
         sessionId: "other-plugin",
         operation: SessionOperation.abortSession,
-        interaction: null,
         body: () async => otherPluginStarted.complete(),
       );
 
@@ -175,6 +165,41 @@ void main() {
       legacyBodyGate.complete();
       await Future.wait([earlier, legacy, later, otherPlugin]);
       expect(laterStarted.isCompleted, isTrue);
+      expect(dispatcher.activeLaneCount, isZero);
+    });
+
+    test("legacy owner plugin mismatch releases later plugin admission", () async {
+      final repository = _FamilyRepository({
+        "wrong-owner": (rootSessionId: "wrong-owner", pluginId: "other"),
+        "later": (rootSessionId: "later", pluginId: "legacy"),
+      });
+      final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      addTearDown(dispatcher.dispose);
+      var legacyBodyCalled = false;
+
+      final legacy = dispatcher.dispatchLegacyQuestion<void>(
+        pluginId: "legacy",
+        questionId: "question",
+        operation: SessionOperation.rejectQuestion,
+        resolveOwnerSessionId: () async => "wrong-owner",
+        body: ({required String ownerSessionId}) async {
+          legacyBodyCalled = true;
+        },
+      );
+      final later = dispatcher.dispatch<void>(
+        sessionId: "later",
+        operation: SessionOperation.abortSession,
+        body: () async {},
+      );
+
+      await expectLater(
+        legacy,
+        throwsA(
+          isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409),
+        ),
+      );
+      await later;
+      expect(legacyBodyCalled, isFalse);
       expect(dispatcher.activeLaneCount, isZero);
     });
 
@@ -196,13 +221,11 @@ void main() {
       final first = dispatcher.dispatch<void>(
         sessionId: "first",
         operation: SessionOperation.sendPrompt,
-        interaction: null,
         body: () async {},
       );
       final second = dispatcher.dispatch<void>(
         sessionId: "second",
         operation: SessionOperation.sendPrompt,
-        interaction: null,
         body: () async {},
       );
       await firstResolutionStarted.future;
@@ -215,7 +238,6 @@ void main() {
         () => dispatcher.dispatch<void>(
           sessionId: "second",
           operation: SessionOperation.abortSession,
-          interaction: null,
           body: () async {},
         ),
         throwsStateError,

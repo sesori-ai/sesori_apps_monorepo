@@ -127,6 +127,7 @@ import "services/permission_auto_approval_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
+import "services/project_mutation_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_deletion_service.dart";
@@ -396,6 +397,12 @@ class Orchestrator {
       worktreeRepository: worktreeRepository,
       filesystemRepository: filesystemRepository,
     );
+    final projectMutationService = ProjectMutationService(
+      filesystemRepository: filesystemRepository,
+      projectInitializationService: projectInitializationService,
+      projectActivityService: projectActivityService,
+      projectRepository: projectRepository,
+    );
     final roomKey = _generateRoomKey();
     final bytesSentController = StreamController<int>.broadcast();
     final localWireEventsController = StreamController<SesoriSseEvent>.broadcast();
@@ -549,16 +556,9 @@ class Orchestrator {
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
         RenameProjectHandler(projectRepository),
-        CreateProjectHandler(
-          projectInitializationService: projectInitializationService,
-          projectActivityService: projectActivityService,
-        ),
-        OpenProjectHandler(
-          filesystemRepository: filesystemRepository,
-          projectInitializationService: projectInitializationService,
-          projectActivityService: projectActivityService,
-        ),
-        HideProjectHandler(projectRepository: projectRepository),
+        CreateProjectHandler(projectMutationService: projectMutationService),
+        OpenProjectHandler(projectMutationService: projectMutationService),
+        HideProjectHandler(projectMutationService: projectMutationService),
         GetBaseBranchHandler(projectRepository: projectRepository),
         SetBaseBranchHandler(projectRepository: projectRepository),
         FilesystemSuggestionsHandler(filesystemRepository: filesystemRepository),

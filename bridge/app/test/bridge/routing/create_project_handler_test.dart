@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_project_handler.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/bridge/services/project_mutation_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -35,14 +36,15 @@ void main() {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       );
+      final projectRepository = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
       projectActivityService = ProjectActivityService(
-        projectRepository: singlePluginProjectRepository(
-          gitCliApi: FakeGitCliApi(),
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
+        projectRepository: projectRepository,
         projectActivityRepository: singlePluginProjectActivityRepository(
           plugin: plugin,
           projectsDao: db.projectsDao,
@@ -50,21 +52,26 @@ void main() {
         ),
         now: () => 1234,
       );
-      handler = CreateProjectHandler(
-        projectInitializationService: ProjectInitializationService(
-          worktreeRepository: singlePluginWorktreeRepository(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            plugin: plugin,
-            gitApi: GitCliApi(
-              processRunner: ProcessRunner(),
-              gitPathExists: ({required String gitPath}) =>
-                  FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
-            ),
+      final projectInitializationService = ProjectInitializationService(
+        worktreeRepository: singlePluginWorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          plugin: plugin,
+          gitApi: GitCliApi(
+            processRunner: ProcessRunner(),
+            gitPathExists: ({required String gitPath}) =>
+                FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
           ),
-          filesystemRepository: filesystemRepository,
         ),
-        projectActivityService: projectActivityService,
+        filesystemRepository: filesystemRepository,
+      );
+      handler = CreateProjectHandler(
+        projectMutationService: ProjectMutationService(
+          filesystemRepository: filesystemRepository,
+          projectInitializationService: projectInitializationService,
+          projectActivityService: projectActivityService,
+          projectRepository: projectRepository,
+        ),
       );
       tempDir = await Directory.systemTemp.createTemp("create-project-handler-test-");
     });

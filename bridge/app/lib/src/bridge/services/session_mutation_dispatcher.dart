@@ -29,7 +29,6 @@ class SessionMutationDispatcher {
     return _sessionOperationDispatcher.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.renameSession,
-      interaction: null,
       body: () => _renameSessionAlreadyReserved(sessionId: sessionId, title: title),
     );
   }
@@ -42,7 +41,6 @@ class SessionMutationDispatcher {
     return _sessionOperationDispatcher.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
-      interaction: null,
       body: () async {
         final cleanupResult = await cleanup();
         if (cleanupResult is CleanupRejected) return cleanupResult;

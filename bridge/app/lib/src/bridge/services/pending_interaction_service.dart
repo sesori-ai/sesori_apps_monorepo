@@ -32,7 +32,6 @@ class PendingInteractionService {
     return _dispatcher.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.replyToPermission,
-      interaction: PendingPermissionInteraction(requestId: requestId),
       body: () => _permissionRepository.replyToPermission(
         requestId: requestId,
         sessionId: sessionId,
@@ -50,7 +49,6 @@ class PendingInteractionService {
     return _dispatcher.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.replyToQuestion,
-      interaction: PendingQuestionInteraction(requestId: questionId),
       body: () => _questionRepository.replyToQuestion(
         questionId: questionId,
         sessionId: sessionId,
@@ -68,7 +66,6 @@ class PendingInteractionService {
       return _dispatcher.dispatch(
         sessionId: sessionId,
         operation: SessionOperation.rejectQuestion,
-        interaction: PendingQuestionInteraction(requestId: questionId),
         body: () => _questionRepository.rejectQuestion(
           questionId: questionId,
           sessionId: sessionId,

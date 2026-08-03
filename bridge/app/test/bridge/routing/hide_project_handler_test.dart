@@ -2,6 +2,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/hide_project_handler.dart";
+import "package:sesori_bridge/src/bridge/services/project_mutation_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -27,7 +28,9 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
       );
-      handler = HideProjectHandler(projectRepository: projectRepository);
+      handler = HideProjectHandler(
+        projectMutationService: _ProjectMutationService(projectRepository: projectRepository),
+      );
     });
 
     tearDown(() async {
@@ -85,4 +88,18 @@ void main() {
       expect(hiddenIds, contains(projectId));
     });
   });
+}
+
+class _ProjectMutationService implements ProjectMutationService {
+  final ProjectRepository projectRepository;
+
+  _ProjectMutationService({required this.projectRepository});
+
+  @override
+  Future<void> hideProject({required String projectId}) {
+    return projectRepository.hideProject(projectId: projectId);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

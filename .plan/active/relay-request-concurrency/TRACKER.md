@@ -3,15 +3,13 @@
 ## Current State
 
 - **Plan slug:** `relay-request-concurrency`
-- **Implementation base:** current `main` at
-  `132694ea379b18bd8f87d45ca5a7323945363039`, including merged Step 6 at
-  `e4605eb15b68f5433b5740981d03ff6e63f964cb`
-- **Series state:** Steps 1–6 merged; over-defensive Step 7 implementation
-  [#716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) closed without merge
-- **Current step:** Step 7/10 PR
-  [#720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/720) open
+- **Implementation base:** merged corrected Step 7 at
+  `6233da3e17f00517663b64e4eb5b789a47206514`
+- **Series state:** Steps 1–7 merged; over-defensive implementation
+  [#716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) remains closed without merge
+- **Current step:** Step 8/10 implementation on `plan-parallel-requests`
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** review and merge corrected Step 7; Step 8 remains blocked
+- **Next action:** commit, open, review, and merge Step 8
 
 ## Incident Evidence
 
@@ -102,8 +100,8 @@
 | [x] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as `9ac855a3` with 1,326 changed lines |
 | [x] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged as `5ba0d3a6` with 1,534 changed lines |
 | [x] | 6/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | [PR #703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) merged as `e4605eb1` with 1,054 changed lines |
-| [ ] | 7/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: simplify remaining concurrency plan [step 7/10]` | 350–550 | [PR #720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/720) open; PR #716 closed without merge |
-| [ ] | 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | 500–900 | Blocked on corrected Step 7 merge |
+| [x] | 7/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: simplify remaining concurrency plan [step 7/10]` | 350–550 | [PR #720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/720) merged as `6233da3e` with 543 changed lines; PR #716 closed without merge |
+| [ ] | 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | 500–900 | Implemented from `6233da3e`; PR pending |
 | [ ] | 9/10 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | Blocked on Step 8 merge |
 | [ ] | 10/10 | `relay-request-concurrency-retire-plan` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | 50–150 | Blocked on Step 9 merge |
 
@@ -408,4 +406,23 @@
   detaching relay route/SSE-summary work, existing incarnation/epoch/restart
   fences, and shutdown drain required by the demonstrated head-of-line incident.
 - **Corrected Step 7 delivery:** [PR #720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/720)
-  is open from current `main`; its diff is documentation/agent guidance only.
+  merged as `6233da3e17f00517663b64e4eb5b789a47206514` with 543
+  documentation/agent-only changed lines.
+- **Step 8/10 implementation:** removed dedicated permission/question interaction
+  types, keys, lanes, parameters, and cleanup; modern writers continue through
+  the existing family FIFO while legacy sessionless rejection retains plugin
+  settlement, owner resolution, plugin validation, and family admission.
+  `ProjectMutationService` now owns one synchronous failure-safe FIFO around the
+  complete create/open/hide workflows with sealed open outcomes and no lifecycle.
+- **Step 8/10 cleanup:** project handlers no longer own filesystem,
+  initialization, activity, or repository workflow dependencies. No canonical
+  path lanes, per-project parallelism, registry, drain/dispose owner, wire/data,
+  client, shared, plugin-interface, generated, or analytics changes were added.
+- **Step 8/10 verification:** 2,421 full `bridge/app` tests pass, focused project,
+  dispatcher, pending-interaction, auto-approval, and legacy suites pass, strict
+  `dart analyze --fatal-infos` reports no issues, and `git diff --check` passes.
+- **Step 8/10 architecture review:** `aristotle-impl-review` approved the complete
+  uncommitted diff with no findings; synchronous admission, failure-safe FIFO,
+  typed outcomes, dependency direction, lifecycle ownership, and proportionality
+  passed.
+- **Step 8/10 delivery:** PR pending at 707 changed lines.

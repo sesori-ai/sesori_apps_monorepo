@@ -25,7 +25,6 @@ class SessionAbortService {
     final operation = _dispatcher.dispatch<void>(
       sessionId: sessionId,
       operation: SessionOperation.abortSession,
-      interaction: null,
       body: () async {
         await _sessionRepository.abortSession(sessionId: sessionId);
         _abortedSessionsController.add(sessionId);

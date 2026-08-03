@@ -6,35 +6,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Plugi
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 
-sealed class PendingInteractionRequest {
-  final String requestId;
-
-  const PendingInteractionRequest({required this.requestId});
-}
-
-final class PendingPermissionInteraction extends PendingInteractionRequest {
-  const PendingPermissionInteraction({required super.requestId});
-}
-
-final class PendingQuestionInteraction extends PendingInteractionRequest {
-  const PendingQuestionInteraction({required super.requestId});
-}
-
-enum _PendingInteractionKind { permission, question }
-
 typedef _FamilyKey = ({String pluginId, String rootSessionId});
-typedef _InteractionKey = ({
-  String pluginId,
-  String ownerSessionId,
-  _PendingInteractionKind kind,
-  String requestId,
-});
 
 /// Admits session work in arrival order, then serializes only shared domains.
 class SessionOperationDispatcher {
   final SessionRepository _sessionRepository;
   final Map<_FamilyKey, _LaneToken> _familyLanes = {};
-  final Map<_InteractionKey, _LaneToken> _interactionLanes = {};
   final Map<String, _LaneToken> _pluginAdmissionLanes = {};
   final Map<String, Set<Future<void>>> _pluginSettlements = {};
   final Set<Future<void>> _inFlightSettlements = {};
@@ -50,7 +27,6 @@ class SessionOperationDispatcher {
   Future<T> dispatch<T>({
     required String sessionId,
     required SessionOperation operation,
-    required PendingInteractionRequest? interaction,
     required Future<T> Function() body,
   }) {
     if (!_accepting) throw _closedError();
@@ -72,8 +48,6 @@ class SessionOperationDispatcher {
             _registerOperation(
               ticket: ticket,
               family: family,
-              ownerSessionId: sessionId,
-              interaction: interaction,
               body: body,
               result: result,
             );
@@ -123,8 +97,6 @@ class SessionOperationDispatcher {
             _registerOperation(
               ticket: ticket,
               family: family,
-              ownerSessionId: ownerSessionId,
-              interaction: PendingQuestionInteraction(requestId: questionId),
               body: () => body(ownerSessionId: ownerSessionId),
               result: result,
             );
@@ -149,7 +121,7 @@ class SessionOperationDispatcher {
   }
 
   @visibleForTesting
-  int get activeLaneCount => _familyLanes.length + _interactionLanes.length + _pluginAdmissionLanes.length;
+  int get activeLaneCount => _familyLanes.length + _pluginAdmissionLanes.length;
 
   Future<void> _drain() async {
     beginShutdown();
@@ -209,39 +181,17 @@ class SessionOperationDispatcher {
   void _registerOperation<T>({
     required int ticket,
     required SessionFamilyScope family,
-    required String ownerSessionId,
-    required PendingInteractionRequest? interaction,
     required Future<T> Function() body,
     required Completer<T> result,
   }) {
     final familyKey = (pluginId: family.pluginId, rootSessionId: family.rootSessionId);
-    final predecessors = <Future<void>>[
-      _familyLanes[familyKey]?.completion.future ?? Future<void>.value(),
-    ];
+    final predecessor = _familyLanes[familyKey]?.completion.future ?? Future<void>.value();
     final token = _LaneToken(ticket: ticket);
     _familyLanes[familyKey] = token;
-
-    final interactionKey = interaction == null
-        ? null
-        : (
-            pluginId: family.pluginId,
-            ownerSessionId: ownerSessionId,
-            kind: switch (interaction) {
-              PendingPermissionInteraction() => _PendingInteractionKind.permission,
-              PendingQuestionInteraction() => _PendingInteractionKind.question,
-            },
-            requestId: interaction.requestId,
-          );
-    if (interactionKey != null) {
-      predecessors.add(
-        _interactionLanes[interactionKey]?.completion.future ?? Future<void>.value(),
-      );
-      _interactionLanes[interactionKey] = token;
-    }
     _trackPlugin(result: result, pluginId: family.pluginId);
 
     unawaited(() async {
-      await Future.wait(predecessors);
+      await predecessor;
       try {
         result.complete(await body());
       } on Object catch (error, stackTrace) {
@@ -249,9 +199,6 @@ class SessionOperationDispatcher {
       } finally {
         token.completion.complete();
         if (identical(_familyLanes[familyKey], token)) _familyLanes.remove(familyKey);
-        if (interactionKey != null && identical(_interactionLanes[interactionKey], token)) {
-          _interactionLanes.remove(interactionKey);
-        }
       }
     }());
   }

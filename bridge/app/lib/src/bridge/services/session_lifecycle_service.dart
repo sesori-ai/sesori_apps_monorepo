@@ -159,7 +159,6 @@ class SessionLifecycleService {
     return _sessionOperationDispatcher.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.updateSessionArchiveStatus,
-      interaction: null,
       body: () => _updateArchiveStatusAlreadyReserved(
         sessionId: sessionId,
         archived: archived,

@@ -266,7 +266,6 @@ class _Fixture {
     return operations.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.sendPrompt,
-      interaction: null,
       body: () => repository.executeAction(sessionId: sessionId),
     );
   }

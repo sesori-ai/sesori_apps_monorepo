@@ -1,6 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/project_repository.dart";
+import "../services/project_mutation_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/hide` — hides a project from listings.
@@ -9,10 +9,10 @@ import "request_handler.dart";
 /// slashes (it can be a filesystem path), so it is passed in the body rather
 /// than as a URL path parameter.
 class HideProjectHandler extends BodyRequestHandler<ProjectIdRequest, SuccessEmptyResponse> {
-  final ProjectRepository _projectRepository;
+  final ProjectMutationService _projectMutationService;
 
-  HideProjectHandler({required ProjectRepository projectRepository})
-    : _projectRepository = projectRepository,
+  HideProjectHandler({required ProjectMutationService projectMutationService})
+    : _projectMutationService = projectMutationService,
       super(
         HttpMethod.post,
         "/project/hide",
@@ -32,7 +32,7 @@ class HideProjectHandler extends BodyRequestHandler<ProjectIdRequest, SuccessEmp
       throw buildErrorResponse(request, 400, "empty project id");
     }
 
-    await _projectRepository.hideProject(projectId: projectId);
+    await _projectMutationService.hideProject(projectId: projectId);
 
     return const SuccessEmptyResponse();
   }
