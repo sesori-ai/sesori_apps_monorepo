@@ -353,6 +353,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
 
   return SessionDetailSnapshot(
     projectId: projectId,
+    pluginId: "opencode",
     messages: const [],
     pendingQuestions: const [],
     pendingPermissions: const [],

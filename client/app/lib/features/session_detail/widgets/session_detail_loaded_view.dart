@@ -203,6 +203,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                       // something, so the composer should rest as a follow-up
                       // field even before the first message lands in the list.
                       hasMessages: state.messages.isNotEmpty || state.queuedMessages.isNotEmpty,
+                      attachmentsSupported: harnessSupportsPromptAttachments(pluginId: state.pluginId),
                       isBusy: hasActiveWork(
                         sessionStatus: state.sessionStatus,
                         childStatuses: state.childStatuses,

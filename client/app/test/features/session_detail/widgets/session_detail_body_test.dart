@@ -107,6 +107,7 @@ SessionDetailLoaded _loadedState({
   List<Session> children = const [],
   Map<String, SessionStatus> childStatuses = const {},
   SessionStatus sessionStatus = const SessionStatus.idle(),
+  String? pluginId = "opencode",
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
@@ -116,6 +117,7 @@ SessionDetailLoaded _loadedState({
     pendingQuestions: pendingQuestions,
     pendingPermissions: pendingPermissions,
     sessionTitle: "Session",
+    pluginId: pluginId,
     agent: null,
     assistantAgentModel: null,
     children: children,
@@ -258,6 +260,7 @@ void main() {
       pendingQuestions: const [],
       pendingPermissions: const [],
       sessionTitle: "Session",
+      pluginId: "opencode",
       agent: null,
       assistantAgentModel: null,
       children: const [],
@@ -1777,6 +1780,28 @@ void main() {
     expect(semanticsWithLabel("screenshot.png"), findsNothing);
     // Nothing left to show: the composer collapses back to its resting pill.
     expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("accordion offers no attach action on a harness that drops image parts", (tester) async {
+    // TEMPORARY 2026-08-03: remove with the harness gate once every harness
+    // carries image parts — see harnessSupportsPromptAttachments.
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      pluginId: "codex",
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(TablerRegular.photo), findsNothing);
+    // The accordion still opens for its other action.
+    expect(find.byIcon(TablerRegular.slash), findsOneWidget);
   });
 
   testWidgets("send includes the staged attachment and clears the strip", (tester) async {

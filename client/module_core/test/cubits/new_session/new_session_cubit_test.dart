@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -8,6 +9,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
@@ -260,6 +262,110 @@ void main() {
           "review",
         ]),
       ],
+    );
+
+    // TEMPORARY 2026-08-03: these two cover the harness gate — remove them
+    // with it once every harness carries image parts. See
+    // harnessSupportsPromptAttachments.
+    blocTest<NewSessionCubit, NewSessionState>(
+      "createSession forwards attachments on OpenCode",
+      skip: 1,
+      build: () {
+        when(mockPluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: "bridge-1",
+              supportsSessionOptions: true,
+              plugins: const [
+                PluginMetadata(
+                  id: "opencode",
+                  displayName: "OpenCode",
+                  isDefault: true,
+                  state: PluginLifecycleState.ready,
+                  actionHint: null,
+                ),
+              ],
+            ),
+          ),
+        );
+        when(
+          () => mockSessionService.createSessionWithMessage(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await waitForComposer(cubit);
+        await cubit.createSession(
+          text: "look at this",
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          dedicatedWorktree: false,
+          command: null,
+          inputMode: ComposerInputMode.typed,
+        );
+      },
+      expect: () => [isA<NewSessionIdle>(), isA<NewSessionSending>(), isA<NewSessionCreated>()],
+      verify: (_) {
+        verify(
+          () => mockSessionService.createSessionWithMessage(
+            projectId: "project-1",
+            pluginId: "opencode",
+            text: "look at this",
+            attachments: any(named: "attachments", that: hasLength(1)),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: null,
+            dedicatedWorktree: false,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<NewSessionCubit, NewSessionState>(
+      "createSession refuses attachments on a harness that drops image parts",
+      skip: 1,
+      build: buildCubit,
+      act: (cubit) async {
+        await waitForComposer(cubit);
+        await cubit.createSession(
+          text: "look at this",
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          dedicatedWorktree: false,
+          command: null,
+          inputMode: ComposerInputMode.typed,
+        );
+      },
+      // Refused before the send even starts: the composer settles into idle
+      // and no sending state follows it.
+      expect: () => [isA<NewSessionIdle>()],
+      verify: (_) {
+        verifyNever(
+          () => mockSessionService.createSessionWithMessage(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
+          ),
+        );
+      },
     );
 
     blocTest<NewSessionCubit, NewSessionState>(

@@ -52,6 +52,10 @@ class PromptInput extends StatefulWidget {
   final ValueChanged<CommandInfo> onCommandSelected;
   final VoidCallback onCommandCleared;
 
+  /// Whether this composer offers image attachments. Owners resolve it from
+  /// the harness behind the composer — see [harnessSupportsPromptAttachments].
+  final bool attachmentsSupported;
+
   /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header;
 
@@ -75,6 +79,7 @@ class PromptInput extends StatefulWidget {
     required this.stagedCommand,
     required this.onCommandSelected,
     required this.onCommandCleared,
+    required this.attachmentsSupported,
     required this.draftIdentity,
     required this.initialDraft,
     this.header,
@@ -384,6 +389,11 @@ class _PromptInputState extends State<PromptInput> {
       // session and never carry across.
       _attachments.clear();
       _restoreDraft(draft: widget.initialDraft);
+    }
+    // Switching the new-session harness to one that drops image parts strands
+    // whatever was staged for the previous pick, so drop it with the action.
+    if (!widget.attachmentsSupported && _attachments.isNotEmpty) {
+      setState(_attachments.clear);
     }
     if (oldWidget.surfaceStyleController != widget.surfaceStyleController || draftChanged || stagedCommandChanged) {
       _syncSurfaceStyle();
@@ -1346,6 +1356,7 @@ class _PromptInputState extends State<PromptInput> {
   Widget _buildOptionsAccordion() {
     return ComposerOptionsAccordion(
       actionsEnabled: _displayedVoiceState == _VoiceState.idle,
+      showAttachImage: widget.attachmentsSupported,
       onSlashCommandsTap: _openCommandPicker,
       onAttachImageTap: _handleAttachImage,
     );

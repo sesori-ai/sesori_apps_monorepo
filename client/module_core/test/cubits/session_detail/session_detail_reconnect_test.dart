@@ -159,6 +159,7 @@ void main() {
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: "project-1",
+          pluginId: "opencode",
           messages: <MessageWithParts>[],
           pendingQuestions: <PendingQuestion>[],
           pendingPermissions: <PendingPermission>[],
@@ -237,6 +238,7 @@ void main() {
     const loadedResult = SessionDetailLoadResult.loaded(
       snapshot: SessionDetailSnapshot(
         projectId: "project-1",
+        pluginId: "opencode",
         messages: <MessageWithParts>[],
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],

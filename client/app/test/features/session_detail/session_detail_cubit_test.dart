@@ -288,6 +288,113 @@ void main() {
       },
     );
 
+    // TEMPORARY 2026-08-03: these two cover the harness gate — remove them
+    // with it once every harness carries image parts. See
+    // harnessSupportsPromptAttachments.
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage forwards attachments on an OpenCode session",
+      build: () {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId, pluginId: "opencode"),
+        );
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: MockLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: mockProductAnalyticsService,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(
+          text: "look at this",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+        );
+      },
+      expect: () => [isA<SessionDetailLoaded>()],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendMessage(
+            sessionId: sessionId,
+            text: "look at this",
+            attachments: any(named: "attachments", that: hasLength(1)),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: null,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage refuses attachments on a harness that drops image parts",
+      build: () {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId, pluginId: "codex"),
+        );
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: MockLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: mockProductAnalyticsService,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(
+          text: "look at this",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+        );
+      },
+      // Refused outright rather than sent with the images stripped: nothing
+      // reaches the service and nothing is queued.
+      expect: () => [
+        isA<SessionDetailLoaded>().having((state) => state.queuedMessages, "queuedMessages", isEmpty),
+      ],
+      verify: (_) {
+        verifyNever(
+          () => mockSessionService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+          ),
+        );
+      },
+    );
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage refuses a command carrying attachments instead of dropping them",
       build: () => SessionDetailCubit(
@@ -2394,9 +2501,10 @@ void _stubAllDefaults(
   ).thenReturn(null);
 
   when(
-    () => sessionService.sendMessage(attachments: const [],
+    () => sessionService.sendMessage(
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
+      attachments: any(named: "attachments"),
       agent: any(named: "agent"),
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),

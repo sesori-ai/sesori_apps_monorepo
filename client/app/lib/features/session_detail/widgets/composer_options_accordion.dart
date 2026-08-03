@@ -17,12 +17,17 @@ class ComposerOptionsAccordion extends StatefulWidget {
   /// Disables the revealed actions (not the toggle) while the composer is
   /// recording or transcribing, mirroring the old always-visible slash button.
   final bool actionsEnabled;
+
+  /// Whether the image-attach action is offered at all. Harnesses that drop
+  /// image parts get no attach button rather than one that loses the image.
+  final bool showAttachImage;
   final VoidCallback onSlashCommandsTap;
   final VoidCallback onAttachImageTap;
 
   const ComposerOptionsAccordion({
     super.key,
     required this.actionsEnabled,
+    required this.showAttachImage,
     required this.onSlashCommandsTap,
     required this.onAttachImageTap,
   });
@@ -67,17 +72,19 @@ class _ComposerOptionsAccordionState extends State<ComposerOptionsAccordion> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_isOpen) ...[
-                      _AccordionIconButton(
-                        icon: TablerRegular.photo,
-                        tooltip: loc.sessionDetailAttachImage,
-                        onTap: widget.actionsEnabled
-                            ? () {
-                                setState(() => _isOpen = false);
-                                widget.onAttachImageTap();
-                              }
-                            : null,
-                      ),
-                      const SizedBox(width: PregoSpacing.md),
+                      if (widget.showAttachImage) ...[
+                        _AccordionIconButton(
+                          icon: TablerRegular.photo,
+                          tooltip: loc.sessionDetailAttachImage,
+                          onTap: widget.actionsEnabled
+                              ? () {
+                                  setState(() => _isOpen = false);
+                                  widget.onAttachImageTap();
+                                }
+                              : null,
+                        ),
+                        const SizedBox(width: PregoSpacing.md),
+                      ],
                       _AccordionIconButton(
                         icon: TablerRegular.slash,
                         tooltip: loc.sessionDetailCommandPickerTitle,

@@ -10,6 +10,7 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
+import "../../foundation/models/composer/composer_attachment_support.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
@@ -1057,6 +1058,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
+    // TEMPORARY 2026-08-03: see [harnessSupportsPromptAttachments]. The
+    // composer hides the attach action for harnesses that drop image parts;
+    // hold that line here too, at the seam that formats the wire payload.
+    if (attachments.isNotEmpty &&
+        current is SessionDetailLoaded &&
+        !harnessSupportsPromptAttachments(pluginId: current.pluginId)) {
+      logw("Refused ${attachments.length} attachment(s) for harness ${current.pluginId}");
+      return;
+    }
+
     final submission = normalizedCommand == null
         ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode, attachments: attachments)
         : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);
@@ -1587,6 +1598,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       sessionTitle: snapshot.canonicalSessionTitle,
+      pluginId: snapshot.pluginId,
       agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
