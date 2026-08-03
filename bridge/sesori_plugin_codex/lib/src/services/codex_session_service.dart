@@ -382,16 +382,6 @@ class CodexSessionService {
     _threadModels.remove(sessionId);
   }
 
-  Future<void> recordStructuredToolError({
-    required String sessionId,
-    required String callId,
-  }) {
-    return _toolOutcomeRepository.recordError(
-      sessionId: sessionId,
-      callId: callId,
-    );
-  }
-
   Future<List<PluginMessageWithParts>> getSessionMessages({
     required String sessionId,
   }) async {

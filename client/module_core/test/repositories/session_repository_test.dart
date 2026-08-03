@@ -51,7 +51,7 @@ void main() {
       (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
     );
     when(
-      () => api.sendMessage(
+      () => api.sendMessage(attachments: const [],
         sessionId: "session-1",
         text: "hello",
         agent: "build",
@@ -83,7 +83,7 @@ void main() {
     await repository.listAgents(projectId: "project-1", pluginId: "plugin-1");
     await repository.listProviders(projectId: "project-1", pluginId: "plugin-1");
     await repository.listCommands(projectId: "project-1", pluginId: "plugin-1");
-    await repository.sendMessage(
+    await repository.sendMessage(attachments: const [],
       sessionId: "session-1",
       text: "hello",
       agent: "build",
@@ -109,7 +109,7 @@ void main() {
     verify(() => api.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(() => api.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(
-      () => api.sendMessage(
+      () => api.sendMessage(attachments: const [],
         sessionId: "session-1",
         text: "hello",
         agent: "build",

@@ -1327,6 +1327,60 @@ abstract class AppLocalizations {
   /// **'Hide actions'**
   String get sessionDetailHideActions;
 
+  /// Accessibility label of the advanced-options action that opens the gallery picker to attach an image to the next message.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach image'**
+  String get sessionDetailAttachImage;
+
+  /// Accessibility label of the badge on a staged attachment thumbnail that removes it from the composer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment'**
+  String get sessionDetailRemoveAttachment;
+
+  /// Fallback accessibility label of a staged attachment thumbnail when the image has no filename.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached image'**
+  String get sessionDetailAttachedImage;
+
+  /// Snackbar shown when a picked image exceeds the inline attachment size limit.
+  ///
+  /// In en, this message translates to:
+  /// **'That image is too large to attach.'**
+  String get sessionDetailAttachmentTooLarge;
+
+  /// Snackbar shown when the gallery picker fails for a reason other than the size limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t attach the image.'**
+  String get sessionDetailAttachmentPickFailed;
+
+  /// Snackbar shown when the picked file is not a recognized image format and cannot be attached.
+  ///
+  /// In en, this message translates to:
+  /// **'That image format isn\'t supported.'**
+  String get sessionDetailAttachmentUnsupported;
+
+  /// Snackbar shown when adding another image would push the message's combined attachment size past the inline limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached images are limited to 5 MB per message.'**
+  String get sessionDetailAttachmentBudgetExceeded;
+
+  /// Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images.
+  ///
+  /// In en, this message translates to:
+  /// **'Images can\'t be sent with slash commands.'**
+  String get sessionDetailAttachmentsNotWithCommands;
+
+  /// Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 image} other{{count} images}}'**
+  String sessionDetailQueuedAttachmentCount(int count);
+
   /// Accessibility label of the button that opens the fullscreen message editor.
   ///
   /// In en, this message translates to:

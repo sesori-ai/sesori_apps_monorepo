@@ -406,17 +406,18 @@ void main() {
       expect(output, isNot(contains("secret-source-content")));
     });
 
-    test("readTranscript names image-generation schema fields without values", () {
+    test("readTranscript names durable image schema fields without values", () {
       final path = p.join(codexHome.path, "malformed-image-transcript.jsonl");
       File(path).writeAsStringSync(
         '${jsonEncode({
-          "type": "response_item",
+          "type": "event_msg",
           "payload": {
-            "type": "image_generation_call",
-            "id": "secret-image-id",
+            "type": "image_generation_end",
+            "call_id": "secret-image-id",
             "status": "completed",
             "result": 42,
             "revised_prompt": "secret revised prompt",
+            "saved_path": "/secret/generated.png",
           },
         })}\n{}\n',
       );
@@ -428,9 +429,11 @@ void main() {
 
       expect(output, contains('status:enum("completed")'));
       expect(output, contains("result:int"));
-      expect(output, contains("<redacted-key>:String"));
+      expect(output, contains("revised_prompt:String"));
+      expect(output, contains("saved_path:String"));
       expect(output, isNot(contains("secret-image-id")));
       expect(output, isNot(contains("secret revised prompt")));
+      expect(output, isNot(contains("/secret/generated.png")));
     });
 
     test("readTranscript bounds malformed record schema output", () {
@@ -1029,6 +1032,32 @@ void main() {
             "type": "response_item",
             "payload": {
               "type": "message",
+              "id": "mixed-context-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<recommended_plugins>internal list</recommended_plugins>",
+                },
+                {"type": "input_text", "text": "Visible mixed prompt"},
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>internal cwd</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "Visible mixed prompt",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
               "id": "generated-abort",
               "role": "user",
               "content": [
@@ -1062,6 +1091,7 @@ void main() {
       expect(messages.map((message) => message.info.id), [
         "actual-user",
         "actual-wrapper-user",
+        "mixed-context-user",
         "assistant-1",
       ]);
       expect(messages.first.parts.single.text, "Explain the <environment_context> tag");
@@ -1069,6 +1099,7 @@ void main() {
         messages[1].parts.single.text,
         "<environment_context>user-authored text</environment_context>",
       );
+      expect(messages[2].parts.single.text, "Visible mixed prompt");
       expect(messages.last.parts.single.text, "Visible answer");
     });
 
@@ -1190,7 +1221,7 @@ void main() {
             "type": "event_msg",
             "payload": {
               "type": "image_generation_end",
-              "call_id": "image-1",
+              "call_id": " image-1 ",
               "status": "completed",
               "revised_prompt": "private prompt",
               "result": "AA==",
@@ -1214,6 +1245,83 @@ void main() {
       final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
       expect(attachment.base64, "AA==");
       expect(attachment.filename, "final.png");
+    });
+
+    test("readMessages correlates id-less image records by durable result", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-idless-durable-image.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii3",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "status": "completed",
+              "result": "AA==",
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "image_generation_end",
+              "call_id": "image-durable",
+              "status": "completed",
+              "revised_prompt": null,
+              "result": "AA==",
+              "saved_path": "/private/generated/final.png",
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii3",
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages, hasLength(1));
+      expect(messages.single.info.id, "image-durable");
+    });
+
+    test("blank durable image ids do not shift legacy message ids", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-blank-durable-image.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii4",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "image_generation_end",
+              "call_id": "   ",
+              "status": "completed",
+              "revised_prompt": null,
+              "result": "AQ==",
+              "saved_path": null,
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "status": "completed",
+              "result": "AA==",
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii4",
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.single.info.id, "m-1");
     });
 
     test("readMessages surfaces transcript read failures", () {
@@ -1443,6 +1551,48 @@ void main() {
           }),
           jsonEncode(
             call(
+              callId: "call-legacy-completed",
+              command: "sleep 70",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-legacy-completed",
+              text: "Script running with cell ID 11\nOutput:\n",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-legacy-completed",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-legacy-aborted",
+              command: "sleep 80",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-legacy-aborted",
+              text: "Script running with cell ID 12\nOutput:\n",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "turn_id": "turn-legacy-aborted",
+            },
+          }),
+          jsonEncode(
+            call(
               callId: "call-interrupted-legacy",
               command: "sleep 90",
               turnId: null,
@@ -1488,6 +1638,8 @@ void main() {
         "call-shell",
         "call-completed",
         "call-aborted",
+        "call-legacy-completed",
+        "call-legacy-aborted",
         "call-interrupted-legacy",
         "user-next",
         "call-active",
@@ -1502,6 +1654,8 @@ void main() {
       expect(tools["call-shell"]?.state?.output, contains("aborted by user after 1.0s"));
       expect(tools["call-completed"]?.state?.status, PluginToolStatus.completed);
       expect(tools["call-aborted"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-legacy-completed"]?.state?.status, PluginToolStatus.completed);
+      expect(tools["call-legacy-aborted"]?.state?.status, PluginToolStatus.error);
       expect(tools["call-interrupted-legacy"]?.state?.status, PluginToolStatus.error);
       expect(tools["call-active"]?.state?.status, PluginToolStatus.running);
     });

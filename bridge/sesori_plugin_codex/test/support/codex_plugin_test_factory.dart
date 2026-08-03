@@ -6,7 +6,7 @@ import "package:codex_plugin/src/api/parsers/codex_command_execution_parser.dart
 import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
-import "package:codex_plugin/src/repositories/codex_tool_correlation_tracker.dart";
+import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
@@ -26,6 +26,7 @@ CodexPlugin createInjectedCodexPlugin({
   const rolloutToolMapper = CodexRolloutToolMapper(
     imageAttachmentMapper: imageAttachmentMapper,
   );
+  const imageBearingItemParser = CodexImageBearingItemParser();
   final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
   final configReader = CodexConfigReader(environment: environment);
   final metadataRepository = CodexMetadataRepository(
@@ -50,7 +51,7 @@ CodexPlugin createInjectedCodexPlugin({
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
       imageAttachmentMapper: imageAttachmentMapper,
-      imageBearingItemParser: const CodexImageBearingItemParser(),
+      imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
       config: configReader.readDefaults(),
     ),
@@ -59,10 +60,12 @@ CodexPlugin createInjectedCodexPlugin({
       catalogRepository: catalogRepository,
       pollInterval: rolloutPollInterval,
     ),
-    toolCorrelationTracker: CodexToolCorrelationTracker(
+    toolLifecycleTracker: CodexToolLifecycleTracker(
       rolloutToolMapper: rolloutToolMapper,
     ),
+    toolOutcomeRepository: resolvedToolOutcomeRepository,
     commandExecutionParser: const CodexCommandExecutionParser(),
+    imageBearingItemParser: imageBearingItemParser,
     projectCwd: projectCwd,
     onConnected: null,
     onDisconnected: null,

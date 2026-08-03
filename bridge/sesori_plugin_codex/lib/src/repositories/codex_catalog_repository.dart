@@ -160,7 +160,13 @@ class CodexCatalogRepository {
       }
     }
 
-    final indexLines = _readSessionIndexLines();
+    final List<CodexSessionIndexLine> indexLines;
+    try {
+      indexLines = _rolloutApi.readSessionIndexLines();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to read the session index", error, stackTrace);
+      return false;
+    }
     final filtered = [
       for (final line in indexLines)
         if (line.entry?.id != sessionId) line.raw,
@@ -174,6 +180,7 @@ class CodexCatalogRepository {
         error,
         stackTrace,
       );
+      return false;
     }
     return true;
   }
@@ -190,15 +197,6 @@ class CodexCatalogRepository {
   List<CodexSessionIndexEntryDto> _readSessionIndex() {
     try {
       return _rolloutApi.readSessionIndex();
-    } on Object catch (error, stackTrace) {
-      Log.w("[codex] failed to read the session index", error, stackTrace);
-      return const [];
-    }
-  }
-
-  List<CodexSessionIndexLine> _readSessionIndexLines() {
-    try {
-      return _rolloutApi.readSessionIndexLines();
     } on Object catch (error, stackTrace) {
       Log.w("[codex] failed to read the session index", error, stackTrace);
       return const [];

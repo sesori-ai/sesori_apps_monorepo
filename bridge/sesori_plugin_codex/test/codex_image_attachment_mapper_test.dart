@@ -203,6 +203,37 @@ void main() {
       expect(attachments[3], isA<PluginMessageAttachmentMetadata>());
     });
 
+    test("reapplies count and byte limits when mapped batches merge", () {
+      final threeMiB = base64Encode(Uint8List(3 * 1024 * 1024));
+      final bounded = mapper.boundMappedAttachments(
+        attachments: [
+          PluginMessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: threeMiB,
+            filename: "first.png",
+          ),
+          PluginMessageAttachment.inlineImage(
+            mime: "image/png",
+            base64: threeMiB,
+            filename: "second.png",
+          ),
+          for (var index = 0; index < 4; index++)
+            PluginMessageAttachment.metadata(
+              mime: "image/png",
+              filename: "metadata-$index.png",
+            ),
+        ],
+      );
+
+      expect(bounded, hasLength(4));
+      expect(bounded[0], isA<PluginMessageAttachmentInlineImage>());
+      expect(bounded[1], isA<PluginMessageAttachmentMetadata>());
+      expect(
+        (bounded[1] as PluginMessageAttachmentMetadata).filename,
+        "second.png",
+      );
+    });
+
     test("deduplicates privacy-safe warnings per collection and reason", () {
       late List<PluginMessageAttachment> attachments;
       final output = _captureWarnings(() {

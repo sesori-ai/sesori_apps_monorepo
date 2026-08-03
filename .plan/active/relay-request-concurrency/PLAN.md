@@ -10,14 +10,17 @@
   [#690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) and Step 3 PR
   [#696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) and Step 4 PR
   [#699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) and Step 5 PR
-  [#700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged; Step 6
-  PR [#703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) is open
+  [#700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) and Step 6
+  PR [#703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) merged;
+  over-defensive Step 7 implementation PR
+  [#716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) closed without merge
 - **Plan date:** 2026-08-02
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main` at
-  `5ba0d3a6029cdb699120e6254bd248c806fa2f95`
-- **Delivery:** one plan PR, eight sequential implementation PRs, and one
-  plan-retirement PR
+  `132694ea379b18bd8f87d45ca5a7323945363039`, including merged Step 6 at
+  `e4605eb15b68f5433b5740981d03ff6e63f964cb`
+- **Delivery:** one plan PR, five merged prerequisite PRs, one documentation
+  correction, two remaining implementation PRs, and one plan-retirement PR
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687)
 
 This document and `TRACKER.md` are the implementation authority for this
@@ -66,8 +69,8 @@ long-running testing.
    frame.
 2. Requests from different clients, from one client, and for different plugins
    can execute concurrently and may respond out of order through their existing
-   request IDs, except operations sharing an explicit session-family, pending
-   interaction, or project-path causal lane.
+   request IDs, except operations sharing an explicit session-family or project
+   mutation lane.
 3. A stalled plugin-A request does not delay key exchange, global health,
    database-only reads, plugin-B requests, or a force-restart command for
    plugin A.
@@ -86,22 +89,23 @@ long-running testing.
    prevents late sends, and drains every accepted shared route plus each
    transport's surrounding work before disposing dependencies under the
    existing process backstop.
-8. Prompt/command/defaults, abort, and conflicting pending permission/question
-   responses preserve arrival order for one session family. Auto approval uses
-   the same owner; another family/plugin and force restart remain independent.
+8. Prompt/command/defaults, abort, and pending permission/question responses
+   preserve arrival order through one session-family owner. Auto approval uses
+   the same service boundary; another family/plugin and force restart remain
+   independent.
 9. Rename, archive/unarchive, and complete delete workflows preserve arrival
    order across a root and all descendants. Root deletion cannot race a child
    mutation or restore a worktree after cleanup.
-10. A new stable session is hidden by the authoritative repository from catalog
-    reads and events until its initial command and metadata rename settle, so
-    another surface cannot mutate a partially initialized binding.
-11. Create/open/hide and Git initialization for one canonical project path
-    preserve arrival order, while unrelated paths remain independent.
-12. Slow work is observable while it is still running through stable route
+10. A committed new session may be briefly visible while initial command/title
+    work settles; this bounded recoverable state is accepted rather than adding
+    cross-repository provisional visibility machinery.
+11. Create/open/hide and optional Git initialization preserve their existing
+    arrival order through one simple project-mutation FIFO.
+12. Slow completion and shutdown work remains observable through stable route
     templates, while local diagnostics retain useful errors, stack traces,
-    paths, connection/session identifiers, and relay-control context. Known
-    prompt/transcript content and other user data with no debugging value stays
-    selectively omitted.
+    paths, connection/session identifiers, and relay-control context. No new
+    in-progress timer or broad audit is required; known prompt/transcript content
+    stays selectively omitted at touched seams.
 13. There is no wire-contract, database-schema, persisted-data, client API, or
      analytics change.
 
@@ -125,10 +129,9 @@ long-running testing.
   leases, durable-commit fences, and force-stop/restart behavior.
 - Domain serialization remains only where an explicit invariant requires it.
   Session-targeting mutations use one ordered admission owner that resolves the
-  stable root family before long work and preserves pending-interaction choices;
-  project create/open/hide uses a separate canonical-path owner. The bounded
-  local scope-resolution phase is ordered, but unrelated resolved families and
-  paths execute concurrently. Force restart stays outside all domain lanes.
+  stable root family before long work. Project create/open/hide uses one coarse
+  FIFO because those mutations are infrequent and no throughput evidence
+  justifies canonical-path lanes. Force restart stays outside all domain lanes.
 
 ### No generic timeout or global worker pool
 
@@ -305,7 +308,7 @@ only the handler's declared template for bounded route categorization. Transport
 consumers may still log the concrete request/control context when diagnostically
 useful; they never log request bodies, headers, prompts, or transcripts.
 
-Step 2 audits every existing route log, not only the new slow timer. Receipt,
+Step 2 audits every existing route log, not only the slow-route diagnostic. Receipt,
 ordinary handler failures and shutdown completion/drain use the selected identity
 for stable categorization while preserving caught errors and stack traces.
 
@@ -384,7 +387,7 @@ operation and cannot close the successor connection.
 This transport refactor lands while relay request routing is still serial, so
 its current behavior and reconnect tests can be reviewed independently.
 
-### 4. Ordered session-family and pending-interaction admission
+### 4. Ordered session-family admission
 
 Before detaching routes, add one concrete `SessionOperationDispatcher`. Every
 accepted operation receives a monotonic ticket synchronously before its first
@@ -394,42 +397,28 @@ family's FIFO lane without waiting for earlier long work to complete. Therefore
 only bounded local catalog lookup is globally ordered; unrelated resolved root
 families execute concurrently.
 
-Family resolution returns both stable root ID and plugin ID. An operation may
-also carry a sealed pending-interaction request that becomes a plugin-scoped key:
-
-```text
-PendingInteractionRequest
-  Permission(requestId)
-  Question(questionId)
-
-ResolvedPendingInteractionKey
-  (pluginId, stableOwnerSessionId, permission, requestId)
-  (pluginId, stableOwnerSessionId, question, questionId)
-```
-
-The dispatcher appends one completion token atomically to both the resolved
-family lane and optional resolved interaction lane, then awaits all predecessors.
-This preserves first-response order for approve/reject and answer/reject without
-nested lock acquisition or cross-plugin/session ID assumptions. Modern requests
-key by their resolved stable owner session as well as plugin and request ID, so
-reused IDs in unrelated families remain independent.
+Family resolution returns both stable root ID and plugin ID. Prompt, abort,
+permission, and question mutations targeting that family share the same FIFO.
+Step 5 initially added a second interaction-key lane; Step 8 removes it because
+all modern writers already pass through the family owner and no cross-family
+interaction invariant requires duplicate coordination.
 
 Legacy question rejection without `sessionId` maps to the fixed OpenCode plugin
 and synchronously registers a plugin-scoped unresolved-family barrier before its
 first await. `PendingInteractionService` resolves the question against pending
-OpenCode questions: exactly one stable owner claims that family and interaction
-lane before releasing the barrier; zero matches returns not-found; multiple
+OpenCode questions: exactly one stable owner claims that family before releasing
+the barrier; zero matches returns not-found; multiple
 matches returns an explicit compatibility conflict because the old payload is
 ambiguous. Later OpenCode session operations await the earlier barrier before
 family admission, preserving delete/reject arrival order; other plugins and
-modern questions remain independent. Failures release every claimed lane, and
-settled idle lanes are removed.
+modern questions remain independent. Failures release claimed family/plugin
+admission state, and settled idle state is removed.
 
 `SessionPromptService`, `SessionAbortService`, and a new
 `PendingInteractionService` use this owner. The latter depends on
 `PermissionRepository` and `QuestionRepository`; all three response handlers and
 `PermissionAutoApprovalService` call it, so no production writer bypasses the
-interaction lane. Prompt/command operations retain the family lane through
+family lane. Prompt/command operations retain the family lane through
 backend acceptance and local defaults persistence/publication, preserving
 defaults FIFO as well as prompt-before-abort behavior. Force restart remains
 outside the dispatcher.
@@ -470,51 +459,35 @@ its public archive/unarchive workflow does. Ordered scope resolution means an
 earlier child operation queues before root delete, while a child lookup racing
 after completed deletion fails rather than succeeding on an independent key.
 
-### 6. Atomic session-creation visibility
+### 6. Accepted transient session-creation visibility
 
-Session creation has no stable family before backend creation. Change its
-internal repository result to a typed `UnpublishedSessionBinding` owned by
-`SessionRepository`. The repository marks the committed stable ID hidden before
-its transaction becomes observable and every repository read that can return a
-session identity—including project-scoped session lists—and every event
-projection filters that repository-owned set.
+A stable session binding may become visible after its transaction commits while
+the initial command or generated title is still settling. PR #716 attempted to
+eliminate that window with repository-owned provisional state, privileged tokens,
+catalog-writer admission, and filtering across every identity-producing path.
+The owner closed that PR because the 2,080-line cross-layer mechanism was
+disproportionate to an unobserved, bounded, recoverable state.
 
-The opaque token is also the only privileged initialization capability. It
-carries repository-verified binding/root/plugin scope and is accepted by
-dedicated initial-command and initial-rename methods on the existing repository,
-mutation dispatcher, and session-operation dispatcher. Those methods do not use
-ordinary filtered lookup; no boolean/nullable bypass or raw-ID privileged API is
-added. `SessionCreationService` carries the token through both post-create steps,
-then asks the repository to atomically reveal and publish it.
+No production visibility gate is added. Existing durable bindings remain the
+authority, existing family ordering applies as soon as an operation targets the
+stable ID, and clients continue refreshing authoritative state after failures or
+reconnects. Reconsider this only with evidence of meaningful user-visible
+corruption, not merely a synthetically possible interleaving.
 
-Reveal runs exactly once in `finally` after post-create work settles, including
-when command/rename failure will be rethrown. A process restart clears the
-in-memory gate so a committed session is recoverably visible rather than hidden
-forever; ordinary concurrent consumers cannot discover or operate on it midway
-through the same run. No callback, schema, persisted field, or wire field is
-added.
+### 7. Proportional project-mutation ordering
 
-### 7. Canonical project-path mutation lanes
+Use one `ProjectMutationService` with a simple bridge-wide FIFO for create, open,
+hide, and optional Git initialization. Keep validation/directory creation, Git
+preparation, project persistence/activity, and hide inside that operation so
+concurrent routing cannot invert the existing arrival semantics or overlap Git
+setup. The three handlers become thin consumers.
 
-Add a separate `ProjectMutationDispatcher` and `ProjectMutationService` for
-create, open, hide, and optional Git initialization. Each request receives a
-synchronous ticket. A bounded admission tail maps create/open's normalized
-absolute path or hide's stable project ID to the authoritative canonical stored
-path, in arrival order, then appends the complete operation to a per-path lane.
-It never waits for filesystem, Git, or persistence work before resolving the
-next ticket.
-
-Create/open keeps validation, directory creation, Git preparation, and activity
-persistence in one path operation. Hide uses the same service instead of calling
-`ProjectRepository` directly. Thus a later hide cannot be undone by an earlier
-slow open, and duplicate create/open Git initialization cannot overlap. Unrelated
-canonical paths execute concurrently. Syntactic path aliases are normalized;
-resolving arbitrary symlink aliases is not added because no demonstrated flow
-requires filesystem-wide canonicalization.
-
-`OrchestratorSession` solely owns project-dispatcher acceptance/drain/disposal
-after the shared route barrier and before project services/repositories. No
-database, wire, or project-ID change is introduced.
+Do not add canonical-path resolution lanes, unrelated-path parallelism,
+symlink-wide canonicalization, or a separate dispatcher lifecycle. Project
+mutations are infrequent, no throughput incident exists, and accepted route work
+already drains through `RoutedRequestDispatcher` before dependencies are
+disposed. This intentionally trades unproven project-mutation parallelism for a
+small, auditable invariant owner.
 
 ### 8. Concurrent relay request completion
 
@@ -528,18 +501,16 @@ For each active client request the session will:
    connection handle;
 2. synchronously register one relay completion operation before returning to
    the read loop;
-3. start a one-shot slow timer using `PendingRoutedRequest.routeIdentity` and
-   cancel it on settlement;
-4. await the shared routed completion independently;
-5. encrypt/frame the correlated response;
-6. immediately before the synchronous write, verify the same client incarnation
+3. await the shared routed completion independently;
+4. encrypt/frame the correlated response;
+5. immediately before the synchronous write, verify the same client incarnation
    and call `sendIfCurrent` with the captured relay handle with no intervening
    await;
-7. establish a terminal delivery disposition: sent, stale, or current-send
+6. establish a terminal delivery disposition: sent, stale, or current-send
    failure with `closeIfCurrent` synchronously claiming that exact handle;
-8. ask the shared restart dispatcher to handle `RestartAccepted` exactly once
+7. ask the shared restart dispatcher to handle `RestartAccepted` exactly once
    after that disposition, even when no response could be delivered; and
-9. remove itself from the relay completion registry in `finally`.
+8. remove itself from the relay completion registry in `finally`.
 
 Every successful key exchange or resume replaces the local client incarnation.
 `phone_disconnected` removes it. Each relay reconnect supplies a new opaque
@@ -584,8 +555,8 @@ settles.
   remains unresolved.
 - After reconnect, clients refresh authoritative state; they do not receive an
   obsolete response from a prior connection.
-- Unrelated session families and project paths no longer wait on each other's
-  mutations, while operations on one family/path retain arrival order.
+- Unrelated session families no longer wait on each other's mutations. Project
+  create/open/hide remains deliberately serialized as one low-volume domain.
 
 ## Compatibility, Data, And Privacy
 
@@ -619,16 +590,17 @@ settles.
 - Step 4 removes mutable-current-channel `read`/`send` assumptions in favor of
   explicit opaque relay connection handles. Internal callers update in lockstep.
 - Step 5 replaces accidental relay-loop ordering for prompt/command/defaults,
-  abort, and pending choices with one explicit family/interaction owner. Direct
-  permission auto-approval repository writes move through the same service.
+  abort, and pending choices with one explicit family owner. Step 8 removes the
+  redundant dedicated modern interaction lanes while retaining the common
+  service and released-client legacy owner fallback.
 - Step 6 removes the global session mutation/backend tails and tests that encode
   cross-family serialization, replacing them with root-family ordering and lane
   cleanup coverage.
-- Step 7 replaces eager binding publication with a typed repository-owned
-  unpublished creation token and atomic reveal.
+- Step 7 makes no production change. It removes the rejected unpublished-token,
+  atomic-reveal, and exhaustive visibility-gate requirements from this plan.
 - Step 8 replaces handler-level project mutation coordination and direct hide
-  repository access with one canonical-path service/dispatcher; existing lower
-  repository/activity primitives remain.
+  repository access with one FIFO service, and removes redundant interaction-lane
+  state/tests from the merged session dispatcher.
 - Step 9 replaces the single `_inFlightRequestLabel` with honest tracked
   operations and removes/mends the completion-only `[shutdown] slow route`
   diagnostic. It does not preserve the serial route path for compatibility.
@@ -644,7 +616,8 @@ settles.
 - Step 1 raises this complete plan and tracker. Per the user's explicit
   direction, the 1,500 changed-line soft cap does not apply to this first
   plan-containing PR. It remains plan-only and runs documentation validation.
-- Steps 2–9 are implementation PRs. Each targets no more than 1,500 additions
+- Steps 2–6 and 8–9 are implementation PRs; Step 7 is a documentation and agent
+  correction. Each implementation targets no more than 1,500 additions
   plus deletions against its own base, including tests and generated output
   (none is currently expected).
 - At roughly 1,300 projected changed lines, reassess the implementation/test
@@ -660,11 +633,48 @@ settles.
   PR #686 if it has merged.
 - Every implementation PR updates `TRACKER.md` with its base, actual changed-line
   count, verification, review result, and cleanup outcome.
-- Run `aristotle-impl-review` for Steps 2–9 because they change routing contracts,
-  lifecycle ownership, transport connection identity, domain ordering, and
-  concurrency. Do not run it for documentation-only Steps 1 or 10.
+- Run `aristotle-impl-review` for architecture-bearing implementation Steps 2–6
+  and 8–9. Do not run it for documentation-only Steps 1, 7, or 10.
 - No implementation starts until the Step 1 plan PR merges and the user-approved
   design remains unchanged.
+
+## Remaining Scope Map
+
+- **Step 7 (documentation only):** update
+  `.opencode/agents/sesori-plan-maker.md`, this `PLAN.md`, and `TRACKER.md`.
+  No production, client, shared, generated, wire, or database file changes.
+- **Step 8 production workspace:** `bridge/app` only.
+  - Add `lib/src/bridge/services/project_mutation_service.dart` as a Layer-3
+    workflow owner with required `FilesystemRepository`,
+    `ProjectInitializationService`, `ProjectActivityService`, and
+    `ProjectRepository` dependencies.
+  - Update `lib/src/bridge/orchestrator.dart` composition and
+    `lib/src/bridge/routing/{create_project_handler,open_project_handler,hide_project_handler}.dart`.
+    Request-body/path syntax validation and HTTP response mapping stay in the
+    handlers; filesystem classification, initialization, activity persistence,
+    and hide execute inside the service FIFO using existing typed outcomes/errors.
+  - Simplify `lib/src/bridge/services/session_operation_dispatcher.dart` and its
+    callers: `session_prompt_service.dart`, `session_abort_service.dart`,
+    `session_lifecycle_service.dart`, `session_mutation_dispatcher.dart`, and
+    `pending_interaction_service.dart`.
+  - Remove `PendingInteractionRequest`, `PendingPermissionInteraction`,
+    `PendingQuestionInteraction`, `_PendingInteractionKind`, `_InteractionKey`,
+    `_interactionLanes`, and the `interaction` dispatch/register parameter.
+    Legacy sessionless rejection keeps `dispatchLegacyQuestion`, plugin
+    admission/settlement, explicit owner discovery, and then the resolved family
+    lane; it no longer claims a separate interaction lane.
+- **Step 9 production workspace:** `bridge/app` only, primarily
+  `lib/src/bridge/orchestrator.dart`; use existing `RelayConnection`,
+  `RoutedRequestDispatcher`, `SseManager`, and restart dispatcher APIs without
+  adding another production class. Replace the local `Map<int, bool>` phone map
+  with `Map<int, Object>` incarnation tokens and add private
+  `Set<Future<void>>` relay-completion tracking on `OrchestratorSession`.
+  Register each completion synchronously before returning to frame ingestion,
+  remove it in `finally`, clear/replace incarnation tokens on
+  disconnect/key-exchange/resume/reconnect, and drain the set after intake closes
+  and before route-owned dependencies are disposed.
+- **Untouched:** `client/`, `shared/sesori_shared/`, plugin packages/interfaces,
+  database schema/generated files, and transport contracts.
 
 ## Fixed PR Series
 
@@ -674,10 +684,10 @@ settles.
 | 2/10 | `relay-request-concurrency-route-outcomes` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | Two-phase routing, valid-only outcomes, request/control diagnostics, and a shared restart dispatcher cross handler, relay/debug, runtime, and shutdown ownership. | 900–1,300 | Expose closed privacy-safe identity before completion and replace shared restart flag/callback wiring while preserving serial relay behavior. |
 | 3/10 | `relay-request-concurrency-route-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | One cross-transport acceptance/drain barrier changes composition and shared-dependency shutdown ordering. | 600–1,000 | Ensure relay and debug route work drains through one lifecycle owner before shared collaborators are disposed. |
 | 4/10 | `relay-request-concurrency-relay-epochs` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | Explicit connection handles update connect/read/send/close and reconnect fencing across transport lifecycle. | 550–950 | Make old relay generations unable to send through or close a successor while preserving serial request execution. |
-| 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | Ordered family-scope resolution plus interaction lanes cross prompt, abort, pending-choice, auto-approval, failure, cleanup, and shutdown ownership. | 900–1,400 | Preserve execution/default and first-response order within one root family while unrelated families and force restart remain concurrent. |
+| 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | Ordered family-scope resolution crosses prompt, abort, pending-choice, auto-approval, failure, cleanup, and shutdown ownership. | 900–1,400 | Preserve execution/default and response order within one root family while unrelated families and force restart remain concurrent. |
 | 6/10 | `relay-request-concurrency-session-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | Root/descendant coordination crosses rename, archive, worktree cleanup/restore, subtree deletion, events, and persistence. | 750–1,250 | Preserve complete root-family lifecycle order while unrelated roots remain concurrent. |
-| 7/10 | `relay-request-concurrency-session-visibility` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | Repository-owned provisional visibility crosses persisted bindings, every session-bearing catalog/event read, post-create failures, recovery, and publication. | 600–1,100 | Hide partially initialized new sessions until initial work settles, then reveal exactly once even on failure. |
-| 8/10 | `relay-request-concurrency-project-mutations` | `🚧 [relay-request-concurrency] refactor(bridge): order project path mutations [step 8/10]` | Canonical-path admission coordinates filesystem, Git, project persistence/activity, hide, failure, cleanup, and shutdown. | 650–1,100 | Prevent same-path open/create/hide inversion and overlapping Git setup while unrelated project paths remain concurrent. |
+| 7/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: simplify remaining concurrency plan [step 7/10]` | Documentation and plan-maker guidance only after rejecting disproportionate provisional visibility machinery. | 350–550 | Record accepted transient visibility, proportionality rules, merged-step audit, and reduced remaining scope. |
+| 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | Remove redundant interaction state and preserve project mutation order with one coarse workflow owner across handlers, filesystem/Git, and persistence. | 500–900 | Keep family FIFO and legacy compatibility, remove modern interaction lanes, and serialize low-volume project create/open/hide without canonical-path machinery. |
 | 9/10 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | Concurrent request completion, client-incarnation fencing, encrypted sends, reconnect, SSE startup, shutdown draining, and multi-client regressions. | 950–1,450 | Remove relay head-of-line blocking after every required domain and lifecycle owner is explicit. |
 | 10/10 | `relay-request-concurrency-retire-plan` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | Mechanical documentation state update and directory move. | 50–150 | Record completion and move the plan from active to completed. |
 
@@ -1019,120 +1029,104 @@ roots/plugins, failures, drain, and disposal.
 - full `bridge/app` tests if focused changes expose wider assumptions
 - `git diff --check`, changed-line count, and `aristotle-impl-review`
 
-## Step 7/10 — Gate New Session Visibility
+## Step 7/10 — Simplify The Remaining Plan
 
 ### Complexity
 
-`🚧` complex: a repository-owned provisional visibility state crosses persisted
-bindings, every session-bearing catalog/event read, post-create command/title
-failure, exactly-once publication, and restart recovery.
+`🌱` trivial: documentation and agent guidance only; no production behavior.
 
 ### What
 
-- Return a typed `UnpublishedSessionBinding` from `SessionRepository` after
-  commit and mark its stable ID hidden before the transaction becomes visible.
-- Remove the hidden marker if the transaction rolls back; only a committed token
-  can be revealed/published.
-- Filter that repository-owned set from every session-bearing catalog read,
-  project-scoped session list, and event projection.
-- Carry the opaque token through dedicated initial-command and initial-rename
-  methods; use its verified family/plugin scope instead of ordinary filtered
-  lookup, and expose no boolean/nullable/raw-ID bypass.
-- Let `SessionCreationService` finish those initial operations, then
-  atomically reveal and publish the token exactly once in `finally`, including
-  failure paths, before returning or rethrowing the current route outcome.
-- On process restart, treat committed rows as visible recovery state; add no
-  schema field, backfill, callback, or wire change.
-- Preserve useful session/path identifiers and caught failures in creation and
-  repository diagnostics while omitting prompt content.
+- Record PR #716 as closed without merge and explicitly accept transient
+  post-commit session visibility.
+- Add evidence/proportionality rules to the plan-maker agent so theoretical
+  interleavings do not automatically become cross-layer machinery.
+- Audit merged Steps 2–6: keep route-local restart outcomes, shared route drain,
+  relay epochs, root-family FIFO, complete lifecycle mutation scope, and deletion
+  ownership; identify dedicated modern interaction lanes as redundant cleanup.
+- Reduce Step 8 from canonical-path dispatch to one simple project-mutation FIFO
+  and interaction-lane cleanup. Reduce Step 9 to the transport detachment needed
+  by the demonstrated incident plus existing response/lifecycle fences.
 
 ### Why
 
-Delaying only the SSE event is insufficient because catalog reads can discover a
-committed stable ID. Repository-owned visibility prevents another surface from
-mutating the new session before its initial workflow settles.
+The rejected visibility implementation reached 2,080 changed lines to prevent an
+unobserved bounded state. Plans must distinguish observed failures and ordinary
+high-impact flows from theoretical completeness before introducing coordination.
 
 ### Risk And Test Focus
 
-Risk is marking hidden after the transaction becomes visible, a catalog/event
-path bypassing the gate, reveal happening twice or never, failure leaving a
-session hidden, rollback leaking a marker, or restart recovery suppressing
-committed data. A privileged operation that falls back to ordinary lookup would
-also self-reject initialization. Gate command and metadata work while querying
-every session-bearing catalog/event path; prove token-scoped command/rename can
-resolve while ordinary reads cannot, and cover success, command failure, rename
-failure, exactly-once reveal/publication, transaction rollback, concurrent
-reads, and simulated new-repository recovery.
+Risk is deleting a required prerequisite or leaving stale titles/criteria. Check
+every visibility, project-path, interaction-lane, Step 7/8 title, cleanup, and
+risk reference in `PLAN.md` and `TRACKER.md`. No product suite applies.
 
 ### Expected Result
 
-- **User-visible:** A newly discoverable session has completed its initial
-  command/title workflow; accepted failures still reveal authoritative state.
-- **Persisted/database:** No schema change; committed bindings remain the restart
-  recovery authority.
-- **Internal:** Session visibility has one repository-owned atomic transition.
+- **User-visible:** No change.
+- **Persisted/database:** No change.
+- **Internal:** Remaining work is smaller and the planning agent has a reusable
+  evidence gate against disproportionate defensive design.
 
 ### Verification
 
-- focused session creation/repository/catalog/event/binding-listener tests
-- `dart analyze --fatal-infos` from `bridge/app`
-- full `bridge/app` tests if focused changes expose wider assumptions
-- `git diff --check`, changed-line count, and `aristotle-impl-review`
+- `git diff --check`
+- exact title/step-total comparison between plan and tracker
+- agent Markdown/frontmatter inspection; restart opencode to load the new prompt
 
-## Step 8/10 — Order Project Path Mutations
+## Step 8/10 — Simplify Domain Mutation Ordering
 
 ### Complexity
 
-`🚧` complex: ordered canonical-path admission coordinates filesystem and Git
-side effects with project persistence/activity, hide semantics, failures, lane
-cleanup, and shutdown.
+`⚙️` moderate: removing redundant session interaction state and moving three
+project workflows behind one FIFO crosses dispatchers, handlers, filesystem/Git,
+persistence, and tests without new lifecycle machinery.
 
 ### What
 
-- Add `ProjectMutationDispatcher` with synchronous tickets, a bounded in-order
-  resolver from normalized path/stable project ID to canonical stored path, and
-  per-path lanes.
-- Add `ProjectMutationService` as the sole create/open/hide workflow owner and
-  make the three handlers thin consumers.
-- Hold create/open through directory validation/creation, optional Git setup, and
-  project/activity persistence; hold hide on the same canonical path lane.
-- Preserve existing typed HTTP outcomes and project IDs, remove idle lanes, and
-  assign acceptance/drain/disposal to `OrchestratorSession` after the shared
-  route barrier.
-- Preserve useful project paths/IDs and caught failures in diagnostics reachable
-  through these workflows.
-- Do not add symlink-wide filesystem canonicalization without evidence.
+- Remove dedicated modern permission/question interaction keys, lanes, and
+  plumbing; the existing root-family FIFO already serializes those responses.
+- Keep `PendingInteractionService`, auto-approval routing, and the released-client
+  sessionless question fallback. Keep its narrow plugin settlement semantics
+  unless implementation proves a smaller compatibility-safe form.
+- Add one `ProjectMutationService` as the create/open/hide workflow owner with a
+  bridge-wide FIFO around directory validation/creation, optional Git setup,
+  project/activity persistence, and hide.
+- Each public method appends its complete workflow to the FIFO synchronously
+  before any validation, filesystem, Git, lookup, or persistence await. It
+  returns that workflow future; failure still advances the tail for later work.
+- Make create/open/hide handlers thin consumers. Reuse the shared route drain;
+  add no canonical-path dispatcher, per-path lanes, symlink resolution, idle lane
+  cleanup, acceptance registry, or separate disposal owner.
+- Preserve existing typed outcomes, project IDs, diagnostics, and failure release.
 
 ### Why
 
-A slow open must not commit `hidden=false` after a later hide, and two same-path
-Git initialization requests must not overlap. Different project paths have no
-such invariant and should remain concurrent.
+Family lanes already provide modern pending-response order, so a second lane is
+redundant. Project mutations must retain today's arrival semantics after route
+detachment, but their low volume does not justify fine-grained path concurrency.
 
 ### Risk And Test Focus
 
-Risk is a later known-path request overtaking an earlier project-ID resolution,
-path alias mismatch, duplicate Git side effects, hide resurrection, failure
-poisoning, or disposal missing accepted work. Gate project lookup and Git setup
-to prove open/hide and create/open order in both directions, duplicate same-path
-initialization, normalized aliases, unrelated-path parallelism, failures, idle
-cleanup, and repeated drain.
+Risk is removing a real interaction invariant, allowing auto approval to bypass
+the family owner, poisoning the project FIFO after failure, overlapping Git setup,
+or letting open resurrect a later hide. Prove modern answer/reject order through
+the family lane, legacy fallback behavior, open/hide order both ways,
+create/open Git non-overlap, and failure release. Do not add unrelated-path
+parallelism tests because that guarantee is intentionally not provided.
 
 ### Expected Result
 
-- **User-visible:** Same-project open/create/hide follows arrival order; unrelated
-  projects remain responsive.
+- **User-visible:** Session choices retain family order; project create/open/hide
+  retains arrival order, with unrelated project mutations intentionally serialized.
 - **Persisted/database:** No schema or ID change; hidden/activity values retain
   their current meanings.
-- **Internal:** Project mutation serialization is keyed to canonical path rather
-  than the whole bridge.
+- **Internal:** Fewer session lane types and one coarse project workflow owner.
 
 ### Verification
 
-- focused project dispatcher/service, create/open/hide handler, initialization,
-  activity, filesystem/Git, and shutdown tests
-- `dart analyze --fatal-infos` from `bridge/app`
-- full `bridge/app` tests if focused changes expose wider assumptions
+- focused session dispatcher/pending interaction/auto approval tests
+- focused create/open/hide/project initialization/activity tests
+- `dart analyze --fatal-infos` and full `dart test` from `bridge/app`
 - `git diff --check`, changed-line count, and `aristotle-impl-review`
 
 ## Step 9/10 — Route Requests Concurrently
@@ -1163,10 +1157,9 @@ draining on top of the already-landed route, ordering, and relay-epoch contracts
 - Detach and track initial SSE summary construction after synchronous subscribe,
   but enqueue it on the existing summary-ordering tail before building so an
   older snapshot cannot broadcast after a newer one.
-- Add ongoing stable slow-route diagnostics and honest multi-operation shutdown
-  diagnostics without discarding useful local context.
-- Run a final diagnostic audit that preserves errors, stack traces, paths, and
-  identifiers while selectively omitting known prompt/transcript content.
+- Preserve stable completion/slow-route and multi-operation shutdown diagnostics
+  at the touched dispatch/send seams; do not add a timer or broad diagnostic audit
+  solely for this concurrency change.
 - Drain session-owned completion work plus the shared dispatcher barrier before
   route-owned dependencies are disposed.
 
@@ -1189,8 +1182,8 @@ gated work to prove:
   or health response;
 - a later request from the same client can complete first;
 - plugin-B/global work and plugin-A force-restart routing remain reachable;
-- same-family session actions and same-path project mutations still follow their
-  explicit causal lanes;
+- same-family session actions and the coarse project mutation FIFO still preserve
+  arrival order;
 - disconnect/rekey/relay reconnect invalidates the old response even if a
   numeric `connId` appears again;
 - accepted restart still dispatches exactly once after stale-origin or current
@@ -1271,13 +1264,13 @@ product suite applies.
 | Force restart returns while old operation later completes | Keep generation checks and durable-commit fencing; late old-generation result maps to failure and cannot commit through `useAndCommit`. |
 | Shutdown disposes dependencies under relay/debug routes | One shared dispatcher closes acceptance and drains both consumers before session-owned collaborators; each transport separately drains its surrounding work. |
 | Abort/defaults overtake earlier prompt/command work | Land root-family session admission before transport concurrency; keep force restart outside it. |
-| A later pending choice wins or reused ID blocks another family | Atomically claim plugin + stable owner + interaction identity and the modern request's family lane; route auto approval through the same service. |
+| A later pending choice wins | Route modern responses and auto approval through the existing root-family lane and common service; do not add a second interaction lane. |
 | Legacy rejection races deletion | Register an OpenCode unresolved-family barrier before lookup; resolve one owner or return an explicit not-found/ambiguity limitation before mutation. |
 | Root deletion races a child mutation | Resolve root family in admission order and reserve the complete subtree delete workflow before cleanup. |
 | Unarchive restores a worktree after delete cleanup | Put archive/unarchive and delete on the same root-family lane around their complete filesystem/database workflows. |
-| A partially initialized creation is announced | Return a typed unpublished binding and publish only after initial command and metadata rename settle. |
-| Slow open resurrects a later-hidden project | Resolve canonical project path in admission order and serialize complete create/open/hide workflows per path. |
-| Same-path Git setup overlaps | Keep directory/Git setup inside the canonical project-path lane. |
+| A partially initialized creation is briefly visible | Accept the bounded recoverable window; require evidence of meaningful corruption before adding visibility machinery. |
+| Slow open resurrects a later-hidden project | Serialize complete create/open/hide workflows through one project FIFO. |
+| Project Git setup overlaps | Keep directory/Git setup inside the same project FIFO. |
 | Overlapping initial summaries regress client activity | Put initial builds and broadcasts on the existing summary-ordering tail while detaching that tracked work from frame ingestion. |
 | Concurrent mutation corrupts session order | Keep explicit root-family lanes, whole-workflow reservation, and transactional repository writes. |
 | Diagnostics lose useful request/control context | Keep closed route categorization while retaining errors, stacks, paths, and identifiers; selectively omit known prompt/transcript content. |
@@ -1327,3 +1320,15 @@ product suite applies.
   separated accepted restart execution from response eligibility so stale/send
   failure cannot suppress the handoff. These corrections do not change the fixed
   ten-step delivery series.
+- **Owner proportionality correction (2026-08-03):** closed PR #716 without merge
+  after its unobserved provisional-visibility safeguard grew to 2,080 changed
+  lines across many repository/event owners. The plan now accepts that transient,
+  removes the atomic-visibility requirement, replaces canonical project-path
+  machinery with one coarse FIFO, removes redundant modern interaction lanes in
+  Step 8, and narrows Step 9 to the demonstrated transport failure. This user
+  decision supersedes the earlier reviewer-driven completeness requirements.
+- **Proportionality revision review:** the first `aristotle-plan-review` attempt
+  rejected the reduced remaining plan at the pre-review gate as too vague. After
+  adding exact files/layers, FIFO admission, interaction cleanup, no-timer
+  diagnostics, and private incarnation/completion ownership, the allowed second
+  review approved the clarified revision with no architectural findings.

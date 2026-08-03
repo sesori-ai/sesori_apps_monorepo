@@ -334,7 +334,7 @@ void delegateSessionRepositoryToService({
     ),
   );
   when(
-    () => repository.sendMessage(
+    () => repository.sendMessage(attachments: const [],
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
       agent: any(named: "agent"),
@@ -343,7 +343,7 @@ void delegateSessionRepositoryToService({
       command: any(named: "command"),
     ),
   ).thenAnswer(
-    (invocation) => service.sendMessage(
+    (invocation) => service.sendMessage(attachments: const [],
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,
       agent: invocation.namedArguments[#agent] as String?,

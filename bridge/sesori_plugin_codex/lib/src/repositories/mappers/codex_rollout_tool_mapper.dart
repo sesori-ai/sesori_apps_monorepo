@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "../../api/models/codex_image_bearing_item_dto.dart";
 import "../../api/models/codex_rollout_dto.dart";
 import "codex_image_attachment_mapper.dart";
 
@@ -12,19 +13,12 @@ class CodexRolloutToolCall {
     required this.turnId,
     required this.tool,
     required this.title,
-    required this.completionSource,
   });
 
   final String id;
   final String? turnId;
   final String tool;
   final String? title;
-  final CodexRolloutToolCompletionSource completionSource;
-}
-
-enum CodexRolloutToolCompletionSource {
-  appServer,
-  rollout,
 }
 
 sealed class CodexRolloutToolResult {
@@ -43,68 +37,6 @@ sealed class CodexRolloutToolResult {
     CodexRolloutToolCompletedResult() => PluginToolStatus.completed,
     CodexRolloutToolErrorResult() || CodexRolloutToolErrorWithRunningCellsResult() => PluginToolStatus.error,
   };
-
-  CodexRolloutToolResult withPreviousResult({
-    required CodexRolloutToolResult? previous,
-  }) {
-    if (previous == null) return this;
-    final mergedOutput = _mergeToolOutput(
-      previous: previous.output,
-      current: output,
-    );
-    final mergedAttachments = attachments.isNotEmpty ? attachments : previous.attachments;
-    if (previous.status == PluginToolStatus.error && status != PluginToolStatus.error) {
-      return CodexRolloutToolErrorResult(
-        callId: callId,
-        output: mergedOutput,
-        attachments: mergedAttachments,
-      );
-    }
-    return switch (this) {
-      CodexRolloutToolRunningResult(:final cellIds) => CodexRolloutToolRunningResult(
-        callId: callId,
-        output: mergedOutput,
-        attachments: mergedAttachments,
-        cellIds: cellIds,
-      ),
-      CodexRolloutToolCompletedResult() => CodexRolloutToolCompletedResult(
-        callId: callId,
-        output: mergedOutput,
-        attachments: mergedAttachments,
-      ),
-      CodexRolloutToolErrorResult() => CodexRolloutToolErrorResult(
-        callId: callId,
-        output: mergedOutput,
-        attachments: mergedAttachments,
-      ),
-      CodexRolloutToolErrorWithRunningCellsResult(:final cellIds) => CodexRolloutToolErrorWithRunningCellsResult(
-        callId: callId,
-        output: mergedOutput,
-        attachments: mergedAttachments,
-        cellIds: cellIds,
-      ),
-    };
-  }
-
-  String? _mergeToolOutput({
-    required String? previous,
-    required String? current,
-  }) {
-    if (previous == null || previous.isEmpty) return current;
-    if (current == null || current.isEmpty) return previous;
-    final currentRunes = current.runes.toList(growable: false);
-    if (currentRunes.length >= maxToolOutputLength) {
-      return String.fromCharCodes(
-        currentRunes.take(maxToolOutputLength),
-      );
-    }
-    return String.fromCharCodes(
-      [
-        ...previous.runes.take(maxToolOutputLength - currentRunes.length),
-        ...currentRunes,
-      ],
-    );
-  }
 }
 
 final class CodexRolloutToolRunningResult extends CodexRolloutToolResult {
@@ -174,7 +106,7 @@ class CodexRolloutImageGeneration {
 /// Codex's stable app-server items intentionally expose a smaller projection
 /// than the persisted response items. Keeping the raw call/result rules here
 /// prevents the live and reload paths from independently inventing titles,
-/// statuses, or output clipping.
+/// raw result classifications, or attachment extraction.
 class CodexRolloutToolMapper {
   const CodexRolloutToolMapper({
     required CodexImageAttachmentMapper imageAttachmentMapper,
@@ -235,7 +167,7 @@ class CodexRolloutToolMapper {
       CodexRolloutImageGenerationStatus.inProgress => PluginToolStatus.running,
       CodexRolloutImageGenerationStatus.completed => PluginToolStatus.completed,
       CodexRolloutImageGenerationStatus.failed => PluginToolStatus.error,
-      CodexRolloutImageGenerationStatus.unknown => PluginToolStatus.unknown,
+      CodexRolloutImageGenerationStatus.unknown => PluginToolStatus.completed,
     };
     return CodexRolloutImageGeneration(
       id: _usefulText(event.callId),
@@ -251,6 +183,51 @@ class CodexRolloutToolMapper {
               ],
             )
           : const [],
+    );
+  }
+
+  CodexRolloutImageGeneration mapAppServerImageGeneration({
+    required CodexImageGenerationItemDto item,
+    required bool completed,
+  }) {
+    final status = switch (item.status) {
+      CodexImageGenerationStatus.inProgress => PluginToolStatus.running,
+      CodexImageGenerationStatus.completed => PluginToolStatus.completed,
+      CodexImageGenerationStatus.failed => PluginToolStatus.error,
+      CodexImageGenerationStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
+    };
+    return CodexRolloutImageGeneration(
+      id: _usefulText(item.id),
+      status: status,
+      attachments: status == PluginToolStatus.completed
+          ? _imageAttachmentMapper.map(
+              candidates: [
+                CodexImageAttachmentCandidate.base64(
+                  data: item.result,
+                  mime: "image/png",
+                  filenameHint: item.savedPath,
+                ),
+              ],
+            )
+          : const [],
+    );
+  }
+
+  List<PluginMessageAttachment> boundAttachments({
+    required Iterable<PluginMessageAttachment> attachments,
+  }) => _imageAttachmentMapper.boundMappedAttachments(
+    attachments: attachments,
+  );
+
+  List<PluginMessageAttachment> mapContentAttachments({
+    required Iterable<CodexRolloutContentDto> content,
+  }) {
+    return _imageAttachmentMapper.map(
+      candidates: [
+        for (final item in content)
+          if (item case CodexRolloutInputImageDto(:final imageUrl))
+            CodexImageAttachmentCandidate.imageUrl(imageUrl: imageUrl),
+      ],
     );
   }
 
@@ -270,7 +247,6 @@ class CodexRolloutToolMapper {
           turnId: metadata?.turnId,
           name: name,
           input: arguments,
-          completionSource: CodexRolloutToolCompletionSource.appServer,
         ),
       CodexRolloutCustomToolCallDto(
         :final id,
@@ -285,9 +261,6 @@ class CodexRolloutToolMapper {
           turnId: metadata?.turnId,
           name: name,
           input: input,
-          completionSource: name.toLowerCase() == "exec"
-              ? CodexRolloutToolCompletionSource.rollout
-              : CodexRolloutToolCompletionSource.appServer,
         ),
       CodexRolloutMessageDto() ||
       CodexRolloutReasoningDto() ||
@@ -305,7 +278,7 @@ class CodexRolloutToolMapper {
     return switch (payload) {
       CodexRolloutFunctionCallDto(:final name) => name.toLowerCase() == "wait",
       CodexRolloutCustomToolCallDto(:final name, :final input) =>
-        name.toLowerCase() == "exec" && input.contains("tools.image_gen__"),
+        name.toLowerCase() == "exec" && _generatedImageInvocationPattern.hasMatch(input),
       CodexRolloutMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallOutputDto() ||
@@ -361,7 +334,6 @@ class CodexRolloutToolMapper {
     required String? turnId,
     required String name,
     required String input,
-    required CodexRolloutToolCompletionSource completionSource,
   }) {
     final usefulId = _usefulText(callId) ?? _usefulText(id);
     if (usefulId == null) return null;
@@ -371,7 +343,6 @@ class CodexRolloutToolMapper {
       turnId: _usefulText(turnId),
       tool: normalizeToolName(usefulName),
       title: toolCallTitle(input),
-      completionSource: completionSource,
     );
   }
 
@@ -391,23 +362,22 @@ class CodexRolloutToolMapper {
     final callId = _usefulText(output.callId);
     if (callId == null) return null;
     final rawOutput = toolOutputText(output.content);
-    final clippedOutput = clipOutput(rawOutput);
     final attachments = mapContentAttachments(
       content: output.content,
     );
     final cellIds = _runningCellIds(content: output.content);
-    final failed = _toolOutputFailed(output: rawOutput);
+    final failed = _toolOutputFailed(content: output.content);
     if (cellIds.isNotEmpty) {
       return failed
           ? CodexRolloutToolErrorWithRunningCellsResult(
               callId: callId,
-              output: clippedOutput,
+              output: rawOutput,
               attachments: attachments,
               cellIds: cellIds,
             )
           : CodexRolloutToolRunningResult(
               callId: callId,
-              output: clippedOutput,
+              output: rawOutput,
               attachments: attachments,
               cellIds: cellIds,
             );
@@ -415,26 +385,14 @@ class CodexRolloutToolMapper {
     return failed
         ? CodexRolloutToolErrorResult(
             callId: callId,
-            output: clippedOutput,
+            output: rawOutput,
             attachments: attachments,
           )
         : CodexRolloutToolCompletedResult(
             callId: callId,
-            output: clippedOutput,
+            output: rawOutput,
             attachments: attachments,
           );
-  }
-
-  List<PluginMessageAttachment> mapContentAttachments({
-    required Iterable<CodexRolloutContentDto> content,
-  }) {
-    return _imageAttachmentMapper.map(
-      candidates: [
-        for (final item in content)
-          if (item case CodexRolloutInputImageDto(:final imageUrl))
-            CodexImageAttachmentCandidate.imageUrl(imageUrl: imageUrl),
-      ],
-    );
   }
 
   String normalizeToolName(String name) {
@@ -535,19 +493,46 @@ class CodexRolloutToolMapper {
   /// encoded in human-readable tool output instead of a structured field.
   /// Replace this parser with the structured value once response-item output
   /// exposes one, while continuing to read these strings for old histories.
-  bool _toolOutputFailed({required String? output}) {
-    if (output == null) return false;
+  bool _toolOutputFailed({
+    required List<CodexRolloutContentDto> content,
+  }) {
+    for (final item in content) {
+      final output = _toolContentText(content: item);
+      if (output != null && _leadingExecutorEnvelopeFailed(output: output)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _leadingExecutorEnvelopeFailed({required String output}) {
     if (RegExp(r"^aborted by user\b", caseSensitive: false).hasMatch(output)) {
       return true;
     }
-    final match = RegExp(
+    final lines = output.split(RegExp(r"\r?\n"));
+    final outputBoundary = lines.indexWhere(
+      (line) => RegExp(r"^(?:Final )?Output:\s*$", caseSensitive: false).hasMatch(line),
+    );
+    final exitPattern = RegExp(
       "^(?:Process exited with code|Process exited with exit code|"
       r"Script (?:completed|exited) with (?:code|exit code))\s+(-?\d+)\s*$",
       caseSensitive: false,
-      multiLine: true,
-    ).firstMatch(output);
-    final exitCode = match == null ? null : int.tryParse(match.group(1)!);
-    return exitCode != null && exitCode != 0;
+    );
+    final metadataPattern = RegExp(
+      "^(?:Chunk ID|Wall time):",
+      caseSensitive: false,
+    );
+    final envelope = outputBoundary < 0
+        ? lines.takeWhile(
+            (line) => line.isEmpty || metadataPattern.hasMatch(line) || exitPattern.hasMatch(line),
+          )
+        : lines.take(outputBoundary);
+    for (final line in envelope) {
+      final match = exitPattern.firstMatch(line);
+      final exitCode = match == null ? null : int.tryParse(match.group(1)!);
+      if (exitCode != null && exitCode != 0) return true;
+    }
+    return false;
   }
 
   String? _runningCellId({required String? output}) {
@@ -626,3 +611,7 @@ class CodexRolloutToolMapper {
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }
+
+final RegExp _generatedImageInvocationPattern = RegExp(
+  r"^\s*(?:await\s+)?tools\.image_gen__[A-Za-z0-9_]+\s*\([\s\S]*\)\s*;?\s*$",
+);

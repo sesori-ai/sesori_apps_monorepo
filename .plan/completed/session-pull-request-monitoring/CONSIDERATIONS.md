@@ -2,7 +2,7 @@
 
 > **Non-authoritative.** Product and architecture decisions live in `PLAN.md`;
 > execution state lives in `TRACKER.md`. This file records intentionally
-> rejected alternatives for the current feature.
+> rejected alternatives for the completed feature.
 
 ## Rejected Alternatives
 

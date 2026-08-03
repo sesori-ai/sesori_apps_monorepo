@@ -6,12 +6,16 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 import "models/codex_tool_outcome_dto.dart";
 
 final class CodexToolOutcomeDecodeException implements Exception {
-  const CodexToolOutcomeDecodeException({required this.cause});
+  const CodexToolOutcomeDecodeException({
+    required this.cause,
+    required this.stackTrace,
+  });
 
   final Object cause;
+  final StackTrace stackTrace;
 
   @override
-  String toString() => "CodexToolOutcomeDecodeException(${cause.runtimeType})";
+  String toString() => "CodexToolOutcomeDecodeException: $cause";
 }
 
 /// Layer-1 persistence for structured tool outcomes omitted by Codex rollout.
@@ -50,6 +54,7 @@ class CodexToolOutcomeStorage {
           Log.w(
             "[codex] replacing an unreadable tool-outcome file",
             parsed.error,
+            parsed.error!.stackTrace,
           );
           await _quarantineCurrent();
         }
@@ -65,7 +70,7 @@ class CodexToolOutcomeStorage {
     );
   }
 
-  ({List<CodexStoredToolErrorDto> errors, Object? error}) _parse({
+  ({List<CodexStoredToolErrorDto> errors, CodexToolOutcomeDecodeException? error}) _parse({
     required String? contents,
   }) {
     if (contents == null) {
@@ -82,10 +87,13 @@ class CodexToolOutcomeStorage {
         errors: List<CodexStoredToolErrorDto>.unmodifiable(file.errors),
         error: null,
       );
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       return (
         errors: const [],
-        error: CodexToolOutcomeDecodeException(cause: error),
+        error: CodexToolOutcomeDecodeException(
+          cause: error,
+          stackTrace: stackTrace,
+        ),
       );
     }
   }
@@ -100,6 +108,7 @@ class CodexToolOutcomeStorage {
           Log.w(
             "[codex] quarantining an unreadable tool-outcome file",
             recheck.error,
+            recheck.error!.stackTrace,
           );
           await _quarantineCurrent();
           return null;
@@ -115,11 +124,18 @@ class CodexToolOutcomeStorage {
     }
   }
 
-  Future<void> _quarantineCurrent() {
+  Future<void> _quarantineCurrent() async {
     final suffix = _clock.now().toUtc().microsecondsSinceEpoch;
-    return _store.quarantine(
+    final baseName = "$fileName.corrupt-$suffix";
+    var quarantinedName = baseName;
+    var collision = 0;
+    while (await _store.read(name: quarantinedName) != null) {
+      collision += 1;
+      quarantinedName = "$baseName-$collision";
+    }
+    await _store.quarantine(
       name: fileName,
-      quarantinedName: "$fileName.corrupt-$suffix",
+      quarantinedName: quarantinedName,
     );
   }
 }

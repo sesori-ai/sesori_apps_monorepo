@@ -365,6 +365,8 @@ const _rolloutSchemaKeyNames = {
   "text",
   "status",
   "result",
+  "revised_prompt",
+  "saved_path",
 };
 
 /// Describes malformed Codex records without logging source or tool input.

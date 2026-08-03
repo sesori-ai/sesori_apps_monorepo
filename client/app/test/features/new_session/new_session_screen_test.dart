@@ -430,7 +430,7 @@ void main() {
       ),
     ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -453,7 +453,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: "project-1",
         pluginId: "plugin-1",
         text: "use backend defaults",
@@ -832,7 +832,7 @@ void main() {
 
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
     verifyNever(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1033,7 +1033,7 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
     await tester.pump();
     verifyNever(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1174,7 +1174,7 @@ void main() {
   testWidgets("shows the loading overlay with accessible message during sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1205,7 +1205,7 @@ void main() {
   testWidgets("blocks submit UI while a session is sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1236,7 +1236,7 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
 
     verify(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1253,7 +1253,7 @@ void main() {
   testWidgets("shows snackbar and allows navigation when aborting while sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1296,7 +1296,7 @@ void main() {
   testWidgets("does not hijack navigation when creation completes after the user navigated away", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1344,7 +1344,7 @@ void main() {
   testWidgets("still navigates to session detail after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1381,7 +1381,7 @@ void main() {
   testWidgets("does not show snackbar when auto-navigating after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
@@ -1416,7 +1416,7 @@ void main() {
   testWidgets("removes the loading overlay and keeps retry UI usable after an error", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => sessionService.createSessionWithMessage(attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),

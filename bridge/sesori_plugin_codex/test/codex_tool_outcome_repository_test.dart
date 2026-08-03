@@ -2,11 +2,25 @@ import "dart:async";
 import "dart:io";
 
 import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
+import "package:codex_plugin/src/api/models/codex_command_execution_dto.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("decode failures retain their cause and stack trace", () {
+    const cause = FormatException("unsupported schema 2");
+    final stackTrace = StackTrace.current;
+    final exception = CodexToolOutcomeDecodeException(
+      cause: cause,
+      stackTrace: stackTrace,
+    );
+
+    expect(exception.cause, same(cause));
+    expect(exception.stackTrace, same(stackTrace));
+    expect(exception.toString(), contains("unsupported schema 2"));
+  });
+
   test("persists idempotent errors across repository instances", () async {
     final store = _MemoryHostJsonStore();
     final repository = _repository(store: store);
@@ -21,6 +35,49 @@ void main() {
       {"call-1": PluginToolStatus.error},
     );
     expect(store.files[CodexToolOutcomeStorage.fileName], contains('"sessionId":"session-1"'));
+  });
+
+  test("persists only completed structured command failures", () async {
+    final repository = _repository(store: _MemoryHostJsonStore());
+
+    await repository.recordCommandOutcome(
+      command: const CodexCommandExecutionEventDto(
+        lifecycle: CodexCommandExecutionLifecycle.started,
+        threadId: "session-1",
+        turnId: "turn-1",
+        itemId: "exec-1",
+        status: CodexCommandExecutionStatus.failed,
+        exitCode: 1,
+      ),
+      canonicalCallId: "call-started",
+    );
+    await repository.recordCommandOutcome(
+      command: const CodexCommandExecutionEventDto(
+        lifecycle: CodexCommandExecutionLifecycle.completed,
+        threadId: "session-1",
+        turnId: "turn-1",
+        itemId: "exec-2",
+        status: CodexCommandExecutionStatus.completed,
+        exitCode: 0,
+      ),
+      canonicalCallId: "call-success",
+    );
+    await repository.recordCommandOutcome(
+      command: const CodexCommandExecutionEventDto(
+        lifecycle: CodexCommandExecutionLifecycle.completed,
+        threadId: "session-1",
+        turnId: "turn-1",
+        itemId: "exec-3",
+        status: CodexCommandExecutionStatus.failed,
+        exitCode: null,
+      ),
+      canonicalCallId: "call-failed",
+    );
+
+    expect(
+      await repository.readStatuses(sessionId: "session-1"),
+      {"call-failed": PluginToolStatus.error},
+    );
   });
 
   test("deleting a session preserves other sessions", () async {
@@ -64,6 +121,20 @@ void main() {
       store.files.keys,
       contains("${CodexToolOutcomeStorage.fileName}.corrupt-1785758400000000"),
     );
+  });
+
+  test("does not overwrite an earlier quarantine with the same timestamp", () async {
+    const quarantineName = "${CodexToolOutcomeStorage.fileName}.corrupt-1785758400000000";
+    final store = _MemoryHostJsonStore()
+      ..files[quarantineName] = "first-corrupt-file"
+      ..files[CodexToolOutcomeStorage.fileName] = "second-corrupt-file";
+
+    expect(
+      await _repository(store: store).readStatuses(sessionId: "session-1"),
+      isEmpty,
+    );
+    expect(store.files[quarantineName], "first-corrupt-file");
+    expect(store.files["$quarantineName-1"], "second-corrupt-file");
   });
 
   test("surfaces storage read failures to the service layer", () async {

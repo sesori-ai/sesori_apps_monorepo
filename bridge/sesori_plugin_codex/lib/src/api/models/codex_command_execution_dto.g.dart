@@ -35,14 +35,8 @@ _CodexCommandExecutionItemDto _$CodexCommandExecutionItemDtoFromJson(
       ) ??
       CodexCommandExecutionItemType.unknown,
   id: json['id'] as String?,
-  status:
-      $enumDecodeNullable(
-        _$CodexCommandExecutionStatusEnumMap,
-        json['status'],
-        unknownValue: CodexCommandExecutionStatus.unknown,
-      ) ??
-      CodexCommandExecutionStatus.unknown,
-  exitCode: (json['exitCode'] as num?)?.toInt(),
+  status: _commandExecutionStatusFromJson(json['status']),
+  exitCode: _commandExecutionExitCodeFromJson(json['exitCode']),
 );
 
 Map<String, dynamic> _$CodexCommandExecutionItemDtoToJson(
