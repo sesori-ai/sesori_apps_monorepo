@@ -13,7 +13,7 @@ class GhCliApi {
 
   final ProcessRunner _processRunner;
   bool _availabilityFailureReported = false;
-  bool _authenticationFailureReported = false;
+  bool _authenticationVerificationFailureReported = false;
 
   GhCliApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
 
@@ -47,10 +47,10 @@ class GhCliApi {
         const ["auth", "status", "--hostname", "github.com"],
       );
       if (result.exitCode == 0) {
-        _authenticationFailureReported = false;
+        _authenticationVerificationFailureReported = false;
         return true;
       }
-      _reportAuthenticationFailure();
+      _reportAuthenticationVerificationFailure();
       return false;
     } on ProcessException {
       _reportAvailabilityFailure(
@@ -77,7 +77,7 @@ class GhCliApi {
       );
     }
 
-    _authenticationFailureReported = false;
+    _authenticationVerificationFailureReported = false;
     return GhAuthenticatedIdentity(rawLogin: result.stdout.toString());
   }
 
@@ -87,12 +87,13 @@ class GhCliApi {
     Console.warning(message);
   }
 
-  void _reportAuthenticationFailure() {
-    if (_authenticationFailureReported) return;
-    _authenticationFailureReported = true;
+  void _reportAuthenticationVerificationFailure() {
+    if (_authenticationVerificationFailureReported) return;
+    _authenticationVerificationFailureReported = true;
     Console.warning(
-      "GitHub CLI (gh) is not authenticated for github.com. Run 'gh auth login' or set GH_TOKEN/GITHUB_TOKEN "
-      "to enable GitHub pull request and CI status sync.",
+      "GitHub CLI (gh) could not verify authentication for github.com. "
+      "GitHub pull request and CI status sync is temporarily unavailable. "
+      "Run 'gh auth status --hostname github.com' to check authentication and connectivity.",
     );
   }
 
