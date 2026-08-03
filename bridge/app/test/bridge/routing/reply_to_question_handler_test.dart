@@ -22,13 +22,10 @@ void main() {
         projectId: "/repo",
         parentSessionId: null,
       );
-      handler = ReplyToQuestionHandler(
-        questionRepository: singlePluginQuestionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
-        ),
-      );
+      final pending = buildTestPendingInteractionService(database: db, plugin: plugin);
+      addTearDown(pending.dispatcher.dispose);
+      addTearDown(pending.service.dispose);
+      handler = ReplyToQuestionHandler(pendingInteractionService: pending.service);
     });
 
     tearDown(() => plugin.close());

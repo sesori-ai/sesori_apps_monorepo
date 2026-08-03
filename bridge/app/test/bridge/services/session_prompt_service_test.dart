@@ -3,6 +3,8 @@ import "dart:async";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -15,6 +17,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
+    late SessionOperationDispatcher dispatcher;
     late SessionPromptService service;
 
     setUp(() async {
@@ -27,8 +30,10 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionPromptService(
         sessionRepository: sessionRepository,
+        dispatcher: dispatcher,
       );
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
@@ -48,6 +53,7 @@ void main() {
 
     tearDown(() async {
       await service.dispose();
+      await dispatcher.dispose();
       await plugin.close();
       await db.close();
     });
@@ -153,6 +159,55 @@ void main() {
       expect(change.promptDefaults.model?.providerID, "openai");
       expect(change.promptDefaults.model?.modelID, "gpt-5");
       expect(change.promptDefaults.model?.variant, "high");
+    });
+
+    test("keeps command defaults, abort, and later defaults in arrival order", () async {
+      final abortService = SessionAbortService(
+        sessionRepository: sessionRepository,
+        dispatcher: dispatcher,
+      );
+      addTearDown(abortService.dispose);
+      final events = <String>[];
+      final defaultsSubscription = service.promptDefaultsChanges.listen(
+        (change) => events.add("defaults:${change.promptDefaults.agent}"),
+      );
+      final abortSubscription = abortService.abortStartedSessions.listen(
+        (_) => events.add("abort"),
+      );
+      addTearDown(defaultsSubscription.cancel);
+      addTearDown(abortSubscription.cancel);
+      final commandGate = Completer<void>();
+      plugin.sendCommandCompleter = commandGate;
+
+      final command = service.sendPrompt(
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "arguments")],
+        variant: null,
+        agent: "first",
+        model: null,
+        command: "review",
+      );
+      while (plugin.lastSendCommandSessionId == null) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      final abort = abortService.abortSession(sessionId: "s1");
+      final prompt = service.sendPrompt(
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "later")],
+        variant: null,
+        agent: "second",
+        model: null,
+        command: null,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(events, isEmpty);
+      expect(plugin.lastAbortSessionId, isNull);
+      expect(plugin.lastSendPromptSessionId, isNull);
+
+      commandGate.complete();
+      await Future.wait([command, abort, prompt]);
+      expect(events, ["defaults:first", "abort", "defaults:second"]);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))!.lastAgent, "second");
     });
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {

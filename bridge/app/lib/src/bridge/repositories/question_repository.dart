@@ -20,19 +20,16 @@ class QuestionRepository {
   final PluginRuntime _runtime;
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
-  final String _legacyMissingPluginId;
   final Duration _aggregateSourceDeadline;
 
   QuestionRepository({
     required PluginRuntime runtime,
     required SessionDao sessionDao,
     required ProjectsDao projectsDao,
-    required String legacyMissingPluginId,
     required Duration aggregateSourceDeadline,
   }) : _runtime = runtime,
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
-       _legacyMissingPluginId = legacyMissingPluginId,
        _aggregateSourceDeadline = aggregateSourceDeadline;
 
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
@@ -211,39 +208,57 @@ class QuestionRepository {
     );
   }
 
-  // COMPATIBILITY 2026-06-17 (v1.1.0): Old clients may omit the rejection sessionId. Require it and always run tombstone validation once those clients are unsupported.
   Future<void> rejectQuestion({
     required String questionId,
-    required String? sessionId,
+    required String sessionId,
   }) async {
-    String? backendSessionId;
-    if (sessionId != null) {
-      final binding = await _requireBinding(
-        sessionId: sessionId,
-        operation: SessionOperation.rejectQuestion,
-      );
-      backendSessionId = binding.backendSessionId;
-      return _runtime.use(
-        pluginId: binding.pluginId,
-        operation: SessionOperation.rejectQuestion,
-        body: (plugin) async {
-          await _throwIfMutationTargetTombstoned(
-            questionId: questionId,
-            backendSessionId: backendSessionId!,
-            operation: SessionOperation.rejectQuestion,
-            plugin: plugin,
-          );
-          return plugin.rejectQuestion(questionId: questionId, sessionId: backendSessionId);
-        },
-      );
-    }
-    return _runtime.use(
-      pluginId: _legacyMissingPluginId,
+    final binding = await _requireBinding(
+      sessionId: sessionId,
       operation: SessionOperation.rejectQuestion,
-      body: (plugin) => plugin.rejectQuestion(
-        questionId: questionId,
-        sessionId: backendSessionId,
-      ),
+    );
+    return _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.rejectQuestion,
+      body: (plugin) async {
+        await _throwIfMutationTargetTombstoned(
+          questionId: questionId,
+          backendSessionId: binding.backendSessionId,
+          operation: SessionOperation.rejectQuestion,
+          plugin: plugin,
+        );
+        return plugin.rejectQuestion(
+          questionId: questionId,
+          sessionId: binding.backendSessionId,
+        );
+      },
+    );
+  }
+
+  Future<List<String>> findPendingQuestionOwnerSessionIds({
+    required String pluginId,
+    required String questionId,
+  }) async {
+    final bindings = await _sessionDao.getSessionsForPlugin(pluginId: pluginId);
+    final roots = bindings.values.where((binding) => binding.parentSessionId == null);
+    return _runtime.use(
+      pluginId: pluginId,
+      operation: SessionOperation.rejectQuestion,
+      body: (plugin) async {
+        final tombstoned = plugin is BridgeDerivedProjectsPluginApi
+            ? await _sessionDao.getTombstonedSessionIds(pluginId: pluginId)
+            : const <String>{};
+        final owners = <String>{};
+        for (final root in roots) {
+          if (tombstoned.contains(root.backendSessionId)) continue;
+          final questions = await plugin.getPendingQuestions(sessionId: root.backendSessionId);
+          for (final question in questions) {
+            if (question.id != questionId || !_isVisible(question, tombstoned)) continue;
+            final owner = bindings[question.sessionID];
+            if (owner != null) owners.add(owner.sessionId);
+          }
+        }
+        return owners.toList(growable: false)..sort();
+      },
     );
   }
 

@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -27,6 +28,93 @@ void main() {
 
     setUp(() {
       plugin = _FakeBridgePlugin();
+    });
+
+    test("resolves stable root families and rejects malformed ancestry", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const projectId = "family-project";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await db.sessionDao.insertSession(
+        sessionId: "root",
+        backendSessionId: "backend-root",
+        projectId: projectId,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+      );
+      await db.sessionDao.insertObservedChild(
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        projectId: projectId,
+        parentSessionId: "root",
+        directory: projectId,
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 1,
+        updatedAt: 1,
+        projectionUpdatedAt: 1,
+        pluginId: plugin.id,
+      );
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      expect(
+        await repository.resolveSessionFamily(
+          sessionId: "child",
+          operation: SessionOperation.sendPrompt,
+        ),
+        (rootSessionId: "root", pluginId: plugin.id),
+      );
+      await expectLater(
+        repository.resolveSessionFamily(
+          sessionId: "missing",
+          operation: SessionOperation.sendPrompt,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
+      );
+
+      await db.sessionDao.insertObservedChild(
+        sessionId: "foreign-child",
+        backendSessionId: "foreign-child",
+        projectId: projectId,
+        parentSessionId: "root",
+        directory: projectId,
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 1,
+        updatedAt: 1,
+        projectionUpdatedAt: 1,
+        pluginId: "other",
+      );
+      await expectLater(
+        repository.resolveSessionFamily(
+          sessionId: "foreign-child",
+          operation: SessionOperation.abortSession,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409)),
+      );
+
+      final root = (await db.sessionDao.getSession(sessionId: "root"))!;
+      await db.sessionDao.upsertSessionRows(rows: [root.copyWith(parentSessionId: "child")]);
+      await expectLater(
+        repository.resolveSessionFamily(
+          sessionId: "child",
+          operation: SessionOperation.sendPrompt,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409)),
+      );
     });
 
     test("deleteSession records a plugin-scoped tombstone and removes the stored row", () async {

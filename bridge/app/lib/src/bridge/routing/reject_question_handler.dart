@@ -1,17 +1,18 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/question_repository.dart";
+import "../services/pending_interaction_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /question/reject` — rejects a pending question.
 ///
-/// Question IDs are globally unique. Session context is optional for backwards
-/// compatibility with older mobile clients.
+/// Session context scopes modern question IDs. It remains optional for
+/// backwards compatibility with older clients, where the pending owner must
+/// resolve unambiguously before rejection.
 class RejectQuestionHandler extends BodyRequestHandler<RejectQuestionRequest, SuccessEmptyResponse> {
-  final QuestionRepository _questionRepository;
+  final PendingInteractionService _pendingInteractionService;
 
-  RejectQuestionHandler({required QuestionRepository questionRepository})
-    : _questionRepository = questionRepository,
+  RejectQuestionHandler({required PendingInteractionService pendingInteractionService})
+    : _pendingInteractionService = pendingInteractionService,
       super(
         HttpMethod.post,
         "/question/reject",
@@ -31,7 +32,7 @@ class RejectQuestionHandler extends BodyRequestHandler<RejectQuestionRequest, Su
       throw buildErrorResponse(request, 400, "empty request id");
     }
 
-    await _questionRepository.rejectQuestion(
+    await _pendingInteractionService.rejectQuestion(
       questionId: requestId,
       sessionId: body.sessionId,
     );

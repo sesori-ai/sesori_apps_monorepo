@@ -3,15 +3,14 @@
 ## Current State
 
 - **Plan slug:** `relay-request-concurrency`
-- **Implementation base:** merged Step 3 at
-  `95178462b794cb485523a62740b80e8f0206d977`
-- **Series state:** Steps 1–3 merged; Step 3/10
-  [#696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as
-  `95178462`
-- **Current step:** Step 4/10 PR
-  [#699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) open
+- **Implementation base:** merged Step 4 at
+  `9ac855a3f64930a118675fa93786476337a987c9`
+- **Series state:** Steps 1–4 merged; Step 4/10
+  [#699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as
+  `9ac855a3`
+- **Current step:** Step 5/10 implemented on `plan-parallel-requests`
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** review and merge Step 4; Step 5 remains blocked until then
+- **Next action:** open, review, and merge Step 5; Step 6 remains blocked until then
 
 ## Incident Evidence
 
@@ -91,8 +90,8 @@
 | [x] | 1/10 | `plan/relay-request-concurrency` | `🌱 [relay-request-concurrency] docs: plan concurrent bridge requests [step 1/10]` | 1,400–1,600; explicitly cap-exempt | [PR #687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged as `c4d42a15`; correction [#688](https://github.com/sesori-ai/sesori_apps_monorepo/pull/688) merged as `0e31324a` |
 | [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged as `fdc8ad67` with 1,552 changed lines |
 | [x] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as `95178462` |
-| [ ] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) open from `95178462` |
-| [ ] | 5/10 | `relay-request-concurrency-session-actions` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Blocked on Step 4 merge |
+| [x] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as `9ac855a3` with 1,326 changed lines |
+| [ ] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Implemented from `9ac855a3`; ready to open |
 | [ ] | 6/10 | `relay-request-concurrency-session-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Blocked on Step 5 merge |
 | [ ] | 7/10 | `relay-request-concurrency-session-visibility` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | 600–1,100 | Blocked on Step 6 merge |
 | [ ] | 8/10 | `relay-request-concurrency-project-mutations` | `🚧 [relay-request-concurrency] refactor(bridge): order project path mutations [step 8/10]` | 650–1,100 | Blocked on Step 7 merge |
@@ -315,4 +314,27 @@
   single-assignment `final` and removed the shutdown future's bang assertion in
   favor of explicit null checking plus promotion.
 - **Step 4/10 delivery:** [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699)
-  is open at 1,326 changed lines; the owner-provided branch/worktree are reused.
+  merged as `9ac855a3f64930a118675fa93786476337a987c9` at 1,326 changed
+  lines; the owner-provided branch/worktree are reused.
+- **Step 5/10 base and scope:** based directly on merged Step 4 at `9ac855a3`
+  on the owner-provided `plan-parallel-requests` branch. The change adds internal
+  session-family and pending-interaction ordering only: no wire, database,
+  client, UI, analytics, or plugin-interface change; relay routing remains serial.
+- **Step 5/10 implementation:** one lifecycle-owned `SessionOperationDispatcher`
+  assigns monotonic admission, resolves stable root/plugin scope in order, and
+  atomically claims per-family plus permission/question lanes. Prompt/defaults,
+  abort, all pending-choice handlers, and auto approval use it. Legacy sessionless
+  question rejection resolves exactly one owner behind its plugin barrier and
+  returns explicit missing/ambiguous errors. Teardown quiesces plugin-event
+  producers and routes before closing and draining dispatcher acceptance.
+- **Step 5/10 cleanup:** removed direct pending-choice handler repository writes
+  and the repository's sessionless legacy rejection path. Prompt content remains
+  excluded from diagnostics while useful session/request/error context remains.
+- **Step 5/10 verification:** 2,396 full `bridge/app` tests pass, along with
+  strict `dart analyze --fatal-infos` and `git diff --check`. Focused coverage
+  includes family/interaction FIFO, unrelated-family/plugin concurrency,
+  failure release, idle cleanup, repeated drain, prompt/default/abort order,
+  auto-approval competition, and unique/missing/ambiguous legacy owners.
+- **Step 5/10 architecture review:** `aristotle-impl-review` approved all tracked
+  and untracked Step 5 changes from `9ac855a3` with no blocking findings.
+- **Step 5/10 delivery:** ready to open at 1,482 changed lines.

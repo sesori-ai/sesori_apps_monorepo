@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/session_operation.d
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -11,13 +12,21 @@ void main() {
   group("SessionAbortService", () {
     late _FakeSessionRepository sessionRepository;
     late SessionAbortService service;
+    late SessionOperationDispatcher dispatcher;
 
     setUp(() {
       sessionRepository = _FakeSessionRepository();
-      service = SessionAbortService(sessionRepository: sessionRepository);
+      dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      service = SessionAbortService(
+        sessionRepository: sessionRepository,
+        dispatcher: dispatcher,
+      );
     });
 
-    tearDown(() => service.dispose());
+    tearDown(() async {
+      await dispatcher.dispose();
+      await service.dispose();
+    });
 
     test("emits aborted session only after repository abort succeeds", () async {
       final startedSessionIds = <String>[];
@@ -80,6 +89,12 @@ class _FakeSessionRepository implements SessionRepository {
   Future<void> abortSession({required String sessionId}) async {
     await onAbort?.call(sessionId: sessionId);
   }
+
+  @override
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async => (rootSessionId: sessionId, pluginId: "fake");
 
   @override
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {}

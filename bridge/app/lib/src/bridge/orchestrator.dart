@@ -122,6 +122,7 @@ import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
+import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
@@ -133,6 +134,7 @@ import "services/session_event_dispatcher.dart";
 import "services/session_event_service.dart";
 import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
+import "services/session_operation_dispatcher.dart";
 import "services/session_options_service.dart";
 import "services/session_prompt_service.dart";
 import "services/session_unseen_service.dart";
@@ -276,6 +278,9 @@ class Orchestrator {
       runtime: _pluginRuntime,
     );
     final worktreeService = WorktreeService(worktreeRepository: worktreeRepository);
+    final sessionOperationDispatcher = SessionOperationDispatcher(
+      sessionRepository: sessionRepository,
+    );
     final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pushTracker = PushSessionStateTracker(now: clock.now);
     final pushRateLimiter = PushRateLimiter(now: clock.now);
@@ -365,8 +370,13 @@ class Orchestrator {
       runtime: _pluginRuntime,
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
-      legacyMissingPluginId: _legacyMissingPluginId,
       aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final pendingInteractionService = PendingInteractionService(
+      permissionRepository: permissionRepository,
+      questionRepository: questionRepository,
+      dispatcher: sessionOperationDispatcher,
+      legacyMissingPluginId: _legacyMissingPluginId,
     );
     final sessionCreationService = SessionCreationService(
       metadataService: MetadataService(
@@ -416,13 +426,17 @@ class Orchestrator {
     );
     final sessionPromptService = SessionPromptService(
       sessionRepository: sessionRepository,
+      dispatcher: sessionOperationDispatcher,
     );
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       filesystemRepository: filesystemRepository,
     );
-    final sessionAbortService = SessionAbortService(sessionRepository: sessionRepository);
+    final sessionAbortService = SessionAbortService(
+      sessionRepository: sessionRepository,
+      dispatcher: sessionOperationDispatcher,
+    );
     final sessionDiffService = SessionDiffService(
       sessionRepository: sessionRepository,
       sessionDiffRepository: SessionDiffRepository(
@@ -446,6 +460,7 @@ class Orchestrator {
     final permissionAutoApprovalService = PermissionAutoApprovalService(
       sessionRepository: sessionRepository,
       permissionRepository: permissionRepository,
+      pendingInteractionService: pendingInteractionService,
     );
     final pluginEventListeners = [
       PluginEventListener(source: _pluginRuntime.backendEvents, dispatcher: sessionEventDispatcher),
@@ -522,9 +537,9 @@ class Orchestrator {
         GetSessionQuestionsHandler(questionRepository: questionRepository),
         GetProjectQuestionsHandler(questionRepository: questionRepository),
         GetSessionPermissionsHandler(permissionRepository: permissionRepository),
-        ReplyToQuestionHandler(questionRepository: questionRepository),
-        RejectQuestionHandler(questionRepository: questionRepository),
-        ReplyToPermissionHandler(permissionRepository: permissionRepository),
+        ReplyToQuestionHandler(pendingInteractionService: pendingInteractionService),
+        RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
+        ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
         RenameProjectHandler(projectRepository),
         CreateProjectHandler(
           projectInitializationService: projectInitializationService,
@@ -585,7 +600,9 @@ class Orchestrator {
       projectViewTracker: projectViewTracker,
       projectActivityService: projectActivityService,
       permissionAutoApprovalService: permissionAutoApprovalService,
+      pendingInteractionService: pendingInteractionService,
       sessionAbortService: sessionAbortService,
+      sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
       restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
@@ -653,6 +670,8 @@ class OrchestratorSession {
   final ProjectViewTracker _projectViewTracker;
   final SessionRepository _sessionRepository;
   final PermissionAutoApprovalService _permissionAutoApprovalService;
+  final PendingInteractionService _pendingInteractionService;
+  final SessionOperationDispatcher _sessionOperationDispatcher;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
   final SessionPromptService _sessionPromptService;
@@ -673,8 +692,6 @@ class OrchestratorSession {
   Future<void>? _shutdownRelayCloseFuture;
 
   bool _cancelled = false;
-  Object? _beginShutdownError;
-  StackTrace? _beginShutdownStackTrace;
 
   /// When the first [cancel] was requested. Used only for shutdown timing
   /// diagnostics (the logger emits no timestamps, so durations are explicit).
@@ -724,7 +741,9 @@ class OrchestratorSession {
     required ProjectViewTracker projectViewTracker,
     required ProjectActivityService projectActivityService,
     required PermissionAutoApprovalService permissionAutoApprovalService,
+    required PendingInteractionService pendingInteractionService,
     required SessionAbortService sessionAbortService,
+    required SessionOperationDispatcher sessionOperationDispatcher,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartDispatcher restartDispatcher,
     required ControlStatusNotifier? statusNotifier,
@@ -758,6 +777,8 @@ class OrchestratorSession {
        _projectViewTracker = projectViewTracker,
        _sessionRepository = sessionRepository,
        _permissionAutoApprovalService = permissionAutoApprovalService,
+       _pendingInteractionService = pendingInteractionService,
+       _sessionOperationDispatcher = sessionOperationDispatcher,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
@@ -1003,8 +1024,8 @@ class OrchestratorSession {
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
     final teardownSw = Stopwatch()..start();
-    Object? firstTeardownError = _beginShutdownError;
-    StackTrace? firstTeardownStackTrace = _beginShutdownStackTrace;
+    Object? firstTeardownError;
+    StackTrace? firstTeardownStackTrace;
 
     Future<void> attempt(FutureOr<void> Function() action) async {
       try {
@@ -1028,8 +1049,11 @@ class OrchestratorSession {
       attempt(_subscriptions.cancel),
       attempt(_promptDefaultsSubscriptions.cancel),
       attempt(_catalogImportSubscriptions.cancel),
+      for (final listener in _pluginEventListeners) attempt(listener.dispose),
+      attempt(_sessionBindingCommitListener.dispose),
+      attempt(_sessionDeletionListener.dispose),
     ]);
-    Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
+    Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([
       attempt(() async {
         await Future.wait(_pluginEventProcessingTails.values);
@@ -1037,21 +1061,23 @@ class OrchestratorSession {
       attempt(_routedRequestDispatcher.drain),
     ]);
     Log.v("[shutdown] plugin events and routed requests drained (+${teardownSw.elapsedMilliseconds}ms)");
-    await attempt(_sessionPromptService.dispose);
+    _sessionOperationDispatcher.beginShutdown();
+    await attempt(_sessionOperationDispatcher.dispose);
+    Log.v("[shutdown] session operations drained (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([
-      for (final listener in _pluginEventListeners) attempt(listener.dispose),
-      attempt(_sessionBindingCommitListener.dispose),
-      attempt(_sessionDeletionListener.dispose),
+      attempt(_permissionAutoApprovalService.dispose),
+      attempt(_sessionPromptService.dispose),
+      attempt(_sessionAbortService.dispose),
+    ]);
+    await attempt(_pendingInteractionService.dispose);
+    await Future.wait([
       attempt(_sessionOptionsCreationRefreshListener.dispose),
       attempt(_sessionOptionsChangedRefreshListener.dispose),
     ]);
     await attempt(_sessionEventDispatcher.dispose);
-    await attempt(_permissionAutoApprovalService.dispose);
     await attempt(_sessionMutationDispatcher.dispose);
     await attempt(_projectActivityService.dispose);
     Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
-    await attempt(_sessionAbortService.dispose);
-    Log.v("[shutdown] session abort service disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_completionListener.dispose);
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
@@ -1224,12 +1250,6 @@ class OrchestratorSession {
     }
     _shutdownRelayCloseFuture ??= _closeRelayConnection();
     unawaited(_shutdownRelayCloseFuture);
-    try {
-      _permissionAutoApprovalService.dispose();
-    } on Object catch (error, stackTrace) {
-      _beginShutdownError ??= error;
-      _beginShutdownStackTrace ??= stackTrace;
-    }
   }
 
   Future<void> cancel() async {
