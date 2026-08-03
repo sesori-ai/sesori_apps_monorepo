@@ -12,9 +12,12 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
+import "../bridge/foundation/session_visibility_state.dart";
 import "../bridge/runtime/plugin_runtime.dart";
 import "models/catalog_import_control.dart";
 import "project_catalog_identity_calculator.dart";
+
+typedef _CatalogPublication = ({int projectsImported, int sessionsImported, int completedAt});
 
 class CatalogImportRepository {
   CatalogImportRepository({
@@ -23,11 +26,13 @@ class CatalogImportRepository {
     required SessionDao sessionDao,
     required CatalogHydrationsDao catalogHydrationsDao,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
+    required SessionVisibilityState visibilityState,
   }) : _runtime = runtime,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _catalogHydrationsDao = catalogHydrationsDao,
-       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator;
+       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
+       _visibilityState = visibilityState;
 
   static const int projectionVersion = 1;
   static const int _responsivenessBatchSize = 512;
@@ -38,6 +43,7 @@ class CatalogImportRepository {
   final SessionDao _sessionDao;
   final CatalogHydrationsDao _catalogHydrationsDao;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
+  final SessionVisibilityState _visibilityState;
 
   Set<String> get eligiblePluginIds => _runtime.eligiblePluginIds;
   Set<String> get importEligiblePluginIds => _runtime.startAllowedPluginIds;
@@ -315,10 +321,10 @@ class CatalogImportRepository {
     await publicationFinished;
   }
 
-  Future<({int projectsImported, int sessionsImported, int completedAt})> _publishCatalog({
+  Future<_CatalogPublication> _publishCatalog({
     required _CatalogImportObservation observation,
     required CatalogImportControl control,
-  }) {
+  }) async {
     final pluginId = observation.pluginId;
     final observedProjects = observation.observedProjects;
     final observedSessions = observation.observedSessions;
@@ -332,7 +338,8 @@ class CatalogImportRepository {
       );
     }
 
-    return _runtime.commitCurrentGeneration(
+    // ignore: prefer_function_declarations_over_variables
+    final Future<_CatalogPublication> Function() commit = () => _runtime.commitCurrentGeneration(
       pluginId: pluginId,
       generation: observation.generation,
       operation: _CatalogOperation.importCatalog,
@@ -467,6 +474,10 @@ class CatalogImportRepository {
           completedAt: completedAt,
         );
       }),
+    );
+    return _visibilityState.withCatalogWrite(
+      pluginId: pluginId,
+      body: commit,
     );
   }
 

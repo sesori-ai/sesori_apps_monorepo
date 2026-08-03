@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
@@ -40,10 +41,12 @@ import "../../helpers/single_plugin_repository_test_support.dart";
 /// Builds a real [SessionUnseenService] backed by [db] for handler/router tests.
 SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginApi plugin) {
   const calculator = SessionUnseenCalculator();
+  final visibilityState = SessionVisibilityState();
   return SessionUnseenService(
     unseenRepository: SessionUnseenRepository(
       sessionDao: db.sessionDao,
       calculator: calculator,
+      visibilityState: visibilityState,
     ),
     projectRepository: singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(),
@@ -51,6 +54,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       sessionDao: db.sessionDao,
       unseenCalculator: calculator,
       filesystemApi: FakeFilesystemApi(),
+      visibilityState: visibilityState,
     ),
     viewTracker: SessionViewTracker(),
   );
@@ -60,6 +64,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
   required AppDatabase database,
   required BridgePluginApi plugin,
 }) {
+  final visibilityState = SessionVisibilityState();
   final dispatcher = SessionOperationDispatcher(
     sessionRepository: singlePluginSessionRepository(
       plugin: plugin,
@@ -67,6 +72,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      visibilityState: visibilityState,
     ),
   );
   return (
@@ -75,11 +81,13 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       permissionRepository: singlePluginPermissionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
+        visibilityState: visibilityState,
       ),
       questionRepository: singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
+        visibilityState: visibilityState,
       ),
       dispatcher: dispatcher,
       legacyMissingPluginId: plugin.id,
@@ -869,11 +877,10 @@ class _NoopSessionRepository implements SessionRepository {
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const <ProjectActivitySummary>[];
 
   @override
-  Future<Session> createSession({
+  Future<UnpublishedSessionBinding> createSession({
     required String pluginId,
     required String projectId,
     required String directory,
-    required String? parentSessionId,
     required List<PromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
@@ -886,18 +893,10 @@ class _NoopSessionRepository implements SessionRepository {
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
-  }) async => const Session(
-    branchName: null,
-    id: "",
-    pluginId: "fake",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    pullRequest: null,
-    promptDefaults: null,
-  );
+  }) {
+    throw UnimplementedError();
+  }
+
   @override
   Future<List<Session>> getSessionsForProject({
     required String projectId,
@@ -1073,6 +1072,9 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -1164,11 +1166,10 @@ class FakeSessionRepository implements SessionRepository {
   ];
 
   @override
-  Future<Session> createSession({
+  Future<UnpublishedSessionBinding> createSession({
     required String pluginId,
     required String projectId,
     required String directory,
-    required String? parentSessionId,
     required List<PromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
@@ -1181,18 +1182,9 @@ class FakeSessionRepository implements SessionRepository {
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
-  }) async => const Session(
-    branchName: null,
-    id: "",
-    pluginId: "fake",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    pullRequest: null,
-    promptDefaults: null,
-  );
+  }) {
+    throw UnimplementedError();
+  }
 
   @override
   Future<List<Session>> getSessionsForProject({
@@ -1592,4 +1584,7 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

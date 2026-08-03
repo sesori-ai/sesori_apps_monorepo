@@ -6,22 +6,26 @@ import "../models/session_metadata.dart" as bridge_metadata;
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
+import "session_operation_dispatcher.dart";
 import "worktree_service.dart";
 
 class SessionCreationService {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
+  final SessionOperationDispatcher _sessionOperationDispatcher;
   final SessionMutationDispatcher _sessionMutationDispatcher;
 
   SessionCreationService({
     required MetadataService metadataService,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
+    required SessionOperationDispatcher sessionOperationDispatcher,
     required SessionMutationDispatcher sessionMutationDispatcher,
   }) : _metadataService = metadataService,
        _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
+       _sessionOperationDispatcher = sessionOperationDispatcher,
        _sessionMutationDispatcher = sessionMutationDispatcher;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
@@ -45,11 +49,10 @@ class SessionCreationService {
       dedicatedWorktree: request.dedicatedWorktree,
       worktreeResult: worktreeResult,
     );
-    final created = await _sessionRepository.createSession(
+    final binding = await _sessionRepository.createSession(
       pluginId: request.pluginId,
       projectId: request.projectId,
       directory: _resolveDirectory(projectDirectory: projectDirectory, worktreeResult: worktreeResult),
-      parentSessionId: null,
       parts: _buildPromptParts(
         parts: request.parts,
         worktreeResult: worktreeResult,
@@ -73,19 +76,24 @@ class SessionCreationService {
             )
           : null,
     );
-    await _maybeSendCommand(
-      session: created,
-      command: normalizedCommand,
-      arguments: _buildCommandArguments(
-        userArguments: firstText ?? '',
-        worktreeResult: worktreeResult,
-      ),
-      userVisibleArguments: firstText,
-      variant: request.variant,
-      agent: request.agent,
-      model: request.model,
-    );
-    final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
+    var finalSession = binding.session;
+    try {
+      await _maybeSendCommand(
+        binding: binding,
+        command: normalizedCommand,
+        arguments: _buildCommandArguments(
+          userArguments: firstText ?? '',
+          worktreeResult: worktreeResult,
+        ),
+        userVisibleArguments: firstText,
+        variant: request.variant,
+        agent: request.agent,
+        model: request.model,
+      );
+      finalSession = await _maybeRenameSession(binding: binding, metadata: metadata);
+    } finally {
+      _sessionRepository.revealSession(binding: binding);
+    }
     // The plugin only knows the directory the session was created in, so for
     // a moved project it echoes the live path (or its own internal id) as the
     // session's projectID. Re-key the response to the stable identifier the
@@ -177,21 +185,28 @@ class SessionCreationService {
   }
 
   Future<Session> _maybeRenameSession({
-    required Session session,
+    required UnpublishedSessionBinding binding,
     required bridge_metadata.SessionMetadata? metadata,
   }) async {
     if (metadata?.title case final title?) {
       try {
-        return await _sessionMutationDispatcher.renameSession(sessionId: session.id, title: title);
-      } catch (e) {
-        Log.w("Failed to rename session ${session.id}: $e");
+        return await _sessionMutationDispatcher.renameInitialSession(
+          binding: binding,
+          title: title,
+        );
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "Failed to apply initial metadata title for session ${binding.session.id}",
+          error,
+          stackTrace,
+        );
       }
     }
-    return session;
+    return binding.session;
   }
 
   Future<void> _maybeSendCommand({
-    required Session session,
+    required UnpublishedSessionBinding binding,
     required String? command,
     required String arguments,
     required String? userVisibleArguments,
@@ -202,14 +217,17 @@ class SessionCreationService {
     if (command == null) {
       return;
     }
-    await _sessionRepository.sendCommand(
-      sessionId: session.id,
-      command: command,
-      arguments: arguments,
-      userVisibleArguments: userVisibleArguments,
-      variant: variant,
-      agent: agent,
-      model: model,
+    await _sessionOperationDispatcher.dispatchInitial(
+      binding: binding,
+      body: () => _sessionRepository.sendInitialCommand(
+        binding: binding,
+        command: command,
+        arguments: arguments,
+        userVisibleArguments: userVisibleArguments,
+        variant: variant,
+        agent: agent,
+        model: model,
+      ),
     );
   }
 

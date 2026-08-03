@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
@@ -692,6 +693,7 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
          pullRequestDao: database.pullRequestDao,
          projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
          aggregateSourceDeadline: const Duration(seconds: 5),
+         visibilityState: SessionVisibilityState(),
        );
 
   @override

@@ -1,4 +1,5 @@
 import "../../api/database/daos/session_dao.dart";
+import "../foundation/session_visibility_state.dart";
 import "session_unseen_calculator.dart";
 
 /// The unseen-relevant timestamps for a single session, plus its project id.
@@ -19,18 +20,22 @@ typedef UnseenRow = ({
 class SessionUnseenRepository {
   final SessionDao _sessionDao;
   final SessionUnseenCalculator _calculator;
+  final SessionVisibilityState _visibilityState;
 
   SessionUnseenRepository({
     required SessionDao sessionDao,
     required SessionUnseenCalculator calculator,
+    required SessionVisibilityState visibilityState,
   }) : _sessionDao = sessionDao,
-       _calculator = calculator;
+       _calculator = calculator,
+       _visibilityState = visibilityState;
 
   /// Returns the unseen timestamps + project id for [sessionId], or null when
   /// the session has no persisted row.
   Future<UnseenRow?> getUnseenRow({required String sessionId}) async {
+    if (!isPublished(sessionId: sessionId)) return null;
     final dto = await _sessionDao.getSession(sessionId: sessionId);
-    if (dto == null) return null;
+    if (dto == null || !isPublished(sessionId: sessionId)) return null;
     return (
       projectId: dto.projectId,
       userMessageAt: dto.lastUserMessageAt,
@@ -48,8 +53,9 @@ class SessionUnseenRepository {
     required int at,
     required bool isUserMessage,
     required bool advanceSeen,
-  }) async {
-    await _sessionDao.setActivityTimestamps(
+  }) {
+    if (!isPublished(sessionId: sessionId)) return Future<void>.value();
+    return _sessionDao.setActivityTimestamps(
       sessionId: sessionId,
       activityAt: at,
       userMessageAt: isUserMessage ? at : null,
@@ -62,11 +68,13 @@ class SessionUnseenRepository {
   /// recorded without touching the activity/seen timeline, so a re-emitted
   /// (old) user message can never clear unseen activity.
   Future<void> recordUserMessage({required String sessionId, required int at}) {
+    if (!isPublished(sessionId: sessionId)) return Future<void>.value();
     return _sessionDao.setUserMessageAt(sessionId: sessionId, userMessageAt: at);
   }
 
   /// Marks [sessionId] seen as of [at] ("Mark as Read" / viewing).
   Future<void> markSessionSeen({required String sessionId, required int at}) {
+    if (!isPublished(sessionId: sessionId)) return Future<void>.value();
     return _sessionDao.setSeenAt(sessionId: sessionId, seenAt: at);
   }
 
@@ -74,6 +82,7 @@ class SessionUnseenRepository {
   /// clearing `last_seen_at` alone, this reliably bolds even baseline sessions
   /// and sessions whose latest activity was the user's own message.
   Future<void> markSessionUnseen({required String sessionId, required int at}) {
+    if (!isPublished(sessionId: sessionId)) return Future<void>.value();
     return _sessionDao.forceUnseen(sessionId: sessionId, activityAt: at);
   }
 
@@ -81,7 +90,12 @@ class SessionUnseenRepository {
   /// a stale unseen row can't keep its project's aggregate bold). No-op if the
   /// row doesn't exist.
   Future<void> deleteSession({required String sessionId}) {
+    if (!isPublished(sessionId: sessionId)) return Future<void>.value();
     return _sessionDao.deleteSession(sessionId: sessionId);
+  }
+
+  bool isPublished({required String sessionId}) {
+    return _visibilityState.isPublished(sessionId: sessionId);
   }
 
   /// Whether [sessionId] currently has unseen changes.

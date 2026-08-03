@@ -34,6 +34,27 @@ class SessionMutationDispatcher {
     );
   }
 
+  Future<Session> renameInitialSession({
+    required UnpublishedSessionBinding binding,
+    required String title,
+  }) {
+    if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
+    return _sessionOperationDispatcher.dispatchInitial(
+      binding: binding,
+      body: () async {
+        final renamed = await _sessionRepository.setInitialSessionTitle(
+          binding: binding,
+          title: title,
+        );
+        await _propagateTitle(
+          sessionId: binding.session.id,
+          propagate: () => _sessionRepository.renameInitialSession(binding: binding, title: title),
+        );
+        return renamed;
+      },
+    );
+  }
+
   Future<CleanupResult> deleteSession({
     required String sessionId,
     required Future<CleanupResult> Function() cleanup,
@@ -67,16 +88,19 @@ class SessionMutationDispatcher {
         message: "session $sessionId was not found",
       );
     }
-    await _propagateTitle(sessionId: sessionId, title: title);
+    await _propagateTitle(
+      sessionId: sessionId,
+      propagate: () => _sessionRepository.renameSession(sessionId: sessionId, title: title),
+    );
     return renamed;
   }
 
   Future<void> _propagateTitle({
     required String sessionId,
-    required String title,
+    required Future<Object?> Function() propagate,
   }) async {
     try {
-      await _sessionRepository.renameSession(sessionId: sessionId, title: title);
+      await propagate();
     } catch (error, stackTrace) {
       Log.w("Could not propagate title for session $sessionId to its plugin", error, stackTrace);
     }

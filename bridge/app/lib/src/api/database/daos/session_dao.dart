@@ -370,10 +370,14 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String projectId,
     required int offset,
     required int? limit,
+    required List<String> excludedSessionIds,
   }) {
     return (select(sessionTable)
           ..where(
-            (table) => table.projectId.equals(projectId) & table.parentSessionId.isNull(),
+            (table) {
+              final roots = table.projectId.equals(projectId) & table.parentSessionId.isNull();
+              return excludedSessionIds.isEmpty ? roots : roots & table.sessionId.isNotIn(excludedSessionIds);
+            },
           )
           ..orderBy([
             (table) => OrderingTerm.desc(table.updatedAt),
@@ -385,10 +389,14 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   Future<List<SessionDto>> getChildCatalogSessions({
     required String parentSessionId,
+    required List<String> excludedSessionIds,
   }) {
     return (select(sessionTable)
           ..where(
-            (table) => table.parentSessionId.equals(parentSessionId),
+            (table) {
+              final children = table.parentSessionId.equals(parentSessionId);
+              return excludedSessionIds.isEmpty ? children : children & table.sessionId.isNotIn(excludedSessionIds);
+            },
           )
           ..orderBy([
             (table) => OrderingTerm.desc(table.updatedAt),

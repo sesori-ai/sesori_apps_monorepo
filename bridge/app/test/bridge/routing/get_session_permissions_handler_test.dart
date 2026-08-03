@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_permissions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -152,6 +153,13 @@ void main() {
             tool: "shell",
             description: "visible",
           ),
+          PluginPendingPermission(
+            id: "hidden",
+            sessionID: "hidden-child",
+            displaySessionId: "root",
+            tool: "shell",
+            description: "hidden",
+          ),
         ];
       await recordSessionBinding(
         database: db,
@@ -169,6 +177,14 @@ void main() {
         projectId: "/repo",
         parentSessionId: "stable-root",
       );
+      await recordSessionBinding(
+        database: db,
+        sessionId: "stable-hidden",
+        backendSessionId: "hidden-child",
+        pluginId: derivedPlugin.id,
+        projectId: "/repo",
+        parentSessionId: "stable-root",
+      );
       for (final sessionId in ["gone-child", "gone-root"]) {
         await db.sessionDao.insertSessionTombstone(
           backendSessionId: sessionId,
@@ -176,12 +192,14 @@ void main() {
           deletedAt: 1,
         );
       }
-      final derivedHandler = GetSessionPermissionsHandler(
-        permissionRepository: singlePluginPermissionRepository(
-          plugin: derivedPlugin,
-          sessionDao: db.sessionDao,
-        ),
+      final visibilityState = SessionVisibilityState();
+      visibilityState.beginUnpublishedSession(sessionId: "stable-hidden");
+      final repository = singlePluginPermissionRepository(
+        plugin: derivedPlugin,
+        sessionDao: db.sessionDao,
+        visibilityState: visibilityState,
       );
+      final derivedHandler = GetSessionPermissionsHandler(permissionRepository: repository);
 
       final response = await derivedHandler.handle(
         makeRequest("POST", "/session/permissions"),
@@ -194,6 +212,16 @@ void main() {
       expect(response.data.map((permission) => permission.id), ["visible"]);
       expect(response.data.single.sessionID, "stable-child");
       expect(response.data.single.displaySessionId, "stable-root");
+      visibilityState.beginUnpublishedSession(sessionId: "stable-root");
+      await expectLater(
+        repository.replyToPermission(
+          requestId: "visible",
+          sessionId: "stable-root",
+          reply: PermissionReply.once,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(derivedPlugin.permissionReplyCalls, isZero);
     });
 
     test("permission replies reject a tombstoned displayed root", () async {

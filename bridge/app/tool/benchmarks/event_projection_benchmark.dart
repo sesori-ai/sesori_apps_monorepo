@@ -5,6 +5,7 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -91,6 +92,7 @@ class _EventProjectionBenchmark {
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
+        visibilityState: SessionVisibilityState(),
       );
       final failureReporter = _BenchmarkFailureReporter();
       final service = SessionEventService(

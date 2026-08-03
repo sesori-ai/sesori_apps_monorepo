@@ -12,6 +12,7 @@ import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../../repositories/project_catalog_identity_calculator.dart";
 import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
+import "../foundation/session_visibility_state.dart";
 import "mappers/git_remote_identity_parser.dart";
 import "mappers/project_catalog_mapper.dart";
 import "models/project_activity.dart";
@@ -29,6 +30,7 @@ class ProjectRepository {
   final FilesystemApi _filesystemApi;
   final GitCliApi _gitCliApi;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
+  final SessionVisibilityState _visibilityState;
 
   ProjectRepository({
     required ProjectsDao projectsDao,
@@ -37,12 +39,14 @@ class ProjectRepository {
     required FilesystemApi filesystemApi,
     required GitCliApi gitCliApi,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
+    required SessionVisibilityState visibilityState,
   }) : _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _unseenCalculator = unseenCalculator,
        _filesystemApi = filesystemApi,
        _gitCliApi = gitCliApi,
-       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator;
+       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
+       _visibilityState = visibilityState;
 
   Future<List<Project>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
@@ -82,6 +86,7 @@ class ProjectRepository {
 
   bool _anyUnseen(List<SessionUnseenRow> rows) {
     for (final row in rows) {
+      if (!_visibilityState.isPublished(sessionId: row.sessionId)) continue;
       if (row.parentSessionId != null) continue;
       if (row.archivedAt != null) continue;
       if (_unseenCalculator.isUnseen(

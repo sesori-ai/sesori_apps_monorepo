@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
@@ -238,6 +239,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
+        visibilityState: SessionVisibilityState(),
       );
 
       expect(await repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
@@ -644,6 +646,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 1),
+        visibilityState: SessionVisibilityState(),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["stored-native", "stored-derived"]);
       await db.sessionDao.insertSession(
@@ -1098,24 +1101,12 @@ void main() {
       final commitsFuture = repository.bindingCommits.take(cases.length).toList();
 
       for (final variant in cases) {
-        await repository.createSession(
+        final binding = await _createUnpublished(
+          repository: repository,
           pluginId: plugin.id,
-          projectId: "/repo",
-          directory: "/repo",
-          parentSessionId: null,
-          parts: const [PromptPart.text(text: "Ship it")],
-          userVisibleText: "Ship it",
           variant: variant,
-          agent: null,
-          model: null,
-          isDedicated: false,
-          worktreePath: null,
-          branchName: null,
-          baseBranch: null,
-          baseCommit: null,
-          lastAgent: null,
-          lastAgentModel: null,
         );
+        repository.revealSession(binding: binding);
 
         expect(plugin.lastCreateSessionVariant, equals(variant?.id));
       }
@@ -1141,7 +1132,6 @@ void main() {
           pluginId: "other-plugin",
           projectId: "/repo",
           directory: "/repo",
-          parentSessionId: null,
           parts: const [],
           userVisibleText: null,
           variant: null,
@@ -1158,6 +1148,199 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
       expect(plugin.createSessionCalls, isZero);
+    });
+
+    test("keeps a committed creation private across a concurrent paginated read", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final sessionDao = _BlockingRootCatalogSessionDao(database: db);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      addTearDown(repository.dispose);
+      plugin.createSessionResult = const PluginSession(
+        id: "visible-root",
+        projectID: "/repo",
+        directory: "/repo",
+        parentID: null,
+        title: "Visible",
+        time: PluginSessionTime(created: 10, updated: 10, archived: null),
+      );
+      final visible = await _createUnpublished(repository: repository, pluginId: plugin.id);
+      repository.revealSession(binding: visible);
+      plugin.createSessionResult = const PluginSession(
+        id: "backend-hidden",
+        projectID: "/repo",
+        directory: "/repo",
+        parentID: null,
+        title: "Hidden",
+        time: PluginSessionTime(created: 30, updated: 30, archived: null),
+      );
+      final commits = <SessionBindingsCommitted>[];
+      final commitSubscription = repository.bindingCommits.listen(commits.add);
+      addTearDown(commitSubscription.cancel);
+
+      final page = repository.getSessionsForProject(
+        projectId: "/repo",
+        start: 0,
+        limit: 1,
+        verifiedGithubLogin: null,
+      );
+      await sessionDao.snapshotTaken.future;
+      final binding = await _createUnpublished(
+        repository: repository,
+        pluginId: plugin.id,
+      );
+      final sessionId = binding.session.id;
+
+      expect(await db.sessionDao.getSession(sessionId: sessionId), isNotNull);
+      expect(commits, isEmpty);
+      expect(await repository.getCatalogSession(sessionId: sessionId), isNull);
+      await expectLater(
+        repository.sendCommand(
+          sessionId: sessionId,
+          command: "ordinary",
+          arguments: "",
+          userVisibleArguments: null,
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
+      );
+
+      await repository.sendInitialCommand(
+        binding: binding,
+        command: "initialize",
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(plugin.lastSendCommandSessionId, "backend-hidden");
+
+      final recoveredRepository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      addTearDown(recoveredRepository.dispose);
+      expect((await recoveredRepository.getCatalogSession(sessionId: sessionId))?.id, sessionId);
+
+      sessionDao.releaseSnapshot.complete();
+      expect((await page).map((session) => session.id), [visible.session.id]);
+      expect(sessionDao.readCount, 2);
+
+      repository.revealSession(binding: binding);
+      repository.revealSession(binding: binding);
+
+      expect(commits, hasLength(1));
+      expect(commits.single.kind, SessionBindingCommitKind.sessionCreation);
+      expect(commits.single.backendSessionIds, ["backend-hidden"]);
+      expect((await repository.getCatalogSession(sessionId: sessionId))?.id, sessionId);
+    });
+
+    test("reserves a plugin before active-root hydration can bind the created backend session", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const directory = "/projects/creating";
+      final createResult = Completer<PluginSession>();
+      const createdBackendSession = PluginSession(
+        id: "backend-creating",
+        projectID: directory,
+        directory: directory,
+        parentID: null,
+        title: "Creating",
+        time: PluginSessionTime(created: 1, updated: 2, archived: null),
+      );
+      plugin
+        ..createSessionStarted = Completer<void>()
+        ..createSessionFuture = createResult.future
+        ..getSessionsStarted = Completer<void>()
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [PluginActiveSession(id: "backend-creating", awaitingInput: true)],
+          ),
+        ]
+        ..sessionsByWorktree = const {
+          directory: [
+            createdBackendSession,
+          ],
+        };
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      addTearDown(repository.dispose);
+
+      final creation = _createUnpublished(
+        repository: repository,
+        pluginId: plugin.id,
+        projectId: directory,
+      );
+      await plugin.createSessionStarted!.future;
+      final hydration = repository.getProjectActivitySummaries();
+      await plugin.getSessionsStarted!.future;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "backend-creating",
+        ),
+        isNull,
+      );
+
+      createResult.complete(createdBackendSession);
+      final binding = await creation;
+
+      expect(await hydration, isEmpty);
+      expect(
+        (await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "backend-creating",
+        ))?.sessionId,
+        binding.session.id,
+      );
+
+      repository.revealSession(binding: binding);
+    });
+
+    test("removes the unpublished marker when the creation transaction rolls back", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final visibilityState = SessionVisibilityState();
+      final sessionDao = _FailingCreationSessionDao(db);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        visibilityState: visibilityState,
+      );
+      addTearDown(repository.dispose);
+
+      await expectLater(
+        _createUnpublished(
+          repository: repository,
+          pluginId: plugin.id,
+        ),
+        throwsStateError,
+      );
+
+      expect(visibilityState.isPublished(sessionId: sessionDao.failedSessionId!), isTrue);
     });
 
     group("moved project (stable id, new live path)", () {
@@ -1586,6 +1769,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
+        visibilityState: SessionVisibilityState(),
       );
 
       final summaries = repository.getProjectActivitySummaries();
@@ -2450,6 +2634,31 @@ void main() {
   });
 }
 
+Future<UnpublishedSessionBinding> _createUnpublished({
+  required SessionRepository repository,
+  required String pluginId,
+  String projectId = "/repo",
+  SessionVariant? variant,
+}) {
+  return repository.createSession(
+    pluginId: pluginId,
+    projectId: projectId,
+    directory: projectId,
+    parts: const [],
+    userVisibleText: null,
+    variant: variant,
+    agent: null,
+    model: null,
+    isDedicated: false,
+    worktreePath: null,
+    branchName: null,
+    baseBranch: null,
+    baseCommit: null,
+    lastAgent: null,
+    lastAgentModel: null,
+  );
+}
+
 class _GenerationReplacingRuntime extends TestPluginRuntime {
   _GenerationReplacingRuntime({required BridgePluginApi plugin})
     : super(plugins: {plugin.id: plugin}, eligiblePluginIds: null);
@@ -2519,6 +2728,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
     time: null,
   );
   PluginSession? renameSessionResult;
+  Future<PluginSession>? createSessionFuture;
+  Completer<void>? createSessionStarted;
+  Completer<void>? getSessionsStarted;
   String? lastRenameSessionId;
   String? lastRenameSessionTitle;
   String? lastCreateSessionVariant;
@@ -2559,6 +2771,8 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
     getSessionsCalls++;
     lastGetSessionsWorktree = worktree;
+    final started = getSessionsStarted;
+    if (started != null && !started.isCompleted) started.complete();
     if (getSessionsFailuresRemaining > 0) {
       getSessionsFailuresRemaining--;
       throw StateError("session collection unavailable");
@@ -2598,6 +2812,10 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }) async {
     createSessionCalls++;
     lastCreateSessionVariant = variant?.id;
+    final started = createSessionStarted;
+    if (started != null && !started.isCompleted) started.complete();
+    final pending = createSessionFuture;
+    if (pending != null) return pending;
     return createSessionResult;
   }
 
@@ -2723,6 +2941,53 @@ class _CountingSessionDao implements SessionDao {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FailingCreationSessionDao extends SessionDao {
+  _FailingCreationSessionDao(super.attachedDatabase);
+
+  String? failedSessionId;
+
+  @override
+  Future<bool> updateObservedSessionProjection({
+    required String sessionId,
+    required String directory,
+    required String? catalogTitle,
+    required bool updateCatalogTitle,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) {
+    failedSessionId = sessionId;
+    throw StateError("creation projection failed");
+  }
+}
+
+class _BlockingRootCatalogSessionDao extends SessionDao {
+  _BlockingRootCatalogSessionDao({required AppDatabase database}) : super(database);
+
+  final Completer<void> snapshotTaken = Completer<void>();
+  final Completer<void> releaseSnapshot = Completer<void>();
+  int readCount = 0;
+
+  @override
+  Future<List<SessionDto>> getRootCatalogSessions({
+    required String projectId,
+    required int offset,
+    required int? limit,
+    required List<String> excludedSessionIds,
+  }) async {
+    readCount++;
+    if (readCount == 1) {
+      snapshotTaken.complete();
+      await releaseSnapshot.future;
+    }
+    return super.getRootCatalogSessions(
+      projectId: projectId,
+      offset: offset,
+      limit: limit,
+      excludedSessionIds: excludedSessionIds,
+    );
+  }
 }
 
 class _BlockingSnapshotProjectsDao extends ProjectsDao {

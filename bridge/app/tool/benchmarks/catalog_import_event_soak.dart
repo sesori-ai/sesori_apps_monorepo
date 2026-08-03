@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -136,12 +137,14 @@ class _CatalogImportEventSoak {
       );
       final plugins = <String, BridgePluginApi>{plugin.id: plugin};
       final runtime = createBenchmarkPluginRuntime(plugins: plugins.values);
+      final visibilityState = SessionVisibilityState();
       final importRepository = CatalogImportRepository(
         runtime: runtime,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        visibilityState: visibilityState,
       );
       sessionRepository = SessionRepository(
         runtime: runtime,
@@ -152,6 +155,7 @@ class _CatalogImportEventSoak {
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
+        visibilityState: visibilityState,
       );
       final projectRepository = ProjectRepository(
         projectsDao: database.projectsDao,
@@ -163,6 +167,7 @@ class _CatalogImportEventSoak {
           gitPathExists: ({required String gitPath}) => false,
         ),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        visibilityState: visibilityState,
       );
       final eventTracker = SessionEventTracker(
         maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,

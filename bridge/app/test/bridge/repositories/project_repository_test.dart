@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_activity_repository.dart";
@@ -124,6 +125,7 @@ void main() {
         filesystemApi: FakeFilesystemApi(),
         gitCliApi: FakeGitCliApi(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        visibilityState: SessionVisibilityState(),
       );
 
       final projects = await zeroPluginRepository.getProjects();

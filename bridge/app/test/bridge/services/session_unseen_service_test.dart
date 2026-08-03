@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
@@ -15,11 +16,13 @@ void main() {
     late AppDatabase db;
     late SessionViewTracker viewTracker;
     late SessionUnseenService service;
+    late SessionVisibilityState visibilityState;
     var clock = 1000;
 
     SessionUnseenRepository unseenRepository() => SessionUnseenRepository(
       sessionDao: db.sessionDao,
       calculator: const SessionUnseenCalculator(),
+      visibilityState: visibilityState,
     );
 
     ProjectRepository projectRepository() => singlePluginProjectRepository(
@@ -28,6 +31,7 @@ void main() {
       sessionDao: db.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
+      visibilityState: visibilityState,
     );
 
     Future<bool> unseen(String sessionId) {
@@ -54,6 +58,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       clock = 1000;
+      visibilityState = SessionVisibilityState();
       viewTracker = SessionViewTracker();
       service = SessionUnseenService(
         unseenRepository: unseenRepository(),
@@ -170,6 +175,31 @@ void main() {
       expect(await unseen("never-learned"), isFalse);
       expect(events, isEmpty);
       await sub.cancel();
+    });
+
+    test("unpublished sessions reject unseen mutations and never emit", () async {
+      await persistRoot(sessionId: "hidden");
+      await db.sessionDao.setActivityTimestamps(
+        sessionId: "hidden",
+        activityAt: 900,
+        userMessageAt: null,
+        seenAt: null,
+      );
+      visibilityState.beginUnpublishedSession(sessionId: "hidden");
+      final events = <UnseenChange>[];
+      final subscription = service.unseenChanges.listen(events.add);
+
+      await service.recordActivity(sessionId: "hidden", isUserMessage: false);
+      await service.notifyExternalChange(sessionId: "hidden", projectId: "p1");
+      await service.recordSessionDeleted(sessionId: "hidden", projectId: "p1");
+      await Future<void>.delayed(Duration.zero);
+
+      final stored = await db.sessionDao.getSession(sessionId: "hidden");
+      expect(stored, isNotNull);
+      expect(stored?.lastActivityAt, 900);
+      expect(await projectRepository().projectHasUnseenChanges(projectId: "p1"), isFalse);
+      expect(events, isEmpty);
+      await subscription.cancel();
     });
 
     test("activity while viewing does not bold (seen advances)", () async {

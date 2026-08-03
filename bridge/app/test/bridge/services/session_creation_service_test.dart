@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:http/http.dart" as http;
@@ -7,6 +8,7 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
@@ -24,6 +26,7 @@ void main() {
     late _FakePlugin plugin;
     late _FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
+    late SessionRepository repository;
     late SessionOperationDispatcher operationDispatcher;
     late SessionMutationDispatcher mutationDispatcher;
     late SessionCreationService service;
@@ -44,7 +47,7 @@ void main() {
           plugin: plugin,
         ),
       );
-      final repository = singlePluginSessionRepository(
+      repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -60,6 +63,7 @@ void main() {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: repository,
+        sessionOperationDispatcher: operationDispatcher,
         sessionMutationDispatcher: mutationDispatcher,
       );
     });
@@ -237,7 +241,54 @@ void main() {
       expect(createdBinding?.backendSessionId, "backend-session");
       expect(createdBinding?.projectId, "/repo");
     });
+
+    test("reveals exactly once after a delayed initial command fails", () async {
+      final commandStarted = Completer<void>();
+      final releaseCommand = Completer<void>();
+      final failure = StateError("initial command failed");
+      plugin
+        ..commandStarted = commandStarted
+        ..releaseCommand = releaseCommand.future
+        ..commandError = failure;
+      final commits = <SessionBindingsCommitted>[];
+      final subscription = repository.bindingCommits.listen(commits.add);
+      addTearDown(subscription.cancel);
+
+      final creation = service.createSession(
+        request: _request(
+          text: "private prompt",
+          command: "review",
+        ),
+      );
+      await commandStarted.future;
+      final stored = await db.sessionDao.getSessionByBinding(
+        pluginId: plugin.id,
+        backendSessionId: "backend-session",
+      );
+      expect(stored, isNotNull);
+      expect(commits, isEmpty);
+      expect(await repository.getCatalogSession(sessionId: stored!.sessionId), isNull);
+
+      releaseCommand.complete();
+      await expectLater(creation, throwsA(same(failure)));
+
+      expect((await repository.getCatalogSession(sessionId: stored.sessionId))?.id, stored.sessionId);
+      expect(commits, hasLength(1));
+    });
   });
+}
+
+CreateSessionRequest _request({required String text, required String? command}) {
+  return CreateSessionRequest(
+    projectId: "/repo",
+    pluginId: "fake",
+    dedicatedWorktree: false,
+    parts: [PromptPart.text(text: text)],
+    variant: null,
+    agent: null,
+    model: null,
+    command: command,
+  );
 }
 
 class _FakeMetadataService extends MetadataService {
@@ -294,6 +345,9 @@ class _FakePlugin implements NativeProjectsPluginApi {
   String? lastCreateDirectory;
   String? lastCreateUserVisibleText;
   List<PluginPromptPart>? lastCreateParts;
+  Completer<void>? commandStarted;
+  Future<void>? releaseCommand;
+  Object? commandError;
 
   @override
   String get id => "fake";
@@ -323,6 +377,21 @@ class _FakePlugin implements NativeProjectsPluginApi {
       title: null,
       time: null,
     );
+  }
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    if (commandStarted case final started? when !started.isCompleted) started.complete();
+    if (releaseCommand case final release?) await release;
+    if (commandError case final error?) throw error;
   }
 
   @override

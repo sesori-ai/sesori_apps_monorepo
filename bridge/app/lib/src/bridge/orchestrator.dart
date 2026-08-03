@@ -57,6 +57,7 @@ import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
 import "foundation/filesystem_permission_validator.dart";
 import "foundation/process_runner.dart";
+import "foundation/session_visibility_state.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
@@ -221,6 +222,7 @@ class Orchestrator {
     const aggregateSourceDeadline = Duration(seconds: 5);
     const unseenCalculator = SessionUnseenCalculator();
     const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
+    final sessionVisibilityState = SessionVisibilityState();
     final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
@@ -234,6 +236,7 @@ class Orchestrator {
       unseenCalculator: unseenCalculator,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
+      visibilityState: sessionVisibilityState,
     );
     final sessionOptionsRepository = SessionOptionsRepository(
       runtime: _pluginRuntime,
@@ -257,6 +260,7 @@ class Orchestrator {
       filesystemApi: const FilesystemApi(),
       gitCliApi: gitCliApi,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
+      visibilityState: sessionVisibilityState,
     );
     final sessionViewTracker = SessionViewTracker();
     final projectViewTracker = ProjectViewTracker();
@@ -264,6 +268,7 @@ class Orchestrator {
       unseenRepository: SessionUnseenRepository(
         sessionDao: _database.sessionDao,
         calculator: unseenCalculator,
+        visibilityState: sessionVisibilityState,
       ),
       projectRepository: projectRepository,
       viewTracker: sessionViewTracker,
@@ -356,6 +361,7 @@ class Orchestrator {
     final permissionRepository = PermissionRepository(
       runtime: _pluginRuntime,
       sessionDao: _database.sessionDao,
+      visibilityState: sessionVisibilityState,
     );
     final healthRepository = HealthRepository(
       bridgeVersion: appVersion,
@@ -375,6 +381,7 @@ class Orchestrator {
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
       aggregateSourceDeadline: aggregateSourceDeadline,
+      visibilityState: sessionVisibilityState,
     );
     final pendingInteractionService = PendingInteractionService(
       permissionRepository: permissionRepository,
@@ -390,6 +397,7 @@ class Orchestrator {
       ),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
+      sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
     );
     final projectInitializationService = ProjectInitializationService(
@@ -412,6 +420,7 @@ class Orchestrator {
       sessionDao: _database.sessionDao,
       catalogHydrationsDao: _database.catalogHydrationsDao,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
+      visibilityState: sessionVisibilityState,
     );
     final catalogImportService = CatalogImportService(
       orderedPluginIds: pluginComposition.orderedPluginIds,

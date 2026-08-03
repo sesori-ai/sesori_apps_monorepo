@@ -91,6 +91,7 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
+          sessionOperationDispatcher: sessionOperationDispatcher,
           sessionMutationDispatcher: sessionMutationDispatcher,
         ),
       );
@@ -474,15 +475,20 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final localOperationDispatcher = SessionOperationDispatcher(sessionRepository: localRepository);
+      final localMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: localRepository,
+        sessionOperationDispatcher: localOperationDispatcher,
+      );
+      addTearDown(localOperationDispatcher.dispose);
+      addTearDown(localMutationDispatcher.dispose);
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: localRepository,
-          sessionMutationDispatcher: SessionMutationDispatcher(
-            sessionRepository: localRepository,
-            sessionOperationDispatcher: SessionOperationDispatcher(sessionRepository: localRepository),
-          ),
+          sessionOperationDispatcher: localOperationDispatcher,
+          sessionMutationDispatcher: localMutationDispatcher,
         ),
       );
       worktreeService.prepareResult = WorktreeSuccess(
@@ -941,15 +947,20 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final orderedOperationDispatcher = SessionOperationDispatcher(sessionRepository: orderedRepository);
+      final orderedMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: orderedRepository,
+        sessionOperationDispatcher: orderedOperationDispatcher,
+      );
+      addTearDown(orderedOperationDispatcher.dispose);
+      addTearDown(orderedMutationDispatcher.dispose);
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: orderedRepository,
-          sessionMutationDispatcher: SessionMutationDispatcher(
-            sessionRepository: orderedRepository,
-            sessionOperationDispatcher: SessionOperationDispatcher(sessionRepository: orderedRepository),
-          ),
+          sessionOperationDispatcher: orderedOperationDispatcher,
+          sessionMutationDispatcher: orderedMutationDispatcher,
         ),
       );
 
@@ -1148,6 +1159,7 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: throwingRepository,
+          sessionOperationDispatcher: throwingOperationDispatcher,
           sessionMutationDispatcher: throwingDispatcher,
         ),
       );

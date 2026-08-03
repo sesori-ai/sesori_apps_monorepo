@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -164,6 +165,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
+        visibilityState: SessionVisibilityState(),
       );
       final previousLogLevel = Log.level;
       final logs = <String>[];
@@ -206,6 +208,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
+        visibilityState: SessionVisibilityState(),
       );
 
       expect(await repository.getProjectQuestions(projectId: projectId), isEmpty);
@@ -227,6 +230,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
+        visibilityState: SessionVisibilityState(),
       );
 
       await expectLater(
@@ -516,6 +520,14 @@ void main() {
         projectId: "/repo",
         parentStableId: "stable-root",
       );
+      await recordSession(
+        stableId: "stable-hidden",
+        backendId: "hidden-child",
+        projectId: "/repo",
+        parentStableId: "stable-root",
+      );
+      final visibilityState = SessionVisibilityState();
+      visibilityState.beginUnpublishedSession(sessionId: "stable-hidden");
       for (final sessionId in ["gone-child", "gone-root"]) {
         await db.sessionDao.insertSessionTombstone(
           backendSessionId: sessionId,
@@ -546,6 +558,12 @@ void main() {
               displaySessionId: "root",
               questions: [],
             ),
+            PluginPendingQuestion(
+              id: "hidden",
+              sessionID: "hidden-child",
+              displaySessionId: "root",
+              questions: [],
+            ),
           ],
         },
       );
@@ -553,6 +571,7 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
+        visibilityState: visibilityState,
       );
 
       final questions = await repository.getPendingQuestions(sessionId: "stable-root");
@@ -560,6 +579,23 @@ void main() {
       expect(questions.map((question) => question.id), ["visible"]);
       expect(questions.single.sessionID, "stable-child");
       expect(questions.single.displaySessionId, "stable-root");
+      expect(
+        await repository.findPendingQuestionOwnerSessionIds(
+          pluginId: plugin.id,
+          questionId: "hidden",
+        ),
+        isEmpty,
+      );
+      visibilityState.beginUnpublishedSession(sessionId: "stable-root");
+      await expectLater(
+        repository.replyToQuestion(
+          questionId: "visible",
+          sessionId: "stable-root",
+          answers: const [],
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.questionMutationCalls, isZero);
     });
 
     test("question mutations reject a tombstoned displayed root", () async {

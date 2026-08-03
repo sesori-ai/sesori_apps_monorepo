@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/api/database/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_activity_repository.dart";
@@ -33,10 +34,12 @@ AgentRepository singlePluginAgentRepository({
 PermissionRepository singlePluginPermissionRepository({
   required BridgePluginApi plugin,
   required SessionDao sessionDao,
+  SessionVisibilityState? visibilityState,
 }) {
   return PermissionRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
     sessionDao: sessionDao,
+    visibilityState: visibilityState ?? SessionVisibilityState(),
   );
 }
 
@@ -46,6 +49,7 @@ ProjectRepository singlePluginProjectRepository({
   required SessionUnseenCalculator unseenCalculator,
   required FilesystemApi filesystemApi,
   required GitCliApi gitCliApi,
+  SessionVisibilityState? visibilityState,
 }) {
   return ProjectRepository(
     projectsDao: projectsDao,
@@ -54,6 +58,7 @@ ProjectRepository singlePluginProjectRepository({
     filesystemApi: filesystemApi,
     gitCliApi: gitCliApi,
     projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+    visibilityState: visibilityState ?? SessionVisibilityState(),
   );
 }
 
@@ -85,12 +90,14 @@ QuestionRepository singlePluginQuestionRepository({
   required BridgePluginApi plugin,
   required SessionDao sessionDao,
   required ProjectsDao projectsDao,
+  SessionVisibilityState? visibilityState,
 }) {
   return QuestionRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
     sessionDao: sessionDao,
     projectsDao: projectsDao,
     aggregateSourceDeadline: const Duration(seconds: 5),
+    visibilityState: visibilityState ?? SessionVisibilityState(),
   );
 }
 
@@ -101,6 +108,7 @@ SessionRepository singlePluginSessionRepository({
   required PullRequestDao pullRequestDao,
   required SessionUnseenCalculator unseenCalculator,
   Set<String>? eligiblePluginIds,
+  SessionVisibilityState? visibilityState,
 }) {
   return SessionRepository(
     runtime: createTestPluginRuntime(
@@ -116,6 +124,7 @@ SessionRepository singlePluginSessionRepository({
     unseenCalculator: unseenCalculator,
     projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
     aggregateSourceDeadline: const Duration(seconds: 5),
+    visibilityState: visibilityState ?? SessionVisibilityState(),
   );
 }
 
@@ -138,6 +147,7 @@ CatalogImportRepository singlePluginCatalogImportRepository({
   required ProjectsDao projectsDao,
   required SessionDao sessionDao,
   required CatalogHydrationsDao catalogHydrationsDao,
+  SessionVisibilityState? visibilityState,
 }) {
   return CatalogImportRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
@@ -145,5 +155,6 @@ CatalogImportRepository singlePluginCatalogImportRepository({
     sessionDao: sessionDao,
     catalogHydrationsDao: catalogHydrationsDao,
     projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+    visibilityState: visibilityState ?? SessionVisibilityState(),
   );
 }

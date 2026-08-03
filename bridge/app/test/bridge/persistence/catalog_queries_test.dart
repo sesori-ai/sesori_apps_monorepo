@@ -105,6 +105,7 @@ void main() {
       projectId: "project-1",
       offset: 0,
       limit: 10,
+      excludedSessionIds: const [],
     );
     expect(roots.map((row) => row.sessionId), ["root-new", "root-old"]);
     expect(
@@ -112,12 +113,14 @@ void main() {
         projectId: "project-1",
         offset: 1,
         limit: null,
+        excludedSessionIds: const [],
       )).map((row) => row.sessionId),
       ["root-old"],
     );
     expect(
       (await db.sessionDao.getChildCatalogSessions(
         parentSessionId: "root-new",
+        excludedSessionIds: const [],
       )).single.sessionId,
       "child",
     );

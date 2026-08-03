@@ -86,6 +86,40 @@ class SessionOperationDispatcher {
     return result.future;
   }
 
+  Future<T> dispatchInitial<T>({
+    required UnpublishedSessionBinding binding,
+    required Future<T> Function() body,
+  }) {
+    if (!_accepting) throw _closedError();
+
+    final ticket = _nextTicket++;
+    final result = Completer<T>();
+    _track(result: result);
+    _enqueueResolution(
+      ticket: ticket,
+      action: () {
+        final family = binding.familyScope;
+        _enqueuePluginAdmission(
+          pluginId: family.pluginId,
+          ticket: ticket,
+          action: () {
+            _registerOperation(
+              ticket: ticket,
+              family: family,
+              ownerSessionId: family.rootSessionId,
+              interaction: null,
+              body: body,
+              result: result,
+            );
+          },
+          onError: result.completeError,
+        );
+      },
+      onError: result.completeError,
+    );
+    return result.future;
+  }
+
   /// Queues a sessionless question ticket synchronously. Its plugin admission
   /// waits for prior plugin work, then blocks later admissions while resolving.
   Future<T> dispatchLegacyQuestion<T>({

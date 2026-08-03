@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -41,6 +42,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
+        visibilityState: SessionVisibilityState(),
       );
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       failureReporter = CapturingFailureReporter();

@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -271,6 +272,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: calculator,
+        visibilityState: SessionVisibilityState(),
       );
 
       await repository
@@ -321,6 +323,7 @@ void main() {
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        visibilityState: SessionVisibilityState(),
       );
 
       await repository
@@ -634,6 +637,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        visibilityState: SessionVisibilityState(),
       );
       final finished = Completer<void>();
       Object? streamError;
@@ -665,6 +669,57 @@ void main() {
       await runtime.dispose();
     });
 
+    test("a pending creation reservation blocks catalog binding publication", () async {
+      final projectPath = "${directory.path}/pending-creation";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "pending-creation", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [
+            _pluginSession(
+              id: "backend-creating",
+              directory: projectPath,
+            ),
+          ],
+        },
+        childrenByParent: const {},
+      );
+      final visibilityState = SessionVisibilityState();
+      final creationReservation = visibilityState.reserveSessionCreation(
+        pluginId: plugin.id,
+      );
+      final repository = _repository(
+        database: database,
+        plugin: plugin,
+        visibilityState: visibilityState,
+      );
+      final committing = Completer<void>();
+      final completed = repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .forEach((status) {
+            if (status is CatalogImportCommitting) committing.complete();
+          });
+      await committing.future;
+
+      expect(
+        await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "backend-creating",
+        ),
+        isNull,
+      );
+
+      visibilityState.releaseSessionCreation(
+        reservation: creationReservation,
+      );
+      await completed;
+    });
+
     test("generation replacement inside the transaction rolls back catalog publication", () async {
       final projectPath = "${directory.path}/stale-transaction-generation";
       final plugin = _NativeImportPlugin(
@@ -682,6 +737,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        visibilityState: SessionVisibilityState(),
       );
       final publication = repository
           .importCatalog(
@@ -729,6 +785,7 @@ void main() {
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        visibilityState: SessionVisibilityState(),
       );
 
       await expectLater(
@@ -838,12 +895,17 @@ class _TrackingProjectCatalogIdentityCalculator extends ProjectCatalogIdentityCa
   }
 }
 
-CatalogImportRepository _repository({required AppDatabase database, required BridgePluginApi plugin}) {
+CatalogImportRepository _repository({
+  required AppDatabase database,
+  required BridgePluginApi plugin,
+  SessionVisibilityState? visibilityState,
+}) {
   return singlePluginCatalogImportRepository(
     plugin: plugin,
     projectsDao: database.projectsDao,
     sessionDao: database.sessionDao,
     catalogHydrationsDao: database.catalogHydrationsDao,
+    visibilityState: visibilityState,
   );
 }
 

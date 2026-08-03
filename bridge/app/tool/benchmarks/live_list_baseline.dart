@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -191,6 +192,7 @@ class _LiveListBenchmark {
     await _seedProjects(database: database, projectCount: _configuration.projectCount);
     final filesystemApi = _ExistingFilesystemApi();
     const unseenCalculator = SessionUnseenCalculator();
+    final visibilityState = SessionVisibilityState();
     // Never invoked by the benchmarked listing paths; wired only to satisfy
     // the repository constructor.
     final gitCliApi = GitCliApi(processRunner: ProcessRunner(), gitPathExists: ({required String gitPath}) => false);
@@ -202,6 +204,7 @@ class _LiveListBenchmark {
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
       projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      visibilityState: visibilityState,
     );
     final results = <Map<String, Object?>>[];
     results.add(
@@ -234,7 +237,11 @@ class _LiveListBenchmark {
       unpaginatedSessionCount: _configuration.unpaginatedSessionCount,
     );
 
-    final sessionRepository = _sessionRepository(database: database, plugins: operationalPlugins);
+    final sessionRepository = _sessionRepository(
+      database: database,
+      plugins: operationalPlugins,
+      visibilityState: visibilityState,
+    );
     final pageSize = min(100, _configuration.sessionCount);
 
     try {
@@ -437,6 +444,7 @@ class _LiveListBenchmark {
   SessionRepository _sessionRepository({
     required AppDatabase database,
     required Map<String, BridgePluginApi> plugins,
+    required SessionVisibilityState visibilityState,
   }) {
     return SessionRepository(
       runtime: createBenchmarkPluginRuntime(plugins: plugins.values),
@@ -450,6 +458,7 @@ class _LiveListBenchmark {
       unseenCalculator: const SessionUnseenCalculator(),
       projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
       aggregateSourceDeadline: const Duration(seconds: 5),
+      visibilityState: visibilityState,
     );
   }
 

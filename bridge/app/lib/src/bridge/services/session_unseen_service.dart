@@ -300,6 +300,7 @@ class SessionUnseenService {
   /// cleared per-session state plus the recomputed project aggregate.
   Future<void> _deleteRowAndEmit({required String sessionId, required String projectId}) async {
     await _unseenRepository.deleteSession(sessionId: sessionId);
+    if (!_unseenRepository.isPublished(sessionId: sessionId)) return;
     await _emitDeleted(sessionId: sessionId, projectId: projectId);
   }
 
@@ -307,6 +308,7 @@ class SessionUnseenService {
   /// `unseen: false` plus the recomputed project aggregate. Best-effort.
   Future<void> _emitDeleted({required String sessionId, required String projectId}) async {
     try {
+      if (!_unseenRepository.isPublished(sessionId: sessionId)) return;
       final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
       _add(projectId: projectId, sessionId: sessionId, unseen: false, projectHasUnseenChanges: projectHasUnseen);
     } catch (error, stackTrace) {
@@ -319,6 +321,7 @@ class SessionUnseenService {
   /// committed (or that is fire-and-forget from the SSE path).
   Future<void> _emit({required String sessionId, required String projectId}) async {
     try {
+      if (!_unseenRepository.isPublished(sessionId: sessionId)) return;
       final unseen = await _unseenRepository.isUnseen(sessionId: sessionId);
       final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
       _add(projectId: projectId, sessionId: sessionId, unseen: unseen, projectHasUnseenChanges: projectHasUnseen);
@@ -333,7 +336,7 @@ class SessionUnseenService {
     required bool unseen,
     required bool projectHasUnseenChanges,
   }) {
-    if (_changes.isClosed) return;
+    if (_changes.isClosed || !_unseenRepository.isPublished(sessionId: sessionId)) return;
     _changes.add(
       (
         projectId: projectId,

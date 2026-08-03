@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/session_table.dart";
+import "../foundation/session_visibility_state.dart";
 import "../runtime/plugin_runtime.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_question_mapper.dart";
@@ -20,6 +21,7 @@ class QuestionRepository {
   final PluginRuntime _runtime;
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
+  final SessionVisibilityState _visibilityState;
   final Duration _aggregateSourceDeadline;
 
   QuestionRepository({
@@ -27,10 +29,12 @@ class QuestionRepository {
     required SessionDao sessionDao,
     required ProjectsDao projectsDao,
     required Duration aggregateSourceDeadline,
+    required SessionVisibilityState visibilityState,
   }) : _runtime = runtime,
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
-       _aggregateSourceDeadline = aggregateSourceDeadline;
+       _aggregateSourceDeadline = aggregateSourceDeadline,
+       _visibilityState = visibilityState;
 
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
@@ -193,6 +197,12 @@ class QuestionRepository {
       pluginId: binding.pluginId,
       operation: SessionOperation.replyToQuestion,
       body: (plugin) async {
+        if (!_visibilityState.isPublished(sessionId: binding.sessionId)) {
+          throw PluginOperationException.notFound(
+            SessionOperation.replyToQuestion.name,
+            message: "session ${binding.sessionId} was not found",
+          );
+        }
         await _throwIfMutationTargetTombstoned(
           questionId: questionId,
           backendSessionId: binding.backendSessionId,
@@ -220,6 +230,12 @@ class QuestionRepository {
       pluginId: binding.pluginId,
       operation: SessionOperation.rejectQuestion,
       body: (plugin) async {
+        if (!_visibilityState.isPublished(sessionId: binding.sessionId)) {
+          throw PluginOperationException.notFound(
+            SessionOperation.rejectQuestion.name,
+            message: "session ${binding.sessionId} was not found",
+          );
+        }
         await _throwIfMutationTargetTombstoned(
           questionId: questionId,
           backendSessionId: binding.backendSessionId,
@@ -254,7 +270,9 @@ class QuestionRepository {
           for (final question in questions) {
             if (question.id != questionId || !_isVisible(question, tombstoned)) continue;
             final owner = bindings[question.sessionID];
-            if (owner != null) owners.add(owner.sessionId);
+            if (owner != null && _visibilityState.isPublished(sessionId: owner.sessionId)) {
+              owners.add(owner.sessionId);
+            }
           }
         }
         return owners.toList(growable: false)..sort();
@@ -301,7 +319,7 @@ class QuestionRepository {
     required SessionOperation operation,
   }) async {
     final binding = await _sessionDao.getSession(sessionId: sessionId);
-    if (binding == null) {
+    if (binding == null || !_visibilityState.isPublished(sessionId: sessionId)) {
       throw PluginOperationException.notFound(
         operation.name,
         message: "session $sessionId was not found",
@@ -320,10 +338,13 @@ class QuestionRepository {
         ?question.displaySessionId,
       },
     };
-    final bindings = await _sessionDao.getSessionsByBackendIds(
-      pluginId: pluginId,
-      backendSessionIds: backendSessionIds.toList(growable: false),
+    final bindings = Map.of(
+      await _sessionDao.getSessionsByBackendIds(
+        pluginId: pluginId,
+        backendSessionIds: backendSessionIds.toList(growable: false),
+      ),
     );
+    bindings.removeWhere((_, binding) => !_visibilityState.isPublished(sessionId: binding.sessionId));
     return [
       for (final question in questions)
         if (bindings[question.sessionID] case final session?)

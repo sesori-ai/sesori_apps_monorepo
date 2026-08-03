@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/session_table.dart";
+import "../foundation/session_visibility_state.dart";
 import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_permission_mapper.dart";
 import "models/session_operation.dart";
@@ -19,10 +20,15 @@ import "models/session_operation.dart";
 class PermissionRepository {
   final PluginRuntime _runtime;
   final SessionDao _sessionDao;
+  final SessionVisibilityState _visibilityState;
 
-  PermissionRepository({required PluginRuntime runtime, required SessionDao sessionDao})
-    : _runtime = runtime,
-      _sessionDao = sessionDao;
+  PermissionRepository({
+    required PluginRuntime runtime,
+    required SessionDao sessionDao,
+    required SessionVisibilityState visibilityState,
+  }) : _runtime = runtime,
+       _sessionDao = sessionDao,
+       _visibilityState = visibilityState;
 
   /// Pending permissions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
@@ -70,6 +76,12 @@ class PermissionRepository {
       pluginId: binding.pluginId,
       operation: SessionOperation.replyToPermission,
       body: (plugin) async {
+        if (!_visibilityState.isPublished(sessionId: binding.sessionId)) {
+          throw PluginOperationException.notFound(
+            SessionOperation.replyToPermission.name,
+            message: "session ${binding.sessionId} was not found",
+          );
+        }
         if (plugin is BridgeDerivedProjectsPluginApi) {
           final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
           if (tombstoned.contains(binding.backendSessionId)) {
@@ -116,7 +128,7 @@ class PermissionRepository {
     required SessionOperation operation,
   }) async {
     final binding = await _sessionDao.getSession(sessionId: sessionId);
-    if (binding == null) {
+    if (binding == null || !_visibilityState.isPublished(sessionId: sessionId)) {
       throw PluginOperationException.notFound(
         operation.name,
         message: "session $sessionId was not found",
@@ -135,10 +147,13 @@ class PermissionRepository {
         ?permission.displaySessionId,
       },
     };
-    final bindings = await _sessionDao.getSessionsByBackendIds(
-      pluginId: pluginId,
-      backendSessionIds: backendSessionIds.toList(growable: false),
+    final bindings = Map.of(
+      await _sessionDao.getSessionsByBackendIds(
+        pluginId: pluginId,
+        backendSessionIds: backendSessionIds.toList(growable: false),
+      ),
     );
+    bindings.removeWhere((_, binding) => !_visibilityState.isPublished(sessionId: binding.sessionId));
     return [
       for (final permission in permissions)
         if (bindings[permission.sessionID] case final session?)

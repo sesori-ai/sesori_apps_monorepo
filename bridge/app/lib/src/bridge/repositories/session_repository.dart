@@ -35,6 +35,7 @@ import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../../api/database/tables/pull_requests_table.dart";
 import "../../api/database/tables/session_table.dart" show SessionDto;
 import "../../repositories/project_catalog_identity_calculator.dart";
+import "../foundation/session_visibility_state.dart";
 import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
@@ -63,6 +64,27 @@ typedef SessionBindingsCommitted = ({
 
 typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 
+final class UnpublishedSessionBinding {
+  UnpublishedSessionBinding._({
+    required SessionRepository repository,
+    required SessionDto binding,
+    required this.session,
+    required int generation,
+    required UnpublishedSessionReservation visibilityReservation,
+  }) : _repository = repository,
+       _binding = binding,
+       _generation = generation,
+       _visibilityReservation = visibilityReservation;
+
+  final SessionRepository _repository;
+  final SessionDto _binding;
+  final int _generation;
+  final UnpublishedSessionReservation _visibilityReservation;
+  final Session session;
+
+  SessionFamilyScope get familyScope => (rootSessionId: _binding.sessionId, pluginId: _binding.pluginId);
+}
+
 class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
@@ -73,6 +95,7 @@ class SessionRepository {
   final PullRequestDao _pullRequestDao;
   final SessionUnseenCalculator _unseenCalculator;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
+  final SessionVisibilityState _visibilityState;
   final Duration _aggregateSourceDeadline;
   final Map<String, Set<String>> _tombstonedBackendSessionIds = <String, Set<String>>{};
   final Set<String> _deletedSessionIds = <String>{};
@@ -91,6 +114,7 @@ class SessionRepository {
     required SessionUnseenCalculator unseenCalculator,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
     required Duration aggregateSourceDeadline,
+    required SessionVisibilityState visibilityState,
   }) : _runtime = runtime,
        _bridgeDerivedProjectPluginIds = Set<String>.unmodifiable(bridgeDerivedProjectPluginIds),
        _sessionDao = sessionDao,
@@ -98,7 +122,8 @@ class SessionRepository {
        _pullRequestDao = pullRequestDao,
        _unseenCalculator = unseenCalculator,
        _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
-       _aggregateSourceDeadline = aggregateSourceDeadline;
+       _aggregateSourceDeadline = aggregateSourceDeadline,
+       _visibilityState = visibilityState;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
 
@@ -118,7 +143,7 @@ class SessionRepository {
           message: "session $sessionId has cyclic ancestry at $currentSessionId",
         );
       }
-      final binding = await _sessionDao.getSession(sessionId: currentSessionId);
+      final binding = await _getPublishedBinding(sessionId: currentSessionId);
       if (binding == null) {
         throw PluginOperationException.notFound(
           operation.name,
@@ -156,14 +181,19 @@ class SessionRepository {
       throw ProjectNotFoundException(projectId: projectId);
     }
     final effectiveLimit = limit == null || limit <= 0 ? null : limit;
-    return _mapCatalogSessions(
-      rows: await _sessionDao.getRootCatalogSessions(
-        projectId: projectId,
-        offset: start ?? 0,
-        limit: effectiveLimit,
-      ),
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
+    while (true) {
+      final visibility = _visibilityState.snapshot;
+      final sessions = await _mapCatalogSessions(
+        rows: await _sessionDao.getRootCatalogSessions(
+          projectId: projectId,
+          offset: start ?? 0,
+          limit: effectiveLimit,
+          excludedSessionIds: visibility.unpublishedSessionIds,
+        ),
+        verifiedGithubLogin: verifiedGithubLogin,
+      );
+      if (_visibilityState.isSnapshotCurrent(snapshot: visibility)) return sessions;
+    }
   }
 
   Future<Session> enrichSession({
@@ -184,11 +214,10 @@ class SessionRepository {
     );
   }
 
-  Future<Session> createSession({
+  Future<UnpublishedSessionBinding> createSession({
     required String pluginId,
     required String projectId,
     required String directory,
-    required String? parentSessionId,
     required List<PromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
@@ -202,76 +231,132 @@ class SessionRepository {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async {
-    final result = await _runtime.useAndCommit(
+    final creationReservation = _visibilityState.reserveSessionCreation(
       pluginId: pluginId,
-      operation: SessionOperation.createSession,
-      prepare: (plugin) {
-        return plugin.createSession(
-          directory: directory,
-          parentSessionId: parentSessionId,
-          parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-          userVisibleText: userVisibleText,
-          variant: _toPluginVariant(variant),
-          agent: agent,
-          model: switch (model) {
-            PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
-            null => null,
-          },
-        );
-      },
-      commit: (created, generation) async {
-        final projectionUpdatedAt = captureProjectionTimestamp();
-        final createdAt = created.time?.created ?? projectionUpdatedAt;
-        final updatedAt = created.time?.updated ?? createdAt;
-        late String sessionId;
-        await _sessionDao.attachedDatabase.transaction(() async {
-          final existingBinding = await _sessionDao.getSessionByBinding(
-            pluginId: pluginId,
-            backendSessionId: created.id,
-          );
-          if (existingBinding?.parentSessionId != null) {
-            throw PluginOperationException(
-              SessionOperation.createSession.name,
-              statusCode: 409,
-              message: "backend session ${created.id} is already bound as a child session",
-            );
-          }
-          sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
-          await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-          await _sessionDao.insertSession(
-            sessionId: sessionId,
-            backendSessionId: created.id,
-            projectId: projectId,
-            isDedicated: isDedicated,
-            createdAt: createdAt,
-            worktreePath: worktreePath,
-            branchName: branchName,
-            baseBranch: baseBranch,
-            baseCommit: baseCommit,
-            lastAgent: lastAgent,
-            lastAgentModel: lastAgentModel,
-            pluginId: pluginId,
-          );
-          await _sessionDao.updateObservedSessionProjection(
-            sessionId: sessionId,
+    );
+    UnpublishedSessionReservation? visibilityReservation;
+    try {
+      final result = await _runtime.useAndCommit(
+        pluginId: pluginId,
+        operation: SessionOperation.createSession,
+        prepare: (plugin) {
+          return plugin.createSession(
             directory: directory,
-            catalogTitle: created.title,
-            updateCatalogTitle: true,
-            updatedAt: updatedAt,
-            projectionUpdatedAt: projectionUpdatedAt,
+            parentSessionId: null,
+            parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+            userVisibleText: userVisibleText,
+            variant: _toPluginVariant(variant),
+            agent: agent,
+            model: switch (model) {
+              PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+              null => null,
+            },
           );
-        });
-        return (created: created, sessionId: sessionId, generation: generation);
-      },
-    );
+        },
+        commit: (created, generation) => _visibilityState.withSessionCreationCommit(
+          reservation: creationReservation,
+          body: () async {
+            final projectionUpdatedAt = captureProjectionTimestamp();
+            final createdAt = created.time?.created ?? projectionUpdatedAt;
+            final updatedAt = created.time?.updated ?? createdAt;
+            final existingBinding = await _sessionDao.getSessionByBinding(
+              pluginId: pluginId,
+              backendSessionId: created.id,
+            );
+            if (existingBinding?.parentSessionId != null) {
+              throw PluginOperationException(
+                SessionOperation.createSession.name,
+                statusCode: 409,
+                message: "backend session ${created.id} is already bound as a child session",
+              );
+            }
+            final sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
+            final unpublished = _visibilityState.beginUnpublishedSession(
+              sessionId: sessionId,
+            );
+            if (unpublished == null) {
+              throw PluginOperationException(
+                SessionOperation.createSession.name,
+                statusCode: 409,
+                message: "session $sessionId is already being initialized",
+              );
+            }
+            visibilityReservation = unpublished;
+            late SessionDto committedBinding;
+            await _sessionDao.attachedDatabase.transaction(() async {
+              await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+              await _sessionDao.insertSession(
+                sessionId: sessionId,
+                backendSessionId: created.id,
+                projectId: projectId,
+                isDedicated: isDedicated,
+                createdAt: createdAt,
+                worktreePath: worktreePath,
+                branchName: branchName,
+                baseBranch: baseBranch,
+                baseCommit: baseCommit,
+                lastAgent: lastAgent,
+                lastAgentModel: lastAgentModel,
+                pluginId: pluginId,
+              );
+              await _sessionDao.updateObservedSessionProjection(
+                sessionId: sessionId,
+                directory: directory,
+                catalogTitle: created.title,
+                updateCatalogTitle: true,
+                updatedAt: updatedAt,
+                projectionUpdatedAt: projectionUpdatedAt,
+              );
+              committedBinding = (await _sessionDao.getSession(sessionId: sessionId))!;
+            });
+            return (
+              created: created,
+              binding: committedBinding,
+              generation: generation,
+              visibilityReservation: unpublished,
+            );
+          },
+        ),
+      );
+      return UnpublishedSessionBinding._(
+        repository: this,
+        binding: result.binding,
+        session: result.created.toSharedSessionWithId(
+          sessionId: result.binding.sessionId,
+          pluginId: pluginId,
+        ),
+        generation: result.generation,
+        visibilityReservation: result.visibilityReservation,
+      );
+    } on Object {
+      final unpublished = visibilityReservation;
+      if (unpublished != null) {
+        _visibilityState.completeUnpublishedSession(
+          reservation: unpublished,
+        );
+      }
+      rethrow;
+    } finally {
+      _visibilityState.releaseSessionCreation(
+        reservation: creationReservation,
+      );
+    }
+  }
+
+  void revealSession({required UnpublishedSessionBinding binding}) {
+    _verifyInitialBindingOwner(binding: binding);
+    if (!_visibilityState.completeUnpublishedSession(
+      reservation: binding._visibilityReservation,
+    )) {
+      return;
+    }
     _publishBindingsCommitted(
-      pluginId: pluginId,
-      projectId: projectId,
-      generation: result.generation,
+      pluginId: binding._binding.pluginId,
+      projectId: binding._binding.projectId,
+      generation: binding._generation,
       kind: SessionBindingCommitKind.sessionCreation,
-      backendSessionIds: [result.created.id],
+      backendSessionIds: [binding._binding.backendSessionId],
     );
-    return result.created.toSharedSessionWithId(sessionId: result.sessionId, pluginId: pluginId);
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
@@ -279,6 +364,18 @@ class SessionRepository {
       sessionId: sessionId,
       operation: SessionOperation.renameSession,
     );
+    return _renameSession(binding: binding, title: title);
+  }
+
+  Future<Session> renameInitialSession({
+    required UnpublishedSessionBinding binding,
+    required String title,
+  }) => _renameSession(
+    binding: _requireInitialBinding(binding: binding),
+    title: title,
+  );
+
+  Future<Session> _renameSession({required SessionDto binding, required String title}) async {
     final updated = await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.renameSession,
@@ -321,6 +418,44 @@ class SessionRepository {
       sessionId: sessionId,
       operation: SessionOperation.sendCommand,
     );
+    return _sendCommand(
+      binding: binding,
+      command: command,
+      arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
+      variant: variant,
+      agent: agent,
+      model: model,
+    );
+  }
+
+  Future<void> sendInitialCommand({
+    required UnpublishedSessionBinding binding,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required SessionVariant? variant,
+    required String? agent,
+    required PromptModel? model,
+  }) => _sendCommand(
+    binding: _requireInitialBinding(binding: binding),
+    command: command,
+    arguments: arguments,
+    userVisibleArguments: userVisibleArguments,
+    variant: variant,
+    agent: agent,
+    model: model,
+  );
+
+  Future<void> _sendCommand({
+    required SessionDto binding,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required SessionVariant? variant,
+    required String? agent,
+    required PromptModel? model,
+  }) {
     return _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.sendCommand,
@@ -395,7 +530,7 @@ class SessionRepository {
   /// Persists the bridge-owned title override. Null removes the override so
   /// later reads fall back to the latest observed catalog title.
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
-    if (await _sessionDao.getSession(sessionId: sessionId) == null) return false;
+    if (await _getPublishedBinding(sessionId: sessionId) == null) return false;
     await _sessionDao.setTitle(
       sessionId: sessionId,
       title: title,
@@ -403,6 +538,20 @@ class SessionRepository {
       projectionUpdatedAt: captureProjectionTimestamp(),
     );
     return true;
+  }
+
+  Future<Session> setInitialSessionTitle({
+    required UnpublishedSessionBinding binding,
+    required String title,
+  }) async {
+    final stored = _requireInitialBinding(binding: binding);
+    await _sessionDao.setTitle(
+      sessionId: stored.sessionId,
+      title: title,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      projectionUpdatedAt: captureProjectionTimestamp(),
+    );
+    return binding.session.copyWith(title: title);
   }
 
   Future<bool> isSessionTombstoned({required String sessionId}) async {
@@ -592,13 +741,16 @@ class SessionRepository {
             generation: generation,
             operation: SessionOperation.getProjectActivitySummaries,
           );
-          await _runtime.commitCurrentGeneration(
+          await _visibilityState.withCatalogWrite(
             pluginId: pluginId,
-            generation: generation,
-            operation: SessionOperation.getProjectActivitySummaries,
-            commit: () => _persistActiveRootHydrations(
-              observation: observation,
+            body: () => _runtime.commitCurrentGeneration(
+              pluginId: pluginId,
               generation: generation,
+              operation: SessionOperation.getProjectActivitySummaries,
+              commit: () => _persistActiveRootHydrations(
+                observation: observation,
+                generation: generation,
+              ),
             ),
           );
           return _mapPluginProjectActivitySummaries(observation: observation);
@@ -642,14 +794,22 @@ class SessionRepository {
           ...active.childSessionIds,
         },
     };
-    final bindings = await _sessionDao.getSessionsByBackendIds(
+    final storedBindings = await _sessionDao.getSessionsByBackendIds(
       pluginId: pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
+    final unpublishedBackendSessionIds = {
+      for (final entry in storedBindings.entries)
+        if (!_visibilityState.isPublished(sessionId: entry.value.sessionId)) entry.key,
+    };
+    final bindings = {
+      for (final entry in storedBindings.entries)
+        if (_visibilityState.isPublished(sessionId: entry.value.sessionId)) entry.key: entry.value,
+    };
     final missingRootIds = {
       for (final summary in summaries)
         for (final active in summary.activeSessions)
-          if (!bindings.containsKey(active.id)) active.id,
+          if (!bindings.containsKey(active.id) && !unpublishedBackendSessionIds.contains(active.id)) active.id,
     };
     final hydrations = missingRootIds.isNotEmpty && plugin is NativeProjectsPluginApi
         ? await _collectActiveRootHydrations(
@@ -670,10 +830,14 @@ class SessionRepository {
   Future<List<ProjectActivitySummary>> _mapPluginProjectActivitySummaries({
     required _PluginActivityObservation observation,
   }) async {
-    final bindings = await _sessionDao.getSessionsByBackendIds(
+    final storedBindings = await _sessionDao.getSessionsByBackendIds(
       pluginId: observation.pluginId,
       backendSessionIds: observation.backendSessionIds.toList(growable: false),
     );
+    final bindings = {
+      for (final entry in storedBindings.entries)
+        if (_visibilityState.isPublished(sessionId: entry.value.sessionId)) entry.key: entry.value,
+    };
 
     ActiveSession? mapActiveSession(PluginActiveSession active) {
       final binding = bindings[active.id];
@@ -866,7 +1030,10 @@ class SessionRepository {
       projectId: result.project.projectId,
       generation: generation,
       kind: SessionBindingCommitKind.catalogSync,
-      backendSessionIds: result.committedByBackendId.keys.toList(growable: false),
+      backendSessionIds: [
+        for (final entry in result.committedByBackendId.entries)
+          if (_visibilityState.isPublished(sessionId: entry.value.sessionId)) entry.key,
+      ],
     );
     return result.project;
   }
@@ -883,7 +1050,7 @@ class SessionRepository {
     required String sessionId,
     required VerifiedGithubLogin? verifiedGithubLogin,
   }) async {
-    final row = await _sessionDao.getSession(sessionId: sessionId);
+    final row = await _getPublishedBinding(sessionId: sessionId);
     if (row == null || row.projectId != projectId) return null;
     return (await _mapCatalogSessions(
       rows: [row],
@@ -892,7 +1059,7 @@ class SessionRepository {
   }
 
   Future<String?> findProjectIdForSession({required String sessionId}) async {
-    return (await _sessionDao.getSession(sessionId: sessionId))?.projectId;
+    return (await _getPublishedBinding(sessionId: sessionId))?.projectId;
   }
 
   Future<void> notifySessionArchived({required String sessionId}) async {
@@ -943,7 +1110,9 @@ class SessionRepository {
             pluginId: pluginId,
             statuses: {
               for (final entry in pluginStatuses.entries)
-                if (bindings[entry.key] case final binding?) binding.sessionId: entry.value.toSharedSessionStatus(),
+                if (bindings[entry.key] case final binding?
+                    when _visibilityState.isPublished(sessionId: binding.sessionId))
+                  binding.sessionId: entry.value.toSharedSessionStatus(),
             },
           );
         } on Object {
@@ -1071,21 +1240,34 @@ class SessionRepository {
   }
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
-    if (await _sessionDao.getSession(sessionId: sessionId) == null) {
-      throw PluginOperationException.notFound(
-        SessionOperation.getChildSessions.name,
-        message: "session $sessionId was not found",
+    while (true) {
+      final visibility = _visibilityState.snapshot;
+      final binding = visibility.unpublishedSessionIds.contains(sessionId)
+          ? null
+          : await _sessionDao.getSession(sessionId: sessionId);
+      if (binding == null) {
+        throw PluginOperationException.notFound(
+          SessionOperation.getChildSessions.name,
+          message: "session $sessionId was not found",
+        );
+      }
+      final sessions = await _mapCatalogSessions(
+        rows: await _sessionDao.getChildCatalogSessions(
+          parentSessionId: sessionId,
+          excludedSessionIds: visibility.unpublishedSessionIds,
+        ),
+        verifiedGithubLogin: null,
       );
+      if (_visibilityState.isSnapshotCurrent(snapshot: visibility)) return sessions;
     }
-    return _mapCatalogSessions(
-      rows: await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId),
-      verifiedGithubLogin: null,
-    );
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
-    return sessions.map((session) => session.toStoredSession()).toList(growable: false);
+    return [
+      for (final session in sessions)
+        if (_visibilityState.isPublished(sessionId: session.sessionId)) session.toStoredSession(),
+    ];
   }
 
   Future<bool> hasOtherActiveSessionsSharing({
@@ -1118,17 +1300,19 @@ class SessionRepository {
   }
 
   Future<StoredSession?> getStoredSession({required String sessionId}) async {
-    return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
+    return (await _getPublishedBinding(sessionId: sessionId))?.toStoredSession();
   }
 
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,
   }) async {
-    return (await _sessionDao.getSessionByBinding(
+    final binding = await _sessionDao.getSessionByBinding(
       pluginId: pluginId,
       backendSessionId: backendSessionId,
-    ))?.toStoredSession();
+    );
+    if (binding == null || !_visibilityState.isPublished(sessionId: binding.sessionId)) return null;
+    return binding.toStoredSession();
   }
 
   Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
@@ -1140,7 +1324,8 @@ class SessionRepository {
       backendSessionIds: backendSessionIds,
     );
     return {
-      for (final entry in rows.entries) entry.key: entry.value.toStoredSession(),
+      for (final entry in rows.entries)
+        if (_visibilityState.isPublished(sessionId: entry.value.sessionId)) entry.key: entry.value.toStoredSession(),
     };
   }
 
@@ -1166,7 +1351,7 @@ class SessionRepository {
           pluginId: pluginId,
           backendSessionId: observed.id,
         );
-        if (binding == null) return null;
+        if (binding == null || !_visibilityState.isPublished(sessionId: binding.sessionId)) return null;
         _runtime.requireCurrentGeneration(
           pluginId: pluginId,
           generation: generation,
@@ -1187,6 +1372,7 @@ class SessionRepository {
         );
         if (!updated) return null;
         final stored = (await _sessionDao.getSession(sessionId: binding.sessionId))?.toStoredSession();
+        if (!_visibilityState.isPublished(sessionId: binding.sessionId)) return null;
         _runtime.requireCurrentGeneration(
           pluginId: pluginId,
           generation: generation,
@@ -1209,7 +1395,8 @@ class SessionRepository {
       generation: generation,
       operation: SessionOperation.insertObservedChild,
       commit: () => _sessionDao.attachedDatabase.transaction(() async {
-        if (parent.pluginId != pluginId ||
+        if (!_visibilityState.isPublished(sessionId: parent.id) ||
+            parent.pluginId != pluginId ||
             await _sessionDao.isSessionTombstoned(
               backendSessionId: observed.id,
               pluginId: pluginId,
@@ -1217,7 +1404,11 @@ class SessionRepository {
           return null;
         }
         final durableParent = await _sessionDao.getSession(sessionId: parent.id);
-        if (durableParent == null || durableParent.pluginId != pluginId) return null;
+        if (durableParent == null ||
+            !_visibilityState.isPublished(sessionId: durableParent.sessionId) ||
+            durableParent.pluginId != pluginId) {
+          return null;
+        }
         final existing = await _sessionDao.getSessionByBinding(
           pluginId: pluginId,
           backendSessionId: observed.id,
@@ -1300,7 +1491,7 @@ class SessionRepository {
   }
 
   Future<Session?> getCatalogSession({required String sessionId}) async {
-    final row = await _sessionDao.getSession(sessionId: sessionId);
+    final row = await _getPublishedBinding(sessionId: sessionId);
     if (row == null) return null;
     return (await _mapCatalogSessions(
       rows: [row],
@@ -1415,7 +1606,7 @@ class SessionRepository {
     required String sessionId,
     required SessionOperation operation,
   }) async {
-    final binding = await _sessionDao.getSession(sessionId: sessionId);
+    final binding = await _getPublishedBinding(sessionId: sessionId);
     if (binding == null) {
       throw PluginOperationException.notFound(
         operation.name,
@@ -1423,6 +1614,27 @@ class SessionRepository {
       );
     }
     return binding;
+  }
+
+  Future<SessionDto?> _getPublishedBinding({required String sessionId}) async {
+    if (!_visibilityState.isPublished(sessionId: sessionId)) return null;
+    final binding = await _sessionDao.getSession(sessionId: sessionId);
+    if (binding == null || !_visibilityState.isPublished(sessionId: sessionId)) return null;
+    return binding;
+  }
+
+  SessionDto _requireInitialBinding({required UnpublishedSessionBinding binding}) {
+    _verifyInitialBindingOwner(binding: binding);
+    if (!binding._visibilityReservation.isActive) {
+      throw StateError("Initial session binding is no longer unpublished");
+    }
+    return binding._binding;
+  }
+
+  void _verifyInitialBindingOwner({required UnpublishedSessionBinding binding}) {
+    if (!identical(binding._repository, this)) {
+      throw StateError("Initial session binding belongs to another repository");
+    }
   }
 
   static final Random _secureRandom = Random.secure();
