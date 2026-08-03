@@ -478,14 +478,20 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPullRequestRefreshHelp.
   ///
   /// In en, this message translates to:
-  /// **'Enter a whole number from 15 to 3,600 seconds.'**
+  /// **'Enter a whole number of seconds.'**
   String get settingsPullRequestRefreshHelp;
 
   /// No description provided for @settingsPullRequestRefreshInvalid.
   ///
   /// In en, this message translates to:
-  /// **'Enter a whole number from 15 to 3,600.'**
+  /// **'Enter a whole number of seconds.'**
   String get settingsPullRequestRefreshInvalid;
+
+  /// No description provided for @settingsPullRequestRefreshRangeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from {minimumSeconds} to {maximumSeconds}.'**
+  String settingsPullRequestRefreshRangeInvalid(int minimumSeconds, int maximumSeconds);
 
   /// No description provided for @settingsPullRequestRefreshCancel.
   ///

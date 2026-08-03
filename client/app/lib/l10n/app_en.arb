@@ -166,8 +166,21 @@
   "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
   "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
   "settingsPullRequestRefreshSecondsLabel": "Seconds",
-  "settingsPullRequestRefreshHelp": "Enter a whole number from 15 to 3,600 seconds.",
-  "settingsPullRequestRefreshInvalid": "Enter a whole number from 15 to 3,600.",
+  "settingsPullRequestRefreshHelp": "Enter a whole number of seconds.",
+  "settingsPullRequestRefreshInvalid": "Enter a whole number of seconds.",
+  "settingsPullRequestRefreshRangeInvalid": "Enter a whole number from {minimumSeconds} to {maximumSeconds}.",
+  "@settingsPullRequestRefreshRangeInvalid": {
+    "placeholders": {
+      "minimumSeconds": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "maximumSeconds": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
   "settingsPullRequestRefreshCancel": "Cancel",
   "settingsPullRequestRefreshSave": "Save",
   "settingsPullRequestRefreshSeconds": "{seconds, plural, =1{1 second} other{{seconds} seconds}}",

@@ -50,10 +50,16 @@ String _description({required BuildContext context, required PullRequestRefreshS
     PullRequestRefreshSettingsUnsupported() => context.loc.settingsPullRequestRefreshUnsupported,
     PullRequestRefreshSettingsFailure() => context.loc.settingsPullRequestRefreshLoadFailed,
     PullRequestRefreshSettingsUncertain() => context.loc.settingsPullRequestRefreshUncertain,
+    PullRequestRefreshSettingsReady(
+      mutation: PullRequestRefreshSettingsMutationRangeRejected(:final bounds),
+    ) =>
+      context.loc.settingsPullRequestRefreshRangeInvalid(
+        bounds.minimumIntervalSeconds,
+        bounds.maximumIntervalSeconds,
+      ),
     PullRequestRefreshSettingsReady(mutation: final PullRequestRefreshSettingsMutationFailed failure) =>
       switch (failure.error) {
-        PullRequestRefreshSettingsInvalidInput() ||
-        PullRequestRefreshSettingsRejected() => context.loc.settingsPullRequestRefreshInvalid,
+        PullRequestRefreshSettingsInvalidInput() => context.loc.settingsPullRequestRefreshInvalid,
         PullRequestRefreshSettingsRequestFailed() => context.loc.settingsPullRequestRefreshUpdateFailed,
       },
     PullRequestRefreshSettingsReady() => context.loc.settingsPullRequestRefreshDescription,
@@ -91,17 +97,26 @@ Future<void> _editInterval({
   final result = await showPregoBottomSheet<String>(
     context: context,
     title: context.loc.settingsPullRequestRefreshDialogTitle,
-    builder: (_) => _RefreshIntervalSheet(cubit: cubit, initialSeconds: state.intervalSeconds),
+    builder: (_) => _RefreshIntervalSheet(
+      cubit: cubit,
+      initialSeconds: state.intervalSeconds,
+      validationBounds: state.validationBounds,
+    ),
   );
   if (result == null) return;
   await cubit.update(input: result);
 }
 
 class _RefreshIntervalSheet extends StatefulWidget {
-  const _RefreshIntervalSheet({required this.cubit, required this.initialSeconds});
+  const _RefreshIntervalSheet({
+    required this.cubit,
+    required this.initialSeconds,
+    required this.validationBounds,
+  });
 
   final PullRequestRefreshSettingsCubit cubit;
   final int initialSeconds;
+  final PullRequestRefreshSettingsBounds? validationBounds;
 
   @override
   State<_RefreshIntervalSheet> createState() => _RefreshIntervalSheetState();
@@ -143,14 +158,14 @@ class _RefreshIntervalSheetState extends State<_RefreshIntervalSheet> {
               textInputAction: TextInputAction.done,
               validator: (value) => switch (widget.cubit.validateUpdateInput(input: value ?? "")) {
                 PullRequestRefreshSettingsInputValidation.valid => null,
-                PullRequestRefreshSettingsInputValidation.invalid => context.loc.settingsPullRequestRefreshInvalid,
+                PullRequestRefreshSettingsInputValidation.invalid => _validationMessage(context: context),
               },
               onSubmitted: (_) => _submit(),
             ),
           ),
           const SizedBox(height: PregoSpacing.sm),
           Text(
-            context.loc.settingsPullRequestRefreshHelp,
+            _helpMessage(context: context),
             style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
           const SizedBox(height: PregoSpacing.x2l),
@@ -182,5 +197,25 @@ class _RefreshIntervalSheetState extends State<_RefreshIntervalSheet> {
         ],
       ),
     );
+  }
+
+  String _helpMessage({required BuildContext context}) {
+    final bounds = widget.validationBounds;
+    return bounds == null
+        ? context.loc.settingsPullRequestRefreshHelp
+        : context.loc.settingsPullRequestRefreshRangeInvalid(
+            bounds.minimumIntervalSeconds,
+            bounds.maximumIntervalSeconds,
+          );
+  }
+
+  String _validationMessage({required BuildContext context}) {
+    final bounds = widget.validationBounds;
+    return bounds == null
+        ? context.loc.settingsPullRequestRefreshInvalid
+        : context.loc.settingsPullRequestRefreshRangeInvalid(
+            bounds.minimumIntervalSeconds,
+            bounds.maximumIntervalSeconds,
+          );
   }
 }

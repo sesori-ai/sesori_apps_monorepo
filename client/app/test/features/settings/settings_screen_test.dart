@@ -44,6 +44,10 @@ class _MockLegalRepository extends Mock implements LegalRepository {}
 
 class _MockPullRequestRefreshSettingsRepository extends Mock implements PullRequestRefreshSettingsRepository {}
 
+const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com");
+const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
+const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
+
 Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputMode}) {
   final router = GoRouter(
     routes: [
@@ -102,6 +106,8 @@ void main() {
   late MockProductAnalyticsService productAnalyticsService;
   late BehaviorSubject<ProductAnalyticsState> productAnalyticsStates;
   late _MockPullRequestRefreshSettingsRepository pullRequestRefreshSettingsRepository;
+  late MockConnectionService connectionService;
+  late BehaviorSubject<ConnectionStatus> connectionStatuses;
 
   setUpAll(() {
     registerFallbackValue(Uri());
@@ -123,6 +129,12 @@ void main() {
     );
 
     await GetIt.instance.reset();
+    connectionStatuses = BehaviorSubject.seeded(_connected);
+    connectionService = MockConnectionService();
+    when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
+    when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
+    GetIt.instance.registerSingleton<ConnectionService>(connectionService);
+
     authSession = _StubAuthSession();
     when(authSession.logoutCurrentDevice).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<AuthSession>(authSession);
@@ -185,6 +197,7 @@ void main() {
 
   tearDown(() async {
     await GetIt.instance.reset();
+    await connectionStatuses.close();
     await productAnalyticsStates.close();
   });
 
@@ -257,15 +270,64 @@ void main() {
 
     await tester.tap(find.text("Pull request refresh"));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "14");
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "15.5");
     await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
     await tester.pump();
 
-    expect(find.text("Enter a whole number from 15 to 3,600."), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("pull_request_refresh_input")),
+        matching: find.text("Enter a whole number of seconds."),
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
     verifyNever(
       () => pullRequestRefreshSettingsRepository.update(request: any(named: "request")),
     );
+  });
+
+  testWidgets("a bridge rejection reports and enforces its authoritative bounds", (tester) async {
+    _useTallSurface(tester);
+    var updateCalls = 0;
+    when(
+      () => pullRequestRefreshSettingsRepository.update(request: any(named: "request")),
+    ).thenAnswer((_) async {
+      updateCalls++;
+      return PullRequestRefreshSettingsMutationRejected(
+        bounds: PullRequestRefreshSettingsBounds(
+          minimumIntervalSeconds: 20,
+          maximumIntervalSeconds: 1800,
+        ),
+      );
+    });
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "1900");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Enter a whole number from 20 to 1,800."), findsOneWidget);
+    expect(updateCalls, 1);
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "1900");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("pull_request_refresh_input")),
+        matching: find.text("Enter a whole number from 20 to 1,800."),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
+    expect(updateCalls, 1);
   });
 
   testWidgets("old bridges show the cadence setting as unsupported", (tester) async {

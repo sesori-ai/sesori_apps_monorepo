@@ -21,17 +21,26 @@ void main() {
   });
 
   test("plans trimmed integer seconds inside the supported range", () {
-    final plan = service.planUpdate(input: " 45 ");
+    final plan = service.planUpdate(input: " 45 ", bounds: null);
 
     expect((plan as PullRequestRefreshSettingsUpdateRequest).request.intervalSeconds, 45);
   });
 
-  test("rejects non-integers and values outside 15 through 3600", () {
-    for (final input in ["", "15.5", "14", "3601"]) {
-      expect(service.planUpdate(input: input), isA<PullRequestRefreshSettingsUpdateInvalid>());
+  test("accepts any whole number until the bridge reports bounds", () {
+    expect(service.planUpdate(input: "14", bounds: null), isA<PullRequestRefreshSettingsUpdateRequest>());
+    expect(service.planUpdate(input: "3601", bounds: null), isA<PullRequestRefreshSettingsUpdateRequest>());
+  });
+
+  test("rejects malformed input and values outside bridge-reported bounds", () {
+    final bounds = PullRequestRefreshSettingsBounds(minimumIntervalSeconds: 20, maximumIntervalSeconds: 1800);
+    for (final input in ["", "15.5", "19", "1801"]) {
+      expect(
+        service.planUpdate(input: input, bounds: bounds),
+        isA<PullRequestRefreshSettingsUpdateInvalid>(),
+      );
     }
-    expect(service.planUpdate(input: "15"), isA<PullRequestRefreshSettingsUpdateRequest>());
-    expect(service.planUpdate(input: "3600"), isA<PullRequestRefreshSettingsUpdateRequest>());
+    expect(service.planUpdate(input: "20", bounds: bounds), isA<PullRequestRefreshSettingsUpdateRequest>());
+    expect(service.planUpdate(input: "1800", bounds: bounds), isA<PullRequestRefreshSettingsUpdateRequest>());
   });
 
   test("delegates loading and mutation to the repository", () async {

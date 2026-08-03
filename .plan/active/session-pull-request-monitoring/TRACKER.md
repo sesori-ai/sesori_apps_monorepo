@@ -442,13 +442,14 @@
 - **Step 8/9 cleanup and analytics:** No newly obsolete production, transport,
   persistence, job, cache, flag, or UI artifact was found. No analytics event was
   added because this setting answers no current product decision.
-- **Step 8/9 verification:** Codegen/localization generation, formatting, `dart
-  pub get`, 962 module-core, 880 mobile, 15 desktop, 358 shared, and 2,388 bridge
-  tests pass; all five fatal-info analyzers and `git diff --check` pass. The 1,521
-  lines are 21 over target because generated output and final integration are coupled.
-- **Step 8/9 architecture review:** Aristotle rejected duplicate interval
-  validation in Flutter. The widget now consumes a cubit validation result that
-  delegates to the service-owned plan; the direct correction was not re-reviewed.
+- **Step 8/9 verification:** Pre-review codegen, formatting, dependency resolution,
+  962 module-core, 880 mobile, 15 desktop, 358 shared, and 2,388 bridge tests pass.
+  Post-review all 21 focused core tests, all 20 Settings tests, three fatal-info
+  analyzers, and `git diff --check` pass; CI passed before the feedback commit.
+- **Step 8/9 review:** Initial Aristotle feedback moved validation out of Flutter.
+  PR #701 feedback added connection-epoch fencing and observable unexpected failures.
+  Second Aristotle feedback consolidated validated bounds in the repository. The
+  final 2,027 lines exceed target because these fixes cannot ship separately.
 
 ## Findings and Plan Deltas
 

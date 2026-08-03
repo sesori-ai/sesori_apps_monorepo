@@ -1,5 +1,7 @@
 import "package:sesori_auth/sesori_auth.dart";
 
+import "../../repositories/models/pull_request_refresh_settings_result.dart";
+
 sealed class PullRequestRefreshSettingsState {
   const PullRequestRefreshSettingsState();
 }
@@ -33,24 +35,49 @@ final class PullRequestRefreshSettingsReady extends PullRequestRefreshSettingsSt
 
   final int intervalSeconds;
   final PullRequestRefreshSettingsMutationState mutation;
+
+  PullRequestRefreshSettingsBounds? get validationBounds => mutation.validationBounds;
 }
 
 sealed class PullRequestRefreshSettingsMutationState {
   const PullRequestRefreshSettingsMutationState();
+
+  PullRequestRefreshSettingsBounds? get validationBounds;
 }
 
 final class PullRequestRefreshSettingsMutationIdle extends PullRequestRefreshSettingsMutationState {
-  const PullRequestRefreshSettingsMutationIdle();
+  const PullRequestRefreshSettingsMutationIdle({required this.validationBounds});
+
+  @override
+  final PullRequestRefreshSettingsBounds? validationBounds;
 }
 
 final class PullRequestRefreshSettingsMutationInProgress extends PullRequestRefreshSettingsMutationState {
-  const PullRequestRefreshSettingsMutationInProgress();
+  const PullRequestRefreshSettingsMutationInProgress({required this.validationBounds});
+
+  @override
+  final PullRequestRefreshSettingsBounds? validationBounds;
+}
+
+final class PullRequestRefreshSettingsMutationRangeRejected extends PullRequestRefreshSettingsMutationState {
+  const PullRequestRefreshSettingsMutationRangeRejected({required this.bounds});
+
+  final PullRequestRefreshSettingsBounds bounds;
+
+  @override
+  PullRequestRefreshSettingsBounds get validationBounds => bounds;
 }
 
 final class PullRequestRefreshSettingsMutationFailed extends PullRequestRefreshSettingsMutationState {
-  const PullRequestRefreshSettingsMutationFailed({required this.error});
+  const PullRequestRefreshSettingsMutationFailed({
+    required this.error,
+    required this.validationBounds,
+  });
 
   final PullRequestRefreshSettingsMutationError error;
+
+  @override
+  final PullRequestRefreshSettingsBounds? validationBounds;
 }
 
 sealed class PullRequestRefreshSettingsMutationError {
@@ -59,16 +86,6 @@ sealed class PullRequestRefreshSettingsMutationError {
 
 final class PullRequestRefreshSettingsInvalidInput extends PullRequestRefreshSettingsMutationError {
   const PullRequestRefreshSettingsInvalidInput();
-}
-
-final class PullRequestRefreshSettingsRejected extends PullRequestRefreshSettingsMutationError {
-  const PullRequestRefreshSettingsRejected({
-    required this.minimumIntervalSeconds,
-    required this.maximumIntervalSeconds,
-  });
-
-  final int minimumIntervalSeconds;
-  final int maximumIntervalSeconds;
 }
 
 final class PullRequestRefreshSettingsRequestFailed extends PullRequestRefreshSettingsMutationError {

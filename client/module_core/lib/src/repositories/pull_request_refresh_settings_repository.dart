@@ -41,8 +41,14 @@ class PullRequestRefreshSettingsRepository {
     if (body != null) {
       try {
         final response = PullRequestRefreshSettingsErrorResponse.fromJson(jsonDecodeMap(body));
-        if (response.code == PullRequestRefreshSettingsErrorCode.intervalOutOfRange) {
-          return PullRequestRefreshSettingsMutationRejected(error: response);
+        if (response.code == PullRequestRefreshSettingsErrorCode.intervalOutOfRange &&
+            response.minimumIntervalSeconds <= response.maximumIntervalSeconds) {
+          return PullRequestRefreshSettingsMutationRejected(
+            bounds: PullRequestRefreshSettingsBounds(
+              minimumIntervalSeconds: response.minimumIntervalSeconds,
+              maximumIntervalSeconds: response.maximumIntervalSeconds,
+            ),
+          );
         }
       } on Object {
         // The explicit typed failure below is the observable outcome.

@@ -36,9 +36,9 @@ final class PullRequestRefreshSettingsMutationUnsupported extends PullRequestRef
 }
 
 final class PullRequestRefreshSettingsMutationRejected extends PullRequestRefreshSettingsMutationResult {
-  const PullRequestRefreshSettingsMutationRejected({required this.error});
+  const PullRequestRefreshSettingsMutationRejected({required this.bounds});
 
-  final PullRequestRefreshSettingsErrorResponse error;
+  final PullRequestRefreshSettingsBounds bounds;
 }
 
 final class PullRequestRefreshSettingsMutationUncertain extends PullRequestRefreshSettingsMutationResult {
@@ -49,4 +49,35 @@ final class PullRequestRefreshSettingsMutationFailure extends PullRequestRefresh
   const PullRequestRefreshSettingsMutationFailure({required this.error});
 
   final ApiError error;
+}
+
+final class PullRequestRefreshSettingsBounds {
+  factory PullRequestRefreshSettingsBounds({
+    required int minimumIntervalSeconds,
+    required int maximumIntervalSeconds,
+  }) {
+    if (minimumIntervalSeconds > maximumIntervalSeconds) {
+      throw ArgumentError.value(
+        (minimumIntervalSeconds, maximumIntervalSeconds),
+        "intervalBounds",
+        "The minimum interval must not exceed the maximum interval",
+      );
+    }
+    return PullRequestRefreshSettingsBounds._(
+      minimumIntervalSeconds: minimumIntervalSeconds,
+      maximumIntervalSeconds: maximumIntervalSeconds,
+    );
+  }
+
+  const PullRequestRefreshSettingsBounds._({
+    required this.minimumIntervalSeconds,
+    required this.maximumIntervalSeconds,
+  });
+
+  final int minimumIntervalSeconds;
+  final int maximumIntervalSeconds;
+
+  bool includes({required int intervalSeconds}) {
+    return intervalSeconds >= minimumIntervalSeconds && intervalSeconds <= maximumIntervalSeconds;
+  }
 }

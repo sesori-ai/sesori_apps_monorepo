@@ -75,7 +75,33 @@ void main() {
       request: const PullRequestRefreshSettingsRequest(intervalSeconds: 10),
     );
 
-    expect((result as PullRequestRefreshSettingsMutationRejected).error, rejection);
+    final bounds = (result as PullRequestRefreshSettingsMutationRejected).bounds;
+    expect(bounds.minimumIntervalSeconds, rejection.minimumIntervalSeconds);
+    expect(bounds.maximumIntervalSeconds, rejection.maximumIntervalSeconds);
+  });
+
+  test("update rejects inverted bridge bounds as a typed failure", () async {
+    const rejection = PullRequestRefreshSettingsErrorResponse(
+      code: PullRequestRefreshSettingsErrorCode.intervalOutOfRange,
+      minimumIntervalSeconds: 1800,
+      maximumIntervalSeconds: 20,
+    );
+    when(
+      () => api.updateSettings(request: any(named: "request")),
+    ).thenAnswer(
+      (_) async => ApiResponse.error(
+        ApiError.nonSuccessCode(
+          errorCode: 400,
+          rawErrorString: jsonEncode(rejection.toJson()),
+        ),
+      ),
+    );
+
+    final result = await repository.update(
+      request: const PullRequestRefreshSettingsRequest(intervalSeconds: 45),
+    );
+
+    expect(result, isA<PullRequestRefreshSettingsMutationFailure>());
   });
 
   test("update treats post-dispatch response loss as uncertain", () async {

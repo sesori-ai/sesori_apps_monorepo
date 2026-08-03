@@ -46,6 +46,7 @@ class SettingsScreen extends StatelessWidget {
         BlocProvider(
           create: (_) => PullRequestRefreshSettingsCubit(
             service: getIt<PullRequestRefreshSettingsService>(),
+            connectionService: getIt<ConnectionService>(),
           ),
         ),
       ],

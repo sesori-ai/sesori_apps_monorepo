@@ -215,10 +215,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPullRequestRefreshSecondsLabel => 'Seconds';
 
   @override
-  String get settingsPullRequestRefreshHelp => 'Enter a whole number from 15 to 3,600 seconds.';
+  String get settingsPullRequestRefreshHelp => 'Enter a whole number of seconds.';
 
   @override
-  String get settingsPullRequestRefreshInvalid => 'Enter a whole number from 15 to 3,600.';
+  String get settingsPullRequestRefreshInvalid => 'Enter a whole number of seconds.';
+
+  @override
+  String settingsPullRequestRefreshRangeInvalid(int minimumSeconds, int maximumSeconds) {
+    final intl.NumberFormat minimumSecondsNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String minimumSecondsString = minimumSecondsNumberFormat.format(minimumSeconds);
+    final intl.NumberFormat maximumSecondsNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String maximumSecondsString = maximumSecondsNumberFormat.format(maximumSeconds);
+
+    return 'Enter a whole number from $minimumSecondsString to $maximumSecondsString.';
+  }
 
   @override
   String get settingsPullRequestRefreshCancel => 'Cancel';

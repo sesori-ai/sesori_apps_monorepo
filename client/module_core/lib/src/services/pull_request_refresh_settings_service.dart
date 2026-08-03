@@ -4,9 +4,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/pull_request_refresh_settings_result.dart";
 import "../repositories/pull_request_refresh_settings_repository.dart";
 
-const int minimumPullRequestRefreshIntervalSeconds = 15;
-const int maximumPullRequestRefreshIntervalSeconds = 3600;
-
 @lazySingleton
 class PullRequestRefreshSettingsService {
   PullRequestRefreshSettingsService({required PullRequestRefreshSettingsRepository repository})
@@ -20,11 +17,12 @@ class PullRequestRefreshSettingsService {
     required PullRequestRefreshSettingsRequest request,
   }) => _repository.update(request: request);
 
-  PullRequestRefreshSettingsUpdatePlan planUpdate({required String input}) {
+  PullRequestRefreshSettingsUpdatePlan planUpdate({
+    required String input,
+    required PullRequestRefreshSettingsBounds? bounds,
+  }) {
     final intervalSeconds = int.tryParse(input.trim());
-    if (intervalSeconds == null ||
-        intervalSeconds < minimumPullRequestRefreshIntervalSeconds ||
-        intervalSeconds > maximumPullRequestRefreshIntervalSeconds) {
+    if (intervalSeconds == null || (bounds != null && !bounds.includes(intervalSeconds: intervalSeconds))) {
       return const PullRequestRefreshSettingsUpdateInvalid();
     }
     return PullRequestRefreshSettingsUpdateRequest(
