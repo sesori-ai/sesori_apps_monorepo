@@ -225,6 +225,91 @@ void main() {
     );
   });
 
+  test("retires a waited cell when a chained wait replaces it", () {
+    final tracker = CodexToolCorrelationTracker(
+      rolloutToolMapper: const CodexRolloutToolMapper(
+        imageAttachmentMapper: CodexImageAttachmentMapper(),
+      ),
+    );
+    tracker
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-exec", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-exec",
+          output: "Script running with cell ID 7\nOutput:\n",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _waitCall(
+          callId: "call-wait-7",
+          turnId: "turn-1",
+          cellId: "7",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-wait-7",
+          output: "Script running with cell ID 8\nOutput:\n",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _waitCall(
+          callId: "call-wait-8",
+          turnId: "turn-1",
+          cellId: "8",
+        ),
+      );
+
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-wait-8",
+          output: "Script completed with exit code 0\nFinal output:\ndone\n",
+        ),
+      ),
+      isA<CodexRolloutToolCanonical>(),
+    );
+  });
+
+  test("canonical terminal output clears its own running cells", () {
+    final tracker = CodexToolCorrelationTracker(
+      rolloutToolMapper: const CodexRolloutToolMapper(
+        imageAttachmentMapper: CodexImageAttachmentMapper(),
+      ),
+    );
+    tracker
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-exec", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-exec",
+          output: "Script running with cell ID 7\nOutput:\n",
+        ),
+      );
+
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-exec",
+          output: "Script completed with exit code 0\nFinal output:\ndone\n",
+        ),
+      ),
+      isA<CodexRolloutToolPassthrough>(),
+    );
+  });
+
   test("correlates every running cell from a composed exec", () {
     final tracker = CodexToolCorrelationTracker(
       rolloutToolMapper: const CodexRolloutToolMapper(
