@@ -9,14 +9,14 @@ part of 'bridge_setting_update.dart';
 PullRequestRefreshIntervalSettingUpdate
 _$PullRequestRefreshIntervalSettingUpdateFromJson(Map json) =>
     PullRequestRefreshIntervalSettingUpdate(
-      intervalSeconds: _strictIntFromJson(json['intervalSeconds']),
+      intervalSeconds: strictIntJsonConverter.fromJson(json['intervalSeconds']),
       $type: json['type'] as String?,
     );
 
 Map<String, dynamic> _$PullRequestRefreshIntervalSettingUpdateToJson(
   PullRequestRefreshIntervalSettingUpdate instance,
 ) => <String, dynamic>{
-  'intervalSeconds': instance.intervalSeconds,
+  'intervalSeconds': ?strictIntJsonConverter.toJson(instance.intervalSeconds),
   'type': instance.$type,
 };
 
@@ -31,8 +31,12 @@ PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection
 _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionFromJson(
   Map json,
 ) => PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection(
-  minimumIntervalSeconds: _strictIntFromJson(json['minimumIntervalSeconds']),
-  maximumIntervalSeconds: _strictIntFromJson(json['maximumIntervalSeconds']),
+  minimumIntervalSeconds: strictIntJsonConverter.fromJson(
+    json['minimumIntervalSeconds'],
+  ),
+  maximumIntervalSeconds: strictIntJsonConverter.fromJson(
+    json['maximumIntervalSeconds'],
+  ),
   $type: json['type'] as String?,
 );
 
@@ -40,8 +44,12 @@ Map<String, dynamic>
 _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionToJson(
   PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection instance,
 ) => <String, dynamic>{
-  'minimumIntervalSeconds': instance.minimumIntervalSeconds,
-  'maximumIntervalSeconds': instance.maximumIntervalSeconds,
+  'minimumIntervalSeconds': ?strictIntJsonConverter.toJson(
+    instance.minimumIntervalSeconds,
+  ),
+  'maximumIntervalSeconds': ?strictIntJsonConverter.toJson(
+    instance.maximumIntervalSeconds,
+  ),
   'type': instance.$type,
 };
 

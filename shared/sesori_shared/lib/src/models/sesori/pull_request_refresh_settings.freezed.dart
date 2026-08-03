@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PullRequestRefreshSettingsResponse {
 
-@JsonKey(fromJson: _strictIntFromJson) int get intervalSeconds;
+@strictIntJsonConverter int get intervalSeconds;
 /// Create a copy of PullRequestRefreshSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $PullRequestRefreshSettingsResponseCopyWith<$Res>  {
   factory $PullRequestRefreshSettingsResponseCopyWith(PullRequestRefreshSettingsResponse value, $Res Function(PullRequestRefreshSettingsResponse) _then) = _$PullRequestRefreshSettingsResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _strictIntFromJson) int intervalSeconds
+@strictIntJsonConverter int intervalSeconds
 });
 
 
@@ -80,10 +80,10 @@ as int,
 @JsonSerializable()
 
 class _PullRequestRefreshSettingsResponse implements PullRequestRefreshSettingsResponse {
-  const _PullRequestRefreshSettingsResponse({@JsonKey(fromJson: _strictIntFromJson) required this.intervalSeconds});
+  const _PullRequestRefreshSettingsResponse({@strictIntJsonConverter required this.intervalSeconds});
   factory _PullRequestRefreshSettingsResponse.fromJson(Map<String, dynamic> json) => _$PullRequestRefreshSettingsResponseFromJson(json);
 
-@override@JsonKey(fromJson: _strictIntFromJson) final  int intervalSeconds;
+@override@strictIntJsonConverter final  int intervalSeconds;
 
 /// Create a copy of PullRequestRefreshSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -118,7 +118,7 @@ abstract mixin class _$PullRequestRefreshSettingsResponseCopyWith<$Res> implemen
   factory _$PullRequestRefreshSettingsResponseCopyWith(_PullRequestRefreshSettingsResponse value, $Res Function(_PullRequestRefreshSettingsResponse) _then) = __$PullRequestRefreshSettingsResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _strictIntFromJson) int intervalSeconds
+@strictIntJsonConverter int intervalSeconds
 });
 
 

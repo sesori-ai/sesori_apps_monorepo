@@ -51,8 +51,8 @@ class PatchBridgeSettingsHandler extends BodyRequestHandler<BridgeSettingUpdate,
         throw RelayResponse(
           id: request.id,
           status: 400,
-          headers: const {},
-          body: "unsupported bridge setting type",
+          headers: const {"content-type": "application/json"},
+          body: jsonEncode(const BridgeSettingUpdateRejection.unknown().toJson()),
         );
     }
   }

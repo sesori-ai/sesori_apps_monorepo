@@ -10,7 +10,7 @@
 - **Latest audited tip:** `5ba0d3a6`
 - **Existing contract baseline:** [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) shipped additive
   `RelayProjectView` and `Session.pullRequestHistory` contracts.
-- **Delivery:** one plan PR, nine sequential implementation PRs, and
+- **Delivery:** one plan PR, ten sequential implementation PRs, and
   one plan-retirement PR.
 
 This document and `TRACKER.md` are the sole current implementation authority.

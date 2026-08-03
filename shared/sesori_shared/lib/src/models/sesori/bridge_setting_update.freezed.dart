@@ -62,10 +62,10 @@ String toString() {
 @JsonSerializable()
 
 class PullRequestRefreshIntervalSettingUpdate implements BridgeSettingUpdate {
-  const PullRequestRefreshIntervalSettingUpdate({@JsonKey(fromJson: _strictIntFromJson) required this.intervalSeconds, final  String? $type}): $type = $type ?? 'pullRequestRefreshInterval';
+  const PullRequestRefreshIntervalSettingUpdate({@strictIntJsonConverter required this.intervalSeconds, final  String? $type}): $type = $type ?? 'pullRequestRefreshInterval';
   factory PullRequestRefreshIntervalSettingUpdate.fromJson(Map<String, dynamic> json) => _$PullRequestRefreshIntervalSettingUpdateFromJson(json);
 
-@JsonKey(fromJson: _strictIntFromJson) final  int intervalSeconds;
+@strictIntJsonConverter final  int intervalSeconds;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -187,11 +187,11 @@ String toString() {
 @JsonSerializable()
 
 class PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection implements BridgeSettingUpdateRejection {
-  const PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection({@JsonKey(fromJson: _strictIntFromJson) required this.minimumIntervalSeconds, @JsonKey(fromJson: _strictIntFromJson) required this.maximumIntervalSeconds, final  String? $type}): $type = $type ?? 'pullRequestRefreshIntervalOutOfRange';
+  const PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection({@strictIntJsonConverter required this.minimumIntervalSeconds, @strictIntJsonConverter required this.maximumIntervalSeconds, final  String? $type}): $type = $type ?? 'pullRequestRefreshIntervalOutOfRange';
   factory PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection.fromJson(Map<String, dynamic> json) => _$PullRequestRefreshIntervalOutOfRangeSettingUpdateRejectionFromJson(json);
 
-@JsonKey(fromJson: _strictIntFromJson) final  int minimumIntervalSeconds;
-@JsonKey(fromJson: _strictIntFromJson) final  int maximumIntervalSeconds;
+@strictIntJsonConverter final  int minimumIntervalSeconds;
+@strictIntJsonConverter final  int maximumIntervalSeconds;
 
 @JsonKey(name: 'type')
 final String $type;

@@ -149,6 +149,11 @@ void main() {
           );
 
       expect(response.status, 400);
+      expect(response.headers["content-type"], "application/json");
+      expect(
+        BridgeSettingUpdateRejection.fromJson(jsonDecodeMap(response.body!)),
+        const BridgeSettingUpdateRejection.unknown(),
+      );
       expect(api.writeCount, 0);
     });
   });

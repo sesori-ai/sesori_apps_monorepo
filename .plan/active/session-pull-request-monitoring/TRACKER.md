@@ -455,13 +455,18 @@
   guidance now makes public production releases the compatibility baseline.
 - **Step 8.a/9 verification:** Shared codegen and formatting pass, as do all 363
   shared tests, all 2,400 bridge app tests, both fatal-info analyzers, focused
-  handler/service/config tests, and `git diff --check`. Final scope is 1,360
-  changed lines (874 additions/486 deletions): 629 generated, 274 tests, 259
-  plan/instructions, and 198 hand-authored production lines.
+  handler/service/config tests, and `git diff --check`. Final scope is 1,418
+  changed lines (918 additions/500 deletions): 649 generated, 279 tests, 269
+  plan/instructions, and 221 hand-authored production lines.
 - **Step 8.a/9 architecture review:** `aristotle-impl-review` approved the full
   working-tree scope with no findings. It confirmed the public-release-only
   compatibility decision, generic boundary dispatch, focused service ownership,
   shared union placement, and direct obsolete-contract cleanup.
+- **Step 8.a/9 PR review:** Cubic feedback corrected the implementation-PR count
+  and Step 8 substep note, made unknown setting rejection a typed JSON union
+  response, and centralized strict integer JSON parsing in one converter shared
+  by cadence reads and mutations. Eight focused shared and six handler tests plus
+  both fatal-info analyzers and `git diff --check` pass after the fixes.
 
 ## Findings and Plan Deltas
 
@@ -478,7 +483,8 @@
   supports live client mutation, and intentionally has no JSON file watcher.
 - **2026-07-31 — Plan lifecycle:** Keep nine top-level steps with this plan as
   Step 1/9 and active-to-completed retirement as Step 9/9; Step 2 uses ordered
-  2.a–2.c substeps after the reviewed implementation exceeded the line cap.
+  2.a–2.c substeps after the reviewed implementation exceeded the line cap, and
+  the user-requested settings redesign splits Step 8 into ordered 8.a–8.b.
 - **2026-07-31 — PR #649 review:** Corrected the reviewed baseline SHA; required
   candidate pagination past newer fork heads, read-time GitHub identity gating,
   a coalesced add-during-flight refresh, and independent branch display for

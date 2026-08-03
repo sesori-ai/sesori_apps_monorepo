@@ -9,9 +9,11 @@ part of 'pull_request_refresh_settings.dart';
 _PullRequestRefreshSettingsResponse
 _$PullRequestRefreshSettingsResponseFromJson(Map json) =>
     _PullRequestRefreshSettingsResponse(
-      intervalSeconds: _strictIntFromJson(json['intervalSeconds']),
+      intervalSeconds: strictIntJsonConverter.fromJson(json['intervalSeconds']),
     );
 
 Map<String, dynamic> _$PullRequestRefreshSettingsResponseToJson(
   _PullRequestRefreshSettingsResponse instance,
-) => <String, dynamic>{'intervalSeconds': instance.intervalSeconds};
+) => <String, dynamic>{
+  'intervalSeconds': ?strictIntJsonConverter.toJson(instance.intervalSeconds),
+};
