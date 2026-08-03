@@ -68,7 +68,7 @@ class CodexToolOutcomeStorage {
   ({List<CodexStoredToolErrorDto> errors, Object? error}) _parse({
     required String? contents,
   }) {
-    if (contents == null || contents.trim().isEmpty) {
+    if (contents == null) {
       return (errors: const [], error: null);
     }
     try {
