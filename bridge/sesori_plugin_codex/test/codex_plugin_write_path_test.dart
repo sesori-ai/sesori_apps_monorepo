@@ -1402,6 +1402,17 @@ void main() {
           "type": "response_item",
           "payload": {
             "type": "image_generation_call",
+            "id": "image-before-start",
+            "status": "completed",
+            "revised_prompt": "private prompt",
+            "result": "AA==",
+          },
+        },
+        {
+          "timestamp": "2026-07-23T08:00:03Z",
+          "type": "response_item",
+          "payload": {
+            "type": "image_generation_call",
             "id": "image-live",
             "status": "completed",
             "revised_prompt": "private prompt",
@@ -1418,6 +1429,18 @@ void main() {
         mode: FileMode.append,
       );
 
+      fake.pushNotification("item/started", {
+        "threadId": sessionId,
+        "turnId": "u-live",
+        "item": {
+          "type": "imageGeneration",
+          "id": "image-before-start",
+          "status": "in_progress",
+          "revisedPrompt": null,
+          "result": "",
+          "savedPath": null,
+        },
+      });
       fake
         ..pushNotification("item/started", {
           "threadId": sessionId,
@@ -1472,6 +1495,7 @@ void main() {
         "call-wait-2",
         "call-failed",
         "call-recovery",
+        "image-before-start",
         "image-live",
       });
       expect(finalLiveParts, isNot(contains("exec-immediate")));

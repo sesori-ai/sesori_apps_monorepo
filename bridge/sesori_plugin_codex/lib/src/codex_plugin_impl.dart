@@ -374,7 +374,9 @@ class CodexPlugin implements CodexManagedApi {
       // This fallback covers a turn started by another app-server client.
       _rolloutTailer.start(sessionId: threadId);
     }
-    if (threadId != null && (notification.method == "item/started" || notification.method == "item/completed")) {
+    final item = notification.params["item"];
+    final isCommandStarted = notification.method == "item/started" && item is Map && item["type"] == "commandExecution";
+    if (threadId != null && (notification.method == "item/completed" || isCommandStarted)) {
       // Codex persists the response item before emitting its stable lifecycle
       // event. Drain now so polling latency cannot split one command identity.
       _rolloutTailer.drain(sessionId: threadId);
