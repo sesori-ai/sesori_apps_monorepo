@@ -3,9 +3,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../codex_config_reader.dart";
-import "codex_tool_correlation_tracker.dart";
+import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
-import "models/codex_tool_projection.dart";
+import "models/codex_projected_tool.dart";
 
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
 class CodexMessageRepository {
@@ -37,69 +37,13 @@ class CodexMessageRepository {
       );
     }
 
-    final toolTracker = CodexToolCorrelationTracker(
+    final toolTracker = CodexToolLifecycleTracker(
       rolloutToolMapper: _rolloutToolMapper,
     );
-    final toolOutputs = <String, CodexRolloutToolResult>{};
+    final messages = <PluginMessageWithParts?>[];
+    final toolMessageIndexById = <String, int>{};
     final submittedUserMessages = <String>{};
-    final submittedUserLineIndexes = <int>[];
-    final terminalTurns = <String, _TerminalTurnStatus>{};
-    for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-      final line = lines[lineIndex];
-      final toolProjection = toolTracker.observeRolloutLine(
-        threadId: sessionId,
-        line: line,
-      );
-      switch (line) {
-        case CodexRolloutResponseItemLineDto(payload: final payload):
-          final result = _rolloutToolMapper.mapResult(payload);
-          if (result != null) {
-            switch (toolProjection) {
-              case CodexRolloutToolPassthrough():
-                toolOutputs[result.callId] = result.withPreviousResult(
-                  previous: toolOutputs[result.callId],
-                );
-              case CodexRolloutToolSuppressed():
-                break;
-              case CodexRolloutToolCanonical(:final callId):
-                toolOutputs[callId] = result.withPreviousResult(
-                  previous: toolOutputs[callId],
-                );
-              case CodexRolloutToolCanonicalRunning(
-                :final callId,
-                :final remainingCellIds,
-              ):
-                toolOutputs[callId] = CodexRolloutToolRunningResult(
-                  callId: callId,
-                  output: result.output,
-                  attachments: result.attachments,
-                  cellIds: remainingCellIds,
-                ).withPreviousResult(previous: toolOutputs[callId]);
-            }
-          }
-        case CodexRolloutEventMessageLineDto(
-          payload: CodexRolloutUserMessageEventDto(:final message),
-        ):
-          submittedUserMessages.add(message);
-          submittedUserLineIndexes.add(lineIndex);
-        case CodexRolloutEventMessageLineDto(
-          payload: CodexRolloutTaskCompleteEventDto(:final turnId),
-        ):
-          terminalTurns[turnId] = _TerminalTurnStatus.completed;
-        case CodexRolloutEventMessageLineDto(
-          payload: CodexRolloutTurnAbortedEventDto(:final turnId),
-        ):
-          terminalTurns[turnId] = _TerminalTurnStatus.aborted;
-        case CodexRolloutEventMessageLineDto() ||
-            CodexRolloutSessionMetadataLineDto() ||
-            CodexRolloutTurnContextLineDto() ||
-            CodexRolloutCompactedLineDto() ||
-            CodexRolloutUnknownLineDto():
-          break;
-      }
-    }
-
-    final messages = <PluginMessageWithParts>[];
+    final pendingGeneratedUserMessages = <_PendingGeneratedUserMessage>[];
     var messageCounter = 0;
     String? sessionProvider;
     String? currentModel;
@@ -116,10 +60,69 @@ class CodexMessageRepository {
       time: time,
     );
 
-    for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-      final line = lines[lineIndex];
+    void upsertTool({
+      required CodexProjectedTool tool,
+      required String? timestamp,
+    }) {
+      final existingIndex = toolMessageIndexById[tool.canonicalId];
+      final info = existingIndex == null
+          ? assistantInfo(
+              id: tool.canonicalId,
+              time: _messageTimeFrom(timestamp),
+            )
+          : messages[existingIndex]!.info;
+      final message = _toolMessage(
+        messageId: tool.canonicalId,
+        sessionId: sessionId,
+        info: info,
+        tool: tool.tool,
+        title: tool.title,
+        status: tool.status,
+        output: tool.output,
+        attachments: tool.attachments,
+      );
+      if (existingIndex == null) {
+        toolMessageIndexById[tool.canonicalId] = messages.length;
+        messages.add(message);
+      } else {
+        messages[existingIndex] = message;
+      }
+    }
+
+    for (final line in lines) {
+      final lineTimestamp = _lineTimestamp(line);
+      for (final tool in toolTracker.observeRolloutLine(threadId: sessionId, line: line)) {
+        upsertTool(tool: tool, timestamp: lineTimestamp);
+      }
+      if (line case CodexRolloutEventMessageLineDto(
+        payload: CodexRolloutUserMessageEventDto(message: final submittedMessage),
+      )) {
+        submittedUserMessages.add(submittedMessage);
+        for (final pending in pendingGeneratedUserMessages) {
+          if (pending.resolved || pending.submittedText != submittedMessage) {
+            continue;
+          }
+          messageCounter += 1;
+          final messageId = _persistedOrLegacyMessageId(
+            persistedId: pending.persistedId,
+            legacyCounter: messageCounter,
+          );
+          messages[pending.slot] = _textMessage(
+            info: PluginMessage.user(
+              id: messageId,
+              sessionID: sessionId,
+              agent: null,
+              time: pending.time,
+            ),
+            messageId: messageId,
+            sessionId: sessionId,
+            text: pending.text,
+          );
+          pending.resolved = true;
+        }
+      }
+
       final CodexRolloutResponseItemDto payload;
-      final String? lineTimestamp;
       switch (line) {
         case CodexRolloutSessionMetadataLineDto(payload: final metadata):
           sessionProvider ??= metadata.modelProvider;
@@ -151,10 +154,8 @@ class CodexMessageRepository {
           continue;
         case CodexRolloutResponseItemLineDto(
           payload: final responseItem,
-          timestamp: final timestamp,
         ):
           payload = responseItem;
-          lineTimestamp = timestamp;
         case CodexRolloutUnknownLineDto():
           continue;
       }
@@ -162,27 +163,7 @@ class CodexMessageRepository {
 
       switch (payload) {
         case CodexRolloutFunctionCallDto() || CodexRolloutCustomToolCallDto():
-          final call = _rolloutToolMapper.mapCall(payload);
-          if (call == null) continue;
-          final result = toolOutputs[call.id];
-          final fallbackStatus = _statusWithoutResult(
-            call: call,
-            callLineIndex: lineIndex,
-            terminalTurns: terminalTurns,
-            submittedUserLineIndexes: submittedUserLineIndexes,
-          );
-          messages.add(
-            _toolMessage(
-              messageId: call.id,
-              sessionId: sessionId,
-              info: assistantInfo(id: call.id, time: messageTime),
-              tool: call.tool,
-              title: call.title,
-              status: result == null || result.status == PluginToolStatus.running ? fallbackStatus : result.status,
-              output: result?.output,
-              attachments: result?.attachments ?? const [],
-            ),
-          );
+          continue;
         case CodexRolloutFunctionCallOutputDto() || CodexRolloutCustomToolCallOutputDto():
           continue;
         case CodexRolloutWebSearchCallDto(:final id, :final action):
@@ -206,6 +187,7 @@ class CodexMessageRepository {
         case CodexRolloutImageGenerationDto():
           final generation = _rolloutToolMapper.mapImageGeneration(item: payload);
           messageCounter += 1;
+          if (generation.id != null) continue;
           final messageId = _persistedOrLegacyMessageId(
             persistedId: generation.id,
             legacyCounter: messageCounter,
@@ -261,11 +243,6 @@ class CodexMessageRepository {
           if (role != CodexRolloutRole.user && role != CodexRolloutRole.assistant) {
             continue;
           }
-          if (role == CodexRolloutRole.user &&
-              !submittedUserMessages.contains(_firstInputText(content: content)) &&
-              _isGeneratedUserContext(content: content)) {
-            continue;
-          }
           final texts = [
             for (final item in content)
               if (item case CodexRolloutInputTextDto(:final text) || CodexRolloutOutputTextDto(:final text)
@@ -273,6 +250,22 @@ class CodexMessageRepository {
                 text,
           ];
           if (texts.isEmpty) continue;
+          final submittedText = _firstInputText(content: content);
+          if (role == CodexRolloutRole.user &&
+              !submittedUserMessages.contains(submittedText) &&
+              _isGeneratedUserContext(content: content)) {
+            pendingGeneratedUserMessages.add(
+              _PendingGeneratedUserMessage(
+                slot: messages.length,
+                persistedId: id,
+                submittedText: submittedText,
+                text: texts.join(),
+                time: messageTime,
+              ),
+            );
+            messages.add(null);
+            continue;
+          }
 
           messageCounter += 1;
           final messageId = _persistedOrLegacyMessageId(
@@ -288,33 +281,29 @@ class CodexMessageRepository {
                 )
               : assistantInfo(id: messageId, time: messageTime);
           messages.add(
-            PluginMessageWithParts(
+            _textMessage(
               info: info,
-              parts: [
-                PluginMessagePart(
-                  id: "$messageId-text",
-                  sessionID: sessionId,
-                  messageID: messageId,
-                  type: PluginMessagePartType.text,
-                  text: texts.join(),
-                  tool: null,
-                  state: null,
-                  prompt: null,
-                  description: null,
-                  agent: null,
-                  agentName: null,
-                  attempt: null,
-                  retryError: null,
-                  attachment: null,
-                ),
-              ],
+              messageId: messageId,
+              sessionId: sessionId,
+              text: texts.join(),
             ),
           );
         case CodexRolloutUnknownResponseItemDto():
           continue;
       }
     }
-    return messages;
+    return [for (final message in messages) ?message];
+  }
+
+  String? _lineTimestamp(CodexRolloutLineDto line) {
+    return switch (line) {
+      CodexRolloutSessionMetadataLineDto(:final timestamp) ||
+      CodexRolloutTurnContextLineDto(:final timestamp) ||
+      CodexRolloutResponseItemLineDto(:final timestamp) ||
+      CodexRolloutEventMessageLineDto(:final timestamp) ||
+      CodexRolloutCompactedLineDto(:final timestamp) ||
+      CodexRolloutUnknownLineDto(:final timestamp) => timestamp,
+    };
   }
 
   String? _firstInputText({required List<CodexRolloutContentDto> content}) {
@@ -322,29 +311,6 @@ class CodexMessageRepository {
       if (item case CodexRolloutInputTextDto(:final text)) return text;
     }
     return null;
-  }
-
-  PluginToolStatus _statusWithoutResult({
-    required CodexRolloutToolCall call,
-    required int callLineIndex,
-    required Map<String, _TerminalTurnStatus> terminalTurns,
-    required Iterable<int> submittedUserLineIndexes,
-  }) {
-    final turnId = call.turnId;
-    if (turnId != null) {
-      switch (terminalTurns[turnId]) {
-        case _TerminalTurnStatus.completed:
-          return PluginToolStatus.completed;
-        case _TerminalTurnStatus.aborted:
-          return PluginToolStatus.error;
-        case null:
-          break;
-      }
-    }
-    if (submittedUserLineIndexes.any((index) => index > callLineIndex)) {
-      return PluginToolStatus.error;
-    }
-    return PluginToolStatus.running;
   }
 
   bool _isGeneratedUserContext({
@@ -358,6 +324,35 @@ class CodexMessageRepository {
         if (item case CodexRolloutInputTextDto(:final text)) text.trim(),
     ];
     return texts.every((text) => _GeneratedContextTag.values.any((tag) => tag.wraps(text)));
+  }
+
+  PluginMessageWithParts _textMessage({
+    required PluginMessage info,
+    required String messageId,
+    required String sessionId,
+    required String text,
+  }) {
+    return PluginMessageWithParts(
+      info: info,
+      parts: [
+        PluginMessagePart(
+          id: "$messageId-text",
+          sessionID: sessionId,
+          messageID: messageId,
+          type: PluginMessagePartType.text,
+          text: text,
+          tool: null,
+          state: null,
+          prompt: null,
+          description: null,
+          agent: null,
+          agentName: null,
+          attempt: null,
+          retryError: null,
+          attachment: null,
+        ),
+      ],
+    );
   }
 
   PluginMessageWithParts _toolMessage({
@@ -435,7 +430,19 @@ enum _GeneratedContextTag {
   bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
 }
 
-enum _TerminalTurnStatus {
-  completed,
-  aborted,
+class _PendingGeneratedUserMessage {
+  _PendingGeneratedUserMessage({
+    required this.slot,
+    required this.persistedId,
+    required this.submittedText,
+    required this.text,
+    required this.time,
+  });
+
+  final int slot;
+  final String? persistedId;
+  final String? submittedText;
+  final String text;
+  final PluginMessageTime? time;
+  bool resolved = false;
 }
