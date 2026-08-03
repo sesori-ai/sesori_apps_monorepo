@@ -1319,6 +1319,7 @@ void main() {
         _customToolCall(
           id: "ct-exec-1",
           callId: "call-exec-1",
+          turnId: "u-live",
           input:
               'const r = await tools.exec_command({cmd:"sleep 5"}); '
               "text(r.output);",
@@ -1335,6 +1336,7 @@ void main() {
           callId: "call-wait-1",
           name: "wait",
           arguments: '{"cell_id":"1","yield_time_ms":10000,"max_tokens":20000}',
+          turnId: "u-live",
         ),
         _toolOutput(
           callId: "call-wait-1",
@@ -1345,6 +1347,7 @@ void main() {
         _customToolCall(
           id: "ct-exec-2",
           callId: "call-exec-2",
+          turnId: "u-live",
           input:
               'const r = await tools.exec_command({cmd:"sleep 2"}); '
               "text(r.output);",
@@ -1362,6 +1365,7 @@ void main() {
           callId: "call-wait-2",
           name: "wait",
           arguments: '{"cell_id":"2","yield_time_ms":10000,"max_tokens":20000}',
+          turnId: "u-live",
         ),
         _toolOutput(
           callId: "call-wait-2",
@@ -1490,9 +1494,7 @@ void main() {
       expect(finalLiveParts.keys, {
         "call-immediate",
         "call-exec-1",
-        "call-wait-1",
         "call-exec-2",
-        "call-wait-2",
         "call-failed",
         "call-recovery",
         "image-before-start",
@@ -1887,6 +1889,7 @@ Map<String, Object?> _customToolCall({
   required String id,
   required String callId,
   required String input,
+  String? turnId,
 }) => {
   "timestamp": "2026-07-23T08:00:01Z",
   "type": "response_item",
@@ -1896,6 +1899,10 @@ Map<String, Object?> _customToolCall({
     "call_id": callId,
     "name": "exec",
     "input": input,
+    if (turnId != null)
+      "internal_chat_message_metadata_passthrough": {
+        "turn_id": turnId,
+      },
   },
 };
 

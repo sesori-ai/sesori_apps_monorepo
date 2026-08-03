@@ -6,6 +6,7 @@ import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
+import "package:codex_plugin/src/repositories/models/codex_tool_projection.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -23,6 +24,7 @@ void main() {
     const rolloutToolMapper = CodexRolloutToolMapper(
       imageAttachmentMapper: imageAttachmentMapper,
     );
+    const passthroughProjection = CodexRolloutToolPassthrough();
     final mapper = CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
@@ -617,10 +619,15 @@ void main() {
         },
       });
 
-      final running = mapper.mapRolloutLine(threadId: "t-raw", line: call);
+      final running = mapper.mapRolloutLine(
+        threadId: "t-raw",
+        line: call,
+        toolProjection: passthroughProjection,
+      );
       final completed = mapper.mapRolloutLine(
         threadId: "t-raw",
         line: output,
+        toolProjection: passthroughProjection,
       );
       final lateItem = mapper.map(
         const CodexServerNotification(
@@ -672,8 +679,16 @@ void main() {
         },
       });
       mapper
-        ..mapRolloutLine(threadId: "t-structured", line: call)
-        ..mapRolloutLine(threadId: "t-structured", line: output);
+        ..mapRolloutLine(
+          threadId: "t-structured",
+          line: call,
+          toolProjection: passthroughProjection,
+        )
+        ..mapRolloutLine(
+          threadId: "t-structured",
+          line: output,
+          toolProjection: passthroughProjection,
+        );
 
       final events = mapper.map(
         const CodexServerNotification(
@@ -714,6 +729,7 @@ void main() {
       final events = mapper.mapRolloutLine(
         threadId: "t-unicode",
         line: line,
+        toolProjection: passthroughProjection,
       );
 
       final title = (events[1] as BridgeSseMessagePartUpdated).part.state?.title;
@@ -733,7 +749,11 @@ void main() {
         },
       });
 
-      final rollout = mapper.mapRolloutLine(threadId: "t-image", line: line);
+      final rollout = mapper.mapRolloutLine(
+        threadId: "t-image",
+        line: line,
+        toolProjection: passthroughProjection,
+      );
       final appServer = mapper.map(
         const CodexServerNotification(
           method: "item/completed",
@@ -769,7 +789,14 @@ void main() {
           "result": "AA==",
         },
       });
-      expect(mapper.mapRolloutLine(threadId: "t-image", line: idless), isEmpty);
+      expect(
+        mapper.mapRolloutLine(
+          threadId: "t-image",
+          line: idless,
+          toolProjection: passthroughProjection,
+        ),
+        isEmpty,
+      );
     });
 
     test("later app-server updates preserve richer rollout attachments", () {
@@ -794,10 +821,15 @@ void main() {
           ],
         },
       });
-      mapper.mapRolloutLine(threadId: "t-canonical-image", line: call);
+      mapper.mapRolloutLine(
+        threadId: "t-canonical-image",
+        line: call,
+        toolProjection: passthroughProjection,
+      );
       final rolloutEvents = mapper.mapRolloutLine(
         threadId: "t-canonical-image",
         line: result,
+        toolProjection: passthroughProjection,
       );
 
       final appServerEvents = mapper.map(

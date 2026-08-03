@@ -20,18 +20,85 @@ class CodexRolloutToolCall {
   final String? title;
 }
 
-class CodexRolloutToolResult {
+sealed class CodexRolloutToolResult {
   const CodexRolloutToolResult({
     required this.callId,
-    required this.status,
     required this.output,
     required this.attachments,
   });
 
   final String callId;
-  final PluginToolStatus status;
   final String? output;
   final List<PluginMessageAttachment> attachments;
+
+  PluginToolStatus get status => switch (this) {
+    CodexRolloutToolRunningResult() => PluginToolStatus.running,
+    CodexRolloutToolCompletedResult() => PluginToolStatus.completed,
+    CodexRolloutToolErrorResult() => PluginToolStatus.error,
+  };
+
+  CodexRolloutToolResult withFallbackAttachments({
+    required List<PluginMessageAttachment> fallback,
+  }) {
+    if (attachments.isNotEmpty || fallback.isEmpty) return this;
+    return switch (this) {
+      CodexRolloutToolRunningResult(:final cellId) => CodexRolloutToolRunningResult(
+        callId: callId,
+        output: output,
+        attachments: fallback,
+        cellId: cellId,
+      ),
+      CodexRolloutToolCompletedResult() => CodexRolloutToolCompletedResult(
+        callId: callId,
+        output: output,
+        attachments: fallback,
+      ),
+      CodexRolloutToolErrorResult() => CodexRolloutToolErrorResult(
+        callId: callId,
+        output: output,
+        attachments: fallback,
+      ),
+    };
+  }
+}
+
+final class CodexRolloutToolRunningResult extends CodexRolloutToolResult {
+  const CodexRolloutToolRunningResult({
+    required super.callId,
+    required super.output,
+    required super.attachments,
+    required this.cellId,
+  });
+
+  final String cellId;
+}
+
+final class CodexRolloutToolCompletedResult extends CodexRolloutToolResult {
+  const CodexRolloutToolCompletedResult({
+    required super.callId,
+    required super.output,
+    required super.attachments,
+  });
+}
+
+final class CodexRolloutToolErrorResult extends CodexRolloutToolResult {
+  const CodexRolloutToolErrorResult({
+    required super.callId,
+    required super.output,
+    required super.attachments,
+  });
+}
+
+class CodexRolloutWaitCall {
+  const CodexRolloutWaitCall({
+    required this.callId,
+    required this.turnId,
+    required this.cellId,
+  });
+
+  final String callId;
+  final String? turnId;
+  final String cellId;
 }
 
 class CodexRolloutImageGeneration {
@@ -106,6 +173,7 @@ class CodexRolloutToolMapper {
   }
 
   CodexRolloutToolCall? mapCall(CodexRolloutResponseItemDto payload) {
+    if (isInternalToolCall(payload: payload)) return null;
     return switch (payload) {
       CodexRolloutFunctionCallDto(
         :final id,
@@ -135,6 +203,61 @@ class CodexRolloutToolMapper {
           name: name,
           input: input,
         ),
+      CodexRolloutMessageDto() ||
+      CodexRolloutReasoningDto() ||
+      CodexRolloutFunctionCallOutputDto() ||
+      CodexRolloutCustomToolCallOutputDto() ||
+      CodexRolloutWebSearchCallDto() ||
+      CodexRolloutImageGenerationDto() ||
+      CodexRolloutUnknownResponseItemDto() => null,
+    };
+  }
+
+  bool isInternalToolCall({
+    required CodexRolloutResponseItemDto payload,
+  }) {
+    return switch (payload) {
+      CodexRolloutFunctionCallDto(:final name) => name.toLowerCase() == "wait",
+      CodexRolloutMessageDto() ||
+      CodexRolloutReasoningDto() ||
+      CodexRolloutFunctionCallOutputDto() ||
+      CodexRolloutCustomToolCallDto() ||
+      CodexRolloutCustomToolCallOutputDto() ||
+      CodexRolloutWebSearchCallDto() ||
+      CodexRolloutImageGenerationDto() ||
+      CodexRolloutUnknownResponseItemDto() => false,
+    };
+  }
+
+  CodexRolloutWaitCall? mapWaitCall({
+    required CodexRolloutResponseItemDto payload,
+  }) {
+    if (payload case CodexRolloutFunctionCallDto(
+      :final callId,
+      :final name,
+      :final arguments,
+      :final metadata,
+    ) when name.toLowerCase() == "wait") {
+      final cellId = _tryDecodeToolArguments(raw: arguments)?.cellId;
+      final usefulCallId = _usefulText(callId);
+      final usefulCellId = _usefulText(cellId?.toString());
+      if (usefulCallId != null && usefulCellId != null) {
+        return CodexRolloutWaitCall(
+          callId: usefulCallId,
+          turnId: _usefulText(metadata?.turnId),
+          cellId: usefulCellId,
+        );
+      }
+    }
+    return null;
+  }
+
+  String? internalCallId({
+    required CodexRolloutResponseItemDto payload,
+  }) {
+    if (!isInternalToolCall(payload: payload)) return null;
+    return switch (payload) {
+      CodexRolloutFunctionCallDto(:final callId) || CodexRolloutCustomToolCallDto(:final callId) => _usefulText(callId),
       CodexRolloutMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallOutputDto() ||
@@ -179,18 +302,34 @@ class CodexRolloutToolMapper {
     final callId = _usefulText(output.callId);
     if (callId == null) return null;
     final rawOutput = toolOutputText(output.content);
-    return CodexRolloutToolResult(
-      callId: callId,
-      status: toolOutputStatus(rawOutput),
-      output: clipOutput(rawOutput),
-      attachments: _imageAttachmentMapper.map(
-        candidates: [
-          for (final item in output.content)
-            if (item case CodexRolloutInputImageDto(:final imageUrl))
-              CodexImageAttachmentCandidate.imageUrl(imageUrl: imageUrl),
-        ],
-      ),
+    final clippedOutput = clipOutput(rawOutput);
+    final attachments = _imageAttachmentMapper.map(
+      candidates: [
+        for (final item in output.content)
+          if (item case CodexRolloutInputImageDto(:final imageUrl))
+            CodexImageAttachmentCandidate.imageUrl(imageUrl: imageUrl),
+      ],
     );
+    final cellId = _runningCellId(output: rawOutput);
+    if (cellId != null) {
+      return CodexRolloutToolRunningResult(
+        callId: callId,
+        output: clippedOutput,
+        attachments: attachments,
+        cellId: cellId,
+      );
+    }
+    return _toolOutputFailed(output: rawOutput)
+        ? CodexRolloutToolErrorResult(
+            callId: callId,
+            output: clippedOutput,
+            attachments: attachments,
+          )
+        : CodexRolloutToolCompletedResult(
+            callId: callId,
+            output: clippedOutput,
+            attachments: attachments,
+          );
   }
 
   String normalizeToolName(String name) {
@@ -291,8 +430,11 @@ class CodexRolloutToolMapper {
   /// encoded in human-readable tool output instead of a structured field.
   /// Replace this parser with the structured value once response-item output
   /// exposes one, while continuing to read these strings for old histories.
-  PluginToolStatus toolOutputStatus(String? output) {
-    if (output == null) return PluginToolStatus.completed;
+  bool _toolOutputFailed({required String? output}) {
+    if (output == null) return false;
+    if (RegExp(r"^aborted by user\b", caseSensitive: false, multiLine: true).hasMatch(output)) {
+      return true;
+    }
     final match = RegExp(
       "^(?:Process exited with code|Process exited with exit code|"
       r"Script (?:completed|exited) with (?:code|exit code))\s+(-?\d+)\s*$",
@@ -300,7 +442,17 @@ class CodexRolloutToolMapper {
       multiLine: true,
     ).firstMatch(output);
     final exitCode = match == null ? null : int.tryParse(match.group(1)!);
-    return exitCode != null && exitCode != 0 ? PluginToolStatus.error : PluginToolStatus.completed;
+    return exitCode != null && exitCode != 0;
+  }
+
+  String? _runningCellId({required String? output}) {
+    if (output == null) return null;
+    final match = RegExp(
+      r"^Script running with cell ID\s+(\S+)\s*$",
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(output);
+    return _usefulText(match?.group(1));
   }
 
   String? clipOutput(String? output) {

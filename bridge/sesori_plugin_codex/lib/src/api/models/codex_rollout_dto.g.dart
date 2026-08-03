@@ -72,6 +72,27 @@ CodexRolloutUserMessageEventDto _$CodexRolloutUserMessageEventDtoFromJson(
   $type: json['type'] as String?,
 );
 
+CodexRolloutTaskStartedEventDto _$CodexRolloutTaskStartedEventDtoFromJson(
+  Map json,
+) => CodexRolloutTaskStartedEventDto(
+  turnId: json['turn_id'] as String,
+  $type: json['type'] as String?,
+);
+
+CodexRolloutTaskCompleteEventDto _$CodexRolloutTaskCompleteEventDtoFromJson(
+  Map json,
+) => CodexRolloutTaskCompleteEventDto(
+  turnId: json['turn_id'] as String,
+  $type: json['type'] as String?,
+);
+
+CodexRolloutTurnAbortedEventDto _$CodexRolloutTurnAbortedEventDtoFromJson(
+  Map json,
+) => CodexRolloutTurnAbortedEventDto(
+  turnId: json['turn_id'] as String,
+  $type: json['type'] as String?,
+);
+
 CodexRolloutUnknownEventDto _$CodexRolloutUnknownEventDtoFromJson(Map json) =>
     CodexRolloutUnknownEventDto($type: json['type'] as String?);
 
@@ -263,4 +284,5 @@ _CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) =>
       path: json['path'],
       filePath: json['file_path'],
       query: json['query'],
+      cellId: json['cell_id'],
     );

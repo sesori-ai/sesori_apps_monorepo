@@ -1,7 +1,7 @@
 import "../api/models/codex_rollout_dto.dart";
 import "../codex_app_server_client.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
-import "models/codex_command_projection.dart";
+import "models/codex_tool_projection.dart";
 
 /// Correlates Codex's two live identities for one logical shell command.
 ///
@@ -15,9 +15,13 @@ class CodexToolCorrelationTracker {
 
   final CodexRolloutToolMapper _rolloutToolMapper;
   final Map<String, List<String>> _pendingShellCallsByTurn = {};
+  final Map<String, CodexRolloutToolCall> _visibleCalls = {};
+  final Map<String, String> _visibleCallByCell = {};
+  final Map<String, String> _waitTargetByCall = {};
+  final Set<String> _internalCalls = {};
   final Map<String, String> _appServerItemAliases = {};
 
-  void observeRolloutLine({
+  CodexRolloutToolProjection observeRolloutLine({
     required String threadId,
     required CodexRolloutLineDto line,
   }) {
@@ -29,17 +33,73 @@ class CodexToolCorrelationTracker {
       CodexRolloutCompactedLineDto() ||
       CodexRolloutUnknownLineDto() => null,
     };
-    if (payload == null) return;
-    if (!_rolloutToolMapper.isCommandExecutionCall(payload: payload)) return;
+    if (payload == null) return const CodexRolloutToolPassthrough();
+
+    final wait = _rolloutToolMapper.mapWaitCall(payload: payload);
+    if (wait != null) {
+      final waitKey = _callKey(threadId: threadId, callId: wait.callId);
+      _internalCalls.add(waitKey);
+      final turnId = wait.turnId;
+      final target = turnId == null
+          ? null
+          : _visibleCallByCell[_cellKey(
+              threadId: threadId,
+              turnId: turnId,
+              cellId: wait.cellId,
+            )];
+      if (target != null) _waitTargetByCall[waitKey] = target;
+      return const CodexRolloutToolSuppressed();
+    }
+
+    final internalCallId = _rolloutToolMapper.internalCallId(
+      payload: payload,
+    );
+    if (internalCallId != null) {
+      _internalCalls.add(
+        _callKey(threadId: threadId, callId: internalCallId),
+      );
+      return const CodexRolloutToolSuppressed();
+    }
+
     final call = _rolloutToolMapper.mapCall(payload);
-    final turnId = call?.turnId;
-    if (call == null || turnId == null) return;
-    _pendingShellCallsByTurn
-        .putIfAbsent(
-          _turnKey(threadId: threadId, turnId: turnId),
-          () => [],
-        )
-        .add(call.id);
+    if (call != null) {
+      final callKey = _callKey(threadId: threadId, callId: call.id);
+      _visibleCalls[callKey] = call;
+      final turnId = call.turnId;
+      if (turnId != null && _rolloutToolMapper.isCommandExecutionCall(payload: payload)) {
+        _pendingShellCallsByTurn
+            .putIfAbsent(
+              _turnKey(threadId: threadId, turnId: turnId),
+              () => [],
+            )
+            .add(call.id);
+      }
+      return const CodexRolloutToolPassthrough();
+    }
+
+    final result = _rolloutToolMapper.mapResult(payload);
+    if (result == null) return const CodexRolloutToolPassthrough();
+    final resultKey = _callKey(
+      threadId: threadId,
+      callId: result.callId,
+    );
+    final waitTarget = _waitTargetByCall[resultKey];
+    if (_internalCalls.contains(resultKey) && waitTarget == null) {
+      return const CodexRolloutToolSuppressed();
+    }
+    final canonicalCallId = waitTarget ?? result.callId;
+    final visibleCall = _visibleCalls[_callKey(threadId: threadId, callId: canonicalCallId)];
+    final cellId = switch (result) {
+      CodexRolloutToolRunningResult(:final cellId) => cellId,
+      CodexRolloutToolCompletedResult() || CodexRolloutToolErrorResult() => null,
+    };
+    final turnId = visibleCall?.turnId;
+    if (cellId != null && turnId != null) {
+      _visibleCallByCell[_cellKey(threadId: threadId, turnId: turnId, cellId: cellId)] = canonicalCallId;
+    }
+    return waitTarget == null
+        ? const CodexRolloutToolPassthrough()
+        : CodexRolloutToolCanonical(callId: canonicalCallId);
   }
 
   CodexAppServerCommandProjection correlateAppServerCommand({
@@ -77,15 +137,28 @@ class CodexToolCorrelationTracker {
   void clearThread({required String threadId}) {
     final prefix = "$threadId\u0000";
     _pendingShellCallsByTurn.removeWhere((key, _) => key.startsWith(prefix));
+    _visibleCalls.removeWhere((key, _) => key.startsWith(prefix));
+    _visibleCallByCell.removeWhere((key, _) => key.startsWith(prefix));
+    _waitTargetByCall.removeWhere((key, _) => key.startsWith(prefix));
+    _internalCalls.removeWhere((key) => key.startsWith(prefix));
     _appServerItemAliases.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   void clear() {
     _pendingShellCallsByTurn.clear();
+    _visibleCalls.clear();
+    _visibleCallByCell.clear();
+    _waitTargetByCall.clear();
+    _internalCalls.clear();
     _appServerItemAliases.clear();
   }
 
   String _turnKey({required String threadId, required String turnId}) => "$threadId\u0000turn\u0000$turnId";
+
+  String _callKey({required String threadId, required String callId}) => "$threadId\u0000call\u0000$callId";
+
+  String _cellKey({required String threadId, required String turnId, required String cellId}) =>
+      "$threadId\u0000cell\u0000$turnId\u0000$cellId";
 
   String _appServerItemKey({required String threadId, required String itemId}) => "$threadId\u0000item\u0000$itemId";
 }

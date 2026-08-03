@@ -3,7 +3,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../codex_config_reader.dart";
+import "codex_tool_correlation_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
+import "models/codex_tool_projection.dart";
 
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
 class CodexMessageRepository {
@@ -35,17 +37,47 @@ class CodexMessageRepository {
       );
     }
 
+    final toolTracker = CodexToolCorrelationTracker(
+      rolloutToolMapper: _rolloutToolMapper,
+    );
     final toolOutputs = <String, CodexRolloutToolResult>{};
     final submittedUserMessages = <String>{};
-    for (final line in lines) {
+    final submittedUserLineIndexes = <int>[];
+    final terminalTurns = <String, _TerminalTurnStatus>{};
+    for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      final line = lines[lineIndex];
+      final toolProjection = toolTracker.observeRolloutLine(
+        threadId: sessionId,
+        line: line,
+      );
       switch (line) {
         case CodexRolloutResponseItemLineDto(payload: final payload):
           final result = _rolloutToolMapper.mapResult(payload);
-          if (result != null) toolOutputs[result.callId] = result;
+          if (result != null) {
+            switch (toolProjection) {
+              case CodexRolloutToolPassthrough():
+                toolOutputs[result.callId] = result;
+              case CodexRolloutToolSuppressed():
+                break;
+              case CodexRolloutToolCanonical(:final callId):
+                toolOutputs[callId] = result.withFallbackAttachments(
+                  fallback: toolOutputs[callId]?.attachments ?? const [],
+                );
+            }
+          }
         case CodexRolloutEventMessageLineDto(
           payload: CodexRolloutUserMessageEventDto(:final message),
         ):
           submittedUserMessages.add(message);
+          submittedUserLineIndexes.add(lineIndex);
+        case CodexRolloutEventMessageLineDto(
+          payload: CodexRolloutTaskCompleteEventDto(:final turnId),
+        ):
+          terminalTurns[turnId] = _TerminalTurnStatus.completed;
+        case CodexRolloutEventMessageLineDto(
+          payload: CodexRolloutTurnAbortedEventDto(:final turnId),
+        ):
+          terminalTurns[turnId] = _TerminalTurnStatus.aborted;
         case CodexRolloutEventMessageLineDto() ||
             CodexRolloutSessionMetadataLineDto() ||
             CodexRolloutTurnContextLineDto() ||
@@ -72,7 +104,8 @@ class CodexMessageRepository {
       time: time,
     );
 
-    for (final line in lines) {
+    for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      final line = lines[lineIndex];
       final CodexRolloutResponseItemDto payload;
       final String? lineTimestamp;
       switch (line) {
@@ -127,7 +160,14 @@ class CodexMessageRepository {
               info: assistantInfo(id: call.id, time: messageTime),
               tool: call.tool,
               title: call.title,
-              status: result?.status ?? PluginToolStatus.running,
+              status:
+                  result?.status ??
+                  _statusWithoutResult(
+                    call: call,
+                    callLineIndex: lineIndex,
+                    terminalTurns: terminalTurns,
+                    submittedUserLineIndexes: submittedUserLineIndexes,
+                  ),
               output: result?.output,
               attachments: result?.attachments ?? const [],
             ),
@@ -273,6 +313,29 @@ class CodexMessageRepository {
     return null;
   }
 
+  PluginToolStatus _statusWithoutResult({
+    required CodexRolloutToolCall call,
+    required int callLineIndex,
+    required Map<String, _TerminalTurnStatus> terminalTurns,
+    required Iterable<int> submittedUserLineIndexes,
+  }) {
+    final turnId = call.turnId;
+    if (turnId != null) {
+      switch (terminalTurns[turnId]) {
+        case _TerminalTurnStatus.completed:
+          return PluginToolStatus.completed;
+        case _TerminalTurnStatus.aborted:
+          return PluginToolStatus.error;
+        case null:
+          break;
+      }
+    }
+    if (submittedUserLineIndexes.any((index) => index > callLineIndex)) {
+      return PluginToolStatus.error;
+    }
+    return PluginToolStatus.running;
+  }
+
   bool _isGeneratedUserContext({
     required List<CodexRolloutContentDto> content,
   }) {
@@ -359,4 +422,9 @@ enum _GeneratedContextTag {
   final String wireName;
 
   bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
+}
+
+enum _TerminalTurnStatus {
+  completed,
+  aborted,
 }

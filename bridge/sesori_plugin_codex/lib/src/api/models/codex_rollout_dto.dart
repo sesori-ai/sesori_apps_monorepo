@@ -84,6 +84,21 @@ sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
     required String message,
   }) = CodexRolloutUserMessageEventDto;
 
+  @FreezedUnionValue("task_started")
+  const factory CodexRolloutEventDto.taskStarted({
+    @JsonKey(name: "turn_id") required String turnId,
+  }) = CodexRolloutTaskStartedEventDto;
+
+  @FreezedUnionValue("task_complete")
+  const factory CodexRolloutEventDto.taskComplete({
+    @JsonKey(name: "turn_id") required String turnId,
+  }) = CodexRolloutTaskCompleteEventDto;
+
+  @FreezedUnionValue("turn_aborted")
+  const factory CodexRolloutEventDto.turnAborted({
+    @JsonKey(name: "turn_id") required String turnId,
+  }) = CodexRolloutTurnAbortedEventDto;
+
   const factory CodexRolloutEventDto.unknown() = CodexRolloutUnknownEventDto;
 
   factory CodexRolloutEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutEventDtoFromJson(json);
@@ -294,6 +309,7 @@ sealed class CodexToolArgumentsDto with _$CodexToolArgumentsDto {
     required Object? path,
     @JsonKey(name: "file_path") required Object? filePath,
     required Object? query,
+    @JsonKey(name: "cell_id") required Object? cellId,
   }) = _CodexToolArgumentsDto;
 
   factory CodexToolArgumentsDto.fromJson(Map<String, dynamic> json) => _$CodexToolArgumentsDtoFromJson(json);

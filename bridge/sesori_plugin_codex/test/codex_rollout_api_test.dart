@@ -1212,6 +1212,178 @@ void main() {
       expect(patch.state?.status, equals(PluginToolStatus.running));
     });
 
+    test("readMessages folds waits and closes calls from terminal evidence", () {
+      Map<String, Object?> call({
+        required String callId,
+        required String command,
+        required String? turnId,
+        required String name,
+      }) => {
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": callId,
+          "name": name,
+          "arguments": name == "wait" ? command : jsonEncode({"cmd": command}),
+          if (turnId != null)
+            "internal_chat_message_metadata_passthrough": {
+              "turn_id": turnId,
+            },
+        },
+      };
+
+      Map<String, Object?> output({
+        required String callId,
+        required String text,
+      }) => {
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": callId,
+          "output": text,
+        },
+      };
+
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-tool-lifecycle.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode(
+            call(
+              callId: "call-shell",
+              command: "sleep 30",
+              turnId: "turn-wait",
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-shell",
+              text: "Script running with cell ID 7\nOutput:\n",
+            ),
+          ),
+          jsonEncode(
+            call(
+              callId: "call-wait",
+              command: '{"cell_id":"7"}',
+              turnId: "turn-wait",
+              name: "wait",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-wait",
+              text: "Script running with cell ID 8\nOutput:\n",
+            ),
+          ),
+          jsonEncode(
+            call(
+              callId: "call-wait-final",
+              command: '{"cell_id":"8"}',
+              turnId: "turn-wait",
+              name: "wait",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-wait-final",
+              text: "aborted by user after 1.0s",
+            ),
+          ),
+          jsonEncode(
+            call(
+              callId: "call-completed",
+              command: "pwd",
+              turnId: "turn-completed",
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-completed",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-aborted",
+              command: "sleep 60",
+              turnId: "turn-aborted",
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "turn_id": "turn-aborted",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-interrupted-legacy",
+              command: "sleep 90",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "user-next",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": "continue"},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "continue",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-active",
+              command: "sleep 120",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+      );
+
+      expect(messages.map((message) => message.info.id), [
+        "call-shell",
+        "call-completed",
+        "call-aborted",
+        "call-interrupted-legacy",
+        "user-next",
+        "call-active",
+      ]);
+      final tools = {
+        for (final message in messages)
+          if (message.parts.single.type == PluginMessagePartType.tool) message.info.id: message.parts.single,
+      };
+      expect(tools["call-shell"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-shell"]?.state?.output, "aborted by user after 1.0s");
+      expect(tools["call-completed"]?.state?.status, PluginToolStatus.completed);
+      expect(tools["call-aborted"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-interrupted-legacy"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-active"]?.state?.status, PluginToolStatus.running);
+    });
+
     test("readMessages restores current calls around malformed content items", () {
       final path = _writeRollout(
         codexHome,

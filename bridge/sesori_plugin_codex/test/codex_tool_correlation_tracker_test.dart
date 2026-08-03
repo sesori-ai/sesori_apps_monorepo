@@ -3,7 +3,7 @@ import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/repositories/codex_tool_correlation_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
-import "package:codex_plugin/src/repositories/models/codex_command_projection.dart";
+import "package:codex_plugin/src/repositories/models/codex_tool_projection.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -123,6 +123,59 @@ void main() {
     expect(firstStarted, isA<CodexAppServerCommandCanonical>().having((value) => value.callId, "callId", "call-1"));
     expect(secondStarted, isA<CodexAppServerCommandCanonical>().having((value) => value.callId, "callId", "call-2"));
   });
+
+  test("suppresses wait calls and projects their result onto the shell call", () {
+    final tracker = CodexToolCorrelationTracker(
+      rolloutToolMapper: const CodexRolloutToolMapper(
+        imageAttachmentMapper: CodexImageAttachmentMapper(),
+      ),
+    );
+
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-shell", turnId: "turn-1"),
+      ),
+      isA<CodexRolloutToolPassthrough>(),
+    );
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-shell",
+          output: "Script running with cell ID 7\nOutput:\n",
+        ),
+      ),
+      isA<CodexRolloutToolPassthrough>(),
+    );
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _waitCall(
+          callId: "call-wait",
+          turnId: "turn-1",
+          cellId: "7",
+        ),
+      ),
+      isA<CodexRolloutToolSuppressed>(),
+    );
+
+    final completed = tracker.observeRolloutLine(
+      threadId: "thread-1",
+      line: _toolOutput(
+        callId: "call-wait",
+        output: "aborted by user after 1.0s",
+      ),
+    );
+    expect(
+      completed,
+      isA<CodexRolloutToolCanonical>().having(
+        (value) => value.callId,
+        "callId",
+        "call-shell",
+      ),
+    );
+  });
 }
 
 CodexRolloutLineDto _shellCall({
@@ -158,6 +211,39 @@ CodexRolloutLineDto _rawExecCall({
       "internal_chat_message_metadata_passthrough": {
         "turn_id": turnId,
       },
+    },
+  });
+}
+
+CodexRolloutLineDto _waitCall({
+  required String callId,
+  required String turnId,
+  required String cellId,
+}) {
+  return CodexRolloutLineDto.fromJson({
+    "type": "response_item",
+    "payload": {
+      "type": "function_call",
+      "call_id": callId,
+      "name": "wait",
+      "arguments": '{"cell_id":"$cellId"}',
+      "internal_chat_message_metadata_passthrough": {
+        "turn_id": turnId,
+      },
+    },
+  });
+}
+
+CodexRolloutLineDto _toolOutput({
+  required String callId,
+  required String output,
+}) {
+  return CodexRolloutLineDto.fromJson({
+    "type": "response_item",
+    "payload": {
+      "type": "function_call_output",
+      "call_id": callId,
+      "output": output,
     },
   });
 }

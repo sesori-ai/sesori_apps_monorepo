@@ -9,8 +9,8 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
-import "repositories/models/codex_command_projection.dart";
 import "repositories/models/codex_thread_record.dart";
+import "repositories/models/codex_tool_projection.dart";
 
 /// Translates `codex app-server` `ServerNotification` frames into
 /// bridge-neutral [BridgeSseEvent]s.
@@ -279,7 +279,9 @@ class CodexEventMapper {
   List<BridgeSseEvent> mapRolloutLine({
     required String threadId,
     required CodexRolloutLineDto line,
+    required CodexRolloutToolProjection toolProjection,
   }) {
+    if (toolProjection is CodexRolloutToolSuppressed) return const [];
     final payload = switch (line) {
       CodexRolloutResponseItemLineDto(payload: final payload) => payload,
       CodexRolloutSessionMetadataLineDto() ||
@@ -305,10 +307,15 @@ class CodexEventMapper {
     }
     final call = _rolloutToolMapper.mapCall(payload);
     if (call != null) {
-      _rolloutToolCalls[_rolloutToolKey(threadId, call.id)] = call;
+      final canonicalCallId = switch (toolProjection) {
+        CodexRolloutToolCanonical(:final callId) => callId,
+        CodexRolloutToolPassthrough() => call.id,
+        CodexRolloutToolSuppressed() => throw StateError("suppressed rollout reached mapping"),
+      };
+      _rolloutToolCalls[_rolloutToolKey(threadId, canonicalCallId)] = call;
       return _toolItemEvents(
         threadId: threadId,
-        itemId: call.id,
+        itemId: canonicalCallId,
         tool: call.tool,
         title: call.title,
         status: PluginToolStatus.running,
@@ -317,18 +324,26 @@ class CodexEventMapper {
     }
     final result = _rolloutToolMapper.mapResult(payload);
     if (result == null) return const [];
-    final key = _rolloutToolKey(threadId, result.callId);
+    final canonicalCallId = switch (toolProjection) {
+      CodexRolloutToolCanonical(:final callId) => callId,
+      CodexRolloutToolPassthrough() => result.callId,
+      CodexRolloutToolSuppressed() => throw StateError("suppressed rollout reached mapping"),
+    };
+    final key = _rolloutToolKey(threadId, canonicalCallId);
     final originalCall = _rolloutToolCalls[key];
     if (originalCall == null) return const [];
-    _rolloutToolResults[key] = result;
+    final projectedResult = result.withFallbackAttachments(
+      fallback: _rolloutToolResults[key]?.attachments ?? const [],
+    );
+    _rolloutToolResults[key] = projectedResult;
     return _toolItemEvents(
       threadId: threadId,
-      itemId: originalCall.id,
+      itemId: canonicalCallId,
       tool: originalCall.tool,
       title: originalCall.title,
-      status: result.status,
-      output: result.output,
-      attachments: result.attachments,
+      status: projectedResult.status,
+      output: projectedResult.output,
+      attachments: projectedResult.attachments,
     );
   }
 

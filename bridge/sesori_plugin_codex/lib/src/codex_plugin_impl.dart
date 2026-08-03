@@ -419,11 +419,17 @@ class CodexPlugin implements CodexManagedApi {
   }
 
   void _handleRolloutAppend(CodexRolloutAppend append) {
-    _toolCorrelationTracker.observeRolloutLine(
+    final projection = _toolCorrelationTracker.observeRolloutLine(
       threadId: append.sessionId,
       line: append.line,
     );
-    _eventMapper.mapRolloutLine(threadId: append.sessionId, line: append.line).forEach(_eventBuffer.add);
+    _eventMapper
+        .mapRolloutLine(
+          threadId: append.sessionId,
+          line: append.line,
+          toolProjection: projection,
+        )
+        .forEach(_eventBuffer.add);
   }
 
   void _maintainThreadStarted(CodexThreadRecord thread) {
