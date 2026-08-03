@@ -951,6 +951,27 @@ void main() {
             "type": "response_item",
             "payload": {
               "type": "message",
+              "id": "actual-wrapper-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>user-authored text</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "<environment_context>user-authored text</environment_context>",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
               "id": "generated-abort",
               "role": "user",
               "content": [
@@ -982,9 +1003,14 @@ void main() {
 
       expect(messages.map((message) => message.info.id), [
         "actual-user",
+        "actual-wrapper-user",
         "assistant-1",
       ]);
       expect(messages.first.parts.single.text, "Explain the <environment_context> tag");
+      expect(
+        messages[1].parts.single.text,
+        "<environment_context>user-authored text</environment_context>",
+      );
       expect(messages.last.parts.single.text, "Visible answer");
     });
 

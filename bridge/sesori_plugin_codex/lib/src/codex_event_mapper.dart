@@ -284,6 +284,7 @@ class CodexEventMapper {
       CodexRolloutResponseItemLineDto(payload: final payload) => payload,
       CodexRolloutSessionMetadataLineDto() ||
       CodexRolloutTurnContextLineDto() ||
+      CodexRolloutEventMessageLineDto() ||
       CodexRolloutCompactedLineDto() ||
       CodexRolloutUnknownLineDto() => null,
     };
