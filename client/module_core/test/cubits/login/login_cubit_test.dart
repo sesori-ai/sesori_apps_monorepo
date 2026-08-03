@@ -29,14 +29,14 @@ class MockInstallationAnalyticsService extends Mock implements InstallationAnaly
 
 final class _TestValueStream<T> extends StreamView<T> implements ValueStream<T> {
   final T Function() _read;
-  _TestValueStream(super.stream, this._read);
+  _TestValueStream({required Stream<T> stream, required T Function() read}) : _read = read, super(stream);
   @override
   T get value => _read();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Future<({Object error, StackTrace stackTrace})> _captureError(Future<Object?> future) async {
+Future<({Object error, StackTrace stackTrace})> _captureError({required Future<Object?> future}) async {
   try {
     await future;
   } catch (error, stackTrace) {
@@ -44,6 +44,16 @@ Future<({Object error, StackTrace stackTrace})> _captureError(Future<Object?> fu
   }
   fail("Expected the future to fail");
 }
+
+OAuthSessionRestartRequiredException _restartRequired({
+  required DateTime deadline,
+  Duration restartAfter = Duration.zero,
+}) => OAuthSessionRestartRequiredException(
+  restartAfter: restartAfter,
+  deadline: deadline,
+  operation: OAuthSessionRestartOperation.status,
+  reason: OAuthSessionRestartReason.serviceUnavailable,
+);
 
 const testAuthInitResponse = AuthInitResponse(
   authUrl: "https://accounts.google.com/o/oauth2/auth",
@@ -401,7 +411,7 @@ void main() {
             ),
           ).thenAnswer((invocation) async {
             if (starts++ == 0) {
-              throw OAuthSessionRestartRequiredException(restartAfter: Duration.zero, deadline: deadline);
+              throw _restartRequired(deadline: deadline);
             }
             expect(invocation.namedArguments[#deadline], deadline);
             return testAuthInitResponse;
@@ -443,7 +453,7 @@ void main() {
                 return hangingOperation == "browser" && launches == 2 ? Completer<bool>().future : Future.value(true);
               });
               when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(
-                OAuthSessionRestartRequiredException(restartAfter: Duration.zero, deadline: deadline),
+                _restartRequired(deadline: deadline),
               );
               final cubit = buildCubit();
               bool? result;
@@ -486,7 +496,7 @@ void main() {
               onCancel: cleanupFails ? () => Future<void>.error(cleanupError, cleanupStack) : null,
             );
             final waitFuture = OAuthRestartWait(
-              lifecycle: _TestValueStream(controller.stream, () => state),
+              lifecycle: _TestValueStream(stream: controller.stream, read: () => state),
               delay: Duration.zero,
               deadline: DateTime.now().add(const Duration(minutes: 1)),
             ).run();
@@ -496,7 +506,7 @@ void main() {
               await controller.close();
               continue;
             }
-            final capturedFuture = _captureError(waitFuture);
+            final capturedFuture = _captureError(future: waitFuture);
             switch (mode) {
               case _WaitFailure.race:
               case _WaitFailure.operation:
@@ -538,7 +548,7 @@ void main() {
           when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycle.stream);
           when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
             if (polls++ == 0) {
-              throw OAuthSessionRestartRequiredException(restartAfter: Duration.zero, deadline: deadline);
+              throw _restartRequired(deadline: deadline);
             }
             return testAuthUser;
           });
@@ -585,7 +595,7 @@ void main() {
             ).thenAnswer((_) async => (failures += 1, AnalyticsDeliveryResult.acceptedBySdk).$2);
             when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
               lifecycle.add(LifecycleState.paused);
-              throw OAuthSessionRestartRequiredException(restartAfter: Duration.zero, deadline: deadline);
+              throw _restartRequired(deadline: deadline);
             });
             final cubit = buildCubit();
             final login = cubit.loginWithProvider(AuthProvider.google);
@@ -624,7 +634,7 @@ void main() {
           });
           when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
             if (polls++ == 0) {
-              throw OAuthSessionRestartRequiredException(restartAfter: Duration.zero, deadline: deadline);
+              throw _restartRequired(deadline: deadline);
             }
             return testAuthUser;
           });
@@ -658,12 +668,62 @@ void main() {
           await lifecycle.close();
         });
 
+        test("a stale initial-init restart cannot clear or concurrently resume replacement polling", () async {
+          final lifecycle = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+          final deadline = DateTime.now().add(const Duration(minutes: 1));
+          final staleInit = Completer<AuthInitResponse>();
+          final replacementPollStarted = Completer<void>();
+          final replacementPoll = Completer<AuthUser>();
+          var starts = 0;
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycle.stream);
+          when(
+            () => mockOAuthFlowProvider.startOAuthFlow(
+              provider: AuthProvider.google,
+              deadline: any<DateTime?>(named: "deadline"),
+            ),
+          ).thenAnswer((_) {
+            if (starts++ == 0) {
+              return staleInit.future;
+            }
+            return Future.value(testAuthInitResponse);
+          });
+          when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) {
+            replacementPollStarted.complete();
+            return replacementPoll.future;
+          });
+          final cubit = buildCubit();
+
+          final staleLogin = cubit.loginWithProvider(AuthProvider.google);
+          final replacementLogin = cubit.loginWithProvider(AuthProvider.google);
+          await replacementPollStarted.future;
+
+          staleInit.completeError(
+            _restartRequired(deadline: deadline),
+          );
+          expect(await staleLogin, isFalse);
+
+          lifecycle
+            ..add(LifecycleState.paused)
+            ..add(LifecycleState.resumed);
+          await Future<void>.delayed(Duration.zero);
+          await Future<void>.delayed(Duration.zero);
+
+          verifyNever(mockOAuthFlowProvider.hasActiveOAuthSession);
+          verifyNever(mockOAuthFlowProvider.resumeOAuthFlow);
+
+          replacementPoll.complete(testAuthUser);
+          expect(await replacementLogin, isTrue);
+          await cubit.close();
+          await lifecycle.close();
+        });
+
         for (final secondRestart in [false, true]) {
           test("${secondRestart ? "second restart" : "deadline"} is one terminal failure", () {
             fakeAsync((async) {
               final deadline = DateTime.now().add(const Duration(seconds: 5));
               when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(
-                OAuthSessionRestartRequiredException(
+                _restartRequired(
                   restartAfter: secondRestart ? Duration.zero : const Duration(seconds: 30),
                   deadline: deadline,
                 ),
@@ -835,7 +895,7 @@ void main() {
           final deadline = DateTime.now().add(const Duration(minutes: 1));
           when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
           when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenThrow(
-            OAuthSessionRestartRequiredException(restartAfter: Duration.zero, deadline: deadline),
+            _restartRequired(deadline: deadline),
           );
           when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthUser);
 

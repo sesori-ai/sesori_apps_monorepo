@@ -197,6 +197,7 @@ class LoginOAuthService {
         provider: provider,
         sessionToken: sessionToken,
         deadline: deadline,
+        requestTimeout: _pollTimeout - stopwatch.elapsed,
       ),
     );
 
@@ -273,9 +274,11 @@ class LoginOAuthService {
         final remaining = _pollTimeout - stopwatch.elapsed;
         if (remaining <= Duration.zero) break;
         final requestTimeout = remaining < _perRequestTimeout ? remaining : _perRequestTimeout;
-        final status = await _api
-            .getOAuthSessionStatus(sessionToken: sessionToken, deadline: deadline)
-            .timeout(requestTimeout);
+        final status = await _api.getOAuthSessionStatus(
+          sessionToken: sessionToken,
+          deadline: deadline,
+          requestTimeout: requestTimeout,
+        );
 
         switch (status) {
           case AuthSessionStatusResponsePending():
@@ -329,5 +332,5 @@ final class _OAuthSessionRestartFailedException implements Exception {
   const _OAuthSessionRestartFailedException(this.cause);
   final OAuthSessionRestartRequiredException cause;
   @override
-  String toString() => "OAuth session was lost again after restart";
+  String toString() => "OAuth session was lost again after restart: $cause";
 }

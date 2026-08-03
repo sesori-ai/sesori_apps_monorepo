@@ -42,7 +42,11 @@ void main() {
           (error) => error.restartAfter == testCase.expectedDelay && error.deadline == deadline,
         );
         await expectLater(
-          api.getOAuthSessionStatus(sessionToken: 'stale-token', deadline: deadline),
+          api.getOAuthSessionStatus(
+            sessionToken: 'stale-token',
+            deadline: deadline,
+            requestTimeout: const Duration(seconds: 1),
+          ),
           throwsA(restartRequired),
         );
       }
@@ -67,6 +71,7 @@ void main() {
           provider: AuthProvider.github,
           sessionToken: 'new-token',
           deadline: deadline,
+          requestTimeout: const Duration(seconds: 1),
         ),
         throwsA(
           predicate<OAuthSessionRestartRequiredException>(
@@ -205,6 +210,35 @@ void main() {
         expect(authServer.initRequests, hasLength(2));
         expect(authServer.statusRequests, hasLength(1));
         expect(launchedUrls, ['https://example.com/github-login-restart']);
+      });
+
+      test('a hung status request is aborted at its local timeout without accumulating another request', () async {
+        final client = _HangingOAuthStatusClient();
+        final api = LoginOAuthApi(
+          authBackendUrl: 'https://auth.example.test',
+          client: client,
+          clientType: AuthClientType.bridgeMacos,
+          device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
+        );
+        final service = LoginOAuthService(
+          api: api,
+          browserLauncher: (_) async {},
+          browserOpenability: _alwaysOpenableBrowser,
+          pollTimeout: const Duration(seconds: 1),
+          perRequestTimeout: const Duration(milliseconds: 10),
+          pollInterval: Duration.zero,
+        );
+
+        await expectLater(
+          service.performOAuthLogin(AuthProvider.github),
+          throwsA(isA<TimeoutException>()),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(client.statusRequestCount, 1);
+        expect(client.maximumActiveStatusRequests, 1);
+        expect(client.activeStatusRequests, 0);
+        expect(client.statusAbortCount, 1);
       });
 
       for (final hangingOperation in ['init', 'browser']) {
@@ -707,6 +741,51 @@ LoginOAuthService _createOAuthService({
 }
 
 BrowserOpenability _alwaysOpenableBrowser() => BrowserOpenability.yes;
+
+class _HangingOAuthStatusClient extends http.BaseClient {
+  int statusRequestCount = 0;
+  int activeStatusRequests = 0;
+  int maximumActiveStatusRequests = 0;
+  int statusAbortCount = 0;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request.method == 'POST' && request.url.path.endsWith('/init')) {
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            jsonEncode({
+              'authUrl': 'https://example.com/github-login',
+              'state': 'oauth-state',
+              'userCode': 'ABCD',
+              'expiresIn': 120,
+            }),
+          ),
+        ),
+        200,
+      );
+    }
+    if (request.method == 'GET' && request.url.path == '/auth/session/status') {
+      statusRequestCount += 1;
+      activeStatusRequests += 1;
+      if (activeStatusRequests > maximumActiveStatusRequests) {
+        maximumActiveStatusRequests = activeStatusRequests;
+      }
+      try {
+        final abortTrigger = (request as http.Abortable).abortTrigger;
+        if (abortTrigger == null) {
+          throw StateError('status request is not abortable');
+        }
+        await abortTrigger;
+        statusAbortCount += 1;
+        throw http.RequestAbortedException(request.url);
+      } finally {
+        activeStatusRequests -= 1;
+      }
+    }
+    throw StateError('unexpected OAuth request: ${request.method} ${request.url}');
+  }
+}
 
 class _MockLoginEmailApi implements LoginEmailApi {
   @override

@@ -64,40 +64,45 @@ final class OAuthRestartWait {
     if (_finishing) return _completion.future;
     final remaining = deadline.difference(DateTime.now());
     if (remaining > Duration.zero) {
-      _deadlineTimer = Timer(remaining, () => _resolve(OAuthRestartWaitResult.deadline));
+      _deadlineTimer = Timer(remaining, () => _resolve(result: OAuthRestartWaitResult.deadline));
       _delayTimer = delay > Duration.zero ? Timer(delay, _listenForResume) : null;
       if (_delayTimer == null) _listenForResume();
     } else {
-      _resolve(OAuthRestartWaitResult.deadline);
+      _resolve(result: OAuthRestartWaitResult.deadline);
     }
     return _completion.future;
   }
 
-  void cancel() => _resolve(OAuthRestartWaitResult.cancelled);
+  void cancel() => _resolve(result: OAuthRestartWaitResult.cancelled);
   void _listenForResume() {
     if (!DateTime.now().isBefore(deadline)) {
-      _resolve(OAuthRestartWaitResult.deadline);
+      _resolve(result: OAuthRestartWaitResult.deadline);
       return;
     }
     if (lifecycle.value == LifecycleState.resumed) {
-      _resolve(OAuthRestartWaitResult.ready);
+      _resolve(result: OAuthRestartWaitResult.ready);
       return;
     }
-    _subscription = lifecycle.listen(_onLifecycleState, onError: _onLifecycleError, onDone: _onLifecycleDone);
-    if (lifecycle.value == LifecycleState.resumed) _resolve(OAuthRestartWaitResult.ready);
+    _subscription = lifecycle.listen(
+      (state) => _onLifecycleState(state: state),
+      onError: (Object error, StackTrace stackTrace) => _onLifecycleError(error: error, stackTrace: stackTrace),
+      onDone: _onLifecycleDone,
+    );
+    if (lifecycle.value == LifecycleState.resumed) _resolve(result: OAuthRestartWaitResult.ready);
   }
 
-  void _onLifecycleState(LifecycleState state) {
-    if (state == LifecycleState.resumed) scheduleMicrotask(() => _resolve(OAuthRestartWaitResult.ready));
+  void _onLifecycleState({required LifecycleState state}) {
+    if (state == LifecycleState.resumed) {
+      scheduleMicrotask(() => _resolve(result: OAuthRestartWaitResult.ready));
+    }
   }
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, Stream.listen callback signature
-  void _onLifecycleError(Object error, StackTrace stackTrace) =>
+  void _onLifecycleError({required Object error, required StackTrace stackTrace}) =>
       scheduleMicrotask(() => _fail(error: error, stackTrace: stackTrace));
   void _onLifecycleDone() => scheduleMicrotask(
     () => _fail(error: const _UnexpectedOAuthRestartLifecycleDone(), stackTrace: StackTrace.current),
   );
-  void _resolve(OAuthRestartWaitResult result) => unawaited(_finish(result: result, operationFailure: null));
+  void _resolve({required OAuthRestartWaitResult result}) => unawaited(_finish(result: result, operationFailure: null));
   void _fail({required Object error, required StackTrace stackTrace}) =>
       unawaited(_finish(result: null, operationFailure: AsyncError(error, stackTrace)));
   Future<void> _finish({
@@ -319,6 +324,7 @@ class LoginCubit extends Cubit<LoginState> {
       try {
         initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider, deadline: null);
       } on OAuthSessionRestartRequiredException catch (error, stackTrace) {
+        if (!_ownsAttempt(attempt: attempt)) return false;
         _pollingAttempt = attempt;
         try {
           final restarted = await _restartOAuthFlow(
@@ -549,6 +555,7 @@ class LoginCubit extends Cubit<LoginState> {
       return false;
     }
 
+    if (!_ownsAttempt(attempt: attempt)) return false;
     _didActivePollEnterBackground = _isInBackground;
     emit(const LoginState.polling());
     logd("Opening ${provider.label} auth URL in browser after OAuth session restart");

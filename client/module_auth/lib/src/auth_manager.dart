@@ -18,7 +18,7 @@ import "platform/oauth_device_descriptor_provider.dart";
 import "storage/oauth_storage_service.dart";
 import "storage/token_storage_service.dart";
 
-typedef _OAuthSessionOwner = ({int generation, String sessionToken});
+typedef _OAuthSessionOwner = ({DateTime expiresAt, int generation, String sessionToken});
 
 @lazySingleton
 class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
@@ -37,7 +37,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   final Duration _pollTimeout;
   final Future<void> Function(Duration duration) _delay;
   Future<void> _oAuthMutationTail = Future<void>.value();
-  bool _oAuthMutationPoisoned = false;
+  _OAuthMutationHealth _oAuthMutationHealth = _OAuthMutationHealth.healthy;
+  Future<void>? _oAuthPoisonCleanup;
   int _nextOAuthGeneration = 0;
   _OAuthSessionOwner? _oAuthSessionOwner;
 
@@ -105,15 +106,21 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider, required DateTime? deadline}) async {
     final sessionToken = _generateSessionToken();
     final flowDeadline = deadline ?? DateTime.now().add(_pollTimeout);
-    final owner = (generation: ++_nextOAuthGeneration, sessionToken: sessionToken);
+    var owner = (
+      expiresAt: flowDeadline,
+      generation: ++_nextOAuthGeneration,
+      sessionToken: sessionToken,
+    );
 
     try {
-      final activation = _mutateOAuthState(() async {
-        if (!DateTime.now().isBefore(flowDeadline)) {
-          throw TimeoutException("OAuth authorization timed out");
-        }
-        _oAuthSessionOwner = owner;
-      });
+      final activation = _mutateOAuthState(
+        mutation: () async {
+          if (!DateTime.now().isBefore(flowDeadline)) {
+            throw TimeoutException("OAuth authorization timed out");
+          }
+          _oAuthSessionOwner = owner;
+        },
+      );
       await _awaitOAuthMutationBeforeDeadline(
         deadline: flowDeadline,
         mutation: activation,
@@ -133,8 +140,10 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       );
       if (response.statusCode == 503) {
         throw OAuthSessionRestartRequiredException(
-          restartAfter: _parseRestartAfter(response.headers["retry-after"]),
+          restartAfter: _parseRestartAfter(header: response.headers["retry-after"]),
           deadline: flowDeadline,
+          operation: OAuthSessionRestartOperation.init,
+          reason: OAuthSessionRestartReason.serviceUnavailable,
         );
       }
       _ensureSuccess(response, context: "Failed to start ${provider.label} auth flow");
@@ -142,26 +151,40 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       final initResponse = AuthInitResponse.fromJson(jsonDecodeMap(response.body));
       final serverExpiresAt = DateTime.now().add(Duration(seconds: initResponse.expiresIn));
       final expiresAt = flowDeadline.isBefore(serverExpiresAt) ? flowDeadline : serverExpiresAt;
-      final sessionSave = _mutateOAuthState(() async {
-        _throwIfOAuthSessionSuperseded(owner);
-        await _oAuthStorage.saveOAuthSession(
-          sessionToken: sessionToken,
-          expiresAt: expiresAt,
-        );
-      });
+      final activatedOwner = owner;
+      owner = (
+        expiresAt: expiresAt,
+        generation: owner.generation,
+        sessionToken: owner.sessionToken,
+      );
+      final sessionSave = _mutateOAuthState(
+        mutation: () async {
+          _throwIfOAuthSessionSuperseded(owner: activatedOwner);
+          _oAuthSessionOwner = owner;
+          await _oAuthStorage.saveOAuthSession(
+            sessionToken: sessionToken,
+            expiresAt: expiresAt,
+          );
+        },
+      );
       await _awaitOAuthMutationBeforeDeadline(
         deadline: flowDeadline,
         mutation: sessionSave,
       );
-      await _assertOAuthSessionOwner(owner);
+      await _assertOAuthSessionOwner(owner: owner);
       return initResponse;
     } on Object catch (error, stackTrace) {
-      if (!_oAuthMutationPoisoned && error is! _OAuthMutationPoisonedException) {
+      if (_oAuthMutationHealth == _OAuthMutationHealth.healthy && error is! _OAuthMutationPoisonedException) {
         final cleanup = _clearOAuthSessionIfOwned(owner: owner);
-        if (error is TimeoutException) {
-          unawaited(_logOAuthCleanupFailure(cleanup));
-        } else {
-          await cleanup;
+        try {
+          await _awaitOAuthMutationBeforeDeadline(
+            deadline: flowDeadline,
+            mutation: cleanup,
+          );
+        } on TimeoutException {
+          if (error is! TimeoutException) {
+            rethrow;
+          }
         }
       }
       Error.throwWithStackTrace(error, stackTrace);
@@ -170,24 +193,30 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
   @override
   Future<AuthUser> pollForResult() async {
-    final storedSession = await _oAuthStorage.getOAuthSession();
-    final owner = await _mutateOAuthState(() async {
-      final activeOwner = _oAuthSessionOwner;
-      if (activeOwner != null) {
-        return activeOwner;
-      }
+    final owner = await _mutateOAuthState(
+      mutation: () async {
+        final activeOwner = _oAuthSessionOwner;
+        if (activeOwner != null) {
+          return activeOwner;
+        }
 
-      final storedToken = storedSession.sessionToken;
-      if (storedToken == null || storedToken.isEmpty) {
-        throw StateError("No OAuth flow is active");
-      }
+        final storedSession = await _oAuthStorage.getOAuthSession();
+        final storedToken = storedSession.sessionToken;
+        if (storedToken == null || storedToken.isEmpty) {
+          throw StateError("No OAuth flow is active");
+        }
 
-      final restoredOwner = (generation: ++_nextOAuthGeneration, sessionToken: storedToken);
-      _oAuthSessionOwner = restoredOwner;
-      return restoredOwner;
-    });
+        final restoredOwner = (
+          expiresAt: storedSession.expiresAt ?? DateTime.now().add(_pollTimeout),
+          generation: ++_nextOAuthGeneration,
+          sessionToken: storedToken,
+        );
+        _oAuthSessionOwner = restoredOwner;
+        return restoredOwner;
+      },
+    );
     final sessionToken = owner.sessionToken;
-    final expiresAt = storedSession.expiresAt ?? DateTime.now().add(_pollTimeout);
+    final expiresAt = owner.expiresAt;
 
     if (!DateTime.now().isBefore(expiresAt)) {
       await _clearOAuthSessionIfOwned(owner: owner);
@@ -217,13 +246,23 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
           rethrow;
         }
 
-        await _assertOAuthSessionOwner(owner);
+        await _assertOAuthSessionOwner(owner: owner);
         if (response.statusCode == 503 || response.statusCode == 404) {
           final restartAfter = response.statusCode == 404
               ? Duration.zero
-              : _parseRestartAfter(response.headers["retry-after"]);
-          await _clearOAuthSessionIfOwned(owner: owner);
-          throw OAuthSessionRestartRequiredException(restartAfter: restartAfter, deadline: expiresAt);
+              : _parseRestartAfter(header: response.headers["retry-after"]);
+          await _clearOAuthSessionBeforeDeadline(
+            deadline: expiresAt,
+            owner: owner,
+          );
+          throw OAuthSessionRestartRequiredException(
+            restartAfter: restartAfter,
+            deadline: expiresAt,
+            operation: OAuthSessionRestartOperation.status,
+            reason: response.statusCode == 404
+                ? OAuthSessionRestartReason.sessionMissing
+                : OAuthSessionRestartReason.serviceUnavailable,
+          );
         }
         final status = _parseSessionStatus(response);
         switch (status) {
@@ -265,7 +304,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     } finally {
       if (!completionCommitted) {
         try {
-          await _releaseOAuthSessionIfOwned(owner);
+          await _releaseOAuthSessionIfOwned(owner: owner);
         } on _OAuthMutationPoisonedException {
           // Poison recovery owns final cleanup; preserve the established result.
         }
@@ -273,7 +312,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     }
   }
 
-  Duration _parseRestartAfter(String? header) {
+  Duration _parseRestartAfter({required String? header}) {
     final seconds = header != null && RegExp(r"^[0-9]+$").hasMatch(header) ? int.tryParse(header) : null;
     return seconds != null && seconds <= 5 ? Duration(seconds: seconds) : const Duration(seconds: 1);
   }
@@ -285,23 +324,50 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     required DateTime? expiresAt,
     required bool isFinalRequest,
   }) async {
+    final abortTrigger = Completer<void>();
+    final requestTimer = Timer(requestTimeout, abortTrigger.complete);
     try {
-      return await _get(
-        uri,
-        headers: {_sessionTokenHeader: sessionToken},
-      ).timeout(requestTimeout);
+      final request = http.AbortableRequest("GET", uri, abortTrigger: abortTrigger.future)
+        ..headers.addAll({
+          "Accept": "application/json",
+          _sessionTokenHeader: sessionToken,
+        });
+      return await http.Response.fromStream(await _client.send(request));
+    } on http.RequestAbortedException catch (_, stackTrace) {
+      _throwSessionStatusTimeout(
+        expiresAt: expiresAt,
+        isFinalRequest: isFinalRequest,
+        stackTrace: stackTrace,
+        uri: uri,
+      );
     } on TimeoutException catch (_, stackTrace) {
-      if (isFinalRequest || (expiresAt != null && !DateTime.now().isBefore(expiresAt))) {
-        Error.throwWithStackTrace(
-          TimeoutException("OAuth authorization timed out"),
-          stackTrace,
-        );
-      }
+      _throwSessionStatusTimeout(
+        expiresAt: expiresAt,
+        isFinalRequest: isFinalRequest,
+        stackTrace: stackTrace,
+        uri: uri,
+      );
+    } finally {
+      requestTimer.cancel();
+    }
+  }
+
+  Never _throwSessionStatusTimeout({
+    required DateTime? expiresAt,
+    required bool isFinalRequest,
+    required StackTrace stackTrace,
+    required Uri uri,
+  }) {
+    if (isFinalRequest || (expiresAt != null && !DateTime.now().isBefore(expiresAt))) {
       Error.throwWithStackTrace(
-        http.ClientException("OAuth session status request timed out", uri),
+        TimeoutException("OAuth authorization timed out"),
         stackTrace,
       );
     }
+    Error.throwWithStackTrace(
+      http.ClientException("OAuth session status request timed out", uri),
+      stackTrace,
+    );
   }
 
   Future<void> _persistOAuthCompletion({
@@ -310,29 +376,31 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     required String accessToken,
     required String refreshToken,
     required AuthUser user,
-  }) => _mutateOAuthState(() async {
-    _throwIfOAuthSessionSuperseded(owner);
-    if (!DateTime.now().isBefore(deadline)) {
+  }) => _mutateOAuthState(
+    mutation: () async {
+      _throwIfOAuthSessionSuperseded(owner: owner);
+      if (!DateTime.now().isBefore(deadline)) {
+        _oAuthSessionOwner = null;
+        await _oAuthStorage.clearOAuthSession();
+        throw TimeoutException("OAuth authorization timed out");
+      }
+      await _tokenStorage.saveTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+      // Best-effort: the tokens above already make this a valid session, so a
+      // local user-cache write failure must not abort a completed login.
+      await _saveUserBestEffort(user);
+      await Future.wait([
+        _oAuthStorage.clearPkceVerifier(),
+        _oAuthStorage.clearAuthProvider(),
+        _oAuthStorage.clearOAuthSession(),
+      ]);
+      _throwIfOAuthSessionSuperseded(owner: owner);
       _oAuthSessionOwner = null;
-      await _oAuthStorage.clearOAuthSession();
-      throw TimeoutException("OAuth authorization timed out");
-    }
-    await _tokenStorage.saveTokens(
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-    );
-    // Best-effort: the tokens above already make this a valid session, so a
-    // local user-cache write failure must not abort a completed login.
-    await _saveUserBestEffort(user);
-    await Future.wait([
-      _oAuthStorage.clearPkceVerifier(),
-      _oAuthStorage.clearAuthProvider(),
-      _oAuthStorage.clearOAuthSession(),
-    ]);
-    _throwIfOAuthSessionSuperseded(owner);
-    _oAuthSessionOwner = null;
-    _authState.add(AuthState.authenticated(user: user));
-  });
+      _authState.add(AuthState.authenticated(user: user));
+    },
+  );
 
   Future<T> _beforeOAuthDeadline<T>({
     required DateTime deadline,
@@ -356,13 +424,19 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     try {
       return await _beforeOAuthDeadline(deadline: deadline, operation: () => mutation);
     } on TimeoutException {
-      _poisonOAuthMutation(mutation);
+      _poisonOAuthMutation(timedOutMutation: mutation);
       rethrow;
     }
   }
 
-  Future<T> _mutateOAuthState<T>(Future<T> Function() mutation) {
-    if (_oAuthMutationPoisoned) {
+  Future<T> _mutateOAuthState<T>({required Future<T> Function() mutation}) {
+    if (_oAuthMutationHealth != _OAuthMutationHealth.healthy) {
+      if (_oAuthMutationHealth == _OAuthMutationHealth.cleanupRequired) {
+        return (() async {
+          await _retryPoisonedOAuthCleanup();
+          return _mutateOAuthState(mutation: mutation);
+        })();
+      }
       return Future<T>.error(const _OAuthMutationPoisonedException());
     }
 
@@ -379,43 +453,60 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     })();
   }
 
-  Future<void> _clearOAuthSessionIfOwned({required _OAuthSessionOwner owner}) => _mutateOAuthState(() async {
-    if (!_ownsOAuthSession(owner)) {
-      return;
-    }
+  Future<void> _clearOAuthSessionBeforeDeadline({
+    required DateTime deadline,
+    required _OAuthSessionOwner owner,
+  }) {
+    final cleanup = _clearOAuthSessionIfOwned(owner: owner);
+    return _awaitOAuthMutationBeforeDeadline(
+      deadline: deadline,
+      mutation: cleanup,
+    );
+  }
 
-    _oAuthSessionOwner = null;
-    await _oAuthStorage.clearOAuthSession();
-  });
+  Future<void> _clearOAuthSessionIfOwned({required _OAuthSessionOwner owner}) => _mutateOAuthState(
+    mutation: () async {
+      if (!_ownsOAuthSession(owner: owner)) {
+        return;
+      }
 
-  Future<void> _releaseOAuthSessionIfOwned(_OAuthSessionOwner owner) => _mutateOAuthState(() async {
-    if (_ownsOAuthSession(owner)) {
       _oAuthSessionOwner = null;
-    }
-  });
+      await _oAuthStorage.clearOAuthSession();
+    },
+  );
 
-  Future<void> _assertOAuthSessionOwner(_OAuthSessionOwner owner) => _mutateOAuthState(() async {
-    _throwIfOAuthSessionSuperseded(owner);
-  });
+  Future<void> _releaseOAuthSessionIfOwned({required _OAuthSessionOwner owner}) => _mutateOAuthState(
+    mutation: () async {
+      if (_ownsOAuthSession(owner: owner)) {
+        _oAuthSessionOwner = null;
+      }
+    },
+  );
 
-  bool _ownsOAuthSession(_OAuthSessionOwner owner) => _oAuthSessionOwner == owner;
+  Future<void> _assertOAuthSessionOwner({required _OAuthSessionOwner owner}) => _mutateOAuthState(
+    mutation: () async {
+      _throwIfOAuthSessionSuperseded(owner: owner);
+    },
+  );
 
-  void _throwIfOAuthSessionSuperseded(_OAuthSessionOwner owner) {
-    if (!_ownsOAuthSession(owner)) {
+  bool _ownsOAuthSession({required _OAuthSessionOwner owner}) => _oAuthSessionOwner == owner;
+
+  void _throwIfOAuthSessionSuperseded({required _OAuthSessionOwner owner}) {
+    if (!_ownsOAuthSession(owner: owner)) {
       throw const _OAuthSessionSupersededException();
     }
   }
 
-  void _poisonOAuthMutation<T>(Future<T> timedOutMutation) {
-    if (_oAuthMutationPoisoned) {
+  void _poisonOAuthMutation<T>({required Future<T> timedOutMutation}) {
+    if (_oAuthMutationHealth != _OAuthMutationHealth.healthy) {
       return;
     }
 
-    _oAuthMutationPoisoned = true;
-    unawaited(_recoverPoisonedOAuthMutation(timedOutMutation));
+    _oAuthMutationHealth = _OAuthMutationHealth.drainingTimedOutMutation;
+    unawaited(_recoverPoisonedOAuthMutation(timedOutMutation: timedOutMutation));
   }
 
-  Future<void> _recoverPoisonedOAuthMutation<T>(Future<T> timedOutMutation) async {
+  Future<void> _recoverPoisonedOAuthMutation<T>({required Future<T> timedOutMutation}) async {
     try {
       await timedOutMutation;
     } catch (error, stackTrace) {
@@ -429,9 +520,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
     try {
       await _oAuthMutationTail;
-      _oAuthSessionOwner = null;
-      await _oAuthStorage.clearOAuthSession();
-      _oAuthMutationPoisoned = false;
+      _oAuthMutationHealth = _OAuthMutationHealth.cleanupRequired;
+      await _retryPoisonedOAuthCleanup();
     } catch (error, stackTrace) {
       developer.log(
         "Failed to recover poisoned OAuth mutation state",
@@ -442,16 +532,17 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     }
   }
 
-  Future<void> _logOAuthCleanupFailure(Future<void> cleanup) async {
+  Future<void> _retryPoisonedOAuthCleanup() {
+    return _oAuthPoisonCleanup ??= _runPoisonedOAuthCleanup();
+  }
+
+  Future<void> _runPoisonedOAuthCleanup() async {
     try {
-      await cleanup;
-    } catch (error, stackTrace) {
-      developer.log(
-        "Failed to clear a timed-out OAuth session",
-        error: error,
-        stackTrace: stackTrace,
-        name: "sesori_auth",
-      );
+      _oAuthSessionOwner = null;
+      await _oAuthStorage.clearOAuthSession();
+      _oAuthMutationHealth = _OAuthMutationHealth.healthy;
+    } finally {
+      _oAuthPoisonCleanup = null;
     }
   }
 
@@ -822,6 +913,12 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       throw StateError("$context (HTTP ${response.statusCode})");
     }
   }
+}
+
+enum _OAuthMutationHealth {
+  healthy,
+  drainingTimedOutMutation,
+  cleanupRequired,
 }
 
 final class _OAuthSessionSupersededException implements Exception {
