@@ -410,6 +410,47 @@
   "@sessionDetailHideActions": {
     "description": "Accessibility label of the chevron while the composer's advanced-options drawer is open and tapping it collapses the drawer."
   },
+  "sessionDetailAttachImage": "Attach image",
+  "@sessionDetailAttachImage": {
+    "description": "Accessibility label of the advanced-options action that opens the gallery picker to attach an image to the next message."
+  },
+  "sessionDetailRemoveAttachment": "Remove attachment",
+  "@sessionDetailRemoveAttachment": {
+    "description": "Accessibility label of the badge on a staged attachment thumbnail that removes it from the composer."
+  },
+  "sessionDetailAttachedImage": "Attached image",
+  "@sessionDetailAttachedImage": {
+    "description": "Fallback accessibility label of a staged attachment thumbnail when the image has no filename."
+  },
+  "sessionDetailAttachmentTooLarge": "That image is too large to attach.",
+  "@sessionDetailAttachmentTooLarge": {
+    "description": "Snackbar shown when a picked image exceeds the inline attachment size limit."
+  },
+  "sessionDetailAttachmentPickFailed": "Couldn't attach the image.",
+  "@sessionDetailAttachmentPickFailed": {
+    "description": "Snackbar shown when the gallery picker fails for a reason other than the size limit."
+  },
+  "sessionDetailAttachmentUnsupported": "That image format isn't supported.",
+  "@sessionDetailAttachmentUnsupported": {
+    "description": "Snackbar shown when the picked file is not a recognized image format and cannot be attached."
+  },
+  "sessionDetailAttachmentBudgetExceeded": "Attached images are limited to 5 MB per message.",
+  "@sessionDetailAttachmentBudgetExceeded": {
+    "description": "Snackbar shown when adding another image would push the message's combined attachment size past the inline limit."
+  },
+  "sessionDetailAttachmentsNotWithCommands": "Images can't be sent with slash commands.",
+  "@sessionDetailAttachmentsNotWithCommands": {
+    "description": "Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images."
+  },
+  "sessionDetailQueuedAttachmentCount": "{count, plural, =1{1 image} other{{count} images}}",
+  "@sessionDetailQueuedAttachmentCount": {
+    "description": "Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionDetailExpandEditor": "Expand editor",
   "@sessionDetailExpandEditor": {
     "description": "Accessibility label of the button that opens the fullscreen message editor."

@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/codex_tool_outcome_storage.dart";
+import "../api/models/codex_command_execution_dto.dart";
 import "../api/models/codex_tool_outcome_dto.dart";
 
 /// Layer-2 decisions over persisted structured tool failures.
@@ -42,6 +43,22 @@ class CodexToolOutcomeRepository {
           (left, right) => _compareErrors(left: left, right: right),
         );
       },
+    );
+  }
+
+  Future<void> recordCommandOutcome({
+    required CodexCommandExecutionEventDto command,
+    required String canonicalCallId,
+  }) async {
+    final completedError =
+        command.lifecycle == CodexCommandExecutionLifecycle.completed &&
+        ((command.exitCode != null && command.exitCode != 0) ||
+            command.status == CodexCommandExecutionStatus.failed ||
+            command.status == CodexCommandExecutionStatus.declined);
+    if (!completedError) return;
+    await recordError(
+      sessionId: command.threadId,
+      callId: canonicalCallId,
     );
   }
 

@@ -9,6 +9,8 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
+import "../../foundation/models/composer/composer_attachment.dart";
+import "../../foundation/models/composer/composer_attachment_support.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
@@ -1041,14 +1043,34 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String text,
     required String? command,
     required ComposerInputMode inputMode,
+    required List<ComposerAttachment> attachments,
   }) async {
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
-    if (trimmed.isEmpty && normalizedCommand == null) return;
+    if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
+
+    // The bridge's command paths carry only the text part, so sending this
+    // combination would drop the images without telling anyone. Refuse it at
+    // the seam that formats the wire payload, not only in the composer.
+    if (normalizedCommand != null && attachments.isNotEmpty) {
+      logw("Refused a /$normalizedCommand submission carrying ${attachments.length} attachment(s)");
+      return;
+    }
+
+    // TEMPORARY 2026-08-03: see [harnessSupportsPromptAttachments]. The
+    // composer hides the attach action for harnesses that drop image parts;
+    // hold that line here too, at the seam that formats the wire payload.
+    // An unresolved harness refuses as well, so nothing reaches the queue that
+    // the drain would later hand to a harness that cannot carry it.
+    final harness = current is SessionDetailLoaded ? current.pluginId : null;
+    if (attachments.isNotEmpty && !harnessSupportsPromptAttachments(pluginId: harness)) {
+      logw("Refused ${attachments.length} attachment(s) for harness $harness");
+      return;
+    }
 
     final submission = normalizedCommand == null
-        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode)
+        ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode, attachments: attachments)
         : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);
     if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
       _promptQueue.enqueue(submission);
@@ -1059,16 +1081,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
+    // Send from the submission so the immediate and drained paths carry the
+    // exact same payload — notably a command submission's empty attachments.
     final result = await _sessionRepository.sendMessage(
       sessionId: _sessionId,
-      text: trimmed,
+      text: submission.text,
+      attachments: submission.attachments,
       agent: current.selectedAgent,
       model: _agentModelToPromptModel(current.selectedAgentModel),
       variant: switch (current.selectedAgentModel?.variant) {
         null => null,
         final variant => SessionVariant(id: variant),
       },
-      command: normalizedCommand,
+      command: submission.command,
     );
 
     switch (result) {
@@ -1115,6 +1140,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       final result = await _sessionRepository.sendMessage(
         sessionId: _sessionId,
         text: submission.text,
+        attachments: submission.attachments,
         agent: current.selectedAgent,
         model: _agentModelToPromptModel(current.selectedAgentModel),
         variant: switch (current.selectedAgentModel?.variant) {
@@ -1573,6 +1599,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       sessionTitle: snapshot.canonicalSessionTitle,
+      pluginId: snapshot.pluginId,
       agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,

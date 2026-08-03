@@ -3,16 +3,17 @@
 ## Current State
 
 - **Plan slug:** `session-pull-request-monitoring`
-- **Implementation base:** `main` at
-  `480a6bfd`
-- **Series state:** Steps 1/9, 2.a–2.c/9, 3–7/9, and 8.a/9 merged; Step 8.b is in progress
-- **Current step:** Step 8.b/9 — shared client settings and final integration
+- **Completion base:** `main` at `ceaa6758`, the merge commit for final
+  implementation PR #707
+- **Series state:** Complete; all implementation PRs merged and Step 9 archived
+  the plan
+- **Current step:** Complete
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
 - **Previous step PR:** [#704](https://github.com/sesori-ai/sesori_apps_monorepo/pull/704) merged
 - **Closed replacement source:** [#701](https://github.com/sesori-ai/sesori_apps_monorepo/pull/701) closed for generic settings redesign
-- **Current PR:** [#707](https://github.com/sesori-ai/sesori_apps_monorepo/pull/707) under review
-- **Next action:** push the focused cleanup follow-up and continue monitoring PR #707
+- **Final implementation PR:** [#707](https://github.com/sesori-ai/sesori_apps_monorepo/pull/707) merged as `ceaa6758`
+- **Next action:** None; plan archived
 
 ## Existing Baseline
 
@@ -31,12 +32,12 @@
 - **Date:** 2026-07-31
 - **Findings applied:** none; pre-review gate and bridge/client/shared
   architecture all passed
-- **Post-review drift:** `main` advanced through Harness settings, output-image
-  plugin work, analytics documentation, bridge `--data-dir` expansion, and plan
-  archival. The current tip is audited at `10c7afb9`; none changes this feature's
-  architecture or requested agent guidance. The implementation base is now the
-  repository-rename hotfix and unrelated client haptics at `d38d4793`; no plan
-  architecture changed.
+- **Historical post-review drift:** After the original review, `main` advanced
+  through Harness settings, output-image plugin work, analytics documentation,
+  bridge `--data-dir` expansion, plan archival, the repository-rename hotfix,
+  and unrelated client haptics. `10c7afb9` and `d38d4793` are historical audit
+  anchors only; neither changed this feature's architecture. The unambiguous
+  final completion base is `ceaa6758` above.
 
 ## Delivery Steps
 
@@ -52,8 +53,8 @@
 | [x] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | [PR #693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged as `ba25adae` |
 | [x] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | [PR #697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) merged as `d543b1f7` |
 | [x] | 8.a/9 | `session-pull-request-monitoring-generic-settings` | `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]` | 1,000–1,500 | [PR #704](https://github.com/sesori-ai/sesori_apps_monorepo/pull/704) merged as `480a6bfd` |
-| [ ] | 8.b/9 | `session-pull-request-monitoring-client-settings-v2` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | 2,000–2,400 | In progress from merged Step 8.a; fresh replacement for closed PR #701 |
-| [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8.b merge |
+| [x] | 8.b/9 | `session-pull-request-monitoring-client-settings-v2` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | 2,000–2,400 | [PR #707](https://github.com/sesori-ai/sesori_apps_monorepo/pull/707) merged as `ceaa6758` |
+| [x] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Final state recorded and plan moved to `.plan/completed/` |
 
 ## Exact PR Titles
 
@@ -92,25 +93,23 @@
 - After each merge, update this tracker in the next step and proceed in order
   unless a material decision or blocker requires the user.
 
-## Current Drift and Open Work
+## Final Drift and Resolved Work
 
-- Latest audited `main`: `ba25adae`, including Step 6 merged from PR #693. No
-  later drift affects the Step 7 client-presence architecture.
+- Final audited `main`: `ceaa6758`, the merge commit for final implementation
+  PR #707. The earlier `ba25adae` Step 6 audit remains historical evidence only.
 - Drift schema: v13 on `main`; Step 4 leaves the merged schema and migration
   unchanged.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
 - PR #647 is merged and consolidates Harness settings into one screen. Its
-  numeric-input/mutation pattern is current evidence for Step 8; PR cadence
-  remains a separate bridge setting.
-- Open PR #641 is analytics warehouse-only and does not change this feature's
-  no-new-event decision.
-- Open PR #621 touches the settings landing screen and may require Step 8 drift
-  reconciliation if it merges.
-- After the Step 7 PR is raised, separately reproduce terminal PR selection loss
-  while that PR is under review. The reported sequence is: merge the PR, merge
-  `main` into the same feature branch, then hard-reset and force-push that reused
-  branch to track `main` before the next plan step. Branch deletion alone is not
-  the suspected trigger; this investigation must not delay raising Step 7.
+  numeric-input/mutation pattern informed Step 8; PR cadence remains a separate
+  bridge setting.
+- PR #641 closed without merging; its analytics warehouse scope never changed
+  this feature's no-new-event decision.
+- PR #621 merged as `6583e7b2`; Step 8 reconciled its settings landing-screen
+  changes before completion.
+- The terminal PR selection-loss investigation completed in PR #698, merged as
+  `26701509`; project-scoped REST refreshes remain authoritative for clearing PR
+  metadata.
 
 ## Interview Decisions Recorded 2026-07-31
 
@@ -439,8 +438,8 @@
   the established diagnostics privacy policy.
 - **PR-status investigation:** The reported PR indicator loss was reproduced as
   an ordinary catalog-derived `session.updated` event replacing identity-gated
-  REST PR metadata. The isolated client fix is under review in
-  [PR #698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/698), merged as
+  REST PR metadata. The isolated client fix merged in
+  [PR #698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/698) as
   `26701509`; project-scoped `sessions.updated` REST refreshes remain
   authoritative for clearing metadata.
 - **Step 8.a/9 implementation:** Added the shared `BridgeSettingUpdate` and
@@ -519,6 +518,15 @@
   desktop fatal-info analyzers pass. Both `aristotle-plan-review` and
   `aristotle-impl-review` approved the unified transport ownership with no
   findings.
+- **Step 8.b/9 merge:** PR #707 merged into `main` as `ceaa6758` on
+  2026-08-03 with all 13 CI checks passing. The final implementation supports
+  automatic refresh for visible project list/detail contexts and configurable
+  bridge-wide cadence without PR history, unseen-state, push, or analytics
+  changes.
+- **Step 9/9 retirement:** Confirmed every implementation step merged, recorded
+  final verification and findings, and moved the complete three-file plan from
+  `.plan/active/` to `.plan/completed/`. No production, test, or configuration
+  file changed.
 
 ## Findings and Plan Deltas
 

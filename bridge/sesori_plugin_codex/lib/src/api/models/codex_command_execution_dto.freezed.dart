@@ -173,7 +173,7 @@ $CodexCommandExecutionItemDtoCopyWith<$Res> get item {
 /// @nodoc
 mixin _$CodexCommandExecutionItemDto {
 
-@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType get type; String? get id;@JsonKey(unknownEnumValue: CodexCommandExecutionStatus.unknown, defaultValue: CodexCommandExecutionStatus.unknown) CodexCommandExecutionStatus get status; int? get exitCode;
+@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType get type; String? get id;@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus get status;@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? get exitCode;
 /// Create a copy of CodexCommandExecutionItemDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -206,7 +206,7 @@ abstract mixin class $CodexCommandExecutionItemDtoCopyWith<$Res>  {
   factory $CodexCommandExecutionItemDtoCopyWith(CodexCommandExecutionItemDto value, $Res Function(CodexCommandExecutionItemDto) _then) = _$CodexCommandExecutionItemDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType type, String? id,@JsonKey(unknownEnumValue: CodexCommandExecutionStatus.unknown, defaultValue: CodexCommandExecutionStatus.unknown) CodexCommandExecutionStatus status, int? exitCode
+@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType type, String? id,@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus status,@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? exitCode
 });
 
 
@@ -241,13 +241,13 @@ as int?,
 @JsonSerializable()
 
 class _CodexCommandExecutionItemDto implements CodexCommandExecutionItemDto {
-  const _CodexCommandExecutionItemDto({@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) required this.type, required this.id, @JsonKey(unknownEnumValue: CodexCommandExecutionStatus.unknown, defaultValue: CodexCommandExecutionStatus.unknown) required this.status, required this.exitCode});
+  const _CodexCommandExecutionItemDto({@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) required this.type, required this.id, @JsonKey(fromJson: _commandExecutionStatusFromJson) required this.status, @JsonKey(fromJson: _commandExecutionExitCodeFromJson) required this.exitCode});
   factory _CodexCommandExecutionItemDto.fromJson(Map<String, dynamic> json) => _$CodexCommandExecutionItemDtoFromJson(json);
 
 @override@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) final  CodexCommandExecutionItemType type;
 @override final  String? id;
-@override@JsonKey(unknownEnumValue: CodexCommandExecutionStatus.unknown, defaultValue: CodexCommandExecutionStatus.unknown) final  CodexCommandExecutionStatus status;
-@override final  int? exitCode;
+@override@JsonKey(fromJson: _commandExecutionStatusFromJson) final  CodexCommandExecutionStatus status;
+@override@JsonKey(fromJson: _commandExecutionExitCodeFromJson) final  int? exitCode;
 
 /// Create a copy of CodexCommandExecutionItemDto
 /// with the given fields replaced by the non-null parameter values.
@@ -282,7 +282,7 @@ abstract mixin class _$CodexCommandExecutionItemDtoCopyWith<$Res> implements $Co
   factory _$CodexCommandExecutionItemDtoCopyWith(_CodexCommandExecutionItemDto value, $Res Function(_CodexCommandExecutionItemDto) _then) = __$CodexCommandExecutionItemDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType type, String? id,@JsonKey(unknownEnumValue: CodexCommandExecutionStatus.unknown, defaultValue: CodexCommandExecutionStatus.unknown) CodexCommandExecutionStatus status, int? exitCode
+@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType type, String? id,@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus status,@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? exitCode
 });
 
 

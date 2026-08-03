@@ -17,7 +17,7 @@ import "../codex_metadata_repository.dart";
 import "../codex_plugin_impl.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
-import "../repositories/codex_tool_correlation_tracker.dart";
+import "../repositories/codex_tool_lifecycle_tracker.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_image_attachment_mapper.dart";
 import "../repositories/mappers/codex_rollout_tool_mapper.dart";
@@ -53,8 +53,6 @@ CodexManagedApi _defaultBuildApi({
   final configReader = CodexConfigReader(environment: host.environment);
   final rolloutApi = CodexRolloutApi(environment: host.environment);
   const imageAttachmentMapper = CodexImageAttachmentMapper();
-  const imageBearingItemParser = CodexImageBearingItemParser();
-  const commandExecutionParser = CodexCommandExecutionParser();
   const rolloutToolMapper = CodexRolloutToolMapper(
     imageAttachmentMapper: imageAttachmentMapper,
   );
@@ -85,7 +83,7 @@ CodexManagedApi _defaultBuildApi({
       pluginId: CodexPlugin.pluginId,
       projectCwd: launchDirectory,
       imageAttachmentMapper: imageAttachmentMapper,
-      imageBearingItemParser: imageBearingItemParser,
+      imageBearingItemParser: const CodexImageBearingItemParser(),
       rolloutToolMapper: rolloutToolMapper,
       config: configReader.readDefaults(),
     ),
@@ -94,10 +92,11 @@ CodexManagedApi _defaultBuildApi({
       catalogRepository: catalogRepository,
       pollInterval: const Duration(milliseconds: 50),
     ),
-    toolCorrelationTracker: CodexToolCorrelationTracker(
+    toolLifecycleTracker: CodexToolLifecycleTracker(
       rolloutToolMapper: rolloutToolMapper,
     ),
-    commandExecutionParser: commandExecutionParser,
+    toolOutcomeRepository: toolOutcomeRepository,
+    commandExecutionParser: const CodexCommandExecutionParser(),
     projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,

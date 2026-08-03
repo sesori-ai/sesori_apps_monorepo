@@ -136,6 +136,7 @@ void main() {
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             projectId: "project-1",
+            pluginId: "opencode",
             messages: <MessageWithParts>[],
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
@@ -200,6 +201,7 @@ void main() {
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             projectId: "project-1",
+            pluginId: "opencode",
             messages: <MessageWithParts>[],
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
@@ -245,6 +247,7 @@ void main() {
         return SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             projectId: "project-1",
+            pluginId: "opencode",
             messages: const <MessageWithParts>[],
             pendingQuestions: const <PendingQuestion>[],
             pendingPermissions: const <PendingPermission>[],
@@ -272,6 +275,7 @@ void main() {
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             projectId: "project-1",
+            pluginId: "opencode",
             messages: <MessageWithParts>[],
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
@@ -348,6 +352,7 @@ void main() {
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             projectId: "project-1",
+            pluginId: "opencode",
             messages: <MessageWithParts>[],
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
@@ -419,6 +424,7 @@ void main() {
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             projectId: "project-1",
+            pluginId: "opencode",
             messages: <MessageWithParts>[],
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
@@ -454,6 +460,7 @@ void main() {
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             projectId: "project-1",
+            pluginId: "opencode",
             messages: <MessageWithParts>[],
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
@@ -535,6 +542,7 @@ void main() {
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             projectId: "project-1",
+            pluginId: "opencode",
             messages: <MessageWithParts>[],
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],

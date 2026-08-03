@@ -87,6 +87,52 @@ final class CodexImageAttachmentMapper {
     return attachments.toList(growable: false);
   }
 
+  List<PluginMessageAttachment> boundMappedAttachments({
+    required Iterable<PluginMessageAttachment> attachments,
+  }) {
+    final bounded = <PluginMessageAttachment>[];
+    final warned = <_ImageDegradationReason>{};
+    var remainingBytes = maxInlineMessageAttachmentBytes;
+
+    for (final attachment in attachments) {
+      if (bounded.contains(attachment)) continue;
+      if (bounded.length >= _maxAttachmentCount) {
+        _warnOnce(
+          reason: _ImageDegradationReason.countOverflow,
+          warned: warned,
+        );
+        continue;
+      }
+
+      final PluginMessageAttachment mapped;
+      switch (attachment) {
+        case PluginMessageAttachmentInlineImage(
+          :final mime,
+          :final base64,
+          :final filename,
+        ):
+          final decodedBytes = decodedBase64Length(base64Data: base64);
+          if (decodedBytes > remainingBytes) {
+            mapped = PluginMessageAttachment.metadata(
+              mime: mime,
+              filename: filename,
+            );
+            _warnOnce(
+              reason: _ImageDegradationReason.aggregateOverflow,
+              warned: warned,
+            );
+          } else {
+            mapped = attachment;
+            remainingBytes -= decodedBytes;
+          }
+        case PluginMessageAttachmentRemoteUrl() || PluginMessageAttachmentMetadata():
+          mapped = attachment;
+      }
+      if (!bounded.contains(mapped)) bounded.add(mapped);
+    }
+    return List.unmodifiable(bounded);
+  }
+
   _ImageMappingResult _mapCandidate({
     required CodexImageAttachmentCandidate candidate,
     required int remainingBytes,

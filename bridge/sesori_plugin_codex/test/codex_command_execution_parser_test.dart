@@ -31,6 +31,30 @@ void main() {
     expect(event?.exitCode, 1);
   });
 
+  test("preserves command identity when an outcome field is malformed", () {
+    final event = parser.parse(
+      notification: const CodexServerNotification(
+        method: "item/completed",
+        params: {
+          "threadId": "thread-1",
+          "turnId": "turn-1",
+          "item": {
+            "type": "commandExecution",
+            "id": "exec-1",
+            "status": "failed",
+            "exitCode": "1",
+          },
+        },
+      ),
+    );
+
+    expect(event?.threadId, "thread-1");
+    expect(event?.turnId, "turn-1");
+    expect(event?.itemId, "exec-1");
+    expect(event?.status, CodexCommandExecutionStatus.failed);
+    expect(event?.exitCode, isNull);
+  });
+
   test("ignores unrelated item types and malformed identities", () {
     expect(
       parser.parse(

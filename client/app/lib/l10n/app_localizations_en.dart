@@ -669,6 +669,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailHideActions => 'Hide actions';
 
   @override
+  String get sessionDetailAttachImage => 'Attach image';
+
+  @override
+  String get sessionDetailRemoveAttachment => 'Remove attachment';
+
+  @override
+  String get sessionDetailAttachedImage => 'Attached image';
+
+  @override
+  String get sessionDetailAttachmentTooLarge => 'That image is too large to attach.';
+
+  @override
+  String get sessionDetailAttachmentPickFailed => 'Couldn\'t attach the image.';
+
+  @override
+  String get sessionDetailAttachmentUnsupported => 'That image format isn\'t supported.';
+
+  @override
+  String get sessionDetailAttachmentBudgetExceeded => 'Attached images are limited to 5 MB per message.';
+
+  @override
+  String get sessionDetailAttachmentsNotWithCommands => 'Images can\'t be sent with slash commands.';
+
+  @override
+  String sessionDetailQueuedAttachmentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images',
+      one: '1 image',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sessionDetailExpandEditor => 'Expand editor';
 
   @override

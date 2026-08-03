@@ -64,10 +64,11 @@ class QueuedMessageBubble extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          submission.displayText,
-                            style: prego.textTheme.textSm.regular.copyWith(
-                              color: prego.colors.fgSuccessPrimary,
-                            ),
+                          submission.displayText ??
+                              loc.sessionDetailQueuedAttachmentCount(submission.attachments.length),
+                          style: prego.textTheme.textSm.regular.copyWith(
+                            color: prego.colors.fgSuccessPrimary,
+                          ),
                         ),
                       ],
                     ),

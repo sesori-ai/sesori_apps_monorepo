@@ -22,6 +22,20 @@ enum CodexCommandExecutionLifecycle {
   completed,
 }
 
+CodexCommandExecutionStatus _commandExecutionStatusFromJson(Object? value) {
+  return switch (value) {
+    "inProgress" => CodexCommandExecutionStatus.inProgress,
+    "completed" => CodexCommandExecutionStatus.completed,
+    "failed" => CodexCommandExecutionStatus.failed,
+    "declined" => CodexCommandExecutionStatus.declined,
+    _ => CodexCommandExecutionStatus.unknown,
+  };
+}
+
+int? _commandExecutionExitCodeFromJson(Object? value) {
+  return value is num ? value.toInt() : null;
+}
+
 @freezed
 sealed class CodexCommandExecutionParamsDto with _$CodexCommandExecutionParamsDto {
   const factory CodexCommandExecutionParamsDto({
@@ -43,12 +57,8 @@ sealed class CodexCommandExecutionItemDto with _$CodexCommandExecutionItemDto {
     )
     required CodexCommandExecutionItemType type,
     required String? id,
-    @JsonKey(
-      unknownEnumValue: CodexCommandExecutionStatus.unknown,
-      defaultValue: CodexCommandExecutionStatus.unknown,
-    )
-    required CodexCommandExecutionStatus status,
-    required int? exitCode,
+    @JsonKey(fromJson: _commandExecutionStatusFromJson) required CodexCommandExecutionStatus status,
+    @JsonKey(fromJson: _commandExecutionExitCodeFromJson) required int? exitCode,
   }) = _CodexCommandExecutionItemDto;
 
   factory CodexCommandExecutionItemDto.fromJson(Map<String, dynamic> json) =>
