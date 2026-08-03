@@ -53,6 +53,13 @@ sealed class CodexRolloutToolResult {
       current: output,
     );
     final mergedAttachments = attachments.isNotEmpty ? attachments : previous.attachments;
+    if (previous is CodexRolloutToolErrorResult && this is! CodexRolloutToolErrorResult) {
+      return CodexRolloutToolErrorResult(
+        callId: callId,
+        output: mergedOutput,
+        attachments: mergedAttachments,
+      );
+    }
     return switch (this) {
       CodexRolloutToolRunningResult(:final cellIds) => CodexRolloutToolRunningResult(
         callId: callId,

@@ -291,6 +291,25 @@ void main() {
     expect(merged.output, endsWith("terminal-result"));
   });
 
+  test("merged composed results preserve error precedence", () {
+    final merged =
+        const CodexRolloutToolCompletedResult(
+          callId: "call-wait-success",
+          output: "success-output",
+          attachments: [],
+        ).withPreviousResult(
+          previous: const CodexRolloutToolErrorResult(
+            callId: "call-wait-failed",
+            output: "failed-output",
+            attachments: [],
+          ),
+        );
+
+    expect(merged, isA<CodexRolloutToolErrorResult>());
+    expect(merged.output, contains("failed-output"));
+    expect(merged.output, contains("success-output"));
+  });
+
   test("recognizes executor control markers only at the envelope start", () {
     const mapper = CodexRolloutToolMapper(
       imageAttachmentMapper: CodexImageAttachmentMapper(),
