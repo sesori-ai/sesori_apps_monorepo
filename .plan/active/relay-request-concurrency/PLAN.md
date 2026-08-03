@@ -11,7 +11,7 @@
   [#696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) and Step 4 PR
   [#699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) and Step 5 PR
   [#700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged; Step 6
-  is implemented and ready for review
+  PR [#703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) is open
 - **Plan date:** 2026-08-02
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main` at

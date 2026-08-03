@@ -8,7 +8,8 @@
 - **Series state:** Steps 1–5 merged; Step 5/10
   [#700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged as
   `5ba0d3a6`
-- **Current step:** Step 6/10 implemented on `plan-parallel-requests`
+- **Current step:** Step 6/10 PR
+  [#703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) open
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
 - **Next action:** open, review, and merge Step 6; Step 7 remains blocked until then
 
@@ -92,7 +93,7 @@
 | [x] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as `95178462` |
 | [x] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as `9ac855a3` with 1,326 changed lines |
 | [x] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged as `5ba0d3a6` with 1,534 changed lines |
-| [ ] | 6/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Implemented from `5ba0d3a6`; ready to open |
+| [ ] | 6/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | [PR #703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) open from `5ba0d3a6` |
 | [ ] | 7/10 | `relay-request-concurrency-session-visibility` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | 600–1,100 | Blocked on Step 6 merge |
 | [ ] | 8/10 | `relay-request-concurrency-project-mutations` | `🚧 [relay-request-concurrency] refactor(bridge): order project path mutations [step 8/10]` | 650–1,100 | Blocked on Step 7 merge |
 | [ ] | 9/10 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | Blocked on Step 8 merge |
@@ -381,4 +382,5 @@
   Both valid findings were applied directly: mutation dispatch now owns deletion
   admission with callback-scoped cleanup, and archive notification settles inside
   the family lane. Per policy, the corrected implementation was not re-reviewed.
-- **Step 6/10 delivery:** ready to open at 1,052 changed lines.
+- **Step 6/10 delivery:** [PR #703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703)
+  is open at 1,054 changed lines.
