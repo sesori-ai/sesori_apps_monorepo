@@ -378,7 +378,7 @@ class CodexPlugin implements CodexManagedApi {
           .forEach(_eventBuffer.add);
     }
     if (threadId != null && terminalHistory) {
-      _toolLifecycleTracker.clearThread(threadId: threadId);
+      _toolLifecycleTracker.clearSettledThread(threadId: threadId);
     }
     if (activityChanged) {
       _eventBuffer.add(const BridgeSseProjectUpdated());

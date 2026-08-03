@@ -877,6 +877,71 @@ void main() {
     expect(aborted.status, PluginToolStatus.error);
   });
 
+  test("late app-server completion retains the aborted canonical identity", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-exec", turnId: "turn-1"),
+      );
+    final started = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _commandNotification(
+        method: "item/started",
+        itemId: "exec-1",
+        turnId: "turn-1",
+      ),
+    );
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _toolOutput(
+        callId: "call-exec",
+        output: "Script running with cell ID 7\nOutput:\n",
+      ),
+    );
+    final aborted = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
+        )
+        .single;
+    target.clearSettledThread(threadId: "thread-1");
+
+    final lateCompletion = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _commandNotification(
+        method: "item/completed",
+        itemId: "exec-1",
+        turnId: "turn-1",
+        status: "completed",
+        exitCode: 0,
+        output: "late command output",
+      ),
+    );
+
+    expect(started?.canonicalId, "call-exec");
+    expect(aborted.status, PluginToolStatus.error);
+    expect(lateCompletion?.canonicalId, "call-exec");
+    expect(lateCompletion?.status, PluginToolStatus.error);
+
+    target.clearSettledThread(threadId: "thread-1");
+    expect(
+      target.observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/completed",
+          itemId: "exec-1",
+          turnId: "turn-1",
+        ),
+      ),
+      isNull,
+    );
+  });
+
   test("a later turn cannot complete a stale metadata-less call", () {
     final target = tracker();
     target

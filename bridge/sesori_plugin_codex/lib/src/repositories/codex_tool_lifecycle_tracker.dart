@@ -152,7 +152,11 @@ class CodexToolLifecycleTracker {
             completed: notification.method == "item/completed",
           );
     tool.status = _mergeStatus(previous: tool.status, current: status);
-    return tool.snapshot();
+    final snapshot = tool.snapshot();
+    if (notification.method == "item/completed") {
+      thread.appServerItemAliases.remove(itemId);
+    }
+    return snapshot;
   }
 
   void prepareRolloutReplay({
@@ -179,6 +183,14 @@ class CodexToolLifecycleTracker {
 
   void clearThread({required String threadId}) {
     _threads.remove(threadId);
+  }
+
+  /// Discards terminal state unless a started app-server item can still finish.
+  void clearSettledThread({required String threadId}) {
+    final thread = _threads[threadId];
+    if (thread == null || thread.appServerItemAliases.isEmpty) {
+      _threads.remove(threadId);
+    }
   }
 
   void clear() {
@@ -435,6 +447,8 @@ class CodexToolLifecycleTracker {
   }
 
   void _clearCorrelationState({required _ThreadToolLifecycle thread}) {
+    // A command process can outlive an aborted turn. Its alias retires when the
+    // app-server eventually emits `item/completed`.
     thread
       ..pendingShellCallsByTurn.clear()
       ..pendingCodeModeShellCallsByTurn.clear()
@@ -442,8 +456,7 @@ class CodexToolLifecycleTracker {
       ..visibleCallByThreadCell.clear()
       ..waitTargetByCall.clear()
       ..waitCellByCall.clear()
-      ..internalCalls.clear()
-      ..appServerItemAliases.clear();
+      ..internalCalls.clear();
     for (final tool in thread.tools.values) {
       tool.outstandingCellIds.clear();
     }
