@@ -493,12 +493,6 @@ abstract class AppLocalizations {
   /// **'Seconds'**
   String get settingsPullRequestRefreshSecondsLabel;
 
-  /// No description provided for @settingsPullRequestRefreshHelp.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a whole number of seconds.'**
-  String get settingsPullRequestRefreshHelp;
-
   /// No description provided for @settingsPullRequestRefreshInvalid.
   ///
   /// In en, this message translates to:

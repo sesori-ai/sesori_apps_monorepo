@@ -168,14 +168,14 @@ class _RefreshIntervalSheetState extends State<_RefreshIntervalSheet> {
               textInputAction: TextInputAction.done,
               validator: (value) => switch (widget.cubit.validateUpdateInput(input: value ?? "")) {
                 PullRequestRefreshSettingsInputValidation.valid => null,
-                PullRequestRefreshSettingsInputValidation.invalid => _validationMessage(context: context),
+                PullRequestRefreshSettingsInputValidation.invalid => _inputMessage(context: context),
               },
               onSubmitted: (_) => _submit(),
             ),
           ),
           const SizedBox(height: PregoSpacing.sm),
           Text(
-            _helpMessage(context: context),
+            _inputMessage(context: context),
             style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
           const SizedBox(height: PregoSpacing.x2l),
@@ -209,17 +209,7 @@ class _RefreshIntervalSheetState extends State<_RefreshIntervalSheet> {
     );
   }
 
-  String _helpMessage({required BuildContext context}) {
-    final bounds = widget.validationBounds;
-    return bounds == null
-        ? context.loc.settingsPullRequestRefreshHelp
-        : context.loc.settingsPullRequestRefreshRangeInvalid(
-            bounds.minimumIntervalSeconds,
-            bounds.maximumIntervalSeconds,
-          );
-  }
-
-  String _validationMessage({required BuildContext context}) {
+  String _inputMessage({required BuildContext context}) {
     final bounds = widget.validationBounds;
     return bounds == null
         ? context.loc.settingsPullRequestRefreshInvalid

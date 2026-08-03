@@ -110,28 +110,6 @@ void main() {
     verifyNever(() => service.update(intervalSeconds: any(named: "intervalSeconds")));
   });
 
-  test("delegates input validation to the service plan", () async {
-    _stubLoad(service, intervalSeconds: 30);
-    when(
-      () => service.planUpdate(input: "14", bounds: null),
-    ).thenReturn(const PullRequestRefreshSettingsUpdateInvalid());
-    _stubPlan(service, input: "45", intervalSeconds: 45);
-    final cubit = PullRequestRefreshSettingsCubit(service: service, connectionService: connection);
-    addTearDown(cubit.close);
-    await _waitForState<PullRequestRefreshSettingsReady>(cubit);
-
-    expect(
-      cubit.validateUpdateInput(input: "14"),
-      PullRequestRefreshSettingsInputValidation.invalid,
-    );
-    expect(
-      cubit.validateUpdateInput(input: "45"),
-      PullRequestRefreshSettingsInputValidation.valid,
-    );
-    verify(() => service.planUpdate(input: "14", bounds: null)).called(1);
-    verify(() => service.planUpdate(input: "45", bounds: null)).called(1);
-  });
-
   test("successful update publishes the bridge-committed value", () async {
     _stubLoad(service, intervalSeconds: 30);
     _stubPlan(service, input: "45", intervalSeconds: 45);

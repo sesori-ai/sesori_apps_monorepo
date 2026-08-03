@@ -169,7 +169,6 @@
   "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
   "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
   "settingsPullRequestRefreshSecondsLabel": "Seconds",
-  "settingsPullRequestRefreshHelp": "Enter a whole number of seconds.",
   "settingsPullRequestRefreshInvalid": "Enter a whole number of seconds.",
   "settingsPullRequestRefreshRangeInvalid": "Enter a whole number from {minimumSeconds} to {maximumSeconds}.",
   "@settingsPullRequestRefreshRangeInvalid": {

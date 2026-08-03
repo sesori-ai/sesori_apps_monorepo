@@ -30,12 +30,10 @@ final class PullRequestRefreshSettingsFailure extends PullRequestRefreshSettings
 
 final class PullRequestRefreshSettingsUncertain extends PullRequestRefreshSettingsState {
   const PullRequestRefreshSettingsUncertain({
-    required this.lastKnownIntervalSeconds,
     required this.refreshError,
     required this.validationBounds,
   });
 
-  final int lastKnownIntervalSeconds;
   final ApiError refreshError;
   final PullRequestRefreshSettingsBounds? validationBounds;
 }

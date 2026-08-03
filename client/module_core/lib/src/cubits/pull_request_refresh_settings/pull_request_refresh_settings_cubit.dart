@@ -139,7 +139,6 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
               );
             case PullRequestRefreshSettingsMutationUncertain():
               await _reconcileUncertainMutation(
-                lastKnownIntervalSeconds: current.intervalSeconds,
                 validationBounds: current.validationBounds,
                 operationEpoch: operationEpoch,
               );
@@ -167,7 +166,6 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
   }
 
   Future<void> _reconcileUncertainMutation({
-    required int lastKnownIntervalSeconds,
     required PullRequestRefreshSettingsBounds? validationBounds,
     required int operationEpoch,
   }) async {
@@ -189,7 +187,6 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
         case PullRequestRefreshSettingsLoadFailure(:final error):
           emit(
             PullRequestRefreshSettingsUncertain(
-              lastKnownIntervalSeconds: lastKnownIntervalSeconds,
               refreshError: error,
               validationBounds: validationBounds,
             ),
@@ -199,7 +196,6 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       emit(
         PullRequestRefreshSettingsUncertain(
-          lastKnownIntervalSeconds: lastKnownIntervalSeconds,
           refreshError: ApiError.dartHttpClient(error),
           validationBounds: validationBounds,
         ),

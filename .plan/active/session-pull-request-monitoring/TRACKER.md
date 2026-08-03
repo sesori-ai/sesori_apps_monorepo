@@ -12,7 +12,7 @@
 - **Previous step PR:** [#704](https://github.com/sesori-ai/sesori_apps_monorepo/pull/704) merged
 - **Closed replacement source:** [#701](https://github.com/sesori-ai/sesori_apps_monorepo/pull/701) closed for generic settings redesign
 - **Current PR:** [#707](https://github.com/sesori-ai/sesori_apps_monorepo/pull/707) under review
-- **Next action:** push the valid initial review fixes, answer all 15 bot threads, and continue monitoring PR #707
+- **Next action:** push the focused cleanup follow-up and continue monitoring PR #707
 
 ## Existing Baseline
 
@@ -480,16 +480,19 @@
 - **Step 8.b/9 compatibility, cleanup, and analytics:** Public bridges predating
   the setting return 404 and render unsupported; no internal-prerelease route
   fallback remains. The generic API replaces all client references to the
-  removed feature PATCH request/error contracts. No database, cache, job, flag,
-  or other directly obsolete artifact was found. No analytics event is added
-  because cadence configuration answers no current product decision.
+  removed feature PATCH request/error contracts. The final cleanup removes two
+  unrelated regressions copied from the closed implementation, unused uncertain
+  state data, duplicate localization/helper ownership, and pass-through-only
+  tests. No database, cache, job, flag, or other obsolete runtime artifact
+  remains. No analytics event is added because cadence configuration answers no
+  current product decision.
 - **Step 8.b/9 verification:** Client dependency resolution, module-core DI
   generation, Flutter localization generation, formatting, 25 focused core
   tests, 48 focused mobile tests, and 18 focused bridge integration tests pass.
   Full suites pass all 972 module-core, 883 mobile, and 15 desktop tests; all
-  three fatal-info analyzers and `git diff --check` pass. Final scope is 2,306
-  changed lines (2,287 additions/19 deletions): 224 generated, 1,063 tests, 51
-  plan/tracker, and 968 production lines.
+  three fatal-info analyzers and `git diff --check` pass. Review and cleanup
+  follow-ups reduce the final scope to 2,207 changed lines (2,188 additions and
+  19 deletions).
 - **Step 8.b/9 architecture review:** `aristotle-impl-review` approved the full
   working-tree scope with no findings, confirming the typed API boundary,
   focused layer ownership, DI, state lifecycle, and thin Settings integration.
@@ -501,6 +504,12 @@
   `aristotle-impl-review` approved the architecture-bearing feedback diff with
   no findings. Test-to-library package imports remain because the analyzer's
   `avoid_relative_lib_imports` rule rejects the suggested relative imports.
+- **PR #707 cleanup follow-up:** Removed the unrelated bridge listener/PR-sync
+  integration regression and terminal-PR tile regression so neither file remains
+  in this client-settings PR. Also removed the unused last-known interval from
+  uncertain state, one duplicate localization key/helper, the service
+  pass-through test, and a redundant cubit validation-delegation test. Focused
+  cleanup verification passes 15 core and 22 Settings tests.
 
 ## Findings and Plan Deltas
 

@@ -298,36 +298,6 @@ void main() {
       expect(find.text("Open"), findsOneWidget);
     });
 
-    testWidgets("render the newest terminal pull request through the shared status row", (tester) async {
-      const base = PullRequestInfo(
-        number: 42,
-        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
-        title: "Terminal pull request",
-        state: PrState.merged,
-        mergeableStatus: PrMergeableStatus.unknown,
-        reviewDecision: PrReviewDecision.unknown,
-        checkStatus: PrCheckStatus.success,
-      );
-
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "Merged session", branchName: "feature/merged").copyWith(pullRequest: base),
-        ),
-      );
-      expect(find.text("Merged"), findsOneWidget);
-
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "Closed session", branchName: "feature/closed").copyWith(
-            pullRequest: base.copyWith(state: PrState.closed),
-          ),
-        ),
-      );
-      expect(find.text("Closed"), findsOneWidget);
-    });
-
     testWidgets("share the line without overflowing under scaled-up accessibility text", (tester) async {
       tester.platformDispatcher.textScaleFactorTestValue = 3.0;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);

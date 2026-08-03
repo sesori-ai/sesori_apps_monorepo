@@ -7,12 +7,8 @@ import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart"
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
-import "package:sesori_bridge/src/listeners/viewed_project_pr_refresh_listener.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
-import "package:sesori_bridge/src/services/project_view_tracker.dart";
-import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 const _repositoryIdentity = "sesori-ai/sesori_apps_monorepo";
@@ -56,56 +52,6 @@ void main() {
         {"one": "/one"},
       );
       expect(source.maxConcurrentSelections, 1);
-    });
-
-    test("view activation drives target selection, scoped replacement, and rendered refresh", () async {
-      final target = _githubTarget(branchName: "feature/current");
-      final source = _FakePrSource(targetsByDirectory: {"/one": target})
-        ..selectionOutcome = PullRequestSelectionCompleted(
-          selections: [
-            PullRequestTargetSelected(
-              target: target.target,
-              number: 42,
-              url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
-              title: "Current branch pull request",
-              createdAt: DateTime.fromMillisecondsSinceEpoch(1, isUtc: true),
-              state: PrState.open,
-              mergeableStatus: PrMergeableStatus.mergeable,
-              reviewDecision: PrReviewDecision.approved,
-              checkStatus: PrCheckStatus.success,
-            ),
-          ],
-        );
-      final pullRequests = _FakePullRequestRepository()
-        ..replacementOutcomes["one"] = const PullRequestReplacementApplied(changed: true);
-      final service = _service(
-        source: source,
-        pullRequests: pullRequests,
-        sessionsByProject: {
-          "one": [_session(id: "one", projectId: "one", directory: "/one")],
-        },
-      );
-      final tracker = ProjectViewTracker();
-      final listener = ViewedProjectPrRefreshListener(
-        tracker: tracker,
-        prSyncService: service,
-        settingsService: _FixedPullRequestRefreshSettingsService(),
-      );
-      final renderedProjects = <String>[];
-      final subscription = service.renderedChanges.listen((change) => renderedProjects.add(change.projectId));
-      addTearDown(subscription.cancel);
-      addTearDown(listener.dispose);
-      addTearDown(tracker.dispose);
-      addTearDown(service.dispose);
-
-      listener.start();
-      tracker.setViewing(connID: 1, projectId: "one");
-      await _waitFor(() => pullRequests.replaceCalls.isNotEmpty);
-
-      expect(source.resolveCalls.single, ["/one"]);
-      expect(source.selectionCalls.single.single.branchName, "feature/current");
-      expect(pullRequests.replaceCalls.single.selections.single, isA<PullRequestTargetSelected>());
-      expect(renderedProjects, ["one"]);
     });
 
     test("deduplicates one GitHub target shared by multiple viewed projects", () async {
@@ -682,18 +628,6 @@ void main() {
       expect(source.selectionCalls, hasLength(1));
     });
   });
-}
-
-final class _FixedPullRequestRefreshSettingsService implements PullRequestRefreshSettingsService {
-  @override
-  PullRequestRefreshSettingsResponse get currentSettings =>
-      const PullRequestRefreshSettingsResponse(intervalSeconds: 30);
-
-  @override
-  Stream<PullRequestRefreshSettingsResponse> get changes => const Stream.empty();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 PrSyncService _service({

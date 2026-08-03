@@ -224,9 +224,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPullRequestRefreshSecondsLabel => 'Seconds';
 
   @override
-  String get settingsPullRequestRefreshHelp => 'Enter a whole number of seconds.';
-
-  @override
   String get settingsPullRequestRefreshInvalid => 'Enter a whole number of seconds.';
 
   @override

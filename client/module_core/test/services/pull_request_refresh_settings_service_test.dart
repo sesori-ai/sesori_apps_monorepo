@@ -2,7 +2,6 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/src/repositories/models/pull_request_refresh_settings_result.dart";
 import "package:sesori_dart_core/src/repositories/pull_request_refresh_settings_repository.dart";
 import "package:sesori_dart_core/src/services/pull_request_refresh_settings_service.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class _MockPullRequestRefreshSettingsRepository extends Mock implements PullRequestRefreshSettingsRepository {}
@@ -42,26 +41,5 @@ void main() {
     }
     expect(service.planUpdate(input: "20", bounds: bounds), isA<PullRequestRefreshSettingsUpdateRequest>());
     expect(service.planUpdate(input: "1800", bounds: bounds), isA<PullRequestRefreshSettingsUpdateRequest>());
-  });
-
-  test("delegates loading and mutation to the repository", () async {
-    when(repository.load).thenAnswer(
-      (_) async => const PullRequestRefreshSettingsLoadSupported(
-        response: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
-      ),
-    );
-    when(
-      () => repository.update(intervalSeconds: any(named: "intervalSeconds")),
-    ).thenAnswer(
-      (_) async => const PullRequestRefreshSettingsMutationCommitted(
-        response: PullRequestRefreshSettingsResponse(intervalSeconds: 45),
-      ),
-    );
-
-    await service.load();
-    await service.update(intervalSeconds: 45);
-
-    verify(repository.load).called(1);
-    verify(() => repository.update(intervalSeconds: 45)).called(1);
   });
 }
