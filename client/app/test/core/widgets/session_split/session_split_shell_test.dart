@@ -256,10 +256,9 @@ void main() {
       await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.keyboard)));
       await tester.pumpAndSettle();
       await tester.enterText(find.descendant(of: newSession, matching: find.byType(EditableText)), "do the thing");
-      await tester.tap(
-        find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)),
-        warnIfMissed: false,
-      );
+      // Send only accepts taps once the composer has rebuilt around its text.
+      await tester.pump();
+      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)));
       await tester.pump();
       expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
 

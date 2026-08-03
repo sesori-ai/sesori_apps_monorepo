@@ -109,7 +109,7 @@ Future<void> enterTypingMode(WidgetTester tester) async {
 
 /// Types a prompt and sends it. The pump in between lets the composer rebuild
 /// around the new text — send only accepts taps once the field has content.
-Future<void> enterTextAndSend(WidgetTester tester, String text) async {
+Future<void> enterTextAndSend({required WidgetTester tester, required String text}) async {
   await tester.enterText(find.byType(EditableText), text);
   await tester.pump();
   await tester.tap(find.byIcon(TablerRegular.arrow_up));
@@ -449,7 +449,7 @@ void main() {
     expect(find.text(loc.newSessionOptionsUnavailable), findsOneWidget);
 
     await enterTypingMode(tester);
-    await enterTextAndSend(tester, "use backend defaults");
+    await enterTextAndSend(tester: tester, text: "use backend defaults");
     await tester.pumpAndSettle();
 
     verify(
@@ -1193,7 +1193,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await enterTextAndSend(tester, "test message");
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1222,7 +1222,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await enterTextAndSend(tester, "test message");
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     final absorbingFinder = find.byWidgetPredicate(
@@ -1272,7 +1272,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await enterTextAndSend(tester, "test message");
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1315,7 +1315,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await enterTextAndSend(tester, "test message");
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1361,7 +1361,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await enterTextAndSend(tester, "test message");
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1400,7 +1400,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await enterTextAndSend(tester, "test message");
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1433,7 +1433,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await enterTextAndSend(tester, "test message");
+    await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
