@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../codex_metadata_repository.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_replay_tool_disposition.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
 import "../repositories/codex_model_repository.dart";
@@ -404,7 +405,10 @@ class CodexSessionService {
     return _messageRepository.readMessages(
       rolloutPath: path,
       sessionId: sessionId,
-      sessionStatus: sessionStatus,
+      replayToolDisposition: switch (sessionStatus) {
+        PluginSessionStatusIdle() => CodexReplayToolDisposition.terminalize,
+        PluginSessionStatusBusy() || PluginSessionStatusRetry() => CodexReplayToolDisposition.preserveRunning,
+      },
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
     );

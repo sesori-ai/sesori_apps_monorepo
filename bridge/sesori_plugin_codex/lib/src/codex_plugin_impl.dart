@@ -5,8 +5,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/codex_app_server_api.dart";
+import "api/models/codex_correlatable_item_event_dto.dart";
 import "api/models/codex_image_bearing_item_dto.dart";
 import "api/parsers/codex_command_execution_parser.dart";
+import "api/parsers/codex_file_change_parser.dart";
 import "api/parsers/codex_image_bearing_item_parser.dart";
 import "approval_registry.dart";
 import "codex_app_server_client.dart";
@@ -60,6 +62,7 @@ class CodexPlugin implements CodexManagedApi {
   final CodexToolLifecycleTracker _toolLifecycleTracker;
   final CodexToolOutcomeRepository _toolOutcomeRepository;
   final CodexCommandExecutionParser _commandExecutionParser;
+  final CodexFileChangeParser _fileChangeParser;
   final CodexImageBearingItemParser _imageBearingItemParser;
   final String _projectCwd;
   final Duration _keepaliveInterval;
@@ -127,6 +130,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexToolLifecycleTracker toolLifecycleTracker,
     required CodexToolOutcomeRepository toolOutcomeRepository,
     required CodexCommandExecutionParser commandExecutionParser,
+    required CodexFileChangeParser fileChangeParser,
     required CodexImageBearingItemParser imageBearingItemParser,
     required String projectCwd,
     required void Function()? onConnected,
@@ -142,6 +146,7 @@ class CodexPlugin implements CodexManagedApi {
          toolLifecycleTracker: toolLifecycleTracker,
          toolOutcomeRepository: toolOutcomeRepository,
          commandExecutionParser: commandExecutionParser,
+         fileChangeParser: fileChangeParser,
          imageBearingItemParser: imageBearingItemParser,
          projectCwd: projectCwd,
          onConnected: onConnected,
@@ -159,6 +164,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexToolLifecycleTracker toolLifecycleTracker,
     required CodexToolOutcomeRepository toolOutcomeRepository,
     required CodexCommandExecutionParser commandExecutionParser,
+    required CodexFileChangeParser fileChangeParser,
     required CodexImageBearingItemParser imageBearingItemParser,
     required String projectCwd,
     required void Function()? onConnected,
@@ -174,6 +180,7 @@ class CodexPlugin implements CodexManagedApi {
        _toolLifecycleTracker = toolLifecycleTracker,
        _toolOutcomeRepository = toolOutcomeRepository,
        _commandExecutionParser = commandExecutionParser,
+       _fileChangeParser = fileChangeParser,
        _imageBearingItemParser = imageBearingItemParser,
        _projectCwd = projectCwd,
        _onConnected = onConnected,
@@ -319,21 +326,22 @@ class CodexPlugin implements CodexManagedApi {
       return;
     }
     if (_isSupersededTurnLifecycleNotification(notification)) return;
+    final command = _commandExecutionParser.parse(
+      notification: notification,
+    );
+    final correlatableItem = command ?? _fileChangeParser.parse(notification: notification);
     final threadId = notification.params["threadId"] as String?;
     if (notification.method == "turn/started" && threadId != null) {
       // Calls initiated through this plugin start tailing before turn/start.
       // This fallback covers a turn started by another app-server client.
       _rolloutTailer.start(sessionId: threadId);
     }
-    final item = notification.params["item"];
-    final isCorrelatableItemStarted =
-        notification.method == "item/started" &&
-        item is Map &&
-        (item["type"] == "commandExecution" || item["type"] == "fileChange");
-    if (threadId != null && (notification.method == "item/completed" || isCorrelatableItemStarted)) {
+    final drainThreadId = correlatableItem?.threadId ?? threadId;
+    final isCorrelatableItemStarted = correlatableItem?.lifecycle == CodexCorrelatableItemLifecycle.started;
+    if (drainThreadId != null && (notification.method == "item/completed" || isCorrelatableItemStarted)) {
       // Codex persists the response item before emitting its stable lifecycle
       // event. Drain now so polling latency cannot split one tool identity.
-      _rolloutTailer.drain(sessionId: threadId);
+      _rolloutTailer.drain(sessionId: drainThreadId);
     }
     final terminalHistory =
         notification.method == "turn/completed" ||
@@ -349,13 +357,16 @@ class CodexPlugin implements CodexManagedApi {
     // final tool updates. Forced runtime teardown waits for this transition
     // before disconnecting the generation's event stream.
     final activityChanged = _maintainBookkeeping(notification);
-    final command = _commandExecutionParser.parse(
-      notification: notification,
-    );
-    final projectedTool = _toolLifecycleTracker.observeAppServerTool(
-      notification: notification,
-      imageGeneration: _parseImageGeneration(notification: notification),
-    );
+    final projectedTool = correlatableItem == null
+        ? _toolLifecycleTracker.observeUncorrelatedAppServerItem(
+            notification: notification,
+            imageGeneration: _parseImageGeneration(
+              notification: notification,
+            ),
+          )
+        : _toolLifecycleTracker.observeCorrelatableAppServerItem(
+            event: correlatableItem,
+          );
     if (command != null && projectedTool != null && !_deletedThreadIds.contains(command.threadId)) {
       try {
         await _toolOutcomeRepository.recordCommandOutcome(
@@ -375,7 +386,7 @@ class CodexPlugin implements CodexManagedApi {
     } else {
       _eventMapper
           .mapProjectedTool(
-            threadId: threadId!,
+            threadId: correlatableItem?.threadId ?? threadId!,
             tool: projectedTool,
           )
           .forEach(_eventBuffer.add);

@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart" show Harness;
 import "../api/codex_rollout_api.dart";
 import "../api/codex_tool_outcome_storage.dart";
 import "../api/parsers/codex_command_execution_parser.dart";
+import "../api/parsers/codex_file_change_parser.dart";
 import "../api/parsers/codex_image_bearing_item_parser.dart";
 import "../codex_config_reader.dart";
 import "../codex_event_mapper.dart";
@@ -98,6 +99,7 @@ CodexManagedApi _defaultBuildApi({
     ),
     toolOutcomeRepository: toolOutcomeRepository,
     commandExecutionParser: const CodexCommandExecutionParser(),
+    fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
     projectCwd: launchDirectory,
     onConnected: onConnected,

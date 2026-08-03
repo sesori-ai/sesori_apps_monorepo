@@ -1,13 +1,13 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../../codex_app_server_client.dart";
-import "../models/codex_command_execution_dto.dart";
 import "../models/codex_correlatable_item_event_dto.dart";
+import "../models/codex_file_change_dto.dart";
 
-class CodexCommandExecutionParser {
-  const CodexCommandExecutionParser();
+class CodexFileChangeParser {
+  const CodexFileChangeParser();
 
-  CodexCommandExecutionEventDto? parse({
+  CodexFileChangeEventDto? parse({
     required CodexServerNotification notification,
   }) {
     final lifecycle = switch (notification.method) {
@@ -18,29 +18,22 @@ class CodexCommandExecutionParser {
     if (lifecycle == null) return null;
 
     try {
-      final params = CodexCommandExecutionParamsDto.fromJson(
-        notification.params,
-      );
+      final params = CodexFileChangeParamsDto.fromJson(notification.params);
       final item = params.item;
-      if (item.type != CodexCommandExecutionItemType.commandExecution) {
-        return null;
-      }
+      if (item.type != CodexFileChangeItemType.fileChange) return null;
       final threadId = _usefulText(value: params.threadId);
       final itemId = _usefulText(value: item.id);
       if (threadId == null || itemId == null) return null;
-      return CodexCommandExecutionEventDto(
+      return CodexFileChangeEventDto(
         lifecycle: lifecycle,
         threadId: threadId,
         turnId: _usefulText(value: params.turnId),
         itemId: itemId,
-        command: item.command,
-        aggregatedOutput: item.aggregatedOutput,
         status: item.status,
-        exitCode: item.exitCode,
       );
     } on Object catch (error, stackTrace) {
       Log.w(
-        "[codex] skipping malformed command-execution notification",
+        "[codex] skipping malformed file-change notification",
         error,
         stackTrace,
       );

@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
 import "package:codex_plugin/src/api/models/codex_command_execution_dto.dart";
+import "package:codex_plugin/src/api/models/codex_correlatable_item_event_dto.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -42,10 +43,12 @@ void main() {
 
     await repository.recordCommandOutcome(
       command: const CodexCommandExecutionEventDto(
-        lifecycle: CodexCommandExecutionLifecycle.started,
+        lifecycle: CodexCorrelatableItemLifecycle.started,
         threadId: "session-1",
         turnId: "turn-1",
         itemId: "exec-1",
+        command: null,
+        aggregatedOutput: null,
         status: CodexCommandExecutionStatus.failed,
         exitCode: 1,
       ),
@@ -53,10 +56,12 @@ void main() {
     );
     await repository.recordCommandOutcome(
       command: const CodexCommandExecutionEventDto(
-        lifecycle: CodexCommandExecutionLifecycle.completed,
+        lifecycle: CodexCorrelatableItemLifecycle.completed,
         threadId: "session-1",
         turnId: "turn-1",
         itemId: "exec-2",
+        command: null,
+        aggregatedOutput: null,
         status: CodexCommandExecutionStatus.completed,
         exitCode: 0,
       ),
@@ -64,10 +69,12 @@ void main() {
     );
     await repository.recordCommandOutcome(
       command: const CodexCommandExecutionEventDto(
-        lifecycle: CodexCommandExecutionLifecycle.completed,
+        lifecycle: CodexCorrelatableItemLifecycle.completed,
         threadId: "session-1",
         turnId: "turn-1",
         itemId: "exec-3",
+        command: null,
+        aggregatedOutput: null,
         status: CodexCommandExecutionStatus.failed,
         exitCode: null,
       ),

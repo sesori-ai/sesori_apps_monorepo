@@ -173,7 +173,7 @@ $CodexCommandExecutionItemDtoCopyWith<$Res> get item {
 /// @nodoc
 mixin _$CodexCommandExecutionItemDto {
 
-@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType get type; String? get id;@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus get status;@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? get exitCode;
+@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType get type; String? get id;@JsonKey(fromJson: _commandExecutionTextFromJson) String? get command;@JsonKey(fromJson: _commandExecutionTextFromJson) String? get aggregatedOutput;@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus get status;@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? get exitCode;
 /// Create a copy of CodexCommandExecutionItemDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -186,16 +186,16 @@ $CodexCommandExecutionItemDtoCopyWith<CodexCommandExecutionItemDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCommandExecutionItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCommandExecutionItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.command, command) || other.command == command)&&(identical(other.aggregatedOutput, aggregatedOutput) || other.aggregatedOutput == aggregatedOutput)&&(identical(other.status, status) || other.status == status)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,id,status,exitCode);
+int get hashCode => Object.hash(runtimeType,type,id,command,aggregatedOutput,status,exitCode);
 
 @override
 String toString() {
-  return 'CodexCommandExecutionItemDto(type: $type, id: $id, status: $status, exitCode: $exitCode)';
+  return 'CodexCommandExecutionItemDto(type: $type, id: $id, command: $command, aggregatedOutput: $aggregatedOutput, status: $status, exitCode: $exitCode)';
 }
 
 
@@ -206,7 +206,7 @@ abstract mixin class $CodexCommandExecutionItemDtoCopyWith<$Res>  {
   factory $CodexCommandExecutionItemDtoCopyWith(CodexCommandExecutionItemDto value, $Res Function(CodexCommandExecutionItemDto) _then) = _$CodexCommandExecutionItemDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType type, String? id,@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus status,@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? exitCode
+@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType type, String? id,@JsonKey(fromJson: _commandExecutionTextFromJson) String? command,@JsonKey(fromJson: _commandExecutionTextFromJson) String? aggregatedOutput,@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus status,@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? exitCode
 });
 
 
@@ -223,10 +223,12 @@ class _$CodexCommandExecutionItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexCommandExecutionItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? id = freezed,Object? status = null,Object? exitCode = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? id = freezed,Object? command = freezed,Object? aggregatedOutput = freezed,Object? status = null,Object? exitCode = freezed,}) {
   return _then(_self.copyWith(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexCommandExecutionItemType,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
+as String?,aggregatedOutput: freezed == aggregatedOutput ? _self.aggregatedOutput : aggregatedOutput // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as CodexCommandExecutionStatus,exitCode: freezed == exitCode ? _self.exitCode : exitCode // ignore: cast_nullable_to_non_nullable
 as int?,
@@ -241,11 +243,13 @@ as int?,
 @JsonSerializable()
 
 class _CodexCommandExecutionItemDto implements CodexCommandExecutionItemDto {
-  const _CodexCommandExecutionItemDto({@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) required this.type, required this.id, @JsonKey(fromJson: _commandExecutionStatusFromJson) required this.status, @JsonKey(fromJson: _commandExecutionExitCodeFromJson) required this.exitCode});
+  const _CodexCommandExecutionItemDto({@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) required this.type, required this.id, @JsonKey(fromJson: _commandExecutionTextFromJson) required this.command, @JsonKey(fromJson: _commandExecutionTextFromJson) required this.aggregatedOutput, @JsonKey(fromJson: _commandExecutionStatusFromJson) required this.status, @JsonKey(fromJson: _commandExecutionExitCodeFromJson) required this.exitCode});
   factory _CodexCommandExecutionItemDto.fromJson(Map<String, dynamic> json) => _$CodexCommandExecutionItemDtoFromJson(json);
 
 @override@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) final  CodexCommandExecutionItemType type;
 @override final  String? id;
+@override@JsonKey(fromJson: _commandExecutionTextFromJson) final  String? command;
+@override@JsonKey(fromJson: _commandExecutionTextFromJson) final  String? aggregatedOutput;
 @override@JsonKey(fromJson: _commandExecutionStatusFromJson) final  CodexCommandExecutionStatus status;
 @override@JsonKey(fromJson: _commandExecutionExitCodeFromJson) final  int? exitCode;
 
@@ -262,16 +266,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCommandExecutionItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCommandExecutionItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.command, command) || other.command == command)&&(identical(other.aggregatedOutput, aggregatedOutput) || other.aggregatedOutput == aggregatedOutput)&&(identical(other.status, status) || other.status == status)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,id,status,exitCode);
+int get hashCode => Object.hash(runtimeType,type,id,command,aggregatedOutput,status,exitCode);
 
 @override
 String toString() {
-  return 'CodexCommandExecutionItemDto(type: $type, id: $id, status: $status, exitCode: $exitCode)';
+  return 'CodexCommandExecutionItemDto(type: $type, id: $id, command: $command, aggregatedOutput: $aggregatedOutput, status: $status, exitCode: $exitCode)';
 }
 
 
@@ -282,7 +286,7 @@ abstract mixin class _$CodexCommandExecutionItemDtoCopyWith<$Res> implements $Co
   factory _$CodexCommandExecutionItemDtoCopyWith(_CodexCommandExecutionItemDto value, $Res Function(_CodexCommandExecutionItemDto) _then) = __$CodexCommandExecutionItemDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType type, String? id,@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus status,@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? exitCode
+@JsonKey(unknownEnumValue: CodexCommandExecutionItemType.unknown, defaultValue: CodexCommandExecutionItemType.unknown) CodexCommandExecutionItemType type, String? id,@JsonKey(fromJson: _commandExecutionTextFromJson) String? command,@JsonKey(fromJson: _commandExecutionTextFromJson) String? aggregatedOutput,@JsonKey(fromJson: _commandExecutionStatusFromJson) CodexCommandExecutionStatus status,@JsonKey(fromJson: _commandExecutionExitCodeFromJson) int? exitCode
 });
 
 
@@ -299,10 +303,12 @@ class __$CodexCommandExecutionItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexCommandExecutionItemDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? id = freezed,Object? status = null,Object? exitCode = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? id = freezed,Object? command = freezed,Object? aggregatedOutput = freezed,Object? status = null,Object? exitCode = freezed,}) {
   return _then(_CodexCommandExecutionItemDto(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexCommandExecutionItemType,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
+as String?,aggregatedOutput: freezed == aggregatedOutput ? _self.aggregatedOutput : aggregatedOutput // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as CodexCommandExecutionStatus,exitCode: freezed == exitCode ? _self.exitCode : exitCode // ignore: cast_nullable_to_non_nullable
 as int?,

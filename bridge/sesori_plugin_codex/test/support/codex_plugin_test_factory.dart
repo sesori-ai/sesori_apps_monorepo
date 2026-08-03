@@ -3,6 +3,7 @@ import "dart:async";
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
 import "package:codex_plugin/src/api/parsers/codex_command_execution_parser.dart";
+import "package:codex_plugin/src/api/parsers/codex_file_change_parser.dart";
 import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
@@ -65,6 +66,7 @@ CodexPlugin createInjectedCodexPlugin({
     ),
     toolOutcomeRepository: resolvedToolOutcomeRepository,
     commandExecutionParser: const CodexCommandExecutionParser(),
+    fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
     projectCwd: projectCwd,
     onConnected: null,

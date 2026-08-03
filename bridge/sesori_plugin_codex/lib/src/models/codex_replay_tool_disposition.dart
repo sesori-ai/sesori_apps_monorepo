@@ -1,0 +1,4 @@
+enum CodexReplayToolDisposition {
+  preserveRunning,
+  terminalize,
+}

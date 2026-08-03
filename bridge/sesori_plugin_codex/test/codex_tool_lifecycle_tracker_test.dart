@@ -1,9 +1,12 @@
 import "package:codex_plugin/src/api/models/codex_image_bearing_item_dto.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
+import "package:codex_plugin/src/api/parsers/codex_command_execution_parser.dart";
+import "package:codex_plugin/src/api/parsers/codex_file_change_parser.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
+import "package:codex_plugin/src/repositories/models/codex_projected_tool.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -1460,4 +1463,23 @@ CodexServerNotification _fileChangeNotification({
       },
     },
   );
+}
+
+extension on CodexToolLifecycleTracker {
+  CodexProjectedTool? observeAppServerTool({
+    required CodexServerNotification notification,
+    required CodexImageGenerationItemDto? imageGeneration,
+  }) {
+    final correlatableItem =
+        const CodexCommandExecutionParser().parse(
+          notification: notification,
+        ) ??
+        const CodexFileChangeParser().parse(notification: notification);
+    return correlatableItem == null
+        ? observeUncorrelatedAppServerItem(
+            notification: notification,
+            imageGeneration: imageGeneration,
+          )
+        : observeCorrelatableAppServerItem(event: correlatableItem);
+  }
 }

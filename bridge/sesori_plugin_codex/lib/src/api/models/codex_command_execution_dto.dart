@@ -17,11 +17,6 @@ enum CodexCommandExecutionStatus {
   unknown,
 }
 
-enum CodexCommandExecutionLifecycle {
-  started,
-  completed,
-}
-
 CodexCommandExecutionStatus _commandExecutionStatusFromJson(Object? value) {
   return switch (value) {
     "inProgress" => CodexCommandExecutionStatus.inProgress,
@@ -34,6 +29,10 @@ CodexCommandExecutionStatus _commandExecutionStatusFromJson(Object? value) {
 
 int? _commandExecutionExitCodeFromJson(Object? value) {
   return value is num ? value.toInt() : null;
+}
+
+String? _commandExecutionTextFromJson(Object? value) {
+  return value is String ? value : null;
 }
 
 @freezed
@@ -57,28 +56,12 @@ sealed class CodexCommandExecutionItemDto with _$CodexCommandExecutionItemDto {
     )
     required CodexCommandExecutionItemType type,
     required String? id,
+    @JsonKey(fromJson: _commandExecutionTextFromJson) required String? command,
+    @JsonKey(fromJson: _commandExecutionTextFromJson) required String? aggregatedOutput,
     @JsonKey(fromJson: _commandExecutionStatusFromJson) required CodexCommandExecutionStatus status,
     @JsonKey(fromJson: _commandExecutionExitCodeFromJson) required int? exitCode,
   }) = _CodexCommandExecutionItemDto;
 
   factory CodexCommandExecutionItemDto.fromJson(Map<String, dynamic> json) =>
       _$CodexCommandExecutionItemDtoFromJson(json);
-}
-
-final class CodexCommandExecutionEventDto {
-  const CodexCommandExecutionEventDto({
-    required this.lifecycle,
-    required this.threadId,
-    required this.turnId,
-    required this.itemId,
-    required this.status,
-    required this.exitCode,
-  });
-
-  final CodexCommandExecutionLifecycle lifecycle;
-  final String threadId;
-  final String? turnId;
-  final String itemId;
-  final CodexCommandExecutionStatus status;
-  final int? exitCode;
 }

@@ -35,6 +35,8 @@ _CodexCommandExecutionItemDto _$CodexCommandExecutionItemDtoFromJson(
       ) ??
       CodexCommandExecutionItemType.unknown,
   id: json['id'] as String?,
+  command: _commandExecutionTextFromJson(json['command']),
+  aggregatedOutput: _commandExecutionTextFromJson(json['aggregatedOutput']),
   status: _commandExecutionStatusFromJson(json['status']),
   exitCode: _commandExecutionExitCodeFromJson(json['exitCode']),
 );
@@ -44,6 +46,8 @@ Map<String, dynamic> _$CodexCommandExecutionItemDtoToJson(
 ) => <String, dynamic>{
   'type': _$CodexCommandExecutionItemTypeEnumMap[instance.type]!,
   'id': instance.id,
+  'command': instance.command,
+  'aggregatedOutput': instance.aggregatedOutput,
   'status': _$CodexCommandExecutionStatusEnumMap[instance.status]!,
   'exitCode': instance.exitCode,
 };

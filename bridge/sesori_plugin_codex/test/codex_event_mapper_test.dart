@@ -4,6 +4,8 @@ import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/codex_app_server_api.dart";
 import "package:codex_plugin/src/api/models/codex_image_bearing_item_dto.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
+import "package:codex_plugin/src/api/parsers/codex_command_execution_parser.dart";
+import "package:codex_plugin/src/api/parsers/codex_file_change_parser.dart";
 import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
@@ -1531,17 +1533,26 @@ class _ToolLifecycleHarness {
   }
 
   List<BridgeSseEvent> map(CodexServerNotification notification) {
+    final correlatableItem =
+        const CodexCommandExecutionParser().parse(
+          notification: notification,
+        ) ??
+        const CodexFileChangeParser().parse(notification: notification);
     final item = notification.params["item"];
     final image = item is Map
         ? const CodexImageBearingItemParser().parse(
             item: Map<String, dynamic>.from(item),
           )
         : null;
-    final tool = _toolTracker.observeAppServerTool(
-      notification: notification,
-      imageGeneration: image is CodexImageGenerationItemDto ? image : null,
-    );
-    final threadId = notification.params["threadId"];
+    final tool = correlatableItem == null
+        ? _toolTracker.observeUncorrelatedAppServerItem(
+            notification: notification,
+            imageGeneration: image is CodexImageGenerationItemDto ? image : null,
+          )
+        : _toolTracker.observeCorrelatableAppServerItem(
+            event: correlatableItem,
+          );
+    final threadId = correlatableItem?.threadId ?? notification.params["threadId"];
     if (tool == null || threadId is! String) {
       return _eventMapper.map(notification);
     }

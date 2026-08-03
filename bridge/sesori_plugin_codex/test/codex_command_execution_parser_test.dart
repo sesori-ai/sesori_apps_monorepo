@@ -1,4 +1,5 @@
 import "package:codex_plugin/src/api/models/codex_command_execution_dto.dart";
+import "package:codex_plugin/src/api/models/codex_correlatable_item_event_dto.dart";
 import "package:codex_plugin/src/api/parsers/codex_command_execution_parser.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:test/test.dart";
@@ -16,6 +17,8 @@ void main() {
           "item": {
             "type": "commandExecution",
             "id": "exec-1",
+            "command": "printf marker",
+            "aggregatedOutput": "marker\n",
             "status": "failed",
             "exitCode": 1,
           },
@@ -23,10 +26,12 @@ void main() {
       ),
     );
 
-    expect(event?.lifecycle, CodexCommandExecutionLifecycle.completed);
+    expect(event?.lifecycle, CodexCorrelatableItemLifecycle.completed);
     expect(event?.threadId, "thread-1");
     expect(event?.turnId, "turn-1");
     expect(event?.itemId, "exec-1");
+    expect(event?.command, "printf marker");
+    expect(event?.aggregatedOutput, "marker\n");
     expect(event?.status, CodexCommandExecutionStatus.failed);
     expect(event?.exitCode, 1);
   });
