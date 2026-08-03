@@ -13,7 +13,6 @@ sealed class QueuedSessionSubmission {
   const factory QueuedSessionSubmission.command({
     required String text,
     required String command,
-    required List<ComposerAttachment> attachments,
   }) = QueuedCommandSubmission;
 
   String get text;
@@ -53,15 +52,18 @@ final class QueuedCommandSubmission extends QueuedSessionSubmission {
   final String text;
   @override
   final String command;
-  @override
-  final List<ComposerAttachment> attachments;
 
   const QueuedCommandSubmission({
     required this.text,
     required this.command,
-    required this.attachments,
   });
 
   @override
   ComposerInputMode get inputMode => ComposerInputMode.typed;
+
+  /// The bridge's command paths carry only the text part, so a queued command
+  /// can never hold images. Keeping that off the variant means a command
+  /// submission cannot silently strip attachments on its way to the bridge.
+  @override
+  List<ComposerAttachment> get attachments => const [];
 }

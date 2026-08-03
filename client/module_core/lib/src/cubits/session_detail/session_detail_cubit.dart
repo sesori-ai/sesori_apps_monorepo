@@ -1051,7 +1051,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     final submission = normalizedCommand == null
         ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode, attachments: attachments)
-        : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand, attachments: attachments);
+        : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);
     if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
       _promptQueue.enqueue(submission);
       _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
@@ -1061,17 +1061,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
+    // Send from the submission so the immediate and drained paths carry the
+    // exact same payload — notably a command submission's empty attachments.
     final result = await _sessionRepository.sendMessage(
       sessionId: _sessionId,
-      text: trimmed,
-      attachments: attachments,
+      text: submission.text,
+      attachments: submission.attachments,
       agent: current.selectedAgent,
       model: _agentModelToPromptModel(current.selectedAgentModel),
       variant: switch (current.selectedAgentModel?.variant) {
         null => null,
         final variant => SessionVariant(id: variant),
       },
-      command: normalizedCommand,
+      command: submission.command,
     );
 
     switch (result) {

@@ -67,9 +67,9 @@ class QueuedMessageBubble extends StatelessWidget {
                           submission.displayText.isNotEmpty
                               ? submission.displayText
                               : loc.sessionDetailQueuedAttachmentCount(submission.attachments.length),
-                            style: prego.textTheme.textSm.regular.copyWith(
-                              color: prego.colors.fgSuccessPrimary,
-                            ),
+                          style: prego.textTheme.textSm.regular.copyWith(
+                            color: prego.colors.fgSuccessPrimary,
+                          ),
                         ),
                       ],
                     ),
