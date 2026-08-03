@@ -339,6 +339,7 @@ void main() {
             "type": "secret-token",
             "ghp_secretCredential": "secret-credential",
             "query": "secret-query",
+            "cell_id": "secret-cell-id",
           },
           "internal_chat_message_metadata_passthrough": {
             "turn_id": "secret-turn-id",
@@ -359,7 +360,8 @@ void main() {
         contains(
           'schema={type:enum("response_item"),payload:{'
           'type:enum("function_call"),name:String,call_id:int,arguments:{type:String,'
-          '<redacted-key>:String,query:String},internal_chat_message_metadata_passthrough:{turn_id:String},'
+          '<redacted-key>:String,query:String,cell_id:String},'
+          'internal_chat_message_metadata_passthrough:{turn_id:String},'
           "action:String}}",
         ),
       );
@@ -368,6 +370,7 @@ void main() {
       expect(output, isNot(contains("secret-token")));
       expect(output, isNot(contains("secret-credential")));
       expect(output, isNot(contains("secret-query")));
+      expect(output, isNot(contains("secret-cell-id")));
       expect(output, isNot(contains("secret-turn-id")));
       expect(output, isNot(contains("secret-source-content")));
     });
@@ -1277,7 +1280,7 @@ void main() {
           jsonEncode(
             output(
               callId: "call-shell",
-              text: "Script running with cell ID 7\nOutput:\n",
+              text: "Script running with cell ID 7\nOutput:\nearly output\n",
             ),
           ),
           jsonEncode(
@@ -1291,7 +1294,7 @@ void main() {
           jsonEncode(
             output(
               callId: "call-wait",
-              text: "Script running with cell ID 8\nOutput:\n",
+              text: "Script running with cell ID 8\nOutput:\nmiddle output\n",
             ),
           ),
           jsonEncode(
@@ -1316,6 +1319,12 @@ void main() {
               name: "exec_command",
             ),
           ),
+          jsonEncode(
+            output(
+              callId: "call-completed",
+              text: "Script running with cell ID 9\nOutput:\n",
+            ),
+          ),
           jsonEncode({
             "type": "event_msg",
             "payload": {
@@ -1329,6 +1338,12 @@ void main() {
               command: "sleep 60",
               turnId: "turn-aborted",
               name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-aborted",
+              text: "Script running with cell ID 10\nOutput:\n",
             ),
           ),
           jsonEncode({
@@ -1393,7 +1408,9 @@ void main() {
           if (message.parts.single.type == PluginMessagePartType.tool) message.info.id: message.parts.single,
       };
       expect(tools["call-shell"]?.state?.status, PluginToolStatus.error);
-      expect(tools["call-shell"]?.state?.output, "aborted by user after 1.0s");
+      expect(tools["call-shell"]?.state?.output, contains("early output"));
+      expect(tools["call-shell"]?.state?.output, contains("middle output"));
+      expect(tools["call-shell"]?.state?.output, contains("aborted by user after 1.0s"));
       expect(tools["call-completed"]?.state?.status, PluginToolStatus.completed);
       expect(tools["call-aborted"]?.state?.status, PluginToolStatus.error);
       expect(tools["call-interrupted-legacy"]?.state?.status, PluginToolStatus.error);

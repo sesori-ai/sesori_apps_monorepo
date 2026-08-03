@@ -17,6 +17,7 @@ class CodexToolCorrelationTracker {
   final Map<String, List<String>> _pendingShellCallsByTurn = {};
   final Map<String, CodexRolloutToolCall> _visibleCalls = {};
   final Map<String, String> _visibleCallByCell = {};
+  final Map<String, String> _visibleCallByThreadCell = {};
   final Map<String, String> _waitTargetByCall = {};
   final Set<String> _internalCalls = {};
   final Map<String, String> _appServerItemAliases = {};
@@ -40,13 +41,15 @@ class CodexToolCorrelationTracker {
       final waitKey = _callKey(threadId: threadId, callId: wait.callId);
       _internalCalls.add(waitKey);
       final turnId = wait.turnId;
-      final target = turnId == null
-          ? null
-          : _visibleCallByCell[_cellKey(
-              threadId: threadId,
-              turnId: turnId,
-              cellId: wait.cellId,
-            )];
+      final target =
+          (turnId == null
+              ? null
+              : _visibleCallByCell[_cellKey(
+                  threadId: threadId,
+                  turnId: turnId,
+                  cellId: wait.cellId,
+                )]) ??
+          _visibleCallByThreadCell[_threadCellKey(threadId: threadId, cellId: wait.cellId)];
       if (target != null) _waitTargetByCall[waitKey] = target;
       return const CodexRolloutToolSuppressed();
     }
@@ -94,8 +97,11 @@ class CodexToolCorrelationTracker {
       CodexRolloutToolCompletedResult() || CodexRolloutToolErrorResult() => null,
     };
     final turnId = visibleCall?.turnId;
-    if (cellId != null && turnId != null) {
-      _visibleCallByCell[_cellKey(threadId: threadId, turnId: turnId, cellId: cellId)] = canonicalCallId;
+    if (cellId != null) {
+      _visibleCallByThreadCell[_threadCellKey(threadId: threadId, cellId: cellId)] = canonicalCallId;
+      if (turnId != null) {
+        _visibleCallByCell[_cellKey(threadId: threadId, turnId: turnId, cellId: cellId)] = canonicalCallId;
+      }
     }
     return waitTarget == null
         ? const CodexRolloutToolPassthrough()
@@ -139,6 +145,7 @@ class CodexToolCorrelationTracker {
     _pendingShellCallsByTurn.removeWhere((key, _) => key.startsWith(prefix));
     _visibleCalls.removeWhere((key, _) => key.startsWith(prefix));
     _visibleCallByCell.removeWhere((key, _) => key.startsWith(prefix));
+    _visibleCallByThreadCell.removeWhere((key, _) => key.startsWith(prefix));
     _waitTargetByCall.removeWhere((key, _) => key.startsWith(prefix));
     _internalCalls.removeWhere((key) => key.startsWith(prefix));
     _appServerItemAliases.removeWhere((key, _) => key.startsWith(prefix));
@@ -148,6 +155,7 @@ class CodexToolCorrelationTracker {
     _pendingShellCallsByTurn.clear();
     _visibleCalls.clear();
     _visibleCallByCell.clear();
+    _visibleCallByThreadCell.clear();
     _waitTargetByCall.clear();
     _internalCalls.clear();
     _appServerItemAliases.clear();
@@ -159,6 +167,9 @@ class CodexToolCorrelationTracker {
 
   String _cellKey({required String threadId, required String turnId, required String cellId}) =>
       "$threadId\u0000cell\u0000$turnId\u0000$cellId";
+
+  String _threadCellKey({required String threadId, required String cellId}) =>
+      "$threadId\u0000thread-cell\u0000$cellId";
 
   String _appServerItemKey({required String threadId, required String itemId}) => "$threadId\u0000item\u0000$itemId";
 }

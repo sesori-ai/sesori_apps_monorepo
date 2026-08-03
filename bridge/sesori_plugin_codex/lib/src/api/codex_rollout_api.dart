@@ -361,6 +361,7 @@ const _rolloutSchemaKeyNames = {
   "output",
   "action",
   "query",
+  "cell_id",
   "text",
   "status",
   "result",

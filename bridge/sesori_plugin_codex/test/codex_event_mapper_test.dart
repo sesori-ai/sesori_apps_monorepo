@@ -660,6 +660,153 @@ void main() {
       mapper.clearRolloutTurn(threadId: "t-raw");
     });
 
+    test("projected wait results preserve earlier output", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "call_id": "call-long",
+          "name": "exec",
+          "input": "await tools.exec_command({cmd: 'sleep 30'});",
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-long",
+          },
+        },
+      });
+      final running = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call_output",
+          "call_id": "call-long",
+          "output": "Script running with cell ID 7\nOutput:\nearly output\n",
+        },
+      });
+      final completedWait = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "call-wait",
+          "output": "Script completed with exit code 0\nFinal output:\nlate output\n",
+        },
+      });
+
+      mapper
+        ..mapRolloutLine(
+          threadId: "t-long",
+          line: call,
+          toolProjection: passthroughProjection,
+        )
+        ..mapRolloutLine(
+          threadId: "t-long",
+          line: running,
+          toolProjection: passthroughProjection,
+        );
+      final events = mapper.mapRolloutLine(
+        threadId: "t-long",
+        line: completedWait,
+        toolProjection: const CodexRolloutToolCanonical(
+          callId: "call-long",
+        ),
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.state?.status, PluginToolStatus.completed);
+      expect(part.state?.output, contains("early output"));
+      expect(part.state?.output, contains("late output"));
+      mapper.clearRolloutTurn(threadId: "t-long");
+    });
+
+    test("turn-aborted rollout evidence closes running tools", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "call_id": "call-aborted",
+          "name": "exec",
+          "input": "await tools.exec_command({cmd: 'sleep 30'});",
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-aborted",
+          },
+        },
+      });
+      final running = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call_output",
+          "call_id": "call-aborted",
+          "output": "Script running with cell ID 7\nOutput:\nearly output\n",
+        },
+      });
+      final aborted = CodexRolloutLineDto.fromJson({
+        "type": "event_msg",
+        "payload": {
+          "type": "turn_aborted",
+          "turn_id": "turn-aborted",
+        },
+      });
+
+      mapper
+        ..mapRolloutLine(
+          threadId: "t-aborted",
+          line: call,
+          toolProjection: passthroughProjection,
+        )
+        ..mapRolloutLine(
+          threadId: "t-aborted",
+          line: running,
+          toolProjection: passthroughProjection,
+        );
+      final events = mapper.mapRolloutLine(
+        threadId: "t-aborted",
+        line: aborted,
+        toolProjection: passthroughProjection,
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.messageID, "call-aborted");
+      expect(part.state?.status, PluginToolStatus.error);
+      expect(part.state?.output, contains("early output"));
+      mapper.clearRolloutTurn(threadId: "t-aborted");
+    });
+
+    test("rollout terminal evidence does not replace app-server command completion", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-app-server",
+          "name": "exec_command",
+          "arguments": '{"cmd":"sleep 30"}',
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-app-server",
+          },
+        },
+      });
+      final completed = CodexRolloutLineDto.fromJson({
+        "type": "event_msg",
+        "payload": {
+          "type": "task_complete",
+          "turn_id": "turn-app-server",
+        },
+      });
+
+      mapper.mapRolloutLine(
+        threadId: "t-app-server",
+        line: call,
+        toolProjection: passthroughProjection,
+      );
+
+      expect(
+        mapper.mapRolloutLine(
+          threadId: "t-app-server",
+          line: completed,
+          toolProjection: passthroughProjection,
+        ),
+        isEmpty,
+      );
+      mapper.clearRolloutTurn(threadId: "t-app-server");
+    });
+
     test("a structured non-zero exit overrides an unclassified raw result", () {
       final call = CodexRolloutLineDto.fromJson({
         "type": "response_item",
