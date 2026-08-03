@@ -249,6 +249,56 @@ void main() {
             "// @exec: {\"yield_time_ms\": 120000}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
       },
     });
+    final contentForwardedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-content-forwarded-image-wrapper",
+        "name": "exec",
+        "input":
+            '// @exec: {"yield_time_ms": 120000, "max_output_tokens": 2000}\n'
+            "const r = await tools.image_gen__imagegen({prompt: 'private'});\n"
+            "for (const c of (r?.content ?? [])) {\n"
+            '  if (c.type === "image") image(c);\n'
+            '  else if (c.type === "text") text(c.text);\n'
+            "}\n"
+            "if (r?.image_url) generatedImage(r);\n"
+            "text(JSON.stringify({structuredContent:r?.structuredContent,_meta:r?._meta}));\n",
+      },
+    });
+    final previewForwardedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-preview-forwarded-image-wrapper",
+        "name": "exec",
+        "input":
+            '// @exec: {"yield_time_ms": 120000, "max_output_tokens": 2000}\n'
+            "const r = await tools.image_gen__imagegen({prompt: 'private'});\n"
+            "for (const c of (r?.content ?? [])) {\n"
+            '  if (c.type === "image") image(c);\n'
+            '  else if (c.type === "text") text(c.text);\n'
+            "}\n"
+            "if (r?.image_url) generatedImage(r);\n",
+      },
+    });
+    final imageWrapperWithAnotherTool = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-image-wrapper-with-another-tool",
+        "name": "exec",
+        "input":
+            "const r = await tools.image_gen__imagegen({prompt: 'private'});\n"
+            "await tools.exec_command({cmd: 'pwd'});\n"
+            "for (const c of (r?.content ?? [])) {\n"
+            '  if (c.type === "image") image(c);\n'
+            '  else if (c.type === "text") text(c.text);\n'
+            "}\n"
+            "if (r?.image_url) generatedImage(r);\n"
+            "text(JSON.stringify({structuredContent:r?.structuredContent,_meta:r?._meta}));\n",
+      },
+    });
     final unrelatedForwarding = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -280,6 +330,27 @@ void main() {
         line: directedForwardedWrapper,
       ),
       isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: contentForwardedWrapper,
+      ),
+      isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: previewForwardedWrapper,
+      ),
+      isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: imageWrapperWithAnotherTool,
+      ),
+      hasLength(1),
     );
     expect(
       target.observeRolloutLine(

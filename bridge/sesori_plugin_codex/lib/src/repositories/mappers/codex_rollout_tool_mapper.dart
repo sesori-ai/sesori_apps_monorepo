@@ -640,12 +640,57 @@ final RegExp _forwardedGeneratedImageInvocationPattern = RegExp(
   r"generatedImage\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*;?\s*$",
 );
 
+final RegExp _contentForwardedGeneratedImageInvocationPattern = RegExp(
+  r'^\s*(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*await\s+'
+  r'tools\.image_gen__[A-Za-z0-9_]+\s*\([\s\S]*\)\s*;\s*'
+  r'for\s*\(\s*const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s+of\s+\(\s*'
+  r'([A-Za-z_$][A-Za-z0-9_$]*)\?\.content\s*\?\?\s*\[\s*\]\s*\)\s*\)\s*\{\s*'
+  r'if\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\.type\s*===\s*"image"\s*\)\s*'
+  r'image\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*;\s*'
+  r'else\s+if\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\.type\s*===\s*"text"\s*\)\s*'
+  r'text\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\.text\s*\)\s*;\s*\}\s*'
+  r'if\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\?\.image_url\s*\)\s*'
+  r'generatedImage\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*;\s*'
+  r'(?:text\s*\(\s*JSON\.stringify\s*\(\s*\{\s*structuredContent\s*:\s*'
+  r'([A-Za-z_$][A-Za-z0-9_$]*)\?\.structuredContent\s*,\s*_meta\s*:\s*'
+  r'([A-Za-z_$][A-Za-z0-9_$]*)\?\._meta\s*\}\s*\)\s*\)\s*;?\s*)?$',
+);
+
+final RegExp _toolInvocationPattern = RegExp(
+  r"\btools\.[A-Za-z_$][A-Za-z0-9_$.]*\s*\(",
+);
+
 bool _isGeneratedImageInvocation(String input) {
   final directive = _generatedExecDirectivePattern.firstMatch(input);
   final invocation = directive == null ? input : input.substring(directive.end);
+  final toolInvocations = _toolInvocationPattern
+      .allMatches(invocation)
+      .toList(
+        growable: false,
+      );
+  if (toolInvocations.length != 1 || !toolInvocations.single.group(0)!.startsWith("tools.image_gen__")) {
+    return false;
+  }
   if (_generatedImageInvocationPattern.hasMatch(invocation)) return true;
   final forwarded = _forwardedGeneratedImageInvocationPattern.firstMatch(
     invocation,
   );
-  return forwarded != null && forwarded.group(1) == forwarded.group(2);
+  if (forwarded != null && forwarded.group(1) == forwarded.group(2)) {
+    return true;
+  }
+  final contentForwarded = _contentForwardedGeneratedImageInvocationPattern.firstMatch(
+    invocation,
+  );
+  if (contentForwarded == null) return false;
+  final resultVariable = contentForwarded.group(1);
+  final contentVariable = contentForwarded.group(2);
+  return [3, 8, 9].every(
+        (group) => contentForwarded.group(group) == resultVariable,
+      ) &&
+      [10, 11].every(
+        (group) => contentForwarded.group(group) == null || contentForwarded.group(group) == resultVariable,
+      ) &&
+      [4, 5, 6, 7].every(
+        (group) => contentForwarded.group(group) == contentVariable,
+      );
 }
