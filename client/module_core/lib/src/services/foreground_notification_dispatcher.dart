@@ -7,11 +7,11 @@ import "../logging/logging.dart";
 import "../platform/local_notification_client.dart";
 import "../platform/push_messaging_source.dart";
 import "../platform/push_notification_message.dart";
-import "../repositories/notification_preferences_repository.dart";
+import "notification_preferences_service.dart";
 
 @lazySingleton
 class ForegroundNotificationDispatcher {
-  final NotificationPreferencesRepository _preferencesRepository;
+  final NotificationPreferencesService _preferencesService;
   final LocalNotificationClient _localNotificationClient;
   final PushMessagingSource _pushMessagingSource;
 
@@ -20,10 +20,10 @@ class ForegroundNotificationDispatcher {
   bool _disposed = false;
 
   ForegroundNotificationDispatcher({
-    required NotificationPreferencesRepository notificationPreferencesRepository,
+    required NotificationPreferencesService notificationPreferencesService,
     required LocalNotificationClient localNotificationClient,
     required PushMessagingSource pushMessagingSource,
-  }) : _preferencesRepository = notificationPreferencesRepository,
+  }) : _preferencesService = notificationPreferencesService,
        _localNotificationClient = localNotificationClient,
        _pushMessagingSource = pushMessagingSource;
 
@@ -54,7 +54,7 @@ class ForegroundNotificationDispatcher {
 
   Future<void> _dispatchForegroundMessage({required PushNotificationMessage message}) async {
     final notificationData = NotificationData.fromJson(message.data);
-    final isEnabled = await _preferencesRepository.isEnabled(category: notificationData.category);
+    final isEnabled = await _preferencesService.isEnabled(category: notificationData.category);
     if (!isEnabled) {
       return;
     }

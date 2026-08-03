@@ -154,6 +154,45 @@
   "settingsSectionAccount": "Account",
   "settingsNotificationsTitle": "Notifications",
   "settingsHarnessesTitle": "Harnesses",
+  "settingsSectionBridge": "Bridge",
+  "settingsPullRequestRefreshTitle": "Pull request refresh",
+  "settingsPullRequestRefreshDescription": "How often viewed projects refresh pull request status.",
+  "settingsPullRequestRefreshLoading": "Loading the bridge setting…",
+  "settingsPullRequestRefreshDisconnected": "Connect to a bridge to configure this setting.",
+  "settingsPullRequestRefreshUnsupported": "Update the connected bridge to configure this setting.",
+  "settingsPullRequestRefreshLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
+  "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
+  "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
+  "settingsPullRequestRefreshStateChanged": "The bridge setting changed while you were editing. Try again.",
+  "settingsPullRequestRefreshUnavailable": "Unavailable",
+  "settingsPullRequestRefreshOffline": "Offline",
+  "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
+  "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
+  "settingsPullRequestRefreshSecondsLabel": "Seconds",
+  "settingsPullRequestRefreshInvalid": "Enter a whole number of seconds.",
+  "settingsPullRequestRefreshRangeInvalid": "Enter a whole number from {minimumSeconds} to {maximumSeconds}.",
+  "@settingsPullRequestRefreshRangeInvalid": {
+    "placeholders": {
+      "minimumSeconds": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "maximumSeconds": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "settingsPullRequestRefreshCancel": "Cancel",
+  "settingsPullRequestRefreshSave": "Save",
+  "settingsPullRequestRefreshSeconds": "{seconds, plural, =1{1 second} other{{seconds} seconds}}",
+  "@settingsPullRequestRefreshSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "harnessManagementDescription": "Control the harnesses that support management through Sesori.",
   "harnessManagementDefaultsSection": "Bridge Default",
   "harnessManagementDefaultTimeout": "Default idle timeout",
@@ -300,6 +339,12 @@
   },
   "notificationSectionAi": "AI Notifications",
   "notificationSectionSystem": "System",
+  "notificationPreferencesUnavailableTitle": "Notification preferences unavailable",
+  "notificationPreferencesUnavailableDescription": "Sign in to manage notification preferences.",
+  "notificationPreferencesLoadFailedTitle": "Couldn't load notification preferences",
+  "notificationPreferencesLoadFailedDescription": "Check your connection and try again.",
+  "notificationPreferencesRetry": "Retry",
+  "notificationPreferenceUpdating": "Updating notification preference",
   "notificationCategoryAiInteraction": "AI Interactions",
   "notificationCategoryAiInteractionDescription": "Questions and permission requests from active AI sessions",
   "notificationCategorySessionMessage": "Session Messages",

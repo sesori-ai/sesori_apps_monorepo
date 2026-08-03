@@ -3,11 +3,11 @@
 ## Status
 
 - **Plan slug:** `session-pull-request-monitoring`
-- **Status:** Approved — Steps 1–7 merged; Step 8.a/9 in progress after the settings transport redesign
+- **Status:** Approved — Steps 1–7 and 8.a merged; Step 8.b/9 in progress
 - **Plan revision date:** 2026-08-03
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main`
-- **Latest audited tip:** `5ba0d3a6`
+- **Latest audited tip:** `480a6bfd`
 - **Existing contract baseline:** [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) shipped additive
   `RelayProjectView` and `Session.pullRequestHistory` contracts.
 - **Delivery:** one plan PR, ten sequential implementation PRs, and
@@ -561,7 +561,7 @@ settings screen analytics continue unchanged.
 | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | Localized persisted settings flow with concurrent writes and live timer updates. | 1,000–1,500 | Persist/validate interval settings, expose GET/PATCH, serialize settings writes, and rearm the live timer. |
 | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | Shared list/detail lifecycle, reconnect ordering, and multi-device bridge behavior. | 1,000–1,500 | Add layered client project presence with list/detail, lifecycle, reconnect, and multi-device-safe bridge behavior. |
 | 8.a/9 | `session-pull-request-monitoring-generic-settings` | `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]` | Shared sealed wire unions, generic routing, generated contracts, and direct cleanup of an unpublished endpoint. | 1,000–1,500 | Replace the internal-only cadence PATCH with one generic setting-update endpoint while retaining the focused GET. |
-| 8.b/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | Shared settings layers, connection lifecycle, mutation reconciliation, compatibility UI, and end-to-end bridge/client regression coverage. | 2,000–2,400 | Add the shared client interval setting against the generic mutation route, compatibility UI, final integration verification, and current-branch/PR regressions. |
+| 8.b/9 | `session-pull-request-monitoring-client-settings-v2` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | Shared settings layers, connection lifecycle, mutation reconciliation, compatibility UI, and end-to-end bridge/client regression coverage. | 2,000–2,400 | Add the shared client interval setting against the generic mutation route, compatibility UI, final integration verification, and current-branch/PR regressions. |
 | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | Mechanical documentation state/move after implementation completion. | 50–200 | Record completion and move the plan directory from active to completed. |
 
 ## Implementation Steps
@@ -959,28 +959,26 @@ Scope:
   existing settings owner; custom integer seconds, default display 30, range
   15–3,600.
 - Keep current session row/`PrStatusRow` presentation; add no history UI.
-- Complete fake Git/GitHub/relay integration for view -> branch -> batch ->
-  selected cache -> `sessionsUpdated` -> refetch -> shared row.
+- Complete focused client settings integration for read, edit, rejection,
+  uncertainty reconciliation, reconnect fencing, and compatibility states.
 - Run final bridge/shared/client/mobile/desktop verification.
 
 Concrete classes and ownership:
 
-- Add `PullRequestRefreshSettingsApi({required RelayHttpApiClient client})` in
-  `client/module_core/lib/src/api/pull_request_refresh_settings_api.dart` for the
-  focused GET `/settings/pull-request-refresh` only. Add
-  `BridgeSettingsApi({required RelayHttpApiClient client})` in
+- Add `BridgeSettingsApi({required RelayHttpApiClient client})` in
   `client/module_core/lib/src/api/bridge_settings_api.dart` as the single client
-  wrapper for generic `PATCH /settings` mutations.
-- `BridgeSettingsApi` returns a sealed typed API-layer result: committed
+  settings transport owner. It exposes the focused GET
+  `/settings/pull-request-refresh` and generic `PATCH /settings`; do not add a
+  second feature-specific API wrapper.
+- For PATCH, `BridgeSettingsApi` returns a sealed typed API-layer result: committed
   `BridgeSettingUpdate`, rejected `BridgeSettingUpdateRejection`, or transport
   `ApiError`. It passes `BridgeSettingUpdate.fromJson` to the relay client for
   success parsing and parses a 400 raw body immediately at the API boundary with
   `BridgeSettingUpdateRejection.fromJson`; malformed rejection JSON remains the
   original explicit API failure. A 404 and every other transport error remain
   typed `ApiError` outcomes. No raw response body crosses into a repository.
-- Add `PullRequestRefreshSettingsRepository({required
-  PullRequestRefreshSettingsApi pullRequestRefreshSettingsApi, required
-  BridgeSettingsApi bridgeSettingsApi})` and its sealed result models under
+- Add `PullRequestRefreshSettingsRepository({required BridgeSettingsApi
+  bridgeSettingsApi})` and its sealed result models under
   `client/module_core/lib/src/repositories/`. It consumes only typed API
   outcomes and maps them into domain results: GET/PATCH 404 to unsupported, a
   matching sealed rejection to validated bounds, post-dispatch

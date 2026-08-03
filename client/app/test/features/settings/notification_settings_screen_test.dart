@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -11,7 +13,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class _MockNotificationPreferencesRepository extends Mock implements NotificationPreferencesRepository {}
+class _MockNotificationPreferencesService extends Mock implements NotificationPreferencesService {}
 
 Widget _app() {
   return BlocProvider<ConnectionOverlayCubit>.value(
@@ -26,23 +28,39 @@ Widget _app() {
 }
 
 void main() {
-  late _MockNotificationPreferencesRepository repository;
+  late _MockNotificationPreferencesService service;
 
   setUpAll(() {
     registerFallbackValue(NotificationCategory.aiInteraction);
   });
 
   setUp(() async {
-    repository = _MockNotificationPreferencesRepository();
-    when(() => repository.getAll()).thenAnswer(
-      (_) async => {for (final category in NotificationCategory.values) category: true},
+    service = _MockNotificationPreferencesService();
+    when(
+      () => service.accountStatusStream,
+    ).thenAnswer((_) => Stream.value(NotificationPreferencesAccountStatus.available));
+    when(() => service.getAll()).thenAnswer(
+      (_) async => {
+        NotificationCategory.aiInteraction: true,
+        NotificationCategory.sessionMessage: true,
+        NotificationCategory.connectionStatus: true,
+        NotificationCategory.systemUpdate: true,
+      },
     );
     when(
-      () => repository.setEnabled(category: any(named: "category"), enabled: any(named: "enabled")),
-    ).thenAnswer((_) async {});
+      () => service.setEnabled(
+        category: any(named: "category"),
+        enabled: any(named: "enabled"),
+      ),
+    ).thenAnswer(
+      (invocation) async => switch (invocation.namedArguments[#enabled]) {
+        final bool enabled => enabled,
+        _ => throw StateError("Expected a boolean notification preference"),
+      },
+    );
 
     await GetIt.instance.reset();
-    GetIt.instance.registerSingleton<NotificationPreferencesRepository>(repository);
+    GetIt.instance.registerSingleton<NotificationPreferencesService>(service);
   });
 
   tearDown(() async {
@@ -57,7 +75,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => repository.setEnabled(category: NotificationCategory.aiInteraction, enabled: false),
+      () => service.setEnabled(category: NotificationCategory.aiInteraction, enabled: false),
     ).called(1);
   });
 
@@ -72,5 +90,80 @@ void main() {
     expect(node, isSemantics(hasToggledState: true, isToggled: true, hasTapAction: true));
 
     handle.dispose();
+  });
+
+  testWidgets("signed-out state does not remain on an indefinite loader", (tester) async {
+    when(
+      () => service.accountStatusStream,
+    ).thenAnswer((_) => Stream.value(NotificationPreferencesAccountStatus.unavailable));
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    expect(find.text("Notification preferences unavailable"), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    verifyNever(() => service.getAll());
+  });
+
+  testWidgets("only the preference awaiting its API response shows inline loading", (tester) async {
+    final aiResponse = Completer<bool>();
+    when(
+      () => service.setEnabled(
+        category: NotificationCategory.aiInteraction,
+        enabled: false,
+      ),
+    ).thenAnswer((_) => aiResponse.future);
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("AI Interactions"));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey("notification_preference_loading_aiInteraction")), findsOneWidget);
+    expect(find.byKey(const ValueKey("notification_preference_switch_aiInteraction")), findsNothing);
+    expect(find.byKey(const ValueKey("notification_preference_switch_sessionMessage")), findsOneWidget);
+
+    await tester.tap(find.text("AI Interactions"));
+    await tester.tap(find.text("Session Messages"));
+    await tester.pump();
+
+    verify(
+      () => service.setEnabled(category: NotificationCategory.aiInteraction, enabled: false),
+    ).called(1);
+    verify(
+      () => service.setEnabled(category: NotificationCategory.sessionMessage, enabled: false),
+    ).called(1);
+
+    aiResponse.complete(false);
+    await tester.pumpAndSettle();
+
+    final aiSwitch = tester.widget<PregoSwitch>(
+      find.byKey(const ValueKey("notification_preference_switch_aiInteraction")),
+    );
+    expect(aiSwitch.value, isFalse);
+  });
+
+  testWidgets("failed initial load can be retried", (tester) async {
+    var attempt = 0;
+    when(() => service.getAll()).thenAnswer((_) async {
+      attempt++;
+      if (attempt == 1) throw Exception("network unavailable");
+      return {
+        NotificationCategory.aiInteraction: true,
+        NotificationCategory.sessionMessage: true,
+        NotificationCategory.connectionStatus: true,
+        NotificationCategory.systemUpdate: true,
+      };
+    });
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't load notification preferences"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("notification_preferences_retry")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("AI Interactions"), findsOneWidget);
+    verify(() => service.getAll()).called(2);
   });
 }
