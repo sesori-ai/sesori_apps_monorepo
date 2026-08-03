@@ -7,9 +7,10 @@
   `6233da3e17f00517663b64e4eb5b789a47206514`
 - **Series state:** Steps 1–7 merged; over-defensive implementation
   [#716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) remains closed without merge
-- **Current step:** Step 8/10 implementation on `plan-parallel-requests`
+- **Current step:** Step 8/10 PR
+  [#721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721) open
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** commit, open, review, and merge Step 8
+- **Next action:** review and merge Step 8; Step 9 remains blocked
 
 ## Incident Evidence
 
@@ -101,7 +102,7 @@
 | [x] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged as `5ba0d3a6` with 1,534 changed lines |
 | [x] | 6/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | [PR #703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) merged as `e4605eb1` with 1,054 changed lines |
 | [x] | 7/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: simplify remaining concurrency plan [step 7/10]` | 350–550 | [PR #720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/720) merged as `6233da3e` with 543 changed lines; PR #716 closed without merge |
-| [ ] | 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | 500–900 | Implemented from `6233da3e`; PR pending |
+| [ ] | 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | 500–900 | [PR #721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721) open from `6233da3e` |
 | [ ] | 9/10 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | Blocked on Step 8 merge |
 | [ ] | 10/10 | `relay-request-concurrency-retire-plan` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | 50–150 | Blocked on Step 9 merge |
 
@@ -425,4 +426,5 @@
   uncommitted diff with no findings; synchronous admission, failure-safe FIFO,
   typed outcomes, dependency direction, lifecycle ownership, and proportionality
   passed.
-- **Step 8/10 delivery:** PR pending at 707 changed lines.
+- **Step 8/10 delivery:** [PR #721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721)
+  is open from `6233da3e` at 709 changed lines.
