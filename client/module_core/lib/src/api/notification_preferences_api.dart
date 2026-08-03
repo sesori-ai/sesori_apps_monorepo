@@ -71,7 +71,7 @@ class NotificationPreferencesApi {
       userId: userId,
       fromJson: (dynamic json) => NotificationPreferencesApiRecord.fromJson(jsonCastMap(json)),
     );
-    return _dataOrThrow(response);
+    return _dataOrThrow(response: response);
   }
 
   Future<NotificationPreferencesApiRecord> updatePreference({
@@ -85,14 +85,15 @@ class NotificationPreferencesApi {
       fromJson: (dynamic json) => NotificationPreferencesApiRecord.fromJson(jsonCastMap(json)),
       body: jsonEncode(request.toJson()),
     );
-    return _dataOrThrow(response);
+    return _dataOrThrow(response: response);
   }
 
   Uri _settingsUrl({required String deviceId}) => Uri.parse("$authBaseUrl/auth/settings/$deviceId");
 
-  NotificationPreferencesApiRecord _dataOrThrow(ApiResponse<NotificationPreferencesApiRecord> response) =>
-      switch (response) {
-        SuccessResponse(:final data) => data,
-        ErrorResponse(:final error) => throw error,
-      };
+  NotificationPreferencesApiRecord _dataOrThrow({
+    required ApiResponse<NotificationPreferencesApiRecord> response,
+  }) => switch (response) {
+    SuccessResponse(:final data) => data,
+    ErrorResponse(:final error) => throw error,
+  };
 }

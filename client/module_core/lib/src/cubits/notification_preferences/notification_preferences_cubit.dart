@@ -19,7 +19,8 @@ class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
     : _service = service,
       super(const NotificationPreferencesState.loading()) {
     _accountSubscription = _service.accountStatusStream.listen(
-      _onAccountStatus,
+      // ignore: no_slop_linter/prefer_required_named_parameters, Stream callback
+      (status) => _onAccountStatus(status: status),
       // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, Stream callback
       onError: (Object error, StackTrace stackTrace) => _onAccountStatusError(
         error: error,
@@ -96,7 +97,7 @@ class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
     );
   }
 
-  void _onAccountStatus(NotificationPreferencesAccountStatus status) {
+  void _onAccountStatus({required NotificationPreferencesAccountStatus status}) {
     if (isClosed) return;
     _accountStatus = status;
     _accountGeneration++;

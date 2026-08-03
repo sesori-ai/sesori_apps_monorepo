@@ -24,10 +24,10 @@ class NotificationPreferencesRepository {
     if (category == NotificationCategory.unknown) return true;
 
     final cached = _cachedPreferences[userId];
-    if (cached != null) return _cachedPreference(cached, category: category);
+    if (cached != null) return _cachedPreference(preferences: cached, category: category);
 
     final preferences = await _fetch(userId: userId);
-    return _cachedPreference(preferences, category: category);
+    return _cachedPreference(preferences: preferences, category: category);
   }
 
   Future<bool> setEnabled({
@@ -55,7 +55,7 @@ class NotificationPreferencesRepository {
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
     _validateDeviceId(record: record, expected: deviceId);
 
-    final confirmed = _preferenceFrom(record.notifications, category: category);
+    final confirmed = _preferenceFrom(notifications: record.notifications, category: category);
     final latest = _cachedPreferences[userId];
     if (latest == null) throw ApiError.notAuthenticated();
     _cachedPreferences[userId] = Map.unmodifiable({...latest, category: confirmed});
@@ -89,7 +89,7 @@ class NotificationPreferencesRepository {
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
     _validateDeviceId(record: record, expected: deviceId);
 
-    final preferences = _preferencesFrom(record.notifications);
+    final preferences = _preferencesFrom(notifications: record.notifications);
     _cachedPreferences[userId] = preferences;
     return preferences;
   }
@@ -112,8 +112,8 @@ class NotificationPreferencesRepository {
     }
   }
 
-  bool _cachedPreference(
-    Map<NotificationCategory, bool> preferences, {
+  bool _cachedPreference({
+    required Map<NotificationCategory, bool> preferences,
     required NotificationCategory category,
   }) {
     final enabled = preferences[category];
@@ -123,16 +123,17 @@ class NotificationPreferencesRepository {
     return enabled;
   }
 
-  Map<NotificationCategory, bool> _preferencesFrom(NotificationPreferencesApiNotifications notifications) =>
-      Map.unmodifiable({
-        NotificationCategory.aiInteraction: notifications.aiInteraction,
-        NotificationCategory.sessionMessage: notifications.sessionMessage,
-        NotificationCategory.connectionStatus: notifications.connectionStatus,
-        NotificationCategory.systemUpdate: notifications.systemUpdate,
-      });
+  Map<NotificationCategory, bool> _preferencesFrom({
+    required NotificationPreferencesApiNotifications notifications,
+  }) => Map.unmodifiable({
+    NotificationCategory.aiInteraction: notifications.aiInteraction,
+    NotificationCategory.sessionMessage: notifications.sessionMessage,
+    NotificationCategory.connectionStatus: notifications.connectionStatus,
+    NotificationCategory.systemUpdate: notifications.systemUpdate,
+  });
 
-  bool _preferenceFrom(
-    NotificationPreferencesApiNotifications notifications, {
+  bool _preferenceFrom({
+    required NotificationPreferencesApiNotifications notifications,
     required NotificationCategory category,
   }) => switch (category) {
     NotificationCategory.aiInteraction => notifications.aiInteraction,

@@ -29,10 +29,11 @@ class NotificationPreferencesService {
     required NotificationPreferencesRepository repository,
   }) : _authSession = authSession,
        _repository = repository {
-    _currentUserId = _userIdFrom(authSession.currentState);
+    _currentUserId = _userIdFrom(state: authSession.currentState);
     _accountStatus = BehaviorSubject.seeded(_statusFor(userId: _currentUserId));
     _authSubscription = _authSession.authStateStream.listen(
-      _onAuthStateChanged,
+      // ignore: no_slop_linter/prefer_required_named_parameters, Stream callback
+      (state) => _onAuthStateChanged(state: state),
       // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, Stream callback
       onError: (Object error, StackTrace stackTrace) => _onAuthStateError(
         error: error,
@@ -46,7 +47,7 @@ class NotificationPreferencesService {
   Future<Map<NotificationCategory, bool>> getAll() async {
     final operation = _captureAccount();
     final preferences = await _repository.getAll(userId: operation.userId);
-    _ensureCurrent(operation);
+    _ensureCurrent(operation: operation);
     return preferences;
   }
 
@@ -57,7 +58,7 @@ class NotificationPreferencesService {
       category: category,
       enabled: enabled,
     );
-    _ensureCurrent(operation);
+    _ensureCurrent(operation: operation);
     return confirmed;
   }
 
@@ -70,10 +71,10 @@ class NotificationPreferencesService {
       final enabled = await _repository
           .isEnabled(userId: operation.userId, category: category)
           .timeout(_foregroundPreferenceDeadline);
-      if (!_isCurrent(operation)) return false;
+      if (!_isCurrent(operation: operation)) return false;
       return enabled;
     } on Object catch (error, stackTrace) {
-      if (!_isCurrent(operation)) return false;
+      if (!_isCurrent(operation: operation)) return false;
       logw(
         "Failed to load notification preferences; defaulting ${category.name} to enabled",
         error,
@@ -83,8 +84,8 @@ class NotificationPreferencesService {
     }
   }
 
-  void _onAuthStateChanged(AuthState state) {
-    final nextUserId = _userIdFrom(state);
+  void _onAuthStateChanged({required AuthState state}) {
+    final nextUserId = _userIdFrom(state: state);
     if (nextUserId == _currentUserId) return;
 
     final previousUserId = _currentUserId;
@@ -107,8 +108,8 @@ class NotificationPreferencesService {
     return operation;
   }
 
-  void _ensureCurrent(_AccountOperation operation) {
-    if (!_isCurrent(operation)) throw ApiError.notAuthenticated();
+  void _ensureCurrent({required _AccountOperation operation}) {
+    if (!_isCurrent(operation: operation)) throw ApiError.notAuthenticated();
   }
 
   _AccountOperation? _currentOperation() => switch (_currentUserId) {
@@ -116,10 +117,10 @@ class NotificationPreferencesService {
     null => null,
   };
 
-  bool _isCurrent(_AccountOperation operation) =>
+  bool _isCurrent({required _AccountOperation operation}) =>
       operation.generation == _accountGeneration && operation.userId == _currentUserId;
 
-  static String? _userIdFrom(AuthState state) => switch (state) {
+  static String? _userIdFrom({required AuthState state}) => switch (state) {
     AuthAuthenticated(:final user) => user.id,
     AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => null,
   };
