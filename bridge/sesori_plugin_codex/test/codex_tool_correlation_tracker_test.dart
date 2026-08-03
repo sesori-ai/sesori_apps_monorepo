@@ -4,6 +4,7 @@ import "package:codex_plugin/src/repositories/codex_tool_correlation_tracker.dar
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_tool_projection.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -224,6 +225,72 @@ void main() {
     );
   });
 
+  test("correlates every running cell from a composed exec", () {
+    final tracker = CodexToolCorrelationTracker(
+      rolloutToolMapper: const CodexRolloutToolMapper(
+        imageAttachmentMapper: CodexImageAttachmentMapper(),
+      ),
+    );
+
+    tracker
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-exec", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolContentOutput(
+          callId: "call-exec",
+          outputs: const [
+            "Script running with cell ID 7\nOutput:\nfirst\n",
+            "Script running with cell ID 8\nOutput:\nsecond\n",
+          ],
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _waitCall(
+          callId: "call-wait-8",
+          turnId: "turn-1",
+          cellId: "8",
+        ),
+      );
+
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-wait-8",
+          output: "Script completed with exit code 0\nFinal output:\ndone\n",
+        ),
+      ),
+      isA<CodexRolloutToolCanonical>().having(
+        (value) => value.callId,
+        "callId",
+        "call-exec",
+      ),
+    );
+  });
+
+  test("merged output reserves space for the current terminal result", () {
+    final merged =
+        const CodexRolloutToolCompletedResult(
+          callId: "call-wait",
+          output: "terminal-result",
+          attachments: [],
+        ).withPreviousResult(
+          previous: CodexRolloutToolRunningResult(
+            callId: "call-exec",
+            output: "x" * maxToolOutputLength,
+            attachments: const [],
+            cellIds: const ["7"],
+          ),
+        );
+
+    expect(merged.output?.runes, hasLength(maxToolOutputLength));
+    expect(merged.output, endsWith("terminal-result"));
+  });
+
   test("recognizes executor control markers only at the envelope start", () {
     const mapper = CodexRolloutToolMapper(
       imageAttachmentMapper: CodexImageAttachmentMapper(),
@@ -324,6 +391,26 @@ CodexRolloutLineDto _toolOutput({
       "type": "function_call_output",
       "call_id": callId,
       "output": output,
+    },
+  });
+}
+
+CodexRolloutLineDto _toolContentOutput({
+  required String callId,
+  required List<String> outputs,
+}) {
+  return CodexRolloutLineDto.fromJson({
+    "type": "response_item",
+    "payload": {
+      "type": "custom_tool_call_output",
+      "call_id": callId,
+      "output": [
+        for (final output in outputs)
+          {
+            "type": "output_text",
+            "text": output,
+          },
+      ],
     },
   });
 }
