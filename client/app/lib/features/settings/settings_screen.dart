@@ -18,6 +18,7 @@ import "../../core/widgets/sesori_logo.dart";
 import "widgets/account_row.dart";
 import "widgets/appearance_picker.dart";
 import "widgets/chat_input_mode_picker.dart";
+import "widgets/pull_request_refresh_settings_section.dart";
 import "widgets/settings_section.dart";
 
 /// Vertical inset between the nav bar and the first settings section.
@@ -33,12 +34,21 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => SettingsCubit(
-        authSession: getIt<AuthSession>(),
-        notificationRegistrationService: getIt<NotificationRegistrationService>(),
-        productAnalyticsService: getIt<ProductAnalyticsService>(),
-      ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => SettingsCubit(
+            authSession: getIt<AuthSession>(),
+            notificationRegistrationService: getIt<NotificationRegistrationService>(),
+            productAnalyticsService: getIt<ProductAnalyticsService>(),
+          ),
+        ),
+        BlocProvider(
+          create: (_) => PullRequestRefreshSettingsCubit(
+            service: getIt<PullRequestRefreshSettingsService>(),
+          ),
+        ),
+      ],
       child: const _SettingsBody(),
     );
   }
@@ -55,6 +65,7 @@ class _SettingsBody extends StatelessWidget {
     return PregoGlassScaffold(
       title: loc.settingsTitle,
       banner: ConnectionBanner.maybeFor(context),
+      onRefresh: context.read<PullRequestRefreshSettingsCubit>().refresh,
       automaticallyImplyLeading: false,
       actions: [
         PregoButtonsIconGlass(
@@ -114,6 +125,8 @@ class _SettingsBody extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: PregoSpacing.xl),
+                const PullRequestRefreshSettingsSection(),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
                   title: loc.settingsSectionAppearance,

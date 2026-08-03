@@ -14,6 +14,7 @@ import "package:sesori_mobile/core/support_links.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -40,6 +41,8 @@ class _MockChatInputModeStore extends Mock implements ChatInputModeStore {}
 class _MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class _MockLegalRepository extends Mock implements LegalRepository {}
+
+class _MockPullRequestRefreshSettingsRepository extends Mock implements PullRequestRefreshSettingsRepository {}
 
 Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputMode}) {
   final router = GoRouter(
@@ -98,6 +101,7 @@ void main() {
   late _MockLegalRepository legalRepository;
   late MockProductAnalyticsService productAnalyticsService;
   late BehaviorSubject<ProductAnalyticsState> productAnalyticsStates;
+  late _MockPullRequestRefreshSettingsRepository pullRequestRefreshSettingsRepository;
 
   setUpAll(() {
     registerFallbackValue(Uri());
@@ -106,6 +110,7 @@ void main() {
     registerFallbackValue(ChatInputMode.voiceFirst);
     registerFallbackValue(LegalDocument.terms);
     registerFallbackValue(ProductAnalyticsPreference.disabled);
+    registerFallbackValue(const PullRequestRefreshSettingsRequest(intervalSeconds: 30));
   });
 
   setUp(() async {
@@ -158,6 +163,24 @@ void main() {
 
     legalRepository = _MockLegalRepository();
     GetIt.instance.registerSingleton<LegalRepository>(legalRepository);
+
+    pullRequestRefreshSettingsRepository = _MockPullRequestRefreshSettingsRepository();
+    when(pullRequestRefreshSettingsRepository.load).thenAnswer(
+      (_) async => const PullRequestRefreshSettingsLoadSupported(
+        response: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+      ),
+    );
+    when(
+      () => pullRequestRefreshSettingsRepository.update(request: any(named: "request")),
+    ).thenAnswer((invocation) async {
+      final request = invocation.namedArguments[#request] as PullRequestRefreshSettingsRequest;
+      return PullRequestRefreshSettingsMutationCommitted(
+        response: PullRequestRefreshSettingsResponse(intervalSeconds: request.intervalSeconds),
+      );
+    });
+    GetIt.instance.registerSingleton<PullRequestRefreshSettingsService>(
+      PullRequestRefreshSettingsService(repository: pullRequestRefreshSettingsRepository),
+    );
   });
 
   tearDown(() async {
@@ -196,6 +219,93 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("harnesses-route"), findsOneWidget);
+  });
+
+  testWidgets("shows the bridge-committed pull request refresh interval", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Bridge"), findsOneWidget);
+    expect(find.text("Pull request refresh"), findsOneWidget);
+    expect(find.text("30 seconds"), findsOneWidget);
+  });
+
+  testWidgets("saves a custom interval and displays the committed response", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "45");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pumpAndSettle();
+
+    verify(
+      () => pullRequestRefreshSettingsRepository.update(
+        request: const PullRequestRefreshSettingsRequest(intervalSeconds: 45),
+      ),
+    ).called(1);
+    expect(find.text("45 seconds"), findsOneWidget);
+  });
+
+  testWidgets("invalid custom input stays in the sheet and dispatches nothing", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "14");
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pump();
+
+    expect(find.text("Enter a whole number from 15 to 3,600."), findsOneWidget);
+    expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
+    verifyNever(
+      () => pullRequestRefreshSettingsRepository.update(request: any(named: "request")),
+    );
+  });
+
+  testWidgets("old bridges show the cadence setting as unsupported", (tester) async {
+    _useTallSurface(tester);
+    when(
+      pullRequestRefreshSettingsRepository.load,
+    ).thenAnswer((_) async => const PullRequestRefreshSettingsLoadUnsupported());
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Update the connected bridge to configure this setting."), findsOneWidget);
+    expect(find.text("Unavailable"), findsOneWidget);
+  });
+
+  testWidgets("a failed cadence load exposes one retry that refreshes it", (tester) async {
+    _useTallSurface(tester);
+    var loadCalls = 0;
+    when(pullRequestRefreshSettingsRepository.load).thenAnswer((_) async {
+      loadCalls++;
+      return loadCalls == 1
+          ? PullRequestRefreshSettingsLoadFailure(error: ApiError.generic())
+          : const PullRequestRefreshSettingsLoadSupported(
+              response: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+            );
+    });
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("pull_request_refresh_retry")), findsOneWidget);
+    expect(
+      tester.widget<IconButton>(find.byKey(const Key("pull_request_refresh_retry"))).tooltip,
+      "Retry pull request refresh setting",
+    );
+
+    await tester.tap(find.byKey(const Key("pull_request_refresh_retry")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("30 seconds"), findsOneWidget);
+    expect(loadCalls, 2);
   });
 
   testWidgets("tapping a theme tile switches the appearance", (tester) async {

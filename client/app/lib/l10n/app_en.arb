@@ -154,6 +154,30 @@
   "settingsSectionAccount": "Account",
   "settingsNotificationsTitle": "Notifications",
   "settingsHarnessesTitle": "Harnesses",
+  "settingsSectionBridge": "Bridge",
+  "settingsPullRequestRefreshTitle": "Pull request refresh",
+  "settingsPullRequestRefreshDescription": "How often viewed projects refresh pull request status.",
+  "settingsPullRequestRefreshLoading": "Loading the bridge setting…",
+  "settingsPullRequestRefreshUnsupported": "Update the connected bridge to configure this setting.",
+  "settingsPullRequestRefreshLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
+  "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
+  "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
+  "settingsPullRequestRefreshUnavailable": "Unavailable",
+  "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
+  "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
+  "settingsPullRequestRefreshSecondsLabel": "Seconds",
+  "settingsPullRequestRefreshHelp": "Enter a whole number from 15 to 3,600 seconds.",
+  "settingsPullRequestRefreshInvalid": "Enter a whole number from 15 to 3,600.",
+  "settingsPullRequestRefreshCancel": "Cancel",
+  "settingsPullRequestRefreshSave": "Save",
+  "settingsPullRequestRefreshSeconds": "{seconds, plural, =1{1 second} other{{seconds} seconds}}",
+  "@settingsPullRequestRefreshSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "harnessManagementDescription": "Control the harnesses that support management through Sesori.",
   "harnessManagementDefaultsSection": "Bridge Default",
   "harnessManagementDefaultTimeout": "Default idle timeout",

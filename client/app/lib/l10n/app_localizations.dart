@@ -403,6 +403,108 @@ abstract class AppLocalizations {
   /// **'Harnesses'**
   String get settingsHarnessesTitle;
 
+  /// No description provided for @settingsSectionBridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge'**
+  String get settingsSectionBridge;
+
+  /// No description provided for @settingsPullRequestRefreshTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull request refresh'**
+  String get settingsPullRequestRefreshTitle;
+
+  /// No description provided for @settingsPullRequestRefreshDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How often viewed projects refresh pull request status.'**
+  String get settingsPullRequestRefreshDescription;
+
+  /// No description provided for @settingsPullRequestRefreshLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the bridge setting…'**
+  String get settingsPullRequestRefreshLoading;
+
+  /// No description provided for @settingsPullRequestRefreshUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to configure this setting.'**
+  String get settingsPullRequestRefreshUnsupported;
+
+  /// No description provided for @settingsPullRequestRefreshLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the bridge setting. Check your connection and try again.'**
+  String get settingsPullRequestRefreshLoadFailed;
+
+  /// No description provided for @settingsPullRequestRefreshUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsPullRequestRefreshUncertain;
+
+  /// No description provided for @settingsPullRequestRefreshUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
+  String get settingsPullRequestRefreshUpdateFailed;
+
+  /// No description provided for @settingsPullRequestRefreshUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get settingsPullRequestRefreshUnavailable;
+
+  /// No description provided for @settingsPullRequestRefreshRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry pull request refresh setting'**
+  String get settingsPullRequestRefreshRetry;
+
+  /// No description provided for @settingsPullRequestRefreshDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull request refresh interval'**
+  String get settingsPullRequestRefreshDialogTitle;
+
+  /// No description provided for @settingsPullRequestRefreshSecondsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get settingsPullRequestRefreshSecondsLabel;
+
+  /// No description provided for @settingsPullRequestRefreshHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from 15 to 3,600 seconds.'**
+  String get settingsPullRequestRefreshHelp;
+
+  /// No description provided for @settingsPullRequestRefreshInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from 15 to 3,600.'**
+  String get settingsPullRequestRefreshInvalid;
+
+  /// No description provided for @settingsPullRequestRefreshCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get settingsPullRequestRefreshCancel;
+
+  /// No description provided for @settingsPullRequestRefreshSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get settingsPullRequestRefreshSave;
+
+  /// No description provided for @settingsPullRequestRefreshSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds, plural, =1{1 second} other{{seconds} seconds}}'**
+  String settingsPullRequestRefreshSeconds(int seconds);
+
   /// No description provided for @harnessManagementDescription.
   ///
   /// In en, this message translates to:
