@@ -110,7 +110,7 @@ Future<void> _editInterval({
     ),
   );
   if (result == null) return;
-  await cubit.update(input: result);
+  await cubit.update(input: result, expectedState: state);
 }
 
 class _RefreshIntervalSheet extends StatefulWidget {

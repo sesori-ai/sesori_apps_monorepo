@@ -71,10 +71,14 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     }
   }
 
-  Future<void> update({required String input}) async {
+  Future<void> update({
+    required String input,
+    required PullRequestRefreshSettingsReady expectedState,
+  }) async {
     if (_operationInProgress || !_connected || isClosed) return;
     final current = state;
     if (current is! PullRequestRefreshSettingsReady ||
+        !identical(current, expectedState) ||
         current.mutation is PullRequestRefreshSettingsMutationInProgress) {
       return;
     }

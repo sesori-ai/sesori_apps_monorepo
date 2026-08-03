@@ -12,6 +12,10 @@ class PullRequestRefreshSettingsService {
   PullRequestRefreshSettingsResponse get currentSettings =>
       _response(settings: _bridgeSettingsRepository.currentSettings);
 
+  Future<PullRequestRefreshSettingsResponse> readCommittedSettings() async {
+    return _response(settings: await _bridgeSettingsRepository.readCommittedSettings());
+  }
+
   Stream<PullRequestRefreshSettingsResponse> get changes => _bridgeSettingsRepository.settingsChanges
       .where(
         (change) =>

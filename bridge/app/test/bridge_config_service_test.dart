@@ -91,6 +91,9 @@ class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
   }
 
   @override
+  Future<BridgeSettings> readCommittedSettings() async => settings;
+
+  @override
   Future<BridgeSettings> mutateSettings({
     required BridgeSettings Function({required BridgeSettings current}) mutation,
   }) async {

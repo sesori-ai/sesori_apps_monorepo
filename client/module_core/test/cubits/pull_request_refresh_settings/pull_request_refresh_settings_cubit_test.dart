@@ -66,7 +66,7 @@ void main() {
     addTearDown(cubit.close);
     await _waitForState<PullRequestRefreshSettingsReady>(cubit);
 
-    await cubit.update(input: "bad");
+    await _update(cubit, input: "bad");
 
     expect((cubit.state as PullRequestRefreshSettingsReady).mutation, isA<PullRequestRefreshSettingsMutationFailed>());
     verifyNever(() => service.update(request: any(named: "request")));
@@ -108,7 +108,7 @@ void main() {
     addTearDown(cubit.close);
     await _waitForState<PullRequestRefreshSettingsReady>(cubit);
 
-    await cubit.update(input: "45");
+    await _update(cubit, input: "45");
 
     final state = cubit.state as PullRequestRefreshSettingsReady;
     expect(state.intervalSeconds, 46);
@@ -145,9 +145,9 @@ void main() {
     addTearDown(cubit.close);
     await _waitForState<PullRequestRefreshSettingsReady>(cubit);
 
-    final firstUpdate = cubit.update(input: "45");
+    final firstUpdate = _update(cubit, input: "45");
     await _waitUntil(() => loadCalls == 2);
-    await cubit.update(input: "60");
+    await _update(cubit, input: "60");
     expect(updateCalls, 1);
 
     reconciliation.complete(
@@ -158,7 +158,7 @@ void main() {
 
     _stubLoad(service, intervalSeconds: 45);
     await cubit.refresh();
-    await cubit.update(input: "60");
+    await _update(cubit, input: "60");
     expect(updateCalls, 2);
     expect((cubit.state as PullRequestRefreshSettingsReady).intervalSeconds, 60);
   });
@@ -232,7 +232,7 @@ void main() {
     addTearDown(subscription.cancel);
     await _waitForState<PullRequestRefreshSettingsReady>(cubit);
 
-    final update = cubit.update(input: "45");
+    final update = _update(cubit, input: "45");
     await _waitUntil(
       () => switch (cubit.state) {
         PullRequestRefreshSettingsReady(mutation: PullRequestRefreshSettingsMutationInProgress()) => true,
@@ -296,21 +296,55 @@ void main() {
     addTearDown(cubit.close);
     await _waitForState<PullRequestRefreshSettingsReady>(cubit);
 
-    await cubit.update(input: "45");
+    await _update(cubit, input: "45");
     expect(
       (cubit.state as PullRequestRefreshSettingsReady).mutation,
       isA<PullRequestRefreshSettingsMutationFailed>(),
     );
 
-    await cubit.update(input: "45");
+    await _update(cubit, input: "45");
     expect((cubit.state as PullRequestRefreshSettingsReady).intervalSeconds, 45);
     expect(updateCalls, 2);
+  });
+
+  test("an editor opened for an obsolete connection cannot mutate the new bridge", () async {
+    var loadCalls = 0;
+    when(service.load).thenAnswer(
+      (_) async => PullRequestRefreshSettingsLoadSupported(
+        response: PullRequestRefreshSettingsResponse(intervalSeconds: loadCalls++ == 0 ? 30 : 60),
+      ),
+    );
+    final cubit = PullRequestRefreshSettingsCubit(service: service, connectionService: connection);
+    addTearDown(cubit.close);
+    await _waitForState<PullRequestRefreshSettingsReady>(cubit);
+    final openingState = cubit.state as PullRequestRefreshSettingsReady;
+
+    connection.emitStatus(const ConnectionStatus.connectionLost(config: _config));
+    connection.emitStatus(_connected);
+    await _waitUntil(
+      () => switch (cubit.state) {
+        PullRequestRefreshSettingsReady(intervalSeconds: 60) => true,
+        _ => false,
+      },
+    );
+
+    await cubit.update(input: "45", expectedState: openingState);
+
+    verifyNever(() => service.update(request: any(named: "request")));
+    expect((cubit.state as PullRequestRefreshSettingsReady).intervalSeconds, 60);
   });
 }
 
 const _config = ServerConnectionConfig(relayHost: "relay.example.com");
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
+
+Future<void> _update(PullRequestRefreshSettingsCubit cubit, {required String input}) {
+  return cubit.update(
+    input: input,
+    expectedState: cubit.state as PullRequestRefreshSettingsReady,
+  );
+}
 
 void _stubLoad(_MockPullRequestRefreshSettingsService service, {required int intervalSeconds}) {
   when(service.load).thenAnswer(
