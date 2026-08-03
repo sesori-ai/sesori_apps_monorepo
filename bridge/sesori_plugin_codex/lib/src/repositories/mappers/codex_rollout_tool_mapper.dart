@@ -278,7 +278,7 @@ class CodexRolloutToolMapper {
     return switch (payload) {
       CodexRolloutFunctionCallDto(:final name) => name.toLowerCase() == "wait",
       CodexRolloutCustomToolCallDto(:final name, :final input) =>
-        name.toLowerCase() == "exec" && _generatedImageInvocationPattern.hasMatch(input),
+        name.toLowerCase() == "exec" && _isGeneratedImageInvocation(input),
       CodexRolloutMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallOutputDto() ||
@@ -615,3 +615,15 @@ class CodexRolloutToolMapper {
 final RegExp _generatedImageInvocationPattern = RegExp(
   r"^\s*(?:await\s+)?tools\.image_gen__[A-Za-z0-9_]+\s*\([\s\S]*\)\s*;?\s*$",
 );
+
+final RegExp _forwardedGeneratedImageInvocationPattern = RegExp(
+  r"^\s*(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*await\s+"
+  r"tools\.image_gen__[A-Za-z0-9_]+\s*\([\s\S]*\)\s*;\s*"
+  r"generatedImage\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*;?\s*$",
+);
+
+bool _isGeneratedImageInvocation(String input) {
+  if (_generatedImageInvocationPattern.hasMatch(input)) return true;
+  final forwarded = _forwardedGeneratedImageInvocationPattern.firstMatch(input);
+  return forwarded != null && forwarded.group(1) == forwarded.group(2);
+}

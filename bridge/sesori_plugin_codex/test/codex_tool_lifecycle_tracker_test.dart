@@ -199,6 +199,24 @@ void main() {
         "input": "console.log('tools.image_gen__generate')",
       },
     });
+    final forwardedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-forwarded-image-wrapper",
+        "name": "exec",
+        "input": "const result = await tools.image_gen__generate({prompt: 'private'}); generatedImage(result);",
+      },
+    });
+    final unrelatedForwarding = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-unrelated-forwarding",
+        "name": "exec",
+        "input": "const result = await tools.image_gen__generate({prompt: 'private'}); generatedImage(other);",
+      },
+    });
 
     expect(
       target.observeRolloutLine(threadId: "thread-1", line: wrapper),
@@ -206,6 +224,20 @@ void main() {
     );
     expect(
       target.observeRolloutLine(threadId: "thread-1", line: literalSearch),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: forwardedWrapper,
+      ),
+      isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: unrelatedForwarding,
+      ),
       hasLength(1),
     );
   });
