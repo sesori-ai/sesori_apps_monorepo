@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -144,25 +143,17 @@ void main() {
     expect(await enabled, isFalse);
   });
 
-  test("foreground lookup defaults to enabled after a bounded wait", () {
-    fakeAsync((async) {
-      final response = Completer<bool>();
-      when(
-        () => repository.isEnabled(
-          userId: _userA.id,
-          category: NotificationCategory.aiInteraction,
-        ),
-      ).thenAnswer((_) => response.future);
-      bool? enabled;
+  test("foreground lookup defaults to enabled after the repository deadline", () async {
+    when(
+      () => repository.isEnabled(
+        userId: _userA.id,
+        category: NotificationCategory.aiInteraction,
+      ),
+    ).thenThrow(TimeoutException("Notification preference read timed out"));
 
-      service.isEnabled(category: NotificationCategory.aiInteraction).then((value) => enabled = value);
-      async.flushMicrotasks();
-      expect(enabled, isNull);
-
-      async.elapse(const Duration(seconds: 2));
-      async.flushMicrotasks();
-      expect(enabled, isTrue);
-      verify(() => repository.evictActiveFetch(userId: _userA.id)).called(1);
-    });
+    expect(
+      await service.isEnabled(category: NotificationCategory.aiInteraction),
+      isTrue,
+    );
   });
 }

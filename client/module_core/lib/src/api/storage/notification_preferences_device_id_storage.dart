@@ -3,6 +3,8 @@ import "dart:math";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
+import "../../logging/logging.dart";
+
 @lazySingleton
 class NotificationPreferencesDeviceIdStorage {
   static const _storageKey = "notification_preferences_device_id_v1";
@@ -43,6 +45,9 @@ class NotificationPreferencesDeviceIdStorage {
   Future<String> _loadOrCreate() async {
     final stored = await _storage.read(key: _storageKey);
     if (stored != null && _uuidV4Pattern.hasMatch(stored)) return stored;
+    if (stored != null) {
+      logw("Stored notification preferences device ID was invalid; replacing it");
+    }
 
     final generated = _generateUuidV4();
     await _storage.write(key: _storageKey, value: generated);

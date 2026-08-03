@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -5,7 +7,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../api/notification_preferences_api.dart";
 import "../api/storage/notification_preferences_device_id_storage.dart";
 
-const _preferenceWriteDeadline = Duration(seconds: 10);
+const _foregroundPreferenceReadDeadline = Duration(seconds: 2);
+const _settingsPreferenceReadDeadline = Duration(seconds: 10);
 
 @lazySingleton
 class NotificationPreferencesRepository {
@@ -15,7 +18,8 @@ class NotificationPreferencesRepository {
   final Map<String, Map<NotificationCategory, bool>> _cachedPreferences = {};
   final Map<String, Future<Map<NotificationCategory, bool>>> _activeFetches = {};
   final Map<String, int> _cacheGenerations = {};
-  final Map<(String, NotificationCategory), int> _updateSequences = {};
+  final Map<String, int> _fetchSequences = {};
+  final Map<(String, NotificationCategory), ({int started, int confirmed})> _updateSequences = {};
 
   NotificationPreferencesRepository({
     required NotificationPreferencesApi api,
@@ -29,7 +33,10 @@ class NotificationPreferencesRepository {
     final cached = _cachedPreferences[userId];
     if (cached != null) return _cachedPreference(preferences: cached, category: category);
 
-    final preferences = await _fetch(userId: userId);
+    final preferences = await _fetchWithDeadline(
+      userId: userId,
+      deadline: _foregroundPreferenceReadDeadline,
+    );
     return _cachedPreference(preferences: preferences, category: category);
   }
 
@@ -42,8 +49,9 @@ class NotificationPreferencesRepository {
       throw ArgumentError.value(category, "category", "Unsupported notification category");
     }
     final updateKey = (userId, category);
-    final updateSequence = (_updateSequences[updateKey] ?? 0) + 1;
-    _updateSequences[updateKey] = updateSequence;
+    final updateState = _updateSequences[updateKey] ?? (started: 0, confirmed: 0);
+    final updateSequence = updateState.started + 1;
+    _updateSequences[updateKey] = (started: updateSequence, confirmed: updateState.confirmed);
 
     if (_cachedPreferences[userId] == null) {
       await _fetch(userId: userId);
@@ -53,27 +61,46 @@ class NotificationPreferencesRepository {
 
     final deviceId = await _deviceIdStorage.getOrCreate();
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
-    final record = await _api
-        .updatePreference(
-          userId: userId,
-          deviceId: deviceId,
-          request: _patchRequest(category: category, enabled: enabled),
-        )
-        .timeout(_preferenceWriteDeadline);
+    final record = await _api.updatePreference(
+      userId: userId,
+      deviceId: deviceId,
+      request: _patchRequest(category: category, enabled: enabled),
+    );
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
     _validateDeviceId(record: record, expected: deviceId);
 
     final confirmed = _preferenceFrom(notifications: record.notifications, category: category);
     final latest = _cachedPreferences[userId];
     if (latest == null) throw ApiError.notAuthenticated();
-    if (_updateSequences[updateKey] != updateSequence) {
+    final latestUpdateState = _updateSequences[updateKey];
+    if (latestUpdateState == null) throw ApiError.notAuthenticated();
+    if (updateSequence < latestUpdateState.confirmed) {
       return _cachedPreference(preferences: latest, category: category);
     }
+    _updateSequences[updateKey] = (started: latestUpdateState.started, confirmed: updateSequence);
     _cachedPreferences[userId] = Map.unmodifiable({...latest, category: confirmed});
     return confirmed;
   }
 
-  Future<Map<NotificationCategory, bool>> getAll({required String userId}) => _fetch(userId: userId);
+  Future<Map<NotificationCategory, bool>> getAll({required String userId}) => _fetchWithDeadline(
+    userId: userId,
+    deadline: _settingsPreferenceReadDeadline,
+  );
+
+  Future<Map<NotificationCategory, bool>> _fetchWithDeadline({
+    required String userId,
+    required Duration deadline,
+  }) async {
+    final fetch = _fetch(userId: userId);
+    try {
+      return await fetch.timeout(deadline);
+    } on TimeoutException {
+      if (identical(_activeFetches[userId], fetch)) {
+        final _ = _activeFetches.remove(userId);
+      }
+      rethrow;
+    }
+  }
 
   Future<Map<NotificationCategory, bool>> _fetch({required String userId}) {
     final activeFetch = _activeFetches[userId];
@@ -81,12 +108,15 @@ class NotificationPreferencesRepository {
 
     final cacheGeneration = _cacheGeneration(userId: userId);
     final cachedAtStart = _cachedPreferences[userId];
+    final fetchSequence = (_fetchSequences[userId] ?? 0) + 1;
+    _fetchSequences[userId] = fetchSequence;
     late final Future<Map<NotificationCategory, bool>> operation;
     operation =
         _fetchAndCache(
           userId: userId,
           cacheGeneration: cacheGeneration,
           cachedAtStart: cachedAtStart,
+          fetchSequence: fetchSequence,
         ).whenComplete(() {
           if (identical(_activeFetches[userId], operation)) {
             _activeFetches.remove(userId);
@@ -100,6 +130,7 @@ class NotificationPreferencesRepository {
     required String userId,
     required int cacheGeneration,
     required Map<NotificationCategory, bool>? cachedAtStart,
+    required int fetchSequence,
   }) async {
     final deviceId = await _deviceIdStorage.getOrCreate();
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
@@ -107,12 +138,11 @@ class NotificationPreferencesRepository {
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
     _validateDeviceId(record: record, expected: deviceId);
 
-    final latest = _cachedPreferences[userId];
-    if (!identical(latest, cachedAtStart)) {
-      if (latest == null) throw ApiError.notAuthenticated();
-      return latest;
-    }
     final preferences = _preferencesFrom(notifications: record.notifications);
+    final latest = _cachedPreferences[userId];
+    if (_fetchSequences[userId] != fetchSequence || !identical(latest, cachedAtStart)) {
+      return latest ?? preferences;
+    }
     _cachedPreferences[userId] = preferences;
     return preferences;
   }
@@ -121,11 +151,10 @@ class NotificationPreferencesRepository {
     _cachedPreferences.remove(userId);
     _activeFetches.remove(userId);
     _cacheGenerations[userId] = _cacheGeneration(userId: userId) + 1;
+    _fetchSequences.remove(userId);
     final updateKeys = _updateSequences.keys.where((key) => key.$1 == userId).toList();
     updateKeys.forEach(_updateSequences.remove);
   }
-
-  void evictActiveFetch({required String userId}) => _activeFetches.remove(userId);
 
   int _cacheGeneration({required String userId}) => _cacheGenerations[userId] ?? 0;
 

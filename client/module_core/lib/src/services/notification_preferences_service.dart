@@ -8,8 +8,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../logging/logging.dart";
 import "../repositories/notification_preferences_repository.dart";
 
-const _foregroundPreferenceDeadline = Duration(seconds: 2);
-
 enum NotificationPreferencesAccountStatus { unavailable, available }
 
 typedef _AccountOperation = ({int generation, String userId});
@@ -68,16 +66,11 @@ class NotificationPreferencesService {
     if (category == NotificationCategory.unknown) return true;
 
     try {
-      final enabled = await _repository
-          .isEnabled(userId: operation.userId, category: category)
-          .timeout(_foregroundPreferenceDeadline);
+      final enabled = await _repository.isEnabled(userId: operation.userId, category: category);
       if (!_isCurrent(operation: operation)) return false;
       return enabled;
     } on Object catch (error, stackTrace) {
       if (!_isCurrent(operation: operation)) return false;
-      if (error is TimeoutException) {
-        _repository.evictActiveFetch(userId: operation.userId);
-      }
       logw(
         "Failed to load notification preferences; defaulting ${category.name} to enabled",
         error,
