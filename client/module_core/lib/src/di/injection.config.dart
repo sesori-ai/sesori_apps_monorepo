@@ -34,6 +34,8 @@ import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
     as _i64;
+import 'package:sesori_dart_core/src/api/storage/notification_preferences_device_id_storage.dart'
+    as _i407;
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
     as _i197;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
@@ -105,6 +107,8 @@ import 'package:sesori_dart_core/src/services/new_session_plugin_service.dart'
     as _i177;
 import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart'
     as _i913;
+import 'package:sesori_dart_core/src/services/notification_preferences_service.dart'
+    as _i906;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
     as _i659;
 import 'package:sesori_dart_core/src/services/plugin_management_service.dart'
@@ -167,6 +171,11 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i400.NotificationApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
     );
+    gh.lazySingleton<_i396.NotificationPreferencesApi>(
+      () => _i396.NotificationPreferencesApi(
+        client: gh<_i442.AuthenticatedHttpApiClient>(),
+      ),
+    );
     gh.lazySingleton<_i560.ProductAnalyticsPreferenceApi>(
       () => _i560.ProductAnalyticsPreferenceApi(
         client: gh<_i442.AuthenticatedHttpApiClient>(),
@@ -206,12 +215,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i274.AnalyticsRepository>(
       () => _i274.AnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
     );
-    gh.lazySingleton<_i396.NotificationPreferencesApi>(
-      () =>
-          _i396.NotificationPreferencesApi(storage: gh<_i442.SecureStorage>()),
-    );
     gh.lazySingleton<_i957.PluginPreferenceApi>(
       () => _i957.PluginPreferenceApi(storage: gh<_i442.SecureStorage>()),
+    );
+    gh.lazySingleton<_i407.NotificationPreferencesDeviceIdStorage>(
+      () => _i407.NotificationPreferencesDeviceIdStorage(
+        storage: gh<_i442.SecureStorage>(),
+      ),
     );
     gh.lazySingleton<_i197.ProductAnalyticsPreferenceStorage>(
       () => _i197.ProductAnalyticsPreferenceStorage(
@@ -276,11 +286,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i933.LegalRepository>(
       () => _i933.LegalRepository(api: gh<_i835.LegalApi>()),
     );
-    gh.lazySingleton<_i458.NotificationPreferencesRepository>(
-      () => _i458.NotificationPreferencesRepository(
-        api: gh<_i396.NotificationPreferencesApi>(),
-      ),
-    );
     gh.lazySingleton<_i594.PluginPreferenceRepository>(
       () => _i594.PluginPreferenceRepository(
         api: gh<_i957.PluginPreferenceApi>(),
@@ -312,14 +317,11 @@ extension GetItInjectableX on _i174.GetIt {
         preferenceRepository: gh<_i804.ProductAnalyticsPreferenceRepository>(),
       ),
     );
-    gh.lazySingleton<_i101.ForegroundNotificationDispatcher>(
-      () => _i101.ForegroundNotificationDispatcher(
-        notificationPreferencesRepository:
-            gh<_i458.NotificationPreferencesRepository>(),
-        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
-        pushMessagingSource: gh<_i330.PushMessagingSource>(),
+    gh.lazySingleton<_i458.NotificationPreferencesRepository>(
+      () => _i458.NotificationPreferencesRepository(
+        api: gh<_i396.NotificationPreferencesApi>(),
+        deviceIdStorage: gh<_i407.NotificationPreferencesDeviceIdStorage>(),
       ),
-      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i285.InstallationAnalyticsService>(
       () => _i285.InstallationAnalyticsService(
@@ -331,6 +333,22 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i659.NotificationRegistrationService(
         repository: gh<_i471.NotificationRepository>(),
         authSession: gh<_i442.AuthSession>(),
+        pushMessagingSource: gh<_i330.PushMessagingSource>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i906.NotificationPreferencesService>(
+      () => _i906.NotificationPreferencesService(
+        authSession: gh<_i442.AuthSession>(),
+        repository: gh<_i458.NotificationPreferencesRepository>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i101.ForegroundNotificationDispatcher>(
+      () => _i101.ForegroundNotificationDispatcher(
+        notificationPreferencesService:
+            gh<_i906.NotificationPreferencesService>(),
+        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
         pushMessagingSource: gh<_i330.PushMessagingSource>(),
       ),
       dispose: (i) => i.dispose(),

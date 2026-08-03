@@ -985,6 +985,30 @@ abstract class AppLocalizations {
   /// **'System'**
   String get notificationSectionSystem;
 
+  /// No description provided for @notificationPreferencesLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load notification preferences'**
+  String get notificationPreferencesLoadFailedTitle;
+
+  /// No description provided for @notificationPreferencesLoadFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get notificationPreferencesLoadFailedDescription;
+
+  /// No description provided for @notificationPreferencesRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get notificationPreferencesRetry;
+
+  /// No description provided for @notificationPreferenceUpdating.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating notification preference'**
+  String get notificationPreferenceUpdating;
+
   /// No description provided for @notificationCategoryAiInteraction.
   ///
   /// In en, this message translates to:

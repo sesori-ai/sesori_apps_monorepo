@@ -478,6 +478,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationSectionSystem => 'System';
 
   @override
+  String get notificationPreferencesLoadFailedTitle => 'Couldn\'t load notification preferences';
+
+  @override
+  String get notificationPreferencesLoadFailedDescription => 'Check your connection and try again.';
+
+  @override
+  String get notificationPreferencesRetry => 'Retry';
+
+  @override
+  String get notificationPreferenceUpdating => 'Updating notification preference';
+
+  @override
   String get notificationCategoryAiInteraction => 'AI Interactions';
 
   @override

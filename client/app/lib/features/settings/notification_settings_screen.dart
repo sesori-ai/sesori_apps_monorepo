@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
@@ -23,7 +24,7 @@ class NotificationSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => NotificationPreferencesCubit(getIt<NotificationPreferencesRepository>()),
+      create: (_) => NotificationPreferencesCubit(getIt<NotificationPreferencesService>()),
       child: const _NotificationSettingsBody(),
     );
   }
@@ -60,7 +61,8 @@ class _NotificationSettingsBody extends StatelessWidget {
                 padding: EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
                 child: Center(child: CircularProgressIndicator()),
               ),
-              NotificationPreferencesLoaded(:final preferences) => Column(
+              NotificationPreferencesLoadFailed() => const _NotificationPreferencesFailure(),
+              NotificationPreferencesLoaded(:final preferences, :final updatingCategories) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SettingsSection(
@@ -72,18 +74,21 @@ class _NotificationSettingsBody extends StatelessWidget {
                           title: loc.notificationCategoryAiInteraction,
                           subtitle: loc.notificationCategoryAiInteractionDescription,
                           preferences: preferences,
+                          updatingCategories: updatingCategories,
                         ),
                         _NotificationToggleRow(
                           category: NotificationCategory.sessionMessage,
                           title: loc.notificationCategorySessionMessage,
                           subtitle: loc.notificationCategorySessionMessageDescription,
                           preferences: preferences,
+                          updatingCategories: updatingCategories,
                         ),
                         _NotificationToggleRow(
                           category: NotificationCategory.connectionStatus,
                           title: loc.notificationCategoryConnectionStatus,
                           subtitle: loc.notificationCategoryConnectionStatusDescription,
                           preferences: preferences,
+                          updatingCategories: updatingCategories,
                           isLast: true,
                         ),
                       ],
@@ -100,6 +105,7 @@ class _NotificationSettingsBody extends StatelessWidget {
                           title: loc.notificationCategorySystemUpdate,
                           subtitle: null,
                           preferences: preferences,
+                          updatingCategories: updatingCategories,
                           isLast: true,
                         ),
                       ],
@@ -118,12 +124,38 @@ class _NotificationSettingsBody extends StatelessWidget {
   }
 }
 
+class _NotificationPreferencesFailure extends StatelessWidget {
+  const _NotificationPreferencesFailure();
+
+  @override
+  Widget build(BuildContext context) {
+    return PregoGroupedRows(
+      children: [
+        PregoGroupedRow(
+          icon: TablerRegular.alert_triangle,
+          title: Text(context.loc.notificationPreferencesLoadFailedTitle),
+          subtitle: Text(context.loc.notificationPreferencesLoadFailedDescription),
+          trailing: PregoButtonsSolid(
+            key: const Key("notification_preferences_retry"),
+            label: context.loc.notificationPreferencesRetry,
+            hierarchy: PregoButtonsSolidHierarchy.tertiary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: context.read<NotificationPreferencesCubit>().retry,
+          ),
+          isLast: true,
+        ),
+      ],
+    );
+  }
+}
+
 class _NotificationToggleRow extends StatelessWidget {
   const _NotificationToggleRow({
     required this.category,
     required this.title,
     required this.subtitle,
     required this.preferences,
+    required this.updatingCategories,
     this.isLast = false,
   });
 
@@ -131,15 +163,34 @@ class _NotificationToggleRow extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Map<NotificationCategory, bool> preferences;
+  final Set<NotificationCategory> updatingCategories;
   final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     final subtitle = this.subtitle;
     final enabled = preferences[category] ?? true;
+    final isUpdating = updatingCategories.contains(category);
     void toggle({required bool enabled}) {
       context.read<NotificationPreferencesCubit>().toggle(category, enabled: enabled);
     }
+
+    final trailing = isUpdating
+        ? Semantics(
+            label: context.loc.notificationPreferenceUpdating,
+            child: SizedBox(
+              key: ValueKey("notification_preference_loading_${category.name}"),
+              width: 64,
+              child: Center(
+                child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+              ),
+            ),
+          )
+        : PregoSwitch(
+            key: ValueKey("notification_preference_switch_${category.name}"),
+            value: enabled,
+            onChanged: (enabled) => toggle(enabled: enabled),
+          );
 
     // Merged so assistive tech announces one labelled toggle (title,
     // description, state) instead of an unlabelled switch beside plain text.
@@ -147,11 +198,8 @@ class _NotificationToggleRow extends StatelessWidget {
       child: PregoGroupedRow(
         title: Text(title),
         subtitle: subtitle != null ? Text(subtitle) : null,
-        trailing: PregoSwitch(
-          value: enabled,
-          onChanged: (enabled) => toggle(enabled: enabled),
-        ),
-        onTap: () => toggle(enabled: !enabled),
+        trailing: trailing,
+        onTap: isUpdating ? null : () => toggle(enabled: !enabled),
         isLast: isLast,
       ),
     );

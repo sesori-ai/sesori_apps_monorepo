@@ -235,6 +235,42 @@ void main() {
   });
 
   group("account-bound requests", () {
+    test("patchForUser injects auth and delegates only for the current account", () async {
+      const body = '{"notifications":{"aiInteraction":false}}';
+      when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userA));
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(
+        () => mockHttpApiClient.patch<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success("ok"));
+
+      final response = await client.patchForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: body,
+      );
+
+      expect((response as SuccessResponse<String>).data, "ok");
+      final captured = verify(
+        () => mockHttpApiClient.patch<String>(
+          testUrl,
+          fromJson: _parseString,
+          headers: captureAny(named: "headers"),
+          body: body,
+          contentType: null,
+          logBody: false,
+        ),
+      );
+      expect(captured.captured.single, {"Authorization": "Bearer $accessToken"});
+    });
+
     test("refuses a request when its initiating account is no longer current", () async {
       when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userB));
 
