@@ -69,12 +69,18 @@ class NotificationPreferencesRepository {
     if (activeFetch != null) return activeFetch;
 
     final cacheGeneration = _cacheGeneration(userId: userId);
+    final cachedAtStart = _cachedPreferences[userId];
     late final Future<Map<NotificationCategory, bool>> operation;
-    operation = _fetchAndCache(userId: userId, cacheGeneration: cacheGeneration).whenComplete(() {
-      if (identical(_activeFetches[userId], operation)) {
-        _activeFetches.remove(userId);
-      }
-    });
+    operation =
+        _fetchAndCache(
+          userId: userId,
+          cacheGeneration: cacheGeneration,
+          cachedAtStart: cachedAtStart,
+        ).whenComplete(() {
+          if (identical(_activeFetches[userId], operation)) {
+            _activeFetches.remove(userId);
+          }
+        });
     _activeFetches[userId] = operation;
     return operation;
   }
@@ -82,6 +88,7 @@ class NotificationPreferencesRepository {
   Future<Map<NotificationCategory, bool>> _fetchAndCache({
     required String userId,
     required int cacheGeneration,
+    required Map<NotificationCategory, bool>? cachedAtStart,
   }) async {
     final deviceId = await _deviceIdStorage.getOrCreate();
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
@@ -89,6 +96,11 @@ class NotificationPreferencesRepository {
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
     _validateDeviceId(record: record, expected: deviceId);
 
+    final latest = _cachedPreferences[userId];
+    if (!identical(latest, cachedAtStart)) {
+      if (latest == null) throw ApiError.notAuthenticated();
+      return latest;
+    }
     final preferences = _preferencesFrom(notifications: record.notifications);
     _cachedPreferences[userId] = preferences;
     return preferences;

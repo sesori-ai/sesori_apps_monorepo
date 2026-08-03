@@ -144,6 +144,43 @@ void main() {
       );
     });
 
+    test("an older refresh does not replace a newer PATCH confirmation", () async {
+      final refreshResponse = Completer<NotificationPreferencesApiRecord>();
+      var fetchCount = 0;
+      when(
+        () => api.getPreferences(userId: _userA, deviceId: _deviceId),
+      ).thenAnswer((_) {
+        fetchCount++;
+        return fetchCount == 1 ? Future.value(_record()) : refreshResponse.future;
+      });
+      when(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.aiInteraction(enabled: false),
+        ),
+      ).thenAnswer((_) async => _record(notifications: _updatedNotifications));
+      await repository.getAll(userId: _userA);
+
+      final refresh = repository.getAll(userId: _userA);
+      await Future<void>.delayed(Duration.zero);
+      await repository.setEnabled(
+        userId: _userA,
+        category: NotificationCategory.aiInteraction,
+        enabled: false,
+      );
+      refreshResponse.complete(_record());
+
+      expect(
+        (await refresh)[NotificationCategory.aiInteraction],
+        isFalse,
+      );
+      expect(
+        await repository.isEnabled(userId: _userA, category: NotificationCategory.aiInteraction),
+        isFalse,
+      );
+    });
+
     test("a failed PATCH preserves the previous confirmed cache", () async {
       when(
         () => api.getPreferences(userId: _userA, deviceId: _deviceId),
