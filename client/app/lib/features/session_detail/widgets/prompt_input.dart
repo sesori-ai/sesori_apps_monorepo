@@ -1436,7 +1436,9 @@ class _PromptInputState extends State<PromptInput> {
         leadingIcon: TablerRegular.arrow_up,
         hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
         size: PregoButtonsSolidSize.lg,
-        onPressed: _handleSend,
+        // An empty composer has nothing to send: show the action as genuinely
+        // unavailable instead of accepting a tap that does nothing.
+        onPressed: _hasSendableContent ? _handleSend : null,
       ),
     );
   }

@@ -107,6 +107,14 @@ Future<void> enterTypingMode(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Types a prompt and sends it. The pump in between lets the composer rebuild
+/// around the new text — send only accepts taps once the field has content.
+Future<void> enterTextAndSend(WidgetTester tester, String text) async {
+  await tester.enterText(find.byType(EditableText), text);
+  await tester.pump();
+  await tester.tap(find.byIcon(TablerRegular.arrow_up));
+}
+
 void main() {
   late MockSessionService sessionService;
   late MockSessionRepository sessionRepository;
@@ -441,8 +449,7 @@ void main() {
     expect(find.text(loc.newSessionOptionsUnavailable), findsOneWidget);
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "use backend defaults");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester, "use backend defaults");
     await tester.pumpAndSettle();
 
     verify(
@@ -1186,8 +1193,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester, "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1216,8 +1222,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester, "test message");
     await tester.pump();
 
     final absorbingFinder = find.byWidgetPredicate(
@@ -1267,8 +1272,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester, "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1311,8 +1315,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up), warnIfMissed: false);
+    await enterTextAndSend(tester, "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1358,8 +1361,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await enterTextAndSend(tester, "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1398,8 +1400,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await enterTextAndSend(tester, "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
@@ -1432,8 +1433,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
-    await tester.enterText(find.byType(EditableText), "test message");
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await enterTextAndSend(tester, "test message");
     await tester.pump();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);

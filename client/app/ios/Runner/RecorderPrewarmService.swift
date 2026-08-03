@@ -98,7 +98,9 @@ final class RecorderPrewarmService {
       options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
     )
     if #available(iOS 13.0, *) {
-      try session.setAllowHapticsAndSystemSoundsDuringRecording(false)
+      // Mirrors the recorder's own session configuration, where haptics stay
+      // allowed so the hold-to-speak feedback is not silenced while recording.
+      try session.setAllowHapticsAndSystemSoundsDuringRecording(true)
     }
 
     var settings: [String: Any] = [
