@@ -69,6 +69,35 @@ relevant current behavior, concrete implementation steps, verification, and
 material risks or decisions. Add a lightweight `TRACKER.md` or step files only
 when they will help execution.
 
+## Evidence And Proportionality
+
+- Classify each planned safeguard as addressing an observed failure, an ordinary
+  reachable user flow, or a theoretical interleaving. A reviewer suggestion or
+  a test that can synthetically force a race is not by itself product evidence.
+- Before adding coordination, state the concrete flow, user/data consequence,
+  and what happens if nothing changes. Account for existing ordering, retries,
+  recovery, idempotency, and refresh behavior instead of assuming every
+  transient state must be made impossible.
+- Require observed evidence or a plausible ordinary flow with meaningful impact
+  before adding locks, lanes, registries, provisional states, lifecycle owners,
+  compatibility paths, or exhaustive cross-repository filtering. Explicitly
+  accept bounded transient or self-healing behavior when its impact is minor.
+- Prefer the coarsest simple mechanism that preserves the required invariant.
+  Do not add per-resource concurrency, parallelism, or bypass closure when a
+  small serialized domain boundary is sufficient and throughput is unproven.
+- Treat cross-cutting coordination as a scope alarm. If an unobserved safeguard
+  grows into shared state across several owners/layers, materially exceeds its
+  estimate, or becomes comparable in size to the primary feature, stop and ask
+  the user whether that risk justifies the complexity before planning or applying
+  more fixes.
+- Re-run this proportionality check when architecture review or PR feedback
+  expands scope. Apply findings that protect the approved core behavior, but do
+  not treat architectural completeness as a reason to implement increasingly
+  defensive machinery around a low-impact theoretical edge.
+- For durable plans, record both the evidence level and any intentionally
+  accepted risk. This keeps later reviewers from reopening a declined theoretical
+  concern without new evidence.
+
 ## PR Complexity and Communication
 
 Assign every planned or opened PR one implementation-complexity level represented
