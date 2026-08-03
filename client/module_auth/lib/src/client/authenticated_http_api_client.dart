@@ -152,6 +152,28 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
     );
   }
 
+  /// Makes an authenticated PATCH only while [userId] remains the current
+  /// account, including across a forced token refresh and 401 retry.
+  Future<ApiResponse<T>> patchForUser<T>({
+    required Uri url,
+    required String userId,
+    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
+    required T Function(dynamic json) fromJson,
+    required String body,
+  }) {
+    return _withAuth(
+      expectedUserId: userId,
+      makeRequest: (token) => _client.patch(
+        url,
+        fromJson: fromJson,
+        headers: _withAuthHeader(null, token: token),
+        body: body,
+        contentType: null,
+        logBody: false,
+      ),
+    );
+  }
+
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> delete<T>(
@@ -203,34 +225,35 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
     required String? expectedUserId,
     required Future<ApiResponse<T>> Function(String token) makeRequest,
   }) async {
-    if (!_matchesExpectedUser(expectedUserId)) {
+    final expectedAuthState = expectedUserId == null ? null : _authManager.currentState;
+    if (!_matchesExpectedUser(expectedUserId: expectedUserId, expectedAuthState: expectedAuthState)) {
       return ApiResponse.error(ApiError.notAuthenticated());
     }
     final token = await _authManager.getFreshAccessToken();
     if (token == null) {
       return ApiResponse.error(ApiError.notAuthenticated());
     }
-    if (!_matchesExpectedUser(expectedUserId)) {
+    if (!_matchesExpectedUser(expectedUserId: expectedUserId, expectedAuthState: expectedAuthState)) {
       return ApiResponse.error(ApiError.notAuthenticated());
     }
 
     final response = await makeRequest(token);
-    if (!_matchesExpectedUser(expectedUserId)) {
+    if (!_matchesExpectedUser(expectedUserId: expectedUserId, expectedAuthState: expectedAuthState)) {
       return ApiResponse.error(ApiError.notAuthenticated());
     }
     if (response case ErrorResponse<T>(error: NonSuccessCodeError(errorCode: 401))) {
-      if (!_matchesExpectedUser(expectedUserId)) {
+      if (!_matchesExpectedUser(expectedUserId: expectedUserId, expectedAuthState: expectedAuthState)) {
         return ApiResponse.error(ApiError.notAuthenticated());
       }
       final refreshedToken = await _authManager.getFreshAccessToken(forceRefresh: true);
-      if (!_matchesExpectedUser(expectedUserId)) {
+      if (!_matchesExpectedUser(expectedUserId: expectedUserId, expectedAuthState: expectedAuthState)) {
         return ApiResponse.error(ApiError.notAuthenticated());
       }
       if (refreshedToken == null) {
         return response;
       }
       final retryResponse = await makeRequest(refreshedToken);
-      if (!_matchesExpectedUser(expectedUserId)) {
+      if (!_matchesExpectedUser(expectedUserId: expectedUserId, expectedAuthState: expectedAuthState)) {
         return ApiResponse.error(ApiError.notAuthenticated());
       }
       return retryResponse;
@@ -239,9 +262,11 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
     return response;
   }
 
-  bool _matchesExpectedUser(String? expectedUserId) {
+  bool _matchesExpectedUser({required String? expectedUserId, required AuthState? expectedAuthState}) {
     if (expectedUserId == null) return true;
-    return switch (_authManager.currentState) {
+    final currentState = _authManager.currentState;
+    if (!identical(currentState, expectedAuthState)) return false;
+    return switch (currentState) {
       AuthAuthenticated(:final user) => user.id == expectedUserId,
       AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => false,
     };

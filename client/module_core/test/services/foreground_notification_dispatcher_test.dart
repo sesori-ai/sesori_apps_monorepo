@@ -1,28 +1,29 @@
 import "dart:async";
 
 import "package:meta/meta.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/src/platform/local_notification_client.dart";
 import "package:sesori_dart_core/src/platform/notification_open_request.dart";
 import "package:sesori_dart_core/src/platform/push_messaging_source.dart";
 import "package:sesori_dart_core/src/platform/push_notification_message.dart";
-import "package:sesori_dart_core/src/repositories/notification_preferences_repository.dart";
 import "package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart";
+import "package:sesori_dart_core/src/services/notification_preferences_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
   group("ForegroundNotificationDispatcher", () {
-    late FakeNotificationPreferencesRepository preferencesRepository;
+    late FakeNotificationPreferencesService preferencesService;
     late RecordingLocalNotificationClient localNotificationClient;
     late FakePushMessagingSource pushMessagingSource;
     late ForegroundNotificationDispatcher dispatcher;
 
     setUp(() {
-      preferencesRepository = FakeNotificationPreferencesRepository();
+      preferencesService = FakeNotificationPreferencesService();
       localNotificationClient = RecordingLocalNotificationClient();
       pushMessagingSource = FakePushMessagingSource();
       dispatcher = ForegroundNotificationDispatcher(
-        notificationPreferencesRepository: preferencesRepository,
+        notificationPreferencesService: preferencesService,
         localNotificationClient: localNotificationClient,
         pushMessagingSource: pushMessagingSource,
       );
@@ -35,7 +36,7 @@ void main() {
     });
 
     test("foreground messages dispatch local notifications through preferences", () async {
-      preferencesRepository.enabledCategories[NotificationCategory.aiInteraction] = true;
+      preferencesService.enabledCategories[NotificationCategory.aiInteraction] = true;
       await dispatcher.start();
 
       pushMessagingSource.emitForegroundMessage(
@@ -69,7 +70,7 @@ void main() {
     });
 
     test("disabled category suppresses local notification", () async {
-      preferencesRepository.enabledCategories[NotificationCategory.aiInteraction] = false;
+      preferencesService.enabledCategories[NotificationCategory.aiInteraction] = false;
       await dispatcher.start();
 
       pushMessagingSource.emitForegroundMessage(
@@ -91,20 +92,12 @@ void main() {
   });
 }
 
-class FakeNotificationPreferencesRepository implements NotificationPreferencesRepository {
+class FakeNotificationPreferencesService extends Mock implements NotificationPreferencesService {
   final Map<NotificationCategory, bool> enabledCategories = <NotificationCategory, bool>{};
-
-  @override
-  Future<Map<NotificationCategory, bool>> getAll() async => enabledCategories;
 
   @override
   Future<bool> isEnabled({required NotificationCategory category}) async {
     return enabledCategories[category] ?? true;
-  }
-
-  @override
-  Future<void> setEnabled({required NotificationCategory category, required bool enabled}) async {
-    enabledCategories[category] = enabled;
   }
 }
 

@@ -124,11 +124,11 @@ void main() {
       await expectLater(service.isAuthenticated(), throwsA(isA<TimeoutException>()));
     });
 
-    test("reports unauthenticated gh with actionable options only once", () async {
+    test("reports an ambiguous auth failure without claiming the user is unauthenticated", () async {
       final stderrLines = <String>[];
       processRunner
-        ..enqueueResult(result: _fail(exitCode: 1))
-        ..enqueueResult(result: _fail(exitCode: 1));
+        ..enqueueResult(result: _fail(exitCode: 1, stderr: "network is unreachable"))
+        ..enqueueResult(result: _fail(exitCode: 1, stderr: "network is unreachable"));
 
       await IOOverrides.runZoned(
         () async {
@@ -142,13 +142,46 @@ void main() {
       expect(
         stderrLines.single,
         allOf(
-          contains("GitHub CLI (gh) is not authenticated for github.com"),
-          contains("gh auth login"),
-          contains("GH_TOKEN/GITHUB_TOKEN"),
+          contains("GitHub CLI (gh) could not verify authentication for github.com"),
+          contains("gh auth status --hostname github.com"),
+          contains("authentication and connectivity"),
+          isNot(contains("is not authenticated")),
+          isNot(contains("gh auth login")),
           isNot(contains("worktree")),
         ),
       );
     });
+
+    for (final diagnostic in const [
+      (name: "no configured GitHub hosts", stderr: "You are not logged into any GitHub hosts"),
+      (name: "no configured github.com account", stderr: "You are not logged into any accounts on github.com"),
+    ]) {
+      test("reports known unauthentication for ${diagnostic.name}", () async {
+        final stderrLines = <String>[];
+        processRunner
+          ..enqueueResult(result: _fail(exitCode: 1, stderr: diagnostic.stderr))
+          ..enqueueResult(result: _fail(exitCode: 1, stderr: diagnostic.stderr));
+
+        await IOOverrides.runZoned(
+          () async {
+            expect(await service.isAuthenticated(), isFalse);
+            expect(await service.isAuthenticated(), isFalse);
+          },
+          stderr: () => _CapturingStdout(stderrLines),
+        );
+
+        expect(stderrLines, hasLength(1));
+        expect(
+          stderrLines.single,
+          allOf(
+            contains("GitHub CLI (gh) is not authenticated for github.com"),
+            contains("gh auth login"),
+            contains("GH_TOKEN/GITHUB_TOKEN"),
+            isNot(contains("could not verify authentication")),
+          ),
+        );
+      });
+    }
   });
 
   group("GhCliApi.getAuthenticatedIdentity", () {

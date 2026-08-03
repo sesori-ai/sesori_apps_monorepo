@@ -19,6 +19,7 @@ import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
+import "repositories/codex_tool_correlation_tracker.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
@@ -61,6 +62,7 @@ class CodexPlugin implements CodexManagedApi {
   final CodexSessionService _sessionService;
   final CodexEventMapper _eventMapper;
   final CodexRolloutTailer _rolloutTailer;
+  final CodexToolCorrelationTracker _toolCorrelationTracker;
   final String _projectCwd;
   final Duration _keepaliveInterval;
 
@@ -166,6 +168,9 @@ class CodexPlugin implements CodexManagedApi {
         config: configReader.readDefaults(),
       ),
       rolloutTailer: rolloutTailer,
+      toolCorrelationTracker: CodexToolCorrelationTracker(
+        rolloutToolMapper: rolloutToolMapper,
+      ),
       projectCwd: resolvedProjectCwd,
       onConnected: onConnected,
       onDisconnected: onDisconnected,
@@ -180,6 +185,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexSessionService sessionService,
     required CodexEventMapper eventMapper,
     required CodexRolloutTailer rolloutTailer,
+    required CodexToolCorrelationTracker toolCorrelationTracker,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
@@ -191,6 +197,7 @@ class CodexPlugin implements CodexManagedApi {
          sessionService: sessionService,
          eventMapper: eventMapper,
          rolloutTailer: rolloutTailer,
+         toolCorrelationTracker: toolCorrelationTracker,
          projectCwd: projectCwd,
          onConnected: onConnected,
          onDisconnected: onDisconnected,
@@ -204,6 +211,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexSessionService sessionService,
     required CodexEventMapper eventMapper,
     required CodexRolloutTailer rolloutTailer,
+    required CodexToolCorrelationTracker toolCorrelationTracker,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
@@ -215,6 +223,7 @@ class CodexPlugin implements CodexManagedApi {
        _sessionService = sessionService,
        _eventMapper = eventMapper,
        _rolloutTailer = rolloutTailer,
+       _toolCorrelationTracker = toolCorrelationTracker,
        _projectCwd = projectCwd,
        _onConnected = onConnected,
        _onDisconnected = onDisconnected,
@@ -307,6 +316,7 @@ class CodexPlugin implements CodexManagedApi {
     _client = null;
     _sessionService.detachAppServerRepositories();
     _rolloutTailer.stopAll();
+    _toolCorrelationTracker.clear();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     _approvalRegistry = null;
@@ -364,6 +374,13 @@ class CodexPlugin implements CodexManagedApi {
       // This fallback covers a turn started by another app-server client.
       _rolloutTailer.start(sessionId: threadId);
     }
+    final item = notification.params["item"];
+    final isCommandStarted = notification.method == "item/started" && item is Map && item["type"] == "commandExecution";
+    if (threadId != null && (notification.method == "item/completed" || isCommandStarted)) {
+      // Codex persists the response item before emitting its stable lifecycle
+      // event. Drain now so polling latency cannot split one command identity.
+      _rolloutTailer.drain(sessionId: threadId);
+    }
     final terminalHistory =
         notification.method == "turn/completed" ||
         notification.method == "error" ||
@@ -378,17 +395,23 @@ class CodexPlugin implements CodexManagedApi {
     // final tool updates. Forced runtime teardown waits for this transition
     // before disconnecting the generation's event stream.
     final activityChanged = _maintainBookkeeping(notification);
-    _eventMapper.map(notification).forEach(_eventBuffer.add);
-    if (notification.method == "item/completed" && threadId != null) {
-      // The app-server item is provisional; a rollout output written for the
-      // same call id immediately enriches it with executor metadata.
-      _rolloutTailer.drain(sessionId: threadId);
-    }
+    final commandProjection = _toolCorrelationTracker.correlateAppServerCommand(
+      notification: notification,
+    );
+    _eventMapper
+        .mapCommand(
+          notification: notification,
+          commandProjection: commandProjection,
+        )
+        .forEach(_eventBuffer.add);
     if (threadId != null &&
         (notification.method == "turn/completed" ||
             notification.method == "error" ||
             notification.method == "thread/closed")) {
       _eventMapper.clearRolloutTurn(threadId: threadId);
+    }
+    if (threadId != null && terminalHistory) {
+      _toolCorrelationTracker.clearThread(threadId: threadId);
     }
     if (activityChanged) {
       _eventBuffer.add(const BridgeSseProjectUpdated());
@@ -396,6 +419,10 @@ class CodexPlugin implements CodexManagedApi {
   }
 
   void _handleRolloutAppend(CodexRolloutAppend append) {
+    _toolCorrelationTracker.observeRolloutLine(
+      threadId: append.sessionId,
+      line: append.line,
+    );
     _eventMapper.mapRolloutLine(threadId: append.sessionId, line: append.line).forEach(_eventBuffer.add);
   }
 
@@ -991,6 +1018,7 @@ class CodexPlugin implements CodexManagedApi {
     _threadDirectory.remove(sessionId);
     _rolloutTailer.stop(sessionId: sessionId);
     _eventMapper.clearRolloutTurn(threadId: sessionId);
+    _toolCorrelationTracker.clearThread(threadId: sessionId);
     _eventMapper.forgetThread(sessionId);
     _syncWorkState();
   }

@@ -479,7 +479,7 @@ class CatalogImportRepository {
     return ProjectDto(
       projectId: existing?.projectId ?? observation.preferredId,
       path: observation.path,
-      hidden: existing?.hidden ?? false,
+      hidden: existing?.hidden ?? true,
       baseBranch: existing?.baseBranch,
       prCacheGithubLogin: existing?.prCacheGithubLogin,
       displayName: existing?.displayName ?? observation.displayName,

@@ -1,16 +1,16 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/permission_repository.dart";
+import "../services/pending_interaction_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /permission/reply` — replies to a pending permission request.
 ///
 /// The [reply] field accepts "once", "always", or "reject".
 class ReplyToPermissionHandler extends BodyRequestHandler<ReplyToPermissionRequest, SuccessEmptyResponse> {
-  final PermissionRepository _permissionRepository;
+  final PendingInteractionService _pendingInteractionService;
 
-  ReplyToPermissionHandler({required PermissionRepository permissionRepository})
-    : _permissionRepository = permissionRepository,
+  ReplyToPermissionHandler({required PendingInteractionService pendingInteractionService})
+    : _pendingInteractionService = pendingInteractionService,
       super(
         HttpMethod.post,
         "/permission/reply",
@@ -34,7 +34,7 @@ class ReplyToPermissionHandler extends BodyRequestHandler<ReplyToPermissionReque
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    await _permissionRepository.replyToPermission(
+    await _pendingInteractionService.replyToPermission(
       requestId: requestId,
       sessionId: sessionId,
       reply: body.reply,

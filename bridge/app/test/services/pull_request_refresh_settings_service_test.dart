@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
@@ -26,6 +28,28 @@ void main() {
       expect(service.currentSettings, const PullRequestRefreshSettingsResponse(intervalSeconds: 30));
     });
 
+    test("an ordered read waits for an active mutation to commit", () async {
+      final writeStarted = Completer<void>();
+      final releaseWrite = Completer<void>();
+      api
+        ..writeStarted = writeStarted
+        ..releaseWrite = releaseWrite;
+      final update = service.update(intervalSeconds: 45);
+      await writeStarted.future;
+      var readCompleted = false;
+      final read = service.readCommittedSettings().then((response) {
+        readCompleted = true;
+        return response;
+      });
+
+      await Future<void>.delayed(Duration.zero);
+      expect(readCompleted, isFalse);
+
+      releaseWrite.complete();
+      expect(await read, const PullRequestRefreshSettingsResponse(intervalSeconds: 45));
+      expect(await update, const PullRequestRefreshSettingsResponse(intervalSeconds: 45));
+    });
+
     test("persists and publishes accepted boundary values", () async {
       final changes = <PullRequestRefreshSettingsResponse>[];
       final subscription = service.changes.listen(changes.add);
@@ -35,7 +59,7 @@ void main() {
         maximumPullRequestRefreshIntervalSeconds,
       ]) {
         final response = await service.update(
-          request: PullRequestRefreshSettingsRequest(intervalSeconds: intervalSeconds),
+          intervalSeconds: intervalSeconds,
         );
 
         expect(response.intervalSeconds, intervalSeconds);
@@ -67,7 +91,7 @@ void main() {
             );
         await expectLater(
           service.update(
-            request: PullRequestRefreshSettingsRequest(intervalSeconds: intervalSeconds),
+            intervalSeconds: intervalSeconds,
           ),
           throwsA(matcher),
         );
@@ -84,7 +108,7 @@ void main() {
       final subscription = service.changes.listen(changes.add);
 
       final response = await service.update(
-        request: const PullRequestRefreshSettingsRequest(intervalSeconds: 30),
+        intervalSeconds: 30,
       );
 
       expect(response.intervalSeconds, 30);
@@ -115,6 +139,8 @@ class _MemoryBridgeSettingsApi implements BridgeSettingsApi {
 
   String? config;
   int writeCount = 0;
+  Completer<void>? writeStarted;
+  Completer<void>? releaseWrite;
 
   @override
   String get configFilePath => "/tmp/config.json";
@@ -124,6 +150,9 @@ class _MemoryBridgeSettingsApi implements BridgeSettingsApi {
 
   @override
   Future<void> writeConfig(String jsonContent) async {
+    writeStarted?.complete();
+    final release = releaseWrite;
+    if (release != null) await release.future;
     config = jsonContent;
     writeCount++;
   }

@@ -3,10 +3,12 @@ import "package:sesori_shared/sesori_shared.dart" show PendingPermission, Permis
 
 import "../repositories/permission_repository.dart";
 import "../repositories/session_repository.dart";
+import "pending_interaction_service.dart";
 
 class PermissionAutoApprovalService {
   final SessionRepository _sessionRepository;
   final PermissionRepository _permissionRepository;
+  final PendingInteractionService _pendingInteractionService;
   final Set<({String requestId, String sessionId})> _approvedPermissions = {};
 
   bool _disposed = false;
@@ -14,8 +16,10 @@ class PermissionAutoApprovalService {
   PermissionAutoApprovalService({
     required SessionRepository sessionRepository,
     required PermissionRepository permissionRepository,
+    required PendingInteractionService pendingInteractionService,
   }) : _sessionRepository = sessionRepository,
-       _permissionRepository = permissionRepository;
+       _permissionRepository = permissionRepository,
+       _pendingInteractionService = pendingInteractionService;
 
   bool consumeReply({required String requestId, required String sessionId}) {
     return _approvedPermissions.remove((requestId: requestId, sessionId: sessionId));
@@ -28,7 +32,7 @@ class PermissionAutoApprovalService {
 
     Log.i("[permissions] auto-approving request $requestId");
     try {
-      await _permissionRepository.replyToPermission(
+      await _pendingInteractionService.replyToPermission(
         requestId: requestId,
         sessionId: sessionId,
         reply: PermissionReply.once,

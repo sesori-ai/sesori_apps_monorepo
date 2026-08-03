@@ -54,6 +54,12 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
     required CodexRolloutResponseItemDto payload,
   }) = CodexRolloutResponseItemLineDto;
 
+  @FreezedUnionValue("event_msg")
+  const factory CodexRolloutLineDto.eventMessage({
+    required String? timestamp,
+    required CodexRolloutEventDto payload,
+  }) = CodexRolloutEventMessageLineDto;
+
   @FreezedUnionValue("compacted")
   const factory CodexRolloutLineDto.compacted({
     required String? timestamp,
@@ -64,6 +70,23 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
   }) = CodexRolloutUnknownLineDto;
 
   factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(json);
+}
+
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
+  @FreezedUnionValue("user_message")
+  const factory CodexRolloutEventDto.userMessage({
+    required String message,
+  }) = CodexRolloutUserMessageEventDto;
+
+  const factory CodexRolloutEventDto.unknown() = CodexRolloutUnknownEventDto;
+
+  factory CodexRolloutEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutEventDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
@@ -90,6 +113,16 @@ sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPay
       _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 }
 
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexRolloutItemMetadataDto with _$CodexRolloutItemMetadataDto {
+  const factory CodexRolloutItemMetadataDto({
+    @JsonKey(name: "turn_id") required String? turnId,
+  }) = _CodexRolloutItemMetadataDto;
+
+  factory CodexRolloutItemMetadataDto.fromJson(Map<String, dynamic> json) =>
+      _$CodexRolloutItemMetadataDtoFromJson(json);
+}
+
 @Freezed(
   unionKey: "type",
   fallbackUnion: "unknown",
@@ -114,6 +147,7 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
     @JsonKey(name: "call_id") required String callId,
     required String name,
     required String arguments,
+    @JsonKey(name: "internal_chat_message_metadata_passthrough") required CodexRolloutItemMetadataDto? metadata,
   }) = CodexRolloutFunctionCallDto;
 
   @FreezedUnionValue("function_call_output")
@@ -128,6 +162,7 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
     @JsonKey(name: "call_id") required String callId,
     required String name,
     required String input,
+    @JsonKey(name: "internal_chat_message_metadata_passthrough") required CodexRolloutItemMetadataDto? metadata,
   }) = CodexRolloutCustomToolCallDto;
 
   @FreezedUnionValue("custom_tool_call_output")

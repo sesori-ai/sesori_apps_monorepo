@@ -163,7 +163,6 @@ void main() {
         runtime: createTestPluginRuntime(plugins: [healthyPlugin, throwingPlugin, timedOutPlugin]),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        legacyMissingPluginId: healthyPlugin.id,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
       );
       final previousLogLevel = Log.level;
@@ -206,7 +205,6 @@ void main() {
         runtime: createTestPluginRuntime(plugins: [emptyPlugin, failedPlugin]),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        legacyMissingPluginId: emptyPlugin.id,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
       );
 
@@ -228,7 +226,6 @@ void main() {
         runtime: createTestPluginRuntime(plugins: [throwingPlugin, timedOutPlugin]),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        legacyMissingPluginId: throwingPlugin.id,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
       );
 

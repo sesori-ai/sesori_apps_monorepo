@@ -43,6 +43,16 @@ CodexRolloutResponseItemLineDto _$CodexRolloutResponseItemLineDtoFromJson(
   $type: json['type'] as String?,
 );
 
+CodexRolloutEventMessageLineDto _$CodexRolloutEventMessageLineDtoFromJson(
+  Map json,
+) => CodexRolloutEventMessageLineDto(
+  timestamp: json['timestamp'] as String?,
+  payload: CodexRolloutEventDto.fromJson(
+    Map<String, dynamic>.from(json['payload'] as Map),
+  ),
+  $type: json['type'] as String?,
+);
+
 CodexRolloutCompactedLineDto _$CodexRolloutCompactedLineDtoFromJson(Map json) =>
     CodexRolloutCompactedLineDto(
       timestamp: json['timestamp'] as String?,
@@ -54,6 +64,16 @@ CodexRolloutUnknownLineDto _$CodexRolloutUnknownLineDtoFromJson(Map json) =>
       timestamp: json['timestamp'] as String?,
       $type: json['type'] as String?,
     );
+
+CodexRolloutUserMessageEventDto _$CodexRolloutUserMessageEventDtoFromJson(
+  Map json,
+) => CodexRolloutUserMessageEventDto(
+  message: json['message'] as String,
+  $type: json['type'] as String?,
+);
+
+CodexRolloutUnknownEventDto _$CodexRolloutUnknownEventDtoFromJson(Map json) =>
+    CodexRolloutUnknownEventDto($type: json['type'] as String?);
 
 _CodexRolloutSessionMetadataPayloadDto
 _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
@@ -68,6 +88,9 @@ _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
 _CodexRolloutTurnContextPayloadDto _$CodexRolloutTurnContextPayloadDtoFromJson(
   Map json,
 ) => _CodexRolloutTurnContextPayloadDto(model: json['model'] as String?);
+
+_CodexRolloutItemMetadataDto _$CodexRolloutItemMetadataDtoFromJson(Map json) =>
+    _CodexRolloutItemMetadataDto(turnId: json['turn_id'] as String?);
 
 CodexRolloutMessageDto _$CodexRolloutMessageDtoFromJson(Map json) =>
     CodexRolloutMessageDto(
@@ -104,6 +127,13 @@ CodexRolloutFunctionCallDto _$CodexRolloutFunctionCallDtoFromJson(Map json) =>
       callId: json['call_id'] as String,
       name: json['name'] as String,
       arguments: json['arguments'] as String,
+      metadata: json['internal_chat_message_metadata_passthrough'] == null
+          ? null
+          : CodexRolloutItemMetadataDto.fromJson(
+              Map<String, dynamic>.from(
+                json['internal_chat_message_metadata_passthrough'] as Map,
+              ),
+            ),
       $type: json['type'] as String?,
     );
 
@@ -122,6 +152,13 @@ CodexRolloutCustomToolCallDto _$CodexRolloutCustomToolCallDtoFromJson(
   callId: json['call_id'] as String,
   name: json['name'] as String,
   input: json['input'] as String,
+  metadata: json['internal_chat_message_metadata_passthrough'] == null
+      ? null
+      : CodexRolloutItemMetadataDto.fromJson(
+          Map<String, dynamic>.from(
+            json['internal_chat_message_metadata_passthrough'] as Map,
+          ),
+        ),
   $type: json['type'] as String?,
 );
 

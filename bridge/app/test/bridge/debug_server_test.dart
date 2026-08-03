@@ -141,6 +141,22 @@ void main() {
       expect(secondEvent, contains("vcs.branch.updated"));
     });
 
+    test("UTF-8 event data remains readable and the connection stays open", () async {
+      final client = await _SseTestClient.connect(debugServer.boundPort!);
+      addTearDown(client.close);
+
+      plugin.add(const BridgeSseWorkspaceReady(name: "developer’s workspace"));
+
+      final unicodeEvent = jsonDecodeMap(await client.nextEvent());
+      expect(unicodeEvent["type"], "workspace.ready");
+      expect(unicodeEvent["name"], "developer’s workspace");
+
+      plugin.add(const BridgeSseVcsBranchUpdated());
+
+      final followingEvent = jsonDecodeMap(await client.nextEvent());
+      expect(followingEvent["type"], "vcs.branch.updated");
+    });
+
     test(
       "first client still receives events after second disconnects",
       () async {
@@ -1499,9 +1515,9 @@ class _SseTestClient {
     var headersParsed = false;
     var lineBuffer = "";
 
-    socket.listen(
+    utf8.decoder.bind(socket).listen(
       (chunk) {
-        buffer += utf8.decode(chunk);
+        buffer += chunk;
 
         if (!headersParsed) {
           final headerEnd = buffer.indexOf("\r\n\r\n");

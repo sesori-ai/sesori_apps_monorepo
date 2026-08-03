@@ -32,6 +32,11 @@ class BridgeSettingsRepository {
     return settings;
   }
 
+  Future<BridgeSettings> readCommittedSettings() async {
+    await _mutationTail;
+    return currentSettings;
+  }
+
   Future<void> ensureConfigExists() async {
     if (await _api.readConfig() == null) {
       await _api.writeConfig(_jsonEncoder.convert(const BridgeSettings().toJson()));

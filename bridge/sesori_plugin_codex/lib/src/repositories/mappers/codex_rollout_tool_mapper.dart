@@ -9,11 +9,13 @@ import "codex_image_attachment_mapper.dart";
 class CodexRolloutToolCall {
   const CodexRolloutToolCall({
     required this.id,
+    required this.turnId,
     required this.tool,
     required this.title,
   });
 
   final String id;
+  final String? turnId;
   final String tool;
   final String? title;
 }
@@ -57,6 +59,24 @@ class CodexRolloutToolMapper {
 
   final CodexImageAttachmentMapper _imageAttachmentMapper;
 
+  /// Whether this persisted call has a matching stable `commandExecution`
+  /// item. Code-mode custom `exec` calls are rollout-only tool items.
+  bool isCommandExecutionCall({
+    required CodexRolloutResponseItemDto payload,
+  }) {
+    return switch (payload) {
+      CodexRolloutFunctionCallDto(:final name) => name.toLowerCase() == "exec_command",
+      CodexRolloutMessageDto() ||
+      CodexRolloutReasoningDto() ||
+      CodexRolloutFunctionCallOutputDto() ||
+      CodexRolloutCustomToolCallDto() ||
+      CodexRolloutCustomToolCallOutputDto() ||
+      CodexRolloutWebSearchCallDto() ||
+      CodexRolloutImageGenerationDto() ||
+      CodexRolloutUnknownResponseItemDto() => false,
+    };
+  }
+
   CodexRolloutImageGeneration mapImageGeneration({
     required CodexRolloutImageGenerationDto item,
   }) {
@@ -92,10 +112,12 @@ class CodexRolloutToolMapper {
         :final callId,
         :final name,
         :final arguments,
+        :final metadata,
       ) =>
         _mapCall(
           id: id,
           callId: callId,
+          turnId: metadata?.turnId,
           name: name,
           input: arguments,
         ),
@@ -104,10 +126,12 @@ class CodexRolloutToolMapper {
         :final callId,
         :final name,
         :final input,
+        :final metadata,
       ) =>
         _mapCall(
           id: id,
           callId: callId,
+          turnId: metadata?.turnId,
           name: name,
           input: input,
         ),
@@ -124,6 +148,7 @@ class CodexRolloutToolMapper {
   CodexRolloutToolCall? _mapCall({
     required String? id,
     required String callId,
+    required String? turnId,
     required String name,
     required String input,
   }) {
@@ -132,6 +157,7 @@ class CodexRolloutToolMapper {
     final usefulName = _usefulText(name) ?? "tool";
     return CodexRolloutToolCall(
       id: usefulId,
+      turnId: _usefulText(turnId),
       tool: normalizeToolName(usefulName),
       title: toolCallTitle(input),
     );

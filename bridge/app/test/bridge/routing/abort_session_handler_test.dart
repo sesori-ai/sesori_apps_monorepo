@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -13,7 +14,13 @@ void main() {
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      sessionAbortService = SessionAbortService(sessionRepository: FakeSessionRepository(plugin: plugin));
+      final repository = FakeSessionRepository(plugin: plugin);
+      final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      addTearDown(dispatcher.dispose);
+      sessionAbortService = SessionAbortService(
+        sessionRepository: repository,
+        dispatcher: dispatcher,
+      );
       handler = AbortSessionHandler(sessionAbortService: sessionAbortService);
     });
 

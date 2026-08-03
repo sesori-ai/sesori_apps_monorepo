@@ -1306,6 +1306,7 @@ void main() {
           callId: "call-immediate",
           name: "exec_command",
           arguments: '{"cmd":"printf \'LIVE-EVENT-TEST immediate-complete\\\\n\'"}',
+          turnId: "u-live",
         ),
         _toolOutput(
           callId: "call-immediate",
@@ -1401,6 +1402,17 @@ void main() {
           "type": "response_item",
           "payload": {
             "type": "image_generation_call",
+            "id": "image-before-start",
+            "status": "completed",
+            "revised_prompt": "private prompt",
+            "result": "AA==",
+          },
+        },
+        {
+          "timestamp": "2026-07-23T08:00:03Z",
+          "type": "response_item",
+          "payload": {
+            "type": "image_generation_call",
             "id": "image-live",
             "status": "completed",
             "revised_prompt": "private prompt",
@@ -1416,6 +1428,42 @@ void main() {
         "${finalRecord.substring(0, finalRecordSplit)}",
         mode: FileMode.append,
       );
+
+      fake.pushNotification("item/started", {
+        "threadId": sessionId,
+        "turnId": "u-live",
+        "item": {
+          "type": "imageGeneration",
+          "id": "image-before-start",
+          "status": "in_progress",
+          "revisedPrompt": null,
+          "result": "",
+          "savedPath": null,
+        },
+      });
+      fake
+        ..pushNotification("item/started", {
+          "threadId": sessionId,
+          "turnId": "u-live",
+          "item": {
+            "type": "commandExecution",
+            "id": "exec-immediate",
+            "command": "/bin/zsh -lc \"printf 'LIVE-EVENT-TEST immediate-complete\\n'\"",
+            "status": "inProgress",
+          },
+        })
+        ..pushNotification("item/completed", {
+          "threadId": sessionId,
+          "turnId": "u-live",
+          "item": {
+            "type": "commandExecution",
+            "id": "exec-immediate",
+            "command": "/bin/zsh -lc \"printf 'LIVE-EVENT-TEST immediate-complete\\n'\"",
+            "aggregatedOutput": "LIVE-EVENT-TEST immediate-complete\n",
+            "exitCode": 0,
+            "status": "completed",
+          },
+        });
 
       fake.pushNotification("turn/completed", {
         "threadId": sessionId,
@@ -1447,8 +1495,10 @@ void main() {
         "call-wait-2",
         "call-failed",
         "call-recovery",
+        "image-before-start",
         "image-live",
       });
+      expect(finalLiveParts, isNot(contains("exec-immediate")));
       expect(history, hasLength(finalLiveParts.length));
       for (final message in history) {
         final historicalPart = message.parts.single;
@@ -1816,6 +1866,7 @@ Map<String, Object?> _toolCall({
   required String callId,
   required String name,
   required String arguments,
+  String? turnId,
 }) => {
   "timestamp": "2026-07-23T08:00:01Z",
   "type": "response_item",
@@ -1825,6 +1876,10 @@ Map<String, Object?> _toolCall({
     "call_id": callId,
     "name": name,
     "arguments": arguments,
+    if (turnId != null)
+      "internal_chat_message_metadata_passthrough": {
+        "turn_id": turnId,
+      },
   },
 };
 

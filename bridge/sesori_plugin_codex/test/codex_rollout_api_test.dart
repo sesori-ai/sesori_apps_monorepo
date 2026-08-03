@@ -340,6 +340,9 @@ void main() {
             "ghp_secretCredential": "secret-credential",
             "query": "secret-query",
           },
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "secret-turn-id",
+          },
           "action": "secret-source-content",
         },
       });
@@ -356,7 +359,7 @@ void main() {
         contains(
           'schema={type:enum("response_item"),payload:{'
           'type:enum("function_call"),name:String,call_id:int,arguments:{type:String,'
-          '<redacted-key>:String,query:String},'
+          '<redacted-key>:String,query:String},internal_chat_message_metadata_passthrough:{turn_id:String},'
           "action:String}}",
         ),
       );
@@ -365,6 +368,7 @@ void main() {
       expect(output, isNot(contains("secret-token")));
       expect(output, isNot(contains("secret-credential")));
       expect(output, isNot(contains("secret-query")));
+      expect(output, isNot(contains("secret-turn-id")));
       expect(output, isNot(contains("secret-source-content")));
     });
 
@@ -906,6 +910,112 @@ void main() {
       expect(messages[0].parts.single.id, "user-1-text");
       expect(messages[1].info.id, "assistant-1");
       expect(messages[1].parts.single.id, "assistant-1-text");
+    });
+
+    test("readMessages excludes only generated Codex user context envelopes", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/03/rollout-generated-context.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "generated-bootstrap",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<recommended_plugins>\ninternal list\n</recommended_plugins>",
+                },
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>\n  <cwd>/repo/app</cwd>\n</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "actual-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "Explain the <environment_context> tag",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "actual-wrapper-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>user-authored text</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "<environment_context>user-authored text</environment_context>",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "generated-abort",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<turn_aborted>\nThe turn was interrupted.\n</turn_aborted>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "assistant-1",
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "Visible answer"},
+              ],
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
+      );
+
+      expect(messages.map((message) => message.info.id), [
+        "actual-user",
+        "actual-wrapper-user",
+        "assistant-1",
+      ]);
+      expect(messages.first.parts.single.text, "Explain the <environment_context> tag");
+      expect(
+        messages[1].parts.single.text,
+        "<environment_context>user-authored text</environment_context>",
+      );
+      expect(messages.last.parts.single.text, "Visible answer");
     });
 
     test("readMessages preserves compacted rollout records as completed tools", () {

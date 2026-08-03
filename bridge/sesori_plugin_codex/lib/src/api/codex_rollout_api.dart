@@ -355,6 +355,8 @@ const _rolloutSchemaKeyNames = {
   "call_id",
   "name",
   "arguments",
+  "internal_chat_message_metadata_passthrough",
+  "turn_id",
   "input",
   "output",
   "action",

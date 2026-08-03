@@ -12,6 +12,10 @@ class PullRequestRefreshSettingsService {
   PullRequestRefreshSettingsResponse get currentSettings =>
       _response(settings: _bridgeSettingsRepository.currentSettings);
 
+  Future<PullRequestRefreshSettingsResponse> readCommittedSettings() async {
+    return _response(settings: await _bridgeSettingsRepository.readCommittedSettings());
+  }
+
   Stream<PullRequestRefreshSettingsResponse> get changes => _bridgeSettingsRepository.settingsChanges
       .where(
         (change) =>
@@ -19,8 +23,7 @@ class PullRequestRefreshSettingsService {
       )
       .map((change) => _response(settings: change.current));
 
-  Future<PullRequestRefreshSettingsResponse> update({required PullRequestRefreshSettingsRequest request}) async {
-    final intervalSeconds = request.intervalSeconds;
+  Future<PullRequestRefreshSettingsResponse> update({required int intervalSeconds}) async {
     if (intervalSeconds < minimumPullRequestRefreshIntervalSeconds ||
         intervalSeconds > maximumPullRequestRefreshIntervalSeconds) {
       throw PullRequestRefreshIntervalOutOfRangeException(intervalSeconds: intervalSeconds);

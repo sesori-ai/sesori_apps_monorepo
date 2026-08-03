@@ -61,6 +61,8 @@ typedef SessionBindingsCommitted = ({
   List<String> backendSessionIds,
 });
 
+typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
+
 class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
@@ -99,6 +101,50 @@ class SessionRepository {
        _aggregateSourceDeadline = aggregateSourceDeadline;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
+
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    const maxDepth = 256;
+    final visited = <String>{};
+    String? pluginId;
+    var currentSessionId = sessionId;
+    for (var depth = 0; depth < maxDepth; depth++) {
+      if (!visited.add(currentSessionId)) {
+        throw PluginOperationException(
+          operation.name,
+          statusCode: 409,
+          message: "session $sessionId has cyclic ancestry at $currentSessionId",
+        );
+      }
+      final binding = await _sessionDao.getSession(sessionId: currentSessionId);
+      if (binding == null) {
+        throw PluginOperationException.notFound(
+          operation.name,
+          message: "session $currentSessionId was not found while resolving family for $sessionId",
+        );
+      }
+      pluginId ??= binding.pluginId;
+      if (binding.pluginId != pluginId) {
+        throw PluginOperationException(
+          operation.name,
+          statusCode: 409,
+          message: "session $sessionId has cross-plugin ancestry at $currentSessionId",
+        );
+      }
+      final parentSessionId = binding.parentSessionId;
+      if (parentSessionId == null) {
+        return (rootSessionId: binding.sessionId, pluginId: binding.pluginId);
+      }
+      currentSessionId = parentSessionId;
+    }
+    throw PluginOperationException(
+      operation.name,
+      statusCode: 409,
+      message: "session $sessionId ancestry exceeds $maxDepth entries",
+    );
+  }
 
   Future<List<Session>> getSessionsForProject({
     required String projectId,
@@ -689,6 +735,7 @@ class SessionRepository {
             ProjectDto(
               projectId: project.id,
               path: project.directory,
+              hidden: true,
               prCacheGithubLogin: null,
               createdAt: 0,
               updatedAt: 0,
@@ -773,6 +820,7 @@ class SessionRepository {
           ProjectDto(
             projectId: preferredProjectId,
             path: projectDirectory,
+            hidden: true,
             prCacheGithubLogin: null,
             createdAt: 0,
             updatedAt: 0,
@@ -781,6 +829,7 @@ class SessionRepository {
       await _projectsDao.insertProjectIfMissing(
         projectId: hydratedProject.projectId,
         path: projectDirectory,
+        hidden: true,
       );
       final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
         pluginId: pluginId,

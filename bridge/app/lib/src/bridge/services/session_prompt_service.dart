@@ -3,7 +3,9 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
+import "session_operation_dispatcher.dart";
 
 class SessionPromptDefaultsChange {
   final String sessionId;
@@ -17,12 +19,15 @@ class SessionPromptDefaultsChange {
 
 class SessionPromptService {
   final SessionRepository _sessionRepository;
+  final SessionOperationDispatcher _dispatcher;
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
 
   SessionPromptService({
     required SessionRepository sessionRepository,
-  }) : _sessionRepository = sessionRepository;
+    required SessionOperationDispatcher dispatcher,
+  }) : _sessionRepository = sessionRepository,
+       _dispatcher = dispatcher;
 
   Stream<SessionPromptDefaultsChange> get promptDefaultsChanges => _promptDefaultsChangesController.stream;
 
@@ -33,8 +38,33 @@ class SessionPromptService {
     required String? agent,
     required PromptModel? model,
     required String? command,
-  }) async {
+  }) {
     final normalizedCommand = command?.trim();
+    return _dispatcher.dispatch(
+      sessionId: sessionId,
+      operation: normalizedCommand == null || normalizedCommand.isEmpty
+          ? SessionOperation.sendPrompt
+          : SessionOperation.sendCommand,
+      interaction: null,
+      body: () => _sendPrompt(
+        sessionId: sessionId,
+        parts: parts,
+        variant: variant,
+        agent: agent,
+        model: model,
+        normalizedCommand: normalizedCommand,
+      ),
+    );
+  }
+
+  Future<void> _sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required String? agent,
+    required PromptModel? model,
+    required String? normalizedCommand,
+  }) async {
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
       await _sessionRepository.sendPrompt(
         sessionId: sessionId,

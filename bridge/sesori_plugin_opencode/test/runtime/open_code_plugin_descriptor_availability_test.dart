@@ -24,7 +24,7 @@ void main() {
       final processes = _ProbeProcessService(
         process: _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("opencode 1.18.3\n"),
+          stdoutBytes: utf8.encode("opencode 1.18.11\n"),
           exitCode: Future<int>.value(0),
         ),
       );

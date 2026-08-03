@@ -90,7 +90,6 @@ QuestionRepository singlePluginQuestionRepository({
     runtime: createTestPluginRuntime(plugins: [plugin]),
     sessionDao: sessionDao,
     projectsDao: projectsDao,
-    legacyMissingPluginId: plugin.id,
     aggregateSourceDeadline: const Duration(seconds: 5),
   );
 }

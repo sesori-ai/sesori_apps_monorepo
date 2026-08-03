@@ -9,6 +9,7 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
+import "repositories/models/codex_command_projection.dart";
 import "repositories/models/codex_thread_record.dart";
 
 /// Translates `codex app-server` `ServerNotification` frames into
@@ -67,9 +68,9 @@ class CodexEventMapper {
   final CodexImageBearingItemParser _imageBearingItemParser;
   final CodexRolloutToolMapper _rolloutToolMapper;
 
-  /// Raw rollout state keyed by the same `call_id` app-server uses as a
-  /// command item id. It lets late normalized item notifications reuse the
-  /// richer result instead of replacing it with their smaller projection.
+  /// Raw rollout state keyed by canonical `call_id`. Correlated app-server
+  /// command projections reuse this identity so late notifications preserve
+  /// the richer rollout result instead of replacing it with a smaller view.
   final Map<String, CodexRolloutToolCall> _rolloutToolCalls = {};
   final Map<String, CodexRolloutToolResult> _rolloutToolResults = {};
 
@@ -162,7 +163,15 @@ class CodexEventMapper {
   }
 
   /// Maps a non-thread-start notification to zero or more bridge events.
-  List<BridgeSseEvent> map(CodexServerNotification notification) {
+  List<BridgeSseEvent> map(CodexServerNotification notification) => mapCommand(
+    notification: notification,
+    commandProjection: const CodexAppServerCommandNative(),
+  );
+
+  List<BridgeSseEvent> mapCommand({
+    required CodexServerNotification notification,
+    required CodexAppServerCommandProjection commandProjection,
+  }) {
     final method = notification.method;
     final params = notification.params;
 
@@ -225,6 +234,7 @@ class CodexEventMapper {
           item: item,
           threadId: threadId,
           completed: method == "item/completed",
+          commandProjection: commandProjection,
         );
 
       case "item/agentMessage/delta":
@@ -274,6 +284,7 @@ class CodexEventMapper {
       CodexRolloutResponseItemLineDto(payload: final payload) => payload,
       CodexRolloutSessionMetadataLineDto() ||
       CodexRolloutTurnContextLineDto() ||
+      CodexRolloutEventMessageLineDto() ||
       CodexRolloutCompactedLineDto() ||
       CodexRolloutUnknownLineDto() => null,
     };
@@ -355,6 +366,7 @@ class CodexEventMapper {
     required Map<String, dynamic> item,
     required String threadId,
     required bool completed,
+    required CodexAppServerCommandProjection commandProjection,
   }) {
     final itemId = item["id"] as String?;
     if (itemId == null || itemId.isEmpty) return const [];
@@ -496,9 +508,13 @@ class CodexEventMapper {
           text: _extractReasoningText(item),
         );
       case "commandExecution":
+        final canonicalItemId = switch (commandProjection) {
+          CodexAppServerCommandNative() => itemId,
+          CodexAppServerCommandCanonical(:final callId) => callId,
+        };
         final canonical = _canonicalRolloutTool(
           threadId: threadId,
-          itemId: itemId,
+          itemId: canonicalItemId,
         );
         final exitCode = item["exitCode"];
         final appServerStatus = exitCode is num && exitCode.toInt() != 0
@@ -506,7 +522,7 @@ class CodexEventMapper {
             : _toolStatus(item["status"], completed: completed);
         return _toolItemEvents(
           threadId: threadId,
-          itemId: itemId,
+          itemId: canonicalItemId,
           tool: canonical?.call.tool ?? "shell",
           title:
               canonical?.call.title ??

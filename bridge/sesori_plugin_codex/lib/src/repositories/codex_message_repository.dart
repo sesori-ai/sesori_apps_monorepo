@@ -36,10 +36,22 @@ class CodexMessageRepository {
     }
 
     final toolOutputs = <String, CodexRolloutToolResult>{};
+    final submittedUserMessages = <String>{};
     for (final line in lines) {
-      if (line case CodexRolloutResponseItemLineDto(payload: final payload)) {
-        final result = _rolloutToolMapper.mapResult(payload);
-        if (result != null) toolOutputs[result.callId] = result;
+      switch (line) {
+        case CodexRolloutResponseItemLineDto(payload: final payload):
+          final result = _rolloutToolMapper.mapResult(payload);
+          if (result != null) toolOutputs[result.callId] = result;
+        case CodexRolloutEventMessageLineDto(
+          payload: CodexRolloutUserMessageEventDto(:final message),
+        ):
+          submittedUserMessages.add(message);
+        case CodexRolloutEventMessageLineDto() ||
+            CodexRolloutSessionMetadataLineDto() ||
+            CodexRolloutTurnContextLineDto() ||
+            CodexRolloutCompactedLineDto() ||
+            CodexRolloutUnknownLineDto():
+          break;
       }
     }
 
@@ -89,6 +101,8 @@ class CodexMessageRepository {
               attachments: const [],
             ),
           );
+          continue;
+        case CodexRolloutEventMessageLineDto():
           continue;
         case CodexRolloutResponseItemLineDto(
           payload: final responseItem,
@@ -196,6 +210,11 @@ class CodexMessageRepository {
           if (role != CodexRolloutRole.user && role != CodexRolloutRole.assistant) {
             continue;
           }
+          if (role == CodexRolloutRole.user &&
+              !submittedUserMessages.contains(_firstInputText(content: content)) &&
+              _isGeneratedUserContext(content: content)) {
+            continue;
+          }
           final texts = [
             for (final item in content)
               if (item case CodexRolloutInputTextDto(:final text) || CodexRolloutOutputTextDto(:final text)
@@ -245,6 +264,26 @@ class CodexMessageRepository {
       }
     }
     return messages;
+  }
+
+  String? _firstInputText({required List<CodexRolloutContentDto> content}) {
+    for (final item in content) {
+      if (item case CodexRolloutInputTextDto(:final text)) return text;
+    }
+    return null;
+  }
+
+  bool _isGeneratedUserContext({
+    required List<CodexRolloutContentDto> content,
+  }) {
+    if (content.isEmpty || content.any((item) => item is! CodexRolloutInputTextDto)) {
+      return false;
+    }
+    final texts = [
+      for (final item in content)
+        if (item case CodexRolloutInputTextDto(:final text)) text.trim(),
+    ];
+    return texts.every((text) => _GeneratedContextTag.values.any((tag) => tag.wraps(text)));
   }
 
   PluginMessageWithParts _toolMessage({
@@ -308,4 +347,16 @@ class CodexMessageRepository {
       completed: null,
     );
   }
+}
+
+enum _GeneratedContextTag {
+  recommendedPlugins("recommended_plugins"),
+  environmentContext("environment_context"),
+  turnAborted("turn_aborted");
+
+  const _GeneratedContextTag(this.wireName);
+
+  final String wireName;
+
+  bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
 }

@@ -3,14 +3,17 @@
 ## Current State
 
 - **Plan slug:** `session-pull-request-monitoring`
-- **Implementation base:** `main` at
-  `ba25adae6374ee1895e78564f6b457b66b172e04`
-- **Series state:** Steps 1/9, 2.a–2.c/9, and 3–6/9 merged; Step 7 is under review in PR #697
-- **Current step:** Step 7/9 — shared client project presence
+- **Completion base:** `main` at `ceaa6758`, the merge commit for final
+  implementation PR #707
+- **Series state:** Complete; all implementation PRs merged and Step 9 archived
+  the plan
+- **Current step:** Complete
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Previous step PR:** [#693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged
-- **Next action:** finish Step 7 review in PR #697 and monitor the isolated PR-metadata fix in PR #698
+- **Previous step PR:** [#704](https://github.com/sesori-ai/sesori_apps_monorepo/pull/704) merged
+- **Closed replacement source:** [#701](https://github.com/sesori-ai/sesori_apps_monorepo/pull/701) closed for generic settings redesign
+- **Final implementation PR:** [#707](https://github.com/sesori-ai/sesori_apps_monorepo/pull/707) merged as `ceaa6758`
+- **Next action:** None; plan archived
 
 ## Existing Baseline
 
@@ -29,12 +32,12 @@
 - **Date:** 2026-07-31
 - **Findings applied:** none; pre-review gate and bridge/client/shared
   architecture all passed
-- **Post-review drift:** `main` advanced through Harness settings, output-image
-  plugin work, analytics documentation, bridge `--data-dir` expansion, and plan
-  archival. The current tip is audited at `10c7afb9`; none changes this feature's
-  architecture or requested agent guidance. The implementation base is now the
-  repository-rename hotfix and unrelated client haptics at `d38d4793`; no plan
-  architecture changed.
+- **Historical post-review drift:** After the original review, `main` advanced
+  through Harness settings, output-image plugin work, analytics documentation,
+  bridge `--data-dir` expansion, plan archival, the repository-rename hotfix,
+  and unrelated client haptics. `10c7afb9` and `d38d4793` are historical audit
+  anchors only; neither changed this feature's architecture. The unambiguous
+  final completion base is `ceaa6758` above.
 
 ## Delivery Steps
 
@@ -48,9 +51,10 @@
 | [x] | 4/9 | `session-pull-request-monitoring-current-branch-refresh` | `🚧 [session-pull-request-monitoring] feat(bridge): refresh current session branches [step 4/9]` | 4,000–4,200 | [PR #686](https://github.com/sesori-ai/sesori_apps_monorepo/pull/686) merged as `3bbb1e8e` |
 | [x] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | [PR #692](https://github.com/sesori-ai/sesori_apps_monorepo/pull/692) merged as `42161a53` |
 | [x] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | [PR #693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged as `ba25adae` |
-| [ ] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | [PR #697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) under review; feedback fixes verified locally |
-| [ ] | 8/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]` | 1,000–1,500 | Blocked on Step 7 merge; use current settings owner and merged #647 pattern |
-| [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8 merge |
+| [x] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | [PR #697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) merged as `d543b1f7` |
+| [x] | 8.a/9 | `session-pull-request-monitoring-generic-settings` | `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]` | 1,000–1,500 | [PR #704](https://github.com/sesori-ai/sesori_apps_monorepo/pull/704) merged as `480a6bfd` |
+| [x] | 8.b/9 | `session-pull-request-monitoring-client-settings-v2` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | 2,000–2,400 | [PR #707](https://github.com/sesori-ai/sesori_apps_monorepo/pull/707) merged as `ceaa6758` |
+| [x] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Final state recorded and plan moved to `.plan/completed/` |
 
 ## Exact PR Titles
 
@@ -63,7 +67,8 @@
 5. `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]`
 6. `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]`
 7. `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]`
-8. `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8/9]`
+8.a. `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]`
+8.b. `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]`
 9. `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]`
 
 ## Execution Rules
@@ -88,25 +93,23 @@
 - After each merge, update this tracker in the next step and proceed in order
   unless a material decision or blocker requires the user.
 
-## Current Drift and Open Work
+## Final Drift and Resolved Work
 
-- Latest audited `main`: `ba25adae`, including Step 6 merged from PR #693. No
-  later drift affects the Step 7 client-presence architecture.
+- Final audited `main`: `ceaa6758`, the merge commit for final implementation
+  PR #707. The earlier `ba25adae` Step 6 audit remains historical evidence only.
 - Drift schema: v13 on `main`; Step 4 leaves the merged schema and migration
   unchanged.
 - Parallel-plugin plan: complete through Stage 9 / PR #497.
 - PR #647 is merged and consolidates Harness settings into one screen. Its
-  numeric-input/mutation pattern is current evidence for Step 8; PR cadence
-  remains a separate bridge setting.
-- Open PR #641 is analytics warehouse-only and does not change this feature's
-  no-new-event decision.
-- Open PR #621 touches the settings landing screen and may require Step 8 drift
-  reconciliation if it merges.
-- After the Step 7 PR is raised, separately reproduce terminal PR selection loss
-  while that PR is under review. The reported sequence is: merge the PR, merge
-  `main` into the same feature branch, then hard-reset and force-push that reused
-  branch to track `main` before the next plan step. Branch deletion alone is not
-  the suspected trigger; this investigation must not delay raising Step 7.
+  numeric-input/mutation pattern informed Step 8; PR cadence remains a separate
+  bridge setting.
+- PR #641 closed without merging; its analytics warehouse scope never changed
+  this feature's no-new-event decision.
+- PR #621 merged as `6583e7b2`; Step 8 reconciled its settings landing-screen
+  changes before completion.
+- The terminal PR selection-loss investigation completed in PR #698, merged as
+  `26701509`; project-scoped REST refreshes remain authoritative for clearing PR
+  metadata.
 
 ## Interview Decisions Recorded 2026-07-31
 
@@ -435,10 +438,95 @@
   the established diagnostics privacy policy.
 - **PR-status investigation:** The reported PR indicator loss was reproduced as
   an ordinary catalog-derived `session.updated` event replacing identity-gated
-  REST PR metadata. The isolated client fix is under review in
-  [PR #698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/698); it keeps
-  project-scoped `sessions.updated` REST refreshes authoritative for clearing
-  metadata.
+  REST PR metadata. The isolated client fix merged in
+  [PR #698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/698) as
+  `26701509`; project-scoped `sessions.updated` REST refreshes remain
+  authoritative for clearing metadata.
+- **Step 8.a/9 implementation:** Added the shared `BridgeSettingUpdate` and
+  `BridgeSettingUpdateRejection` Freezed unions with explicit `type`
+  discriminators and unknown-peer fallbacks. `PatchBridgeSettingsHandler` now
+  owns generic `PATCH /settings`, dispatches the cadence variant to the focused
+  service, returns the committed variant, and maps range rejection to sealed
+  JSON. The focused GET waits behind admitted repository mutations.
+- **Step 8.a/9 compatibility and cleanup:** Public production v1.6.0 predates
+  this settings capability. Removed the internal-only feature PATCH handler,
+  request/error DTOs, generated output, tests, import, and route registration;
+  no fallback, dual route, database change, or analytics event remains. Root
+  guidance now makes public production releases the compatibility baseline.
+- **Step 8.a/9 verification:** Shared codegen and formatting pass, as do all 363
+  shared tests, all 2,400 bridge app tests, both fatal-info analyzers, focused
+  handler/service/config tests, and `git diff --check`. Final scope is 1,418
+  changed lines (918 additions/500 deletions): 649 generated, 279 tests, 269
+  plan/instructions, and 221 hand-authored production lines.
+- **Step 8.a/9 architecture review:** `aristotle-impl-review` approved the full
+  working-tree scope with no findings. It confirmed the public-release-only
+  compatibility decision, generic boundary dispatch, focused service ownership,
+  shared union placement, and direct obsolete-contract cleanup.
+- **Step 8.a/9 PR review:** Cubic feedback corrected the implementation-PR count
+  and Step 8 substep note, made unknown setting rejection a typed JSON union
+  response, and centralized strict integer JSON parsing in one converter shared
+  by cadence reads and mutations. Eight focused shared and six handler tests plus
+  both fatal-info analyzers and `git diff --check` pass after the fixes.
+- **Step 8.a/9 merge:** PR #704 merged into `main` as `480a6bfd` on
+  2026-08-03.
+- **Step 8.b/9 implementation:** Added unified `BridgeSettingsApi` ownership of
+  the focused cadence GET and generic settings PATCH. The API parses committed
+  and rejected shared unions before the repository maps supported, rejected,
+  uncertain, unsupported, and failed outcomes. The service owns integer planning;
+  the focused cubit owns connection epochs, bounds, modal fencing, serialized
+  operations, and uncertainty reconciliation; mobile Settings remains a thin
+  localized consumer.
+- **Step 8.b/9 compatibility, cleanup, and analytics:** Public bridges predating
+  the setting return 404 and render unsupported; no internal-prerelease route
+  fallback remains. The generic API replaces all client references to the
+  removed feature PATCH request/error contracts. The final cleanup removes two
+  unrelated regressions copied from the closed implementation, unused uncertain
+  state data, duplicate localization/helper ownership, and pass-through-only
+  tests. No database, cache, job, flag, or other obsolete runtime artifact
+  remains. No analytics event is added because cadence configuration answers no
+  current product decision.
+- **Step 8.b/9 verification:** Client dependency resolution, module-core DI
+  generation, Flutter localization generation, formatting, 25 focused core
+  tests, 48 focused mobile tests, and 18 focused bridge integration tests pass.
+  Full suites pass all 972 module-core, 883 mobile, and 15 desktop tests; all
+  three fatal-info analyzers and `git diff --check` pass. Review and cleanup
+  follow-ups reduce the final scope to 2,193 changed lines (2,159 additions and
+  34 deletions).
+- **Step 8.b/9 architecture review:** `aristotle-impl-review` approved the full
+  working-tree scope with no findings, confirming the typed API boundary,
+  focused layer ownership, DI, state lifecycle, and thin Settings integration.
+- **PR #707 initial review follow-up:** Assessed 15 unresolved bot threads. Valid
+  feedback adds positive pre-dispatch validation, reports stale-editor rejection
+  instead of silently dropping the submitted value, centralizes bounds lookup,
+  and removes redundant cubit logs. Focused tests pass for all 26 core and 22
+  Settings cases; module-core, mobile, and desktop fatal-info analyzers pass.
+  `aristotle-impl-review` approved the architecture-bearing feedback diff with
+  no findings. Test-to-library package imports remain because the analyzer's
+  `avoid_relative_lib_imports` rule rejects the suggested relative imports.
+- **PR #707 cleanup follow-up:** Removed the unrelated bridge listener/PR-sync
+  integration regression and terminal-PR tile regression so neither file remains
+  in this client-settings PR. Also removed the unused last-known interval from
+  uncertain state, one duplicate localization key/helper, the service
+  pass-through test, and a redundant cubit validation-delegation test. Focused
+  cleanup verification passes 15 core and 22 Settings tests.
+- **PR #707 transport-owner cleanup:** Removed the redundant
+  `PullRequestRefreshSettingsApi` source, export, DI registration, and dedicated
+  test. `BridgeSettingsApi` now owns both settings transport calls while the
+  focused repository retains cadence-domain mapping. The bridge still exposes
+  its focused GET; only the duplicate client wrapper was obsolete. All 24
+  focused API/repository/service/cubit tests and the module-core, mobile, and
+  desktop fatal-info analyzers pass. Both `aristotle-plan-review` and
+  `aristotle-impl-review` approved the unified transport ownership with no
+  findings.
+- **Step 8.b/9 merge:** PR #707 merged into `main` as `ceaa6758` on
+  2026-08-03 with all 13 CI checks passing. The final implementation supports
+  automatic refresh for visible project list/detail contexts and configurable
+  bridge-wide cadence without PR history, unseen-state, push, or analytics
+  changes.
+- **Step 9/9 retirement:** Confirmed every implementation step merged, recorded
+  final verification and findings, and moved the complete three-file plan from
+  `.plan/active/` to `.plan/completed/`. No production, test, or configuration
+  file changed.
 
 ## Findings and Plan Deltas
 
@@ -455,7 +543,8 @@
   supports live client mutation, and intentionally has no JSON file watcher.
 - **2026-07-31 — Plan lifecycle:** Keep nine top-level steps with this plan as
   Step 1/9 and active-to-completed retirement as Step 9/9; Step 2 uses ordered
-  2.a–2.c substeps after the reviewed implementation exceeded the line cap.
+  2.a–2.c substeps after the reviewed implementation exceeded the line cap, and
+  the user-requested settings redesign splits Step 8 into ordered 8.a–8.b.
 - **2026-07-31 — PR #649 review:** Corrected the reviewed baseline SHA; required
   candidate pagination past newer fork heads, read-time GitHub identity gating,
   a coalesced add-during-flight refresh, and independent branch display for
@@ -476,3 +565,15 @@
   the soft cap; required PR review fixes raised them to 1,989 lines. The generated
   schema/migration bundle and coupled correctness fixes must accompany v13
   atomically, so neither overage has a smaller independently valid split.
+- **2026-08-03 — Step 8 redesign:** Closed PR #701 at the user's request and
+  split Step 8 into 8.a generic bridge setting mutations and 8.b client settings
+  so the new shared wire/routing boundary is independently reviewable. The
+  feature-specific PATCH route and request/error contracts appeared only in
+  internal prereleases, so 8.a removes them completely without fallback; public
+  production release v1.6.0 predates this settings capability.
+- **2026-08-03 — Redesign architecture review:** The first plan review rejected
+  Step 8 as too vague; the clarified re-review found one API-boundary violation.
+  Step 8.b now gives settings transport ownership to `BridgeSettingsApi`, which
+  performs the focused cadence GET and parses both committed and rejected PATCH
+  DTOs before returning typed API outcomes. The focused repository receives no
+  raw rejection JSON. Per review rules, this applied finding is not re-reviewed.

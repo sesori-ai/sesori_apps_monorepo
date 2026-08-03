@@ -23,7 +23,9 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
+import "package:sesori_bridge/src/bridge/services/pending_interaction_service.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
@@ -51,6 +53,37 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       filesystemApi: FakeFilesystemApi(),
     ),
     viewTracker: SessionViewTracker(),
+  );
+}
+
+({PendingInteractionService service, SessionOperationDispatcher dispatcher}) buildTestPendingInteractionService({
+  required AppDatabase database,
+  required BridgePluginApi plugin,
+}) {
+  final dispatcher = SessionOperationDispatcher(
+    sessionRepository: singlePluginSessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
+      pullRequestDao: database.pullRequestDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+    ),
+  );
+  return (
+    dispatcher: dispatcher,
+    service: PendingInteractionService(
+      permissionRepository: singlePluginPermissionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+      ),
+      questionRepository: singlePluginQuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
+      dispatcher: dispatcher,
+      legacyMissingPluginId: plugin.id,
+    ),
   );
 }
 
@@ -803,6 +836,12 @@ class _NoopSessionRepository implements SessionRepository {
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
 
   @override
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async => (rootSessionId: sessionId, pluginId: "fake");
+
+  @override
   Future<void> dispose() async {}
 
   @override
@@ -1069,6 +1108,12 @@ class FakeSessionRepository implements SessionRepository {
        _sessionDao = sessionDao ?? FakeSessionDao(),
        _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository(),
        _persistenceDatabase = persistenceDatabase;
+
+  @override
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async => (rootSessionId: sessionId, pluginId: _plugin.id);
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {

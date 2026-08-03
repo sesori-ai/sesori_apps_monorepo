@@ -77,8 +77,72 @@ String toString() {
 /// @nodoc
 
 
+class NotificationPreferencesAccountUnavailable implements NotificationPreferencesState {
+  const NotificationPreferencesAccountUnavailable();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesAccountUnavailable);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NotificationPreferencesState.accountUnavailable()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class NotificationPreferencesLoadFailed implements NotificationPreferencesState {
+  const NotificationPreferencesLoadFailed();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoadFailed);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NotificationPreferencesState.loadFailed()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class NotificationPreferencesLoaded implements NotificationPreferencesState {
-  const NotificationPreferencesLoaded({required final  Map<NotificationCategory, bool> preferences}): _preferences = preferences;
+  const NotificationPreferencesLoaded({required final  Map<NotificationCategory, bool> preferences, required final  Set<NotificationCategory> updatingCategories}): _preferences = preferences,_updatingCategories = updatingCategories;
   
 
  final  Map<NotificationCategory, bool> _preferences;
@@ -86,6 +150,13 @@ class NotificationPreferencesLoaded implements NotificationPreferencesState {
   if (_preferences is EqualUnmodifiableMapView) return _preferences;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_preferences);
+}
+
+ final  Set<NotificationCategory> _updatingCategories;
+ Set<NotificationCategory> get updatingCategories {
+  if (_updatingCategories is EqualUnmodifiableSetView) return _updatingCategories;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_updatingCategories);
 }
 
 
@@ -99,16 +170,16 @@ $NotificationPreferencesLoadedCopyWith<NotificationPreferencesLoaded> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoaded&&const DeepCollectionEquality().equals(other._preferences, _preferences));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoaded&&const DeepCollectionEquality().equals(other._preferences, _preferences)&&const DeepCollectionEquality().equals(other._updatingCategories, _updatingCategories));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_preferences));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_preferences),const DeepCollectionEquality().hash(_updatingCategories));
 
 @override
 String toString() {
-  return 'NotificationPreferencesState.loaded(preferences: $preferences)';
+  return 'NotificationPreferencesState.loaded(preferences: $preferences, updatingCategories: $updatingCategories)';
 }
 
 
@@ -119,7 +190,7 @@ abstract mixin class $NotificationPreferencesLoadedCopyWith<$Res> implements $No
   factory $NotificationPreferencesLoadedCopyWith(NotificationPreferencesLoaded value, $Res Function(NotificationPreferencesLoaded) _then) = _$NotificationPreferencesLoadedCopyWithImpl;
 @useResult
 $Res call({
- Map<NotificationCategory, bool> preferences
+ Map<NotificationCategory, bool> preferences, Set<NotificationCategory> updatingCategories
 });
 
 
@@ -136,10 +207,11 @@ class _$NotificationPreferencesLoadedCopyWithImpl<$Res>
 
 /// Create a copy of NotificationPreferencesState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? preferences = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? preferences = null,Object? updatingCategories = null,}) {
   return _then(NotificationPreferencesLoaded(
 preferences: null == preferences ? _self._preferences : preferences // ignore: cast_nullable_to_non_nullable
-as Map<NotificationCategory, bool>,
+as Map<NotificationCategory, bool>,updatingCategories: null == updatingCategories ? _self._updatingCategories : updatingCategories // ignore: cast_nullable_to_non_nullable
+as Set<NotificationCategory>,
   ));
 }
 
