@@ -35,7 +35,10 @@ class SessionVisibilityState {
     final pluginState = _pluginStates.putIfAbsent(pluginId, _PluginVisibilityState.new);
     final catalogWritesFinished = pluginState.activeCatalogWrites == 0
         ? Future<void>.value()
-        : pluginState.catalogWritesFinished!.future;
+        : switch (pluginState.catalogWritesFinished) {
+            final Completer<void> completion => completion.future,
+            null => throw StateError("Active catalog writes have no completion signal"),
+          };
     pluginState.creationReservations++;
     pluginState.creationReservationsFinished ??= Completer<void>();
     return SessionCreationReservation._(pluginState: pluginState, catalogWritesFinished: catalogWritesFinished);
@@ -47,7 +50,12 @@ class SessionVisibilityState {
     final pluginState = reservation._pluginState;
     pluginState.creationReservations--;
     if (pluginState.creationReservations != 0) return;
-    pluginState.creationReservationsFinished!.complete();
+    switch (pluginState.creationReservationsFinished) {
+      case final Completer<void> completion:
+        completion.complete();
+      case null:
+        throw StateError("Session creation reservations have no completion signal");
+    }
     pluginState.creationReservationsFinished = null;
   }
 
@@ -71,16 +79,20 @@ class SessionVisibilityState {
   Future<T> withCatalogWrite<T>({required String pluginId, required Future<T> Function() body}) async {
     final pluginState = _pluginStates.putIfAbsent(pluginId, _PluginVisibilityState.new);
     while (pluginState.creationReservations > 0) {
-      await pluginState.creationReservationsFinished!.future;
+      final completion = pluginState.creationReservationsFinished;
+      if (completion == null) {
+        throw StateError("Session creation reservations have no completion signal");
+      }
+      await completion.future;
     }
     pluginState.activeCatalogWrites++;
-    pluginState.catalogWritesFinished ??= Completer<void>();
+    final catalogWritesFinished = pluginState.catalogWritesFinished ??= Completer<void>();
     try {
       return await body();
     } finally {
       pluginState.activeCatalogWrites--;
       if (pluginState.activeCatalogWrites == 0) {
-        pluginState.catalogWritesFinished!.complete();
+        catalogWritesFinished.complete();
         pluginState.catalogWritesFinished = null;
       }
     }

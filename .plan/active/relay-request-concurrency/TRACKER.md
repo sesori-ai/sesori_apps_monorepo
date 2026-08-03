@@ -401,12 +401,12 @@
   post-commit generation failure, make durable creation publication independent
   of plugin generation, bypass no-op hydration admission, filter project-activity
   reconciliation, reject import cancellation after gate admission, and replace
-  the new post-insert bang assertion with an explicit invariant failure. Positional
+  new post-insert/coordinator bang assertions with explicit invariant failures. Positional
   exception-API and bounded pagination-retry suggestions were declined as broad
   unrelated API churn and a correctness-breaking speculative fallback.
 - **Step 7/10 verification:** 2,423 full `bridge/app` tests pass, affected suites
   pass, strict `dart analyze --fatal-infos` reports no issues, and
-  `git diff --check` passes. The 2,068 changed lines exceed the soft cap by 568;
+  `git diff --check` passes. The 2,080 changed lines exceed the soft cap by 580;
   one atomic invariant spans creation, catalog writers/reads, interactions, unseen
   state, and events, and splitting would expose a bypass between mergeable PRs.
 - **Step 7/10 delivery:** [PR #716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716)
