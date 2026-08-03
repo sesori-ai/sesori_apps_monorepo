@@ -162,10 +162,42 @@ class LoginOAuthService {
   /// The temporary session token is generated in memory, sent only through the
   /// `X-Sesori-Session-Token` header, and never persisted or placed in URLs.
   Future<({TokenData tokens, String sessionToken})> performOAuthLogin(OAuthProvider provider) async {
+    final stopwatch = Stopwatch()..start();
+    final deadline = DateTime.now().add(_pollTimeout);
+    try {
+      return await _performOAuthAttempt(provider: provider, stopwatch: stopwatch, deadline: deadline);
+    } on OAuthSessionRestartRequiredException catch (error) {
+      stopwatch.start();
+      final remaining = _pollTimeout - stopwatch.elapsed;
+      final restartDelay = error.restartAfter < remaining ? error.restartAfter : remaining;
+      if (restartDelay > Duration.zero) {
+        await _delay(restartDelay).timeout(remaining);
+      }
+      if (remaining <= Duration.zero || error.restartAfter >= remaining || stopwatch.elapsed >= _pollTimeout) {
+        throw TimeoutException("timed out waiting for authorization", _pollTimeout);
+      }
+
+      try {
+        return await _performOAuthAttempt(provider: provider, stopwatch: stopwatch, deadline: deadline);
+      } on OAuthSessionRestartRequiredException catch (secondError, stackTrace) {
+        Error.throwWithStackTrace(_OAuthSessionRestartFailedException(secondError), stackTrace);
+      }
+    }
+  }
+
+  Future<({TokenData tokens, String sessionToken})> _performOAuthAttempt({
+    required OAuthProvider provider,
+    required Stopwatch stopwatch,
+    required DateTime deadline,
+  }) async {
     final sessionToken = _generateSessionToken();
-    final initResp = await _api.initOAuthSession(
-      provider: provider,
-      sessionToken: sessionToken,
+    final initResp = await _beforeOAuthDeadline(
+      stopwatch: stopwatch,
+      operation: () => _api.initOAuthSession(
+        provider: provider,
+        sessionToken: sessionToken,
+        deadline: deadline,
+      ),
     );
 
     // The URL is ALWAYS printed, on its own line, so login works even when no
@@ -190,15 +222,40 @@ class LoginOAuthService {
     Console.message(initResp.authUrl);
     if (openability != BrowserOpenability.no) {
       try {
-        await _browserLauncher(initResp.authUrl);
+        await _beforeOAuthDeadline(
+          stopwatch: stopwatch,
+          operation: () => _browserLauncher(initResp.authUrl),
+        );
+      } on TimeoutException {
+        rethrow;
       } catch (e) {
         Console.message("Could not open a browser automatically; open the URL above manually: $e");
       }
     }
 
     Console.message("Waiting for authorization...");
-    final tokens = await _pollForCompletion(provider: provider, sessionToken: sessionToken);
+    final tokens = await _pollForCompletion(
+      provider: provider,
+      sessionToken: sessionToken,
+      stopwatch: stopwatch,
+      deadline: deadline,
+    );
     return (tokens: tokens, sessionToken: sessionToken);
+  }
+
+  Future<T> _beforeOAuthDeadline<T>({
+    required Stopwatch stopwatch,
+    required Future<T> Function() operation,
+  }) {
+    final remaining = _pollTimeout - stopwatch.elapsed;
+    if (remaining <= Duration.zero) {
+      return Future<T>.error(TimeoutException("timed out waiting for authorization", _pollTimeout));
+    }
+
+    return operation().timeout(
+      remaining,
+      onTimeout: () => throw TimeoutException("timed out waiting for authorization", _pollTimeout),
+    );
   }
 
   Future<void> ackOAuthSessionCompletion({required String sessionToken}) {
@@ -208,18 +265,22 @@ class LoginOAuthService {
   Future<TokenData> _pollForCompletion({
     required OAuthProvider provider,
     required String sessionToken,
+    required Stopwatch stopwatch,
+    required DateTime deadline,
   }) async {
-    final stopwatch = Stopwatch()..start();
     try {
       while (stopwatch.elapsed < _pollTimeout) {
         final remaining = _pollTimeout - stopwatch.elapsed;
         if (remaining <= Duration.zero) break;
         final requestTimeout = remaining < _perRequestTimeout ? remaining : _perRequestTimeout;
-        final status = await _api.getOAuthSessionStatus(sessionToken: sessionToken).timeout(requestTimeout);
+        final status = await _api
+            .getOAuthSessionStatus(sessionToken: sessionToken, deadline: deadline)
+            .timeout(requestTimeout);
 
         switch (status) {
           case AuthSessionStatusResponsePending():
-            final delay = _pollInterval < remaining ? _pollInterval : remaining;
+            final delayRemaining = _pollTimeout - stopwatch.elapsed;
+            final delay = _pollInterval < delayRemaining ? _pollInterval : delayRemaining;
             if (delay > Duration.zero) {
               await _delay(delay);
             }
@@ -262,4 +323,11 @@ class LoginOAuthService {
 
     return bytes.map((byte) => byte.toRadixString(16).padLeft(2, "0")).join();
   }
+}
+
+final class _OAuthSessionRestartFailedException implements Exception {
+  const _OAuthSessionRestartFailedException(this.cause);
+  final OAuthSessionRestartRequiredException cause;
+  @override
+  String toString() => "OAuth session was lost again after restart";
 }

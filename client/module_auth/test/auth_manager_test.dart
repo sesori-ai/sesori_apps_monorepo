@@ -27,6 +27,19 @@ class FakeOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider
   );
 }
 
+Future<OAuthSessionRestartRequiredException> _pollRestart(AuthManager manager) async {
+  return _captureOAuthRestart(manager.pollForResult());
+}
+
+Future<OAuthSessionRestartRequiredException> _captureOAuthRestart(Future<Object?> operation) async {
+  try {
+    await operation;
+  } on OAuthSessionRestartRequiredException catch (error) {
+    return error;
+  }
+  fail("Expected OAuth restart");
+}
+
 void main() {
   setUpAll(() {
     registerFallbackValue(Uri.parse("https://example.com"));
@@ -281,6 +294,7 @@ void main() {
   group("OAuth flow", () {
     test("startOAuthFlow creates header-only session token and sends the device descriptor", () async {
       const authUrl = "https://github.com/login/oauth/authorize?client_id=abc";
+      final deadline = DateTime.now().add(const Duration(seconds: 20));
       when(
         () => mockHttpClient.post(
           Uri.parse("$authBaseUrl/auth/github/init"),
@@ -294,7 +308,7 @@ void main() {
         ),
       );
 
-      final result = await authManager.startOAuthFlow(provider: AuthProvider.github);
+      final result = await authManager.startOAuthFlow(provider: AuthProvider.github, deadline: deadline);
 
       expect(result.authUrl, authUrl);
       expect(result.state, "state-1");
@@ -317,12 +331,387 @@ void main() {
         "device": {"name": "Test iPhone", "osVersion": "iOS 17.5", "appVersion": "1.2.0"},
       });
       expect(body.values, isNot(contains(sessionToken)));
+      final savedExpiry = verify(
+        () => mockOAuthStorage.saveOAuthSession(
+          sessionToken: any(named: "sessionToken"),
+          expiresAt: captureAny(named: "expiresAt"),
+        ),
+      ).captured.single;
+      expect(savedExpiry, deadline);
       verifyNever(
         () => mockOAuthStorage.saveAuthProviderAndPkceVerifier(
           codeVerifier: any(named: "codeVerifier"),
           provider: any(named: "provider"),
         ),
       );
+    });
+
+    test("init 503 clears its session and exposes bounded restart timing before parsing JSON", () async {
+      final deadline = DateTime.now().add(const Duration(minutes: 2));
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/github/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => http.Response("not-json", 503, headers: {"retry-after": "2"}));
+
+      final restart = await _captureOAuthRestart(
+        authManager.startOAuthFlow(provider: AuthProvider.github, deadline: deadline),
+      );
+
+      expect(restart.restartAfter, const Duration(seconds: 2));
+      expect(restart.deadline, deadline);
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
+      verifyNever(
+        () => mockOAuthStorage.saveOAuthSession(
+          sessionToken: any(named: "sessionToken"),
+          expiresAt: any(named: "expiresAt"),
+        ),
+      );
+    });
+
+    test("a stale status response cannot clear a replacement OAuth session", () async {
+      final staleResponse = Completer<http.Response>();
+      var storedSession = (sessionToken: null as String?, expiresAt: null as DateTime?);
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer((_) async => storedSession);
+      when(
+        () => mockOAuthStorage.saveOAuthSession(
+          sessionToken: any(named: "sessionToken"),
+          expiresAt: any(named: "expiresAt"),
+        ),
+      ).thenAnswer((invocation) async {
+        storedSession = (
+          sessionToken: invocation.namedArguments[#sessionToken] as String,
+          expiresAt: invocation.namedArguments[#expiresAt] as DateTime,
+        );
+      });
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {
+        storedSession = (sessionToken: null, expiresAt: null);
+      });
+      when(
+        () => mockHttpClient.post(
+          any(),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({"authUrl": "https://example.com/login", "state": "state", "expiresIn": 300}),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(any(), headers: any(named: "headers")),
+      ).thenAnswer((_) => staleResponse.future);
+
+      await authManager.startOAuthFlow(provider: AuthProvider.github, deadline: null);
+      final stalePoll = authManager.pollForResult();
+      await untilCalled(() => mockHttpClient.get(any(), headers: any(named: "headers")));
+      await authManager.startOAuthFlow(provider: AuthProvider.google, deadline: null);
+      final replacementToken = storedSession.sessionToken;
+      final staleFailure = expectLater(stalePoll, throwsA(isA<Exception>()));
+      staleResponse.complete(http.Response("not-json", 503, headers: {"retry-after": "0"}));
+      await staleFailure;
+
+      expect(replacementToken, isNotNull);
+      expect(storedSession.sessionToken, replacementToken);
+      verifyNever(mockOAuthStorage.clearOAuthSession);
+    });
+
+    test("a timed-out session save poisons retries until one owned cleanup completes", () async {
+      final firstSave = Completer<void>();
+      var saveCount = 0;
+      var storedSession = (sessionToken: null as String?, expiresAt: null as DateTime?);
+      when(
+        () => mockOAuthStorage.saveOAuthSession(
+          sessionToken: any(named: "sessionToken"),
+          expiresAt: any(named: "expiresAt"),
+        ),
+      ).thenAnswer((invocation) async {
+        if (saveCount++ == 0) {
+          await firstSave.future;
+        }
+        storedSession = (
+          sessionToken: invocation.namedArguments[#sessionToken] as String,
+          expiresAt: invocation.namedArguments[#expiresAt] as DateTime,
+        );
+      });
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {
+        storedSession = (sessionToken: null, expiresAt: null);
+      });
+      when(
+        () => mockHttpClient.post(
+          any(),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({"authUrl": "https://example.com/login", "state": "state", "expiresIn": 300}),
+          200,
+        ),
+      );
+
+      final firstStart = authManager.startOAuthFlow(
+        provider: AuthProvider.github,
+        deadline: DateTime.now().add(const Duration(milliseconds: 30)),
+      );
+      await untilCalled(
+        () => mockOAuthStorage.saveOAuthSession(
+          sessionToken: any(named: "sessionToken"),
+          expiresAt: any(named: "expiresAt"),
+        ),
+      );
+      var replacementCompleted = false;
+      final replacement = authManager
+          .startOAuthFlow(
+            provider: AuthProvider.google,
+            deadline: DateTime.now().add(const Duration(minutes: 1)),
+          )
+          .whenComplete(() => replacementCompleted = true);
+
+      await expectLater(firstStart, throwsA(isA<TimeoutException>()));
+      expect(replacementCompleted, isFalse);
+      expect(storedSession.sessionToken, isNull);
+      verifyNever(mockOAuthStorage.clearOAuthSession);
+      for (var attempt = 0; attempt < 3; attempt += 1) {
+        await expectLater(
+          authManager.startOAuthFlow(
+            provider: AuthProvider.google,
+            deadline: DateTime.now().add(const Duration(minutes: 1)),
+          ),
+          throwsA(isA<Exception>()),
+        );
+      }
+
+      final replacementFailure = expectLater(replacement, throwsA(isA<Exception>()));
+      firstSave.complete();
+      await replacementFailure;
+      await untilCalled(mockOAuthStorage.clearOAuthSession);
+
+      await authManager.startOAuthFlow(
+        provider: AuthProvider.google,
+        deadline: DateTime.now().add(const Duration(minutes: 1)),
+      );
+
+      expect(replacementCompleted, isTrue);
+      expect(storedSession.sessionToken, isNotNull);
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
+    });
+
+    test("OAuth completion is atomic with respect to a replacement start", () async {
+      final tokenSave = Completer<void>();
+      when(
+        () => mockHttpClient.post(
+          any(),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({"authUrl": "https://example.com/login", "state": "state", "expiresIn": 300}),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(any(), headers: any(named: "headers")),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "status": "complete",
+            "accessToken": "access",
+            "refreshToken": "refresh",
+            "user": user.toJson(),
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(accessToken: "access", refreshToken: "refresh"),
+      ).thenAnswer((_) => tokenSave.future);
+      when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+
+      await authManager.startOAuthFlow(provider: AuthProvider.github, deadline: null);
+      final completion = authManager.pollForResult();
+      await untilCalled(
+        () => mockTokenStorage.saveTokens(accessToken: "access", refreshToken: "refresh"),
+      );
+      var replacementCompleted = false;
+      final replacement = authManager
+          .startOAuthFlow(provider: AuthProvider.google, deadline: null)
+          .whenComplete(() => replacementCompleted = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(replacementCompleted, isFalse);
+
+      tokenSave.complete();
+      expect(await completion, user);
+      await replacement;
+
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+      expect(replacementCompleted, isTrue);
+    });
+
+    test("completion that wins before the deadline cannot later become a timeout", () async {
+      final tokenSave = Completer<void>();
+      var storedSession = (sessionToken: null as String?, expiresAt: null as DateTime?);
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer((_) async => storedSession);
+      when(
+        () => mockOAuthStorage.saveOAuthSession(
+          sessionToken: any(named: "sessionToken"),
+          expiresAt: any(named: "expiresAt"),
+        ),
+      ).thenAnswer((invocation) async {
+        storedSession = (
+          sessionToken: invocation.namedArguments[#sessionToken] as String,
+          expiresAt: invocation.namedArguments[#expiresAt] as DateTime,
+        );
+      });
+      when(
+        () => mockHttpClient.post(
+          any(),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({"authUrl": "https://example.com/login", "state": "state", "expiresIn": 300}),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(any(), headers: any(named: "headers")),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "status": "complete",
+            "accessToken": "access",
+            "refreshToken": "refresh",
+            "user": user.toJson(),
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(accessToken: "access", refreshToken: "refresh"),
+      ).thenAnswer((_) => tokenSave.future);
+      when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+
+      await authManager.startOAuthFlow(
+        provider: AuthProvider.github,
+        deadline: DateTime.now().add(const Duration(milliseconds: 80)),
+      );
+      var completed = false;
+      final completion = authManager.pollForResult().whenComplete(() => completed = true);
+      await untilCalled(
+        () => mockTokenStorage.saveTokens(accessToken: "access", refreshToken: "refresh"),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(completed, isFalse);
+
+      tokenSave.complete();
+
+      expect(await completion, user);
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+    });
+
+    test("a poisoned queued replacement cannot override committed completion", () async {
+      final tokenSave = Completer<void>();
+      when(
+        () => mockHttpClient.post(
+          any(),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({"authUrl": "https://example.com/login", "state": "state", "expiresIn": 300}),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(any(), headers: any(named: "headers")),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "status": "complete",
+            "accessToken": "access",
+            "refreshToken": "refresh",
+            "user": user.toJson(),
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(accessToken: "access", refreshToken: "refresh"),
+      ).thenAnswer((_) => tokenSave.future);
+      when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+      final states = <AuthState>[];
+      final subscription = authManager.authStateStream.listen(states.add);
+
+      await authManager.startOAuthFlow(provider: AuthProvider.github, deadline: null);
+      final completion = authManager.pollForResult();
+      await untilCalled(
+        () => mockTokenStorage.saveTokens(accessToken: "access", refreshToken: "refresh"),
+      );
+      final replacement = authManager.startOAuthFlow(
+        provider: AuthProvider.google,
+        deadline: DateTime.now().add(const Duration(milliseconds: 30)),
+      );
+      await expectLater(replacement, throwsA(isA<TimeoutException>()));
+
+      tokenSave.complete();
+
+      expect(await completion, user);
+      await Future<void>.delayed(Duration.zero);
+      expect(states.whereType<AuthAuthenticated>().toList(), [const AuthState.authenticated(user: user)]);
+      await subscription.cancel();
+    });
+
+    test("503 and 404 clear storage and expose bounded restart timing before parsing JSON", () async {
+      final deadline = DateTime.now().add(const Duration(minutes: 2));
+      final cases = <({int status, String? header, Duration delay, bool fallback})>[
+        (status: 503, header: "0", delay: Duration.zero, fallback: true),
+        (status: 503, header: "5", delay: const Duration(seconds: 5), fallback: false),
+        (status: 503, header: null, delay: const Duration(seconds: 1), fallback: false),
+        (status: 503, header: "-1", delay: const Duration(seconds: 1), fallback: false),
+        (status: 503, header: "6", delay: const Duration(seconds: 1), fallback: false),
+        (status: 404, header: "5", delay: Duration.zero, fallback: false),
+      ];
+      var responseIndex = 0;
+      var storedSession = (sessionToken: null as String?, expiresAt: null as DateTime?);
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer((_) async => storedSession);
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {
+        storedSession = (sessionToken: null, expiresAt: null);
+      });
+      when(
+        () => mockHttpClient.get(any(), headers: any(named: "headers")),
+      ).thenAnswer((_) async {
+        final testCase = cases[responseIndex++];
+        return http.Response(
+          "not-json",
+          testCase.status,
+          headers: {"retry-after": ?testCase.header},
+        );
+      });
+      for (final testCase in cases) {
+        storedSession = (
+          sessionToken: "stale-session-token",
+          expiresAt: testCase.fallback ? null : deadline,
+        );
+        final expectedDeadline = testCase.fallback ? DateTime.now().add(const Duration(minutes: 5)) : deadline;
+        final exception = await _pollRestart(authManager);
+        expect(exception.restartAfter, testCase.delay);
+        expect(
+          exception.deadline.difference(expectedDeadline).abs(),
+          lessThan(const Duration(milliseconds: 100)),
+        );
+        expect(storedSession.sessionToken, isNull);
+      }
+      await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
     });
 
     test("pollForResult retries pending then stores complete tokens and emits authenticated", () async {
@@ -391,7 +780,7 @@ void main() {
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
 
-      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      await authManager.startOAuthFlow(provider: AuthProvider.google, deadline: null);
       final exchangedUser = await authManager.pollForResult();
 
       await Future<void>.delayed(Duration.zero);
@@ -490,7 +879,7 @@ void main() {
       when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
       when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
 
-      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      await authManager.startOAuthFlow(provider: AuthProvider.google, deadline: null);
       final exchangedUser = await authManager.pollForResult();
 
       expect(exchangedUser, user);
@@ -553,7 +942,7 @@ void main() {
         ),
       ).thenThrow(Exception("secure storage failed"));
 
-      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      await authManager.startOAuthFlow(provider: AuthProvider.google, deadline: null);
 
       await expectLater(authManager.pollForResult(), throwsA(isA<Exception>()));
       verifyNever(
@@ -630,7 +1019,7 @@ void main() {
         ),
       ).thenAnswer((_) async => http.Response(jsonEncode({"error": "not_found"}), 404));
 
-      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      await authManager.startOAuthFlow(provider: AuthProvider.google, deadline: null);
       final exchangedUser = await authManager.pollForResult();
 
       expect(exchangedUser, user);
@@ -669,7 +1058,7 @@ void main() {
         ),
       ).thenAnswer((_) async => http.Response(jsonEncode({"status": "denied"}), 200));
 
-      await authManager.startOAuthFlow(provider: AuthProvider.github);
+      await authManager.startOAuthFlow(provider: AuthProvider.github, deadline: null);
       await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
 
       final initCall = verify(
@@ -722,7 +1111,7 @@ void main() {
         ),
       ).thenAnswer((_) => Future<http.Response>.error(TimeoutException("status request timed out")));
 
-      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      await authManager.startOAuthFlow(provider: AuthProvider.google, deadline: null);
 
       await expectLater(
         authManager.pollForResult(),
@@ -810,7 +1199,7 @@ void main() {
         when(mockOAuthStorage.getOAuthSession).thenAnswer(
           (_) async => (sessionToken: null, expiresAt: null),
         );
-        await authManager.startOAuthFlow(provider: AuthProvider.github);
+        await authManager.startOAuthFlow(provider: AuthProvider.github, deadline: null);
       }
 
       for (final statusResponse in [
@@ -842,7 +1231,7 @@ void main() {
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
         pollInterval: Duration.zero,
-        pollTimeout: Duration.zero,
+        pollTimeout: const Duration(milliseconds: 20),
         delay: (_) async {},
       );
       await arrangeStartedFlow(statusResponse: http.Response(jsonEncode({"status": "pending"}), 200));

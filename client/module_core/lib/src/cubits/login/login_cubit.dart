@@ -2,6 +2,8 @@ import "dart:async";
 
 import "package:bloc/bloc.dart";
 import "package:http/http.dart" show ClientException;
+import "package:meta/meta.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -18,7 +20,113 @@ enum _LoginAnalyticsOutcome { open, terminal }
 final class _LoginAttempt {
   final AuthProvider provider;
   _LoginAnalyticsOutcome analyticsOutcome = _LoginAnalyticsOutcome.open;
+  bool oAuthRestartUsed = false;
+  DateTime? oAuthDeadline;
+  OAuthRestartWait? _wait;
+  bool _cancelled = false;
   _LoginAttempt({required this.provider});
+  void cancel() {
+    if (_cancelled) return;
+    _cancelled = true;
+    _wait?.cancel();
+    _wait = null;
+  }
+}
+
+final class _UnexpectedOAuthRestartLifecycleDone implements Exception {
+  const _UnexpectedOAuthRestartLifecycleDone();
+  @override
+  String toString() => "OAuth restart lifecycle stream closed unexpectedly";
+}
+
+enum OAuthRestartWaitResult { ready, cancelled, deadline }
+
+@visibleForTesting
+final class OAuthRestartWaitCombinedFailure implements Exception {
+  final AsyncError operationFailure;
+  final AsyncError cleanupFailure;
+  const OAuthRestartWaitCombinedFailure({required this.operationFailure, required this.cleanupFailure});
+}
+
+@visibleForTesting
+final class OAuthRestartWait {
+  final ValueStream<LifecycleState> lifecycle;
+  final Duration delay;
+  final DateTime deadline;
+  final Completer<OAuthRestartWaitResult> _completion = Completer();
+  Timer? _deadlineTimer;
+  Timer? _delayTimer;
+  // ignore: cancel_subscriptions, _finish always cancels the owned subscription
+  StreamSubscription<LifecycleState>? _subscription;
+  bool _finishing = false;
+  OAuthRestartWait({required this.lifecycle, required this.delay, required this.deadline});
+  Future<OAuthRestartWaitResult> run() {
+    if (_finishing) return _completion.future;
+    final remaining = deadline.difference(DateTime.now());
+    if (remaining > Duration.zero) {
+      _deadlineTimer = Timer(remaining, () => _resolve(OAuthRestartWaitResult.deadline));
+      _delayTimer = delay > Duration.zero ? Timer(delay, _listenForResume) : null;
+      if (_delayTimer == null) _listenForResume();
+    } else {
+      _resolve(OAuthRestartWaitResult.deadline);
+    }
+    return _completion.future;
+  }
+
+  void cancel() => _resolve(OAuthRestartWaitResult.cancelled);
+  void _listenForResume() {
+    if (!DateTime.now().isBefore(deadline)) {
+      _resolve(OAuthRestartWaitResult.deadline);
+      return;
+    }
+    if (lifecycle.value == LifecycleState.resumed) {
+      _resolve(OAuthRestartWaitResult.ready);
+      return;
+    }
+    _subscription = lifecycle.listen(_onLifecycleState, onError: _onLifecycleError, onDone: _onLifecycleDone);
+    if (lifecycle.value == LifecycleState.resumed) _resolve(OAuthRestartWaitResult.ready);
+  }
+
+  void _onLifecycleState(LifecycleState state) {
+    if (state == LifecycleState.resumed) scheduleMicrotask(() => _resolve(OAuthRestartWaitResult.ready));
+  }
+
+  // ignore: no_slop_linter/prefer_required_named_parameters, Stream.listen callback signature
+  void _onLifecycleError(Object error, StackTrace stackTrace) =>
+      scheduleMicrotask(() => _fail(error: error, stackTrace: stackTrace));
+  void _onLifecycleDone() => scheduleMicrotask(
+    () => _fail(error: const _UnexpectedOAuthRestartLifecycleDone(), stackTrace: StackTrace.current),
+  );
+  void _resolve(OAuthRestartWaitResult result) => unawaited(_finish(result: result, operationFailure: null));
+  void _fail({required Object error, required StackTrace stackTrace}) =>
+      unawaited(_finish(result: null, operationFailure: AsyncError(error, stackTrace)));
+  Future<void> _finish({
+    required OAuthRestartWaitResult? result,
+    required AsyncError? operationFailure,
+  }) async {
+    if (_finishing) return;
+    _finishing = true;
+    _deadlineTimer?.cancel();
+    _delayTimer?.cancel();
+    final subscription = _subscription;
+    _subscription = null;
+    AsyncError? cleanupFailure;
+    try {
+      await subscription?.cancel();
+    } on Object catch (error, stackTrace) {
+      cleanupFailure = AsyncError(error, stackTrace);
+    }
+    if (operationFailure != null) {
+      final error = cleanupFailure == null
+          ? operationFailure.error
+          : OAuthRestartWaitCombinedFailure(operationFailure: operationFailure, cleanupFailure: cleanupFailure);
+      _completion.completeError(error, operationFailure.stackTrace);
+    } else if (cleanupFailure != null) {
+      _completion.completeError(cleanupFailure.error, cleanupFailure.stackTrace);
+    } else if (result != null) {
+      _completion.complete(result);
+    }
+  }
 }
 
 /// Opaque ownership token for one native Apple sign-in operation.
@@ -35,7 +143,7 @@ class LoginCubit extends Cubit<LoginState> {
   final InstallationAnalyticsService _installationAnalyticsService;
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
   _LoginAttempt? _loginAttempt;
-  bool _isPolling = false;
+  _LoginAttempt? _pollingAttempt;
 
   /// Whether the app is currently backgrounded. While backgrounded, the OS can
   /// abort the in-flight OAuth status poll (Android tears down the socket when
@@ -68,7 +176,7 @@ class LoginCubit extends Cubit<LoginState> {
         case LifecycleState.hidden:
         case LifecycleState.detached:
           _isInBackground = true;
-          if (_isPolling) {
+          if (_pollingAttempt != null) {
             _didActivePollEnterBackground = true;
           }
         case LifecycleState.resumed:
@@ -82,13 +190,16 @@ class LoginCubit extends Cubit<LoginState> {
 
   @override
   Future<void> close() async {
+    final attempt = _loginAttempt;
     _loginAttempt = null;
+    _pollingAttempt = null;
+    attempt?.cancel();
     await _lifecycleSubscription?.cancel();
     return super.close();
   }
 
   Future<void> _onAppResumed() async {
-    if (_isPolling) return;
+    if (_pollingAttempt != null) return;
     if (state is LoginPolling || state is LoginTimeout) {
       final attempt = _currentAttempt;
       if (attempt == null) return;
@@ -120,10 +231,19 @@ class LoginCubit extends Cubit<LoginState> {
       if (isClosed) return;
 
       _didActivePollEnterBackground = _isInBackground;
-      _isPolling = true;
+      _pollingAttempt = attempt;
       emit(const LoginState.polling());
       try {
-        await _oAuthFlowProvider.resumeOAuthFlow();
+        try {
+          await _oAuthFlowProvider.resumeOAuthFlow();
+        } on OAuthSessionRestartRequiredException catch (error, stackTrace) {
+          final restarted = await _restartOAuthFlow(
+            attempt: attempt,
+            exception: error,
+            stackTrace: stackTrace,
+          );
+          if (!restarted) return;
+        }
         if (!_ownsAttempt(attempt: attempt)) return;
         _reportCompletedAttempt(attempt: attempt);
         emit(const LoginState.success());
@@ -139,7 +259,9 @@ class LoginCubit extends Cubit<LoginState> {
         _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
         emit(const LoginState.failed(reason: LoginFailedReason.unknown));
       } finally {
-        _isPolling = false;
+        if (identical(_pollingAttempt, attempt)) {
+          _pollingAttempt = null;
+        }
       }
     }
   }
@@ -167,7 +289,7 @@ class LoginCubit extends Cubit<LoginState> {
       // The app already returned to the foreground before this abort surfaced,
       // so no further `resumed` lifecycle event will arrive to drive recovery.
       // Kick the retry now; the microtask lets the caller's `finally` clear
-      // `_isPolling` before `_onAppResumed` runs.
+      // the polling guard before `_onAppResumed` runs.
       Future.microtask(() {
         if (isClosed) return;
         _onAppResumed().catchError((Object e, StackTrace st) {
@@ -193,19 +315,40 @@ class LoginCubit extends Cubit<LoginState> {
     emit(const LoginState.authenticating());
 
     try {
-      final initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
+      final AuthInitResponse initResponse;
+      try {
+        initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider, deadline: null);
+      } on OAuthSessionRestartRequiredException catch (error, stackTrace) {
+        _pollingAttempt = attempt;
+        try {
+          final restarted = await _restartOAuthFlow(
+            attempt: attempt,
+            exception: error,
+            stackTrace: stackTrace,
+          );
+          if (!restarted) return false;
+        } finally {
+          if (identical(_pollingAttempt, attempt)) {
+            _pollingAttempt = null;
+          }
+        }
+        if (!_ownsAttempt(attempt: attempt)) return false;
+        _reportCompletedAttempt(attempt: attempt);
+        emit(const LoginState.success());
+        return true;
+      }
       if (!_ownsAttempt(attempt: attempt)) return false;
 
       // Show the resumable polling UI and ARM the poll guard BEFORE launching
       // the browser. Opening the browser can suspend the app before launch()
-      // returns; with _isPolling already set, a resume during that window is a
+      // returns; with the polling guard already set, a resume during that window is a
       // no-op (it won't start a second concurrent poll) — the pollForResult()
       // below owns the session. The finally resets the guard on every exit path
       // (launch failure, success, or a thrown poll error), so the outer catch's
-      // _handlePollInterruption still sees _isPolling == false.
+      // _handlePollInterruption still sees the guard released.
       emit(const LoginState.polling());
       _didActivePollEnterBackground = _isInBackground;
-      _isPolling = true;
+      _pollingAttempt = attempt;
       try {
         logd("Opening ${provider.label} auth URL in browser");
 
@@ -218,9 +361,20 @@ class LoginCubit extends Cubit<LoginState> {
           return false;
         }
 
-        await _oAuthFlowProvider.pollForResult();
+        try {
+          await _oAuthFlowProvider.pollForResult();
+        } on OAuthSessionRestartRequiredException catch (error, stackTrace) {
+          final restarted = await _restartOAuthFlow(
+            attempt: attempt,
+            exception: error,
+            stackTrace: stackTrace,
+          );
+          if (!restarted) return false;
+        }
       } finally {
-        _isPolling = false;
+        if (identical(_pollingAttempt, attempt)) {
+          _pollingAttempt = null;
+        }
       }
 
       if (!_ownsAttempt(attempt: attempt)) return false;
@@ -342,10 +496,13 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   _LoginAttempt _beginAttempt({required AuthProvider provider}) {
+    final previousAttempt = _loginAttempt;
     _reportFailedAttempt(
-      attempt: _loginAttempt,
+      attempt: previousAttempt,
       cause: LoginAttemptFailureCause.unknown,
     );
+    _loginAttempt = null;
+    previousAttempt?.cancel();
     final attempt = _LoginAttempt(provider: provider);
     _loginAttempt = attempt;
     _report(
@@ -353,6 +510,110 @@ class LoginCubit extends Cubit<LoginState> {
       description: "login attempt start",
     );
     return attempt;
+  }
+
+  Future<bool> _restartOAuthFlow({
+    required _LoginAttempt attempt,
+    required OAuthSessionRestartRequiredException exception,
+    required StackTrace stackTrace,
+  }) async {
+    final provider = switch (attempt.provider) {
+      final OAuthProvider provider => provider,
+      EmailAuthProvider() => throw StateError("OAuth session restart requires an OAuth provider"),
+    };
+    if (attempt.oAuthRestartUsed) {
+      _throwIfOAuthDeadlineReached(attempt: attempt);
+      Error.throwWithStackTrace(exception, stackTrace);
+    }
+    attempt.oAuthRestartUsed = true;
+    attempt.oAuthDeadline = exception.deadline;
+    final deadline = exception.deadline;
+
+    if (!await _waitUntilOAuthRestartReady(
+      attempt: attempt,
+      delay: exception.restartAfter,
+      deadline: deadline,
+    )) {
+      return false;
+    }
+
+    final initResponse = await _beforeOAuthDeadline(
+      deadline: deadline,
+      operation: () => _oAuthFlowProvider.startOAuthFlow(
+        provider: provider,
+        deadline: deadline,
+      ),
+    );
+    if (!_ownsAttempt(attempt: attempt)) return false;
+    if (!await _waitUntilOAuthRestartReady(attempt: attempt, delay: Duration.zero, deadline: deadline)) {
+      return false;
+    }
+
+    _didActivePollEnterBackground = _isInBackground;
+    emit(const LoginState.polling());
+    logd("Opening ${provider.label} auth URL in browser after OAuth session restart");
+    final launched = await _beforeOAuthDeadline(
+      deadline: deadline,
+      operation: () => _urlLauncher.launch(Uri.parse(initResponse.authUrl)),
+    );
+    if (!_ownsAttempt(attempt: attempt)) return false;
+    _throwIfOAuthDeadlineReached(attempt: attempt);
+    if (!launched) {
+      _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.launch);
+      emit(const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
+      return false;
+    }
+
+    await _oAuthFlowProvider.pollForResult();
+    if (!_ownsAttempt(attempt: attempt)) return false;
+    return true;
+  }
+
+  Future<T> _beforeOAuthDeadline<T>({
+    required DateTime deadline,
+    required Future<T> Function() operation,
+  }) {
+    final remaining = deadline.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      return Future<T>.error(TimeoutException("OAuth authorization timed out"));
+    }
+
+    return operation().timeout(
+      remaining,
+      onTimeout: () => throw TimeoutException("OAuth authorization timed out"),
+    );
+  }
+
+  void _throwIfOAuthDeadlineReached({required _LoginAttempt attempt}) {
+    final deadline = attempt.oAuthDeadline;
+    if (deadline != null && !DateTime.now().isBefore(deadline)) {
+      throw TimeoutException("OAuth authorization timed out");
+    }
+  }
+
+  Future<bool> _waitUntilOAuthRestartReady({
+    required _LoginAttempt attempt,
+    required Duration delay,
+    required DateTime deadline,
+  }) async {
+    var currentDelay = delay;
+    while (true) {
+      final wait = OAuthRestartWait(
+        lifecycle: _lifecycleSource.lifecycleStateStream,
+        delay: currentDelay,
+        deadline: deadline,
+      );
+      attempt._wait = wait;
+      if (attempt._cancelled) wait.cancel();
+      final result = await wait.run().whenComplete(() {
+        if (identical(attempt._wait, wait)) attempt._wait = null;
+      });
+      if (!_ownsAttempt(attempt: attempt) || result == OAuthRestartWaitResult.cancelled) return false;
+      if (result == OAuthRestartWaitResult.deadline) throw TimeoutException("OAuth authorization timed out");
+      _throwIfOAuthDeadlineReached(attempt: attempt);
+      if (_lifecycleSource.lifecycleState == LifecycleState.resumed) return true;
+      currentDelay = Duration.zero;
+    }
   }
 
   _LoginAttempt? get _currentAttempt => _loginAttempt;

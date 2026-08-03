@@ -44,7 +44,10 @@ void main() {
       // Default mock behaviors
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
       when(
-        () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
+        () => mockOAuthFlowProvider.startOAuthFlow(
+          provider: any(named: "provider"),
+          deadline: null,
+        ),
       ).thenAnswer(
         (_) async => const AuthInitResponse(
           authUrl: "https://auth.example.com/login",
@@ -101,7 +104,10 @@ void main() {
       build: buildCubit,
       act: (cubit) async {
         when(
-          () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
+          () => mockOAuthFlowProvider.startOAuthFlow(
+            provider: any(named: "provider"),
+            deadline: null,
+          ),
         ).thenThrow(Exception("Auth init failed"));
 
         await cubit.loginWithProvider(AuthProvider.google);
@@ -120,7 +126,10 @@ void main() {
       },
       verify: (cubit) {
         verify(
-          () => mockOAuthFlowProvider.startOAuthFlow(provider: AuthProvider.github),
+          () => mockOAuthFlowProvider.startOAuthFlow(
+            provider: AuthProvider.github,
+            deadline: null,
+          ),
         ).called(1);
       },
     );
@@ -133,7 +142,10 @@ void main() {
       },
       verify: (cubit) {
         verify(
-          () => mockOAuthFlowProvider.startOAuthFlow(provider: AuthProvider.google),
+          () => mockOAuthFlowProvider.startOAuthFlow(
+            provider: AuthProvider.google,
+            deadline: null,
+          ),
         ).called(1);
       },
     );
