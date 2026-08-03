@@ -2079,6 +2079,36 @@ class OrchestratorSession {
     }
     Log.v("response: status=${response.status}");
 
+    await _deliverRoutedResponse(
+      connection: connection,
+      connID: connID,
+      response: response,
+      routeIdentity: routeIdentity,
+      phoneIncarnation: phoneIncarnation,
+      activePhoneIncarnations: activePhoneIncarnations,
+    );
+
+    if (_cancelled) return;
+    switch (outcome) {
+      case ResponseOnly():
+        break;
+      case final RestartAccepted accepted:
+        try {
+          await _restartDispatcher.dispatch(restart: accepted);
+        } on Object catch (error, stackTrace) {
+          Log.e("route ${routeIdentity.diagnosticLabel} failed for connId $connID", error, stackTrace);
+        }
+    }
+  }
+
+  Future<void> _deliverRoutedResponse({
+    required RelayConnection connection,
+    required int connID,
+    required RelayResponse response,
+    required RouteIdentity routeIdentity,
+    required Object phoneIncarnation,
+    required Map<int, Object> activePhoneIncarnations,
+  }) async {
     final ({List<int> payload, int cleartextLength}) encrypted;
     try {
       encrypted = await _encryptRelayMessage(message: response, connID: connID);
@@ -2114,18 +2144,6 @@ class OrchestratorSession {
       }
     } on Object catch (error, stackTrace) {
       Log.w("failed to send response for ${routeIdentity.diagnosticLabel} to connId $connID", error, stackTrace);
-    }
-
-    if (_cancelled) return;
-    switch (outcome) {
-      case ResponseOnly():
-        break;
-      case final RestartAccepted accepted:
-        try {
-          await _restartDispatcher.dispatch(restart: accepted);
-        } on Object catch (error, stackTrace) {
-          Log.e("route ${routeIdentity.diagnosticLabel} failed for connId $connID", error, stackTrace);
-        }
     }
   }
 
