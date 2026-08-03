@@ -175,7 +175,7 @@ void main() {
         expect(authServer.statusRequests.map((request) => request.sessionToken).toList(), sessionTokens);
         await expectLater(
           service.performOAuthLogin(AuthProvider.github),
-          throwsA(predicate<Exception>((error) => error.toString().contains('lost again after restart'))),
+          throwsA(isA<OAuthSessionRestartRequiredException>()),
         );
         expect((authServer.initRequests.length, authServer.statusRequests.length), (4, 4));
         final stopwatch = Stopwatch()..start();
@@ -279,41 +279,6 @@ void main() {
         expect(deadlines, hasLength(2));
         expect(deadlines.toSet(), hasLength(1));
       });
-
-      for (final hangingOperation in ['init', 'browser']) {
-        test('a hanging restart $hangingOperation stops at the original deadline', () async {
-          final authServer = await _OAuthLongPollTestServer.start(
-            initResponses: hangingOperation == 'init'
-                ? [
-                    (statusCode: 200, retryAfter: null),
-                    (statusCode: 0, retryAfter: null),
-                  ]
-                : const [],
-            statusResponses: [(statusCode: 503, retryAfter: '0')],
-          );
-          addTearDown(authServer.close);
-          var launches = 0;
-          final service = _createOAuthService(
-            authServer: authServer,
-            browserLauncher: (_) {
-              launches += 1;
-              return hangingOperation == 'browser' && launches == 2 ? Completer<void>().future : Future<void>.value();
-            },
-            pollTimeout: const Duration(milliseconds: 100),
-          );
-          final stopwatch = Stopwatch()..start();
-
-          await expectLater(
-            service.performOAuthLogin(AuthProvider.github),
-            throwsA(isA<TimeoutException>()),
-          );
-          stopwatch.stop();
-
-          expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
-          expect(authServer.initRequests, hasLength(2));
-          expect(launches, hangingOperation == 'browser' ? 2 : 1);
-        });
-      }
 
       test('denied status throws', () async {
         final authServer = await _OAuthLongPollTestServer.start(
@@ -585,89 +550,40 @@ void main() {
   });
 
   group('openOAuthBrowser', () {
-    test('reports collected stderr when the launcher exits non-zero', () async {
-      final process = _CompletedBrowserProcess();
+    test('does not invoke the process starter after the absolute deadline', () async {
+      var startCalls = 0;
 
       await expectLater(
         openOAuthBrowser(
-          url: 'https://example.com/oauth?state=failed-launch',
-          deadline: DateTime.now().add(const Duration(seconds: 1)),
-          processStarter: (_, __) async => process,
-        ),
-        throwsA(
-          isA<Exception>().having(
-            (error) => error.toString(),
-            'message',
-            contains('Browser launcher exited with code 7: launcher failed'),
-          ),
-        ),
-      );
-
-      expect(process.killSignals, isEmpty);
-    });
-
-    test('gracefully terminates then force-kills a hanging launcher and awaits completed drains', () async {
-      final process = _HangingBrowserProcess();
-      String? executable;
-      List<String>? arguments;
-      const authUrl = 'https://example.com/oauth?state=state-1';
-      final deadline = DateTime.now().add(const Duration(milliseconds: 30));
-      final stopwatch = Stopwatch()..start();
-
-      await expectLater(
-        openOAuthBrowser(
-          url: authUrl,
-          deadline: deadline,
-          processStarter: (startedExecutable, startedArguments) async {
-            executable = startedExecutable;
-            arguments = startedArguments;
-            return process;
+          url: 'https://example.com/oauth?state=expired-before-start',
+          deadline: DateTime.now().subtract(const Duration(milliseconds: 1)),
+          processStarter: (_, __) {
+            startCalls += 1;
+            throw StateError('process starter must not be called');
           },
-          gracefulTerminationTimeout: const Duration(milliseconds: 5),
-          forcedTerminationTimeout: const Duration(milliseconds: 20),
         ),
         throwsA(isA<TimeoutException>()),
       );
-      stopwatch.stop();
 
-      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 500)));
-      expect(executable, isNotEmpty);
-      expect(arguments, contains(authUrl));
-      expect(process.killSignals, [ProcessSignal.sigterm, ProcessSignal.sigkill]);
-      expect(process.exited, isTrue);
-      expect(process.stdoutDrained, isTrue);
-      expect(process.stderrDrained, isTrue);
+      expect(startCalls, 0);
     });
 
-    test('preserves a bounded OAuth timeout when forced cleanup cannot finish', () async {
-      final process = _HangingBrowserProcess(exitsOnSigkill: false);
-      final stopwatch = Stopwatch()..start();
+    test('dispatches the URL without retaining process ownership', () async {
+      String? executable;
+      List<String>? arguments;
+      const authUrl = 'https://example.com/oauth?state=state-1';
 
-      await expectLater(
-        openOAuthBrowser(
-          url: 'https://example.com/oauth?state=state-2',
-          deadline: DateTime.now().add(const Duration(milliseconds: 5)),
-          processStarter: (_, __) async => process,
-          gracefulTerminationTimeout: const Duration(milliseconds: 5),
-          forcedTerminationTimeout: const Duration(milliseconds: 20),
-        ),
-        throwsA(
-          isA<TimeoutException>().having(
-            (error) => error.message,
-            'message',
-            'timed out waiting for authorization',
-          ),
-        ),
+      await openOAuthBrowser(
+        url: authUrl,
+        deadline: DateTime.now().add(const Duration(seconds: 1)),
+        processStarter: (startedExecutable, startedArguments) async {
+          executable = startedExecutable;
+          arguments = startedArguments;
+        },
       );
-      stopwatch.stop();
 
-      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 500)));
-      expect(process.killSignals, [ProcessSignal.sigterm, ProcessSignal.sigkill]);
-      expect(process.exited, isFalse);
-      expect(process.stdoutDrained, isFalse);
-      expect(process.stderrDrained, isFalse);
-      expect(process.stdoutCanceled, isTrue);
-      expect(process.stderrCanceled, isTrue);
+      expect(executable, isNotEmpty);
+      expect(arguments, contains(authUrl));
     });
   });
 
@@ -1250,95 +1166,4 @@ class _CapturingStdout implements Stdout {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _HangingBrowserProcess implements Process {
-  _HangingBrowserProcess({this.exitsOnSigkill = true}) {
-    _stdout = StreamController<List<int>>(onCancel: () => stdoutCanceled = true);
-    _stderr = StreamController<List<int>>(onCancel: () => stderrCanceled = true);
-  }
-
-  final bool exitsOnSigkill;
-  final Completer<int> _exitCode = Completer<int>();
-  late final StreamController<List<int>> _stdout;
-  late final StreamController<List<int>> _stderr;
-  final List<ProcessSignal> killSignals = [];
-  bool stdoutDrained = false;
-  bool stderrDrained = false;
-  bool stdoutCanceled = false;
-  bool stderrCanceled = false;
-
-  bool get exited => _exitCode.isCompleted;
-
-  @override
-  Future<int> get exitCode => _exitCode.future;
-
-  @override
-  IOSink get stdin => throw UnimplementedError();
-
-  @override
-  Stream<List<int>> get stdout async* {
-    yield* _stdout.stream;
-    stdoutDrained = true;
-  }
-
-  @override
-  Stream<List<int>> get stderr async* {
-    yield* _stderr.stream;
-    stderrDrained = true;
-  }
-
-  @override
-  int get pid => 12345;
-
-  @override
-  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
-    killSignals.add(signal);
-    if (signal != ProcessSignal.sigkill || !exitsOnSigkill) {
-      return true;
-    }
-
-    _completeExit();
-    return true;
-  }
-
-  void _completeExit() {
-    if (_exitCode.isCompleted) {
-      return;
-    }
-
-    _stdout.add(utf8.encode('launcher stdout'));
-    _stderr.add(utf8.encode('launcher stderr'));
-    unawaited(_stdout.close());
-    unawaited(_stderr.close());
-    _exitCode.complete(-9);
-  }
-}
-
-class _CompletedBrowserProcess implements Process {
-  final List<ProcessSignal> killSignals = [];
-
-  @override
-  Future<int> get exitCode => Future.value(7);
-
-  @override
-  IOSink get stdin => throw UnimplementedError();
-
-  @override
-  Stream<List<int>> get stdout => Stream.value(utf8.encode('launcher stdout'));
-
-  @override
-  Stream<List<int>> get stderr => Stream.fromIterable([
-    utf8.encode('launcher '),
-    utf8.encode('failed'),
-  ]);
-
-  @override
-  int get pid => 12346;
-
-  @override
-  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
-    killSignals.add(signal);
-    return false;
-  }
 }

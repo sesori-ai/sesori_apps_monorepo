@@ -48,8 +48,6 @@ class LoginOAuthApi {
       throw OAuthSessionRestartRequiredException(
         restartAfter: _parseRestartAfter(value: response.headers["retry-after"]),
         deadline: deadline,
-        operation: OAuthSessionRestartOperation.init,
-        reason: OAuthSessionRestartReason.serviceUnavailable,
       );
     }
 
@@ -92,10 +90,6 @@ class LoginOAuthApi {
       throw OAuthSessionRestartRequiredException(
         restartAfter: restartAfter,
         deadline: deadline,
-        operation: OAuthSessionRestartOperation.status,
-        reason: response.statusCode == 404
-            ? OAuthSessionRestartReason.sessionMissing
-            : OAuthSessionRestartReason.serviceUnavailable,
       );
     }
 

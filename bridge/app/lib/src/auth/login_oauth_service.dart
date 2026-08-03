@@ -7,7 +7,6 @@ import "package:meta/meta.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/foundation/process_starter.dart";
 import "login_oauth_api.dart";
 import "token.dart";
 
@@ -16,67 +15,12 @@ const int _perRequestTimeoutSeconds = 35; // Slightly longer than server's 30s l
 const Duration _defaultPollInterval = Duration(milliseconds: 250);
 const Duration _defaultPollTimeout = Duration(seconds: _totalLoginTimeoutSeconds);
 const Duration _defaultPerRequestTimeout = Duration(seconds: _perRequestTimeoutSeconds);
-const Duration _defaultBrowserTerminationGrace = Duration(milliseconds: 100);
-const Duration _defaultBrowserForcedTerminationTimeout = Duration(seconds: 1);
 
 typedef OAuthBrowserLauncher = Future<void> Function({required String url, required DateTime deadline});
-typedef _OAuthBrowserProcessResult = ({int exitCode, String stderr});
+typedef OAuthBrowserProcessStarter = Future<void> Function(String executable, List<String> arguments);
 
-Future<Process> _startOAuthBrowserProcess(String executable, List<String> arguments) {
-  return Process.start(executable, arguments);
-}
-
-Future<_OAuthBrowserProcessResult> _collectOAuthBrowserProcessResult({
-  required Future<int> exitCodeFuture,
-  required _OAuthBrowserOutputCollector output,
-}) async {
-  final (exitCode, _, _) = await (
-    exitCodeFuture,
-    output.stdoutDone,
-    output.stderrDone,
-  ).wait;
-  return (exitCode: exitCode, stderr: output.stderr);
-}
-
-Future<Never> _throwOAuthBrowserTimeoutAfterCleanup({
-  required Process process,
-  required Future<int> exitCode,
-  required Future<_OAuthBrowserProcessResult> completion,
-  required _OAuthBrowserOutputCollector output,
-  required Duration gracefulTerminationTimeout,
-  required Duration forcedTerminationTimeout,
-}) async {
-  Object? cleanupFailure;
-  var forceKill = false;
-  try {
-    process.kill();
-    await exitCode.timeout(gracefulTerminationTimeout);
-  } on Object catch (error) {
-    cleanupFailure = error;
-    forceKill = true;
-  }
-
-  if (forceKill) {
-    try {
-      process.kill(ProcessSignal.sigkill);
-    } on Object catch (error) {
-      cleanupFailure = error;
-    }
-  }
-
-  try {
-    await completion.timeout(forcedTerminationTimeout);
-    cleanupFailure = null;
-  } on Object catch (error) {
-    cleanupFailure = error;
-    try {
-      await output.cancel().timeout(gracefulTerminationTimeout);
-    } on Object catch (error) {
-      cleanupFailure = error;
-    }
-  }
-
-  throw _OAuthBrowserTimeoutException(cause: cleanupFailure);
+Future<void> _startOAuthBrowserProcess(String executable, List<String> arguments) async {
+  await Process.start(executable, arguments, mode: ProcessStartMode.detached);
 }
 
 /// Opens the default browser to [url].
@@ -88,9 +32,7 @@ Future<Never> _throwOAuthBrowserTimeoutAfterCleanup({
 Future<void> openOAuthBrowser({
   required String url,
   required DateTime deadline,
-  @visibleForTesting ProcessStarter processStarter = _startOAuthBrowserProcess,
-  @visibleForTesting Duration gracefulTerminationTimeout = _defaultBrowserTerminationGrace,
-  @visibleForTesting Duration forcedTerminationTimeout = _defaultBrowserForcedTerminationTimeout,
+  @visibleForTesting OAuthBrowserProcessStarter processStarter = _startOAuthBrowserProcess,
 }) async {
   late final String executable;
   late final List<String> arguments;
@@ -114,91 +56,13 @@ Future<void> openOAuthBrowser({
     throw UnsupportedError("Unsupported platform: ${Platform.operatingSystem}");
   }
 
-  final process = await processStarter(executable, arguments);
-  final exitCode = process.exitCode;
-  final output = _OAuthBrowserOutputCollector.start(process: process);
-  final completion = _collectOAuthBrowserProcessResult(exitCodeFuture: exitCode, output: output);
-  final remaining = deadline.difference(DateTime.now());
-  final result = await completion.timeout(
-    remaining > Duration.zero ? remaining : Duration.zero,
-    onTimeout: () => _throwOAuthBrowserTimeoutAfterCleanup(
-      process: process,
-      exitCode: exitCode,
-      completion: completion,
-      output: output,
-      gracefulTerminationTimeout: gracefulTerminationTimeout,
-      forcedTerminationTimeout: forcedTerminationTimeout,
-    ),
-  );
-
-  if (result.exitCode != 0) {
-    throw Exception("Browser launcher exited with code ${result.exitCode}: ${result.stderr}");
-  }
-}
-
-final class _OAuthBrowserTimeoutException extends TimeoutException {
-  _OAuthBrowserTimeoutException({required this.cause}) : super("timed out waiting for authorization");
-
-  final Object? cause;
-}
-
-final class _OAuthBrowserOutputCollector {
-  _OAuthBrowserOutputCollector.start({required Process process}) {
-    _stdoutSubscription = process.stdout.listen(
-      (_) {},
-      onError: (Object error, StackTrace stackTrace) {
-        if (!_stdoutDone.isCompleted) {
-          _stdoutDone.completeError(error, stackTrace);
-        }
-      },
-      onDone: () {
-        if (!_stdoutDone.isCompleted) {
-          _stdoutDone.complete();
-        }
-      },
-      cancelOnError: true,
-    );
-    _stderrSubscription = process.stderr
-        .transform(const SystemEncoding().decoder)
-        .listen(
-          _stderr.write,
-          onError: (Object error, StackTrace stackTrace) {
-            if (!_stderrDone.isCompleted) {
-              _stderrDone.completeError(error, stackTrace);
-            }
-          },
-          onDone: () {
-            if (!_stderrDone.isCompleted) {
-              _stderrDone.complete();
-            }
-          },
-          cancelOnError: true,
-        );
+  if (!DateTime.now().isBefore(deadline)) {
+    throw TimeoutException("timed out waiting for authorization");
   }
 
-  late final StreamSubscription<List<int>> _stdoutSubscription;
-  late final StreamSubscription<String> _stderrSubscription;
-  final Completer<void> _stdoutDone = Completer<void>();
-  final Completer<void> _stderrDone = Completer<void>();
-  final StringBuffer _stderr = StringBuffer();
-
-  Future<void> get stdoutDone => _stdoutDone.future;
-  Future<void> get stderrDone => _stderrDone.future;
-  String get stderr => _stderr.toString();
-
-  Future<void> cancel() async {
-    final cancellations = (
-      _stdoutSubscription.cancel(),
-      _stderrSubscription.cancel(),
-    ).wait;
-    if (!_stdoutDone.isCompleted) {
-      _stdoutDone.complete();
-    }
-    if (!_stderrDone.isCompleted) {
-      _stderrDone.complete();
-    }
-    await cancellations;
-  }
+  // The platform opener is only a best-effort handoff. Detached mode avoids
+  // retaining child pipes or waiting for the browser after the OS accepts it.
+  await processStarter(executable, arguments);
 }
 
 /// Confidence that a URL can be opened in a graphical browser on this host.
@@ -319,23 +183,23 @@ class LoginOAuthService {
   Future<({TokenData tokens, String sessionToken})> performOAuthLogin(OAuthProvider provider) async {
     final stopwatch = Stopwatch()..start();
     final deadline = DateTime.now().add(_pollTimeout);
-    try {
-      return await _performOAuthAttempt(provider: provider, stopwatch: stopwatch, deadline: deadline);
-    } on OAuthSessionRestartRequiredException catch (error) {
-      stopwatch.start();
-      final remaining = _pollTimeout - stopwatch.elapsed;
-      final restartDelay = error.restartAfter < remaining ? error.restartAfter : remaining;
-      if (restartDelay > Duration.zero) {
-        await _delay(restartDelay).timeout(remaining);
-      }
-      if (remaining <= Duration.zero || error.restartAfter >= remaining || stopwatch.elapsed >= _pollTimeout) {
-        throw TimeoutException("timed out waiting for authorization", _pollTimeout);
-      }
-
+    var restarted = false;
+    while (true) {
       try {
         return await _performOAuthAttempt(provider: provider, stopwatch: stopwatch, deadline: deadline);
-      } on OAuthSessionRestartRequiredException catch (secondError, stackTrace) {
-        Error.throwWithStackTrace(_OAuthSessionRestartFailedException(secondError), stackTrace);
+      } on OAuthSessionRestartRequiredException catch (error) {
+        if (restarted) {
+          rethrow;
+        }
+        restarted = true;
+        stopwatch.start();
+        final remaining = _pollTimeout - stopwatch.elapsed;
+        if (remaining <= Duration.zero || error.restartAfter >= remaining) {
+          throw TimeoutException("timed out waiting for authorization", _pollTimeout);
+        }
+        if (error.restartAfter > Duration.zero) {
+          await _delay(error.restartAfter).timeout(remaining);
+        }
       }
     }
   }
@@ -481,11 +345,4 @@ class LoginOAuthService {
 
     return bytes.map((byte) => byte.toRadixString(16).padLeft(2, "0")).join();
   }
-}
-
-final class _OAuthSessionRestartFailedException implements Exception {
-  const _OAuthSessionRestartFailedException(this.cause);
-  final OAuthSessionRestartRequiredException cause;
-  @override
-  String toString() => "OAuth session was lost again after restart: $cause";
 }

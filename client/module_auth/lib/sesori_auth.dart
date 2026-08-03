@@ -5,8 +5,7 @@ library;
 // alongside the type so downstream freezed models (e.g. SettingsState) with an
 // AuthUser field can resolve their generated nested copyWith.
 export "package:sesori_shared/sesori_shared.dart" show $AuthUserCopyWith, AuthProvider, AuthUser;
-export "package:sesori_shared/sesori_shared.dart"
-    show OAuthSessionRestartOperation, OAuthSessionRestartReason, OAuthSessionRestartRequiredException;
+export "package:sesori_shared/sesori_shared.dart" show OAuthSessionRestartRequiredException;
 
 export "src/auth_config.dart";
 export "src/client/api_error.dart";

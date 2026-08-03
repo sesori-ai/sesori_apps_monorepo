@@ -161,22 +161,4 @@ void main() {
       );
     });
   });
-
-  test("OAuth restart diagnostics retain closed operation and reason context", () {
-    final deadline = DateTime.utc(2026, 8, 3, 18);
-    final error = OAuthSessionRestartRequiredException(
-      restartAfter: const Duration(seconds: 1),
-      deadline: deadline,
-      operation: OAuthSessionRestartOperation.status,
-      reason: OAuthSessionRestartReason.sessionMissing,
-    );
-
-    expect(error.operation, OAuthSessionRestartOperation.status);
-    expect(error.reason, OAuthSessionRestartReason.sessionMissing);
-    expect(
-      error.toString(),
-      "OAuth session restart required (operation: status, reason: sessionMissing, "
-      "restartAfterMs: 1000, deadline: 2026-08-03T18:00:00.000Z)",
-    );
-  });
 }
