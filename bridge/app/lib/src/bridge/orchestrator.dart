@@ -884,7 +884,7 @@ class OrchestratorSession {
     Log.d("bridge registered");
     if (_cancelled) return;
 
-    late RelayConnection relayConnection;
+    final RelayConnection relayConnection;
     try {
       Log.d("connecting to relay...");
       relayConnection = await _client.connect();
@@ -1235,7 +1235,11 @@ class OrchestratorSession {
   Future<void> cancel() async {
     beginShutdown();
     final sw = Stopwatch()..start();
-    await _shutdownRelayCloseFuture!;
+    final shutdownRelayCloseFuture = _shutdownRelayCloseFuture;
+    if (shutdownRelayCloseFuture == null) {
+      throw StateError("Relay shutdown was not started");
+    }
+    await shutdownRelayCloseFuture;
     Log.d("[shutdown] cancel(): relay client closed in ${sw.elapsedMilliseconds}ms");
   }
 

@@ -311,5 +311,8 @@
   callbacks detach only their exact subscription owner, and ordinary routed
   responses also count bytes only after a successful send. All 30 focused
   registration/routing/SSE tests and strict app analysis pass after these fixes.
+  Owner review also replaced the startup handle's `late` declaration with
+  single-assignment `final` and removed the shutdown future's bang assertion in
+  favor of explicit null checking plus promotion.
 - **Step 4/10 delivery:** [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699)
-  is open at 1,318 changed lines; the owner-provided branch/worktree are reused.
+  is open at 1,326 changed lines; the owner-provided branch/worktree are reused.
