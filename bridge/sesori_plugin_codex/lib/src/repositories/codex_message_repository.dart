@@ -42,8 +42,7 @@ class CodexMessageRepository {
     );
     final messages = <PluginMessageWithParts?>[];
     final toolMessageIndexById = <String, int>{};
-    final submittedUserMessages = <String>{};
-    final pendingGeneratedUserMessages = <_PendingGeneratedUserMessage>[];
+    final pendingUserMessages = <_PendingUserMessage>[];
     var messageCounter = 0;
     String? sessionProvider;
     String? currentModel;
@@ -97,15 +96,38 @@ class CodexMessageRepository {
       if (line case CodexRolloutEventMessageLineDto(
         payload: CodexRolloutUserMessageEventDto(message: final submittedMessage),
       )) {
-        submittedUserMessages.add(submittedMessage);
-        for (final pending in pendingGeneratedUserMessages) {
-          if (pending.resolved || pending.submittedText != submittedMessage) {
-            continue;
+        _PendingUserMessage? pending;
+        for (var index = pendingUserMessages.length - 1; index >= 0; index--) {
+          final candidate = pendingUserMessages[index];
+          if (!candidate.resolved) {
+            pending = candidate;
+            break;
           }
+        }
+        if (pending == null) {
           messageCounter += 1;
           final messageId = _persistedOrLegacyMessageId(
-            persistedId: pending.persistedId,
+            persistedId: null,
             legacyCounter: messageCounter,
+          );
+          messages.add(
+            _textMessage(
+              info: PluginMessage.user(
+                id: messageId,
+                sessionID: sessionId,
+                agent: null,
+                time: _messageTimeFrom(lineTimestamp),
+              ),
+              messageId: messageId,
+              sessionId: sessionId,
+              text: submittedMessage,
+            ),
+          );
+        } else {
+          final legacyCounter = pending.legacyCounter ?? (messageCounter += 1);
+          final messageId = _persistedOrLegacyMessageId(
+            persistedId: pending.persistedId,
+            legacyCounter: legacyCounter,
           );
           messages[pending.slot] = _textMessage(
             info: PluginMessage.user(
@@ -116,7 +138,7 @@ class CodexMessageRepository {
             ),
             messageId: messageId,
             sessionId: sessionId,
-            text: pending.text,
+            text: submittedMessage,
           );
           pending.resolved = true;
         }
@@ -250,16 +272,15 @@ class CodexMessageRepository {
                 text,
           ];
           if (texts.isEmpty) continue;
-          final submittedText = _firstInputText(content: content);
-          if (role == CodexRolloutRole.user &&
-              !submittedUserMessages.contains(submittedText) &&
-              _isGeneratedUserContext(content: content)) {
-            pendingGeneratedUserMessages.add(
-              _PendingGeneratedUserMessage(
+          if (role == CodexRolloutRole.user) {
+            final fallbackText = _userVisibleText(content: content);
+            final legacyCounter = fallbackText == null ? null : (messageCounter += 1);
+            pendingUserMessages.add(
+              _PendingUserMessage(
                 slot: messages.length,
                 persistedId: id,
-                submittedText: submittedText,
-                text: texts.join(),
+                fallbackText: fallbackText,
+                legacyCounter: legacyCounter,
                 time: messageTime,
               ),
             );
@@ -292,6 +313,28 @@ class CodexMessageRepository {
           continue;
       }
     }
+    for (final pending in pendingUserMessages) {
+      final fallbackText = pending.fallbackText;
+      final legacyCounter = pending.legacyCounter;
+      if (pending.resolved || fallbackText == null || legacyCounter == null) {
+        continue;
+      }
+      final messageId = _persistedOrLegacyMessageId(
+        persistedId: pending.persistedId,
+        legacyCounter: legacyCounter,
+      );
+      messages[pending.slot] = _textMessage(
+        info: PluginMessage.user(
+          id: messageId,
+          sessionID: sessionId,
+          agent: null,
+          time: pending.time,
+        ),
+        messageId: messageId,
+        sessionId: sessionId,
+        text: fallbackText,
+      );
+    }
     return [for (final message in messages) ?message];
   }
 
@@ -306,24 +349,19 @@ class CodexMessageRepository {
     };
   }
 
-  String? _firstInputText({required List<CodexRolloutContentDto> content}) {
-    for (final item in content) {
-      if (item case CodexRolloutInputTextDto(:final text)) return text;
-    }
-    return null;
-  }
-
-  bool _isGeneratedUserContext({
+  String? _userVisibleText({
     required List<CodexRolloutContentDto> content,
   }) {
-    if (content.isEmpty || content.any((item) => item is! CodexRolloutInputTextDto)) {
-      return false;
-    }
     final texts = [
       for (final item in content)
-        if (item case CodexRolloutInputTextDto(:final text)) text.trim(),
+        if (item case CodexRolloutInputTextDto(:final text)
+            when text.isNotEmpty &&
+                !_GeneratedContextTag.values.any(
+                  (tag) => tag.wraps(text.trim()),
+                ))
+          text,
     ];
-    return texts.every((text) => _GeneratedContextTag.values.any((tag) => tag.wraps(text)));
+    return texts.isEmpty ? null : texts.join();
   }
 
   PluginMessageWithParts _textMessage({
@@ -430,19 +468,19 @@ enum _GeneratedContextTag {
   bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
 }
 
-class _PendingGeneratedUserMessage {
-  _PendingGeneratedUserMessage({
+class _PendingUserMessage {
+  _PendingUserMessage({
     required this.slot,
     required this.persistedId,
-    required this.submittedText,
-    required this.text,
+    required this.fallbackText,
+    required this.legacyCounter,
     required this.time,
   });
 
   final int slot;
   final String? persistedId;
-  final String? submittedText;
-  final String text;
+  final String? fallbackText;
+  final int? legacyCounter;
   final PluginMessageTime? time;
   bool resolved = false;
 }

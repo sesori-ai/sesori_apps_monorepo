@@ -979,6 +979,32 @@ void main() {
             "type": "response_item",
             "payload": {
               "type": "message",
+              "id": "mixed-context-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<recommended_plugins>internal list</recommended_plugins>",
+                },
+                {"type": "input_text", "text": "Visible mixed prompt"},
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>internal cwd</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "Visible mixed prompt",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
               "id": "generated-abort",
               "role": "user",
               "content": [
@@ -1011,6 +1037,7 @@ void main() {
       expect(messages.map((message) => message.info.id), [
         "actual-user",
         "actual-wrapper-user",
+        "mixed-context-user",
         "assistant-1",
       ]);
       expect(messages.first.parts.single.text, "Explain the <environment_context> tag");
@@ -1018,6 +1045,7 @@ void main() {
         messages[1].parts.single.text,
         "<environment_context>user-authored text</environment_context>",
       );
+      expect(messages[2].parts.single.text, "Visible mixed prompt");
       expect(messages.last.parts.single.text, "Visible answer");
     });
 

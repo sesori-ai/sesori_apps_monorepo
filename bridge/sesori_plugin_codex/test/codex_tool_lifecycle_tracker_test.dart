@@ -680,6 +680,48 @@ void main() {
     );
   });
 
+  test("a delayed terminal cannot close the active newer turn", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-new"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _userMessageEvent(message: "new turn"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-new", turnId: null),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-new",
+          output: "Script running with cell ID 7\nOutput:\n",
+        ),
+      );
+
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_complete", turnId: "turn-old"),
+      ),
+      isEmpty,
+    );
+    expect(
+      target
+          .observeRolloutLine(
+            threadId: "thread-1",
+            line: _taskEvent(type: "task_complete", turnId: "turn-new"),
+          )
+          .single
+          .status,
+      PluginToolStatus.completed,
+    );
+  });
+
   test("a later turn cannot reuse a prior turn cell alias", () {
     final target = tracker();
     target
@@ -803,6 +845,40 @@ void main() {
     expect(failed?.output, "opaque output");
   });
 
+  test("dynamic tool failure preserves richer rollout evidence", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _dynamicCall(callId: "dynamic-1", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "dynamic-1",
+          output: "opaque persisted output",
+        ),
+      );
+
+    final failed = target.observeAppServerTool(
+      notification: const CodexServerNotification(
+        method: "item/completed",
+        params: {
+          "threadId": "thread-1",
+          "turnId": "turn-1",
+          "item": {
+            "type": "dynamicToolCall",
+            "id": "dynamic-1",
+            "status": "failed",
+          },
+        },
+      ),
+    );
+
+    expect(failed?.status, PluginToolStatus.error);
+    expect(failed?.output, "opaque persisted output");
+  });
+
   test("clear removes all lifecycle and alias state", () {
     final target = tracker();
     target.observeRolloutLine(
@@ -854,6 +930,25 @@ CodexRolloutLineDto _rawExecCall({
       "call_id": callId,
       "name": "exec",
       "input": "await tools.exec_command({cmd: 'pwd'});",
+      if (turnId != null)
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": turnId,
+        },
+    },
+  });
+}
+
+CodexRolloutLineDto _dynamicCall({
+  required String callId,
+  required String? turnId,
+}) {
+  return CodexRolloutLineDto.fromJson({
+    "type": "response_item",
+    "payload": {
+      "type": "custom_tool_call",
+      "call_id": callId,
+      "name": "custom_tool",
+      "input": "{}",
       if (turnId != null)
         "internal_chat_message_metadata_passthrough": {
           "turn_id": turnId,

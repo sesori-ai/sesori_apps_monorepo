@@ -61,7 +61,15 @@ class CodexToolLifecycleTracker {
 
     if (item["type"] == "dynamicToolCall") {
       final tool = thread.tools[itemId];
-      return tool == null || !tool.hasRolloutResult ? null : tool.snapshot();
+      if (tool == null || !tool.hasRolloutResult) return null;
+      tool.status = _mergeStatus(
+        previous: tool.status,
+        current: _appServerStatus(
+          raw: item["status"],
+          completed: notification.method == "item/completed",
+        ),
+      );
+      return tool.snapshot();
     }
     if (item["type"] != "commandExecution") return null;
 
@@ -299,7 +307,8 @@ class CodexToolLifecycleTracker {
         continue;
       }
       final applies = tool.turnId == null
-          ? tool.chronologySegment == thread.chronologySegment
+          ? (thread.activeTurnId == null || thread.activeTurnId == usefulTurnId) &&
+                tool.chronologySegment == thread.chronologySegment
           : tool.turnId == usefulTurnId;
       if (!applies) continue;
       tool.status = status;
