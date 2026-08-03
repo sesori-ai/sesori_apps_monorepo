@@ -8,7 +8,8 @@
 - **Series state:** Steps 1–4 merged; Step 4/10
   [#699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as
   `9ac855a3`
-- **Current step:** Step 5/10 implemented on `plan-parallel-requests`
+- **Current step:** Step 5/10 PR
+  [#700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) open
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
 - **Next action:** open, review, and merge Step 5; Step 6 remains blocked until then
 
@@ -91,7 +92,7 @@
 | [x] | 2/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope restart handoffs [step 2/10]` | 900–1,300 | [PR #690](https://github.com/sesori-ai/sesori_apps_monorepo/pull/690) merged as `fdc8ad67` with 1,552 changed lines |
 | [x] | 3/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): coordinate routed request shutdown [step 3/10]` | 600–1,000 | [PR #696](https://github.com/sesori-ai/sesori_apps_monorepo/pull/696) merged as `95178462` |
 | [x] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as `9ac855a3` with 1,326 changed lines |
-| [ ] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | Implemented from `9ac855a3`; ready to open |
+| [ ] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) open from `9ac855a3` |
 | [ ] | 6/10 | `relay-request-concurrency-session-lifecycle` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | Blocked on Step 5 merge |
 | [ ] | 7/10 | `relay-request-concurrency-session-visibility` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | 600–1,100 | Blocked on Step 6 merge |
 | [ ] | 8/10 | `relay-request-concurrency-project-mutations` | `🚧 [relay-request-concurrency] refactor(bridge): order project path mutations [step 8/10]` | 650–1,100 | Blocked on Step 7 merge |
@@ -337,4 +338,5 @@
   auto-approval competition, and unique/missing/ambiguous legacy owners.
 - **Step 5/10 architecture review:** `aristotle-impl-review` approved all tracked
   and untracked Step 5 changes from `9ac855a3` with no blocking findings.
-- **Step 5/10 delivery:** ready to open at 1,482 changed lines.
+- **Step 5/10 delivery:** [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700)
+  is open at 1,484 changed lines.
