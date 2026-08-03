@@ -164,12 +164,12 @@ class CodexEventMapper {
 
   /// Maps a non-thread-start notification to zero or more bridge events.
   List<BridgeSseEvent> map(CodexServerNotification notification) => mapCommand(
-    notification,
+    notification: notification,
     commandProjection: const CodexAppServerCommandNative(),
   );
 
-  List<BridgeSseEvent> mapCommand(
-    CodexServerNotification notification, {
+  List<BridgeSseEvent> mapCommand({
+    required CodexServerNotification notification,
     required CodexAppServerCommandProjection commandProjection,
   }) {
     final method = notification.method;

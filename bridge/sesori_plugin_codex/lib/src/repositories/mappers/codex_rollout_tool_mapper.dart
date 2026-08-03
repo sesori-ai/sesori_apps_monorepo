@@ -59,6 +59,24 @@ class CodexRolloutToolMapper {
 
   final CodexImageAttachmentMapper _imageAttachmentMapper;
 
+  /// Whether this persisted call has a matching stable `commandExecution`
+  /// item. Code-mode custom `exec` calls are rollout-only tool items.
+  bool isCommandExecutionCall({
+    required CodexRolloutResponseItemDto payload,
+  }) {
+    return switch (payload) {
+      CodexRolloutFunctionCallDto(:final name) => name.toLowerCase() == "exec_command",
+      CodexRolloutMessageDto() ||
+      CodexRolloutReasoningDto() ||
+      CodexRolloutFunctionCallOutputDto() ||
+      CodexRolloutCustomToolCallDto() ||
+      CodexRolloutCustomToolCallOutputDto() ||
+      CodexRolloutWebSearchCallDto() ||
+      CodexRolloutImageGenerationDto() ||
+      CodexRolloutUnknownResponseItemDto() => false,
+    };
+  }
+
   CodexRolloutImageGeneration mapImageGeneration({
     required CodexRolloutImageGenerationDto item,
   }) {

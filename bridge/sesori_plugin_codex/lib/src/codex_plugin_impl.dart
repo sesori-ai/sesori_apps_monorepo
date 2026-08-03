@@ -374,6 +374,11 @@ class CodexPlugin implements CodexManagedApi {
       // This fallback covers a turn started by another app-server client.
       _rolloutTailer.start(sessionId: threadId);
     }
+    if (threadId != null && (notification.method == "item/started" || notification.method == "item/completed")) {
+      // Codex persists the response item before emitting its stable lifecycle
+      // event. Drain now so polling latency cannot split one command identity.
+      _rolloutTailer.drain(sessionId: threadId);
+    }
     final terminalHistory =
         notification.method == "turn/completed" ||
         notification.method == "error" ||
@@ -389,19 +394,14 @@ class CodexPlugin implements CodexManagedApi {
     // before disconnecting the generation's event stream.
     final activityChanged = _maintainBookkeeping(notification);
     final commandProjection = _toolCorrelationTracker.correlateAppServerCommand(
-      notification,
+      notification: notification,
     );
     _eventMapper
         .mapCommand(
-          notification,
+          notification: notification,
           commandProjection: commandProjection,
         )
         .forEach(_eventBuffer.add);
-    if (notification.method == "item/completed" && threadId != null) {
-      // The app-server item is provisional; a rollout output written for the
-      // correlated call immediately enriches it with executor metadata.
-      _rolloutTailer.drain(sessionId: threadId);
-    }
     if (threadId != null &&
         (notification.method == "turn/completed" ||
             notification.method == "error" ||

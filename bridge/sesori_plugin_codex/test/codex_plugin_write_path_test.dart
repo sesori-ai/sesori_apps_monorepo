@@ -1291,10 +1291,6 @@ void main() {
       ]);
       final events = <BridgeSseEvent>[];
       final subscription = plugin.events.listen(events.add);
-      final canonicalCallObserved = plugin.events
-          .where((event) => event is BridgeSseMessagePartUpdated)
-          .cast<BridgeSseMessagePartUpdated>()
-          .firstWhere((event) => event.part.messageID == "call-immediate");
 
       await plugin.sendPrompt(
         sessionId: sessionId,
@@ -1422,7 +1418,6 @@ void main() {
         mode: FileMode.append,
       );
 
-      await canonicalCallObserved.timeout(const Duration(seconds: 1));
       fake
         ..pushNotification("item/started", {
           "threadId": sessionId,

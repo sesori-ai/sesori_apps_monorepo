@@ -30,15 +30,21 @@ class CodexToolCorrelationTracker {
       CodexRolloutUnknownLineDto() => null,
     };
     if (payload == null) return;
+    if (!_rolloutToolMapper.isCommandExecutionCall(payload: payload)) return;
     final call = _rolloutToolMapper.mapCall(payload);
     final turnId = call?.turnId;
-    if (call == null || call.tool != "shell" || turnId == null) return;
-    _pendingShellCallsByTurn.putIfAbsent(_turnKey(threadId, turnId), () => []).add(call.id);
+    if (call == null || turnId == null) return;
+    _pendingShellCallsByTurn
+        .putIfAbsent(
+          _turnKey(threadId: threadId, turnId: turnId),
+          () => [],
+        )
+        .add(call.id);
   }
 
-  CodexAppServerCommandProjection correlateAppServerCommand(
-    CodexServerNotification notification,
-  ) {
+  CodexAppServerCommandProjection correlateAppServerCommand({
+    required CodexServerNotification notification,
+  }) {
     if (notification.method != "item/started" && notification.method != "item/completed") {
       return const CodexAppServerCommandNative();
     }
@@ -53,11 +59,11 @@ class CodexToolCorrelationTracker {
       return const CodexAppServerCommandNative();
     }
 
-    final aliasKey = _appServerItemKey(threadId, itemId);
+    final aliasKey = _appServerItemKey(threadId: threadId, itemId: itemId);
     var callId = _appServerItemAliases[aliasKey];
     final turnId = params["turnId"];
     if (callId == null && turnId is String && turnId.isNotEmpty) {
-      final turnKey = _turnKey(threadId, turnId);
+      final turnKey = _turnKey(threadId: threadId, turnId: turnId);
       final pending = _pendingShellCallsByTurn[turnKey];
       if (pending != null && pending.isNotEmpty) {
         callId = pending.removeAt(0);
@@ -79,7 +85,7 @@ class CodexToolCorrelationTracker {
     _appServerItemAliases.clear();
   }
 
-  String _turnKey(String threadId, String turnId) => "$threadId\u0000turn\u0000$turnId";
+  String _turnKey({required String threadId, required String turnId}) => "$threadId\u0000turn\u0000$turnId";
 
-  String _appServerItemKey(String threadId, String itemId) => "$threadId\u0000item\u0000$itemId";
+  String _appServerItemKey({required String threadId, required String itemId}) => "$threadId\u0000item\u0000$itemId";
 }

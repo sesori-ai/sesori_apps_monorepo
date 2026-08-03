@@ -340,6 +340,9 @@ void main() {
             "ghp_secretCredential": "secret-credential",
             "query": "secret-query",
           },
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "secret-turn-id",
+          },
           "action": "secret-source-content",
         },
       });
@@ -356,7 +359,7 @@ void main() {
         contains(
           'schema={type:enum("response_item"),payload:{'
           'type:enum("function_call"),name:String,call_id:int,arguments:{type:String,'
-          '<redacted-key>:String,query:String},'
+          '<redacted-key>:String,query:String},internal_chat_message_metadata_passthrough:{turn_id:String},'
           "action:String}}",
         ),
       );
@@ -365,6 +368,7 @@ void main() {
       expect(output, isNot(contains("secret-token")));
       expect(output, isNot(contains("secret-credential")));
       expect(output, isNot(contains("secret-query")));
+      expect(output, isNot(contains("secret-turn-id")));
       expect(output, isNot(contains("secret-source-content")));
     });
 
