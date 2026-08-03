@@ -53,7 +53,7 @@ class SessionOperationDispatcher {
     required PendingInteractionRequest? interaction,
     required Future<T> Function() body,
   }) {
-    if (!_accepting) return _closedFuture<T>();
+    if (!_accepting) throw _closedError();
 
     final ticket = _nextTicket++;
     final result = Completer<T>();
@@ -94,9 +94,9 @@ class SessionOperationDispatcher {
     required String questionId,
     required SessionOperation operation,
     required Future<String> Function() resolveOwnerSessionId,
-    required Future<T> Function(String ownerSessionId) body,
+    required Future<T> Function({required String ownerSessionId}) body,
   }) {
-    if (!_accepting) return _closedFuture<T>();
+    if (!_accepting) throw _closedError();
 
     final ticket = _nextTicket++;
     final result = Completer<T>();
@@ -127,7 +127,7 @@ class SessionOperationDispatcher {
                 family: family,
                 ownerSessionId: ownerSessionId,
                 interaction: PendingQuestionInteraction(requestId: questionId),
-                body: () => body(ownerSessionId),
+                body: () => body(ownerSessionId: ownerSessionId),
                 result: result,
               );
             } finally {
@@ -170,12 +170,9 @@ class SessionOperationDispatcher {
     await Future.wait(_inFlightSettlements.toList(growable: false));
   }
 
-  Future<T> _closedFuture<T>() {
+  StateError _closedError() {
     final state = _disposed ? "disposed" : "closed";
-    return Future<T>.error(
-      StateError("SessionOperationDispatcher is $state"),
-      StackTrace.current,
-    );
+    return StateError("SessionOperationDispatcher is $state");
   }
 
   void _enqueueResolution({

@@ -22,12 +22,11 @@ class SessionAbortService {
   Stream<String> get abortFailedSessions => _abortFailedSessionsController.stream;
 
   Future<void> abortSession({required String sessionId}) {
-    return _dispatcher.dispatch(
+    final operation = _dispatcher.dispatch<void>(
       sessionId: sessionId,
       operation: SessionOperation.abortSession,
       interaction: null,
       body: () async {
-        _abortStartedSessionsController.add(sessionId);
         try {
           await _sessionRepository.abortSession(sessionId: sessionId);
           _abortedSessionsController.add(sessionId);
@@ -37,6 +36,8 @@ class SessionAbortService {
         }
       },
     );
+    _abortStartedSessionsController.add(sessionId);
+    return operation;
   }
 
   Future<void> dispose() async {

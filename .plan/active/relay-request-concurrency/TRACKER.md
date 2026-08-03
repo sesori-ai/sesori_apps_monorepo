@@ -338,5 +338,14 @@
   auto-approval competition, and unique/missing/ambiguous legacy owners.
 - **Step 5/10 architecture review:** `aristotle-impl-review` approved all tracked
   and untracked Step 5 changes from `9ac855a3` with no blocking findings.
+- **Step 5/10 PR review:** three bot findings were applied: the legacy wire path
+  retains its dated compatibility cleanup marker; the abort-pending signal is
+  emitted synchronously after dispatcher acceptance while backend abort remains
+  family-ordered; and the legacy owner callback uses a required named parameter.
+  Three suggestions were declined: pending questions have no authoritative
+  database index and adding one would violate this step's no-schema scope; the
+  fixed legacy OpenCode plugin's root query explicitly includes descendant
+  questions; and timing out its plugin barrier would not cancel owner discovery
+  and would let later same-plugin work violate the required arrival order.
 - **Step 5/10 delivery:** [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700)
-  is open at 1,484 changed lines.
+  is open at 1,490 changed lines.

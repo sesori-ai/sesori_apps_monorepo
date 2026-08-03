@@ -133,7 +133,7 @@ void main() {
           await ownerGate.future;
           return "legacy-owner";
         },
-        body: (_) async {
+        body: ({required String ownerSessionId}) async {
           legacyBodyStarted.complete();
           await legacyBodyGate.future;
         },
@@ -195,8 +195,8 @@ void main() {
       final drain = dispatcher.drain();
       expect(identical(drain, dispatcher.drain()), isTrue);
       expect(identical(drain, dispatcher.dispose()), isTrue);
-      await expectLater(
-        dispatcher.dispatch<void>(
+      expect(
+        () => dispatcher.dispatch<void>(
           sessionId: "second",
           operation: SessionOperation.abortSession,
           interaction: null,

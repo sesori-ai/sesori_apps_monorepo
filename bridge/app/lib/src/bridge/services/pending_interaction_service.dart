@@ -76,6 +76,7 @@ class PendingInteractionService {
       );
     }
 
+    // COMPATIBILITY 2026-06-17 (v1.1.0): Released clients may omit the rejection sessionId. Require it and remove legacy owner resolution once those clients are unsupported.
     return _dispatcher.dispatchLegacyQuestion(
       pluginId: _legacyMissingPluginId,
       questionId: questionId,
@@ -100,7 +101,7 @@ class PendingInteractionService {
         }
         return owners.single;
       },
-      body: (ownerSessionId) => _questionRepository.rejectQuestion(
+      body: ({required ownerSessionId}) => _questionRepository.rejectQuestion(
         questionId: questionId,
         sessionId: ownerSessionId,
       ),

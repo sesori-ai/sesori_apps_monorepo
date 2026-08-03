@@ -161,7 +161,7 @@ void main() {
       expect(change.promptDefaults.model?.variant, "high");
     });
 
-    test("keeps command defaults, abort, and later defaults in arrival order", () async {
+    test("suppresses completion immediately while backend actions retain arrival order", () async {
       final abortService = SessionAbortService(
         sessionRepository: sessionRepository,
         dispatcher: dispatcher,
@@ -200,13 +200,13 @@ void main() {
         command: null,
       );
       await Future<void>.delayed(Duration.zero);
-      expect(events, isEmpty);
+      expect(events, ["abort"]);
       expect(plugin.lastAbortSessionId, isNull);
       expect(plugin.lastSendPromptSessionId, isNull);
 
       commandGate.complete();
       await Future.wait([command, abort, prompt]);
-      expect(events, ["defaults:first", "abort", "defaults:second"]);
+      expect(events, ["abort", "defaults:first", "defaults:second"]);
       expect((await db.sessionDao.getSession(sessionId: "s1"))!.lastAgent, "second");
     });
 
