@@ -457,6 +457,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
   String get settingsPullRequestRefreshUpdateFailed;
 
+  /// No description provided for @settingsPullRequestRefreshStateChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge setting changed while you were editing. Try again.'**
+  String get settingsPullRequestRefreshStateChanged;
+
   /// No description provided for @settingsPullRequestRefreshUnavailable.
   ///
   /// In en, this message translates to:

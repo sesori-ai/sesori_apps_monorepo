@@ -300,6 +300,29 @@ void main() {
     );
   });
 
+  testWidgets("reports when an editor becomes stale before save", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Pull request refresh"));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "45");
+
+    connectionStatuses.add(const ConnectionStatus.connectionLost(config: _connectionConfig));
+    connectionStatuses.add(_connected);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("The bridge setting changed while you were editing. Try again."), findsOneWidget);
+    verifyNever(
+      () => pullRequestRefreshSettingsRepository.update(
+        intervalSeconds: any(named: "intervalSeconds"),
+      ),
+    );
+  });
+
   testWidgets("a bridge rejection reports and enforces its authoritative bounds", (tester) async {
     _useTallSurface(tester);
     var updateCalls = 0;

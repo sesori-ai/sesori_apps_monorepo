@@ -110,7 +110,11 @@ Future<void> _editInterval({
     ),
   );
   if (result == null) return;
-  await cubit.update(input: result, expectedState: state);
+  final acceptance = await cubit.update(input: result, expectedState: state);
+  if (!context.mounted || acceptance == PullRequestRefreshSettingsUpdateAcceptance.accepted) return;
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(SnackBar(content: Text(context.loc.settingsPullRequestRefreshStateChanged)));
 }
 
 class _RefreshIntervalSheet extends StatefulWidget {
@@ -160,7 +164,7 @@ class _RefreshIntervalSheetState extends State<_RefreshIntervalSheet> {
               isRequired: true,
               autofocus: true,
               autocorrect: false,
-              keyboardType: const TextInputType.numberWithOptions(signed: true),
+              keyboardType: TextInputType.number,
               textInputAction: TextInputAction.done,
               validator: (value) => switch (widget.cubit.validateUpdateInput(input: value ?? "")) {
                 PullRequestRefreshSettingsInputValidation.valid => null,

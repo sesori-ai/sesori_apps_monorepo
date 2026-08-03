@@ -5,7 +5,6 @@ import "package:sesori_auth/sesori_auth.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
-import "../../logging/logging.dart";
 import "../../repositories/models/pull_request_refresh_settings_result.dart";
 import "../../services/pull_request_refresh_settings_service.dart";
 import "pull_request_refresh_settings_state.dart";
@@ -49,22 +48,14 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     _operationInProgress = true;
     _refreshPending = false;
     final operationEpoch = _connectionEpoch;
-    final validationBounds = switch (state) {
-      PullRequestRefreshSettingsReady(:final validationBounds) => validationBounds,
-      PullRequestRefreshSettingsFailure(:final validationBounds) => validationBounds,
-      PullRequestRefreshSettingsUncertain(:final validationBounds) => validationBounds,
-      PullRequestRefreshSettingsLoading() ||
-      PullRequestRefreshSettingsDisconnected() ||
-      PullRequestRefreshSettingsUnsupported() => null,
-    };
+    final validationBounds = _validationBoundsFor(state: state);
     emit(const PullRequestRefreshSettingsLoading());
     try {
       final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       _publishLoad(result: result, validationBounds: validationBounds);
-    } on Object catch (error, stackTrace) {
+    } on Object catch (error) {
       if (!_canPublish(operationEpoch: operationEpoch)) return;
-      loge("Pull request refresh settings load failed unexpectedly", error, stackTrace);
       emit(
         PullRequestRefreshSettingsFailure(
           error: ApiError.dartHttpClient(error),
@@ -76,16 +67,18 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
     }
   }
 
-  Future<void> update({
+  Future<PullRequestRefreshSettingsUpdateAcceptance> update({
     required String input,
     required PullRequestRefreshSettingsReady expectedState,
   }) async {
-    if (_operationInProgress || !_connected || isClosed) return;
+    if (_operationInProgress || !_connected || isClosed) {
+      return PullRequestRefreshSettingsUpdateAcceptance.rejected;
+    }
     final current = state;
     if (current is! PullRequestRefreshSettingsReady ||
         !identical(current, expectedState) ||
         current.mutation is PullRequestRefreshSettingsMutationInProgress) {
-      return;
+      return PullRequestRefreshSettingsUpdateAcceptance.rejected;
     }
 
     switch (_planUpdate(input: input)) {
@@ -112,7 +105,9 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
         );
         try {
           final result = await _service.update(intervalSeconds: intervalSeconds);
-          if (!_canPublish(operationEpoch: operationEpoch)) return;
+          if (!_canPublish(operationEpoch: operationEpoch)) {
+            return PullRequestRefreshSettingsUpdateAcceptance.accepted;
+          }
           switch (result) {
             case PullRequestRefreshSettingsMutationCommitted(:final response):
               emit(
@@ -149,9 +144,10 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
                 operationEpoch: operationEpoch,
               );
           }
-        } on Object catch (error, stackTrace) {
-          if (!_canPublish(operationEpoch: operationEpoch)) return;
-          loge("Pull request refresh setting update failed unexpectedly", error, stackTrace);
+        } on Object catch (error) {
+          if (!_canPublish(operationEpoch: operationEpoch)) {
+            return PullRequestRefreshSettingsUpdateAcceptance.accepted;
+          }
           emit(
             PullRequestRefreshSettingsReady(
               intervalSeconds: current.intervalSeconds,
@@ -167,6 +163,7 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
           _finishOperation();
         }
     }
+    return PullRequestRefreshSettingsUpdateAcceptance.accepted;
   }
 
   Future<void> _reconcileUncertainMutation({
@@ -198,9 +195,8 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
             ),
           );
       }
-    } on Object catch (error, stackTrace) {
+    } on Object catch (error) {
       if (!_canPublish(operationEpoch: operationEpoch)) return;
-      loge("Pull request refresh setting reconciliation failed unexpectedly", error, stackTrace);
       emit(
         PullRequestRefreshSettingsUncertain(
           lastKnownIntervalSeconds: lastKnownIntervalSeconds,
@@ -212,7 +208,14 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
   }
 
   PullRequestRefreshSettingsUpdatePlan _planUpdate({required String input}) {
-    final validationBounds = switch (state) {
+    return _service.planUpdate(
+      input: input,
+      bounds: _validationBoundsFor(state: state),
+    );
+  }
+
+  PullRequestRefreshSettingsBounds? _validationBoundsFor({required PullRequestRefreshSettingsState state}) {
+    return switch (state) {
       PullRequestRefreshSettingsReady(:final validationBounds) => validationBounds,
       PullRequestRefreshSettingsFailure(:final validationBounds) => validationBounds,
       PullRequestRefreshSettingsUncertain(:final validationBounds) => validationBounds,
@@ -220,7 +223,6 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
       PullRequestRefreshSettingsDisconnected() ||
       PullRequestRefreshSettingsUnsupported() => null,
     };
-    return _service.planUpdate(input: input, bounds: validationBounds);
   }
 
   void _onConnectionStatus(ConnectionStatus status) {
@@ -281,3 +283,5 @@ class PullRequestRefreshSettingsCubit extends Cubit<PullRequestRefreshSettingsSt
 }
 
 enum PullRequestRefreshSettingsInputValidation { valid, invalid }
+
+enum PullRequestRefreshSettingsUpdateAcceptance { accepted, rejected }

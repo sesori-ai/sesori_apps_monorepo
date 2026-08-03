@@ -163,6 +163,7 @@
   "settingsPullRequestRefreshLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
+  "settingsPullRequestRefreshStateChanged": "The bridge setting changed while you were editing. Try again.",
   "settingsPullRequestRefreshUnavailable": "Unavailable",
   "settingsPullRequestRefreshOffline": "Offline",
   "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",

@@ -20,7 +20,9 @@ class PullRequestRefreshSettingsService {
     required PullRequestRefreshSettingsBounds? bounds,
   }) {
     final intervalSeconds = int.tryParse(input.trim());
-    if (intervalSeconds == null || (bounds != null && !bounds.includes(intervalSeconds: intervalSeconds))) {
+    if (intervalSeconds == null ||
+        intervalSeconds <= 0 ||
+        (bounds != null && !bounds.includes(intervalSeconds: intervalSeconds))) {
       return const PullRequestRefreshSettingsUpdateInvalid();
     }
     return PullRequestRefreshSettingsUpdateRequest(

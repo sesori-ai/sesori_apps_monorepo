@@ -11,7 +11,8 @@
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
 - **Previous step PR:** [#704](https://github.com/sesori-ai/sesori_apps_monorepo/pull/704) merged
 - **Closed replacement source:** [#701](https://github.com/sesori-ai/sesori_apps_monorepo/pull/701) closed for generic settings redesign
-- **Next action:** rebuild the client settings flow against the generic typed API boundary and raise a fresh Step 8.b PR
+- **Current PR:** [#707](https://github.com/sesori-ai/sesori_apps_monorepo/pull/707) under review
+- **Next action:** push the valid initial review fixes, answer all 15 bot threads, and continue monitoring PR #707
 
 ## Existing Baseline
 
@@ -492,6 +493,14 @@
 - **Step 8.b/9 architecture review:** `aristotle-impl-review` approved the full
   working-tree scope with no findings, confirming the typed API boundary,
   focused layer ownership, DI, state lifecycle, and thin Settings integration.
+- **PR #707 initial review follow-up:** Assessed 15 unresolved bot threads. Valid
+  feedback adds positive pre-dispatch validation, reports stale-editor rejection
+  instead of silently dropping the submitted value, centralizes bounds lookup,
+  and removes redundant cubit logs. Focused tests pass for all 26 core and 22
+  Settings cases; module-core, mobile, and desktop fatal-info analyzers pass.
+  `aristotle-impl-review` approved the architecture-bearing feedback diff with
+  no findings. Test-to-library package imports remain because the analyzer's
+  `avoid_relative_lib_imports` rule rejects the suggested relative imports.
 
 ## Findings and Plan Deltas
 

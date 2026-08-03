@@ -368,8 +368,9 @@ void main() {
       },
     );
 
-    await cubit.update(input: "45", expectedState: openingState);
+    final result = await cubit.update(input: "45", expectedState: openingState);
 
+    expect(result, PullRequestRefreshSettingsUpdateAcceptance.rejected);
     verifyNever(() => service.update(intervalSeconds: any(named: "intervalSeconds")));
     expect((cubit.state as PullRequestRefreshSettingsReady).intervalSeconds, 60);
   });

@@ -27,6 +27,11 @@ void main() {
     expect(service.planUpdate(input: "3601", bounds: null), isA<PullRequestRefreshSettingsUpdateRequest>());
   });
 
+  test("rejects non-positive intervals before the bridge reports bounds", () {
+    expect(service.planUpdate(input: "0", bounds: null), isA<PullRequestRefreshSettingsUpdateInvalid>());
+    expect(service.planUpdate(input: "-30", bounds: null), isA<PullRequestRefreshSettingsUpdateInvalid>());
+  });
+
   test("rejects malformed input and values outside bridge-reported bounds", () {
     final bounds = PullRequestRefreshSettingsBounds(minimumIntervalSeconds: 20, maximumIntervalSeconds: 1800);
     for (final input in ["", "15.5", "19", "1801"]) {

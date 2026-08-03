@@ -206,6 +206,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t update the bridge setting. Check your connection and try again.';
 
   @override
+  String get settingsPullRequestRefreshStateChanged => 'The bridge setting changed while you were editing. Try again.';
+
+  @override
   String get settingsPullRequestRefreshUnavailable => 'Unavailable';
 
   @override
