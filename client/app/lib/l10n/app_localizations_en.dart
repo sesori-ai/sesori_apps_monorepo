@@ -177,6 +177,83 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsHarnessesTitle => 'Harnesses';
 
   @override
+  String get settingsSectionBridge => 'Bridge';
+
+  @override
+  String get settingsPullRequestRefreshTitle => 'Pull request refresh';
+
+  @override
+  String get settingsPullRequestRefreshDescription => 'How often viewed projects refresh pull request status.';
+
+  @override
+  String get settingsPullRequestRefreshLoading => 'Loading the bridge setting…';
+
+  @override
+  String get settingsPullRequestRefreshDisconnected => 'Connect to a bridge to configure this setting.';
+
+  @override
+  String get settingsPullRequestRefreshUnsupported => 'Update the connected bridge to configure this setting.';
+
+  @override
+  String get settingsPullRequestRefreshLoadFailed =>
+      'Couldn\'t load the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPullRequestRefreshUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsPullRequestRefreshUpdateFailed =>
+      'Couldn\'t update the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPullRequestRefreshUnavailable => 'Unavailable';
+
+  @override
+  String get settingsPullRequestRefreshOffline => 'Offline';
+
+  @override
+  String get settingsPullRequestRefreshRetry => 'Retry pull request refresh setting';
+
+  @override
+  String get settingsPullRequestRefreshDialogTitle => 'Pull request refresh interval';
+
+  @override
+  String get settingsPullRequestRefreshSecondsLabel => 'Seconds';
+
+  @override
+  String get settingsPullRequestRefreshHelp => 'Enter a whole number of seconds.';
+
+  @override
+  String get settingsPullRequestRefreshInvalid => 'Enter a whole number of seconds.';
+
+  @override
+  String settingsPullRequestRefreshRangeInvalid(int minimumSeconds, int maximumSeconds) {
+    final intl.NumberFormat minimumSecondsNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String minimumSecondsString = minimumSecondsNumberFormat.format(minimumSeconds);
+    final intl.NumberFormat maximumSecondsNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String maximumSecondsString = maximumSecondsNumberFormat.format(maximumSeconds);
+
+    return 'Enter a whole number from $minimumSecondsString to $maximumSecondsString.';
+  }
+
+  @override
+  String get settingsPullRequestRefreshCancel => 'Cancel';
+
+  @override
+  String get settingsPullRequestRefreshSave => 'Save';
+
+  @override
+  String settingsPullRequestRefreshSeconds(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds seconds',
+      one: '1 second',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get harnessManagementDescription => 'Control the harnesses that support management through Sesori.';
 
   @override

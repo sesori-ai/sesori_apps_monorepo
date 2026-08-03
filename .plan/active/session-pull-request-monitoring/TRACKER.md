@@ -4,14 +4,14 @@
 
 - **Plan slug:** `session-pull-request-monitoring`
 - **Implementation base:** `main` at
-  `5ba0d3a6`
-- **Series state:** Steps 1/9, 2.a–2.c/9, and 3–7/9 merged; Step 8 split into 8.a–8.b after closing PR #701 for redesign
-- **Current step:** Step 8.a/9 — generic bridge setting mutations
+  `480a6bfd`
+- **Series state:** Steps 1/9, 2.a–2.c/9, 3–7/9, and 8.a/9 merged; Step 8.b is in progress
+- **Current step:** Step 8.b/9 — shared client settings and final integration
 - **Plan PR:** [#649](https://github.com/sesori-ai/sesori_apps_monorepo/pull/649) merged
 - **Superseded prototype:** [#659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/659) closed
-- **Previous step PR:** [#697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) merged
+- **Previous step PR:** [#704](https://github.com/sesori-ai/sesori_apps_monorepo/pull/704) merged
 - **Closed replacement source:** [#701](https://github.com/sesori-ai/sesori_apps_monorepo/pull/701) closed for generic settings redesign
-- **Next action:** replace the internal-only cadence PATCH with one generic sealed settings mutation endpoint in Step 8.a
+- **Next action:** rebuild the client settings flow against the generic typed API boundary and raise a fresh Step 8.b PR
 
 ## Existing Baseline
 
@@ -50,8 +50,8 @@
 | [x] | 5/9 | `session-pull-request-monitoring-view-scheduler` | `🚧 [session-pull-request-monitoring] feat(bridge): schedule viewed-project PR refresh [step 5/9]` | 900–1,400 | [PR #692](https://github.com/sesori-ai/sesori_apps_monorepo/pull/692) merged as `42161a53` |
 | [x] | 6/9 | `session-pull-request-monitoring-bridge-settings` | `⚙️ [session-pull-request-monitoring] feat(bridge): configure PR refresh cadence [step 6/9]` | 1,000–1,500 | [PR #693](https://github.com/sesori-ai/sesori_apps_monorepo/pull/693) merged as `ba25adae` |
 | [x] | 7/9 | `session-pull-request-monitoring-client-presence` | `🚧 [session-pull-request-monitoring] feat(client): declare viewed projects [step 7/9]` | 1,000–1,500 | [PR #697](https://github.com/sesori-ai/sesori_apps_monorepo/pull/697) merged as `d543b1f7` |
-| [ ] | 8.a/9 | `session-pull-request-monitoring-generic-settings` | `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]` | 1,000–1,500 | In progress from current `main`; replaces internal-only feature PATCH without fallback |
-| [ ] | 8.b/9 | `session-pull-request-monitoring-client-settings` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | 2,000–2,400 | Rebuild the closed PR #701 client change on generic mutation transport after 8.a merges |
+| [x] | 8.a/9 | `session-pull-request-monitoring-generic-settings` | `⚙️ [session-pull-request-monitoring] refactor(bridge): generalize setting mutations [step 8.a/9]` | 1,000–1,500 | [PR #704](https://github.com/sesori-ai/sesori_apps_monorepo/pull/704) merged as `480a6bfd` |
+| [ ] | 8.b/9 | `session-pull-request-monitoring-client-settings-v2` | `🚧 [session-pull-request-monitoring] feat(client): configure PR refresh cadence [step 8.b/9]` | 2,000–2,400 | In progress from merged Step 8.a; fresh replacement for closed PR #701 |
 | [ ] | 9/9 | `session-pull-request-monitoring-retire-plan` | `🌱 [session-pull-request-monitoring] docs: retire current PR monitoring plan [step 9/9]` | 50–200 | Blocked on Step 8.b merge |
 
 ## Exact PR Titles
@@ -439,9 +439,9 @@
 - **PR-status investigation:** The reported PR indicator loss was reproduced as
   an ordinary catalog-derived `session.updated` event replacing identity-gated
   REST PR metadata. The isolated client fix is under review in
-  [PR #698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/698); it keeps
-  project-scoped `sessions.updated` REST refreshes authoritative for clearing
-  metadata.
+  [PR #698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/698), merged as
+  `26701509`; project-scoped `sessions.updated` REST refreshes remain
+  authoritative for clearing metadata.
 - **Step 8.a/9 implementation:** Added the shared `BridgeSettingUpdate` and
   `BridgeSettingUpdateRejection` Freezed unions with explicit `type`
   discriminators and unknown-peer fallbacks. `PatchBridgeSettingsHandler` now
@@ -467,6 +467,31 @@
   response, and centralized strict integer JSON parsing in one converter shared
   by cadence reads and mutations. Eight focused shared and six handler tests plus
   both fatal-info analyzers and `git diff --check` pass after the fixes.
+- **Step 8.a/9 merge:** PR #704 merged into `main` as `480a6bfd` on
+  2026-08-03.
+- **Step 8.b/9 implementation:** Added generic `BridgeSettingsApi` PATCH
+  ownership and focused cadence GET API ownership. The API parses committed and
+  rejected shared unions before the repository maps supported, rejected,
+  uncertain, unsupported, and failed outcomes. The service owns integer planning;
+  the focused cubit owns connection epochs, bounds, modal fencing, serialized
+  operations, and uncertainty reconciliation; mobile Settings remains a thin
+  localized consumer.
+- **Step 8.b/9 compatibility, cleanup, and analytics:** Public bridges predating
+  the setting return 404 and render unsupported; no internal-prerelease route
+  fallback remains. The generic API replaces all client references to the
+  removed feature PATCH request/error contracts. No database, cache, job, flag,
+  or other directly obsolete artifact was found. No analytics event is added
+  because cadence configuration answers no current product decision.
+- **Step 8.b/9 verification:** Client dependency resolution, module-core DI
+  generation, Flutter localization generation, formatting, 25 focused core
+  tests, 48 focused mobile tests, and 18 focused bridge integration tests pass.
+  Full suites pass all 972 module-core, 883 mobile, and 15 desktop tests; all
+  three fatal-info analyzers and `git diff --check` pass. Final scope is 2,306
+  changed lines (2,287 additions/19 deletions): 224 generated, 1,063 tests, 51
+  plan/tracker, and 968 production lines.
+- **Step 8.b/9 architecture review:** `aristotle-impl-review` approved the full
+  working-tree scope with no findings, confirming the typed API boundary,
+  focused layer ownership, DI, state lifecycle, and thin Settings integration.
 
 ## Findings and Plan Deltas
 
