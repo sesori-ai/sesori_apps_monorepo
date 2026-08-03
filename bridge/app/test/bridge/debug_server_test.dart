@@ -147,13 +147,13 @@ void main() {
 
       plugin.add(const BridgeSseWorkspaceReady(name: "developer’s workspace"));
 
-      final unicodeEvent = jsonDecode(await client.nextEvent()) as Map<String, dynamic>;
+      final unicodeEvent = jsonDecodeMap(await client.nextEvent());
       expect(unicodeEvent["type"], "workspace.ready");
       expect(unicodeEvent["name"], "developer’s workspace");
 
       plugin.add(const BridgeSseVcsBranchUpdated());
 
-      final followingEvent = jsonDecode(await client.nextEvent()) as Map<String, dynamic>;
+      final followingEvent = jsonDecodeMap(await client.nextEvent());
       expect(followingEvent["type"], "vcs.branch.updated");
     });
 
