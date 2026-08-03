@@ -54,11 +54,11 @@ sealed class CodexRolloutToolResult {
     );
     final mergedAttachments = attachments.isNotEmpty ? attachments : previous.attachments;
     return switch (this) {
-      CodexRolloutToolRunningResult(:final cellId) => CodexRolloutToolRunningResult(
+      CodexRolloutToolRunningResult(:final cellIds) => CodexRolloutToolRunningResult(
         callId: callId,
         output: mergedOutput,
         attachments: mergedAttachments,
-        cellId: cellId,
+        cellIds: cellIds,
       ),
       CodexRolloutToolCompletedResult() => CodexRolloutToolCompletedResult(
         callId: callId,
@@ -79,8 +79,17 @@ sealed class CodexRolloutToolResult {
   }) {
     if (previous == null || previous.isEmpty) return current;
     if (current == null || current.isEmpty) return previous;
+    final currentRunes = current.runes.toList(growable: false);
+    if (currentRunes.length >= maxToolOutputLength) {
+      return String.fromCharCodes(
+        currentRunes.take(maxToolOutputLength),
+      );
+    }
     return String.fromCharCodes(
-      "$previous$current".runes.take(maxToolOutputLength),
+      [
+        ...previous.runes.take(maxToolOutputLength - currentRunes.length),
+        ...currentRunes,
+      ],
     );
   }
 }
@@ -90,10 +99,10 @@ final class CodexRolloutToolRunningResult extends CodexRolloutToolResult {
     required super.callId,
     required super.output,
     required super.attachments,
-    required this.cellId,
+    required this.cellIds,
   });
 
-  final String cellId;
+  final List<String> cellIds;
 }
 
 final class CodexRolloutToolCompletedResult extends CodexRolloutToolResult {
@@ -335,13 +344,13 @@ class CodexRolloutToolMapper {
     final attachments = mapContentAttachments(
       content: output.content,
     );
-    final cellId = _runningCellId(output: rawOutput);
-    if (cellId != null) {
+    final cellIds = _runningCellIds(content: output.content);
+    if (cellIds.isNotEmpty) {
       return CodexRolloutToolRunningResult(
         callId: callId,
         output: clippedOutput,
         attachments: attachments,
-        cellId: cellId,
+        cellIds: cellIds,
       );
     }
     return _toolOutputFailed(output: rawOutput)
@@ -489,6 +498,19 @@ class CodexRolloutToolMapper {
       caseSensitive: false,
     ).firstMatch(output);
     return _usefulText(match?.group(1));
+  }
+
+  List<String> _runningCellIds({
+    required List<CodexRolloutContentDto> content,
+  }) {
+    final cellIds = <String>[];
+    for (final item in content) {
+      final cellId = _runningCellId(
+        output: _toolContentText(content: item),
+      );
+      if (cellId != null && !cellIds.contains(cellId)) cellIds.add(cellId);
+    }
+    return cellIds;
   }
 
   String? clipOutput(String? output) {

@@ -92,12 +92,12 @@ class CodexToolCorrelationTracker {
     }
     final canonicalCallId = waitTarget ?? result.callId;
     final visibleCall = _visibleCalls[_callKey(threadId: threadId, callId: canonicalCallId)];
-    final cellId = switch (result) {
-      CodexRolloutToolRunningResult(:final cellId) => cellId,
-      CodexRolloutToolCompletedResult() || CodexRolloutToolErrorResult() => null,
+    final cellIds = switch (result) {
+      CodexRolloutToolRunningResult(:final cellIds) => cellIds,
+      CodexRolloutToolCompletedResult() || CodexRolloutToolErrorResult() => const <String>[],
     };
     final turnId = visibleCall?.turnId;
-    if (cellId != null) {
+    for (final cellId in cellIds) {
       _visibleCallByThreadCell[_threadCellKey(threadId: threadId, cellId: cellId)] = canonicalCallId;
       if (turnId != null) {
         _visibleCallByCell[_cellKey(threadId: threadId, turnId: turnId, cellId: cellId)] = canonicalCallId;
