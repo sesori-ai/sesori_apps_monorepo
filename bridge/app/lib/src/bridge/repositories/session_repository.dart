@@ -735,6 +735,7 @@ class SessionRepository {
             ProjectDto(
               projectId: project.id,
               path: project.directory,
+              hidden: true,
               prCacheGithubLogin: null,
               createdAt: 0,
               updatedAt: 0,
@@ -819,6 +820,7 @@ class SessionRepository {
           ProjectDto(
             projectId: preferredProjectId,
             path: projectDirectory,
+            hidden: true,
             prCacheGithubLogin: null,
             createdAt: 0,
             updatedAt: 0,
@@ -827,6 +829,7 @@ class SessionRepository {
       await _projectsDao.insertProjectIfMissing(
         projectId: hydratedProject.projectId,
         path: projectDirectory,
+        hidden: true,
       );
       final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
         pluginId: pluginId,
