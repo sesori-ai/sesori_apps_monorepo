@@ -74,6 +74,13 @@ class _HangingOAuthClient extends http.BaseClient {
   }
 }
 
+class _TimeoutOAuthClient extends http.BaseClient {
+  final timeoutError = TimeoutException("HTTP client timed out");
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) => Future.error(timeoutError);
+}
+
 /// Returns a fixed descriptor so the init body is deterministic in tests.
 class FakeOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider {
   @override
@@ -81,6 +88,11 @@ class FakeOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider
     clientType: AuthClientType.appIos,
     device: DeviceInfo(name: "Test iPhone", osVersion: "iOS 17.5", appVersion: "1.2.0"),
   );
+}
+
+class _HangingOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider {
+  @override
+  Future<OAuthDeviceDescriptor> describe() => Completer<OAuthDeviceDescriptor>().future;
 }
 
 Future<OAuthSessionRestartRequiredException> _pollRestart({required AuthManager manager}) async {
@@ -441,6 +453,31 @@ void main() {
         "clientType": "app_ios",
         "device": {"name": "Test iPhone", "osVersion": "iOS 17.5", "appVersion": "1.2.0"},
       });
+    });
+
+    test("startOAuthFlow bounds device descriptor resolution by the absolute deadline", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        _HangingOAuthDeviceDescriptorProvider(),
+      );
+
+      await expectLater(
+        authManager.startOAuthFlow(
+          provider: AuthProvider.github,
+          deadline: DateTime.now().add(const Duration(milliseconds: 20)),
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
+      verifyNever(
+        () => mockHttpClient.post(
+          any(),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      );
     });
 
     test("init 503 clears its session and exposes bounded restart timing before parsing JSON", () async {
@@ -1012,6 +1049,35 @@ void main() {
       expect(clientError.cause, same(abortingClient.abortError));
       expect(abortingClient.request, isA<http.AbortableRequest>());
 
+      expect(await authManager.hasActiveOAuthSession(), isTrue);
+      verifyNever(mockOAuthStorage.clearOAuthSession);
+    });
+
+    test("pollForResult maps a direct status timeout to a recoverable client exception", () async {
+      final timeoutClient = _TimeoutOAuthClient();
+      authManager = AuthManager(
+        timeoutClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
+      );
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
+        (_) async => (
+          sessionToken: "stored-session-token",
+          expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+        ),
+      );
+
+      await expectLater(
+        authManager.pollForResult(),
+        throwsA(
+          isA<OAuthSessionStatusClientException>().having(
+            (error) => error.cause,
+            "cause",
+            same(timeoutClient.timeoutError),
+          ),
+        ),
+      );
       expect(await authManager.hasActiveOAuthSession(), isTrue);
       verifyNever(mockOAuthStorage.clearOAuthSession);
     });

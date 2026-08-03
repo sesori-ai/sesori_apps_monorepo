@@ -122,7 +122,9 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
           _oAuthSessionOwner = owner;
         },
       );
-      final descriptor = await _deviceDescriptorProvider.describe();
+      final descriptor = await _deviceDescriptorProvider.describe().timeout(
+        flowDeadline.difference(DateTime.now()),
+      );
       final uri = Uri.parse("$authBaseUrl/auth/${provider.key}/init");
       final http.Response response;
       try {
@@ -303,6 +305,15 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         requestTimeout: requestTimeout,
       );
     } on http.RequestAbortedException catch (error, stackTrace) {
+      final exception = isFinalRequest
+          ? OAuthRequestTimeoutException(
+              message: "OAuth authorization timed out",
+              uri: uri,
+              cause: error,
+            )
+          : OAuthSessionStatusClientException(uri: uri, cause: error);
+      Error.throwWithStackTrace(exception, stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
       final exception = isFinalRequest
           ? OAuthRequestTimeoutException(
               message: "OAuth authorization timed out",
