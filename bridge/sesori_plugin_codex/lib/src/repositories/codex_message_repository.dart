@@ -255,13 +255,20 @@ class CodexMessageRepository {
               _isGeneratedUserContext(content: content)) {
             continue;
           }
-          final texts = [
-            for (final item in content)
-              if (item case CodexRolloutInputTextDto(:final text) || CodexRolloutOutputTextDto(:final text)
-                  when text.isNotEmpty)
-                text,
-          ];
-          if (texts.isEmpty) continue;
+          final firstInputText = _firstInputText(content: content);
+          final isSubmittedUser = role == CodexRolloutRole.user && submittedUserMessages.contains(firstInputText);
+          final texts = isSubmittedUser
+              ? [if (firstInputText != null && firstInputText.isNotEmpty) firstInputText]
+              : [
+                  for (final item in content)
+                    if (item case CodexRolloutInputTextDto(:final text) || CodexRolloutOutputTextDto(:final text)
+                        when text.isNotEmpty)
+                      text,
+                ];
+          final attachments = role == CodexRolloutRole.user
+              ? _rolloutToolMapper.mapContentAttachments(content: content)
+              : const <PluginMessageAttachment>[];
+          if (texts.isEmpty && attachments.isEmpty) continue;
 
           messageCounter += 1;
           final messageId = _persistedOrLegacyMessageId(
@@ -280,22 +287,40 @@ class CodexMessageRepository {
             PluginMessageWithParts(
               info: info,
               parts: [
-                PluginMessagePart(
-                  id: "$messageId-text",
-                  sessionID: sessionId,
-                  messageID: messageId,
-                  type: PluginMessagePartType.text,
-                  text: texts.join(),
-                  tool: null,
-                  state: null,
-                  prompt: null,
-                  description: null,
-                  agent: null,
-                  agentName: null,
-                  attempt: null,
-                  retryError: null,
-                  attachment: null,
-                ),
+                if (texts.isNotEmpty)
+                  PluginMessagePart(
+                    id: "$messageId-text",
+                    sessionID: sessionId,
+                    messageID: messageId,
+                    type: PluginMessagePartType.text,
+                    text: texts.join(),
+                    tool: null,
+                    state: null,
+                    prompt: null,
+                    description: null,
+                    agent: null,
+                    agentName: null,
+                    attempt: null,
+                    retryError: null,
+                    attachment: null,
+                  ),
+                for (var index = 0; index < attachments.length; index++)
+                  PluginMessagePart(
+                    id: "$messageId-file-${index + 1}",
+                    sessionID: sessionId,
+                    messageID: messageId,
+                    type: PluginMessagePartType.file,
+                    text: null,
+                    tool: null,
+                    state: null,
+                    prompt: null,
+                    description: null,
+                    agent: null,
+                    agentName: null,
+                    attempt: null,
+                    retryError: null,
+                    attachment: attachments[index],
+                  ),
               ],
             ),
           );

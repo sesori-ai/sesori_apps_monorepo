@@ -869,10 +869,21 @@ void main() {
               "content": [
                 {"type": "input_text", "text": "hello, codex"},
                 {
+                  "type": "input_text",
+                  "text": '<image name=[Image #1] path="/private/prompt.png">',
+                },
+                {
                   "type": "input_image",
                   "image_url": "data:image/png;base64,AA==",
                 },
               ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "hello, codex",
             },
           }),
           jsonEncode({
@@ -901,13 +912,18 @@ void main() {
       expect(messages, hasLength(2));
       expect(messages[0].info, isA<PluginMessageUser>());
       expect(messages[0].parts.first.text, equals("hello, codex"));
-      expect(messages[0].parts, hasLength(1));
-      expect(messages[0].parts.single.attachment, isNull);
+      expect(messages[0].parts, hasLength(2));
+      expect(messages[0].parts.first.attachment, isNull);
+      expect(messages[0].parts.last.type, PluginMessagePartType.file);
+      final promptImage = messages[0].parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      expect(promptImage.mime, "image/png");
+      expect(promptImage.base64, "AA==");
       expect(messages[1].info, isA<PluginMessageAssistant>());
       expect(messages[1].parts.first.text, equals("hello back!"));
       expect(messages[0].info.sessionID, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(messages[0].info.id, "user-1");
-      expect(messages[0].parts.single.id, "user-1-text");
+      expect(messages[0].parts.first.id, "user-1-text");
+      expect(messages[0].parts.last.id, "user-1-file-1");
       expect(messages[1].info.id, "assistant-1");
       expect(messages[1].parts.single.id, "assistant-1-text");
     });

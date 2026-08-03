@@ -303,12 +303,8 @@ class CodexRolloutToolMapper {
     if (callId == null) return null;
     final rawOutput = toolOutputText(output.content);
     final clippedOutput = clipOutput(rawOutput);
-    final attachments = _imageAttachmentMapper.map(
-      candidates: [
-        for (final item in output.content)
-          if (item case CodexRolloutInputImageDto(:final imageUrl))
-            CodexImageAttachmentCandidate.imageUrl(imageUrl: imageUrl),
-      ],
+    final attachments = mapContentAttachments(
+      content: output.content,
     );
     final cellId = _runningCellId(output: rawOutput);
     if (cellId != null) {
@@ -330,6 +326,18 @@ class CodexRolloutToolMapper {
             output: clippedOutput,
             attachments: attachments,
           );
+  }
+
+  List<PluginMessageAttachment> mapContentAttachments({
+    required Iterable<CodexRolloutContentDto> content,
+  }) {
+    return _imageAttachmentMapper.map(
+      candidates: [
+        for (final item in content)
+          if (item case CodexRolloutInputImageDto(:final imageUrl))
+            CodexImageAttachmentCandidate.imageUrl(imageUrl: imageUrl),
+      ],
+    );
   }
 
   String normalizeToolName(String name) {
