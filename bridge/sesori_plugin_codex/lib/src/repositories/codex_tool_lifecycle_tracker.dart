@@ -120,6 +120,16 @@ class CodexToolLifecycleTracker {
         if (pending.isEmpty) thread.pendingShellCallsByTurn.remove(turnId);
       }
     }
+    if (canonicalId == null && turnId != null) {
+      final pending = thread.pendingCodeModeShellCallsByTurn[turnId];
+      if (pending != null && pending.isNotEmpty) {
+        canonicalId = pending.removeAt(0);
+        thread.appServerItemAliases[itemId] = canonicalId;
+        if (pending.isEmpty) {
+          thread.pendingCodeModeShellCallsByTurn.remove(turnId);
+        }
+      }
+    }
     if (canonicalId == null && thread.tools.containsKey(itemId)) {
       canonicalId = itemId;
       thread.appServerItemAliases[itemId] = canonicalId;
@@ -238,8 +248,16 @@ class CodexToolLifecycleTracker {
         ),
       );
       tool.title ??= call.title;
-      if (effectiveTurnId != null && _rolloutToolMapper.isCommandExecutionCall(payload: payload)) {
-        final pending = thread.pendingShellCallsByTurn.putIfAbsent(effectiveTurnId, () => []);
+      Map<String, List<String>>? pendingByTurn;
+      if (_rolloutToolMapper.isCommandExecutionCall(payload: payload)) {
+        pendingByTurn = thread.pendingShellCallsByTurn;
+      } else if (_rolloutToolMapper.isSingleCodeModeCommandExecutionCall(
+        payload: payload,
+      )) {
+        pendingByTurn = thread.pendingCodeModeShellCallsByTurn;
+      }
+      if (effectiveTurnId != null && pendingByTurn != null) {
+        final pending = pendingByTurn.putIfAbsent(effectiveTurnId, () => []);
         if (!pending.contains(call.id) && !thread.appServerItemAliases.containsValue(call.id)) {
           pending.add(call.id);
         }
@@ -419,6 +437,7 @@ class CodexToolLifecycleTracker {
   void _clearCorrelationState({required _ThreadToolLifecycle thread}) {
     thread
       ..pendingShellCallsByTurn.clear()
+      ..pendingCodeModeShellCallsByTurn.clear()
       ..visibleCallByCell.clear()
       ..visibleCallByThreadCell.clear()
       ..waitTargetByCall.clear()
@@ -497,6 +516,7 @@ class CodexToolLifecycleTracker {
 class _ThreadToolLifecycle {
   final Map<String, _TrackedTool> tools = {};
   final Map<String, List<String>> pendingShellCallsByTurn = {};
+  final Map<String, List<String>> pendingCodeModeShellCallsByTurn = {};
   final Map<String, String> visibleCallByCell = {};
   final Map<String, String> visibleCallByThreadCell = {};
   final Map<String, String> waitTargetByCall = {};

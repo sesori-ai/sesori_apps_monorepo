@@ -179,6 +179,37 @@ void main() {
     );
   });
 
+  test("correlates a lone code-mode command with its app-server item", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _rawExecCall(callId: "call-raw", turnId: "turn-1"),
+    );
+
+    final started = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _commandNotification(
+        method: "item/started",
+        itemId: "exec-1",
+        turnId: "turn-1",
+      ),
+    );
+    final completed = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _commandNotification(
+        method: "item/completed",
+        itemId: "exec-1",
+        turnId: "turn-1",
+        status: "completed",
+        exitCode: 0,
+      ),
+    );
+
+    expect(started?.canonicalId, "call-raw");
+    expect(completed?.canonicalId, "call-raw");
+    expect(completed?.status, PluginToolStatus.completed);
+  });
+
   test("suppresses only complete generated image wrapper invocations", () {
     final target = tracker();
     final wrapper = CodexRolloutLineDto.fromJson({

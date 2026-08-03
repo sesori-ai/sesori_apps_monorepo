@@ -114,8 +114,8 @@ class CodexRolloutToolMapper {
 
   final CodexImageAttachmentMapper _imageAttachmentMapper;
 
-  /// Whether this persisted call has a matching stable `commandExecution`
-  /// item. Code-mode custom `exec` calls are rollout-only tool items.
+  /// Whether this persisted function call has a matching stable
+  /// `commandExecution` item.
   bool isCommandExecutionCall({
     required CodexRolloutResponseItemDto payload,
   }) {
@@ -130,6 +130,20 @@ class CodexRolloutToolMapper {
       CodexRolloutImageGenerationDto() ||
       CodexRolloutUnknownResponseItemDto() => false,
     };
+  }
+
+  bool isSingleCodeModeCommandExecutionCall({
+    required CodexRolloutResponseItemDto payload,
+  }) {
+    if (payload case CodexRolloutCustomToolCallDto(
+      :final name,
+      :final input,
+    ) when name.toLowerCase() == "exec") {
+      const marker = "tools.exec_command(";
+      final first = input.indexOf(marker);
+      return first >= 0 && input.indexOf(marker, first + marker.length) < 0;
+    }
+    return false;
   }
 
   CodexRolloutImageGeneration mapImageGeneration({
