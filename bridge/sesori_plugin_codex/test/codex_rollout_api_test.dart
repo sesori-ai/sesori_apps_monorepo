@@ -946,6 +946,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
       expect(messages, hasLength(2));
@@ -1085,6 +1086,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
 
@@ -1130,6 +1132,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
 
@@ -1177,11 +1180,13 @@ void main() {
       final firstRead = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
       final secondRead = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
 
@@ -1234,6 +1239,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii2",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
 
@@ -1279,6 +1285,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii3",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
 
@@ -1318,6 +1325,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii4",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
 
@@ -1333,6 +1341,7 @@ void main() {
         () => messageRepository.readMessages(
           rolloutPath: path,
           sessionId: sessionId,
+          sessionStatus: const PluginSessionStatus.idle(),
           structuredToolStatusByCallId: const {},
         ),
         throwsA(
@@ -1400,6 +1409,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {
           "c2": PluginToolStatus.error,
         },
@@ -1427,7 +1437,7 @@ void main() {
       expect(patch.state?.status, equals(PluginToolStatus.error));
     });
 
-    test("readMessages folds waits and closes calls from terminal evidence", () {
+    test("readMessages closes calls from terminal or idle evidence", () {
       Map<String, Object?> call({
         required String callId,
         required String command,
@@ -1631,6 +1641,13 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        sessionStatus: const PluginSessionStatus.busy(),
+        structuredToolStatusByCallId: const {},
+      );
+      final idleMessages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
 
@@ -1658,6 +1675,10 @@ void main() {
       expect(tools["call-legacy-aborted"]?.state?.status, PluginToolStatus.error);
       expect(tools["call-interrupted-legacy"]?.state?.status, PluginToolStatus.error);
       expect(tools["call-active"]?.state?.status, PluginToolStatus.running);
+      final idleActiveCall = idleMessages.singleWhere(
+        (message) => message.info.id == "call-active",
+      );
+      expect(idleActiveCall.parts.single.state?.status, PluginToolStatus.error);
     });
 
     test("readMessages restores current calls around malformed content items", () {
@@ -1735,6 +1756,7 @@ void main() {
         messages = messageRepository.readMessages(
           rolloutPath: path,
           sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+          sessionStatus: const PluginSessionStatus.idle(),
           structuredToolStatusByCallId: const {},
         );
       }, level: LogLevel.verbose);
@@ -1794,6 +1816,7 @@ void main() {
           .readMessages(
             rolloutPath: path,
             sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+            sessionStatus: const PluginSessionStatus.idle(),
             structuredToolStatusByCallId: const {},
           )
           .single
@@ -2017,6 +2040,7 @@ void main() {
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-dddddddddddd",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
       );
       expect(messages, hasLength(2));
@@ -2059,6 +2083,7 @@ void main() {
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
+        sessionStatus: const PluginSessionStatus.idle(),
         structuredToolStatusByCallId: const {},
         config: const CodexConfigDefaults(
           model: "gpt-5.5",

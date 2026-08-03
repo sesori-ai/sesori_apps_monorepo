@@ -190,6 +190,17 @@ class CodexToolLifecycleTracker {
     ]);
   }
 
+  List<CodexProjectedTool> finishRolloutReplay({
+    required String threadId,
+    required PluginSessionStatus sessionStatus,
+  }) {
+    final thread = _threads[threadId];
+    if (thread == null || sessionStatus is! PluginSessionStatusIdle) {
+      return const [];
+    }
+    return _advanceChronologySegment(thread: thread);
+  }
+
   bool shouldReplayLegacyImage({
     required String threadId,
     required CodexRolloutImageGenerationDto image,

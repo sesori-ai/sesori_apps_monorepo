@@ -300,8 +300,15 @@ void main() {
       ),
     );
 
-    expect(await service.getSessionMessages(sessionId: "session-1"), isEmpty);
+    expect(
+      await service.getSessionMessages(
+        sessionId: "session-1",
+        sessionStatus: const PluginSessionStatus.idle(),
+      ),
+      isEmpty,
+    );
     expect(messageRepository.statuses, isEmpty);
+    expect(messageRepository.sessionStatus, const PluginSessionStatus.idle());
   });
 }
 
@@ -356,15 +363,18 @@ class _RecordingMessageRepository extends CodexMessageRepository {
       );
 
   Map<String, PluginToolStatus>? statuses;
+  PluginSessionStatus? sessionStatus;
 
   @override
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
     required String sessionId,
+    required PluginSessionStatus sessionStatus,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
   }) {
     statuses = structuredToolStatusByCallId;
+    this.sessionStatus = sessionStatus;
     return const [];
   }
 }

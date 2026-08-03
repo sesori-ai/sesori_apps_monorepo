@@ -384,6 +384,7 @@ class CodexSessionService {
 
   Future<List<PluginMessageWithParts>> getSessionMessages({
     required String sessionId,
+    required PluginSessionStatus sessionStatus,
   }) async {
     final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
     if (path == null) return const [];
@@ -403,6 +404,7 @@ class CodexSessionService {
     return _messageRepository.readMessages(
       rolloutPath: path,
       sessionId: sessionId,
+      sessionStatus: sessionStatus,
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
     );

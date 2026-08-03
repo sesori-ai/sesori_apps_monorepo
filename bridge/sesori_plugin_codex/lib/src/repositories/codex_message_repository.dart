@@ -21,6 +21,7 @@ class CodexMessageRepository {
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
     required String sessionId,
+    required PluginSessionStatus sessionStatus,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
   }) {
@@ -332,6 +333,12 @@ class CodexMessageRepository {
         case CodexRolloutUnknownResponseItemDto():
           continue;
       }
+    }
+    for (final tool in toolTracker.finishRolloutReplay(
+      threadId: sessionId,
+      sessionStatus: sessionStatus,
+    )) {
+      upsertTool(tool: tool, timestamp: null);
     }
     for (final pending in pendingUserMessages) {
       final fallbackText = pending.fallbackText;
