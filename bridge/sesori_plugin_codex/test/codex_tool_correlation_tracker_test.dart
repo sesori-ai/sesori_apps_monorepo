@@ -264,11 +264,30 @@ void main() {
           output: "Script completed with exit code 0\nFinal output:\ndone\n",
         ),
       ),
-      isA<CodexRolloutToolCanonical>().having(
+      isA<CodexRolloutToolCanonicalRunning>().having(
         (value) => value.callId,
         "callId",
         "call-exec",
       ),
+    );
+
+    tracker.observeRolloutLine(
+      threadId: "thread-1",
+      line: _waitCall(
+        callId: "call-wait-7",
+        turnId: "turn-1",
+        cellId: "7",
+      ),
+    );
+    expect(
+      tracker.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-wait-7",
+          output: "Script completed with exit code 0\nFinal output:\ndone\n",
+        ),
+      ),
+      isA<CodexRolloutToolCanonical>(),
     );
   });
 
@@ -308,6 +327,30 @@ void main() {
     expect(merged, isA<CodexRolloutToolErrorResult>());
     expect(merged.output, contains("failed-output"));
     expect(merged.output, contains("success-output"));
+  });
+
+  test("composed output preserves failures alongside running cells", () {
+    const mapper = CodexRolloutToolMapper(
+      imageAttachmentMapper: CodexImageAttachmentMapper(),
+    );
+
+    final result = mapper.mapResult(
+      (_toolContentOutput(
+                callId: "call-exec",
+                outputs: const [
+                  "Script running with cell ID 7\nOutput:\nstill running\n",
+                  "Process exited with code 1\nFinal output:\nfailed\n",
+                ],
+              )
+              as CodexRolloutResponseItemLineDto)
+          .payload,
+    );
+
+    expect(result, isA<CodexRolloutToolErrorWithRunningCellsResult>());
+    expect(
+      (result! as CodexRolloutToolErrorWithRunningCellsResult).cellIds,
+      ["7"],
+    );
   });
 
   test("recognizes executor control markers only at the envelope start", () {

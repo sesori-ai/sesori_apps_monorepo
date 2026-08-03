@@ -41,7 +41,7 @@ sealed class CodexRolloutToolResult {
   PluginToolStatus get status => switch (this) {
     CodexRolloutToolRunningResult() => PluginToolStatus.running,
     CodexRolloutToolCompletedResult() => PluginToolStatus.completed,
-    CodexRolloutToolErrorResult() => PluginToolStatus.error,
+    CodexRolloutToolErrorResult() || CodexRolloutToolErrorWithRunningCellsResult() => PluginToolStatus.error,
   };
 
   CodexRolloutToolResult withPreviousResult({
@@ -53,7 +53,7 @@ sealed class CodexRolloutToolResult {
       current: output,
     );
     final mergedAttachments = attachments.isNotEmpty ? attachments : previous.attachments;
-    if (previous is CodexRolloutToolErrorResult && this is! CodexRolloutToolErrorResult) {
+    if (previous.status == PluginToolStatus.error && status != PluginToolStatus.error) {
       return CodexRolloutToolErrorResult(
         callId: callId,
         output: mergedOutput,
@@ -76,6 +76,12 @@ sealed class CodexRolloutToolResult {
         callId: callId,
         output: mergedOutput,
         attachments: mergedAttachments,
+      ),
+      CodexRolloutToolErrorWithRunningCellsResult(:final cellIds) => CodexRolloutToolErrorWithRunningCellsResult(
+        callId: callId,
+        output: mergedOutput,
+        attachments: mergedAttachments,
+        cellIds: cellIds,
       ),
     };
   }
@@ -126,6 +132,17 @@ final class CodexRolloutToolErrorResult extends CodexRolloutToolResult {
     required super.output,
     required super.attachments,
   });
+}
+
+final class CodexRolloutToolErrorWithRunningCellsResult extends CodexRolloutToolResult {
+  const CodexRolloutToolErrorWithRunningCellsResult({
+    required super.callId,
+    required super.output,
+    required super.attachments,
+    required this.cellIds,
+  });
+
+  final List<String> cellIds;
 }
 
 class CodexRolloutWaitCall {
@@ -352,15 +369,23 @@ class CodexRolloutToolMapper {
       content: output.content,
     );
     final cellIds = _runningCellIds(content: output.content);
+    final failed = _toolOutputFailed(output: rawOutput);
     if (cellIds.isNotEmpty) {
-      return CodexRolloutToolRunningResult(
-        callId: callId,
-        output: clippedOutput,
-        attachments: attachments,
-        cellIds: cellIds,
-      );
+      return failed
+          ? CodexRolloutToolErrorWithRunningCellsResult(
+              callId: callId,
+              output: clippedOutput,
+              attachments: attachments,
+              cellIds: cellIds,
+            )
+          : CodexRolloutToolRunningResult(
+              callId: callId,
+              output: clippedOutput,
+              attachments: attachments,
+              cellIds: cellIds,
+            );
     }
-    return _toolOutputFailed(output: rawOutput)
+    return failed
         ? CodexRolloutToolErrorResult(
             callId: callId,
             output: clippedOutput,

@@ -69,6 +69,16 @@ class CodexMessageRepository {
                 toolOutputs[callId] = result.withPreviousResult(
                   previous: toolOutputs[callId],
                 );
+              case CodexRolloutToolCanonicalRunning(
+                :final callId,
+                :final remainingCellIds,
+              ):
+                toolOutputs[callId] = CodexRolloutToolRunningResult(
+                  callId: callId,
+                  output: result.output,
+                  attachments: result.attachments,
+                  cellIds: remainingCellIds,
+                ).withPreviousResult(previous: toolOutputs[callId]);
             }
           }
         case CodexRolloutEventMessageLineDto(
