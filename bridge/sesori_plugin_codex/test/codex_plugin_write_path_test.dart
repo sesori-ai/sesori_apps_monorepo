@@ -392,6 +392,17 @@ void main() {
       expect(stopwatch.elapsed, lessThan(const Duration(seconds: 3)));
     });
 
+    test("archiveSession keeps Codex rollout history available", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(result: {}),
+      ]);
+
+      await plugin.archiveSession(sessionId: "t-archive");
+
+      expect(fake.sentMethods, isEmpty);
+    });
+
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
       // `t-existing` was never started in this plugin instance, so the
       // app-server has not loaded it — the plugin must resume it on demand
