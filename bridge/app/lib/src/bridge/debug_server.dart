@@ -223,7 +223,7 @@ class DebugServer {
     request.response.bufferOutput = false;
 
     try {
-      response.write(": ok\n\n");
+      response.add(utf8.encode(": ok\n\n"));
       await response.flush();
 
       _sseClients.add(response);
@@ -273,7 +273,7 @@ class DebugServer {
     final clients = List<HttpResponse>.from(_sseClients);
     for (final client in clients) {
       try {
-        client.write("data: $eventData\n\n");
+        client.add(utf8.encode("data: $eventData\n\n"));
         await client.flush();
       } catch (e) {
         Log.d("fan-out: client write/flush failed, removing: $e");
