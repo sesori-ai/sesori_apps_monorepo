@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -10,6 +11,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
@@ -283,6 +285,54 @@ void main() {
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
         ).called(1);
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage refuses a command carrying attachments instead of dropping them",
+      build: () => SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      ),
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(
+          text: "look at this",
+          command: "review",
+          inputMode: ComposerInputMode.typed,
+          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+        );
+      },
+      // The bridge's command paths carry only text, so the send is refused
+      // outright rather than reaching the service with the images stripped.
+      // Only the load state is emitted; nothing is sent and nothing is queued.
+      expect: () => [
+        isA<SessionDetailLoaded>().having((state) => state.queuedMessages, "queuedMessages", isEmpty),
+      ],
+      verify: (_) {
+        verifyNever(
+          () => mockSessionService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+          ),
+        );
       },
     );
 

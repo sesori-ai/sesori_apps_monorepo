@@ -1049,6 +1049,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final normalizedCommand = command?.normalize();
     if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
 
+    // The bridge's command paths carry only the text part, so sending this
+    // combination would drop the images without telling anyone. Refuse it at
+    // the seam that formats the wire payload, not only in the composer.
+    if (normalizedCommand != null && attachments.isNotEmpty) {
+      logw("Refused a /$normalizedCommand submission carrying ${attachments.length} attachment(s)");
+      return;
+    }
+
     final submission = normalizedCommand == null
         ? QueuedSessionSubmission.text(text: trimmed, inputMode: inputMode, attachments: attachments)
         : QueuedSessionSubmission.command(text: trimmed, command: normalizedCommand);

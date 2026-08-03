@@ -20,10 +20,15 @@ sealed class QueuedSessionSubmission {
   ComposerInputMode get inputMode;
   List<ComposerAttachment> get attachments;
 
-  String get displayText => command != null
+  /// What the queued bubble should render, or `null` when the submission
+  /// carries no text of its own — an attachment-only prompt. Callers decide
+  /// what to show in its place rather than reading an empty string as absence.
+  String? get displayText => command != null
       ? text.trim().isEmpty
             ? "/$command"
             : "/$command ${text.trim()}"
+      : text.isEmpty
+      ? null
       : text;
 
   bool get isCommand => command != null;
