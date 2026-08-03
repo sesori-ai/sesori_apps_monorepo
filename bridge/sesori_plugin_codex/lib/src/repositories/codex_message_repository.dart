@@ -45,6 +45,7 @@ class CodexMessageRepository {
     final submittedUserTextByLineIndex = <int, String>{};
     final submittedUserLineIndexes = <int>[];
     final terminalTurns = <String, _TerminalTurnStatus>{};
+    final durableImageIds = <String>{};
     int? pendingUserMessageLineIndex;
     for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       final line = lines[lineIndex];
@@ -95,6 +96,10 @@ class CodexMessageRepository {
           }
           pendingUserMessageLineIndex = null;
           submittedUserLineIndexes.add(lineIndex);
+        case CodexRolloutEventMessageLineDto(
+          payload: CodexRolloutImageGenerationEndEventDto(:final callId),
+        ):
+          durableImageIds.add(callId);
         case CodexRolloutEventMessageLineDto(
           payload: CodexRolloutTaskCompleteEventDto(:final turnId),
         ):
@@ -162,6 +167,32 @@ class CodexMessageRepository {
             ),
           );
           continue;
+        case CodexRolloutEventMessageLineDto(
+          payload: final CodexRolloutImageGenerationEndEventDto event,
+          timestamp: final timestamp,
+        ):
+          messageCounter += 1;
+          final generation = _rolloutToolMapper.mapImageGenerationEnd(
+            event: event,
+          );
+          final messageId = generation.id;
+          if (messageId == null) continue;
+          messages.add(
+            _toolMessage(
+              messageId: messageId,
+              sessionId: sessionId,
+              info: assistantInfo(
+                id: messageId,
+                time: _messageTimeFrom(timestamp),
+              ),
+              tool: "image_generation",
+              title: null,
+              status: generation.status,
+              output: null,
+              attachments: generation.attachments,
+            ),
+          );
+          continue;
         case CodexRolloutEventMessageLineDto():
           continue;
         case CodexRolloutResponseItemLineDto(
@@ -222,6 +253,9 @@ class CodexMessageRepository {
           );
         case CodexRolloutImageGenerationDto():
           final generation = _rolloutToolMapper.mapImageGeneration(item: payload);
+          if (generation.id case final id? when durableImageIds.contains(id)) {
+            continue;
+          }
           messageCounter += 1;
           final messageId = _persistedOrLegacyMessageId(
             persistedId: generation.id,

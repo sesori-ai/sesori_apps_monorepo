@@ -713,6 +713,10 @@ CodexRolloutEventDto _$CodexRolloutEventDtoFromJson(
           return CodexRolloutUserMessageEventDto.fromJson(
             json
           );
+                case 'image_generation_end':
+          return CodexRolloutImageGenerationEndEventDto.fromJson(
+            json
+          );
                 case 'task_started':
           return CodexRolloutTaskStartedEventDto.fromJson(
             json
@@ -829,6 +833,84 @@ class _$CodexRolloutUserMessageEventDtoCopyWithImpl<$Res>
   return _then(CodexRolloutUserMessageEventDto(
 message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutImageGenerationEndEventDto implements CodexRolloutEventDto {
+  const CodexRolloutImageGenerationEndEventDto({@JsonKey(name: "call_id") required this.callId, @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) required this.status, @JsonKey(name: "revised_prompt") required this.revisedPrompt, required this.result, @JsonKey(name: "saved_path") required this.savedPath, final  String? $type}): $type = $type ?? 'image_generation_end';
+  factory CodexRolloutImageGenerationEndEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutImageGenerationEndEventDtoFromJson(json);
+
+@JsonKey(name: "call_id") final  String callId;
+@JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) final  CodexRolloutImageGenerationStatus status;
+@JsonKey(name: "revised_prompt") final  String? revisedPrompt;
+ final  String result;
+@JsonKey(name: "saved_path") final  String? savedPath;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutImageGenerationEndEventDtoCopyWith<CodexRolloutImageGenerationEndEventDto> get copyWith => _$CodexRolloutImageGenerationEndEventDtoCopyWithImpl<CodexRolloutImageGenerationEndEventDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutImageGenerationEndEventDto&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.status, status) || other.status == status)&&(identical(other.revisedPrompt, revisedPrompt) || other.revisedPrompt == revisedPrompt)&&(identical(other.result, result) || other.result == result)&&(identical(other.savedPath, savedPath) || other.savedPath == savedPath));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,callId,status,revisedPrompt,result,savedPath);
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.imageGenerationEnd(callId: $callId, status: $status, revisedPrompt: $revisedPrompt, result: $result, savedPath: $savedPath)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutImageGenerationEndEventDtoCopyWith<$Res> implements $CodexRolloutEventDtoCopyWith<$Res> {
+  factory $CodexRolloutImageGenerationEndEventDtoCopyWith(CodexRolloutImageGenerationEndEventDto value, $Res Function(CodexRolloutImageGenerationEndEventDto) _then) = _$CodexRolloutImageGenerationEndEventDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "call_id") String callId,@JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown) CodexRolloutImageGenerationStatus status,@JsonKey(name: "revised_prompt") String? revisedPrompt, String result,@JsonKey(name: "saved_path") String? savedPath
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutImageGenerationEndEventDtoCopyWithImpl<$Res>
+    implements $CodexRolloutImageGenerationEndEventDtoCopyWith<$Res> {
+  _$CodexRolloutImageGenerationEndEventDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutImageGenerationEndEventDto _self;
+  final $Res Function(CodexRolloutImageGenerationEndEventDto) _then;
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? callId = null,Object? status = null,Object? revisedPrompt = freezed,Object? result = null,Object? savedPath = freezed,}) {
+  return _then(CodexRolloutImageGenerationEndEventDto(
+callId: null == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CodexRolloutImageGenerationStatus,revisedPrompt: freezed == revisedPrompt ? _self.revisedPrompt : revisedPrompt // ignore: cast_nullable_to_non_nullable
+as String?,result: null == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
+as String,savedPath: freezed == savedPath ? _self.savedPath : savedPath // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

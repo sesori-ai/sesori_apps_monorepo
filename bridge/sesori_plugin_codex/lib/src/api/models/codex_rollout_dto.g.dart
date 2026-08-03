@@ -72,6 +72,28 @@ CodexRolloutUserMessageEventDto _$CodexRolloutUserMessageEventDtoFromJson(
   $type: json['type'] as String?,
 );
 
+CodexRolloutImageGenerationEndEventDto
+_$CodexRolloutImageGenerationEndEventDtoFromJson(Map json) =>
+    CodexRolloutImageGenerationEndEventDto(
+      callId: json['call_id'] as String,
+      status: $enumDecode(
+        _$CodexRolloutImageGenerationStatusEnumMap,
+        json['status'],
+        unknownValue: CodexRolloutImageGenerationStatus.unknown,
+      ),
+      revisedPrompt: json['revised_prompt'] as String?,
+      result: json['result'] as String,
+      savedPath: json['saved_path'] as String?,
+      $type: json['type'] as String?,
+    );
+
+const _$CodexRolloutImageGenerationStatusEnumMap = {
+  CodexRolloutImageGenerationStatus.inProgress: 'in_progress',
+  CodexRolloutImageGenerationStatus.completed: 'completed',
+  CodexRolloutImageGenerationStatus.failed: 'failed',
+  CodexRolloutImageGenerationStatus.unknown: 'unknown',
+};
+
 CodexRolloutTaskStartedEventDto _$CodexRolloutTaskStartedEventDtoFromJson(
   Map json,
 ) => CodexRolloutTaskStartedEventDto(
@@ -214,13 +236,6 @@ CodexRolloutImageGenerationDto _$CodexRolloutImageGenerationDtoFromJson(
   result: json['result'] as String,
   $type: json['type'] as String?,
 );
-
-const _$CodexRolloutImageGenerationStatusEnumMap = {
-  CodexRolloutImageGenerationStatus.inProgress: 'in_progress',
-  CodexRolloutImageGenerationStatus.completed: 'completed',
-  CodexRolloutImageGenerationStatus.failed: 'failed',
-  CodexRolloutImageGenerationStatus.unknown: 'unknown',
-};
 
 CodexRolloutUnknownResponseItemDto _$CodexRolloutUnknownResponseItemDtoFromJson(
   Map json,

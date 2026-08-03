@@ -125,6 +125,28 @@ void main() {
     expect(secondStarted, isA<CodexAppServerCommandCanonical>().having((value) => value.callId, "callId", "call-2"));
   });
 
+  test("suppresses generated image wrappers from rollout tools", () {
+    const mapper = CodexRolloutToolMapper(
+      imageAttachmentMapper: CodexImageAttachmentMapper(),
+    );
+    final line =
+        CodexRolloutLineDto.fromJson({
+              "type": "response_item",
+              "payload": {
+                "type": "custom_tool_call",
+                "call_id": "call-image-wrapper",
+                "name": "exec",
+                "input": "await tools.image_gen__generate({prompt: 'private'});",
+              },
+            })
+            as CodexRolloutResponseItemLineDto;
+
+    expect(
+      mapper.internalCallId(payload: line.payload),
+      "call-image-wrapper",
+    );
+  });
+
   test("structured command failure remains canonical across rollout replay", () {
     final tracker = CodexToolCorrelationTracker(
       rolloutToolMapper: const CodexRolloutToolMapper(

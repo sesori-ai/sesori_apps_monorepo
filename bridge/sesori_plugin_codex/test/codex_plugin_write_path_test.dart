@@ -1405,6 +1405,16 @@ void main() {
             output: "LIVE-EVENT-TEST recovery-complete\n",
           ),
         ),
+        _customToolCall(
+          id: "ct-image-wrapper",
+          callId: "call-image-wrapper",
+          turnId: "u-live",
+          input: "await tools.image_gen__generate({prompt: 'private'});",
+        ),
+        _customToolOutput(
+          callId: "call-image-wrapper",
+          output: "internal image wrapper output",
+        ),
         {
           "timestamp": "2026-07-23T08:00:03Z",
           "type": "response_item",
@@ -1425,6 +1435,18 @@ void main() {
             "status": "completed",
             "revised_prompt": "private prompt",
             "result": "AA==",
+          },
+        },
+        {
+          "timestamp": "2026-07-23T08:00:04Z",
+          "type": "event_msg",
+          "payload": {
+            "type": "image_generation_end",
+            "call_id": "image-live",
+            "status": "completed",
+            "revised_prompt": "private prompt",
+            "result": "AA==",
+            "saved_path": "/private/generated/final.png",
           },
         },
       ];
@@ -1505,6 +1527,7 @@ void main() {
         "image-live",
       });
       expect(finalLiveParts, isNot(contains("exec-immediate")));
+      expect(finalLiveParts, isNot(contains("call-image-wrapper")));
       expect(
         finalLiveParts["call-immediate"]?.state?.status,
         PluginToolStatus.error,
@@ -1528,6 +1551,10 @@ void main() {
       }
       expect(finalLiveParts["call-exec-2"]?.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
       expect(finalLiveParts["image-live"]?.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(
+        (finalLiveParts["image-live"]?.state?.attachments.single as PluginMessageAttachmentInlineImage).filename,
+        "final.png",
+      );
       expect(
         finalLiveParts["call-immediate"]?.state?.title,
         r"printf 'LIVE-EVENT-TEST immediate-complete\n'",

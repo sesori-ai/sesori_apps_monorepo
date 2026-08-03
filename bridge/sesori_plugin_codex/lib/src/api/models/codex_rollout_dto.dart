@@ -84,6 +84,16 @@ sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
     required String message,
   }) = CodexRolloutUserMessageEventDto;
 
+  @FreezedUnionValue("image_generation_end")
+  const factory CodexRolloutEventDto.imageGenerationEnd({
+    @JsonKey(name: "call_id") required String callId,
+    @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown)
+    required CodexRolloutImageGenerationStatus status,
+    @JsonKey(name: "revised_prompt") required String? revisedPrompt,
+    required String result,
+    @JsonKey(name: "saved_path") required String? savedPath,
+  }) = CodexRolloutImageGenerationEndEventDto;
+
   @FreezedUnionValue("task_started")
   const factory CodexRolloutEventDto.taskStarted({
     @JsonKey(name: "turn_id") required String turnId,

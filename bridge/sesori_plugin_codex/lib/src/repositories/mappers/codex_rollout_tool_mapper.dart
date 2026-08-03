@@ -228,6 +228,32 @@ class CodexRolloutToolMapper {
     );
   }
 
+  CodexRolloutImageGeneration mapImageGenerationEnd({
+    required CodexRolloutImageGenerationEndEventDto event,
+  }) {
+    final status = switch (event.status) {
+      CodexRolloutImageGenerationStatus.inProgress => PluginToolStatus.running,
+      CodexRolloutImageGenerationStatus.completed => PluginToolStatus.completed,
+      CodexRolloutImageGenerationStatus.failed => PluginToolStatus.error,
+      CodexRolloutImageGenerationStatus.unknown => PluginToolStatus.unknown,
+    };
+    return CodexRolloutImageGeneration(
+      id: _usefulText(event.callId),
+      status: status,
+      attachments: status == PluginToolStatus.completed
+          ? _imageAttachmentMapper.map(
+              candidates: [
+                CodexImageAttachmentCandidate.base64(
+                  data: event.result,
+                  mime: "image/png",
+                  filenameHint: event.savedPath,
+                ),
+              ],
+            )
+          : const [],
+    );
+  }
+
   CodexRolloutToolCall? mapCall(CodexRolloutResponseItemDto payload) {
     if (isInternalToolCall(payload: payload)) return null;
     return switch (payload) {
@@ -278,10 +304,11 @@ class CodexRolloutToolMapper {
   }) {
     return switch (payload) {
       CodexRolloutFunctionCallDto(:final name) => name.toLowerCase() == "wait",
+      CodexRolloutCustomToolCallDto(:final name, :final input) =>
+        name.toLowerCase() == "exec" && input.contains("tools.image_gen__"),
       CodexRolloutMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallOutputDto() ||
-      CodexRolloutCustomToolCallDto() ||
       CodexRolloutCustomToolCallOutputDto() ||
       CodexRolloutWebSearchCallDto() ||
       CodexRolloutImageGenerationDto() ||

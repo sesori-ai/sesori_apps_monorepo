@@ -1030,6 +1030,35 @@ void main() {
       );
     });
 
+    test("durable image-generation event preserves its saved filename", () {
+      final line = CodexRolloutLineDto.fromJson({
+        "timestamp": "2026-08-03T12:00:00Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "image_generation_end",
+          "call_id": "image-durable",
+          "status": "completed",
+          "revised_prompt": "private prompt",
+          "result": "AA==",
+          "saved_path": "/private/generated/final.png",
+        },
+      });
+
+      final events = mapper.mapRolloutLine(
+        threadId: "t-image-durable",
+        line: line,
+        toolProjection: passthroughProjection,
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.messageID, "image-durable");
+      expect(part.tool, "image_generation");
+      expect(part.state?.status, PluginToolStatus.completed);
+      final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(attachment.base64, "AA==");
+      expect(attachment.filename, "final.png");
+    });
+
     test("later app-server updates preserve richer rollout attachments", () {
       final call = CodexRolloutLineDto.fromJson({
         "type": "response_item",

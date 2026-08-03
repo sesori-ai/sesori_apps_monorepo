@@ -284,6 +284,10 @@ class CodexEventMapper {
     if (toolProjection is CodexRolloutToolSuppressed) return const [];
     if (line case CodexRolloutEventMessageLineDto(payload: final event)) {
       return switch (event) {
+        CodexRolloutImageGenerationEndEventDto() => _rolloutImageGenerationEvents(
+          threadId: threadId,
+          event: event,
+        ),
         CodexRolloutTaskCompleteEventDto(:final turnId) => _terminalRolloutToolEvents(
           threadId: threadId,
           turnId: turnId,
@@ -377,6 +381,22 @@ class CodexEventMapper {
       status: toolProjection is CodexRolloutToolCanonicalError ? PluginToolStatus.error : projectedResult.status,
       output: projectedResult.output,
       attachments: projectedResult.attachments,
+    );
+  }
+
+  List<BridgeSseEvent> _rolloutImageGenerationEvents({
+    required String threadId,
+    required CodexRolloutImageGenerationEndEventDto event,
+  }) {
+    final generation = _rolloutToolMapper.mapImageGenerationEnd(event: event);
+    final itemId = generation.id;
+    if (itemId == null) return const [];
+    return _toolItemEvents(
+      threadId: threadId,
+      itemId: itemId,
+      tool: "image_generation",
+      status: generation.status,
+      attachments: generation.attachments,
     );
   }
 
