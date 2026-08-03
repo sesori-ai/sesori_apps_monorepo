@@ -861,6 +861,90 @@ void main() {
       mapper.clearRolloutTurn(threadId: "t-structured");
     });
 
+    test("app-server completion overrides cached running rollout evidence", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-completed",
+          "name": "exec_command",
+          "arguments": '{"cmd":"sleep 1"}',
+        },
+      });
+      final running = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "call-completed",
+          "output": "Script running with cell ID 7\nOutput:\n",
+        },
+      });
+      mapper
+        ..mapRolloutLine(
+          threadId: "t-completed",
+          line: call,
+          toolProjection: passthroughProjection,
+        )
+        ..mapRolloutLine(
+          threadId: "t-completed",
+          line: running,
+          toolProjection: passthroughProjection,
+        );
+
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-completed",
+            "item": {
+              "type": "commandExecution",
+              "id": "call-completed",
+              "exitCode": 0,
+              "status": "completed",
+            },
+          },
+        ),
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.state?.status, PluginToolStatus.completed);
+      mapper.clearRolloutTurn(threadId: "t-completed");
+    });
+
+    test("clearing connection state removes metadata-less rollout tools", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "call_id": "call-stale",
+          "name": "exec",
+          "input": "await tools.exec_command({cmd: 'sleep 30'});",
+        },
+      });
+      mapper.mapRolloutLine(
+        threadId: "t-stale",
+        line: call,
+        toolProjection: passthroughProjection,
+      );
+
+      mapper.clearRolloutState();
+
+      expect(
+        mapper.mapRolloutLine(
+          threadId: "t-stale",
+          line: CodexRolloutLineDto.fromJson({
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-later",
+            },
+          }),
+          toolProjection: passthroughProjection,
+        ),
+        isEmpty,
+      );
+    });
+
     test("raw fallback titles clip non-BMP text by Unicode code point", () {
       final prefix = List<String>.filled(119, "a").join();
       final line = CodexRolloutLineDto.fromJson({

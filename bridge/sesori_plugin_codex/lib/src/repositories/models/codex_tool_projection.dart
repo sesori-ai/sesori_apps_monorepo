@@ -29,3 +29,13 @@ final class CodexRolloutToolCanonical extends CodexRolloutToolProjection {
 
   final String callId;
 }
+
+final class CodexRolloutToolCanonicalRunning extends CodexRolloutToolProjection {
+  const CodexRolloutToolCanonicalRunning({
+    required this.callId,
+    required this.remainingCellIds,
+  });
+
+  final String callId;
+  final List<String> remainingCellIds;
+}

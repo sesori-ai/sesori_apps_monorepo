@@ -1,3 +1,5 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+
 import "../api/models/codex_rollout_dto.dart";
 import "../codex_app_server_client.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
@@ -19,6 +21,8 @@ class CodexToolCorrelationTracker {
   final Map<String, String> _visibleCallByCell = {};
   final Map<String, String> _visibleCallByThreadCell = {};
   final Map<String, String> _waitTargetByCall = {};
+  final Map<String, String> _waitCellByCall = {};
+  final Map<String, Set<String>> _outstandingCellsByCall = {};
   final Set<String> _internalCalls = {};
   final Map<String, String> _appServerItemAliases = {};
 
@@ -51,6 +55,7 @@ class CodexToolCorrelationTracker {
                 )]) ??
           _visibleCallByThreadCell[_threadCellKey(threadId: threadId, cellId: wait.cellId)];
       if (target != null) _waitTargetByCall[waitKey] = target;
+      _waitCellByCall[waitKey] = wait.cellId;
       return const CodexRolloutToolSuppressed();
     }
 
@@ -91,17 +96,39 @@ class CodexToolCorrelationTracker {
       return const CodexRolloutToolSuppressed();
     }
     final canonicalCallId = waitTarget ?? result.callId;
-    final visibleCall = _visibleCalls[_callKey(threadId: threadId, callId: canonicalCallId)];
+    final canonicalKey = _callKey(
+      threadId: threadId,
+      callId: canonicalCallId,
+    );
+    final visibleCall = _visibleCalls[canonicalKey];
     final cellIds = switch (result) {
       CodexRolloutToolRunningResult(:final cellIds) => cellIds,
+      CodexRolloutToolErrorWithRunningCellsResult(:final cellIds) => cellIds,
       CodexRolloutToolCompletedResult() || CodexRolloutToolErrorResult() => const <String>[],
     };
+    if (cellIds.isNotEmpty) {
+      _outstandingCellsByCall.putIfAbsent(canonicalKey, () => {}).addAll(cellIds);
+    }
     final turnId = visibleCall?.turnId;
     for (final cellId in cellIds) {
       _visibleCallByThreadCell[_threadCellKey(threadId: threadId, cellId: cellId)] = canonicalCallId;
       if (turnId != null) {
         _visibleCallByCell[_cellKey(threadId: threadId, turnId: turnId, cellId: cellId)] = canonicalCallId;
       }
+    }
+    final waitedCell = _waitCellByCall[resultKey];
+    final outstandingCells = _outstandingCellsByCall[canonicalKey];
+    if (waitTarget != null && waitedCell != null && result.status != PluginToolStatus.running) {
+      outstandingCells?.remove(waitedCell);
+      if (outstandingCells?.isEmpty ?? false) {
+        _outstandingCellsByCall.remove(canonicalKey);
+      }
+    }
+    if (result.status == PluginToolStatus.completed && outstandingCells?.isNotEmpty == true) {
+      return CodexRolloutToolCanonicalRunning(
+        callId: canonicalCallId,
+        remainingCellIds: outstandingCells!.toList(growable: false),
+      );
     }
     return waitTarget == null
         ? const CodexRolloutToolPassthrough()
@@ -147,6 +174,8 @@ class CodexToolCorrelationTracker {
     _visibleCallByCell.removeWhere((key, _) => key.startsWith(prefix));
     _visibleCallByThreadCell.removeWhere((key, _) => key.startsWith(prefix));
     _waitTargetByCall.removeWhere((key, _) => key.startsWith(prefix));
+    _waitCellByCall.removeWhere((key, _) => key.startsWith(prefix));
+    _outstandingCellsByCall.removeWhere((key, _) => key.startsWith(prefix));
     _internalCalls.removeWhere((key) => key.startsWith(prefix));
     _appServerItemAliases.removeWhere((key, _) => key.startsWith(prefix));
   }
@@ -157,6 +186,8 @@ class CodexToolCorrelationTracker {
     _visibleCallByCell.clear();
     _visibleCallByThreadCell.clear();
     _waitTargetByCall.clear();
+    _waitCellByCall.clear();
+    _outstandingCellsByCall.clear();
     _internalCalls.clear();
     _appServerItemAliases.clear();
   }

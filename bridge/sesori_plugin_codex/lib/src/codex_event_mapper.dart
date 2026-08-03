@@ -326,6 +326,7 @@ class CodexEventMapper {
     if (call != null) {
       final canonicalCallId = switch (toolProjection) {
         CodexRolloutToolCanonical(:final callId) => callId,
+        CodexRolloutToolCanonicalRunning(:final callId) => callId,
         CodexRolloutToolPassthrough() => call.id,
         CodexRolloutToolSuppressed() => throw StateError("suppressed rollout reached mapping"),
       };
@@ -343,13 +344,26 @@ class CodexEventMapper {
     if (result == null) return const [];
     final canonicalCallId = switch (toolProjection) {
       CodexRolloutToolCanonical(:final callId) => callId,
+      CodexRolloutToolCanonicalRunning(:final callId) => callId,
       CodexRolloutToolPassthrough() => result.callId,
       CodexRolloutToolSuppressed() => throw StateError("suppressed rollout reached mapping"),
     };
     final key = _rolloutToolKey(threadId, canonicalCallId);
     final originalCall = _rolloutToolCalls[key];
     if (originalCall == null) return const [];
-    final projectedResult = result.withPreviousResult(
+    final currentResult = switch (toolProjection) {
+      CodexRolloutToolCanonicalRunning(:final remainingCellIds) => CodexRolloutToolRunningResult(
+        callId: canonicalCallId,
+        output: result.output,
+        attachments: result.attachments,
+        cellIds: remainingCellIds,
+      ),
+      CodexRolloutToolCanonical() || CodexRolloutToolPassthrough() => result,
+      CodexRolloutToolSuppressed() => throw StateError(
+        "suppressed rollout reached mapping",
+      ),
+    };
+    final projectedResult = currentResult.withPreviousResult(
       previous: _rolloutToolResults[key],
     );
     _rolloutToolResults[key] = projectedResult;
@@ -414,6 +428,11 @@ class CodexEventMapper {
     final prefix = "$threadId\u0000";
     _rolloutToolCalls.removeWhere((key, _) => key.startsWith(prefix));
     _rolloutToolResults.removeWhere((key, _) => key.startsWith(prefix));
+  }
+
+  void clearRolloutState() {
+    _rolloutToolCalls.clear();
+    _rolloutToolResults.clear();
   }
 
   /// `item/*/delta` notifications stream text into an already-known part.
@@ -607,9 +626,9 @@ class CodexEventMapper {
               _rolloutToolMapper.logicalCommandTitle(
                 item["command"] as String?,
               ),
-          status: appServerStatus == PluginToolStatus.error
+          status: appServerStatus == PluginToolStatus.error || canonical?.result.status == PluginToolStatus.error
               ? PluginToolStatus.error
-              : canonical?.result.status ?? appServerStatus,
+              : appServerStatus,
           output:
               canonical?.result.output ??
               _rolloutToolMapper.clipOutput(

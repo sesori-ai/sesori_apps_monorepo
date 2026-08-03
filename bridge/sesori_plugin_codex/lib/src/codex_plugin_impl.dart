@@ -317,6 +317,7 @@ class CodexPlugin implements CodexManagedApi {
     _sessionService.detachAppServerRepositories();
     _rolloutTailer.stopAll();
     _toolCorrelationTracker.clear();
+    _eventMapper.clearRolloutState();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     _approvalRegistry = null;
