@@ -151,6 +151,37 @@ void main() {
         ),
       );
     });
+
+    for (final diagnostic in const [
+      (name: "no configured GitHub hosts", stderr: "You are not logged into any GitHub hosts"),
+      (name: "no configured github.com account", stderr: "You are not logged into any accounts on github.com"),
+    ]) {
+      test("reports known unauthentication for ${diagnostic.name}", () async {
+        final stderrLines = <String>[];
+        processRunner
+          ..enqueueResult(result: _fail(exitCode: 1, stderr: diagnostic.stderr))
+          ..enqueueResult(result: _fail(exitCode: 1, stderr: diagnostic.stderr));
+
+        await IOOverrides.runZoned(
+          () async {
+            expect(await service.isAuthenticated(), isFalse);
+            expect(await service.isAuthenticated(), isFalse);
+          },
+          stderr: () => _CapturingStdout(stderrLines),
+        );
+
+        expect(stderrLines, hasLength(1));
+        expect(
+          stderrLines.single,
+          allOf(
+            contains("GitHub CLI (gh) is not authenticated for github.com"),
+            contains("gh auth login"),
+            contains("GH_TOKEN/GITHUB_TOKEN"),
+            isNot(contains("could not verify authentication")),
+          ),
+        );
+      });
+    }
   });
 
   group("GhCliApi.getAuthenticatedIdentity", () {

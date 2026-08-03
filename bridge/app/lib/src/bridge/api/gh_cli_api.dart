@@ -13,7 +13,7 @@ class GhCliApi {
 
   final ProcessRunner _processRunner;
   bool _availabilityFailureReported = false;
-  bool _authenticationVerificationFailureReported = false;
+  _GhAuthenticationFailure? _reportedAuthenticationFailure;
 
   GhCliApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
 
@@ -47,10 +47,15 @@ class GhCliApi {
         const ["auth", "status", "--hostname", "github.com"],
       );
       if (result.exitCode == 0) {
-        _authenticationVerificationFailureReported = false;
+        _reportedAuthenticationFailure = null;
         return true;
       }
-      _reportAuthenticationVerificationFailure();
+      final stderr = result.stderr.toString();
+      _reportAuthenticationFailure(
+        failure: _reportsNoConfiguredGithubAccount(stderr: stderr)
+            ? _GhAuthenticationFailure.unauthenticated
+            : _GhAuthenticationFailure.verificationFailed,
+      );
       return false;
     } on ProcessException {
       _reportAvailabilityFailure(
@@ -77,7 +82,7 @@ class GhCliApi {
       );
     }
 
-    _authenticationVerificationFailureReported = false;
+    _reportedAuthenticationFailure = null;
     return GhAuthenticatedIdentity(rawLogin: result.stdout.toString());
   }
 
@@ -87,14 +92,25 @@ class GhCliApi {
     Console.warning(message);
   }
 
-  void _reportAuthenticationVerificationFailure() {
-    if (_authenticationVerificationFailureReported) return;
-    _authenticationVerificationFailureReported = true;
-    Console.warning(
-      "GitHub CLI (gh) could not verify authentication for github.com. "
-      "GitHub pull request and CI status sync is temporarily unavailable. "
-      "Run 'gh auth status --hostname github.com' to check authentication and connectivity.",
-    );
+  bool _reportsNoConfiguredGithubAccount({required String stderr}) {
+    // gh also calls tokens invalid for connectivity failures, so only its local no-account diagnostics are definitive.
+    return stderr.contains("You are not logged into any GitHub hosts") ||
+        stderr.contains("You are not logged into any accounts on github.com");
+  }
+
+  void _reportAuthenticationFailure({required _GhAuthenticationFailure failure}) {
+    if (_reportedAuthenticationFailure == failure) return;
+    _reportedAuthenticationFailure = failure;
+    final message = switch (failure) {
+      _GhAuthenticationFailure.unauthenticated =>
+        "GitHub CLI (gh) is not authenticated for github.com. Run 'gh auth login' or set GH_TOKEN/GITHUB_TOKEN "
+            "to enable GitHub pull request and CI status sync.",
+      _GhAuthenticationFailure.verificationFailed =>
+        "GitHub CLI (gh) could not verify authentication for github.com. "
+            "GitHub pull request and CI status sync is temporarily unavailable. "
+            "Run 'gh auth status --hostname github.com' to check authentication and connectivity.",
+    };
+    Console.warning(message);
   }
 
   Future<GhPullRequestBatchResponse> queryInitialPullRequestPages({
@@ -353,3 +369,5 @@ class GhCliApi {
     }
   }
 }
+
+enum _GhAuthenticationFailure { unauthenticated, verificationFailed }
