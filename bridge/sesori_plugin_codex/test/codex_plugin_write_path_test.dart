@@ -9,6 +9,7 @@ import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
+import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -22,10 +23,12 @@ void main() {
     late Directory codexHome;
     late _FakeAppServer fake;
     late CodexPlugin plugin;
+    late CodexToolOutcomeRepository toolOutcomeRepository;
 
     setUp(() {
       codexHome = Directory.systemTemp.createTempSync("codex-home-write-");
       fake = _FakeAppServer();
+      toolOutcomeRepository = createMemoryCodexToolOutcomeRepository();
       const serverUrl = "ws://127.0.0.1:0";
       plugin = createInjectedCodexPlugin(
         serverUrl: serverUrl,
@@ -36,6 +39,7 @@ void main() {
           channelFactory: (_) => fake.channel,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: toolOutcomeRepository,
       );
     });
 
@@ -1464,8 +1468,8 @@ void main() {
             "id": "exec-immediate",
             "command": "/bin/zsh -lc \"printf 'LIVE-EVENT-TEST immediate-complete\\n'\"",
             "aggregatedOutput": "LIVE-EVENT-TEST immediate-complete\n",
-            "exitCode": 0,
-            "status": "completed",
+            "exitCode": 1,
+            "status": "failed",
           },
         });
 
@@ -1501,6 +1505,14 @@ void main() {
         "image-live",
       });
       expect(finalLiveParts, isNot(contains("exec-immediate")));
+      expect(
+        finalLiveParts["call-immediate"]?.state?.status,
+        PluginToolStatus.error,
+      );
+      expect(
+        await toolOutcomeRepository.readStatuses(sessionId: sessionId),
+        {"call-immediate": PluginToolStatus.error},
+      );
       expect(history, hasLength(finalLiveParts.length));
       for (final message in history) {
         final historicalPart = message.parts.single;

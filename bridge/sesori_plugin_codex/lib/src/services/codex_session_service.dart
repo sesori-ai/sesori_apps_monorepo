@@ -9,6 +9,7 @@ import "../repositories/codex_message_repository.dart";
 import "../repositories/codex_model_repository.dart";
 import "../repositories/codex_skill_repository.dart";
 import "../repositories/codex_thread_repository.dart";
+import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/models/codex_thread_record.dart";
 
 /// Layer-3 coordination for the migrated Codex session operations.
@@ -26,15 +27,18 @@ class CodexSessionService {
     required CodexCatalogRepository catalogRepository,
     required CodexMessageRepository messageRepository,
     required CodexMetadataRepository metadataRepository,
+    required CodexToolOutcomeRepository toolOutcomeRepository,
     required String launchDirectory,
   }) : _catalogRepository = catalogRepository,
        _messageRepository = messageRepository,
        _metadataRepository = metadataRepository,
+       _toolOutcomeRepository = toolOutcomeRepository,
        _launchDirectory = launchDirectory;
 
   final CodexCatalogRepository _catalogRepository;
   final CodexMessageRepository _messageRepository;
   final CodexMetadataRepository _metadataRepository;
+  final CodexToolOutcomeRepository _toolOutcomeRepository;
   final String _launchDirectory;
 
   CodexThreadRepository? _threadRepository;
@@ -361,10 +365,29 @@ class CodexSessionService {
     );
   }
 
-  void deleteSession({required String sessionId}) {
+  Future<void> deleteSession({required String sessionId}) async {
+    try {
+      await _toolOutcomeRepository.deleteSession(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[codex] failed to delete persisted tool outcomes for $sessionId",
+        error,
+        stackTrace,
+      );
+    }
     _catalogRepository.deleteSession(sessionId: sessionId);
     _loadedThreads.remove(sessionId);
     _threadModels.remove(sessionId);
+  }
+
+  Future<void> recordStructuredToolError({
+    required String sessionId,
+    required String callId,
+  }) {
+    return _toolOutcomeRepository.recordError(
+      sessionId: sessionId,
+      callId: callId,
+    );
   }
 
   Future<List<PluginMessageWithParts>> getSessionMessages({
@@ -372,9 +395,13 @@ class CodexSessionService {
   }) async {
     final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
     if (path == null) return const [];
+    final structuredToolStatusByCallId = await _toolOutcomeRepository.readStatuses(
+      sessionId: sessionId,
+    );
     return _messageRepository.readMessages(
       rolloutPath: path,
       sessionId: sessionId,
+      structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
     );
   }

@@ -9,6 +9,8 @@ import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:path/path.dart" as p;
 import "package:test/test.dart";
 
+import "support/codex_plugin_test_factory.dart";
+
 void main() {
   group("Codex metadata", () {
     late Directory codexHome;
@@ -50,6 +52,7 @@ void main() {
             ),
           ),
           metadataRepository: metadata,
+          toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
           launchDirectory: launchProject.path,
         ),
       );

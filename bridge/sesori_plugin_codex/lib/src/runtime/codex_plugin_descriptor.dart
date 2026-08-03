@@ -7,7 +7,22 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
+import "../api/codex_rollout_api.dart";
+import "../api/codex_tool_outcome_storage.dart";
+import "../api/parsers/codex_command_execution_parser.dart";
+import "../api/parsers/codex_image_bearing_item_parser.dart";
+import "../codex_config_reader.dart";
+import "../codex_event_mapper.dart";
+import "../codex_metadata_repository.dart";
 import "../codex_plugin_impl.dart";
+import "../repositories/codex_catalog_repository.dart";
+import "../repositories/codex_message_repository.dart";
+import "../repositories/codex_tool_correlation_tracker.dart";
+import "../repositories/codex_tool_outcome_repository.dart";
+import "../repositories/mappers/codex_image_attachment_mapper.dart";
+import "../repositories/mappers/codex_rollout_tool_mapper.dart";
+import "../services/codex_rollout_tailer.dart";
+import "../services/codex_session_service.dart";
 import "codex_bridge_plugin.dart";
 import "codex_managed_api.dart";
 import "codex_ownership_record.dart";
@@ -29,14 +44,64 @@ typedef CodexManagedApiFactory =
     });
 
 CodexManagedApi _defaultBuildApi({
+  required PluginHost host,
   required String serverUrl,
   required void Function() onConnected,
   required void Function() onDisconnected,
 }) {
-  return CodexPlugin(
+  final launchDirectory = io.Directory.current.path;
+  final configReader = CodexConfigReader(environment: host.environment);
+  final rolloutApi = CodexRolloutApi(environment: host.environment);
+  const imageAttachmentMapper = CodexImageAttachmentMapper();
+  const imageBearingItemParser = CodexImageBearingItemParser();
+  const commandExecutionParser = CodexCommandExecutionParser();
+  const rolloutToolMapper = CodexRolloutToolMapper(
+    imageAttachmentMapper: imageAttachmentMapper,
+  );
+  final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
+  final toolOutcomeRepository = CodexToolOutcomeRepository(
+    storage: CodexToolOutcomeStorage(
+      store: host.store,
+      clock: host.clock,
+    ),
+  );
+  return CodexPlugin.composed(
     serverUrl: serverUrl,
+    capabilityToken: null,
+    clientFactory: null,
+    sessionService: CodexSessionService(
+      catalogRepository: catalogRepository,
+      messageRepository: CodexMessageRepository(
+        rolloutApi: rolloutApi,
+        rolloutToolMapper: rolloutToolMapper,
+      ),
+      metadataRepository: CodexMetadataRepository(
+        configReader: configReader,
+      ),
+      toolOutcomeRepository: toolOutcomeRepository,
+      launchDirectory: launchDirectory,
+    ),
+    eventMapper: CodexEventMapper(
+      pluginId: CodexPlugin.pluginId,
+      projectCwd: launchDirectory,
+      imageAttachmentMapper: imageAttachmentMapper,
+      imageBearingItemParser: imageBearingItemParser,
+      rolloutToolMapper: rolloutToolMapper,
+      config: configReader.readDefaults(),
+    ),
+    rolloutTailer: CodexRolloutTailer(
+      rolloutApi: rolloutApi,
+      catalogRepository: catalogRepository,
+      pollInterval: const Duration(milliseconds: 50),
+    ),
+    toolCorrelationTracker: CodexToolCorrelationTracker(
+      rolloutToolMapper: rolloutToolMapper,
+    ),
+    commandExecutionParser: commandExecutionParser,
+    projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
+    keepaliveInterval: const Duration(seconds: 30),
   );
 }
 
@@ -423,11 +488,18 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     );
     monitor.arm(handle);
 
-    final api = (_buildApi ?? _defaultBuildApi)(
-      serverUrl: serverUrl,
-      onConnected: reporter.markConnected,
-      onDisconnected: reporter.markDisconnected,
-    );
+    final api = _buildApi == null
+        ? _defaultBuildApi(
+            host: host,
+            serverUrl: serverUrl,
+            onConnected: reporter.markConnected,
+            onDisconnected: reporter.markDisconnected,
+          )
+        : _buildApi(
+            serverUrl: serverUrl,
+            onConnected: reporter.markConnected,
+            onDisconnected: reporter.markDisconnected,
+          );
 
     final plugin = CodexBridgePlugin(
       api: api,

@@ -21,6 +21,7 @@ class CodexMessageRepository {
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
     required String sessionId,
+    required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
   }) {
     final List<CodexRolloutLineDto> lines;
@@ -79,6 +80,10 @@ class CodexMessageRepository {
                   attachments: result.attachments,
                   cellIds: remainingCellIds,
                 ).withPreviousResult(previous: toolOutputs[callId]);
+              case CodexRolloutToolCanonicalError(:final callId):
+                toolOutputs[callId] = result.withPreviousResult(
+                  previous: toolOutputs[callId],
+                );
             }
           }
         case CodexRolloutEventMessageLineDto(
@@ -188,7 +193,9 @@ class CodexMessageRepository {
               info: assistantInfo(id: call.id, time: messageTime),
               tool: call.tool,
               title: call.title,
-              status: result == null || result.status == PluginToolStatus.running ? fallbackStatus : result.status,
+              status:
+                  structuredToolStatusByCallId[call.id] ??
+                  (result == null || result.status == PluginToolStatus.running ? fallbackStatus : result.status),
               output: result?.output,
               attachments: result?.attachments ?? const [],
             ),

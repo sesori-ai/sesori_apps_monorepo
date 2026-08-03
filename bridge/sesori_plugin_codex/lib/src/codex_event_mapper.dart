@@ -327,6 +327,7 @@ class CodexEventMapper {
       final canonicalCallId = switch (toolProjection) {
         CodexRolloutToolCanonical(:final callId) => callId,
         CodexRolloutToolCanonicalRunning(:final callId) => callId,
+        CodexRolloutToolCanonicalError(:final callId) => callId,
         CodexRolloutToolPassthrough() => call.id,
         CodexRolloutToolSuppressed() => throw StateError("suppressed rollout reached mapping"),
       };
@@ -336,7 +337,7 @@ class CodexEventMapper {
         itemId: canonicalCallId,
         tool: call.tool,
         title: call.title,
-        status: PluginToolStatus.running,
+        status: toolProjection is CodexRolloutToolCanonicalError ? PluginToolStatus.error : PluginToolStatus.running,
         attachments: const [],
       );
     }
@@ -345,6 +346,7 @@ class CodexEventMapper {
     final canonicalCallId = switch (toolProjection) {
       CodexRolloutToolCanonical(:final callId) => callId,
       CodexRolloutToolCanonicalRunning(:final callId) => callId,
+      CodexRolloutToolCanonicalError(:final callId) => callId,
       CodexRolloutToolPassthrough() => result.callId,
       CodexRolloutToolSuppressed() => throw StateError("suppressed rollout reached mapping"),
     };
@@ -358,7 +360,7 @@ class CodexEventMapper {
         attachments: result.attachments,
         cellIds: remainingCellIds,
       ),
-      CodexRolloutToolCanonical() || CodexRolloutToolPassthrough() => result,
+      CodexRolloutToolCanonical() || CodexRolloutToolCanonicalError() || CodexRolloutToolPassthrough() => result,
       CodexRolloutToolSuppressed() => throw StateError(
         "suppressed rollout reached mapping",
       ),
@@ -372,7 +374,7 @@ class CodexEventMapper {
       itemId: canonicalCallId,
       tool: originalCall.tool,
       title: originalCall.title,
-      status: projectedResult.status,
+      status: toolProjection is CodexRolloutToolCanonicalError ? PluginToolStatus.error : projectedResult.status,
       output: projectedResult.output,
       attachments: projectedResult.attachments,
     );
@@ -608,6 +610,7 @@ class CodexEventMapper {
         final canonicalItemId = switch (commandProjection) {
           CodexAppServerCommandNative() => itemId,
           CodexAppServerCommandCanonical(:final callId) => callId,
+          CodexAppServerCommandCanonicalError(:final callId) => callId,
         };
         final canonical = _canonicalRolloutTool(
           threadId: threadId,
@@ -626,7 +629,10 @@ class CodexEventMapper {
               _rolloutToolMapper.logicalCommandTitle(
                 item["command"] as String?,
               ),
-          status: appServerStatus == PluginToolStatus.error || canonical?.result.status == PluginToolStatus.error
+          status:
+              commandProjection is CodexAppServerCommandCanonicalError ||
+                  appServerStatus == PluginToolStatus.error ||
+                  canonical?.result.status == PluginToolStatus.error
               ? PluginToolStatus.error
               : appServerStatus,
           output:

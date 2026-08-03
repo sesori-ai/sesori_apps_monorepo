@@ -1,5 +1,5 @@
+import "package:codex_plugin/src/api/models/codex_command_execution_dto.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
-import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/repositories/codex_tool_correlation_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
@@ -25,21 +25,21 @@ void main() {
       );
 
     final firstStarted = tracker.correlateAppServerCommand(
-      notification: _commandNotification(
+      command: _commandEvent(
         method: "item/started",
         itemId: "exec-1",
         turnId: "turn-1",
       ),
     );
     final firstCompleted = tracker.correlateAppServerCommand(
-      notification: _commandNotification(
+      command: _commandEvent(
         method: "item/completed",
         itemId: "exec-1",
         turnId: "turn-1",
       ),
     );
     final secondStarted = tracker.correlateAppServerCommand(
-      notification: _commandNotification(
+      command: _commandEvent(
         method: "item/started",
         itemId: "exec-2",
         turnId: "turn-1",
@@ -53,7 +53,7 @@ void main() {
     tracker.clearThread(threadId: "thread-1");
     expect(
       tracker.correlateAppServerCommand(
-        notification: _commandNotification(
+        command: _commandEvent(
           method: "item/completed",
           itemId: "exec-2",
           turnId: "turn-1",
@@ -76,7 +76,7 @@ void main() {
 
     expect(
       tracker.correlateAppServerCommand(
-        notification: _commandNotification(
+        command: _commandEvent(
           method: "item/started",
           itemId: "exec-1",
           turnId: "turn-1",
@@ -107,14 +107,14 @@ void main() {
       );
 
     final firstStarted = tracker.correlateAppServerCommand(
-      notification: _commandNotification(
+      command: _commandEvent(
         method: "item/started",
         itemId: "exec-1",
         turnId: "turn-1",
       ),
     );
     final secondStarted = tracker.correlateAppServerCommand(
-      notification: _commandNotification(
+      command: _commandEvent(
         method: "item/started",
         itemId: "exec-2",
         turnId: "turn-1",
@@ -123,6 +123,48 @@ void main() {
 
     expect(firstStarted, isA<CodexAppServerCommandCanonical>().having((value) => value.callId, "callId", "call-1"));
     expect(secondStarted, isA<CodexAppServerCommandCanonical>().having((value) => value.callId, "callId", "call-2"));
+  });
+
+  test("structured command failure remains canonical across rollout replay", () {
+    final tracker = CodexToolCorrelationTracker(
+      rolloutToolMapper: const CodexRolloutToolMapper(
+        imageAttachmentMapper: CodexImageAttachmentMapper(),
+      ),
+    );
+    tracker.observeRolloutLine(
+      threadId: "thread-1",
+      line: _shellCall(callId: "call-1", turnId: "turn-1"),
+    );
+
+    final commandProjection = tracker.correlateAppServerCommand(
+      command: const CodexCommandExecutionEventDto(
+        lifecycle: CodexCommandExecutionLifecycle.completed,
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "exec-1",
+        status: CodexCommandExecutionStatus.failed,
+        exitCode: 1,
+      ),
+    );
+    final rolloutProjection = tracker.observeRolloutLine(
+      threadId: "thread-1",
+      line: _toolOutput(callId: "call-1", output: "opaque output"),
+    );
+
+    expect(
+      commandProjection,
+      isA<CodexAppServerCommandCanonicalError>()
+          .having((value) => value.sessionId, "sessionId", "thread-1")
+          .having((value) => value.callId, "callId", "call-1"),
+    );
+    expect(
+      rolloutProjection,
+      isA<CodexRolloutToolCanonicalError>().having(
+        (value) => value.callId,
+        "callId",
+        "call-1",
+      ),
+    );
   });
 
   test("suppresses wait calls and projects their result onto the shell call", () {
@@ -477,20 +519,19 @@ CodexRolloutLineDto _toolContentOutput({
   });
 }
 
-CodexServerNotification _commandNotification({
+CodexCommandExecutionEventDto _commandEvent({
   required String method,
   required String itemId,
   required String turnId,
 }) {
-  return CodexServerNotification(
-    method: method,
-    params: {
-      "threadId": "thread-1",
-      "turnId": turnId,
-      "item": {
-        "type": "commandExecution",
-        "id": itemId,
-      },
-    },
+  return CodexCommandExecutionEventDto(
+    lifecycle: method == "item/started"
+        ? CodexCommandExecutionLifecycle.started
+        : CodexCommandExecutionLifecycle.completed,
+    threadId: "thread-1",
+    turnId: turnId,
+    itemId: itemId,
+    status: method == "item/started" ? CodexCommandExecutionStatus.inProgress : CodexCommandExecutionStatus.completed,
+    exitCode: null,
   );
 }

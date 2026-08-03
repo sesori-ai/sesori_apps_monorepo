@@ -12,6 +12,16 @@ final class CodexAppServerCommandCanonical extends CodexAppServerCommandProjecti
   final String callId;
 }
 
+final class CodexAppServerCommandCanonicalError extends CodexAppServerCommandProjection {
+  const CodexAppServerCommandCanonicalError({
+    required this.sessionId,
+    required this.callId,
+  });
+
+  final String sessionId;
+  final String callId;
+}
+
 sealed class CodexRolloutToolProjection {
   const CodexRolloutToolProjection();
 }
@@ -38,4 +48,10 @@ final class CodexRolloutToolCanonicalRunning extends CodexRolloutToolProjection 
 
   final String callId;
   final List<String> remainingCellIds;
+}
+
+final class CodexRolloutToolCanonicalError extends CodexRolloutToolProjection {
+  const CodexRolloutToolCanonicalError({required this.callId});
+
+  final String callId;
 }

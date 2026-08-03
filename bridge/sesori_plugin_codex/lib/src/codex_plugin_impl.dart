@@ -1,28 +1,21 @@
 import "dart:async";
-import "dart:io" show Directory;
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/codex_app_server_api.dart";
-import "api/codex_rollout_api.dart";
-import "api/parsers/codex_image_bearing_item_parser.dart";
+import "api/parsers/codex_command_execution_parser.dart";
 import "approval_registry.dart";
 import "codex_app_server_client.dart";
-import "codex_config_reader.dart";
 import "codex_event_mapper.dart";
-import "codex_metadata_repository.dart";
 import "models/codex_collaboration_mode.dart";
-import "repositories/codex_catalog_repository.dart";
-import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
 import "repositories/codex_tool_correlation_tracker.dart";
-import "repositories/mappers/codex_image_attachment_mapper.dart";
-import "repositories/mappers/codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
+import "repositories/models/codex_tool_projection.dart";
 import "runtime/codex_managed_api.dart";
 import "services/codex_rollout_tailer.dart";
 import "services/codex_session_service.dart";
@@ -63,6 +56,7 @@ class CodexPlugin implements CodexManagedApi {
   final CodexEventMapper _eventMapper;
   final CodexRolloutTailer _rolloutTailer;
   final CodexToolCorrelationTracker _toolCorrelationTracker;
+  final CodexCommandExecutionParser _commandExecutionParser;
   final String _projectCwd;
   final Duration _keepaliveInterval;
 
@@ -119,65 +113,6 @@ class CodexPlugin implements CodexManagedApi {
   /// back to the launch cwd until the rollout appears on disk.
   final Map<String, String> _threadDirectory = {};
 
-  factory CodexPlugin({
-    required String serverUrl,
-    String? capabilityToken,
-    String? projectCwd,
-    void Function()? onConnected,
-    void Function()? onDisconnected,
-    Duration keepaliveInterval = const Duration(seconds: 30),
-  }) {
-    final resolvedProjectCwd = projectCwd ?? Directory.current.path;
-    final configReader = CodexConfigReader();
-    final rolloutApi = CodexRolloutApi();
-    const imageAttachmentMapper = CodexImageAttachmentMapper();
-    const imageBearingItemParser = CodexImageBearingItemParser();
-    const rolloutToolMapper = CodexRolloutToolMapper(
-      imageAttachmentMapper: imageAttachmentMapper,
-    );
-    final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
-    final rolloutTailer = CodexRolloutTailer(
-      rolloutApi: rolloutApi,
-      catalogRepository: catalogRepository,
-      pollInterval: const Duration(milliseconds: 50),
-    );
-    final metadataRepository = CodexMetadataRepository(
-      configReader: configReader,
-    );
-    return CodexPlugin._(
-      serverUrl: serverUrl,
-      capabilityToken: capabilityToken,
-      // When null, [_ensureConnected] builds the default client so it can wire
-      // the client's `onDisconnected` through [_handleClientDisconnected].
-      clientFactory: null,
-      sessionService: CodexSessionService(
-        catalogRepository: catalogRepository,
-        messageRepository: CodexMessageRepository(
-          rolloutApi: rolloutApi,
-          rolloutToolMapper: rolloutToolMapper,
-        ),
-        metadataRepository: metadataRepository,
-        launchDirectory: resolvedProjectCwd,
-      ),
-      eventMapper: CodexEventMapper(
-        pluginId: pluginId,
-        projectCwd: resolvedProjectCwd,
-        imageAttachmentMapper: imageAttachmentMapper,
-        imageBearingItemParser: imageBearingItemParser,
-        rolloutToolMapper: rolloutToolMapper,
-        config: configReader.readDefaults(),
-      ),
-      rolloutTailer: rolloutTailer,
-      toolCorrelationTracker: CodexToolCorrelationTracker(
-        rolloutToolMapper: rolloutToolMapper,
-      ),
-      projectCwd: resolvedProjectCwd,
-      onConnected: onConnected,
-      onDisconnected: onDisconnected,
-      keepaliveInterval: keepaliveInterval,
-    );
-  }
-
   CodexPlugin.injected({
     required String serverUrl,
     required String? capabilityToken,
@@ -186,11 +121,12 @@ class CodexPlugin implements CodexManagedApi {
     required CodexEventMapper eventMapper,
     required CodexRolloutTailer rolloutTailer,
     required CodexToolCorrelationTracker toolCorrelationTracker,
+    required CodexCommandExecutionParser commandExecutionParser,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
     required Duration keepaliveInterval,
-  }) : this._(
+  }) : this.composed(
          serverUrl: serverUrl,
          capabilityToken: capabilityToken,
          clientFactory: clientFactory,
@@ -198,13 +134,14 @@ class CodexPlugin implements CodexManagedApi {
          eventMapper: eventMapper,
          rolloutTailer: rolloutTailer,
          toolCorrelationTracker: toolCorrelationTracker,
+         commandExecutionParser: commandExecutionParser,
          projectCwd: projectCwd,
          onConnected: onConnected,
          onDisconnected: onDisconnected,
          keepaliveInterval: keepaliveInterval,
        );
 
-  CodexPlugin._({
+  CodexPlugin.composed({
     required String serverUrl,
     required String? capabilityToken,
     required CodexAppServerClient Function()? clientFactory,
@@ -212,6 +149,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexEventMapper eventMapper,
     required CodexRolloutTailer rolloutTailer,
     required CodexToolCorrelationTracker toolCorrelationTracker,
+    required CodexCommandExecutionParser commandExecutionParser,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
@@ -224,6 +162,7 @@ class CodexPlugin implements CodexManagedApi {
        _eventMapper = eventMapper,
        _rolloutTailer = rolloutTailer,
        _toolCorrelationTracker = toolCorrelationTracker,
+       _commandExecutionParser = commandExecutionParser,
        _projectCwd = projectCwd,
        _onConnected = onConnected,
        _onDisconnected = onDisconnected,
@@ -396,15 +335,34 @@ class CodexPlugin implements CodexManagedApi {
     // final tool updates. Forced runtime teardown waits for this transition
     // before disconnecting the generation's event stream.
     final activityChanged = _maintainBookkeeping(notification);
-    final commandProjection = _toolCorrelationTracker.correlateAppServerCommand(
+    final command = _commandExecutionParser.parse(
       notification: notification,
     );
-    _eventMapper
-        .mapCommand(
-          notification: notification,
-          commandProjection: commandProjection,
-        )
-        .forEach(_eventBuffer.add);
+    final commandProjection = command == null
+        ? const CodexAppServerCommandNative()
+        : _toolCorrelationTracker.correlateAppServerCommand(command: command);
+    final mappedEvents = _eventMapper.mapCommand(
+      notification: notification,
+      commandProjection: commandProjection,
+    );
+    if (commandProjection case CodexAppServerCommandCanonicalError(
+      :final sessionId,
+      :final callId,
+    )) {
+      try {
+        await _sessionService.recordStructuredToolError(
+          sessionId: sessionId,
+          callId: callId,
+        );
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "[codex] failed to persist structured tool error for $sessionId/$callId",
+          error,
+          stackTrace,
+        );
+      }
+    }
+    mappedEvents.forEach(_eventBuffer.add);
     if (threadId != null &&
         (notification.method == "turn/completed" ||
             notification.method == "error" ||
@@ -1019,7 +977,7 @@ class CodexPlugin implements CodexManagedApi {
       }
     }
     _approvalRegistry?.cancelForSession(sessionId);
-    _sessionService.deleteSession(sessionId: sessionId);
+    await _sessionService.deleteSession(sessionId: sessionId);
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _threadDirectory.remove(sessionId);

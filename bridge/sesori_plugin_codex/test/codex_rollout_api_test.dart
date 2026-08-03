@@ -912,6 +912,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        structuredToolStatusByCallId: const {},
       );
       expect(messages, hasLength(2));
       expect(messages[0].info, isA<PluginMessageUser>());
@@ -1024,6 +1025,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
+        structuredToolStatusByCallId: const {},
       );
 
       expect(messages.map((message) => message.info.id), [
@@ -1066,6 +1068,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        structuredToolStatusByCallId: const {},
       );
 
       expect(messages, hasLength(1));
@@ -1112,10 +1115,12 @@ void main() {
       final firstRead = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        structuredToolStatusByCallId: const {},
       );
       final secondRead = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        structuredToolStatusByCallId: const {},
       );
 
       expect(firstRead.map((message) => message.info.id), ["image-1", "m-2"]);
@@ -1143,6 +1148,7 @@ void main() {
         () => messageRepository.readMessages(
           rolloutPath: path,
           sessionId: sessionId,
+          structuredToolStatusByCallId: const {},
         ),
         throwsA(
           isA<PluginOperationException>()
@@ -1209,6 +1215,9 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        structuredToolStatusByCallId: const {
+          "c2": PluginToolStatus.error,
+        },
       );
 
       // exec (completed) + web_search + apply_patch (running); the
@@ -1230,7 +1239,7 @@ void main() {
 
       final patch = messages[2].parts.single;
       expect(patch.tool, equals("edit"));
-      expect(patch.state?.status, equals(PluginToolStatus.running));
+      expect(patch.state?.status, equals(PluginToolStatus.error));
     });
 
     test("readMessages folds waits and closes calls from terminal evidence", () {
@@ -1395,6 +1404,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        structuredToolStatusByCallId: const {},
       );
 
       expect(messages.map((message) => message.info.id), [
@@ -1494,6 +1504,7 @@ void main() {
         messages = messageRepository.readMessages(
           rolloutPath: path,
           sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+          structuredToolStatusByCallId: const {},
         );
       }, level: LogLevel.verbose);
 
@@ -1552,6 +1563,7 @@ void main() {
           .readMessages(
             rolloutPath: path,
             sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+            structuredToolStatusByCallId: const {},
           )
           .single
           .parts
@@ -1774,6 +1786,7 @@ void main() {
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-dddddddddddd",
+        structuredToolStatusByCallId: const {},
       );
       expect(messages, hasLength(2));
       final first = messages[0].info as PluginMessageAssistant;
@@ -1815,6 +1828,7 @@ void main() {
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
+        structuredToolStatusByCallId: const {},
         config: const CodexConfigDefaults(
           model: "gpt-5.5",
           modelProvider: "openai",

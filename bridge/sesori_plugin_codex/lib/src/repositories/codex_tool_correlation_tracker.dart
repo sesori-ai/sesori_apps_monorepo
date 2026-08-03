@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../api/models/codex_command_execution_dto.dart";
 import "../api/models/codex_rollout_dto.dart";
-import "../codex_app_server_client.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
 import "models/codex_tool_projection.dart";
 
@@ -25,6 +25,7 @@ class CodexToolCorrelationTracker {
   final Map<String, Set<String>> _outstandingCellsByCall = {};
   final Set<String> _internalCalls = {};
   final Map<String, String> _appServerItemAliases = {};
+  final Set<String> _structuredErrorCalls = {};
 
   CodexRolloutToolProjection observeRolloutLine({
     required String threadId,
@@ -82,7 +83,9 @@ class CodexToolCorrelationTracker {
             )
             .add(call.id);
       }
-      return const CodexRolloutToolPassthrough();
+      return _structuredErrorCalls.contains(callKey)
+          ? CodexRolloutToolCanonicalError(callId: call.id)
+          : const CodexRolloutToolPassthrough();
     }
 
     final result = _rolloutToolMapper.mapResult(payload);
@@ -124,6 +127,11 @@ class CodexToolCorrelationTracker {
         _outstandingCellsByCall.remove(canonicalKey);
       }
     }
+    if (_structuredErrorCalls.contains(
+      _callKey(threadId: threadId, callId: canonicalCallId),
+    )) {
+      return CodexRolloutToolCanonicalError(callId: canonicalCallId);
+    }
     if (result.status == PluginToolStatus.completed && outstandingCells?.isNotEmpty == true) {
       return CodexRolloutToolCanonicalRunning(
         callId: canonicalCallId,
@@ -136,26 +144,15 @@ class CodexToolCorrelationTracker {
   }
 
   CodexAppServerCommandProjection correlateAppServerCommand({
-    required CodexServerNotification notification,
+    required CodexCommandExecutionEventDto command,
   }) {
-    if (notification.method != "item/started" && notification.method != "item/completed") {
-      return const CodexAppServerCommandNative();
-    }
-    final params = notification.params;
-    final item = params["item"];
-    if (item is! Map || item["type"] != "commandExecution") {
-      return const CodexAppServerCommandNative();
-    }
-    final itemId = item["id"];
-    final threadId = params["threadId"];
-    if (itemId is! String || itemId.isEmpty || threadId is! String || threadId.isEmpty) {
-      return const CodexAppServerCommandNative();
-    }
+    final itemId = command.itemId;
+    final threadId = command.threadId;
 
     final aliasKey = _appServerItemKey(threadId: threadId, itemId: itemId);
     var callId = _appServerItemAliases[aliasKey];
-    final turnId = params["turnId"];
-    if (callId == null && turnId is String && turnId.isNotEmpty) {
+    final turnId = command.turnId;
+    if (callId == null && turnId != null) {
       final turnKey = _turnKey(threadId: threadId, turnId: turnId);
       final pending = _pendingShellCallsByTurn[turnKey];
       if (pending != null && pending.isNotEmpty) {
@@ -164,7 +161,22 @@ class CodexToolCorrelationTracker {
         if (pending.isEmpty) _pendingShellCallsByTurn.remove(turnKey);
       }
     }
-    return callId == null ? const CodexAppServerCommandNative() : CodexAppServerCommandCanonical(callId: callId);
+    if (callId == null) return const CodexAppServerCommandNative();
+
+    final isError =
+        (command.exitCode != null && command.exitCode != 0) ||
+        command.status == CodexCommandExecutionStatus.failed ||
+        command.status == CodexCommandExecutionStatus.declined;
+    if (!isError) return CodexAppServerCommandCanonical(callId: callId);
+    _structuredErrorCalls.add(
+      _callKey(threadId: threadId, callId: callId),
+    );
+    return command.lifecycle == CodexCommandExecutionLifecycle.completed
+        ? CodexAppServerCommandCanonicalError(
+            sessionId: threadId,
+            callId: callId,
+          )
+        : CodexAppServerCommandCanonical(callId: callId);
   }
 
   void clearThread({required String threadId}) {
@@ -178,6 +190,7 @@ class CodexToolCorrelationTracker {
     _outstandingCellsByCall.removeWhere((key, _) => key.startsWith(prefix));
     _internalCalls.removeWhere((key) => key.startsWith(prefix));
     _appServerItemAliases.removeWhere((key, _) => key.startsWith(prefix));
+    _structuredErrorCalls.removeWhere((key) => key.startsWith(prefix));
   }
 
   void clear() {
@@ -190,6 +203,7 @@ class CodexToolCorrelationTracker {
     _outstandingCellsByCall.clear();
     _internalCalls.clear();
     _appServerItemAliases.clear();
+    _structuredErrorCalls.clear();
   }
 
   String _turnKey({required String threadId, required String turnId}) => "$threadId\u0000turn\u0000$turnId";
