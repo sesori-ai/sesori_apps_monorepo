@@ -49,6 +49,7 @@ SessionDetailLoadResult _loadedResult() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
+      pluginId: "opencode",
       messages: [],
       pendingQuestions: [],
       pendingPermissions: [],
@@ -70,6 +71,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
   return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
+      pluginId: "opencode",
       messages: const [],
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -91,6 +93,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
+      pluginId: "opencode",
       messages: [],
       pendingQuestions: [
         PendingQuestion(

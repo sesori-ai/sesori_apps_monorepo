@@ -3,17 +3,18 @@
 ## Status
 
 - **Plan slug:** `session-pull-request-monitoring`
-- **Status:** Approved — Steps 1–7 and 8.a merged; Step 8.b/9 in progress
+- **Status:** Complete — all implementation steps merged; Step 9 retired this plan
 - **Plan revision date:** 2026-08-03
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main`
-- **Latest audited tip:** `480a6bfd`
+- **Completion base:** `main` at `ceaa6758`, the merge commit for final implementation PR #707
 - **Existing contract baseline:** [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) shipped additive
   `RelayProjectView` and `Session.pullRequestHistory` contracts.
 - **Delivery:** one plan PR, ten sequential implementation PRs, and
   one plan-retirement PR.
 
-This document and `TRACKER.md` are the sole current implementation authority.
+These archived documents retain the implementation decisions and execution
+history for the completed feature.
 
 ## Goal
 
@@ -1098,3 +1099,9 @@ The feature is complete only when:
 - compatibility, identity privacy, no-unseen/no-push/no-history invariants pass;
   and
 - Step 9 moves this directory to `.plan/completed/`.
+
+## Completion
+
+Implementation completed on 2026-08-03 when final implementation PR #707
+merged as `ceaa6758`. Step 9 records that outcome and archives this complete
+plan without production, test, or configuration changes.

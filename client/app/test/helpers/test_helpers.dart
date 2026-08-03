@@ -36,6 +36,7 @@ import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
 import "package:sesori_dart_core/src/cubits/chat_input_mode/chat_input_mode_cubit.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_cubit.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
@@ -474,10 +475,12 @@ void delegateSessionRepositoryToService({
       pluginId: invocation.namedArguments[#pluginId] as String,
     ),
   );
+  registerFallbackValue(const <ComposerAttachment>[]);
   when(
     () => repository.sendMessage(
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
+      attachments: any(named: "attachments"),
       agent: any(named: "agent"),
       model: any(named: "model"),
       variant: any(named: "variant"),
@@ -487,6 +490,7 @@ void delegateSessionRepositoryToService({
     (invocation) => service.sendMessage(
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,
+      attachments: invocation.namedArguments[#attachments]! as List<ComposerAttachment>,
       agent: invocation.namedArguments[#agent] as String?,
       providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
       modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,

@@ -997,6 +997,32 @@ void main() {
             "type": "response_item",
             "payload": {
               "type": "message",
+              "id": "mixed-context-user",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "<recommended_plugins>internal list</recommended_plugins>",
+                },
+                {"type": "input_text", "text": "Visible mixed prompt"},
+                {
+                  "type": "input_text",
+                  "text": "<environment_context>internal cwd</environment_context>",
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "Visible mixed prompt",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
               "id": "generated-abort",
               "role": "user",
               "content": [
@@ -1029,6 +1055,7 @@ void main() {
       expect(messages.map((message) => message.info.id), [
         "actual-user",
         "actual-wrapper-user",
+        "mixed-context-user",
         "assistant-1",
       ]);
       expect(messages.first.parts.single.text, "Explain the <environment_context> tag");
@@ -1036,6 +1063,7 @@ void main() {
         messages[1].parts.single.text,
         "<environment_context>user-authored text</environment_context>",
       );
+      expect(messages[2].parts.single.text, "Visible mixed prompt");
       expect(messages.last.parts.single.text, "Visible answer");
     });
 
@@ -1357,6 +1385,48 @@ void main() {
           }),
           jsonEncode(
             call(
+              callId: "call-legacy-completed",
+              command: "sleep 70",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-legacy-completed",
+              text: "Script running with cell ID 11\nOutput:\n",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-legacy-completed",
+            },
+          }),
+          jsonEncode(
+            call(
+              callId: "call-legacy-aborted",
+              command: "sleep 80",
+              turnId: null,
+              name: "exec_command",
+            ),
+          ),
+          jsonEncode(
+            output(
+              callId: "call-legacy-aborted",
+              text: "Script running with cell ID 12\nOutput:\n",
+            ),
+          ),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "turn_id": "turn-legacy-aborted",
+            },
+          }),
+          jsonEncode(
+            call(
               callId: "call-interrupted-legacy",
               command: "sleep 90",
               turnId: null,
@@ -1401,6 +1471,8 @@ void main() {
         "call-shell",
         "call-completed",
         "call-aborted",
+        "call-legacy-completed",
+        "call-legacy-aborted",
         "call-interrupted-legacy",
         "user-next",
         "call-active",
@@ -1415,6 +1487,8 @@ void main() {
       expect(tools["call-shell"]?.state?.output, contains("aborted by user after 1.0s"));
       expect(tools["call-completed"]?.state?.status, PluginToolStatus.completed);
       expect(tools["call-aborted"]?.state?.status, PluginToolStatus.error);
+      expect(tools["call-legacy-completed"]?.state?.status, PluginToolStatus.completed);
+      expect(tools["call-legacy-aborted"]?.state?.status, PluginToolStatus.error);
       expect(tools["call-interrupted-legacy"]?.state?.status, PluginToolStatus.error);
       expect(tools["call-active"]?.state?.status, PluginToolStatus.running);
     });

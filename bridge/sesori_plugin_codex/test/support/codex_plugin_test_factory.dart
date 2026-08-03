@@ -2,7 +2,7 @@ import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
-import "package:codex_plugin/src/repositories/codex_tool_correlation_tracker.dart";
+import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 
@@ -50,7 +50,7 @@ CodexPlugin createInjectedCodexPlugin({
       catalogRepository: catalogRepository,
       pollInterval: rolloutPollInterval,
     ),
-    toolCorrelationTracker: CodexToolCorrelationTracker(
+    toolLifecycleTracker: CodexToolLifecycleTracker(
       rolloutToolMapper: rolloutToolMapper,
     ),
     projectCwd: projectCwd,

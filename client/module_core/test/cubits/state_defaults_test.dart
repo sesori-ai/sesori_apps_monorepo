@@ -13,6 +13,7 @@ void main() {
       pendingQuestions: [],
       pendingPermissions: [],
       sessionTitle: null,
+      pluginId: "opencode",
       agent: null,
       assistantAgentModel: null,
       children: [],

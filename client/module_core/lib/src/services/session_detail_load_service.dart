@@ -126,6 +126,7 @@ class SessionDetailLoadService {
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: effectiveProjectId,
+          pluginId: pluginId,
           messages: messages,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
@@ -195,6 +196,10 @@ class SessionDetailLoadService {
 
 class SessionDetailSnapshot {
   final String? projectId;
+
+  /// The harness running this session, or `null` when neither the session nor
+  /// the project fallback resolved it.
+  final String? pluginId;
   final List<MessageWithParts> messages;
   final List<PendingQuestion> pendingQuestions;
   final List<PendingPermission> pendingPermissions;
@@ -214,6 +219,7 @@ class SessionDetailSnapshot {
 
   const SessionDetailSnapshot({
     required this.projectId,
+    required this.pluginId,
     required this.messages,
     required this.pendingQuestions,
     required this.pendingPermissions,

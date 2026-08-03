@@ -18,6 +18,8 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<SesoriPermissionAsked> pendingPermissions,
     // Session title — updated reactively via SSE `session.updated` events.
     required String? sessionTitle,
+    // The harness running this session, or null when it could not be resolved.
+    required String? pluginId,
     // Agent/model from the latest assistant message.
     required String? agent,
     required AgentModel? assistantAgentModel,
