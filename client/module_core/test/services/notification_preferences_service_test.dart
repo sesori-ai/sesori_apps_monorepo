@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -98,5 +99,59 @@ void main() {
       await service.isEnabled(category: NotificationCategory.aiInteraction),
       isTrue,
     );
+  });
+
+  test("foreground lookup is disabled when no account is available", () async {
+    authStates.add(const AuthState.unauthenticated());
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      await service.isEnabled(category: NotificationCategory.aiInteraction),
+      isFalse,
+    );
+    verifyNever(
+      () => repository.isEnabled(
+        userId: _userA.id,
+        category: NotificationCategory.aiInteraction,
+      ),
+    );
+  });
+
+  test("foreground lookup is disabled when its account becomes obsolete", () async {
+    final response = Completer<bool>();
+    when(
+      () => repository.isEnabled(
+        userId: _userA.id,
+        category: NotificationCategory.aiInteraction,
+      ),
+    ).thenAnswer((_) => response.future);
+
+    final enabled = service.isEnabled(category: NotificationCategory.aiInteraction);
+    authStates.add(const AuthState.authenticated(user: _userB));
+    await Future<void>.delayed(Duration.zero);
+    response.complete(true);
+
+    expect(await enabled, isFalse);
+  });
+
+  test("foreground lookup defaults to enabled after a bounded wait", () {
+    fakeAsync((async) {
+      final response = Completer<bool>();
+      when(
+        () => repository.isEnabled(
+          userId: _userA.id,
+          category: NotificationCategory.aiInteraction,
+        ),
+      ).thenAnswer((_) => response.future);
+      bool? enabled;
+
+      service.isEnabled(category: NotificationCategory.aiInteraction).then((value) => enabled = value);
+      async.flushMicrotasks();
+      expect(enabled, isNull);
+
+      async.elapse(const Duration(seconds: 2));
+      async.flushMicrotasks();
+      expect(enabled, isTrue);
+    });
   });
 }

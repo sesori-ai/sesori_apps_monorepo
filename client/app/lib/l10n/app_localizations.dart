@@ -985,6 +985,18 @@ abstract class AppLocalizations {
   /// **'System'**
   String get notificationSectionSystem;
 
+  /// No description provided for @notificationPreferencesUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification preferences unavailable'**
+  String get notificationPreferencesUnavailableTitle;
+
+  /// No description provided for @notificationPreferencesUnavailableDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to manage notification preferences.'**
+  String get notificationPreferencesUnavailableDescription;
+
   /// No description provided for @notificationPreferencesLoadFailedTitle.
   ///
   /// In en, this message translates to:

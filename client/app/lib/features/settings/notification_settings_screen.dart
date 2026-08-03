@@ -24,7 +24,9 @@ class NotificationSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => NotificationPreferencesCubit(getIt<NotificationPreferencesService>()),
+      create: (_) => NotificationPreferencesCubit(
+        service: getIt<NotificationPreferencesService>(),
+      ),
       child: const _NotificationSettingsBody(),
     );
   }
@@ -61,6 +63,7 @@ class _NotificationSettingsBody extends StatelessWidget {
                 padding: EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
                 child: Center(child: CircularProgressIndicator()),
               ),
+              NotificationPreferencesAccountUnavailable() => const _NotificationPreferencesUnavailable(),
               NotificationPreferencesLoadFailed() => const _NotificationPreferencesFailure(),
               NotificationPreferencesLoaded(:final preferences, :final updatingCategories) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,6 +127,24 @@ class _NotificationSettingsBody extends StatelessWidget {
   }
 }
 
+class _NotificationPreferencesUnavailable extends StatelessWidget {
+  const _NotificationPreferencesUnavailable();
+
+  @override
+  Widget build(BuildContext context) {
+    return PregoGroupedRows(
+      children: [
+        PregoGroupedRow(
+          icon: TablerRegular.info_circle,
+          title: Text(context.loc.notificationPreferencesUnavailableTitle),
+          subtitle: Text(context.loc.notificationPreferencesUnavailableDescription),
+          isLast: true,
+        ),
+      ],
+    );
+  }
+}
+
 class _NotificationPreferencesFailure extends StatelessWidget {
   const _NotificationPreferencesFailure();
 
@@ -180,7 +201,7 @@ class _NotificationToggleRow extends StatelessWidget {
             label: context.loc.notificationPreferenceUpdating,
             child: SizedBox(
               key: ValueKey("notification_preference_loading_${category.name}"),
-              width: 64,
+              width: context.prego.spacing.spacing16,
               child: Center(
                 child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
               ),

@@ -8,6 +8,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../logging/logging.dart";
 import "../repositories/notification_preferences_repository.dart";
 
+const _foregroundPreferenceDeadline = Duration(seconds: 2);
+
 enum NotificationPreferencesAccountStatus { unavailable, available }
 
 typedef _AccountOperation = ({int generation, String userId});
@@ -31,7 +33,11 @@ class NotificationPreferencesService {
     _accountStatus = BehaviorSubject.seeded(_statusFor(userId: _currentUserId));
     _authSubscription = _authSession.authStateStream.listen(
       _onAuthStateChanged,
-      onError: _onAuthStateError,
+      // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, Stream callback
+      onError: (Object error, StackTrace stackTrace) => _onAuthStateError(
+        error: error,
+        stackTrace: stackTrace,
+      ),
     );
   }
 
@@ -57,13 +63,17 @@ class NotificationPreferencesService {
 
   Future<bool> isEnabled({required NotificationCategory category}) async {
     if (category == NotificationCategory.unknown) return true;
+    final operation = _currentOperation();
+    if (operation == null) return false;
 
     try {
-      final operation = _captureAccount();
-      final enabled = await _repository.isEnabled(userId: operation.userId, category: category);
-      _ensureCurrent(operation);
+      final enabled = await _repository
+          .isEnabled(userId: operation.userId, category: category)
+          .timeout(_foregroundPreferenceDeadline);
+      if (!_isCurrent(operation)) return false;
       return enabled;
     } on Object catch (error, stackTrace) {
+      if (!_isCurrent(operation)) return false;
       logw(
         "Failed to load notification preferences; defaulting ${category.name} to enabled",
         error,
@@ -86,22 +96,28 @@ class NotificationPreferencesService {
     _accountStatus.add(_statusFor(userId: nextUserId));
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, stream callback
-  void _onAuthStateError(Object error, StackTrace stackTrace) {
+  // ignore: no_slop_linter/prefer_specific_type, Stream error values are untyped
+  void _onAuthStateError({required Object error, required StackTrace stackTrace}) {
     loge("Notification preferences auth stream failed", error, stackTrace);
   }
 
   _AccountOperation _captureAccount() {
-    final userId = _currentUserId;
-    if (userId == null) throw ApiError.notAuthenticated();
-    return (generation: _accountGeneration, userId: userId);
+    final operation = _currentOperation();
+    if (operation == null) throw ApiError.notAuthenticated();
+    return operation;
   }
 
   void _ensureCurrent(_AccountOperation operation) {
-    if (operation.generation != _accountGeneration || operation.userId != _currentUserId) {
-      throw ApiError.notAuthenticated();
-    }
+    if (!_isCurrent(operation)) throw ApiError.notAuthenticated();
   }
+
+  _AccountOperation? _currentOperation() => switch (_currentUserId) {
+    final String userId => (generation: _accountGeneration, userId: userId),
+    null => null,
+  };
+
+  bool _isCurrent(_AccountOperation operation) =>
+      operation.generation == _accountGeneration && operation.userId == _currentUserId;
 
   static String? _userIdFrom(AuthState state) => switch (state) {
     AuthAuthenticated(:final user) => user.id,

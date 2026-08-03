@@ -35,7 +35,7 @@ void main() {
     setUp: () {
       when(() => mockService.getAll()).thenAnswer((_) async => initialPreferences);
     },
-    build: () => NotificationPreferencesCubit(mockService),
+    build: () => NotificationPreferencesCubit(service: mockService),
     expect: () => [
       NotificationPreferencesState.loaded(
         preferences: initialPreferences,
@@ -44,6 +44,22 @@ void main() {
     ],
     verify: (_) {
       verify(() => mockService.getAll()).called(1);
+    },
+  );
+
+  blocTest<NotificationPreferencesCubit, NotificationPreferencesState>(
+    "shows a terminal state when no account is available",
+    setUp: () {
+      when(
+        () => mockService.accountStatusStream,
+      ).thenAnswer((_) => Stream.value(NotificationPreferencesAccountStatus.unavailable));
+    },
+    build: () => NotificationPreferencesCubit(service: mockService),
+    expect: () => [
+      const NotificationPreferencesState.accountUnavailable(),
+    ],
+    verify: (_) {
+      verifyNever(() => mockService.getAll());
     },
   );
 
@@ -58,7 +74,7 @@ void main() {
         ),
       ).thenAnswer((_) async => true);
     },
-    build: () => NotificationPreferencesCubit(mockService),
+    build: () => NotificationPreferencesCubit(service: mockService),
     act: (cubit) async {
       await Future<void>.delayed(Duration.zero);
       await cubit.toggle(
@@ -105,7 +121,7 @@ void main() {
         ),
       ).thenThrow(Exception("storage unavailable"));
     },
-    build: () => NotificationPreferencesCubit(mockService),
+    build: () => NotificationPreferencesCubit(service: mockService),
     act: (cubit) async {
       await Future<void>.delayed(Duration.zero);
       await cubit.toggle(
@@ -139,7 +155,7 @@ void main() {
         return initialPreferences;
       });
     },
-    build: () => NotificationPreferencesCubit(mockService),
+    build: () => NotificationPreferencesCubit(service: mockService),
     act: (cubit) async {
       await Future<void>.delayed(Duration.zero);
       await cubit.retry();
@@ -176,7 +192,7 @@ void main() {
         };
       });
     },
-    build: () => NotificationPreferencesCubit(mockService),
+    build: () => NotificationPreferencesCubit(service: mockService),
     act: (cubit) async {
       await Future<void>.delayed(Duration.zero);
       final aiUpdate = cubit.toggle(NotificationCategory.aiInteraction, enabled: false);
@@ -231,7 +247,7 @@ void main() {
       loadCount++;
       return loadCount == 1 ? firstLoad.future : secondLoad.future;
     });
-    final cubit = NotificationPreferencesCubit(mockService);
+    final cubit = NotificationPreferencesCubit(service: mockService);
 
     accountStatuses.add(NotificationPreferencesAccountStatus.available);
     await Future<void>.delayed(Duration.zero);

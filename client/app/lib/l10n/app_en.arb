@@ -300,6 +300,8 @@
   },
   "notificationSectionAi": "AI Notifications",
   "notificationSectionSystem": "System",
+  "notificationPreferencesUnavailableTitle": "Notification preferences unavailable",
+  "notificationPreferencesUnavailableDescription": "Sign in to manage notification preferences.",
   "notificationPreferencesLoadFailedTitle": "Couldn't load notification preferences",
   "notificationPreferencesLoadFailedDescription": "Check your connection and try again.",
   "notificationPreferencesRetry": "Retry",

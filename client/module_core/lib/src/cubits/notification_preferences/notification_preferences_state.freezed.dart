@@ -77,6 +77,38 @@ String toString() {
 /// @nodoc
 
 
+class NotificationPreferencesAccountUnavailable implements NotificationPreferencesState {
+  const NotificationPreferencesAccountUnavailable();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesAccountUnavailable);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NotificationPreferencesState.accountUnavailable()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class NotificationPreferencesLoadFailed implements NotificationPreferencesState {
   const NotificationPreferencesLoadFailed();
   

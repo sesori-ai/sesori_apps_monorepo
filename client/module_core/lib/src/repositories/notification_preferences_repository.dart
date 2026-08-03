@@ -43,8 +43,7 @@ class NotificationPreferencesRepository {
       await _fetch(userId: userId);
     }
     final cacheGeneration = _cacheGeneration(userId: userId);
-    final current = _cachedPreferences[userId];
-    if (current == null) throw ApiError.notAuthenticated();
+    if (_cachedPreferences[userId] == null) throw ApiError.notAuthenticated();
 
     final deviceId = await _deviceIdStorage.getOrCreate();
     _ensureCacheGeneration(userId: userId, expected: cacheGeneration);
@@ -57,7 +56,9 @@ class NotificationPreferencesRepository {
     _validateDeviceId(record: record, expected: deviceId);
 
     final confirmed = _preferenceFrom(record.notifications, category: category);
-    _cachedPreferences[userId] = Map.unmodifiable({...current, category: confirmed});
+    final latest = _cachedPreferences[userId];
+    if (latest == null) throw ApiError.notAuthenticated();
+    _cachedPreferences[userId] = Map.unmodifiable({...latest, category: confirmed});
     return confirmed;
   }
 

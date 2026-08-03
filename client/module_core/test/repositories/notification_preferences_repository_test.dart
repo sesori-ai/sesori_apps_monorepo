@@ -97,6 +97,53 @@ void main() {
       );
     });
 
+    test("concurrent PATCHes merge each confirmation into the latest cache", () async {
+      final aiResponse = Completer<NotificationPreferencesApiRecord>();
+      final sessionResponse = Completer<NotificationPreferencesApiRecord>();
+      when(
+        () => api.getPreferences(userId: _userA, deviceId: _deviceId),
+      ).thenAnswer((_) async => _record());
+      when(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.aiInteraction(enabled: false),
+        ),
+      ).thenAnswer((_) => aiResponse.future);
+      when(
+        () => api.updatePreference(
+          userId: _userA,
+          deviceId: _deviceId,
+          request: const NotificationPreferencePatchApiRequest.sessionMessage(enabled: true),
+        ),
+      ).thenAnswer((_) => sessionResponse.future);
+      await repository.getAll(userId: _userA);
+
+      final aiUpdate = repository.setEnabled(
+        userId: _userA,
+        category: NotificationCategory.aiInteraction,
+        enabled: false,
+      );
+      final sessionUpdate = repository.setEnabled(
+        userId: _userA,
+        category: NotificationCategory.sessionMessage,
+        enabled: true,
+      );
+      aiResponse.complete(_record(notifications: _updatedNotifications));
+      await aiUpdate;
+      sessionResponse.complete(_record(notifications: _userBNotifications));
+      await sessionUpdate;
+
+      expect(
+        await repository.isEnabled(userId: _userA, category: NotificationCategory.aiInteraction),
+        isFalse,
+      );
+      expect(
+        await repository.isEnabled(userId: _userA, category: NotificationCategory.sessionMessage),
+        isTrue,
+      );
+    });
+
     test("a failed PATCH preserves the previous confirmed cache", () async {
       when(
         () => api.getPreferences(userId: _userA, deviceId: _deviceId),

@@ -52,7 +52,12 @@ void main() {
         category: any(named: "category"),
         enabled: any(named: "enabled"),
       ),
-    ).thenAnswer((invocation) async => invocation.namedArguments[#enabled]! as bool);
+    ).thenAnswer(
+      (invocation) async => switch (invocation.namedArguments[#enabled]) {
+        final bool enabled => enabled,
+        _ => throw StateError("Expected a boolean notification preference"),
+      },
+    );
 
     await GetIt.instance.reset();
     GetIt.instance.registerSingleton<NotificationPreferencesService>(service);
@@ -85,6 +90,19 @@ void main() {
     expect(node, isSemantics(hasToggledState: true, isToggled: true, hasTapAction: true));
 
     handle.dispose();
+  });
+
+  testWidgets("signed-out state does not remain on an indefinite loader", (tester) async {
+    when(
+      () => service.accountStatusStream,
+    ).thenAnswer((_) => Stream.value(NotificationPreferencesAccountStatus.unavailable));
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    expect(find.text("Notification preferences unavailable"), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    verifyNever(() => service.getAll());
   });
 
   testWidgets("only the preference awaiting its API response shows inline loading", (tester) async {

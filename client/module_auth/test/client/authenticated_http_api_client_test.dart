@@ -236,7 +236,7 @@ void main() {
 
   group("account-bound requests", () {
     test("patchForUser injects auth and delegates only for the current account", () async {
-      const body = '{"notifications":{"aiInteraction":false}}';
+      const body = """{"notifications":{"aiInteraction":false}}""";
       when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userA));
       when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
       when(

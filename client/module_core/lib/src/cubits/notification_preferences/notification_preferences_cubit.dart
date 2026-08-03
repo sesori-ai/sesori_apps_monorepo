@@ -15,12 +15,16 @@ class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
   int _accountGeneration = 0;
   int _loadGeneration = 0;
 
-  NotificationPreferencesCubit(NotificationPreferencesService service)
+  NotificationPreferencesCubit({required NotificationPreferencesService service})
     : _service = service,
       super(const NotificationPreferencesState.loading()) {
     _accountSubscription = _service.accountStatusStream.listen(
       _onAccountStatus,
-      onError: _onAccountStatusError,
+      // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, Stream callback
+      onError: (Object error, StackTrace stackTrace) => _onAccountStatusError(
+        error: error,
+        stackTrace: stackTrace,
+      ),
     );
   }
 
@@ -97,16 +101,20 @@ class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
     _accountStatus = status;
     _accountGeneration++;
     final loadGeneration = ++_loadGeneration;
+    if (status == NotificationPreferencesAccountStatus.unavailable) {
+      if (state is! NotificationPreferencesAccountUnavailable) {
+        emit(const NotificationPreferencesState.accountUnavailable());
+      }
+      return;
+    }
     if (state is! NotificationPreferencesLoading) {
       emit(const NotificationPreferencesState.loading());
     }
-    if (status == NotificationPreferencesAccountStatus.available) {
-      unawaited(_load(generation: loadGeneration));
-    }
+    unawaited(_load(generation: loadGeneration));
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, stream callback
-  void _onAccountStatusError(Object error, StackTrace stackTrace) {
+  // ignore: no_slop_linter/prefer_specific_type, Stream error values are untyped
+  void _onAccountStatusError({required Object error, required StackTrace stackTrace}) {
     loge("Notification preferences account stream failed", error, stackTrace);
     if (isClosed) return;
     emit(const NotificationPreferencesState.loadFailed());

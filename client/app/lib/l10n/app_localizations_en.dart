@@ -478,6 +478,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationSectionSystem => 'System';
 
   @override
+  String get notificationPreferencesUnavailableTitle => 'Notification preferences unavailable';
+
+  @override
+  String get notificationPreferencesUnavailableDescription => 'Sign in to manage notification preferences.';
+
+  @override
   String get notificationPreferencesLoadFailedTitle => 'Couldn\'t load notification preferences';
 
   @override
