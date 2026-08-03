@@ -10,6 +10,7 @@ final class SessionCreationReservation {
        _catalogWritesFinished = catalogWritesFinished;
   final _PluginVisibilityState _pluginState;
   final Future<void> _catalogWritesFinished;
+  bool _released = false;
 }
 
 final class UnpublishedSessionReservation {
@@ -39,7 +40,10 @@ class SessionVisibilityState {
     pluginState.creationReservationsFinished ??= Completer<void>();
     return SessionCreationReservation._(pluginState: pluginState, catalogWritesFinished: catalogWritesFinished);
   }
+
   void releaseSessionCreation({required SessionCreationReservation reservation}) {
+    if (reservation._released) return;
+    reservation._released = true;
     final pluginState = reservation._pluginState;
     pluginState.creationReservations--;
     if (pluginState.creationReservations != 0) return;

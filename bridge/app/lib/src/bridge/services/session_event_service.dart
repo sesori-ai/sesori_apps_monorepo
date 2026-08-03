@@ -15,7 +15,7 @@ typedef SourcedBridgeEvent = ({
   int projectionUpdatedAt,
   BridgeSseEvent event,
 });
-typedef NormalizedRuntimeEvent = ({int generation, BridgeSseEvent event});
+typedef NormalizedRuntimeEvent = ({int? generation, BridgeSseEvent event});
 typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 
 class SessionEventService {
@@ -195,12 +195,8 @@ class SessionEventService {
         ),
       );
     }
-    if (commit.kind == SessionBindingCommitKind.sessionCreation &&
-        isCurrentGeneration(
-          pluginId: commit.pluginId,
-          generation: commit.generation,
-        )) {
-      output.add((generation: commit.generation, event: const BridgeSseProjectUpdated()));
+    if (commit.kind == SessionBindingCommitKind.sessionCreation) {
+      output.add((generation: null, event: const BridgeSseProjectUpdated()));
     }
     return output;
   }

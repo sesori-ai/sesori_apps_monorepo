@@ -32,19 +32,19 @@ void main() {
       await _flushEvents();
 
       expect(service.creationCalls, [
-        (pluginId: "plugin", projectId: "stable-project", generation: 7),
+        (pluginId: "plugin", projectId: "stable-project"),
       ]);
       expect(service.successfulCreationProjects, ["stable-project"]);
     });
 
-    test("passes stale generations to the service fence without refreshing", () async {
+    test("refreshes against the active generation after a durable creation", () async {
       service.currentGeneration = 8;
 
       source.add(_commit(kind: SessionBindingCommitKind.sessionCreation, projectId: "stale-project"));
       await _flushEvents();
 
-      expect(service.creationCalls.single.generation, 7);
-      expect(service.successfulCreationProjects, isEmpty);
+      expect(service.creationCalls.single.projectId, "stale-project");
+      expect(service.successfulCreationProjects, ["stale-project"]);
     });
 
     test("contains an async refresh error and continues listening", () async {
@@ -140,7 +140,7 @@ SessionBindingsCommitted _commit({
   return (
     pluginId: "plugin",
     projectId: projectId,
-    generation: 7,
+    generation: kind == SessionBindingCommitKind.catalogSync ? 7 : null,
     kind: kind,
     backendSessionIds: const ["backend-session"],
   );
@@ -162,7 +162,7 @@ class _FakeSessionOptionsService implements SessionOptionsService {
   final Set<String> boundBackendSessionIds = {};
   final Set<String> failingCreationProjects = {};
   final Set<String> failingBackendSessionIds = {};
-  final List<({String pluginId, String projectId, int generation})> creationCalls = [];
+  final List<({String pluginId, String projectId})> creationCalls = [];
   final List<({String pluginId, String backendSessionId, int generation})> backendCalls = [];
   final List<String> successfulCreationProjects = [];
   final List<String> successfulBackendSessions = [];
@@ -177,10 +177,17 @@ class _FakeSessionOptionsService implements SessionOptionsService {
     required String pluginId,
     required String projectId,
     required int generation,
+  }) async => generation == currentGeneration
+      ? const SessionOptionsAvailable(response: _optionsResponse)
+      : const SessionOptionsAutomaticNoOp();
+
+  @override
+  Future<SessionOptionsOutcome> refreshCurrentActiveOnly({
+    required String pluginId,
+    required String projectId,
   }) async {
-    creationCalls.add((pluginId: pluginId, projectId: projectId, generation: generation));
+    creationCalls.add((pluginId: pluginId, projectId: projectId));
     if (failingCreationProjects.contains(projectId)) throw StateError("creation refresh failed");
-    if (generation != currentGeneration) return const SessionOptionsAutomaticNoOp();
     successfulCreationProjects.add(projectId);
     return const SessionOptionsAvailable(response: _optionsResponse);
   }

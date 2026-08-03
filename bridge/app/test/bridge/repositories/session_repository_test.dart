@@ -1113,7 +1113,7 @@ void main() {
       final commits = await commitsFuture;
       expect(commits.map((commit) => commit.kind), everyElement(SessionBindingCommitKind.sessionCreation));
       expect(commits.map((commit) => commit.projectId), everyElement("/repo"));
-      expect(commits.map((commit) => commit.generation), everyElement(1));
+      expect(commits.map((commit) => commit.generation), everyElement(isNull));
     });
 
     test("createSession rejects a plugin mismatch before plugin I/O", () async {
@@ -1247,6 +1247,44 @@ void main() {
       expect((await repository.getCatalogSession(sessionId: sessionId))?.id, sessionId);
     });
 
+    test("reveals and publishes a durable creation before rethrowing a post-commit generation failure", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final visibilityState = SessionVisibilityState();
+      final runtime = _PostCommitGenerationReplacingRuntime(plugin: plugin);
+      final repository = SessionRepository(
+        runtime: runtime,
+        bridgeDerivedProjectPluginIds: const {},
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+        visibilityState: visibilityState,
+      );
+      addTearDown(repository.dispose);
+      final commits = <SessionBindingsCommitted>[];
+      final subscription = repository.bindingCommits.listen(commits.add);
+      addTearDown(subscription.cancel);
+
+      await expectLater(
+        _createUnpublished(repository: repository, pluginId: plugin.id),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
+      );
+
+      final stored = await db.sessionDao.getSessionByBinding(
+        pluginId: plugin.id,
+        backendSessionId: plugin.createSessionResult.id,
+      );
+      expect(stored, isNotNull);
+      expect(visibilityState.isPublished(sessionId: stored!.sessionId), isTrue);
+      expect((await repository.getCatalogSession(sessionId: stored.sessionId))?.id, stored.sessionId);
+      expect(commits, hasLength(1));
+      expect(commits.single.kind, SessionBindingCommitKind.sessionCreation);
+      expect(commits.single.generation, isNull);
+    });
+
     test("reserves a plugin before active-root hydration can bind the created backend session", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1304,8 +1342,10 @@ void main() {
 
       createResult.complete(createdBackendSession);
       final binding = await creation;
+      repository.revealSession(binding: binding);
 
-      expect(await hydration, isEmpty);
+      final summaries = await hydration;
+      expect(summaries.single.activeSessions.single.id, binding.session.id);
       expect(
         (await db.sessionDao.getSessionByBinding(
           pluginId: plugin.id,
@@ -1313,8 +1353,6 @@ void main() {
         ))?.sessionId,
         binding.session.id,
       );
-
-      repository.revealSession(binding: binding);
     });
 
     test("removes the unpublished marker when the creation transaction rolls back", () async {
@@ -1341,6 +1379,37 @@ void main() {
       );
 
       expect(visibilityState.isPublished(sessionId: sessionDao.failedSessionId!), isTrue);
+    });
+
+    test("reports the stable id when the inserted creation binding cannot be reloaded", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final sessionDao = _MissingPostInsertSessionDao(db);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      addTearDown(repository.dispose);
+      Object? failure;
+
+      try {
+        await _createUnpublished(repository: repository, pluginId: plugin.id);
+      } on Object catch (error) {
+        failure = error;
+      }
+
+      expect(failure, isA<StateError>());
+      expect(failure.toString(), contains(sessionDao.missingSessionId));
+      expect(
+        await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: plugin.createSessionResult.id,
+        ),
+        isNull,
+      );
     });
 
     group("moved project (stable id, new live path)", () {
@@ -1734,6 +1803,47 @@ void main() {
         ))?.sessionId,
         active.id,
       );
+    });
+
+    test("activity without hydrations bypasses catalog-write admission", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const directory = "/projects/active";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [directory]);
+      await db.sessionDao.insertSession(
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+        pluginId: plugin.id,
+        projectId: directory,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      plugin.activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "backend-root", awaitingInput: true)],
+        ),
+      ];
+      final visibilityState = _CountingCatalogWriteVisibilityState();
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        visibilityState: visibilityState,
+      );
+      addTearDown(repository.dispose);
+      final summaries = await repository.getProjectActivitySummaries();
+
+      expect(summaries.single.activeSessions.single.id, "stable-root");
+      expect(visibilityState.catalogWriteCalls, isZero);
     });
 
     test("active-root hydration is not persisted after generation replacement", () async {
@@ -2684,6 +2794,39 @@ class _GenerationReplacingRuntime extends TestPluginRuntime {
   }
 }
 
+class _CountingCatalogWriteVisibilityState extends SessionVisibilityState {
+  int catalogWriteCalls = 0;
+
+  @override
+  Future<T> withCatalogWrite<T>({required String pluginId, required Future<T> Function() body}) {
+    catalogWriteCalls++;
+    return super.withCatalogWrite(pluginId: pluginId, body: body);
+  }
+}
+
+class _PostCommitGenerationReplacingRuntime extends TestPluginRuntime {
+  _PostCommitGenerationReplacingRuntime({required BridgePluginApi plugin})
+    : _plugin = plugin,
+      super(plugins: {plugin.id: plugin}, eligiblePluginIds: null);
+
+  final BridgePluginApi _plugin;
+
+  @override
+  Future<R> useAndCommit<P, R>({
+    required String pluginId,
+    required Enum operation,
+    required Future<P> Function(BridgePluginApi api) prepare,
+    required Future<R> Function(P prepared, int generation) commit,
+  }) async {
+    final generation = currentGeneration;
+    final prepared = await prepare(_plugin);
+    final result = await commit(prepared, generation);
+    generationCurrent = false;
+    requireCurrentGeneration(pluginId: pluginId, generation: generation, operation: operation);
+    return result;
+  }
+}
+
 class _CapabilityProbeFailingRuntime extends TestPluginRuntime {
   _CapabilityProbeFailingRuntime({
     required Iterable<BridgePluginApi> plugins,
@@ -2959,6 +3102,19 @@ class _FailingCreationSessionDao extends SessionDao {
   }) {
     failedSessionId = sessionId;
     throw StateError("creation projection failed");
+  }
+}
+
+class _MissingPostInsertSessionDao extends SessionDao {
+  _MissingPostInsertSessionDao(super.attachedDatabase);
+
+  String? missingSessionId;
+
+  @override
+  Future<SessionDto?> getSession({required String sessionId}) async {
+    final stored = await super.getSession(sessionId: sessionId);
+    if (stored != null) missingSessionId = sessionId;
+    return null;
   }
 }
 

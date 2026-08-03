@@ -720,6 +720,40 @@ void main() {
       await completed;
     });
 
+    test("cancellation while waiting for creation publishes no catalog", () async {
+      final projectPath = "${directory.path}/cancelled-behind-creation";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "cancelled", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [_pluginSession(id: "cancelled-root", directory: projectPath)],
+        },
+        childrenByParent: const {},
+      );
+      final visibilityState = _SignalingCatalogWriteVisibilityState();
+      final creationReservation = visibilityState.reserveSessionCreation(pluginId: plugin.id);
+      final control = CatalogImportControl(
+        explicitImportRequested: true,
+        hydrationMarkerRequested: true,
+      );
+      final repository = _repository(
+        database: database,
+        plugin: plugin,
+        visibilityState: visibilityState,
+      );
+      final statuses = repository.importCatalog(pluginId: plugin.id, control: control).toList();
+      await visibilityState.catalogWriteRequested.future;
+
+      control.cancellationRequested = true;
+      visibilityState.releaseSessionCreation(reservation: creationReservation);
+      final result = await statuses;
+
+      expect(result.last, isA<CatalogImportCancelled>());
+      expect(result, isNot(contains(isA<CatalogImportCompleted>())));
+      expect(await database.projectsDao.getAllProjects(), isEmpty);
+      expect(await database.sessionDao.getSessionsForPlugin(pluginId: plugin.id), isEmpty);
+      expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNull);
+    });
+
     test("generation replacement inside the transaction rolls back catalog publication", () async {
       final projectPath = "${directory.path}/stale-transaction-generation";
       final plugin = _NativeImportPlugin(
@@ -853,6 +887,16 @@ class _RecordingSessionDao extends SessionDao {
       throw StateError("injected session batch failure");
     }
     await super.upsertSessionRows(rows: rows);
+  }
+}
+
+class _SignalingCatalogWriteVisibilityState extends SessionVisibilityState {
+  final Completer<void> catalogWriteRequested = Completer<void>();
+
+  @override
+  Future<T> withCatalogWrite<T>({required String pluginId, required Future<T> Function() body}) {
+    if (!catalogWriteRequested.isCompleted) catalogWriteRequested.complete();
+    return super.withCatalogWrite(pluginId: pluginId, body: body);
   }
 }
 

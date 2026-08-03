@@ -27,7 +27,7 @@ void main() {
     source.add((
       pluginId: "selected",
       projectId: "selected-project",
-      generation: 2,
+      generation: null,
       kind: SessionBindingCommitKind.sessionCreation,
       backendSessionIds: const ["root"],
     ));
@@ -44,7 +44,7 @@ void main() {
       (
         pluginId: "selected",
         projectId: "selected-project",
-        generation: 2,
+        generation: null,
         kind: SessionBindingCommitKind.sessionCreation,
         backendSessionIds: const ["root"],
       ),

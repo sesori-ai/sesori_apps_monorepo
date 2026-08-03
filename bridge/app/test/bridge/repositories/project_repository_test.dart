@@ -273,6 +273,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
+        visibilityState: SessionVisibilityState(),
       );
 
       final reconciliation = generationAwareActivityRepo.listProjectActivityEvidence(pluginId: plugin.id);
@@ -306,6 +307,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
+        visibilityState: SessionVisibilityState(),
       );
       runtime.generationCurrent = false;
 
@@ -831,21 +833,25 @@ void main() {
     late _FakeDerivedPlugin plugin;
     late ProjectRepository repo;
     late ProjectActivityRepository activityRepo;
+    late SessionVisibilityState visibilityState;
 
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeDerivedPlugin([]);
+      visibilityState = SessionVisibilityState();
       repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
+        visibilityState: visibilityState,
       );
       activityRepo = singlePluginProjectActivityRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
+        visibilityState: visibilityState,
       );
     });
 
@@ -940,6 +946,40 @@ void main() {
       final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
 
       expect(observation!.evidence.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
+    });
+
+    test("derived activity excludes unpublished stored bindings from hints and evidence", () async {
+      const project = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/hidden";
+      await db.projectsDao.recordOpenedProject(
+        projectId: project,
+        path: project,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      await db.sessionDao.insertSession(
+        sessionId: "stable-hidden",
+        backendSessionId: "backend-hidden",
+        pluginId: plugin.id,
+        projectId: project,
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: worktree,
+        branchName: "hidden",
+        baseBranch: "main",
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      visibilityState.beginUnpublishedSession(sessionId: "stable-hidden");
+      plugin.sessions = [_session(worktree, id: "backend-hidden", created: 10, updated: 20)];
+
+      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+
+      expect(plugin.receivedKnownDirectories, contains(project));
+      expect(plugin.receivedKnownDirectories, isNot(contains(worktree)));
+      expect(observation!.evidence, isEmpty);
     });
 
     test("derived activity uses the stored native project identity for the same directory", () async {

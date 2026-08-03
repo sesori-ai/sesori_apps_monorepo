@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/foundation/session_visibility_state.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -27,6 +28,7 @@ void main() {
     late _FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late SessionRepository repository;
+    late SessionVisibilityState visibilityState;
     late SessionOperationDispatcher operationDispatcher;
     late SessionMutationDispatcher mutationDispatcher;
     late SessionCreationService service;
@@ -47,12 +49,14 @@ void main() {
           plugin: plugin,
         ),
       );
+      visibilityState = SessionVisibilityState();
       repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        visibilityState: visibilityState,
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       mutationDispatcher = SessionMutationDispatcher(
@@ -275,6 +279,62 @@ void main() {
       expect((await repository.getCatalogSession(sessionId: stored.sessionId))?.id, stored.sessionId);
       expect(commits, hasLength(1));
     });
+
+    test("holds same-plugin catalog writes through initial command and metadata title", () async {
+      metadataService.result = const bridge_metadata.SessionMetadata(
+        title: "Generated title",
+        branchName: "generated-title",
+        worktreeName: "generated-title",
+      );
+      final commandStarted = Completer<void>();
+      final releaseCommand = Completer<void>();
+      final renameStarted = Completer<void>();
+      final releaseRename = Completer<void>();
+      plugin
+        ..commandStarted = commandStarted
+        ..releaseCommand = releaseCommand.future
+        ..renameStarted = renameStarted
+        ..releaseRename = releaseRename.future;
+
+      final creation = service.createSession(
+        request: _request(text: "private prompt", command: "review"),
+      );
+      await commandStarted.future;
+      final root = await db.sessionDao.getSessionByBinding(
+        pluginId: plugin.id,
+        backendSessionId: "backend-session",
+      );
+      final descendantWrite = visibilityState.withCatalogWrite(
+        pluginId: plugin.id,
+        body: () => db.sessionDao.insertObservedChild(
+          sessionId: "stable-child",
+          backendSessionId: "backend-child",
+          projectId: "/repo",
+          parentSessionId: root!.sessionId,
+          directory: "/repo",
+          catalogTitle: "Child",
+          archivedAt: null,
+          createdAt: 1,
+          updatedAt: 1,
+          projectionUpdatedAt: 1,
+          pluginId: plugin.id,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final wroteDuringCommand = await db.sessionDao.getSession(sessionId: "stable-child") != null;
+
+      releaseCommand.complete();
+      await renameStarted.future;
+      await Future<void>.delayed(Duration.zero);
+      final wroteBeforeRenameFinished = await db.sessionDao.getSession(sessionId: "stable-child") != null;
+      releaseRename.complete();
+      final created = await creation;
+      await descendantWrite;
+
+      expect(wroteDuringCommand, isFalse);
+      expect(wroteBeforeRenameFinished, isFalse);
+      expect((await db.sessionDao.getSession(sessionId: "stable-child"))?.parentSessionId, created.id);
+    });
   });
 }
 
@@ -293,6 +353,7 @@ CreateSessionRequest _request({required String text, required String? command}) 
 
 class _FakeMetadataService extends MetadataService {
   int generateCalls = 0;
+  bridge_metadata.SessionMetadata? result;
 
   _FakeMetadataService()
     : super(
@@ -304,7 +365,7 @@ class _FakeMetadataService extends MetadataService {
   @override
   Future<bridge_metadata.SessionMetadata?> generate({required String firstMessage}) async {
     generateCalls++;
-    return null;
+    return result;
   }
 }
 
@@ -348,6 +409,8 @@ class _FakePlugin implements NativeProjectsPluginApi {
   Completer<void>? commandStarted;
   Future<void>? releaseCommand;
   Object? commandError;
+  Completer<void>? renameStarted;
+  Future<void>? releaseRename;
 
   @override
   String get id => "fake";
@@ -392,6 +455,20 @@ class _FakePlugin implements NativeProjectsPluginApi {
     if (commandStarted case final started? when !started.isCompleted) started.complete();
     if (releaseCommand case final release?) await release;
     if (commandError case final error?) throw error;
+  }
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    if (renameStarted case final started? when !started.isCompleted) started.complete();
+    if (releaseRename case final release?) await release;
+    return PluginSession(
+      id: sessionId,
+      projectID: "/repo",
+      directory: "/repo",
+      parentID: null,
+      title: title,
+      time: null,
+    );
   }
 
   @override

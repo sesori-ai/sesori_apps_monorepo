@@ -66,6 +66,7 @@ ProjectActivityRepository singlePluginProjectActivityRepository({
   required BridgePluginApi plugin,
   required ProjectsDao projectsDao,
   required SessionDao sessionDao,
+  SessionVisibilityState? visibilityState,
 }) {
   return ProjectActivityRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
@@ -73,6 +74,7 @@ ProjectActivityRepository singlePluginProjectActivityRepository({
     sessionDao: sessionDao,
     projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
     aggregateSourceDeadline: const Duration(seconds: 5),
+    visibilityState: visibilityState ?? SessionVisibilityState(),
   );
 }
 

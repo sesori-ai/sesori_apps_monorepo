@@ -716,9 +716,10 @@ void main() {
       expect(repository.captureCalls.single.discoveryMode, PluginSessionOptionsDiscoveryMode.refresh);
 
       repository.captureCalls.clear();
-      await service.refreshActiveOnly(pluginId: "plugin-1", projectId: "project-1", generation: 7);
+      await service.refreshCurrentActiveOnly(pluginId: "plugin-1", projectId: "project-1");
       expect(repository.captureCalls.single.activation, SessionOptionsCaptureActivation.activeOnly);
       expect(repository.captureCalls.single.discoveryMode, PluginSessionOptionsDiscoveryMode.reuse);
+      expect(repository.captureCalls.single.expectedGeneration, isNull);
     });
 
     test("backend-session refresh resolves the stable binding before capturing", () async {

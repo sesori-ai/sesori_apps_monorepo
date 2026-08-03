@@ -270,6 +270,12 @@ class _FakeSessionOptionsService implements SessionOptionsService {
   }) async => const SessionOptionsAutomaticNoOp();
 
   @override
+  Future<SessionOptionsOutcome> refreshCurrentActiveOnly({
+    required String pluginId,
+    required String projectId,
+  }) async => const SessionOptionsAutomaticNoOp();
+
+  @override
   Future<SessionOptionsOutcome> refreshActiveOnlyForBackendSession({
     required String pluginId,
     required String backendSessionId,

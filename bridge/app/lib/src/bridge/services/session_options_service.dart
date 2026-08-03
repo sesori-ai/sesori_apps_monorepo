@@ -175,17 +175,40 @@ class SessionOptionsService {
     if (!_repository.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
       return const SessionOptionsAutomaticNoOp();
     }
+    return _refreshActiveProject(
+      pluginId: pluginId,
+      projectId: projectId,
+      expectedGeneration: generation,
+    );
+  }
+
+  Future<SessionOptionsOutcome> refreshCurrentActiveOnly({
+    required String pluginId,
+    required String projectId,
+  }) {
+    return _refreshActiveProject(
+      pluginId: pluginId,
+      projectId: projectId,
+      expectedGeneration: null,
+    );
+  }
+
+  Future<SessionOptionsOutcome> _refreshActiveProject({
+    required String pluginId,
+    required String projectId,
+    required int? expectedGeneration,
+  }) async {
     final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
     if (resolved == null) return const SessionOptionsProjectNotFound();
     return _coalesce(
       key: resolved.key,
       intent: _RefreshIntent.reuse,
-      generation: generation,
+      generation: expectedGeneration,
       operation: () => _refresh(
         resolved: resolved,
         activation: SessionOptionsCaptureActivation.activeOnly,
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
-        expectedGeneration: generation,
+        expectedGeneration: expectedGeneration,
         automatic: true,
       ),
     );

@@ -355,6 +355,7 @@ class Orchestrator {
         sessionDao: _database.sessionDao,
         projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
         aggregateSourceDeadline: aggregateSourceDeadline,
+        visibilityState: sessionVisibilityState,
       ),
       now: () => DateTime.now().millisecondsSinceEpoch,
     );

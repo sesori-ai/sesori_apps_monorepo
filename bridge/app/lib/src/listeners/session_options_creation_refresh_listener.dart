@@ -47,10 +47,9 @@ class SessionOptionsCreationRefreshListener {
 
   Future<void> _refresh({required SessionBindingsCommitted commit}) async {
     try {
-      final outcome = await _service.refreshActiveOnly(
+      final outcome = await _service.refreshCurrentActiveOnly(
         pluginId: commit.pluginId,
         projectId: commit.projectId,
-        generation: commit.generation,
       );
       switch (outcome) {
         case SessionOptionsAvailable() ||

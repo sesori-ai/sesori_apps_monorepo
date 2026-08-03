@@ -31,4 +31,20 @@ void main() {
     expect(committed, isTrue);
     state.releaseSessionCreation(reservation: creation);
   });
+
+  test("creation release is idempotent", () async {
+    final state = SessionVisibilityState();
+    final released = state.reserveSessionCreation(pluginId: "plugin");
+    state.releaseSessionCreation(reservation: released);
+    state.releaseSessionCreation(reservation: released);
+    final active = state.reserveSessionCreation(pluginId: "plugin");
+    var writeEntered = false;
+    final write = state.withCatalogWrite(pluginId: "plugin", body: () async => writeEntered = true);
+
+    await Future<void>.delayed(Duration.zero);
+    expect(writeEntered, isFalse);
+    state.releaseSessionCreation(reservation: active);
+    await write;
+    expect(writeEntered, isTrue);
+  });
 }

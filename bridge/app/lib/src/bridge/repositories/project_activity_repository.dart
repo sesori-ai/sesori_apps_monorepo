@@ -6,6 +6,7 @@ import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart" show SessionDao;
 import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../../repositories/project_catalog_identity_calculator.dart";
+import "../foundation/session_visibility_state.dart";
 import "../runtime/plugin_runtime.dart";
 import "models/project_activity_evidence.dart";
 
@@ -23,17 +24,20 @@ class ProjectActivityRepository {
     required SessionDao sessionDao,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
     required Duration aggregateSourceDeadline,
+    required SessionVisibilityState visibilityState,
   }) : _runtime = runtime,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
-       _aggregateSourceDeadline = aggregateSourceDeadline;
+       _aggregateSourceDeadline = aggregateSourceDeadline,
+       _visibilityState = visibilityState;
 
   final PluginRuntime _runtime;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
   final Duration _aggregateSourceDeadline;
+  final SessionVisibilityState _visibilityState;
 
   Set<String> get operationalPluginIds => _runtime.activePluginIds;
 
@@ -91,18 +95,26 @@ class ProjectActivityRepository {
           _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
           _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
         ).wait;
+        final publishedSessionProjectPaths = [
+          for (final row in sessionProjectPaths)
+            if (_visibilityState.isPublished(sessionId: row.sessionId)) row,
+        ];
+        final unpublishedBackendSessionIds = {
+          for (final row in sessionProjectPaths)
+            if (!_visibilityState.isPublished(sessionId: row.sessionId)) row.backendSessionId,
+        };
         final sessions = await plugin.listAllSessions(
           knownDirectories: {
             for (final stored in storedProjects) stored.path,
-            for (final row in sessionProjectPaths) ?row.worktreePath,
+            for (final row in publishedSessionProjectPaths) ?row.worktreePath,
           },
         );
         final pathBySessionId = {
-          for (final row in sessionProjectPaths) row.backendSessionId: row.projectPath,
+          for (final row in publishedSessionProjectPaths) row.backendSessionId: row.projectPath,
         };
         final grouped = <String, List<PluginSessionTime>>{};
         for (final session in sessions) {
-          if (tombstoned.contains(session.id)) continue;
+          if (tombstoned.contains(session.id) || unpublishedBackendSessionIds.contains(session.id)) continue;
           final time = session.time;
           if (time == null) continue;
           final projectPath = pathBySessionId[session.id] ?? session.directory;

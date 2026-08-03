@@ -91,7 +91,12 @@ class CatalogImportRepository {
                   generation: ready.generation,
                   operation: _CatalogOperation.importCatalog,
                 );
-                result = await _publishCatalog(observation: ready, control: control);
+                final publication = await _publishCatalog(observation: ready, control: control);
+                if (publication == null) {
+                  yield CatalogImportProgress.cancelled(pluginId: pluginId);
+                } else {
+                  result = publication;
+                }
               }
             } finally {
               if (!publicationFinished.isCompleted) publicationFinished.complete();
@@ -321,7 +326,7 @@ class CatalogImportRepository {
     await publicationFinished;
   }
 
-  Future<_CatalogPublication> _publishCatalog({
+  Future<_CatalogPublication?> _publishCatalog({
     required _CatalogImportObservation observation,
     required CatalogImportControl control,
   }) async {
@@ -476,7 +481,10 @@ class CatalogImportRepository {
     );
     return _visibilityState.withCatalogWrite(
       pluginId: pluginId,
-      body: commit,
+      body: () async {
+        if (control.cancellationRequested) return null;
+        return commit();
+      },
     );
   }
 
