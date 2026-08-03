@@ -8,9 +8,10 @@
 - **Series state:** Steps 1–6 merged; Step 6/10
   [#703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) merged as
   `e4605eb1`
-- **Current step:** Step 7/10 implementation on `plan-parallel-requests`
+- **Current step:** Step 7/10 PR
+  [#716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) open
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** commit, open, review, and merge Step 7
+- **Next action:** review and merge Step 7; Step 8 remains blocked until then
 
 ## Incident Evidence
 
@@ -93,7 +94,7 @@
 | [x] | 4/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): bind relay connection epochs [step 4/10]` | 550–950 | [PR #699](https://github.com/sesori-ai/sesori_apps_monorepo/pull/699) merged as `9ac855a3` with 1,326 changed lines |
 | [x] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged as `5ba0d3a6` with 1,534 changed lines |
 | [x] | 6/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | [PR #703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) merged as `e4605eb1` with 1,054 changed lines |
-| [ ] | 7/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | 600–1,100 | Implemented from `e4605eb1`; PR pending |
+| [ ] | 7/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): gate new session visibility [step 7/10]` | 600–1,100 | [PR #716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) open from `e4605eb1` |
 | [ ] | 8/10 | `relay-request-concurrency-project-mutations` | `🚧 [relay-request-concurrency] refactor(bridge): order project path mutations [step 8/10]` | 650–1,100 | Blocked on Step 7 merge |
 | [ ] | 9/10 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | Blocked on Step 8 merge |
 | [ ] | 10/10 | `relay-request-concurrency-retire-plan` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | 50–150 | Blocked on Step 9 merge |
@@ -397,6 +398,8 @@
   directly; per policy, the corrected implementation was not re-reviewed.
 - **Step 7/10 verification:** 2,416 full `bridge/app` tests pass, affected suites
   pass, strict `dart analyze --fatal-infos` reports no issues, and
-  `git diff --check` passes. The 1,537 changed lines exceed the soft cap by 37;
+  `git diff --check` passes. The 1,540 changed lines exceed the soft cap by 40;
   one atomic invariant spans creation, catalog writers/reads, interactions, unseen
   state, and events, and splitting would expose a bypass between mergeable PRs.
+- **Step 7/10 delivery:** [PR #716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716)
+  is open from `e4605eb1`.
