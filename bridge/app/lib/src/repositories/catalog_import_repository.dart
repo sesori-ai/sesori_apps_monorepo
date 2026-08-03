@@ -338,8 +338,7 @@ class CatalogImportRepository {
       );
     }
 
-    // ignore: prefer_function_declarations_over_variables
-    final Future<_CatalogPublication> Function() commit = () => _runtime.commitCurrentGeneration(
+    Future<_CatalogPublication> commit() => _runtime.commitCurrentGeneration(
       pluginId: pluginId,
       generation: observation.generation,
       operation: _CatalogOperation.importCatalog,

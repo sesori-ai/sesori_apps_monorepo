@@ -398,7 +398,7 @@
   directly; per policy, the corrected implementation was not re-reviewed.
 - **Step 7/10 verification:** 2,416 full `bridge/app` tests pass, affected suites
   pass, strict `dart analyze --fatal-infos` reports no issues, and
-  `git diff --check` passes. The 1,540 changed lines exceed the soft cap by 40;
+  `git diff --check` passes. The 1,539 changed lines exceed the soft cap by 39;
   one atomic invariant spans creation, catalog writers/reads, interactions, unseen
   state, and events, and splitting would expose a bypass between mergeable PRs.
 - **Step 7/10 delivery:** [PR #716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716)
