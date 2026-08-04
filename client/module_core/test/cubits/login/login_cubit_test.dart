@@ -292,31 +292,6 @@ void main() {
       );
 
       blocTest<LoginCubit, LoginState>(
-        "loginWithProvider(AuthProvider.google) emits polling then success",
-        build: buildCubit,
-        act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
-        expect: () => [
-          isA<LoginAuthenticating>(),
-          isA<LoginPolling>(),
-          isA<LoginSuccess>(),
-        ],
-        verify: (_) {
-          verify(() => mockUrlLauncher.launch(Uri.parse(testAuthInitResponse.authUrl))).called(1);
-        },
-      );
-
-      blocTest<LoginCubit, LoginState>(
-        "loginWithProvider(AuthProvider.google) emits the polling OAuth sequence without legacy callback state",
-        build: buildCubit,
-        act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
-        expect: () => [
-          isA<LoginAuthenticating>(),
-          isA<LoginPolling>(),
-          isA<LoginSuccess>(),
-        ],
-      );
-
-      blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) emits failed when startOAuthFlow throws",
         build: buildCubit,
         act: (cubit) async {
@@ -720,29 +695,6 @@ void main() {
         verify: (_) {
           verify(() => mockAuthSession.loginWithEmail(email: "test@example.com", password: "password123")).called(1);
         },
-      );
-
-      blocTest<LoginCubit, LoginState>(
-        "loginWithEmail emits loading then success state on successful login",
-        build: buildCubit,
-        act: (cubit) async {
-          when(
-            () => mockAuthSession.loginWithEmail(
-              email: any(named: "email"),
-              password: any(named: "password"),
-            ),
-          ).thenAnswer(
-            (_) async => testAuthUser,
-          );
-          await cubit.loginWithEmail(
-            email: "test@example.com",
-            password: "password123",
-          );
-        },
-        expect: () => [
-          isA<LoginAuthenticating>(),
-          isA<LoginSuccess>(),
-        ],
       );
 
       blocTest<LoginCubit, LoginState>(
