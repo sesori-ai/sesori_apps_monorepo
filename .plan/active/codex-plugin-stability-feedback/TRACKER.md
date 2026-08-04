@@ -6,13 +6,13 @@
 - **Implementation base:** `origin/main` at
   `22f65807e525a7c1e7aa68e66cc8d0c9b6a4976d`
 - **Stack root:** `2408b574`
-- **Series state:** Steps 1 through 8 merged; Step 9 is verified locally and
-  remains in stack order
+- **Series state:** Steps 1 through 8 merged; Step 9 PR
+  [#751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) is open
 - **Current step:** Step 9/11
 - **Current branch:** `codex-stability-deep-test-9-mobile-images`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Push and open Step 9
+- **Next action:** Monitor Step 9 PR #751 and begin Step 10 locally
 
 ## Plan Review
 
@@ -52,7 +52,7 @@
 | [x] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 380 actual | [PR #743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743) merged as `4b779cc2` |
 | [x] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 384 actual | [PR #746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746) merged as `4785f4c7` |
 | [x] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,174 actual | [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) merged as `22f65807` |
-| [ ] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 963 actual | Existing `ef2356c4`; verified after Step 8 and current `main` merged forward |
+| [ ] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 965 actual | [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) open; verified after Step 8 and current `main` merged forward |
 | [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 70–140 | Planned after D9; confirmed F-12 fix |
 | [ ] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Blocked on Step 10 merge |
 
@@ -394,9 +394,11 @@ origin/main
   or parameter was added.
 - **Step 9 cleanup:** The hardcoded composer attachment-support helper is
   removed. No database or cache artifact is obsolete.
-- **Step 9 change size:** 963 lines against the PR merge base, including the
+- **Step 9 change size:** 965 lines against the PR merge base, including the
   compatible wire model, bridge/plugin/client flow, tests, report, and tracker.
   This is below the 1,500-line soft cap.
+- **Step 9 delivery:** Pushed and opened as
+  [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751).
 
 ## Findings And Plan Deltas
 
