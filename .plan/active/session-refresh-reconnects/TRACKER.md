@@ -5,8 +5,9 @@
 - **Plan slug:** `session-refresh-reconnects`
 - **Implementation base:** `main` at
   `2408b57487bb7a6048cf61221bc777b9c81ab70c`
-- **Series state:** Step 1/3 in progress
-- **Current step:** publish the assessment plan
+- **Series state:** Step 1/3 PR open
+- **Current step:** plan PR
+  [#725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725)
 - **Next action:** review and merge Step 1, then implement debug diagnostics and
   the unnecessary-detail-refresh correction in Step 2
 - **Searchable diagnostic prefix:** `[session-refresh]`
@@ -64,7 +65,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | In progress |
+| [ ] | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | [PR #725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725) open |
 | [ ] | 2/3 | Owner-provided implementation branch | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 180-330 | Blocked on Step 1 merge |
 | [ ] | 3/3 | Owner-provided assessment branch | `🌱 [session-refresh-reconnects] docs: assess session refresh evidence [step 3/3]` | 80-200 | Blocked on Step 2 observation evidence |
 
@@ -78,7 +79,7 @@
 - [x] Define evidence fields and decision rules for recurrence.
 - [x] Run `aristotle-plan-review` and apply valid findings directly.
 - [x] Run `git diff --check` and plan consistency validation.
-- [ ] Commit, push, open the Step 1 PR, and record its URL/base/change count.
+- [x] Commit, push, open the Step 1 PR, and record its URL/base/change count.
 
 ## Step 2 Checklist
 
@@ -139,8 +140,9 @@ tokens.
 - **Step 1 documentation validation:** `git diff --check` passed; plan/tracker
   slug, exact titles, three-step denominator, line targets, selected options,
   and diagnostic prefix agree
-- **Step 1 changed lines:** 616 documentation-only lines before delivery metadata
-- **Step 1 PR:** pending
+- **Step 1 changed lines:** 619 documentation-only lines including delivery metadata
+- **Step 1 PR:** [#725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725)
+  open from `6a6e8cf9`
 - **Step 2 implementation:** pending
 - **Step 2 verification:** pending
 - **Step 2 review:** pending

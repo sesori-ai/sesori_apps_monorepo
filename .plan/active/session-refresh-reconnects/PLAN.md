@@ -9,6 +9,7 @@
 - **Current implementation base:** `main` at
   `2408b57487bb7a6048cf61221bc777b9c81ab70c`
 - **Current branch:** `opencode-session-reconnects`
+- **Plan PR:** [#725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725)
 - **Delivery:** one plan PR, one selected implementation PR, and one
   evidence-assessment/retirement PR
 
