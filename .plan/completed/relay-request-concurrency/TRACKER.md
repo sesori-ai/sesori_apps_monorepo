@@ -9,7 +9,8 @@
   [#716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) remains closed without merge
 - **Current step:** Step 10/10 retirement
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** open and merge the documentation-only retirement PR
+- **Next action:** merge documentation-only retirement
+  [PR #736](https://github.com/sesori-ai/sesori_apps_monorepo/pull/736)
 
 ## Incident Evidence
 
@@ -103,7 +104,7 @@
 | [x] | 7/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: simplify remaining concurrency plan [step 7/10]` | 350–550 | [PR #720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/720) merged as `6233da3e` with 543 changed lines; PR #716 closed without merge |
 | [x] | 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | 500–900 | [PR #721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721) merged as `1d5816d1` with 709 changed lines |
 | [x] | 9/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | [PR #722](https://github.com/sesori-ai/sesori_apps_monorepo/pull/722) merged as `2fd3423e` with 1,185 changed lines and 11/11 checks passing |
-| [x] | 10/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | 50–150 | Documentation-only retirement prepared from current `main`; PR pending |
+| [x] | 10/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | 50–150 | Documentation-only retirement [PR #736](https://github.com/sesori-ai/sesori_apps_monorepo/pull/736) opened from current `main` |
 
 ## Exact PR Titles
 
@@ -470,3 +471,6 @@
 - **Step 10/10 validation:** GitHub merge state, titles, merge SHAs, changed-line
   counts, and checks were cross-checked through Step 9. The active plan directory
   is removed, the completed directory is present, and `git diff --check` passes.
+- **Step 10/10 delivery:** documentation-only retirement
+  [PR #736](https://github.com/sesori-ai/sesori_apps_monorepo/pull/736) opened with
+  the exact fixed title; merge remains the only outstanding action.
