@@ -167,6 +167,29 @@
 
 ## Findings And Plan Deltas
 
+- **2026-08-05 — `always` must filter suggestions, not echo them (from PR #752
+  review):** the plan said `always` echoes the request's own
+  `permission_suggestions`, treating "what the backend suggested" as a safe
+  ceiling. It is not. The SDK's `PermissionUpdate` union includes `setMode`,
+  `addDirectories`, and a `destination` of `userSettings`/`projectSettings`, and
+  the **only** suggestion actually observed for a file write was
+  `{type: setMode, mode: acceptEdits, destination: session}`. A naive echo would
+  turn one "always" tap on a single `Write` into session-wide auto-accept, or
+  write a rule outliving the session. Now decided: echo session-scoped `addRules`
+  only, degrade to a plain allow when nothing qualifies. Success Criterion 3 and
+  `PROTOCOL.md` section 5 are rewritten; Step 9 gains a per-variant test
+  requirement. Credit to cubic, which caught that the normative table contradicted
+  the design note directly beneath it.
+- **2026-08-05 — Launch spec matches the SDK's `=`-joined id flags:** review
+  flagged `--resume`; checking `sdk.mjs` showed `--session-id` is `=`-joined too.
+  Both now match, with a test that fails if either splits back into two tokens.
+- **2026-08-05 — Codegen machinery removed from the scaffold:** the package
+  carried `freezed`, `json_serializable`, `build_runner`, `build.yaml`, and
+  `path` with nothing using them, so `make codegen` ran a generator over zero
+  files. Step 4's decision to hand-write transcript envelopes as well means they
+  may never be needed. Removed; they return in the step that first generates
+  something, and `path` returns in Step 4 where it is actually used.
+
 - **2026-08-04 — Multi-turn residency PROVEN:** PR review challenged the
   assumption that one process serves several turns, noting the CLI docs describe
   stream-json as producing a final result and exiting. Verified directly: two

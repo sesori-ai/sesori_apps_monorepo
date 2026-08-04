@@ -1,6 +1,10 @@
 import "package:claude_plugin/claude_plugin.dart";
 import "package:test/test.dart";
 
+// Real UUIDs: the launch contract rejects anything else.
+const String _newSessionId = "11111111-2222-4333-8444-555555555555";
+const String _oldSessionId = "66666666-7777-4888-8999-aaaaaaaaaaaa";
+
 void main() {
   group("ClaudeLaunchSpec", () {
     ClaudeLaunchSpec specFor(
@@ -19,7 +23,7 @@ void main() {
     }
 
     test("always requests stream-json in print mode with partial messages", () {
-      final arguments = specFor(const ClaudeNewSession(sessionId: "s-1")).arguments;
+      final arguments = specFor(ClaudeNewSession(sessionId: _newSessionId)).arguments;
 
       // `--print` is what makes the stream-json formats legal at all.
       expect(arguments, containsAllInOrder(["-p", "--input-format", "stream-json"]));
@@ -33,8 +37,8 @@ void main() {
       // the CLI silently auto-denies every permission-gated tool instead of
       // asking, and the turn still reports success.
       for (final launch in [
-        const ClaudeNewSession(sessionId: "s-1"),
-        const ClaudeResumedSession(sessionId: "s-1"),
+        ClaudeNewSession(sessionId: _newSessionId),
+        ClaudeResumedSession(sessionId: _oldSessionId),
       ]) {
         expect(
           specFor(launch).arguments,
@@ -45,21 +49,37 @@ void main() {
     });
 
     test("binds a pre-generated id for a new session", () {
-      final arguments = specFor(const ClaudeNewSession(sessionId: "new-session")).arguments;
+      final arguments = specFor(ClaudeNewSession(sessionId: _newSessionId)).arguments;
 
-      expect(arguments, containsAllInOrder(["--session-id", "new-session"]));
-      expect(arguments, isNot(contains("--resume")));
+      // Single-token form, matching the SDK's own argument builder.
+      expect(arguments, contains("--session-id=$_newSessionId"));
+      expect(arguments.where((argument) => argument.startsWith("--resume")), isEmpty);
     });
 
     test("resumes an existing session by id", () {
-      final arguments = specFor(const ClaudeResumedSession(sessionId: "old-session")).arguments;
+      final arguments = specFor(ClaudeResumedSession(sessionId: _oldSessionId)).arguments;
 
-      expect(arguments, containsAllInOrder(["--resume", "old-session"]));
-      expect(arguments, isNot(contains("--session-id")));
+      expect(arguments, contains("--resume=$_oldSessionId"));
+      expect(arguments.where((argument) => argument.startsWith("--session-id")), isEmpty);
+    });
+
+    test("never splits an id flag into two tokens", () {
+      // The SDK writes `--session-id=<id>` and `--resume=<id>`. The CLI accepts
+      // the split form too, so only an explicit assertion keeps them in parity.
+      for (final launch in [
+        ClaudeNewSession(sessionId: _newSessionId),
+        ClaudeResumedSession(sessionId: _oldSessionId),
+      ]) {
+        final arguments = specFor(launch).arguments;
+        expect(arguments, isNot(contains("--session-id")));
+        expect(arguments, isNot(contains("--resume")));
+        expect(arguments, isNot(contains(_newSessionId)));
+        expect(arguments, isNot(contains(_oldSessionId)));
+      }
     });
 
     test("omits optional selections that were not made", () {
-      final arguments = specFor(const ClaudeNewSession(sessionId: "s-1")).arguments;
+      final arguments = specFor(ClaudeNewSession(sessionId: _newSessionId)).arguments;
 
       expect(arguments, isNot(contains("--model")));
       expect(arguments, isNot(contains("--effort")));
@@ -68,7 +88,7 @@ void main() {
 
     test("passes model, effort, and permission mode when selected", () {
       final arguments = specFor(
-        const ClaudeNewSession(sessionId: "s-1"),
+        ClaudeNewSession(sessionId: _newSessionId),
         model: "opus[1m]",
         effort: ClaudeEffortLevel.xhigh,
         permissionMode: ClaudePermissionMode.plan,
@@ -81,7 +101,7 @@ void main() {
 
     test("spells the standard mode the way the command line expects", () {
       final arguments = specFor(
-        const ClaudeNewSession(sessionId: "s-1"),
+        ClaudeNewSession(sessionId: _newSessionId),
         permissionMode: ClaudePermissionMode.standard,
       ).arguments;
 
@@ -92,17 +112,59 @@ void main() {
     });
   });
 
+  group("ClaudeSessionLaunch", () {
+    test("rejects a session id the CLI would refuse", () {
+      // Failing here names the problem; failing at spawn surfaces it as an
+      // opaque CLI startup error on a session the user just tried to open.
+      for (final invalid in ["", "s-1", "not-a-uuid", "11111111-2222-4333-8444-55555555555"]) {
+        expect(
+          () => ClaudeNewSession(sessionId: invalid),
+          throwsA(isA<ArgumentError>()),
+          reason: "$invalid is not a UUID",
+        );
+        expect(() => ClaudeResumedSession(sessionId: invalid), throwsA(isA<ArgumentError>()));
+      }
+    });
+
+    test("accepts a UUID in either case", () {
+      expect(ClaudeNewSession(sessionId: _newSessionId).sessionId, _newSessionId);
+      expect(
+        ClaudeResumedSession(sessionId: _newSessionId.toUpperCase()).sessionId,
+        _newSessionId.toUpperCase(),
+      );
+    });
+  });
+
   group("ClaudePermissionMode", () {
     test("keeps the command line and control spellings apart", () {
       expect(ClaudePermissionMode.standard.cliValue, "manual");
       expect(ClaudePermissionMode.standard.controlValue, "default");
     });
 
-    test("parses either spelling of the same mode", () {
-      expect(ClaudePermissionMode.tryParse("manual"), ClaudePermissionMode.standard);
-      expect(ClaudePermissionMode.tryParse("default"), ClaudePermissionMode.standard);
+    test("parses both spellings of every mode", () {
+      // Table-driven over `values` so a new mode cannot ship untested and a
+      // typo in a wire value fails here rather than at launch.
+      for (final mode in ClaudePermissionMode.values) {
+        expect(ClaudePermissionMode.tryParse(mode.cliValue), mode, reason: "cli spelling of $mode");
+        expect(ClaudePermissionMode.tryParse(mode.controlValue), mode, reason: "control spelling of $mode");
+      }
+    });
+
+    test("gives every mode a distinct pair of wire values", () {
+      // Two modes sharing a spelling would make parsing ambiguous and silently
+      // pick whichever is declared first.
+      expect(
+        ClaudePermissionMode.values.map((mode) => mode.cliValue).toSet(),
+        hasLength(ClaudePermissionMode.values.length),
+      );
+      expect(
+        ClaudePermissionMode.values.map((mode) => mode.controlValue).toSet(),
+        hasLength(ClaudePermissionMode.values.length),
+      );
+    });
+
+    test("tolerates surrounding whitespace", () {
       expect(ClaudePermissionMode.tryParse(" plan "), ClaudePermissionMode.plan);
-      expect(ClaudePermissionMode.tryParse("acceptEdits"), ClaudePermissionMode.acceptEdits);
     });
 
     test("fails soft on a mode this build does not know", () {
