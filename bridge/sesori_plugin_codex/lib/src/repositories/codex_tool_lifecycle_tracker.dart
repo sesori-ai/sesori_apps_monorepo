@@ -6,6 +6,11 @@ import "../codex_app_server_client.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
 import "models/codex_projected_tool.dart";
 
+final RegExp _executorOutputBoundaryPattern = RegExp(
+  r"(?:^|\r?\n)(?:Final )?Output:\r?\n",
+  caseSensitive: false,
+);
+
 /// Reduces Codex's rollout and app-server evidence into canonical tool state.
 ///
 /// Codex persists a `call_*` rollout id but emits a separate `exec-*`
@@ -137,8 +142,7 @@ class CodexToolLifecycleTracker {
     if (canonicalId == null) return null;
     final tool = thread.tools[canonicalId];
     if (tool == null || !tool.isRolloutCall) return null;
-    final isLateCompletion = notification.method == "item/completed" &&
-        (thread.activeTurnId == null || (turnId != null && thread.activeTurnId != turnId));
+    final isLateCompletion = notification.method == "item/completed" && tool.status == PluginToolStatus.error;
 
     tool.title ??= _rolloutToolMapper.logicalCommandTitle(
       item["command"] is String ? item["command"] as String : null,
@@ -164,7 +168,9 @@ class CodexToolLifecycleTracker {
     final snapshot = tool.snapshot();
     if (notification.method == "item/completed") {
       thread.appServerItemAliases.remove(itemId);
-      if (thread.appServerItemAliases.isEmpty && thread.retainedForLateCompletion) {
+      if (thread.appServerItemAliases.isEmpty &&
+          thread.retainedForLateCompletion &&
+          !_hasActiveWork(thread: thread)) {
         _threads.remove(threadId);
       }
     }
@@ -532,7 +538,27 @@ class CodexToolLifecycleTracker {
     if (current.contains(previous)) {
       return _rolloutToolMapper.clipOutput(current);
     }
+    RegExpMatch? outputBoundary;
+    for (final match in _executorOutputBoundaryPattern.allMatches(previous)) {
+      outputBoundary = match;
+    }
+    if (outputBoundary != null) {
+      final previousProcessOutput = previous.substring(outputBoundary.end);
+      if (previousProcessOutput.isNotEmpty && current.startsWith(previousProcessOutput)) {
+        return _mergeOutput(
+          previous: previous,
+          current: current.substring(previousProcessOutput.length),
+        );
+      }
+    }
     return _mergeOutput(previous: previous, current: current);
+  }
+
+  bool _hasActiveWork({required _ThreadToolLifecycle thread}) {
+    return thread.activeTurnId != null ||
+        thread.tools.values.any(
+          (tool) => tool.status == PluginToolStatus.running,
+        );
   }
 
   void _mergeAttachments({

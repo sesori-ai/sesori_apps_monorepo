@@ -1115,7 +1115,7 @@ void main() {
       threadId: "thread-1",
       line: _toolOutput(
         callId: "call-exec",
-        output: "Script running with cell ID 7\nOutput:\n",
+        output: "Script running with cell ID 7\nOutput:\nearly output",
       ),
     );
     final aborted = target
@@ -1134,7 +1134,7 @@ void main() {
         turnId: "turn-1",
         status: "completed",
         exitCode: 0,
-        output: "late command output",
+        output: "early output\nlate command output",
       ),
     );
 
@@ -1143,6 +1143,10 @@ void main() {
     expect(lateCompletion?.canonicalId, "call-exec");
     expect(lateCompletion?.status, PluginToolStatus.error);
     expect(lateCompletion?.output, contains("late command output"));
+    expect(
+      RegExp("early output").allMatches(lateCompletion?.output ?? ""),
+      hasLength(1),
+    );
 
     expect(
       target.observeRolloutLine(
@@ -1177,6 +1181,13 @@ void main() {
       )
       ..observeRolloutLine(
         threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-old",
+          output: "Script running with cell ID 7\nOutput:\nearly output",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
         line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
       )
       ..clearSettledThread(threadId: "thread-1")
@@ -1187,6 +1198,63 @@ void main() {
       ..observeRolloutLine(
         threadId: "thread-1",
         line: _shellCall(callId: "call-new", turnId: "turn-2"),
+      );
+
+    final lateCompletion = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _commandNotification(
+        method: "item/completed",
+        itemId: "exec-old",
+        turnId: null,
+        status: "completed",
+        exitCode: 0,
+        output: "late old output",
+      ),
+    );
+
+    expect(lateCompletion?.output, contains("late old output"));
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-new",
+              turnId: "turn-2",
+            ),
+          )
+          ?.canonicalId,
+      "call-new",
+    );
+  });
+
+  test("late completion preserves externally started turn correlation", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-old", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-old",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
+      )
+      ..clearSettledThread(threadId: "thread-1")
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-external", turnId: "turn-2"),
       )
       ..observeAppServerTool(
         imageGeneration: null,
@@ -1205,12 +1273,12 @@ void main() {
             imageGeneration: null,
             notification: _commandNotification(
               method: "item/started",
-              itemId: "exec-new",
+              itemId: "exec-external",
               turnId: "turn-2",
             ),
           )
           ?.canonicalId,
-      "call-new",
+      "call-external",
     );
   });
 
@@ -1635,7 +1703,7 @@ CodexRolloutLineDto _userMessageEvent({required String message}) {
 CodexServerNotification _commandNotification({
   required String method,
   required String itemId,
-  required String turnId,
+  required String? turnId,
   String? status,
   int? exitCode,
   String? output,
@@ -1644,7 +1712,7 @@ CodexServerNotification _commandNotification({
     method: method,
     params: {
       "threadId": "thread-1",
-      "turnId": turnId,
+      "turnId": ?turnId,
       "item": {
         "type": "commandExecution",
         "id": itemId,
