@@ -72,13 +72,16 @@ void main() {
       await client.connect();
       addTearDown(client.dispose);
 
+      final disconnected = client.connectionState.firstWhere(
+        (state) => state == ControlChannelConnectionState.disconnected,
+      );
       final first = await server.nextConnection();
       await first.socket.close();
 
       // The client must dial a fresh connection (still presenting the secret).
       final second = await server.nextConnection();
       expect(second.authorizationHeader, equals("Bearer x"));
-      await _waitFor(() => states.contains(ControlChannelConnectionState.disconnected));
+      await disconnected.timeout(const Duration(seconds: 5));
     });
 
     test("connect throws when the server never completes the handshake", () async {
@@ -112,19 +115,6 @@ void main() {
       expect(client.connectionState, emitsDone);
     });
   });
-}
-
-Future<void> _waitFor(
-  bool Function() condition, {
-  Duration timeout = const Duration(seconds: 5),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (!condition()) {
-    if (DateTime.now().isAfter(deadline)) {
-      fail("Timed out waiting for condition");
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-  }
 }
 
 class _FakeControlConnection {

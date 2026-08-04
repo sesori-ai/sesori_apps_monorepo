@@ -44,11 +44,19 @@ void main() {
       addTearDown(server.close);
 
       final currentToken = _makeJwtFromNow(60);
+      // The on-disk token store is slow to load. getAccessToken must return
+      // the cached token without waiting on it — the load stays gated, so any
+      // await on it would time the test out instead of racing a fixed delay.
+      final loadInvoked = Completer<void>();
+      final loadGate = Completer<void>();
       final manager = TokenManager(
         initialToken: currentToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
-          await Future<void>.delayed(const Duration(milliseconds: 120));
+          if (!loadInvoked.isCompleted) {
+            loadInvoked.complete();
+          }
+          await loadGate.future;
           return TokenData(
             accessToken: "old-access",
             refreshToken: "refresh-token",
@@ -62,13 +70,14 @@ void main() {
         },
       );
 
-      final start = DateTime.now();
-      final token = await manager.getAccessToken();
-      final elapsed = DateTime.now().difference(start);
+      final token = await manager.getAccessToken().timeout(const Duration(seconds: 2));
 
       expect(token, currentToken);
-      expect(elapsed, lessThan(const Duration(milliseconds: 120)));
+      await loadInvoked.future.timeout(const Duration(seconds: 2));
+      expect(loadGate.isCompleted, isFalse, reason: "getAccessToken must not wait on the slow load");
 
+      // Release the slow load so the background refresh can finish.
+      loadGate.complete();
       await refreshStarted.future.timeout(const Duration(seconds: 2));
       await refreshCompleted.future.timeout(const Duration(seconds: 2));
       expect(server.requestCount, 1);
