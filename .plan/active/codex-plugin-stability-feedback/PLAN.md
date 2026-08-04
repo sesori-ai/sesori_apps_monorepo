@@ -397,7 +397,7 @@ already merged before this durable plan existed.
 
 | Step | Branch | Exact PR title | Existing/target size | Primary finding |
 |---|---|---|---:|---|
-| 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,086 total | F-07 |
+| 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 total | F-07 |
 | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 73 | F-02 |
 | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | F-07 |
 | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | F-08 |
@@ -609,6 +609,11 @@ already merged before this durable plan existed.
   successor; never rebase.
 - **False wrapper suppression:** Exact bounded structural checks remain local to
   known generated forms. Mixed-purpose code remains visible.
+- **Accepted wrapper-language boundary:** The scanner balances the observed
+  invocation through strings/comments and rejects visible nested `tools.*`
+  calls. It intentionally does not tokenize JavaScript regex literals, template
+  interpolation expressions, or complete brace/bracket grammar without an
+  observed Codex fixture. The owner accepted this bounded risk on 2026-08-04.
 - **Identity leaks or over-correlation:** Correlation remains per thread/turn and
   exact wrapper type, with authoritative completion cleanup.
 - **False replay terminalization:** Only service-owned authoritative activity

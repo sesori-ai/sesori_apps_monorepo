@@ -46,7 +46,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,086 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) open; verified; D1 merged current `origin/main` forward at `636546f6` |
+| [ ] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) open; verified; D1 merged current `origin/main` forward at `636546f6` |
 | [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 73 | Existing `58585e1f`; blocked on Step 1 merge-forward |
 | [ ] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | Existing `36ee48e9`; blocked on Step 2 |
 | [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | Existing `a32b6c29`; blocked on Step 3 |
@@ -167,7 +167,12 @@ origin/main
   without treating call-like prompt text as code. All seven code regressions
   failed before the mapper hardening. All 29 focused tests, fatal analysis, and
   `git diff --check` pass afterward.
-- **Step 1 change size:** 1,086 lines against `origin/main`: 828 plan/tracker
+- **Step 1 accepted review risk:** Four subsequent bot threads requested broader
+  JavaScript regex/template/delimiter parsing for unobserved generated wrappers.
+  The owner accepted the bounded risk on 2026-08-04 rather than growing this
+  localized classifier into a partial JavaScript tokenizer. Every thread has a
+  rationale reply and remains open for human closure.
+- **Step 1 change size:** 1,100 lines against the PR merge base: 842 plan/tracker
   additions plus 250 production/test additions and 8 deletions. This is below the
   1,500-line soft cap.
 - **Step 1 delivery:** Plan/tracker committed as `d3ec1923`, pushed, and opened
@@ -186,3 +191,7 @@ origin/main
 - **2026-08-04 — Finding traceability:** Because historical findings do not map
   one-to-one to the remaining branches, the plan keeps an independent F-01
   through F-12 acceptance ledger alongside the PR delivery sequence.
+- **2026-08-04 — Wrapper parser boundary:** The owner accepted bounded behavior
+  for unobserved regex-literal, template-interpolation, and malformed-delimiter
+  wrapper shapes; no broader JavaScript tokenizer is planned without new runtime
+  evidence.
