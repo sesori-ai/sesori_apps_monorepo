@@ -23,7 +23,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 900-1,100 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) open; 997 changed lines |
-| [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 900-1,100 | PR open; 987 changed lines |
+| [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 900-1,100 | [PR #739](https://github.com/sesori-ai/sesori_apps_monorepo/pull/739) open; 1,089 changed lines |
 | [ ] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 | Not started |
 | [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 | Not started |
 | [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | Not started |
@@ -106,7 +106,7 @@
   Makefile, and CI plumbing, and added the verified launch contract
   (`ClaudeLaunchSpec`, `ClaudePermissionMode`, `ClaudeEffortLevel`).
   `dart pub get` at `bridge/`, `dart analyze --fatal-infos`, all 12 package
-  tests, and `git diff --cached --check` pass. The 987 changed-line diff against
+  tests, and `git diff --cached --check` pass. The 1,089 changed-line diff against
   its Step 1 base is within the corrected 900-1,100 estimate and below the
   1,500-line soft cap.
 
