@@ -23,6 +23,7 @@ class CodexToolLifecycleTracker {
 
   final CodexRolloutToolMapper _rolloutToolMapper;
   final Map<String, _ThreadToolLifecycle> _threads = {};
+  final Map<String, Map<String, _TrackedTool>> _retainedCommandsByThread = {};
 
   /// Applies one typed rollout record and returns complete canonical upserts.
   List<CodexProjectedTool> observeRolloutLine({
@@ -98,6 +99,22 @@ class CodexToolLifecycleTracker {
       return tool.snapshot();
     }
 
+    if (item["type"] == "commandExecution" && notification.method == "item/completed") {
+      final retainedCommands = _retainedCommandsByThread[threadId];
+      final retainedTool = retainedCommands?.remove(itemId);
+      if (retainedTool != null) {
+        if (retainedCommands!.isEmpty) {
+          _retainedCommandsByThread.remove(threadId);
+        }
+        return _applyAppServerCommand(
+          tool: retainedTool,
+          item: item,
+          completed: true,
+          mergeLateOutput: true,
+        );
+      }
+    }
+
     final thread = _threads[threadId];
     if (thread == null) return null;
 
@@ -143,36 +160,14 @@ class CodexToolLifecycleTracker {
     final tool = thread.tools[canonicalId];
     if (tool == null || !tool.isRolloutCall) return null;
     final isLateCompletion = notification.method == "item/completed" && tool.status == PluginToolStatus.error;
-
-    tool.title ??= _rolloutToolMapper.logicalCommandTitle(
-      item["command"] is String ? item["command"] as String : null,
+    final snapshot = _applyAppServerCommand(
+      tool: tool,
+      item: item,
+      completed: notification.method == "item/completed",
+      mergeLateOutput: isLateCompletion,
     );
-    if (item["aggregatedOutput"] case final String output) {
-      final clippedOutput = _rolloutToolMapper.clipOutput(output);
-      tool.appServerOutput = clippedOutput;
-      if (isLateCompletion && clippedOutput != null && clippedOutput.isNotEmpty) {
-        tool.rolloutOutput = _mergeLateOutput(
-          previous: tool.rolloutOutput,
-          current: clippedOutput,
-        );
-      }
-    }
-    final exitCode = item["exitCode"];
-    final status = exitCode is num && exitCode.toInt() != 0
-        ? PluginToolStatus.error
-        : _appServerStatus(
-            raw: item["status"],
-            completed: notification.method == "item/completed",
-          );
-    tool.status = _mergeStatus(previous: tool.status, current: status);
-    final snapshot = tool.snapshot();
     if (notification.method == "item/completed") {
       thread.appServerItemAliases.remove(itemId);
-      if (thread.appServerItemAliases.isEmpty &&
-          thread.retainedForLateCompletion &&
-          !_hasActiveWork(thread: thread)) {
-        _threads.remove(threadId);
-      }
     }
     return snapshot;
   }
@@ -201,20 +196,54 @@ class CodexToolLifecycleTracker {
 
   void clearThread({required String threadId}) {
     _threads.remove(threadId);
+    _retainedCommandsByThread.remove(threadId);
   }
 
-  /// Discards terminal state unless a started app-server item can still finish.
-  void clearSettledThread({required String threadId}) {
-    final thread = _threads[threadId];
-    if (thread == null || thread.appServerItemAliases.isEmpty) {
-      _threads.remove(threadId);
-    } else {
-      thread.retainedForLateCompletion = true;
+  /// Settles terminal tools and discards state unless a started item can finish.
+  List<CodexProjectedTool> observeTerminalNotification({
+    required CodexServerNotification notification,
+  }) {
+    final threadId = _usefulText(value: notification.params["threadId"]);
+    if (threadId == null) return const [];
+    final terminalStatus = switch (notification.method) {
+      "turn/completed" => PluginToolStatus.completed,
+      "error" || "thread/closed" || "thread/status/changed" => PluginToolStatus.error,
+      _ => throw ArgumentError.value(
+        notification.method,
+        "notification.method",
+        "Expected a terminal app-server notification",
+      ),
+    };
+    final thread = _threads.remove(threadId);
+    final updates = <CodexProjectedTool>[];
+    if (thread != null) {
+      for (final tool in thread.tools.values) {
+        if (!tool.isRolloutCall || tool.status != PluginToolStatus.running) {
+          continue;
+        }
+        tool.status = terminalStatus;
+        updates.add(tool.snapshot());
+      }
+      if (thread.appServerItemAliases.isNotEmpty) {
+        final retainedCommands = _retainedCommandsByThread.putIfAbsent(
+          threadId,
+          () => {},
+        );
+        for (final MapEntry(key: itemId, value: canonicalId) in thread.appServerItemAliases.entries) {
+          final tool = thread.tools[canonicalId];
+          if (tool != null) retainedCommands[itemId] = tool;
+        }
+        if (retainedCommands.isEmpty) {
+          _retainedCommandsByThread.remove(threadId);
+        }
+      }
     }
+    return updates;
   }
 
   void clear() {
     _threads.clear();
+    _retainedCommandsByThread.clear();
   }
 
   List<CodexProjectedTool> _observeRolloutPayload({
@@ -414,9 +443,7 @@ class CodexToolLifecycleTracker {
     required String turnId,
   }) {
     final updates = _advanceChronologySegment(thread: thread);
-    thread
-      ..activeTurnId = _usefulText(value: turnId)
-      ..retainedForLateCompletion = false;
+    thread.activeTurnId = _usefulText(value: turnId);
     return updates;
   }
 
@@ -496,6 +523,37 @@ class CodexToolLifecycleTracker {
     };
   }
 
+  CodexProjectedTool _applyAppServerCommand({
+    required _TrackedTool tool,
+    required Map<Object?, Object?> item,
+    required bool completed,
+    required bool mergeLateOutput,
+  }) {
+    final command = item["command"];
+    tool.title ??= _rolloutToolMapper.logicalCommandTitle(
+      command is String ? command : null,
+    );
+    if (item["aggregatedOutput"] case final String output) {
+      final clippedOutput = _rolloutToolMapper.clipOutput(output);
+      tool.appServerOutput = clippedOutput;
+      if (mergeLateOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
+        tool.rolloutOutput = _mergeLateOutput(
+          previous: tool.rolloutOutput,
+          current: clippedOutput,
+        );
+      }
+    }
+    final exitCode = item["exitCode"];
+    final status = exitCode is num && exitCode.toInt() != 0
+        ? PluginToolStatus.error
+        : _appServerStatus(
+            raw: item["status"],
+            completed: completed,
+          );
+    tool.status = _mergeStatus(previous: tool.status, current: status);
+    return tool.snapshot();
+  }
+
   PluginToolStatus _mergeStatus({
     required PluginToolStatus previous,
     required PluginToolStatus current,
@@ -551,15 +609,6 @@ class CodexToolLifecycleTracker {
     return _mergeOutput(previous: previous, current: current);
   }
 
-  bool _hasActiveWork({required _ThreadToolLifecycle thread}) {
-    return thread.activeTurnId != null ||
-        thread.pendingShellCallsByTurn.values.any((calls) => calls.isNotEmpty) ||
-        thread.pendingCodeModeShellCallsByTurn.values.any((calls) => calls.isNotEmpty) ||
-        thread.tools.values.any(
-          (tool) => tool.status == PluginToolStatus.running,
-        );
-  }
-
   void _mergeAttachments({
     required List<PluginMessageAttachment> accumulated,
     required Iterable<PluginMessageAttachment> current,
@@ -594,7 +643,6 @@ class _ThreadToolLifecycle {
   final Set<String> durableImageResults = {};
 
   String? activeTurnId;
-  bool retainedForLateCompletion = false;
   int chronologySegment = 0;
 }
 

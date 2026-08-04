@@ -1129,7 +1129,9 @@ void main() {
           line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
         )
         .single;
-    target.clearSettledThread(threadId: "thread-1");
+    target.observeTerminalNotification(
+      notification: _terminalNotification(method: "error"),
+    );
 
     final lateCompletion = target.observeAppServerTool(
       imageGeneration: null,
@@ -1173,6 +1175,44 @@ void main() {
     );
   });
 
+  test("terminal error without rollout abort keeps late completion failed", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-exec", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-1",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeTerminalNotification(
+        notification: _terminalNotification(method: "error"),
+      );
+
+    final lateCompletion = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _commandNotification(
+        method: "item/completed",
+        itemId: "exec-1",
+        turnId: "turn-1",
+        status: "completed",
+        exitCode: 0,
+      ),
+    );
+
+    expect(lateCompletion?.canonicalId, "call-exec");
+    expect(lateCompletion?.status, PluginToolStatus.error);
+  });
+
   test("late completion preserves a newer active turn", () {
     final target = tracker();
     target
@@ -1203,7 +1243,9 @@ void main() {
         threadId: "thread-1",
         line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
       )
-      ..clearSettledThread(threadId: "thread-1")
+      ..observeTerminalNotification(
+        notification: _terminalNotification(method: "error"),
+      )
       ..observeRolloutLine(
         threadId: "thread-1",
         line: _taskEvent(type: "task_started", turnId: "turn-2"),
@@ -1226,6 +1268,16 @@ void main() {
     );
 
     expect(lateCompletion?.output, contains("late old output"));
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-old",
+          output: "stale old output",
+        ),
+      ),
+      isEmpty,
+    );
     expect(
       target
           .observeAppServerTool(
@@ -1264,7 +1316,9 @@ void main() {
         threadId: "thread-1",
         line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
       )
-      ..clearSettledThread(threadId: "thread-1")
+      ..observeTerminalNotification(
+        notification: _terminalNotification(method: "error"),
+      )
       ..observeRolloutLine(
         threadId: "thread-1",
         line: _shellCall(callId: "call-external", turnId: "turn-2"),
@@ -1544,19 +1598,33 @@ void main() {
 
   test("clear removes all lifecycle and alias state", () {
     final target = tracker();
-    target.observeRolloutLine(
-      threadId: "thread-1",
-      line: _shellCall(callId: "call-1", turnId: "turn-1"),
-    );
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-1", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-1",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeTerminalNotification(
+        notification: _terminalNotification(method: "error"),
+      );
     target.clear();
 
     expect(
       target.observeAppServerTool(
         imageGeneration: null,
         notification: _commandNotification(
-          method: "item/started",
+          method: "item/completed",
           itemId: "exec-1",
           turnId: "turn-1",
+          status: "completed",
+          exitCode: 0,
         ),
       ),
       isNull,
@@ -1742,5 +1810,12 @@ CodexServerNotification _commandNotification({
         "aggregatedOutput": ?output,
       },
     },
+  );
+}
+
+CodexServerNotification _terminalNotification({required String method}) {
+  return CodexServerNotification(
+    method: method,
+    params: const {"threadId": "thread-1"},
   );
 }

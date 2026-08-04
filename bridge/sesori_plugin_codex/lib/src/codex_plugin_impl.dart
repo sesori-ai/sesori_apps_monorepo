@@ -341,6 +341,16 @@ class CodexPlugin implements CodexManagedApi {
     if (terminalHistory && threadId != null) {
       await _rolloutTailer.finish(sessionId: threadId);
       if (_isSupersededTurnLifecycleNotification(notification)) return;
+      for (final tool in _toolLifecycleTracker.observeTerminalNotification(
+        notification: notification,
+      )) {
+        _eventMapper
+            .mapProjectedTool(
+              threadId: threadId,
+              tool: tool,
+            )
+            .forEach(_eventBuffer.add);
+      }
     }
     // Keep work state busy until the terminal rollout drain has emitted its
     // final tool updates. Forced runtime teardown waits for this transition
@@ -376,9 +386,6 @@ class CodexPlugin implements CodexManagedApi {
             tool: projectedTool,
           )
           .forEach(_eventBuffer.add);
-    }
-    if (threadId != null && terminalHistory) {
-      _toolLifecycleTracker.clearSettledThread(threadId: threadId);
     }
     if (activityChanged) {
       _eventBuffer.add(const BridgeSseProjectUpdated());

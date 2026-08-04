@@ -1182,6 +1182,15 @@ void main() {
         events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.messageID),
         contains("call-error"),
       );
+      expect(
+        events
+            .whereType<BridgeSseMessagePartUpdated>()
+            .lastWhere((event) => event.part.messageID == "call-error")
+            .part
+            .state
+            ?.status,
+        PluginToolStatus.error,
+      );
     });
 
     test("notification stream is mapped into bridge events", () async {

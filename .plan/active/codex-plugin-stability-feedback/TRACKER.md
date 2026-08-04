@@ -50,7 +50,7 @@
 | [x] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as `149e7914` |
 | [x] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 299 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged as `7b2fa65a` |
 | [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
-| [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 378 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) open; verified; D3 and current `main` merged forward |
+| [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 560 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) open; verified; D3 and current `main` merged forward |
 | [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 214 | Existing `9da8f2e1`; blocked on Step 4 |
 | [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 70 | Existing `8f0f4ece`; blocked on Step 5 |
 | [ ] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 308 | Existing `cdd3a305` + `c4767b04`; blocked on Step 6 |
@@ -228,20 +228,23 @@ origin/main
   `e1f2cc78`, then merged `origin/main` at `5aaf979d` as `9cf73e30`. Existing
   production commit `a32b6c29` remains in its original stack position; no
   rebase, reset, reorder, or cherry-pick occurred.
-- **Step 4 production verification:** All 36 focused lifecycle-tracker tests and
-  all 304 Codex package tests pass. `dart analyze --fatal-infos` reports no
+- **Step 4 production verification:** All 37 focused lifecycle-tracker tests and
+  all 305 Codex package tests pass. `dart analyze --fatal-infos` reports no
   issues. Both branch and working-tree `git diff --check` pass.
-- **Step 4 PR review:** Repeated bot-review rounds hardened two valid lifecycle
-  seams.
-  A terminal-retention marker now evicts settled thread state when the final
-  late alias completes without removing a newer active turn or pending command
-  correlation. Late aggregated output is merged onto the canonical card while
-  avoiding duplicate suffixes; the full package suite caught and prevented one
-  duplicate-output regression. Follow-up regressions cover omitted turn IDs,
-  externally started turns whose `task_started` record was not tailed, pending
-  completed candidates, repeated literal `Output:` text, and executor-envelope
-  output overlap.
-- **Step 4 change size:** 378 lines against the PR merge base,
+- **Step 4 PR review:** Repeated bot-review rounds exposed two valid lifecycle
+  seams but also made the thread-wide cleanup approach increasingly coupled.
+  The owner approved replacing its retention marker and active-work predicate
+  with an isolated per-item retained-command map. Terminal evidence moves only
+  outstanding aliased commands into that map and clears ordinary thread state;
+  each late completion updates and retires only its own canonical command, so a
+  newer turn remains independent. Late output still merges exactly once, and
+  terminal app-server evidence settles commands when rollout terminal evidence
+  is unavailable. The architecture review kept terminal evidence interpretation
+  in the tracker; the plugin only drains, forwards evidence, and emits returned
+  projections. Regressions cover omitted turn IDs, external/newer turns, pending
+  completed candidates, stale late rollout output, repeated literal `Output:`
+  text, and executor-envelope overlap.
+- **Step 4 change size:** 560 lines against the PR merge base,
   including the inherited Step 3 correction, production code, tests, and
   plan/tracker updates. This is below the 1,500-line soft cap.
 - **Step 4 delivery:** Pushed and opened as
@@ -272,3 +275,7 @@ origin/main
   an outer custom wrapper claim the app-server item before its authoritative
   direct rollout call; no ordinary-flow evidence justifies that regression to
   protect a theoretical mixed-form ordering case.
+- **2026-08-04 — Step 4 lifecycle simplification:** After review patches began
+  coupling retained aliases to thread-wide active/pending state, the owner chose
+  a per-item retained-command lifecycle. No retention boolean, activity scan,
+  lock, timeout, or cross-layer registry remains.
