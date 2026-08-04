@@ -397,7 +397,7 @@ already merged before this durable plan existed.
 
 | Step | Branch | Exact PR title | Existing/target size | Primary finding |
 |---|---|---|---:|---|
-| 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 844 total | F-07 |
+| 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 932 total | F-07 |
 | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 73 | F-02 |
 | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | F-07 |
 | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | F-08 |
@@ -535,6 +535,10 @@ already merged before this durable plan existed.
 - **What:** Declare prompt-attachment capability, enable Codex data-image input,
   replace the hardcoded plugin gate, and fail closed when capability provenance
   is unresolved.
+- **Compatibility acceptance:** Keep the dated
+  `COMPATIBILITY 2026-08-04 (v1.8.0)` comment beside `@Default(false)`,
+  documenting older bridge omission and the exact cleanup when those bridge
+  versions become unsupported.
 - **Why:** Codex supports image input, but mobile previously exposed attachment
   selection only through an OpenCode-specific temporary gate.
 - **Risk and test focus:** Older bridges, different-bridge reconnect, queued

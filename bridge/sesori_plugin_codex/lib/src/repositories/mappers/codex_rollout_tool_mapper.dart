@@ -617,7 +617,7 @@ final RegExp _generatedImageInvocationPattern = RegExp(
 );
 
 final RegExp _generatedExecDirectivePattern = RegExp(
-  r"^\s*//\s*@exec:\s*\{[^\r\n]*\}[ \t]*(?:\r?\n|$)",
+  r"^\s*//\s*@exec:\s*(\{[^\r\n]*\})[ \t]*(?:\r?\n|$)",
 );
 
 final RegExp _forwardedGeneratedImageInvocationPattern = RegExp(
@@ -626,12 +626,39 @@ final RegExp _forwardedGeneratedImageInvocationPattern = RegExp(
   r"generatedImage\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*;?\s*$",
 );
 
+final RegExp _callInvocationPattern = RegExp(
+  r"\b([A-Za-z_$][A-Za-z0-9_$.]*)\s*\(",
+);
+
 bool _isGeneratedImageInvocation(String input) {
   final directive = _generatedExecDirectivePattern.firstMatch(input);
+  if (directive != null && !_isValidGeneratedExecDirective(directive: directive)) {
+    return false;
+  }
   final invocation = directive == null ? input : input.substring(directive.end);
-  if (_generatedImageInvocationPattern.hasMatch(invocation)) return true;
+  final calls = _callInvocationPattern.allMatches(invocation).toList(growable: false);
+  if (calls.isEmpty || !calls.first.group(1)!.startsWith("tools.image_gen__")) {
+    return false;
+  }
+  if (calls.length == 1) {
+    return _generatedImageInvocationPattern.hasMatch(invocation);
+  }
+  if (calls.length != 2 || calls[1].group(1) != "generatedImage") {
+    return false;
+  }
   final forwarded = _forwardedGeneratedImageInvocationPattern.firstMatch(
     invocation,
   );
   return forwarded != null && forwarded.group(1) == forwarded.group(2);
+}
+
+bool _isValidGeneratedExecDirective({required RegExpMatch directive}) {
+  final payload = directive.group(1);
+  if (payload == null) return false;
+  try {
+    jsonDecodeMap(payload);
+    return true;
+  } on FormatException {
+    return false;
+  }
 }

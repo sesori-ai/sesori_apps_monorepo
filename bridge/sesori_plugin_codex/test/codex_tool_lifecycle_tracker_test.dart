@@ -218,6 +218,36 @@ void main() {
             "// @exec: {\"yield_time_ms\": 120000}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
       },
     });
+    final malformedDirectedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-malformed-directed-image-wrapper",
+        "name": "exec",
+        "input":
+            "// @exec: {invalid}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
+      },
+    });
+    final mixedDirectedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-mixed-directed-image-wrapper",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); await tools.exec_command({cmd: 'keep visible'});",
+      },
+    });
+    final directedWrapperWithTrailingCode = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-trailing-code",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield-time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); console.log('keep visible');",
+      },
+    });
     final unrelatedForwarding = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -249,6 +279,27 @@ void main() {
         line: directedForwardedWrapper,
       ),
       isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: malformedDirectedWrapper,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: mixedDirectedWrapper,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithTrailingCode,
+      ),
+      hasLength(1),
     );
     expect(
       target.observeRolloutLine(

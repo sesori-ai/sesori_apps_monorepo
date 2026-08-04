@@ -46,7 +46,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 844 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) open; verified; D1 merged current `origin/main` forward at `636546f6` |
+| [ ] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 932 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) open; verified; D1 merged current `origin/main` forward at `636546f6` |
 | [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 73 | Existing `58585e1f`; blocked on Step 1 merge-forward |
 | [ ] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | Existing `36ee48e9`; blocked on Step 2 |
 | [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | Existing `a32b6c29`; blocked on Step 3 |
@@ -158,8 +158,14 @@ origin/main
 - **Step 1 production verification:** All 29 focused lifecycle-tracker tests and
   all 297 Codex package tests pass. `dart analyze --fatal-infos` reports no
   issues. Both branch and staged `git diff --check` pass.
-- **Step 1 change size:** 844 lines against `origin/main`: 815 plan/tracker
-  additions plus 27 production/test additions and 2 deletions. This is below the
+- **Step 1 PR review:** Five bot threads produced three valid corrections. Step
+  9 now explicitly requires its dated transport-compatibility cleanup comment;
+  malformed `@exec` JSON remains visible; and a directed wrapper containing any
+  additional call remains visible. All three code regressions failed before the
+  mapper hardening. All 29 focused tests, fatal analysis, and
+  `git diff --check` pass afterward.
+- **Step 1 change size:** 932 lines against `origin/main`: 825 plan/tracker
+  additions plus 105 production/test additions and 2 deletions. This is below the
   1,500-line soft cap.
 - **Step 1 delivery:** Plan/tracker committed as `d3ec1923`, pushed, and opened
   as [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724).
