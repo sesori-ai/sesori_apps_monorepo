@@ -30,28 +30,6 @@ class SessionDetailLoadService {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
-  Future<SessionCommandCatalogLoadResult> reloadCommands({
-    required String projectId,
-    required String pluginId,
-  }) async {
-    if (_connectionService.currentStatus is! ConnectionConnected) {
-      return const SessionCommandCatalogLoadResult.waitingForConnection();
-    }
-
-    try {
-      final response = await _listCommands(projectId: projectId, pluginId: pluginId);
-      return switch (response) {
-        SuccessResponse(:final data) => SessionCommandCatalogLoadResult.loaded(commands: data.items),
-        ErrorResponse(:final error) => SessionCommandCatalogLoadResult.failed(
-          error: error,
-          stackTrace: null,
-        ),
-      };
-    } on Object catch (error, stackTrace) {
-      return SessionCommandCatalogLoadResult.failed(error: error, stackTrace: stackTrace);
-    }
-  }
-
   Future<SessionDetailLoadResult> _loadSnapshot({
     required String sessionId,
     required String projectId,
@@ -291,39 +269,4 @@ final class SessionDetailLoadResultFailed extends SessionDetailLoadResult {
   final StackTrace? stackTrace;
 
   const SessionDetailLoadResultFailed({required this.error, required this.stackTrace});
-}
-
-sealed class SessionCommandCatalogLoadResult {
-  const SessionCommandCatalogLoadResult();
-
-  const factory SessionCommandCatalogLoadResult.loaded({
-    required List<CommandInfo> commands,
-  }) = SessionCommandCatalogLoadResultLoaded;
-
-  const factory SessionCommandCatalogLoadResult.waitingForConnection() =
-      SessionCommandCatalogLoadResultWaitingForConnection;
-
-  const factory SessionCommandCatalogLoadResult.failed({
-    // ignore: no_slop_linter/prefer_specific_type
-    required Object error,
-    required StackTrace? stackTrace,
-  }) = SessionCommandCatalogLoadResultFailed;
-}
-
-final class SessionCommandCatalogLoadResultLoaded extends SessionCommandCatalogLoadResult {
-  final List<CommandInfo> commands;
-
-  const SessionCommandCatalogLoadResultLoaded({required this.commands});
-}
-
-final class SessionCommandCatalogLoadResultWaitingForConnection extends SessionCommandCatalogLoadResult {
-  const SessionCommandCatalogLoadResultWaitingForConnection();
-}
-
-final class SessionCommandCatalogLoadResultFailed extends SessionCommandCatalogLoadResult {
-  // ignore: no_slop_linter/prefer_specific_type
-  final Object error;
-  final StackTrace? stackTrace;
-
-  const SessionCommandCatalogLoadResultFailed({required this.error, required this.stackTrace});
 }

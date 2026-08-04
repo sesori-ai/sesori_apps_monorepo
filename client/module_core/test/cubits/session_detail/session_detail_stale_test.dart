@@ -348,7 +348,7 @@ void main() {
       expect(loaded.isRefreshing, isFalse);
     });
 
-    test("ordinary send events do not refresh but command execution does", () async {
+    test("sendMessage forwards selectedAgentModel variant to repository", () async {
       when(
         () => mockSessionRepository.sendMessage(
           attachments: const [],
@@ -379,7 +379,6 @@ void main() {
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
-      clearInteractions(mockSessionService);
       cubit.selectVariant(const SessionVariant(id: "low"));
 
       await cubit.sendMessage(
@@ -400,43 +399,6 @@ void main() {
           command: null,
         ),
       ).called(1);
-
-      sessionEvents.add(
-        const SesoriMessageUpdated(
-          info: Message.assistant(
-            id: "msg-live",
-            sessionID: sessionId,
-            agent: "coder",
-            modelID: "claude-3-5-sonnet",
-            providerID: "anthropic",
-            time: null,
-          ),
-        ),
-      );
-      sessionEvents.add(
-        const SesoriMessagePartDelta(
-          sessionID: sessionId,
-          messageID: "msg-live",
-          partID: "part-live",
-          field: "text",
-          delta: "live",
-        ),
-      );
-      await pumpEventQueue();
-
-      verifyNever(() => mockSessionService.getMessages(sessionId: sessionId));
-
-      sessionEvents.add(
-        const SesoriCommandExecuted(
-          name: "compact",
-          sessionID: sessionId,
-          arguments: "",
-          messageID: "msg-live",
-        ),
-      );
-      await pumpEventQueue();
-
-      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
     });
 
     test("delta race: streaming deltas arriving during refresh are preserved", () async {
@@ -687,14 +649,12 @@ void main() {
         expect(logs, contains(contains("SessionDetailCubit._doSilentRefresh")));
         expect(
           logs,
-          containsAll([
-            contains("[session-refresh] action=observed trigger=data_may_be_stale"),
-            contains("[session-refresh] action=started trigger=data_may_be_stale"),
+          contains(
             allOf(
               contains("[session-refresh] action=completed trigger=data_may_be_stale"),
               contains("result=failed"),
             ),
-          ]),
+          ),
         );
         expect(
           logs.where((line) => line.startsWith("[session-refresh]")),

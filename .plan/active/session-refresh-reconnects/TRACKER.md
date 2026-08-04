@@ -4,11 +4,12 @@
 
 - **Plan slug:** `session-refresh-reconnects`
 - **Implementation base:** `main` at
-  `7b2fa65ad1b210dd6a52714e14ce9b5951d0aa68`
-- **Series state:** Step 1/3 merged; Step 2/3 PR open
-- **Current step:** Step 2 implementation PR
+  `5aaf979dd25b645a69964d0211eda5cd92126037`
+- **Series state:** Step 1/3 merged; Step 2/3 logging PR open
+- **Current step:** diagnostic logging PR
   [#734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734)
-- **Next action:** review and merge Step 2, then collect Step 3 observation evidence
+- **Next action:** merge logging-only Step 2, reproduce the refresh in a
+  debug-enabled build, then select any behavioral or maintainability follow-up
 - **Searchable diagnostic prefix:** `[session-refresh]`
 - **External overlap:** PR
   [#722](https://github.com/sesori-ai/sesori_apps_monorepo/pull/722) owns bridge
@@ -37,8 +38,8 @@
 ## Open Questions
 
 - [ ] Which exact trigger caused the originally observed OpenCode detail refresh?
-- [ ] Does the symptom recur after project invalidation stops reloading the full
-  detail snapshot?
+- [ ] Does the reported symptom correlate with the existing full-detail refresh
+  after project invalidation?
 - [ ] Can an intended reconnect, resume, or stale-data refresh still reproduce a
   disappearing finalized part?
 - [ ] Does a post-refresh streaming delta reproduce the known buffer-clear
@@ -50,8 +51,8 @@
 
 | Option | Status | Planned/actual scope | Decision evidence |
 |---|---|---:|---|
-| Debug refresh diagnostics with `[session-refresh]` | Implemented in Step 2 | Included in 846 code/test changed lines before delivery metadata | Every bounded trigger/action/result is searchable without payload data |
-| Redirect `sessions.updated` to command-only refresh | Implemented in Step 2 | Included in 846 code/test changed lines before delivery metadata | Preserves v1.6.0 command discovery without replacing detail state |
+| Debug refresh diagnostics with `[session-refresh]` | Implemented in Step 2 | 322 client changed lines: 201 production and 121 tests | Needed to identify future refresh cause without guessing |
+| Redirect `sessions.updated` to command-only refresh | Deferred | 220-400 prior estimate | Do not add coordination state before logs identify the trigger and maintainable ownership is designed |
 | Transcript-only mutation epoch | Deferred | 145-270 estimated | Do not protect only the observed field before testing intended refreshes |
 | Grouped snapshot reconciliation | Deferred | 440-810 estimated | Preferred client hardening only if intended refresh reproduces state rollback |
 | Apply-live event journal/replay | Rejected | 370-670 estimated | Non-idempotent deltas and modal side effects are unsafe without a cursor |
@@ -65,7 +66,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | [PR #725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725) merged |
-| [ ] | 2/3 | `opencode-session-reconnects` | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 220-400 | [PR #734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734) open |
+| [ ] | 2/3 | `opencode-session-reconnects` | `🌿 [session-refresh-reconnects] chore(client): trace session detail refresh causes [step 2/3]` | 120-250 | [PR #734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734) open |
 | [ ] | 3/3 | Owner-provided assessment branch | `🌱 [session-refresh-reconnects] docs: assess session refresh evidence [step 3/3]` | 80-200 | Blocked on Step 2 observation evidence |
 
 ## Step 1 Checklist
@@ -83,32 +84,28 @@
 ## Step 2 Checklist
 
 - [x] Add a private closed trigger model; do not branch on log strings.
-- [x] Add debug-only `observed`, `ignored`, `redirected`, `queued`, `coalesced`,
+- [x] Add debug-only `observed`, `ignored`, `queued`, `coalesced`,
   `started`, and `completed` diagnostics with the exact `[session-refresh]`
   prefix.
 - [x] Treat a missing causal entry as evidence only in a build configured for
   `LogLevel.debug` or `LogLevel.trace`; add no release-visible causal logging or
   production log-level toggle.
-- [x] Correlate start/completion with a Cubit-local refresh ID and duration.
+- [x] Correlate start/completion through the existing single active refresh and
+  report duration from a local `Stopwatch`.
 - [x] Keep prompt/transcript/code/path/command/raw-error data out of the causal
   diagnostics.
-- [x] Stop matching `sessions.updated` from invoking full snapshot reload.
-- [x] Expose targeted command loading through `SessionDetailLoadService`; the
-  Cubit owns at most one active and one trailing trigger.
-- [x] Preserve staged command only when still available.
-- [x] Preserve existing commands after refresh failure.
+- [x] Preserve every existing refresh trigger, request, queue, and state update.
+- [x] Add no mutable Cubit coordination fields.
 - [x] Preserve original error and stack context in operational silent-refresh
   failure warnings while keeping bounded causal entries debug-only.
-- [x] Retain initial-load event buffering and v1.6.0 bridge compatibility with a
-  dated cleanup comment.
-- [x] Prove normal accepted text sends plus ordinary SSE do not reload.
-- [x] Prove matching project events never fetch or replace transcript state.
-- [x] Prove initial-load command discovery still converges.
-- [x] Prove irrelevant projects, bursts, and failures behave as specified.
+- [x] Prove matching and irrelevant project invalidations log distinct outcomes
+  while retaining the current full-refresh behavior.
 - [x] Prove intended reconnect/resume/stale/command refreshes log their cause and
   retain current behavior.
-- [x] Run targeted tests, strict module analysis, and `git diff --check`.
-- [x] Record actual change count, verification, review, and delivery evidence.
+- [x] Run the full relevant test matrix, strict module analysis, and
+  `git diff --check` after the final scope reduction.
+- [x] Record actual change count, verification, and review evidence; delivery
+  completes after the reduced commit is pushed and CI passes.
 
 ## Observation Log
 
@@ -132,6 +129,32 @@ tokens.
   unreviewed implementation.
 - [ ] Retire this plan or record the reviewed follow-up-plan handoff.
 
+## Maintainability Follow-Up
+
+- PR #734 deliberately adds no mutable `SessionDetailCubit` fields.
+- First low-risk cleanup candidate: replace the five `late final
+  StreamSubscription` fields with one final `CompositeSubscription`, matching
+  `SessionListCubit`, `ProjectListCubit`, and existing module services.
+- Before changing refresh behavior, model refresh scheduling and
+  connection/lifecycle/view-reassertion coordination as separate sealed state
+  machines rather than adding booleans, nullable futures, timers, generations,
+  or flags that permit invalid combinations.
+- Keep that refactor out of the logging PR. Size and review it separately after
+  diagnostic evidence identifies which behavior must be retained or changed.
+
+## Step 2 Scope Correction
+
+- The first implementation of PR #734 combined logging with targeted command
+  refresh, retries, and generation fencing. It added seven mutable Cubit fields
+  and produced eight bot review findings plus a downstream mobile-test failure.
+- The user rejected that direction because the independent mutable fields made
+  valid state combinations impractical to reason about.
+- PR #734 is now logging-only. All targeted command-refresh production code,
+  result types, retries, generation fencing, compatibility logic, and behavior
+  tests were removed before delivery.
+- Existing `sessions.updated` full-refresh behavior remains intentionally
+  unchanged so the diagnostic build can establish whether it causes the report.
+
 ## Plan Review
 
 - **Reviewer:** `aristotle-plan-review`
@@ -141,34 +164,22 @@ tokens.
 - **Findings applied:** none; the reviewer found no architecture, layering,
   compatibility, ownership, cohesion, naming, or proportionality violations
 
-## PR Review Feedback
+## Superseded PR Review Feedback
 
-- **Valid findings applied:** require a debug-enabled observation build before
-  interpreting missing diagnostics; add the bounded `redirected` action;
-  preserve original error/stack context in operational silent-refresh failures;
-  route targeted command loading through `SessionDetailLoadService`; and require
-  one deliberately exercised intended full refresh before retirement.
-- **Duplicate threads:** the redirected-action and Service-boundary findings were
-  each reported independently by two bot reviewers and share one correction.
+- **Retained findings:** require a debug-enabled observation build before
+  interpreting missing diagnostics, preserve original error/stack context in
+  operational silent-refresh failures, and deliberately exercise one intended
+  full refresh before retirement.
+- **Removed findings:** redirected-action, targeted-command Service ownership,
+  retry, generation-fencing, and command-refresh lifecycle findings apply only
+  to the discarded behavior-changing implementation.
 - **Not applied:** the claim that architecture plan review is forbidden for a
   documentation-only plan conflicts with root guidance. This plan defines an
   architecture-bearing client flow and deferred wire boundaries, so
   `aristotle-plan-review` was correctly invoked and approved it.
-
-## Step 2 Architecture Review
-
-- **Reviewer:** `aristotle-impl-review`
-- **Date:** 2026-08-04
-- **Reviewed scope:** Step 2 production changes in `SessionDetailCubit` and
-  `SessionDetailLoadService`
-- **Pass 1 findings applied:** require non-null plugin identity at the Service
-  boundary and retain failed/connection-blocked command invalidations.
-- **Pass 2 finding applied with user approval:** generation-fence targeted
-  command publication against a subsequently applied full command-bearing
-  snapshot.
-- **Final status:** both allowed review passes rejected before their findings
-  were fixed. The user selected the recommended generation fence; all findings
-  are implemented and verified, with no third review under the two-pass cap.
+- **Superseded Step 2 direction:** the later user decision requires diagnostics
+  before any behavior change. Command-only refresh findings remain historical
+  input for a future maintainability plan, not scope for PR #734.
 
 ## Verification Log
 
@@ -178,15 +189,16 @@ tokens.
 - **Step 1 changed lines:** 665 documentation-only lines including delivery metadata
 - **Step 1 PR:** [#725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725)
   merged
-- **Step 2 implementation:** debug refresh traces, targeted command-catalog
-  invalidation, bounded retry/coalescing, and full-snapshot generation fencing
-- **Step 2 scope variance:** 932 total changed lines including tracker metadata
-  (846 code/test) versus 220-400 planned; architecture findings added non-null
-  identity, retained invalidations, bounded retries, and generation fencing
-- **Step 2 verification:** `dart test` passed all 1,008 `module_core` tests;
-  `dart analyze --fatal-infos` and `git diff --check` passed
-- **Step 2 review:** two architecture passes completed; all findings fixed under
-  the user-approved generation-fence decision and two-pass review cap
+- **Step 2 implementation:** logging-only diagnostics with no new mutable Cubit
+  fields and no refresh behavior change
+- **Step 2 changed lines:** 577 total: 322 client lines (201 production and 121
+  tests) plus 255 scope-correction plan/tracker lines
+- **Step 2 verification:** `dart analyze --fatal-infos` and all 1,005
+  `module_core` tests passed; all 43 downstream mobile session-detail tests
+  passed; `git diff --check` passed
+- **Step 2 review:** prior architecture findings became obsolete when the
+  command-refresh implementation was removed; logging-only work is not
+  architecture-bearing
 - **Step 2 PR:** [#734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734) open
 - **Step 3 evidence assessment:** pending
 - **Final disposition:** pending
