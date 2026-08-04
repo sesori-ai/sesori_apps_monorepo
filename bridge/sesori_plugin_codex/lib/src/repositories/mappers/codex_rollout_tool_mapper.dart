@@ -144,6 +144,18 @@ class CodexRolloutToolMapper {
     return false;
   }
 
+  String? codeModeFileChangePatch({
+    required CodexRolloutResponseItemDto payload,
+  }) {
+    if (payload case CodexRolloutCustomToolCallDto(
+      :final name,
+      :final input,
+    ) when name.toLowerCase() == "exec") {
+      return _codeModeFileChangePatch(input: input);
+    }
+    return null;
+  }
+
   CodexRolloutImageGeneration mapImageGeneration({
     required CodexRolloutImageGenerationDto item,
   }) {
@@ -350,12 +362,42 @@ class CodexRolloutToolMapper {
     final usefulId = _usefulText(callId) ?? _usefulText(id);
     if (usefulId == null) return null;
     final usefulName = _usefulText(name) ?? "tool";
+    final fileChangePatch = usefulName.toLowerCase() == "exec" ? _codeModeFileChangePatch(input: input) : null;
     return CodexRolloutToolCall(
       id: usefulId,
       turnId: _usefulText(turnId),
-      tool: normalizeToolName(usefulName),
-      title: toolCallTitle(input),
+      tool: fileChangePatch == null ? normalizeToolName(usefulName) : "edit",
+      title: fileChangePatch == null ? toolCallTitle(input) : _fileChangeTitle(patch: fileChangePatch),
     );
+  }
+
+  String? _codeModeFileChangePatch({required String input}) {
+    final invocation = _codeModeFileChangeInvocationPattern.firstMatch(input);
+    if (invocation == null || invocation.group(1) != invocation.group(3)) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(invocation.group(2)!);
+      if (decoded is! String ||
+          !_patchEnvelopePattern.hasMatch(decoded) ||
+          !_patchFileHeaderPattern.hasMatch(decoded)) {
+        return null;
+      }
+      return decoded;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  String? _fileChangeTitle({required String patch}) {
+    final paths = _patchFileHeaderPattern
+        .allMatches(patch)
+        .map((match) => match.group(1))
+        .whereType<String>()
+        .toList(growable: false);
+    if (paths.isEmpty) return null;
+    final shown = paths.take(3).join(", ");
+    return paths.length > 3 ? "$shown +${paths.length - 3} more" : shown;
   }
 
   CodexRolloutToolResult? mapResult(CodexRolloutResponseItemDto payload) {
@@ -628,6 +670,22 @@ final RegExp _generatedImageInvocationPrefixPattern = RegExp(
   r"^\s*(?:await\s+)?tools\.image_gen__[A-Za-z0-9_]+\s*\(",
 );
 
+final RegExp _codeModeFileChangeInvocationPattern = RegExp(
+  r'^\s*(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*'
+  r'("(?:\\.|[^"\\])*")\s*;\s*text\s*\(\s*await\s+'
+  r'tools\.apply_patch\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*\)\s*;?\s*$',
+);
+
+final RegExp _patchFileHeaderPattern = RegExp(
+  r'^\*\*\* (?:Add|Update|Delete) File: (.+)$',
+  multiLine: true,
+);
+
+final RegExp _patchEnvelopePattern = RegExp(
+  r'^\*\*\* Begin Patch\r?\n.+\r?\n\*\*\* End Patch\s*$',
+  dotAll: true,
+);
+
 final RegExp _generatedExecDirectivePattern = RegExp(
   r"^[ \t]*//[ \t]*@exec:[ \t]*(\{[^\r\n]*\})[ \t]*(?:\r?\n|$)",
 );
@@ -757,6 +815,7 @@ bool _isGeneratedImageInvocation(String input) {
   );
   if (contentForwarded == null) return false;
   final contentVariable = contentForwarded.group(1);
+  if (contentVariable == variable) return false;
   return [2, 7, 8].every(
         (group) => contentForwarded.group(group) == variable,
       ) &&

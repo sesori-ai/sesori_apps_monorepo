@@ -326,10 +326,13 @@ class CodexPlugin implements CodexManagedApi {
       _rolloutTailer.start(sessionId: threadId);
     }
     final item = notification.params["item"];
-    final isCommandStarted = notification.method == "item/started" && item is Map && item["type"] == "commandExecution";
-    if (threadId != null && (notification.method == "item/completed" || isCommandStarted)) {
+    final isCorrelatableItemStarted =
+        notification.method == "item/started" &&
+        item is Map &&
+        (item["type"] == "commandExecution" || item["type"] == "fileChange");
+    if (threadId != null && (notification.method == "item/completed" || isCorrelatableItemStarted)) {
       // Codex persists the response item before emitting its stable lifecycle
-      // event. Drain now so polling latency cannot split one command identity.
+      // event. Drain now so polling latency cannot split one tool identity.
       _rolloutTailer.drain(sessionId: threadId);
     }
     final terminalHistory =
@@ -341,6 +344,16 @@ class CodexPlugin implements CodexManagedApi {
     if (terminalHistory && threadId != null) {
       await _rolloutTailer.finish(sessionId: threadId);
       if (_isSupersededTurnLifecycleNotification(notification)) return;
+      for (final tool in _toolLifecycleTracker.observeTerminalNotification(
+        notification: notification,
+      )) {
+        _eventMapper
+            .mapProjectedTool(
+              threadId: threadId,
+              tool: tool,
+            )
+            .forEach(_eventBuffer.add);
+      }
     }
     // Keep work state busy until the terminal rollout drain has emitted its
     // final tool updates. Forced runtime teardown waits for this transition
@@ -376,9 +389,6 @@ class CodexPlugin implements CodexManagedApi {
             tool: projectedTool,
           )
           .forEach(_eventBuffer.add);
-    }
-    if (threadId != null && terminalHistory) {
-      _toolLifecycleTracker.clearThread(threadId: threadId);
     }
     if (activityChanged) {
       _eventBuffer.add(const BridgeSseProjectUpdated());

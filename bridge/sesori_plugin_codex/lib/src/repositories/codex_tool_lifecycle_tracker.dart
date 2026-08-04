@@ -9,8 +9,9 @@ import "models/codex_projected_tool.dart";
 /// Reduces Codex's rollout and app-server evidence into canonical tool state.
 ///
 /// Codex persists a `call_*` rollout id but emits a separate `exec-*`
-/// app-server id. Commands execute sequentially within a turn, making the
-/// pending same-turn FIFO the narrow common identity between those streams.
+/// app-server id for code-mode commands and file changes. Those operations
+/// execute sequentially within a turn, making the pending same-turn FIFO the
+/// narrow common identity between the streams.
 class CodexToolLifecycleTracker {
   CodexToolLifecycleTracker({
     required CodexRolloutToolMapper rolloutToolMapper,
@@ -18,6 +19,7 @@ class CodexToolLifecycleTracker {
 
   final CodexRolloutToolMapper _rolloutToolMapper;
   final Map<String, _ThreadToolLifecycle> _threads = {};
+  final Map<String, Map<String, _TrackedTool>> _retainedCommandsByThread = {};
 
   /// Applies one typed rollout record and returns complete canonical upserts.
   List<CodexProjectedTool> observeRolloutLine({
@@ -93,6 +95,26 @@ class CodexToolLifecycleTracker {
       return tool.snapshot();
     }
 
+    final itemType = item["type"];
+    final isCommandExecution = itemType == "commandExecution";
+    final isCorrelatedTool = isCommandExecution || itemType == "fileChange";
+    if (isCorrelatedTool && notification.method == "item/completed") {
+      final retainedCommands = _retainedCommandsByThread[threadId];
+      final retainedTool = retainedCommands?.remove(itemId);
+      if (retainedTool != null) {
+        if (retainedCommands!.isEmpty) {
+          _retainedCommandsByThread.remove(threadId);
+        }
+        return _applyAppServerTool(
+          tool: retainedTool,
+          item: item,
+          isCommandExecution: isCommandExecution,
+          completed: true,
+          useAggregatedOutput: isCommandExecution,
+        );
+      }
+    }
+
     final thread = _threads[threadId];
     if (thread == null) return null;
 
@@ -108,11 +130,13 @@ class CodexToolLifecycleTracker {
       );
       return tool.snapshot();
     }
-    if (item["type"] != "commandExecution") return null;
+    if (itemType != "commandExecution" && itemType != "fileChange") {
+      return null;
+    }
 
     var canonicalId = thread.appServerItemAliases[itemId];
     final turnId = _usefulText(value: params["turnId"]);
-    if (canonicalId == null && turnId != null) {
+    if (canonicalId == null && turnId != null && isCommandExecution) {
       final pending = thread.pendingShellCallsByTurn[turnId];
       if (pending != null && pending.isNotEmpty) {
         canonicalId = pending.removeAt(0);
@@ -120,13 +144,23 @@ class CodexToolLifecycleTracker {
         if (pending.isEmpty) thread.pendingShellCallsByTurn.remove(turnId);
       }
     }
-    if (canonicalId == null && turnId != null) {
+    if (canonicalId == null && turnId != null && isCommandExecution) {
       final pending = thread.pendingCodeModeShellCallsByTurn[turnId];
       if (pending != null && pending.isNotEmpty) {
         canonicalId = pending.removeAt(0);
         thread.appServerItemAliases[itemId] = canonicalId;
         if (pending.isEmpty) {
           thread.pendingCodeModeShellCallsByTurn.remove(turnId);
+        }
+      }
+    }
+    if (canonicalId == null && turnId != null && !isCommandExecution) {
+      final pending = thread.pendingCodeModeFileCallsByTurn[turnId];
+      if (pending != null && pending.isNotEmpty) {
+        canonicalId = pending.removeAt(0);
+        thread.appServerItemAliases[itemId] = canonicalId;
+        if (pending.isEmpty) {
+          thread.pendingCodeModeFileCallsByTurn.remove(turnId);
         }
       }
     }
@@ -137,22 +171,18 @@ class CodexToolLifecycleTracker {
     if (canonicalId == null) return null;
     final tool = thread.tools[canonicalId];
     if (tool == null || !tool.isRolloutCall) return null;
-
-    tool.title ??= _rolloutToolMapper.logicalCommandTitle(
-      item["command"] is String ? item["command"] as String : null,
+    final isLateCompletion = notification.method == "item/completed" && tool.status == PluginToolStatus.error;
+    final snapshot = _applyAppServerTool(
+      tool: tool,
+      item: item,
+      isCommandExecution: isCommandExecution,
+      completed: notification.method == "item/completed",
+      useAggregatedOutput: isCommandExecution && isLateCompletion,
     );
-    if (item["aggregatedOutput"] case final String output) {
-      tool.appServerOutput = _rolloutToolMapper.clipOutput(output);
+    if (notification.method == "item/completed") {
+      thread.appServerItemAliases.remove(itemId);
     }
-    final exitCode = item["exitCode"];
-    final status = exitCode is num && exitCode.toInt() != 0
-        ? PluginToolStatus.error
-        : _appServerStatus(
-            raw: item["status"],
-            completed: notification.method == "item/completed",
-          );
-    tool.status = _mergeStatus(previous: tool.status, current: status);
-    return tool.snapshot();
+    return snapshot;
   }
 
   void prepareRolloutReplay({
@@ -179,10 +209,64 @@ class CodexToolLifecycleTracker {
 
   void clearThread({required String threadId}) {
     _threads.remove(threadId);
+    _retainedCommandsByThread.remove(threadId);
+  }
+
+  /// Settles terminal tools and discards state unless a started item can finish.
+  List<CodexProjectedTool> observeTerminalNotification({
+    required CodexServerNotification notification,
+  }) {
+    final threadId = _usefulText(value: notification.params["threadId"]);
+    if (threadId == null) return const [];
+    final terminalStatus = switch (notification.method) {
+      "turn/completed" => _turnCompletionStatus(
+        params: notification.params,
+      ),
+      "error" || "thread/closed" || "thread/status/changed" => PluginToolStatus.error,
+      _ => throw ArgumentError.value(
+        notification.method,
+        "notification.method",
+        "Expected a terminal app-server notification",
+      ),
+    };
+    final thread = _threads[threadId];
+    final notificationTurnId = _notificationTurnId(
+      params: notification.params,
+    );
+    if (thread?.activeTurnId case final activeTurnId?
+        when notificationTurnId != null && activeTurnId != notificationTurnId) {
+      return const [];
+    }
+    _threads.remove(threadId);
+    final updates = <CodexProjectedTool>[];
+    if (thread != null) {
+      for (final tool in thread.tools.values) {
+        if (!tool.isRolloutCall || tool.status != PluginToolStatus.running) {
+          continue;
+        }
+        tool.status = terminalStatus;
+        updates.add(tool.snapshot());
+      }
+      if (thread.appServerItemAliases.isNotEmpty) {
+        final retainedCommands = _retainedCommandsByThread.putIfAbsent(
+          threadId,
+          () => {},
+        );
+        for (final MapEntry(key: itemId, value: canonicalId) in thread.appServerItemAliases.entries) {
+          final tool = thread.tools[canonicalId];
+          if (tool != null) retainedCommands[itemId] = tool;
+        }
+        if (retainedCommands.isEmpty) {
+          _retainedCommandsByThread.remove(threadId);
+        }
+      }
+    }
+    return updates;
   }
 
   void clear() {
     _threads.clear();
+    _retainedCommandsByThread.clear();
   }
 
   List<CodexProjectedTool> _observeRolloutPayload({
@@ -236,6 +320,9 @@ class CodexToolLifecycleTracker {
     final call = _rolloutToolMapper.mapCall(payload);
     if (call != null) {
       final effectiveTurnId = call.turnId ?? thread.activeTurnId;
+      final fileChangePatch = _rolloutToolMapper.codeModeFileChangePatch(
+        payload: payload,
+      );
       final tool = thread.tools.putIfAbsent(
         call.id,
         () => _TrackedTool(
@@ -248,9 +335,15 @@ class CodexToolLifecycleTracker {
         ),
       );
       tool.title ??= call.title;
+      if (fileChangePatch != null) {
+        tool.rolloutOutput ??= _rolloutToolMapper.clipOutput(fileChangePatch);
+        thread.codeModeFileCallIds.add(call.id);
+      }
       Map<String, List<String>>? pendingByTurn;
       if (_rolloutToolMapper.isCommandExecutionCall(payload: payload)) {
         pendingByTurn = thread.pendingShellCallsByTurn;
+      } else if (fileChangePatch != null) {
+        pendingByTurn = thread.pendingCodeModeFileCallsByTurn;
       } else if (_rolloutToolMapper.isSingleCodeModeCommandExecutionCall(
         payload: payload,
       )) {
@@ -299,10 +392,12 @@ class CodexToolLifecycleTracker {
       tool.outstandingCellIds.clear();
     }
 
-    tool.rolloutOutput = _mergeOutput(
-      previous: tool.rolloutOutput,
-      current: result.output,
-    );
+    if (!thread.codeModeFileCallIds.contains(canonicalId) || result.status == PluginToolStatus.error) {
+      tool.rolloutOutput = _mergeOutput(
+        previous: tool.rolloutOutput,
+        current: result.output,
+      );
+    }
     tool.hasRolloutResult = true;
     _mergeAttachments(
       accumulated: tool.attachments,
@@ -435,15 +530,18 @@ class CodexToolLifecycleTracker {
   }
 
   void _clearCorrelationState({required _ThreadToolLifecycle thread}) {
+    // A command process can outlive an aborted turn. Its alias retires when the
+    // app-server eventually emits `item/completed`.
     thread
       ..pendingShellCallsByTurn.clear()
       ..pendingCodeModeShellCallsByTurn.clear()
+      ..pendingCodeModeFileCallsByTurn.clear()
+      ..codeModeFileCallIds.clear()
       ..visibleCallByCell.clear()
       ..visibleCallByThreadCell.clear()
       ..waitTargetByCall.clear()
       ..waitCellByCall.clear()
-      ..internalCalls.clear()
-      ..appServerItemAliases.clear();
+      ..internalCalls.clear();
     for (final tool in thread.tools.values) {
       tool.outstandingCellIds.clear();
     }
@@ -459,6 +557,48 @@ class CodexToolLifecycleTracker {
       "inProgress" || "in_progress" => PluginToolStatus.running,
       _ => completed ? PluginToolStatus.completed : PluginToolStatus.running,
     };
+  }
+
+  PluginToolStatus _turnCompletionStatus({
+    required Map<String, dynamic> params,
+  }) {
+    final turn = params["turn"];
+    final rawStatus = turn is Map ? turn["status"] : null;
+    return switch (rawStatus) {
+      "failed" || "interrupted" => PluginToolStatus.error,
+      _ => PluginToolStatus.completed,
+    };
+  }
+
+  CodexProjectedTool _applyAppServerTool({
+    required _TrackedTool tool,
+    required Map<Object?, Object?> item,
+    required bool isCommandExecution,
+    required bool completed,
+    required bool useAggregatedOutput,
+  }) {
+    if (isCommandExecution) {
+      final command = item["command"];
+      tool.title ??= _rolloutToolMapper.logicalCommandTitle(
+        command is String ? command : null,
+      );
+      if (item["aggregatedOutput"] case final String output) {
+        final clippedOutput = _rolloutToolMapper.clipOutput(output);
+        tool.appServerOutput = clippedOutput;
+        if (useAggregatedOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
+          tool.rolloutOutput = clippedOutput;
+        }
+      }
+    }
+    final exitCode = isCommandExecution ? item["exitCode"] : null;
+    final status = isCommandExecution && exitCode is num && exitCode.toInt() != 0
+        ? PluginToolStatus.error
+        : _appServerStatus(
+            raw: item["status"],
+            completed: completed,
+          );
+    tool.status = _mergeStatus(previous: tool.status, current: status);
+    return tool.snapshot();
   }
 
   PluginToolStatus _mergeStatus({
@@ -506,6 +646,13 @@ class CodexToolLifecycleTracker {
 
   String _cellKey({required String turnId, required String cellId}) => "$turnId\u0000$cellId";
 
+  String? _notificationTurnId({required Map<String, dynamic> params}) {
+    final turn = params["turn"];
+    return _usefulText(
+      value: turn is Map ? turn["id"] : params["turnId"],
+    );
+  }
+
   String? _usefulText({required Object? value}) {
     if (value is! String) return null;
     final trimmed = value.trim();
@@ -517,6 +664,8 @@ class _ThreadToolLifecycle {
   final Map<String, _TrackedTool> tools = {};
   final Map<String, List<String>> pendingShellCallsByTurn = {};
   final Map<String, List<String>> pendingCodeModeShellCallsByTurn = {};
+  final Map<String, List<String>> pendingCodeModeFileCallsByTurn = {};
+  final Set<String> codeModeFileCallIds = {};
   final Map<String, String> visibleCallByCell = {};
   final Map<String, String> visibleCallByThreadCell = {};
   final Map<String, String> waitTargetByCall = {};
