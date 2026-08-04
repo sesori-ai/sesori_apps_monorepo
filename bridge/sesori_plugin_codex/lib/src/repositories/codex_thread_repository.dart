@@ -220,6 +220,12 @@ class CodexThreadRepository {
         innerError: null,
       );
     }
+    if (base64Data.isEmpty) {
+      throw const _CodexPromptAttachmentException(
+        message: "Malformed inline image data",
+        innerError: null,
+      );
+    }
 
     late final String normalizedBase64;
     try {

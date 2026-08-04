@@ -201,6 +201,11 @@ void main() {
           base64: "not base64",
           filename: "bad-data.png",
         ),
+        const PluginPromptPart.fileData(
+          mime: "image/png",
+          base64: "",
+          filename: "empty.png",
+        ),
         PluginPromptPart.fileData(
           mime: "image/png",
           base64: base64Encode(Uint8List(shared.maxInlineMessageAttachmentBytes + 1)),
