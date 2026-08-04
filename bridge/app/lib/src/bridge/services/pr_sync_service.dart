@@ -15,6 +15,16 @@ enum PrRefreshOutcome { completed, failed }
 
 enum PrRefreshPolicy { background, explicit, viewedProject }
 
+enum _PrRenderedChangePhase {
+  localTargets("local_targets"),
+  scopePreparation("scope_preparation"),
+  githubReplacement("github_replacement");
+
+  final String logValue;
+
+  const _PrRenderedChangePhase(this.logValue);
+}
+
 typedef PullRequestRenderedChange = ({String projectId});
 
 class PrSyncService {
@@ -236,7 +246,10 @@ class PrSyncService {
       sessionsByProject: sessionsByProject,
       targetsByDirectory: targetsByDirectory,
     );
-    _emitRenderedChanges(projectIds: localChanges);
+    _emitRenderedChanges(
+      projectIds: localChanges,
+      phase: _PrRenderedChangePhase.localTargets,
+    );
 
     final githubTargetsByProject = <String, Set<PullRequestSelectionTarget>>{};
     for (final projectId in sortedProjectIds) {
@@ -270,7 +283,10 @@ class PrSyncService {
         projectIds: networkProjectIds,
         verifiedGithubLogin: verifiedGithubLogin,
       );
-      _emitRenderedChanges(projectIds: preparedChanges);
+      _emitRenderedChanges(
+        projectIds: preparedChanges,
+        phase: _PrRenderedChangePhase.scopePreparation,
+      );
 
       final uniqueTargets = {
         for (final projectId in networkProjectIds) ...githubTargetsByProject[projectId]!,
@@ -314,7 +330,12 @@ class PrSyncService {
           );
           switch (replacement) {
             case PullRequestReplacementApplied(:final changed):
-              if (changed) _emitRenderedChanges(projectIds: {projectId});
+              if (changed) {
+                _emitRenderedChanges(
+                  projectIds: {projectId},
+                  phase: _PrRenderedChangePhase.githubReplacement,
+                );
+              }
               outcomes[projectId] = PrRefreshOutcome.completed;
             case PullRequestReplacementScopeChanged():
               outcomes[projectId] = PrRefreshOutcome.failed;
@@ -353,10 +374,14 @@ class PrSyncService {
     return repositoryComparison != 0 ? repositoryComparison : first.branchName.compareTo(second.branchName);
   }
 
-  void _emitRenderedChanges({required Iterable<String> projectIds}) {
+  void _emitRenderedChanges({
+    required Iterable<String> projectIds,
+    required _PrRenderedChangePhase phase,
+  }) {
     if (_disposed) return;
     final sortedProjectIds = projectIds.toSet().toList(growable: false)..sort();
     for (final projectId in sortedProjectIds) {
+      Log.d("[sessions-updated] source=pr_sync phase=${phase.logValue}");
       _renderedChangesController.add((projectId: projectId));
     }
   }

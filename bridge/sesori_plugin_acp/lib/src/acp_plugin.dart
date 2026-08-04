@@ -16,6 +16,16 @@ import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
 import "repositories/mappers/acp_content_mapper.dart";
 
+enum _AcpCommandUpdatePhase {
+  live("live"),
+  resumeReplay("resume_replay"),
+  historyReplay("history_replay");
+
+  final String logValue;
+
+  const _AcpCommandUpdatePhase(this.logValue);
+}
+
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
 /// Client Protocol) agent driven over stdio.
 ///
@@ -279,18 +289,26 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           tracker: _commandTracker,
         );
         _notificationSubscription = client.notifications.listen((notification) {
+          var commandUpdatePhase = _AcpCommandUpdatePhase.live;
           if (notification.method == AcpMethods.sessionUpdate) {
             final sid = notification.params["sessionId"];
             final update = notification.params["update"];
             final isCommandUpdate = update is Map && update["sessionUpdate"] == "available_commands_update";
-            if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
-              // Replay from an in-flight resume-load — drop so old history does
-              // not re-stream into the live conversation.
-              _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
-              return;
+            if (sid is String && _suppressedSessions.contains(sid)) {
+              if (!isCommandUpdate) {
+                // Replay from an in-flight resume-load — drop so old history does
+                // not re-stream into the live conversation.
+                _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
+                return;
+              }
+              commandUpdatePhase = _AcpCommandUpdatePhase.resumeReplay;
             }
           }
-          eventMapper.map(notification).forEach(_eventBuffer.add);
+          final events = eventMapper.map(notification);
+          if (events.any((event) => event is BridgeSseSessionsUpdated)) {
+            _logSessionsUpdated(phase: commandUpdatePhase);
+          }
+          events.forEach(_eventBuffer.add);
         });
         final registry = buildApprovalRegistry(client);
         _approvalRegistry = registry;
@@ -1313,6 +1331,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       final events = deferredCommandRefresh;
       if (events == null) return;
       deferredCommandRefresh = null;
+      if (events.any((event) => event is BridgeSseSessionsUpdated)) {
+        _logSessionsUpdated(phase: _AcpCommandUpdatePhase.historyReplay);
+      }
       events.forEach(_eventBuffer.add);
     }
 
@@ -1434,6 +1455,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         Log.w("[$id] failed to dispose replay client", e, st);
       }
     }
+  }
+
+  void _logSessionsUpdated({required _AcpCommandUpdatePhase phase}) {
+    Log.d("[sessions-updated] source=acp_commands phase=${phase.logValue}");
   }
 
   /// Waits until the replay `session/update` stream goes quiet — no new
