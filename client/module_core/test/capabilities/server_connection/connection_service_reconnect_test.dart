@@ -1027,6 +1027,7 @@ void main() {
       expect(service.currentStatus, isA<ConnectionReconnecting>());
       expect(service.relayClient, isNull);
       expect(factory.callCount, 1);
+      await untilCalled(initialClient.disconnect);
       verify(initialClient.disconnect).called(1);
 
       refreshedToken.complete("fresh-token");
