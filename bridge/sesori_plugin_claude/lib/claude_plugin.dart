@@ -10,5 +10,8 @@
 library;
 
 export "src/api/claude_launch_spec.dart";
+export "src/api/claude_process_factory.dart";
+export "src/api/claude_stream_client.dart";
+export "src/api/models/claude_stream_message.dart";
 export "src/models/claude_effort_level.dart";
 export "src/models/claude_permission_mode.dart";

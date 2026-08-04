@@ -15,6 +15,7 @@ void main() {
     }) {
       return ClaudeLaunchSpec(
         binaryPath: "claude",
+        workingDirectory: "/tmp/project",
         launch: launch,
         model: model,
         effort: effort,

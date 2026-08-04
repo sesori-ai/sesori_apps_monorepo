@@ -626,7 +626,7 @@ transport field, cache, flag, job, or test was found.
 |---|---|---|---:|
 | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,200-1,400 |
 | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 |
-| 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 |
+| 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) |
 | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 |
 | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 |
 | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 |
@@ -701,6 +701,16 @@ in the PR that introduces it. The step total is unchanged.
 - Cover framing, exit mid-request, generation fencing, redaction, and
   unknown-type absorption.
 - Verify: focused and full package tests, fatal analysis, implementation review.
+
+**Recorded overage: ~1,730 changed lines against a 1,500 soft cap.** A split was
+looked for first, as the delivery rules require, and none is coherent. The only
+natural seam is between the message parser and the transport, but the parser's
+sole production consumer *is* the transport, so splitting there would ship a
+parser exercised only by tests — the "preparatory PR introduces unused
+architecture" anti-pattern this repository has already ruled against. Trimming
+tests is not the right lever either: at roughly 0.67 test lines per production
+line this step is already below the repository's typical 1.2–1.9× ratio. The
+work is one coherent layer with no generated code, so it is delivered whole.
 
 ### Step 4/17 — Enumerate Transcript Sessions
 

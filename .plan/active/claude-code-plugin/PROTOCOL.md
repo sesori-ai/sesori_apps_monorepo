@@ -98,6 +98,24 @@ supervised child. Not yet probed; resolve before the descriptor lands.
 `rate_limit_event` and `system/status` were **not** in the plan's research. They
 confirm why tolerant unknown-type absorption is mandatory rather than defensive.
 
+**`system`/`init` is turn-triggered, not spawn-triggered.** Verified in Step 3 by
+driving the real CLI through `ClaudeStreamClient`: after `connect()` completed
+its `initialize` handshake in ~1.1 s, no `init` frame had arrived two seconds
+later, and the only frame seen was the handshake's own control response. The
+Step 2 captures agree — `init` appears after the first user turn is written.
+
+Consequences:
+
+- The `initialize` control **response** is the only connect-time catalog. Nothing
+  in the connect path may require `init`.
+- `init.capabilities` — and therefore capability detection — is unavailable until
+  a turn has run. For `interrupt.cancel_queued` this is harmless: the SDK
+  documents that older CLIs ignore the field and behave as if it were false, so
+  it can always be sent rather than gated on a capability that may not have
+  arrived yet.
+- `init.permissionMode` likewise cannot be read before the first turn; the
+  launch flag is the authority for the starting mode.
+
 ### `stream_event` inner events
 
 Observed for a plain text turn, in order: `message_start`,
