@@ -354,6 +354,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
   return SessionDetailSnapshot(
     projectId: projectId,
     pluginId: "opencode",
+    supportsPromptAttachments: false,
     messages: const [],
     pendingQuestions: const [],
     pendingPermissions: const [],

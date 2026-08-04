@@ -647,6 +647,7 @@ class BridgeRuntimeRunner {
                   residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
                   sessionOptionsScope: descriptor.sessionOptionsScope,
                   managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
+                  supportsPromptAttachments: descriptor.supportsPromptAttachments,
                 ),
             ],
           );

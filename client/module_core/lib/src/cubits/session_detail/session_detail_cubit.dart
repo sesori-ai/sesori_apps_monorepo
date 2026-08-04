@@ -10,7 +10,6 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
-import "../../foundation/models/composer/composer_attachment_support.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
@@ -390,6 +389,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: snapshot.commands,
+              supportsPromptAttachments: snapshot.supportsPromptAttachments,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
@@ -402,6 +402,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableVariants: availableVariants,
             ),
           );
+          _tryDrainQueue();
           if (_reassertViewAfterRefresh) {
             // A resume/reconnect requested this refresh; the refreshed
             // transcript has rendered, so it is safe to re-declare the view
@@ -1007,26 +1008,33 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final isConnected = status is ConnectionConnected;
     final reconnected = isConnected && !_wasConnected;
     _wasConnected = isConnected;
-    if (isConnected) {
-      if (_waitingForConnection) {
-        _waitingForConnection = false;
-        unawaited(_loadMessages(isReload: true));
-        return;
+    if (!isConnected) {
+      final current = state;
+      if (current is SessionDetailLoaded && current.supportsPromptAttachments != null) {
+        // Plugin capabilities belong to the bridge behind the connection and
+        // must be resolved again before another bridge can receive images.
+        emit(current.copyWith(supportsPromptAttachments: null));
       }
-      _tryDrainQueue();
-      if (_needsStaleRefresh) {
-        _needsStaleRefresh = false;
-        // The disconnect that queued this refresh also released this
-        // connection's view on the bridge, so re-assert it once the refresh
-        // renders — same as the plain reconnect branch below.
-        if (state is SessionDetailLoaded) _reassertViewAfterRefresh = true;
-        _silentRefresh();
-      } else if (reconnected && state is SessionDetailLoaded) {
-        // A foreground relay reconnect: the bridge released the old
-        // connection's view declaration, so refresh and re-assert it.
-        _reassertViewAfterRefresh = true;
-        _silentRefresh();
-      }
+      return;
+    }
+    if (_waitingForConnection) {
+      _waitingForConnection = false;
+      unawaited(_loadMessages(isReload: true));
+      return;
+    }
+    _tryDrainQueue();
+    if (_needsStaleRefresh) {
+      _needsStaleRefresh = false;
+      // The disconnect that queued this refresh also released this
+      // connection's view on the bridge, so re-assert it once the refresh
+      // renders — same as the plain reconnect branch below.
+      if (state is SessionDetailLoaded) _reassertViewAfterRefresh = true;
+      _silentRefresh();
+    } else if (reconnected && state is SessionDetailLoaded) {
+      // A foreground relay reconnect: the bridge released the old
+      // connection's view declaration, so refresh and re-assert it.
+      _reassertViewAfterRefresh = true;
+      _silentRefresh();
     }
   }
 
@@ -1058,14 +1066,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
-    // TEMPORARY 2026-08-03: see [harnessSupportsPromptAttachments]. The
-    // composer hides the attach action for harnesses that drop image parts;
-    // hold that line here too, at the seam that formats the wire payload.
-    // An unresolved harness refuses as well, so nothing reaches the queue that
-    // the drain would later hand to a harness that cannot carry it.
-    final harness = current is SessionDetailLoaded ? current.pluginId : null;
-    if (attachments.isNotEmpty && !harnessSupportsPromptAttachments(pluginId: harness)) {
-      logw("Refused ${attachments.length} attachment(s) for harness $harness");
+    // Hold the declared capability line at the wire seam too. An unresolved
+    // capability refuses as well, so unsupported images never enter the queue.
+    final supportsPromptAttachments = current is SessionDetailLoaded ? current.supportsPromptAttachments : null;
+    if (attachments.isNotEmpty && supportsPromptAttachments != true) {
+      logw("Refused ${attachments.length} attachment(s) because plugin support is unavailable");
       return;
     }
 
@@ -1129,6 +1134,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
 
+    final pendingSubmission = _promptQueue.items.firstOrNull;
+    if (pendingSubmission == null) return;
+    if (pendingSubmission.attachments.isNotEmpty && current.supportsPromptAttachments != true) {
+      return;
+    }
     final submission = _promptQueue.dequeue();
     if (submission == null) return;
 
@@ -1600,6 +1610,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       sessionTitle: snapshot.canonicalSessionTitle,
       pluginId: snapshot.pluginId,
+      supportsPromptAttachments: snapshot.supportsPromptAttachments,
       agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,

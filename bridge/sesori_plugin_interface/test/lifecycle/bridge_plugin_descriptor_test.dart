@@ -9,6 +9,7 @@ void main() {
       expect(descriptor.options, isEmpty);
       expect(descriptor.stateStorage, PluginStateStorage.isolated);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
+      expect(descriptor.supportsPromptAttachments, isFalse);
     });
 
     test('validateConfig accepts everything by default', () {

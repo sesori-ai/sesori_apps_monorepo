@@ -7,7 +7,8 @@
 - **Merged baseline:** `2408b574` on `origin/main`
 - **Deep-test branches:** `codex-stability-deep-test-*` stack
 - **Status:** Complete
-- **Release decision:** Ready for code review. No reproduced user-visible Codex stability defect remains unresolved.
+- **Release decision:** The original stability stack is ready for code review.
+  Follow-up finding F-12 is documented for a separate PR.
 
 The final production stack, in order, is:
 
@@ -71,6 +72,7 @@ summaries and only the identifiers needed to correlate a finding.
 | TOOL-04 | Tool | Exercise another available non-shell tool | Identity and result remain consistent | Image generation did not converge | Passed through stable `image_generation` tools and attachments |
 | IMG-01 | Images | Send an image prompt and expand it | Attachment remains usable after navigation and cold load | Failed: Codex received the image but transcript history had no file part | Passed after `6930b3a9`; one file part remained expandable after navigation and bridge restart |
 | IMG-02 | Images | Exercise image-bearing tool output and expand it | Attachment metadata and content match live and cold | Failed: live and cold count, identity, title, and filename differed | Passed after merged and deep-test wrapper fixes |
+| IMG-03 | Images | Attach a phone-selected image to a new Codex session | Declared capability enables attachment, Codex receives the image, and the attachment remains usable after navigation | Not previously available through the app | Passed on the follow-up branch; Codex described the image and the reopened attachment retained its viewer controls |
 | TURN-01 | Lifecycle | Abort while a tool is active | UI and status converge to idle without losing persisted output | Failed: late completion created a second tool identity | Passed after `a32b6c29`; one failed canonical card remained live and cold |
 | TURN-02 | Lifecycle | Continue the same session for multiple turns | Ordering, model metadata, and prior content remain stable | Pending | Passed across text, shell, edit, image, abort, reconnect, and image-prompt turns |
 | SES-01 | Session | Rename, archive, unarchive, and reopen | Catalog state and transcript remain intact | Failed: archive moved the rollout out of the readable catalog | Passed after `cdd3a305`; archive remained local and history stayed readable |
@@ -226,6 +228,19 @@ summaries and only the identifiers needed to correlate a finding.
 - **Result:** Rename persisted, archive and unarchive preserved the transcript,
   and delete removed the disposable session without changing another session.
 
+### F-12: Repository Instructions Appeared As A User Message
+
+- **Severity:** High.
+- **Reproduced:** A fresh Codex session created from the iOS app during the
+  follow-up mobile-image validation.
+- **Impact:** On history load, a repository-instruction envelope was rendered as
+  a large authored user message ahead of the actual image prompt.
+- **Evidence:** The bridge-backed session and reopened iOS view both retained the
+  synthetic message. The report omits its contents because they include local
+  repository instructions and paths.
+- **Disposition:** Not caused by attachment capability or image encoding. No fix
+  is included in this branch; investigate and resolve it in a separate PR.
+
 ## Final Live Evidence
 
 - A 40-line text response rendered progressively with no visible duplication or
@@ -238,6 +253,10 @@ summaries and only the identifiers needed to correlate a finding.
 - The final prompt image used message ID
   `msg_019fc9bc-db87-7470-88a2-dcd3053546fc`. Its text and file part identities,
   PNG MIME type, and encoded length were unchanged after a bridge restart.
+- A follow-up iOS submission selected a PNG through the app, received an
+  image-specific Codex description, and retained an expandable attachment after
+  leaving and reopening the session. The reopened viewer exposed close, copy,
+  share, and save controls.
 - The final file-edit rerun produced one canonical create, update, and delete
   card. No native file-change duplicate remained in live SSE or cold history.
 - The archive lifecycle rerun retained the same two-message transcript through
@@ -267,6 +286,10 @@ summaries and only the identifiers needed to correlate a finding.
 - Codex logs a missing custom-tool-output diagnostic when reopening the rollout
   intentionally interrupted by bridge termination. The bridge now surfaces the
   corresponding user-visible tool honestly as failed.
+- Immediately after the follow-up phone submission, the detail view briefly
+  showed an incomplete text-only history. Its next history refresh restored the
+  attachment and response, and both remained present after navigation. This was
+  not isolated as a separate deterministic defect.
 
 ## Cleanup
 
@@ -278,6 +301,10 @@ summaries and only the identifiers needed to correlate a finding.
 - Stopped the final debug bridge cleanly; session teardown completed in 4 ms.
 - Kept privacy-sensitive raw captures only in the external temporary evidence
   directory, not in the repository.
+- Deleted both follow-up mobile-image sessions through their owning bridges with
+  worktree and branch deletion disabled, then confirmed both detail routes
+  returned 404.
+- Stopped the follow-up debug bridge cleanly after persistence verification.
 
 ## Final Assessment
 
@@ -290,3 +317,7 @@ The empty upstream reasoning summaries and one non-reproduced shutdown stall are
 documented residual coverage limits, not demonstrated release blockers. The
 eight deep-test production commits are ready for review as a stack; no PRs were
 created.
+
+The follow-up mobile-image branch additionally validates image selection and
+submission from the iOS app through Codex. F-12 remains intentionally outside
+that branch's implementation scope and requires a separate PR.

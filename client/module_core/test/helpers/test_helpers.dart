@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
@@ -183,6 +184,22 @@ ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftReposi
 class MockBridgeRepository extends Mock implements BridgeRepository {}
 
 class MockPluginRepository extends Mock implements PluginRepository {}
+
+MockPluginRepository stubbedPluginRepository({
+  List<PluginMetadata> plugins = const <PluginMetadata>[],
+}) {
+  final mock = MockPluginRepository();
+  when(mock.listPlugins).thenAnswer(
+    (_) async => ApiResponse.success(
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-test",
+        supportsSessionOptions: true,
+        plugins: plugins,
+      ),
+    ),
+  );
+  return mock;
+}
 
 class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository {}
 

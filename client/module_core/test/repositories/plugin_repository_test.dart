@@ -38,6 +38,7 @@ void main() {
           isDefault: false,
           state: PluginLifecycleState.failed,
           actionHint: "Restart the bridge.",
+          supportsPromptAttachments: true,
         ),
         PluginMetadata(
           id: "plugin-a",
@@ -75,6 +76,11 @@ void main() {
       isA<SuccessResponse<PluginDiscoverySnapshot>>()
           .having((value) => value.data.bridgeId, "bridgeId", isNull)
           .having((value) => value.data.supportsSessionOptions, "supportsSessionOptions", isFalse)
+          .having(
+            (value) => value.data.plugins.single.supportsPromptAttachments,
+            "supportsPromptAttachments",
+            isFalse,
+          )
           .having(
             (value) => value.data.plugins,
             "plugins",

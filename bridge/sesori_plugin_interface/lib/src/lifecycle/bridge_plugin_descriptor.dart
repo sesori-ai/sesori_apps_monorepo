@@ -37,6 +37,9 @@ abstract class BridgePluginDescriptor {
   /// Scope under which this plugin's session options remain coherent.
   PluginSessionOptionsScope get sessionOptionsScope;
 
+  /// Whether prompts can carry inline image attachments to this backend.
+  bool get supportsPromptAttachments => false;
+
   /// Layout used for the plugin's private host state.
   ///
   /// New plugins are isolated by default. Plugins with shipped state in the

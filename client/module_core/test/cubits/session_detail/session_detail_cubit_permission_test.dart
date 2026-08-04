@@ -62,6 +62,7 @@ void main() {
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
         projectRepository: mockProjectRepository,
+        pluginRepository: stubbedPluginRepository(),
         connectionService: mockConnectionService,
       );
       promptDispatcher = mockSessionRepository;

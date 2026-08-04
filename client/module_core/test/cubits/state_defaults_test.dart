@@ -14,6 +14,7 @@ void main() {
       pendingPermissions: [],
       sessionTitle: null,
       pluginId: "opencode",
+      supportsPromptAttachments: false,
       agent: null,
       assistantAgentModel: null,
       children: [],

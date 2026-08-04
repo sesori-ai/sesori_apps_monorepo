@@ -98,6 +98,7 @@ class PluginRepository {
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              supportsPromptAttachments: false,
             ),
           ],
         ),

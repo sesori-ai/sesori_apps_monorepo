@@ -108,6 +108,7 @@ SessionDetailLoaded _loadedState({
   Map<String, SessionStatus> childStatuses = const {},
   SessionStatus sessionStatus = const SessionStatus.idle(),
   String? pluginId = "opencode",
+  bool supportsPromptAttachments = true,
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
@@ -118,6 +119,7 @@ SessionDetailLoaded _loadedState({
     pendingPermissions: pendingPermissions,
     sessionTitle: "Session",
     pluginId: pluginId,
+    supportsPromptAttachments: supportsPromptAttachments,
     agent: null,
     assistantAgentModel: null,
     children: children,
@@ -261,6 +263,7 @@ void main() {
       pendingPermissions: const [],
       sessionTitle: "Session",
       pluginId: "opencode",
+      supportsPromptAttachments: false,
       agent: null,
       assistantAgentModel: null,
       children: const [],
@@ -1759,6 +1762,14 @@ void main() {
   testWidgets("accordion attach action stages a removable thumbnail without raising the keyboard", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
     when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      pluginId: "codex",
+      supportsPromptAttachments: true,
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1782,13 +1793,12 @@ void main() {
     expect(find.byType(EditableText), findsNothing);
   });
 
-  testWidgets("accordion offers no attach action on a harness that drops image parts", (tester) async {
-    // TEMPORARY 2026-08-03: remove with the harness gate once every harness
-    // carries image parts — see harnessSupportsPromptAttachments.
+  testWidgets("accordion offers no attach action when the plugin declares no support", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
-      pluginId: "codex",
+      pluginId: "opencode",
+      supportsPromptAttachments: false,
     );
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);

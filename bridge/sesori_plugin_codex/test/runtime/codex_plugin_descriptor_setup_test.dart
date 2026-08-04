@@ -12,6 +12,7 @@ void main() {
 
     test("declares project-scoped session options", () {
       expect(const CodexPluginDescriptor().sessionOptionsScope, PluginSessionOptionsScope.project);
+      expect(const CodexPluginDescriptor().supportsPromptAttachments, isTrue);
     });
 
     test("reports ready after version and read-only authentication probes", () async {

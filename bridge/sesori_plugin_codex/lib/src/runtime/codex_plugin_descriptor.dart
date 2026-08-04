@@ -151,6 +151,9 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   /// [ensureRuntime] from the host's process service.
   final ManagedRuntimeProvisionService? _provisionService;
 
+  @override
+  bool get supportsPromptAttachments => true;
+
   /// Backend-namespaced ownership filename in shared runtime storage.
   static const String ownershipFileName = "codex-processes.json";
 

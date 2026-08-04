@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../logging/logging.dart";
+import "../repositories/plugin_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 
@@ -12,14 +13,17 @@ import "../repositories/session_repository.dart";
 class SessionDetailLoadService {
   final SessionRepository _repository;
   final ProjectRepository _projectRepository;
+  final PluginRepository _pluginRepository;
   final ConnectionService _connectionService;
 
   SessionDetailLoadService({
     required SessionRepository repository,
     required ProjectRepository projectRepository,
+    required PluginRepository pluginRepository,
     required ConnectionService connectionService,
   }) : _repository = repository,
        _projectRepository = projectRepository,
+       _pluginRepository = pluginRepository,
        _connectionService = connectionService;
 
   Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
@@ -56,6 +60,7 @@ class SessionDetailLoadService {
       final commandsFuture = _listCommands(projectId: effectiveProjectId, pluginId: pluginId);
       final agentsFuture = _listAgents(projectId: effectiveProjectId, pluginId: pluginId);
       final providersFuture = _listProviders(projectId: effectiveProjectId, pluginId: pluginId);
+      final promptAttachmentSupportFuture = _loadPromptAttachmentSupport(pluginId: pluginId);
       // Stage 4 child discovery persists legacy bindings. Pending input must
       // observe those bindings rather than race the compatibility backfill.
       final childrenResponse = await childrenFuture;
@@ -73,10 +78,11 @@ class SessionDetailLoadService {
         permissionsFuture,
         statusesFuture,
       ).wait;
-      final (commandsResponse, agentsResponse, providersResponse) = await (
+      final (commandsResponse, agentsResponse, providersResponse, supportsPromptAttachments) = await (
         commandsFuture,
         agentsFuture,
         providersFuture,
+        promptAttachmentSupportFuture,
       ).wait;
       final promptDefaults = session?.promptDefaults;
 
@@ -127,6 +133,7 @@ class SessionDetailLoadService {
         snapshot: SessionDetailSnapshot(
           projectId: effectiveProjectId,
           pluginId: pluginId,
+          supportsPromptAttachments: supportsPromptAttachments,
           messages: messages,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
@@ -184,6 +191,26 @@ class SessionDetailLoadService {
     return _repository.listProviders(projectId: normalizedProjectId, pluginId: pluginId);
   }
 
+  Future<bool?> _loadPromptAttachmentSupport({required String? pluginId}) async {
+    if (pluginId == null) return null;
+
+    try {
+      switch (await _pluginRepository.listPlugins()) {
+        case SuccessResponse(:final data):
+          for (final plugin in data.plugins) {
+            if (plugin.id == pluginId) return plugin.supportsPromptAttachments;
+          }
+          return null;
+        case ErrorResponse(:final error):
+          logw("Failed to load prompt attachment capability for plugin $pluginId", error);
+          return null;
+      }
+    } on Object catch (error, stackTrace) {
+      logw("Failed to load prompt attachment capability for plugin $pluginId", error, stackTrace);
+      return null;
+    }
+  }
+
   Future<ProjectSessionContext?> _loadProjectSessionContext({required String sessionId}) async {
     try {
       return await _projectRepository.findSessionContext(sessionId: sessionId);
@@ -200,6 +227,10 @@ class SessionDetailSnapshot {
   /// The harness running this session, or `null` when neither the session nor
   /// the project fallback resolved it.
   final String? pluginId;
+
+  /// Whether the session's plugin explicitly declares inline attachment
+  /// support, or `null` when plugin metadata could not be resolved.
+  final bool? supportsPromptAttachments;
   final List<MessageWithParts> messages;
   final List<PendingQuestion> pendingQuestions;
   final List<PendingPermission> pendingPermissions;
@@ -220,6 +251,7 @@ class SessionDetailSnapshot {
   const SessionDetailSnapshot({
     required this.projectId,
     required this.pluginId,
+    required this.supportsPromptAttachments,
     required this.messages,
     required this.pendingQuestions,
     required this.pendingPermissions,

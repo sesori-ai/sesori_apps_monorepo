@@ -339,7 +339,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             ),
                             initialDraft: context.read<NewSessionCubit>().composerDraft,
                             hasMessages: false,
-                            attachmentsSupported: harnessSupportsPromptAttachments(pluginId: composerData?.plugin?.id),
+                            attachmentsSupported: composerData?.plugin?.supportsPromptAttachments ?? false,
                             isBusy: state is NewSessionSending,
                             onSend: ({required text, required command, required inputMode, required attachments}) {
                               context.read<NewSessionCubit>().createSession(

@@ -27,6 +27,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "beta",
@@ -34,6 +35,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "alpha",
@@ -41,6 +43,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -87,6 +90,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "opencode",
@@ -94,6 +98,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -128,6 +133,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "alpha",
@@ -135,6 +141,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -163,6 +170,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "cursor",
@@ -170,6 +178,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -231,6 +240,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.resident,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
               (
                 id: "alpha",
@@ -238,6 +248,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
               (
                 id: "beta",
@@ -245,6 +256,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -376,6 +388,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.resident,
               sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: {PluginControlCapability.setupRefresh},
+              supportsPromptAttachments: false,
             ),
             (
               id: "managed",
@@ -383,6 +396,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -411,6 +425,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         )..initialize(
@@ -473,6 +488,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
             (
               id: "beta",
@@ -480,6 +496,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.plugin,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         )..initialize(
@@ -598,6 +615,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: {PluginControlCapability.idleTimeout},
+                supportsPromptAttachments: false,
               ),
               (
                 id: "external",
@@ -605,6 +623,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.plugin,
                 managementCapabilities: {PluginControlCapability.setupRefresh},
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -720,6 +739,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -973,6 +993,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -1027,6 +1048,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -1083,6 +1105,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -1126,6 +1149,7 @@ void main() {
                 residencyPolicy: PluginResidencyPolicy.transient,
                 sessionOptionsScope: PluginSessionOptionsScope.project,
                 managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
               ),
             ],
           )
@@ -1421,6 +1445,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
         (
           id: "alpha",
@@ -1428,6 +1453,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: true,
         ),
       ],
     );
@@ -1443,6 +1469,12 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(service.selectableMetadataSnapshot.map((entry) => entry.id), ["alpha", "beta"]);
+    expect(
+      {
+        for (final metadata in service.selectableMetadataSnapshot) metadata.id: metadata.supportsPromptAttachments,
+      },
+      {"alpha": true, "beta": false},
+    );
     expect(service.compositionView.defaultPluginId, "alpha");
   });
 
@@ -1472,6 +1504,7 @@ void main() {
           residencyPolicy: PluginResidencyPolicy.transient,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     );
@@ -1501,6 +1534,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -1533,6 +1567,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -1582,6 +1617,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.transient,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -1626,6 +1662,7 @@ void main() {
               residencyPolicy: PluginResidencyPolicy.resident,
               sessionOptionsScope: PluginSessionOptionsScope.project,
               managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
             ),
           ],
         );
@@ -1679,6 +1716,7 @@ PluginLifecycleService _singleIdleService({
           residencyPolicy: residencyPolicy,
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: managementCapabilities,
+          supportsPromptAttachments: false,
         ),
       ],
     )
@@ -1707,6 +1745,7 @@ PluginLifecycleService _commandService({
         residencyPolicy: PluginResidencyPolicy.transient,
         sessionOptionsScope: PluginSessionOptionsScope.project,
         managementCapabilities: managementCapabilities,
+        supportsPromptAttachments: false,
       ),
     ],
   );

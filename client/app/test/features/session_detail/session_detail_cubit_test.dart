@@ -15,7 +15,9 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
+import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
@@ -25,6 +27,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../helpers/test_helpers.dart";
 
 class MockPermissionRepository extends Mock implements PermissionRepository {}
+
+class MockPluginRepository extends Mock implements PluginRepository {}
 
 void main() {
   const sessionId = "session-1";
@@ -38,6 +42,7 @@ void main() {
   group("SessionDetailCubit", () {
     late MockSessionService mockSessionService;
     late MockSessionRepository mockSessionRepository;
+    late MockPluginRepository mockPluginRepository;
     late MockProjectRepository mockProjectRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -53,6 +58,7 @@ void main() {
     setUp(() {
       mockSessionService = MockSessionService();
       mockSessionRepository = MockSessionRepository();
+      mockPluginRepository = MockPluginRepository();
       mockProjectRepository = MockProjectRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -60,9 +66,15 @@ void main() {
       mockFailureReporter = MockFailureReporter();
       mockProductAnalyticsService = MockProductAnalyticsService();
       stubProductAnalyticsService(service: mockProductAnalyticsService);
+      _stubPromptAttachmentCapability(
+        repository: mockPluginRepository,
+        pluginId: "plugin-1",
+        supportsPromptAttachments: false,
+      );
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
         projectRepository: mockProjectRepository,
+        pluginRepository: mockPluginRepository,
         connectionService: mockConnectionService,
       );
       promptDispatcher = mockSessionRepository;
@@ -234,6 +246,7 @@ void main() {
         ).called(2);
         verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(2);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(2);
+        verify(mockPluginRepository.listPlugins).called(2);
       },
     );
 
@@ -288,16 +301,18 @@ void main() {
       },
     );
 
-    // TEMPORARY 2026-08-03: these two cover the harness gate — remove them
-    // with it once every harness carries image parts. See
-    // harnessSupportsPromptAttachments.
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "sendMessage forwards attachments on an OpenCode session",
+      "sendMessage forwards attachments when the plugin declares support",
       build: () {
+        _stubPromptAttachmentCapability(
+          repository: mockPluginRepository,
+          pluginId: "codex",
+          supportsPromptAttachments: true,
+        );
         stubSessionRepositoryGetSession(
           repository: mockSessionRepository,
           sessionId: sessionId,
-          session: testSession(id: sessionId, pluginId: "opencode"),
+          session: testSession(id: sessionId, pluginId: "codex"),
         );
         return SessionDetailCubit(
           mockConnectionService,
@@ -342,12 +357,17 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "sendMessage refuses attachments on a harness that drops image parts",
+      "sendMessage refuses attachments when the plugin declares no support",
       build: () {
+        _stubPromptAttachmentCapability(
+          repository: mockPluginRepository,
+          pluginId: "opencode",
+          supportsPromptAttachments: false,
+        );
         stubSessionRepositoryGetSession(
           repository: mockSessionRepository,
           sessionId: sessionId,
-          session: testSession(id: sessionId, pluginId: "codex"),
+          session: testSession(id: sessionId, pluginId: "opencode"),
         );
         return SessionDetailCubit(
           mockConnectionService,
@@ -2375,6 +2395,31 @@ void main() {
       });
     });
   });
+}
+
+void _stubPromptAttachmentCapability({
+  required MockPluginRepository repository,
+  required String pluginId,
+  required bool supportsPromptAttachments,
+}) {
+  when(() => repository.listPlugins()).thenAnswer(
+    (_) async => ApiResponse.success(
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-test",
+        supportsSessionOptions: true,
+        plugins: [
+          PluginMetadata(
+            id: pluginId,
+            displayName: "Test Plugin",
+            isDefault: true,
+            state: PluginLifecycleState.ready,
+            actionHint: null,
+            supportsPromptAttachments: supportsPromptAttachments,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {

@@ -163,7 +163,9 @@ class CodexThreadRepository {
       PluginPromptPartText(:final text) => CodexTurnInputDto.text(text: text),
       PluginPromptPartFilePath(:final path) => CodexTurnInputDto.localImage(path: path),
       PluginPromptPartFileUrl(:final url) => CodexTurnInputDto.image(url: url),
-      PluginPromptPartFileData() => null,
+      PluginPromptPartFileData(:final mime, :final base64) => CodexTurnInputDto.image(
+        url: "data:$mime;base64,$base64",
+      ),
     };
   }
 

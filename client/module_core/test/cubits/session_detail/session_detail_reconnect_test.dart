@@ -47,6 +47,7 @@ void main() {
     final loadService = SessionDetailLoadService(
       repository: mockSessionRepository,
       projectRepository: mockProjectRepository,
+      pluginRepository: stubbedPluginRepository(),
       connectionService: mockConnectionService,
     );
     final promptDispatcher = mockSessionRepository;
@@ -160,6 +161,7 @@ void main() {
         snapshot: SessionDetailSnapshot(
           projectId: "project-1",
           pluginId: "opencode",
+          supportsPromptAttachments: false,
           messages: <MessageWithParts>[],
           pendingQuestions: <PendingQuestion>[],
           pendingPermissions: <PendingPermission>[],
@@ -239,6 +241,7 @@ void main() {
       snapshot: SessionDetailSnapshot(
         projectId: "project-1",
         pluginId: "opencode",
+        supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],

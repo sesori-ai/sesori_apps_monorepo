@@ -299,11 +299,8 @@ void main() {
       },
     );
 
-    // TEMPORARY 2026-08-03: these two cover the harness gate — remove them
-    // with it once every harness carries image parts. See
-    // harnessSupportsPromptAttachments.
     blocTest<NewSessionCubit, NewSessionState>(
-      "createSession forwards attachments on OpenCode",
+      "createSession forwards attachments when the plugin declares support",
       skip: 1,
       build: () {
         when(mockPluginRepository.listPlugins).thenAnswer(
@@ -313,11 +310,12 @@ void main() {
               supportsSessionOptions: true,
               plugins: const [
                 PluginMetadata(
-                  id: "opencode",
-                  displayName: "OpenCode",
+                  id: "codex",
+                  displayName: "Codex",
                   isDefault: true,
                   state: PluginLifecycleState.ready,
                   actionHint: null,
+                  supportsPromptAttachments: true,
                 ),
               ],
             ),
@@ -354,7 +352,7 @@ void main() {
         verify(
           () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
-            pluginId: "opencode",
+            pluginId: "codex",
             text: "look at this",
             attachments: any(named: "attachments", that: hasLength(1)),
             agent: any(named: "agent"),
@@ -369,7 +367,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "createSession refuses attachments on a harness that drops image parts",
+      "createSession refuses attachments when the plugin declares no support",
       skip: 1,
       build: buildCubit,
       act: (cubit) async {

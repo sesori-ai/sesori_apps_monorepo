@@ -53,7 +53,7 @@ class PromptInput extends StatefulWidget {
   final VoidCallback onCommandCleared;
 
   /// Whether this composer offers image attachments. Owners resolve it from
-  /// the harness behind the composer — see [harnessSupportsPromptAttachments].
+  /// the plugin's declared prompt capabilities.
   final bool attachmentsSupported;
 
   /// Optional widget rendered inside the composer, above the text-field row.

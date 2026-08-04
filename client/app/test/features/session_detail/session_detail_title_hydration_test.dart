@@ -50,6 +50,7 @@ SessionDetailLoadResult _loadedResult() {
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
       pluginId: "opencode",
+      supportsPromptAttachments: false,
       messages: [],
       pendingQuestions: [],
       pendingPermissions: [],
@@ -72,6 +73,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
       pluginId: "opencode",
+      supportsPromptAttachments: false,
       messages: const [],
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -94,6 +96,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
     snapshot: SessionDetailSnapshot(
       projectId: "project-1",
       pluginId: "opencode",
+      supportsPromptAttachments: false,
       messages: [],
       pendingQuestions: [
         PendingQuestion(

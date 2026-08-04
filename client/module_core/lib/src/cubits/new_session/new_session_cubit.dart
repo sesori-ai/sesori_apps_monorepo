@@ -10,7 +10,6 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
-import "../../foundation/models/composer/composer_attachment_support.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
@@ -583,11 +582,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       return;
     }
 
-    // TEMPORARY 2026-08-03: see [harnessSupportsPromptAttachments]. The
-    // composer hides the attach action for harnesses that drop image parts;
-    // hold that line here too, at the seam that formats the wire payload.
-    if (attachments.isNotEmpty && !harnessSupportsPromptAttachments(pluginId: selectedPlugin.id)) {
-      logw("Refused ${attachments.length} attachment(s) for harness ${selectedPlugin.id}");
+    // Hold the declared capability line at the wire seam too, so stale or
+    // synthetic callers cannot submit images to a plugin that would drop them.
+    if (attachments.isNotEmpty && !selectedPlugin.supportsPromptAttachments) {
+      logw("Refused ${attachments.length} attachment(s) for plugin ${selectedPlugin.id}");
       return;
     }
 

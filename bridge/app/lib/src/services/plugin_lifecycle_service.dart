@@ -30,6 +30,7 @@ typedef RegisteredPluginMetadata = ({
   PluginResidencyPolicy residencyPolicy,
   PluginSessionOptionsScope sessionOptionsScope,
   Set<PluginControlCapability> managementCapabilities,
+  bool supportsPromptAttachments,
 });
 
 typedef PluginStartupPolicy = ({
@@ -654,6 +655,7 @@ class PluginLifecycleService {
               isDefault: false,
               state: state,
               actionHint: _actionHint(state),
+              supportsPromptAttachments: plugin.supportsPromptAttachments,
             );
           }(),
     };

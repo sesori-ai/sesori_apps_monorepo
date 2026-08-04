@@ -100,6 +100,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   /// [ensureRuntime] from the host's process service.
   final ManagedRuntimeProvisionService? _provisionService;
 
+  @override
+  bool get supportsPromptAttachments => true;
+
   /// Frozen ownership filename in the legacy shared runtime directory.
   static const String ownershipFileName = "opencode-processes.json";
 

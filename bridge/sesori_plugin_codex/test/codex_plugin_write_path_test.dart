@@ -127,6 +127,51 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.busy);
     });
 
+    test("createSession forwards inline image data to Codex turn input", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-image",
+              "cwd": "/work/sample",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000005,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-image"},
+          },
+        ),
+      ]);
+
+      await plugin.createSession(
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [
+          PluginPromptPart.text(text: "describe this"),
+          PluginPromptPart.fileData(
+            mime: "image/png",
+            base64: "AQID",
+            filename: "shot.png",
+          ),
+        ],
+        userVisibleText: "describe this",
+        variant: null,
+        agent: "Default",
+        model: null,
+      );
+
+      final input = fake.sentParamsFor("turn/start")["input"] as List;
+      expect(input[1], {
+        "type": "image",
+        "url": "data:image/png;base64,AQID",
+      });
+    });
+
     test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
