@@ -278,8 +278,9 @@ summaries and only the identifiers needed to correlate a finding.
 
 ## Automated Verification
 
-- `dart test` in `bridge/sesori_plugin_codex`: 317 tests passed after the Step 10
-  generated-instructions regression was added.
+- `dart test` in `bridge/sesori_plugin_codex`: 318 tests passed after the Step 9
+  review hardening and Step 10 generated-instructions regression were merged
+  forward.
 - `dart analyze --fatal-infos` in `bridge/sesori_plugin_codex`: no issues.
 - Targeted tests cover generated image wrappers, canonical shell and file-change
   identity, late abort completion, active-versus-idle rollout replay, and

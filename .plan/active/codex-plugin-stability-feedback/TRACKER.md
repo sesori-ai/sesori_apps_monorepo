@@ -6,13 +6,13 @@
 - **Implementation base:** `origin/main` at
   `5a67ee65e63a8594049fd27028700aa5c184b6c8`
 - **Stack root:** `2408b574`
-- **Series state:** Steps 1 through 9 merged; Step 10 is merged forward and
-  pending final verification
+- **Series state:** Steps 1 through 9 merged; Step 10 is verified and ready
+  for review
 - **Current step:** Step 10/11
 - **Current branch:** `codex-plugin-stability-feedback-f12-generated-repository-instructions`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Verify the merged-forward Step 10 branch and open its PR
+- **Next action:** Open the Step 10 PR
 
 ## Plan Review
 
@@ -53,7 +53,7 @@
 | [x] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 384 actual | [PR #746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746) merged as `4785f4c7` |
 | [x] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,174 actual | [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) merged as `22f65807` |
 | [x] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 1,325 actual | [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) merged as `5a67ee65` |
-| [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 140 actual | `2e534673`; merged forward from `5a67ee65`; final verification pending |
+| [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 152 actual | `2e534673`; merged forward from `5a67ee65`; verified and ready to open |
 | [ ] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Blocked on Step 10 merge |
 
 ## Exact PR Titles
@@ -404,12 +404,16 @@ origin/main
   capability is unresolved, fenced stale load failures, validated Codex inline
   image payloads, and kept the declined capability-cache thread open with its
   rationale.
-- **Step 10 successor update:** Branched directly from the pushed Step 9 head; no rebase, reset, reorder, or cherry-pick occurred.
+- **Step 10 successor update:** Branched directly from the pushed Step 9 head,
+  then merged `origin/main` at `5a67ee65` forward as `038d2271`. Merge
+  conflicts retained the newer Step 9 review fixes while preserving the Step 10
+  projection change; no rebase, reset, reorder, or cherry-pick occurred.
 - **Step 10 sanitized shape:** Confirmed the privacy-safe runtime structure as
   an exact `# AGENTS.md instructions` header with an optional `for <directory>`
   suffix, one blank line, and a complete `<INSTRUCTIONS>` envelope.
 - **Step 10 verification:** The regression failed before `2e534673`, then passed.
-  All 317 Codex tests, `dart analyze --fatal-infos`, and `git diff --check` pass.
+  After the Step 9 merge, all 318 Codex tests, `dart analyze --fatal-infos`,
+  and `git diff --check` pass.
   Tests preserve submitted exact envelopes, casing near matches, incomplete
   markers, mixed authored text, path/no-path forms, and outer whitespace.
 - **Step 10 scope:** Classification stays inside `CodexMessageRepository` at the
@@ -417,9 +421,9 @@ origin/main
   architecture change, wire change, database change, or analytics change was
   required, so no implementation architecture review applies.
 - **Step 10 cleanup:** Stored Codex rollouts remain untouched; only generated history projection changes. No artifact is obsolete.
-- **Step 10 change size:** 140 lines against the Step 9 head, including
-  production code, regression coverage, report, and tracker updates. This is
-  within the planned 70-140 line range.
+- **Step 10 change size:** 152 lines against merged `main`, including production
+  code, regression coverage, report, and tracker updates. This modestly exceeds
+  the planned 70-140 line estimate and remains far below the 1,500-line cap.
 
 ## Findings And Plan Deltas
 
