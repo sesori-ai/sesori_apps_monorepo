@@ -1115,7 +1115,12 @@ void main() {
       threadId: "thread-1",
       line: _toolOutput(
         callId: "call-exec",
-        output: "Script running with cell ID 7\nOutput:\nearly output",
+        output:
+            "Script running with cell ID 7\n"
+            "Output:\n"
+            "early output\n"
+            "Output:\n"
+            "literal output",
       ),
     );
     final aborted = target
@@ -1134,7 +1139,11 @@ void main() {
         turnId: "turn-1",
         status: "completed",
         exitCode: 0,
-        output: "early output\nlate command output",
+        output:
+            "early output\n"
+            "Output:\n"
+            "literal output\n"
+            "late command output",
       ),
     );
 
@@ -1145,6 +1154,10 @@ void main() {
     expect(lateCompletion?.output, contains("late command output"));
     expect(
       RegExp("early output").allMatches(lateCompletion?.output ?? ""),
+      hasLength(1),
+    );
+    expect(
+      RegExp("literal output").allMatches(lateCompletion?.output ?? ""),
       hasLength(1),
     );
 
@@ -1255,6 +1268,13 @@ void main() {
       ..observeRolloutLine(
         threadId: "thread-1",
         line: _shellCall(callId: "call-external", turnId: "turn-2"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-external",
+          output: "already completed",
+        ),
       )
       ..observeAppServerTool(
         imageGeneration: null,

@@ -538,10 +538,7 @@ class CodexToolLifecycleTracker {
     if (current.contains(previous)) {
       return _rolloutToolMapper.clipOutput(current);
     }
-    RegExpMatch? outputBoundary;
-    for (final match in _executorOutputBoundaryPattern.allMatches(previous)) {
-      outputBoundary = match;
-    }
+    final outputBoundary = _executorOutputBoundaryPattern.firstMatch(previous);
     if (outputBoundary != null) {
       final previousProcessOutput = previous.substring(outputBoundary.end);
       if (previousProcessOutput.isNotEmpty && current.startsWith(previousProcessOutput)) {
@@ -556,6 +553,8 @@ class CodexToolLifecycleTracker {
 
   bool _hasActiveWork({required _ThreadToolLifecycle thread}) {
     return thread.activeTurnId != null ||
+        thread.pendingShellCallsByTurn.values.any((calls) => calls.isNotEmpty) ||
+        thread.pendingCodeModeShellCallsByTurn.values.any((calls) => calls.isNotEmpty) ||
         thread.tools.values.any(
           (tool) => tool.status == PluginToolStatus.running,
         );
