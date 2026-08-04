@@ -46,42 +46,48 @@ class NewSessionPluginChooser extends StatelessWidget {
       if (plugin.id == selectedPluginId) selected = plugin;
     }
 
-    return PregoAnchorMenu(
-      // The trigger is flat, so the popup is too — a glass bubble hung off a
-      // chrome-less row would read as belonging to something else.
-      flat: true,
-      menuWidth: _menuWidth,
-      triggerBuilder: (context, toggle) => _HarnessTrigger(
-        pluginId: selected?.id,
-        label: selected?.displayName ?? loc.newSessionPluginChooserLabel,
-        height: _triggerHeight,
-        onPressed: toggle,
-      ),
-      entriesBuilder: () => [
-        PregoMenuCustom(
-          height: _menuHeaderHeight,
-          builder: (context, close) => _HarnessesMenuHeader(
-            height: _menuHeaderHeight,
-            onSettingsPressed: () {
-              close();
-              onSettingsPressed();
-            },
-          ),
+    // Aligned out here rather than inside the trigger: the menu anchors to the
+    // trigger's painted bounds, and a trigger stretched across the row would
+    // hang the popup off the middle of the screen instead of under the name.
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: PregoAnchorMenu(
+        // The trigger is flat, so the popup is too — a glass bubble hung off a
+        // chrome-less row would read as belonging to something else.
+        flat: true,
+        menuWidth: _menuWidth,
+        triggerBuilder: (context, toggle) => _HarnessTrigger(
+          pluginId: selected?.id,
+          label: selected?.displayName ?? loc.newSessionPluginChooserLabel,
+          height: _triggerHeight,
+          onPressed: toggle,
         ),
-        for (final plugin in plugins)
-          PregoMenuItem(
-            key: Key("new_session_plugin_${plugin.id}"),
-            title: plugin.displayName,
-            subtitle: _lifecycleStatus(context, state: plugin.state),
-            isSelected: plugin.id == selectedPluginId,
-            isEnabled: isSelectionEnabled && plugin.isRoutable,
-            leading: PregoBrandLogo(
-              pluginId: plugin.id,
-              color: context.prego.colors.textSecondary,
+        entriesBuilder: () => [
+          PregoMenuCustom(
+            height: _menuHeaderHeight,
+            builder: (context, close) => _HarnessesMenuHeader(
+              height: _menuHeaderHeight,
+              onSettingsPressed: () {
+                close();
+                onSettingsPressed();
+              },
             ),
-            onTap: () => onSelected(plugin.id),
           ),
-      ],
+          for (final plugin in plugins)
+            PregoMenuItem(
+              key: Key("new_session_plugin_${plugin.id}"),
+              title: plugin.displayName,
+              subtitle: _lifecycleStatus(context, state: plugin.state),
+              isSelected: plugin.id == selectedPluginId,
+              isEnabled: isSelectionEnabled && plugin.isRoutable,
+              leading: PregoBrandLogo(
+                pluginId: plugin.id,
+                color: context.prego.colors.textSecondary,
+              ),
+              onTap: () => onSelected(plugin.id),
+            ),
+        ],
+      ),
     );
   }
 
@@ -115,44 +121,41 @@ class _HarnessTrigger extends StatelessWidget {
     final borderRadius = BorderRadius.circular(PregoRadius.full);
     final pluginId = this.pluginId;
 
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      // The row's own text names the harness but not what the choice is for,
-      // so the control announces both: the label says what it picks, the value
-      // says what is picked. The visible text is excluded to keep the harness
-      // name from being read a second time as a loose node.
-      child: Semantics(
-        button: true,
-        label: context.loc.newSessionPluginChooserLabel,
-        value: label,
-        excludeSemantics: true,
-        child: InkWell(
-          key: const Key("new_session_plugin_trigger"),
-          onTap: onPressed,
-          borderRadius: borderRadius,
-          child: SizedBox(
-            height: height,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (pluginId != null) ...[
-                    PregoBrandLogo(pluginId: pluginId, color: prego.colors.textSecondary),
-                    SizedBox(width: prego.spacing.sm),
-                  ],
-                  Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
-                    ),
-                  ),
+    // The row's own text names the harness but not what the choice is for, so
+    // the control announces both: the label says what it picks, the value says
+    // what is picked. The visible text is excluded to keep the harness name
+    // from being read a second time as a loose node.
+    return Semantics(
+      button: true,
+      label: context.loc.newSessionPluginChooserLabel,
+      value: label,
+      excludeSemantics: true,
+      child: InkWell(
+        key: const Key("new_session_plugin_trigger"),
+        onTap: onPressed,
+        borderRadius: borderRadius,
+        child: SizedBox(
+          height: height,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (pluginId != null) ...[
+                  PregoBrandLogo(pluginId: pluginId, color: prego.colors.textSecondary),
                   SizedBox(width: prego.spacing.sm),
-                  Icon(TablerRegular.selector, size: 16, color: prego.colors.textPrimary),
                 ],
-              ),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
+                  ),
+                ),
+                SizedBox(width: prego.spacing.sm),
+                Icon(TablerRegular.selector, size: 16, color: prego.colors.textPrimary),
+              ],
             ),
           ),
         ),
