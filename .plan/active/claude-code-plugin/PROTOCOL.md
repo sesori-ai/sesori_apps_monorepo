@@ -317,15 +317,21 @@ run with no flag, so **`auto` is the default**, and `auto` uses a model
 classifier to approve or deny prompts. Parse both spellings at the boundary and
 never hardcode one across both surfaces.
 
-**Design collision to resolve (Step 11/13).** The plan proposed exposing
-permission modes as `PluginAgent`s named "Default" and "Plan", following the
-Codex collaboration-mode precedent. But Claude has a *first-party* `agents`
-concept — the initialize response returned 5 of them and `--agent` selects one.
-Exposing permission modes under the same word as a real, different Claude
-concept is ambiguous.
+**Design collision — resolved 2026-08-04.** The plan exposes permission modes as
+`PluginAgent`s named "Default" and "Plan", following the Codex
+collaboration-mode precedent. Claude also has a *first-party* `agents` concept:
+the initialize response returned 5 of them and `--agent` selects one, so the
+word is overloaded.
 
-Both readings are defensible; this is a product decision, not a technical one,
-and it is recorded here rather than silently chosen.
+The user decided the phone's agent picker drives **permission modes**, as
+originally planned. Plan mode is the headline feature in scope and the thing
+users toggle mid-session; Claude's own agents stay internal, dispatched by the
+main agent. Surfacing the first-party agent list is a deliberate follow-up
+outside this series, not an oversight.
+
+Consequence for Step 11: the picker sends `set_permission_mode`, and the
+`agents` array from the initialize response is deliberately not mapped to
+`getAgents`.
 
 ## 7. Slash Commands
 

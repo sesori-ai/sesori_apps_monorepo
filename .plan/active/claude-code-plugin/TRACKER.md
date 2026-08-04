@@ -5,10 +5,10 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `ca7470fd6ead8f7e1ff0d58e3591e7ce25a5314d`
-- **Series state:** Step 1/17 open for review
-- **Current step:** 1/17 — raise the plan
+- **Series state:** Steps 1/17 and 2/17 open for review
+- **Current step:** 2/17 — protocol ground truth and package scaffold
 - **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737)
-- **Next action:** Step 2 protocol ground truth and package scaffold
+- **Next action:** Step 3 stream-json transport
 
 ## Plan Review
 
@@ -23,10 +23,10 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 900-1,100 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) open; 997 changed lines |
-| [ ] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | Not started |
-| [ ] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,000-1,400 | Not started |
-| [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,100-1,500 | Not started |
-| [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 900-1,300 | Not started |
+| [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 900-1,100 | PR open; 987 changed lines |
+| [ ] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 | Not started |
+| [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 | Not started |
+| [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | Not started |
 | [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | Not started |
 | [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | Not started |
 | [ ] | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 | Not started |
@@ -100,6 +100,24 @@
   rather than published stale. No Dart or Flutter suites were run for this
   documentation-only step.
 
+- Step 2/17 (2026-08-04): verified the protocol against a live `claude` 2.1.221
+  and `@anthropic-ai/claude-agent-sdk@0.3.221`, rewrote `PROTOCOL.md` from
+  observation, created `bridge/sesori_plugin_claude` with its Wave-1 workspace,
+  Makefile, and CI plumbing, and added the verified launch contract
+  (`ClaudeLaunchSpec`, `ClaudePermissionMode`, `ClaudeEffortLevel`).
+  `dart pub get` at `bridge/`, `dart analyze --fatal-infos`, all 12 package
+  tests, and `git diff --cached --check` pass. The 987 changed-line diff against
+  its Step 1 base is within the corrected 900-1,100 estimate and below the
+  1,500-line soft cap.
+
+  DTOs were moved out of this step into the steps that consume them. Measured
+  against the Codex analog, Freezed expands roughly tenfold
+  (`codex_rollout_dto.dart`: 326 source lines, 3,286 generated), so the original
+  bundle of stream, control, and transcript DTOs would have exceeded the cap
+  several times over while having no production consumer in the same PR. Step
+  estimates for 3, 4, and 5 were raised to absorb them and the step total is
+  unchanged.
+
 ## Findings And Plan Deltas
 
 - **2026-08-04 — Route decision:** Bespoke stream-json over stdio rather than the
@@ -111,3 +129,29 @@
 - **2026-08-04 — Effort variants deferred to evidence:** Reasoning-effort
   variants ship only if Step 2 finds first-party per-session support in the
   pinned CLI. Step 11 records the decision either way.
+  **Resolved in Step 2: variants ship.** The initialize response declares
+  `supportsEffort` and `supportedEffortLevels` per model, so variants are
+  first-party data with no hardcoded catalog and no version gate.
+- **2026-08-04 — `--permission-prompt-tool stdio` is mandatory:** Step 2 proved
+  that without this flag the CLI silently auto-denies permission-gated tools —
+  no control request, no error, `result.subtype: "success"`, and the refusal
+  visible only in `result.permission_denials`. The flag is absent from
+  `claude --help` and was found in the SDK's argv builder. It is not optional
+  and Step 3 must cover it.
+- **2026-08-04 — Permission/question split is first-party:** the `can_use_tool`
+  request carries `requires_user_interaction`, which replaces the planned
+  hardcoded `AskUserQuestion`/`ExitPlanMode` name list. Two new safety
+  constraints also apply: `suppress_always_allow_rule` forbids offering
+  "always", and `decision_reason` may carry ANSI escapes.
+- **2026-08-04 — Agent picker drives permission modes:** the user confirmed the
+  planned mapping despite Claude having a first-party `agents` concept. The
+  initialize response's `agents` array is deliberately not mapped to
+  `getAgents`; surfacing it is a follow-up outside this series.
+- **2026-08-04 — Catalog comes from one handshake:** the `initialize` response
+  returns commands, agents, models, and account together, so the catalog service
+  needs no separate startup probes and `list_models` is a refresh path only.
+- **2026-08-04 — Auth probe simplified:** `claude auth status --json` reports
+  `loggedIn`, so the planned zero-token init-probe fallback is unnecessary. The
+  same payload carries PII (email, org) that must never be logged.
+- **2026-08-04 — `rename_session` exists:** the control API supports renaming, so
+  Step 12's optimistic-only rename should be revisited against it.

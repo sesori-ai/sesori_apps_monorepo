@@ -105,25 +105,35 @@ The stream-json control protocol is SDK-internal and not formally versioned.
 direct observation of the pinned CLI plus the SDK's own type declarations, and
 every later step cites it rather than re-deriving wire shapes.
 
-Condensed research carried into Step 2 (all marked verify-at-implementation in
-`PROTOCOL.md`):
+Step 2 verified it against CLI 2.1.221 and
+`@anthropic-ai/claude-agent-sdk@0.3.221`. The findings that shape this plan:
 
-- Invocation: `claude --input-format stream-json --output-format stream-json
-  --verbose --include-partial-messages [--model <id>] [--permission-mode <mode>]
-  [--session-id <uuid> | --resume <uuid>]`, cwd = the session directory, one
-  process per session kept alive by streaming stdin.
-- Stdout types: `system` (`init`, `api_retry`, `permission_denied`),
-  `assistant`, `user`, `stream_event` (raw Anthropic SSE deltas), `result`,
-  `control_request`, `control_response`.
-- Permissions arrive as `can_use_tool` control requests answered with
-  `{"behavior":"allow"|"deny", ...}`; `AskUserQuestion` and `ExitPlanMode` are
-  ordinary tools whose approval is a user question rather than a permission.
-- Transcripts live at `$CLAUDE_CONFIG_DIR ?? ~/.claude` +
-  `/projects/<munged-cwd>/<session-id>.jsonl`; the filename is the session id
-  and each record carries its own `cwd` and timestamps, so the munged directory
-  name is never un-munged.
-- Auth is the user's existing `claude` login. The plugin never runs a login
-  flow and never overrides `HOME`, which would break macOS keychain lookup.
+- **`--permission-prompt-tool stdio` is mandatory.** Without it the CLI silently
+  auto-denies every permission-gated tool — no control request, no error, the
+  turn still reports success, and the refusal appears only in the result's
+  `permission_denials`. The flag is absent from `claude --help`. `-p/--print` is
+  likewise mandatory for the stream-json formats.
+- **One `initialize` round trip returns the whole catalog** — commands, agents,
+  models, and account — so the catalog service needs no separate startup probes.
+- **Effort is first-party and per model** (`supportsEffort`,
+  `supportedEffortLevels`), which settles the variant question in favor of
+  shipping variants.
+- **`requires_user_interaction` on a permission request** marks the asks whose
+  own card is the interaction surface, replacing a hardcoded tool-name list;
+  `suppress_always_allow_rule` forbids offering "always" for that ask.
+- **`claude auth status --json` reports `loggedIn`**, so the auth probe is a
+  fast structured subcommand rather than the planned init probe. Its payload
+  also carries PII that must never be logged.
+- **Transcripts** live at `$CLAUDE_CONFIG_DIR ?? ~/.claude` +
+  `/projects/<munged-cwd>/<session-id>.jsonl`. `ai-title` records carry the
+  session title and `isSidechain` marks subagent records; each record carries
+  its own `cwd`, so the munged directory name is never un-munged.
+- **Two message types the research missed** — `rate_limit_event` and
+  `system/status` — appeared in the very first capture, confirming that tolerant
+  unknown-type absorption is a requirement rather than a precaution.
+
+The plugin never runs a login flow and never overrides `HOME`, which would break
+macOS keychain lookup.
 
 ## Locked Scope And Product Decisions
 
@@ -252,10 +262,12 @@ bridge sent the signal, cancels that session's approvals, and drops residency.
 ids, permission/question bifurcation, and a `cancelForSession`/`dispose` contract
 that resolves every pending request *and* emits its replied or rejected event.
 Claude specifics: requests arrive on a known session's own process, so there is
-no session-resolution ambiguity; `AskUserQuestion` and `ExitPlanMode` become
+no session-resolution ambiguity; asks flagged `requires_user_interaction` become
 questions and everything else a permission; `once` maps to a plain allow,
-`always` echoes only the backend's own `permission_suggestions`, and `reject`
-maps to deny with a short message.
+`always` echoes only the backend's own `permission_suggestions` and is withheld
+entirely when `suppress_always_allow_rule` is set, and `reject` maps to deny with
+a short message. `decision_reason` may carry ANSI escapes and is sanitized before
+it reaches the phone.
 
 **`ClaudeEventMapper`** — the hard contract shared with the Codex and ACP
 mappers: every `info` map on a session or message event is sesori-schema JSON
@@ -291,7 +303,9 @@ declares id, displayName, `bridgeDerived` ownership, `plugin` options scope, and
 the single `bin` value option as a bare name that the bridge's option mapper
 namespaces to `--claude-bin`. `inspectSetup` runs a bounded `--version` probe
 through `HostProcessCommandExecutor`, applies the typed `SemanticVersion` floor,
-then probes auth, returning one of the five inspectable statuses — never
+then runs `claude auth status` and reads only its `loggedIn` field — the rest of
+that payload is PII and is neither logged nor retained — returning one of the
+five inspectable statuses — never
 `PluginSetupNotInspected`, which is the bridge's own disabled marker — with a
 non-empty `actionHint` on each non-ready variant. `start()` checks
 `host.startAborted` at entry and after construction, rolls back through
@@ -435,10 +449,10 @@ transport field, cache, flag, job, or test was found.
 | Step | Branch | Exact PR title | Estimate |
 |---|---|---|---:|
 | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 900-1,100 |
-| 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 |
-| 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,000-1,400 |
-| 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,100-1,500 |
-| 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 900-1,300 |
+| 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 900-1,100 |
+| 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 |
+| 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 |
+| 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 |
 | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 |
 | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 |
 | 8/17 | `claude-code-plugin-event-mapper` | `🚧 [claude-code-plugin] feat(claude): map stream events to SSE [step 8/17]` | 1,200-1,500 |
@@ -465,23 +479,42 @@ transport field, cache, flag, job, or test was found.
 
 ### Step 2/17 — Ground The Protocol And Scaffold The Package
 
-- Pin the CLI version; capture real stream-json transcripts and `--help` output;
+- Pin the CLI version; capture real stream-json frames and `--help` output;
   cross-check flags, control subtypes, the stdin user-message envelope, and the
   transcript record schema against the Agent SDK's own declarations.
 - Fill `PROTOCOL.md` with observed ground truth, replacing every verify marker
   with either a confirmed shape or a recorded absence.
 - Create the package with its pubspec, analysis options, build config, and
-  barrels, plus Wave-1 workspace, Makefile, and CI plumbing.
-- Add the Freezed and JSON DTOs for stream messages, control payloads, and
-  transcript records, with tolerant unknown variants, and run codegen.
+  barrel, plus Wave-1 workspace, Makefile, and CI plumbing.
+- Add the verified launch contract — the argument vector, the dual-spelled
+  permission mode, and the per-model effort level — with tests. This is the one
+  piece of the protocol every later step depends on, and it gives the package a
+  real test suite from its first commit so CI is meaningful.
 - Verify: `dart pub get` at `bridge/`, `dart analyze --fatal-infos` and
-  `dart test` in the new package, `make codegen`, implementation review.
+  `dart test` in the new package, implementation review.
+
+**DTOs land with their consumers, not here.** The original plan bundled every
+stream, control, and transcript DTO into this step. Measured against the Codex
+analog, Freezed expands roughly tenfold — `codex_rollout_dto.dart` is 326 source
+lines and 3,286 generated ones — so a full sealed envelope set would exceed this
+step's cap several times over with no production consumer in the same PR. Each
+DTO group therefore moves into the step that first consumes it: stream and
+control envelopes with the transport (Step 3), transcript records with the
+catalog (Step 4), and content blocks with the content mapper (Step 5). This also
+satisfies the repository rule that a production type has a production consumer
+in the PR that introduces it. The step total is unchanged.
 
 ### Step 3/17 — Add The Stream-JSON Transport
 
+- Add the stream-message and control-envelope DTOs this step consumes, with
+  tolerant unknown variants covering the `rate_limit_event` and `system/status`
+  types the original research missed, and run codegen.
 - Add `ClaudeStreamClient` with line framing, request-id correlation, lenient
   stderr decoding, redacted frame logging, generation fencing, pending-request
   failure on teardown, and platform-correct termination.
+- Perform the `initialize` handshake on connect and retain its response: it
+  carries the command, agent, model, and account catalog in one round trip, so
+  Step 11 needs no separate startup probes.
 - Add `FakeClaudeProcess` and the `claude_testing.dart` barrel.
 - Cover framing, exit mid-request, generation fencing, redaction, and
   unknown-type absorption.
@@ -489,8 +522,13 @@ transport field, cache, flag, job, or test was found.
 
 ### Step 4/17 — Enumerate Transcript Sessions
 
+- Add the transcript record DTOs this step consumes — `user`, `assistant`,
+  `attachment`, `ai-title`, `last-prompt`, `queue-operation`, and unknown — and
+  run codegen.
 - Add `ClaudeTranscriptApi` with injected-environment root resolution and
   `ClaudeCatalogRepository` with isolate-backed scanning.
+- Take the session title from `ai-title.aiTitle` and exclude records flagged
+  `isSidechain`; both are first-party fields, so neither needs a heuristic.
 - Add captured, trimmed, anonymized transcript fixtures as inline Dart literals.
 - Cover the scan, malformed lines, the half-written last line, sidechain
   exclusion, and privacy-safe diagnostics.
@@ -498,6 +536,7 @@ transport field, cache, flag, job, or test was found.
 
 ### Step 5/17 — Map Content Blocks To Parts
 
+- Add the content-block DTOs this step consumes and run codegen.
 - Add `ClaudeContentMapper` converting content blocks to plugin parts and
   attachments under the existing tool-output and inline-attachment limits.
 - Cover text, thinking, tool use, tool results, images, oversize degradation, and
@@ -534,6 +573,16 @@ transport field, cache, flag, job, or test was found.
 - Add `ClaudeApprovalRegistry` with permission/question bifurcation, the three
   reply behaviors, `AskUserQuestion` answer-key handling, `ExitPlanMode` approval,
   and teardown that resolves every pending request and emits its outcome.
+- Bifurcate on the request's own `requires_user_interaction` flag rather than a
+  hardcoded tool-name list, so the split stays correct as new
+  interaction-shaped tools appear.
+- Honor `suppress_always_allow_rule` by withholding the always affordance, and
+  sanitize ANSI escapes out of `decision_reason` before it reaches the phone.
+- Decide and record whether `always` may echo a `setMode` suggestion. The
+  observed suggestion for a file write was
+  `{type: setMode, mode: acceptEdits, destination: session}`, which escalates
+  the whole session rather than allowing one tool; the recommendation is to echo
+  rule-shaped suggestions only.
 - Cover cancel-on-abort, cancel-on-dispose, and cancel-on-process-exit.
 - Verify: focused and full package tests, fatal analysis, implementation review.
 
@@ -551,8 +600,14 @@ transport field, cache, flag, job, or test was found.
 - Add `ClaudeCatalogService` owning models, agents, providers, and commands, plus
   `set_model` and `set_permission_mode` application with an applied-selection
   cache cleared on respawn.
-- Record the reasoning-effort variant decision with the evidence gathered in
-  Step 2; ship without variants if the pinned CLI has no first-party support.
+- Source the catalog from the retained `initialize` response rather than
+  separate probes; `list_models` becomes the refresh path only.
+- Ship effort variants. Step 2 confirmed `supportsEffort` and
+  `supportedEffortLevels` are declared per model, so variants are first-party
+  data — default-first, and omitted entirely for models that declare no support.
+- Expose Default and Plan as agents driving `set_permission_mode`. Claude's own
+  `agents` array is deliberately not mapped; surfacing it is a follow-up outside
+  this series.
 - Verify: focused and full package tests, fatal analysis, implementation review.
 
 ### Step 12/17 — Implement The Plugin API Surface
@@ -659,7 +714,7 @@ quota, so prompts stay minimal.
 | Risk | Evidence level | Mitigation |
 |---|---|---|
 | The stream-json control protocol is SDK-internal and drifts between CLI releases. | Known upstream property | Pin a floor in `inspectSetup`, feature-detect from `init.capabilities`, parse tolerantly, and keep `PROTOCOL.md` as dated ground truth for the pinned version. |
-| Verify-at-implementation items (stdin envelope, control subtypes, permission-prompt flag, model listing, effort support, slash dispatch, auth probe, transcript schema) turn out different from the research. | Unresolved by design | Step 2 resolves each against the pinned CLI and the SDK declarations before any consumer is written; each resolution is recorded in `PROTOCOL.md`. |
+| Verify-at-implementation items turn out different from the research. | Mostly resolved | Step 2 resolved the stdin envelope, control subtypes, permission-prompt flag, model listing, effort support, auth probe, and transcript schema against the pinned CLI and the SDK declarations, and found the research wrong about the invocation and the permission flag. The remainder — error `result` subtypes, `AskUserQuestion`/`ExitPlanMode` captures, image round-trip, slash dispatch, `attachment` payload, and the auto-update environment variables — are listed in `PROTOCOL.md` section 11 against the steps that consume them. |
 | The auth probe costs seconds inside `inspectSetup`. | Ordinary flow | Run the version probe first, bound the auth probe, and accept `PluginSetupUnknown` as honest degradation. |
 | Overriding `HOME` for test isolation breaks keychain auth and reports a logged-in user as logged out. | Observed in prior integrations | Never override `HOME`; isolate tests through `CLAUDE_CONFIG_DIR` only, and assert that in the transcript tests. |
 | A stale permission or question card survives a stop, an abort, or a process exit. | Observed in prior integrations | The registry teardown contract resolves every pending request and emits its outcome; Steps 9 and 10 cover all three paths. |
