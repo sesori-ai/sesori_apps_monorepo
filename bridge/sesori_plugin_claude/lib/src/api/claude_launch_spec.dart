@@ -1,5 +1,5 @@
-import "models/claude_effort_level.dart";
-import "models/claude_permission_mode.dart";
+import "../models/claude_effort_level.dart";
+import "../models/claude_permission_mode.dart";
 
 /// Whether a launch starts a brand-new session or continues an existing one.
 ///
