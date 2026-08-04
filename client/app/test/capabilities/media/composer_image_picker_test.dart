@@ -41,6 +41,16 @@ void main() {
     expect(await picker.pickImage(), isNull);
   });
 
+  test("clipboard bytes use the same validation and have no filename", () {
+    final bytes = jpegBytes();
+
+    final attachment = picker.attachmentFromBytes(bytes: bytes, filename: null);
+
+    expect(attachment.mime, "image/jpeg");
+    expect(attachment.bytes, same(bytes));
+    expect(attachment.filename, isNull);
+  });
+
   test("sniffs the mime from content and keeps the picker filename", () async {
     // A path-backed XFile, like the real picker returns — XFile.fromData does
     // not surface a name.

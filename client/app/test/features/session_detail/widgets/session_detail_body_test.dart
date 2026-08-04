@@ -33,6 +33,8 @@ class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionSe
 
 class MockComposerImagePicker extends Mock implements ComposerImagePicker {}
 
+class MockImageClipboard extends Mock implements ImageClipboard {}
+
 /// A valid 1x1 transparent PNG so `Image.memory` thumbnails decode in tests.
 final Uint8List _tinyPng = Uint8List.fromList(const [
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, //
@@ -187,6 +189,7 @@ void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
   late MockComposerImagePicker imagePicker;
+  late MockImageClipboard imageClipboard;
 
   setUpAll(() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
@@ -226,6 +229,10 @@ void main() {
 
     imagePicker = MockComposerImagePicker();
     GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
+
+    imageClipboard = MockImageClipboard();
+    when(imageClipboard.readImage).thenAnswer((_) async => null);
+    GetIt.instance.registerSingleton<ImageClipboard>(imageClipboard);
   });
 
   tearDown(() async {
@@ -1780,6 +1787,83 @@ void main() {
     expect(semanticsWithLabel("screenshot.png"), findsNothing);
     // Nothing left to show: the composer collapses back to its resting pill.
     expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("image-only context-menu paste stages an attachment", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
+    when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
+    when(
+      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+    ).thenReturn(attachment);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+
+    final textField = tester.widget<TextField>(find.byType(TextField));
+    final editableTextState = tester.state<EditableTextState>(find.byType(EditableText));
+    final toolbar =
+        textField.contextMenuBuilder!(
+              tester.element(find.byType(TextField)),
+              editableTextState,
+            )
+            as AdaptiveTextSelectionToolbar;
+    final pasteItem = toolbar.buttonItems!.singleWhere((item) => item.type == ContextMenuButtonType.paste);
+
+    pasteItem.onPressed!();
+    await tester.pumpAndSettle();
+
+    expect(semanticsWithLabel("Attached image"), findsOneWidget);
+    verify(imageClipboard.readImage).called(1);
+    verify(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
+  });
+
+  testWidgets("keyboard image paste stages an attachment without inserting text", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
+    when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
+    when(
+      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+    ).thenReturn(attachment);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+
+    final actionContext = tester.element(
+      find.descendant(of: find.byType(EditableText), matching: find.byType(RawGestureDetector)).first,
+    );
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.pumpAndSettle();
+
+    expect(semanticsWithLabel("Attached image"), findsOneWidget);
+    expect(tester.widget<EditableText>(find.byType(EditableText)).controller.text, isEmpty);
+    verify(imageClipboard.readImage).called(1);
+  });
+
+  testWidgets("plain text paste still delegates to Flutter's text action", (tester) async {
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == "Clipboard.getData") return <String, Object>{"text": "pasted"};
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "before after");
+    final editableText = tester.widget<EditableText>(find.byType(EditableText));
+    editableText.controller.selection = const TextSelection(baseOffset: 0, extentOffset: 6);
+
+    final actionContext = tester.element(
+      find.descendant(of: find.byType(EditableText), matching: find.byType(RawGestureDetector)).first,
+    );
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.pumpAndSettle();
+
+    expect(editableText.controller.text, "pasted after");
+    verify(imageClipboard.readImage).called(1);
+    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
   testWidgets("accordion offers no attach action on a harness that drops image parts", (tester) async {

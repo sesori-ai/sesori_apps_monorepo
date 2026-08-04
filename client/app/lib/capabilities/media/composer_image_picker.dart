@@ -49,7 +49,18 @@ class ComposerImagePicker {
     );
     if (file == null) return null;
 
-    final bytes = await file.readAsBytes();
+    return attachmentFromBytes(
+      bytes: await file.readAsBytes(),
+      filename: file.name,
+    );
+  }
+
+  /// Validates image bytes from any composer source and creates the attachment
+  /// shape used by the existing send pipeline.
+  ComposerAttachment attachmentFromBytes({
+    required Uint8List bytes,
+    required String? filename,
+  }) {
     // Judge size by the conservative decoded estimate of the base64 form the
     // wire carries, so anything accepted here also passes receivers using the
     // shared [isInlineMessageAttachmentWithinSizeLimit] check.
@@ -61,11 +72,11 @@ class ComposerImagePicker {
     final mime = _sniffImageMime(bytes: bytes);
     if (mime == null) throw const UnsupportedAttachmentImageError();
 
-    final name = file.name.trim();
+    final name = filename?.trim();
     return ComposerAttachment(
       mime: mime,
       bytes: bytes,
-      filename: name.isEmpty ? null : name,
+      filename: name == null || name.isEmpty ? null : name,
     );
   }
 

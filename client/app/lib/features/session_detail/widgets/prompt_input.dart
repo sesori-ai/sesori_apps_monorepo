@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/gestures.dart" show kPrimaryButton;
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -24,6 +25,34 @@ import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
 enum _VoiceState { idle, recording, transcribing }
+
+final class _ComposerPasteAction extends Action<PasteTextIntent> {
+  final Future<bool> Function() _pasteImage;
+
+  _ComposerPasteAction({required Future<bool> Function() pasteImage}) : _pasteImage = pasteImage;
+
+  @override
+  Object? invoke(PasteTextIntent intent) {
+    // callingAction is available only during this synchronous override call,
+    // so retain Flutter's normal text-paste action before reading the image.
+    final textPasteAction = callingAction;
+    unawaited(_pasteImageOrText(intent: intent, textPasteAction: textPasteAction));
+    return null;
+  }
+
+  Future<void> _pasteImageOrText({
+    required PasteTextIntent intent,
+    required Action<PasteTextIntent>? textPasteAction,
+  }) async {
+    if (!await _pasteImage()) textPasteAction?.invoke(intent);
+  }
+
+  @override
+  bool get isActionEnabled => callingAction?.isActionEnabled ?? false;
+
+  @override
+  bool consumesKey(PasteTextIntent intent) => callingAction?.consumesKey(intent) ?? false;
+}
 
 typedef PromptSubmitCallback =
     void Function({
@@ -96,6 +125,7 @@ class _PromptInputState extends State<PromptInput> {
   final _controller = TextEditingController();
   final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
+  late final Action<PasteTextIntent> _pasteAction;
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
@@ -172,9 +202,12 @@ class _PromptInputState extends State<PromptInput> {
 
   ComposerImagePicker get _imagePicker => getIt<ComposerImagePicker>();
 
+  ImageClipboard get _imageClipboard => getIt<ImageClipboard>();
+
   @override
   void initState() {
     super.initState();
+    _pasteAction = _ComposerPasteAction(pasteImage: _handlePasteImage);
     final chatInputModeCubit = context.read<ChatInputModeCubit>();
     _chatInputMode = chatInputModeCubit.state;
     _chatInputModeSub = chatInputModeCubit.stream.listen((inputMode) {
@@ -1154,36 +1187,44 @@ class _PromptInputState extends State<PromptInput> {
                 // Clear the expand button on the trailing edge so text never
                 // runs underneath it.
                 padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, 36, 0),
-                child: CallbackShortcuts(
-                  // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
-                  // plain Enter stays a newline via textInputAction below.
-                  bindings: <ShortcutActivator, VoidCallback>{
-                    const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
-                    const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
-                  },
-                  child: TextField(
-                    controller: _controller,
-                    scrollController: _textScrollController,
-                    focusNode: _focusNode,
-                    minLines: 1,
-                    maxLines: 6,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    // Material's default keeps focus on mobile touch taps;
-                    // this composer wants outside taps (e.g. the picker
-                    // pills above the region) to dismiss the keyboard — the
-                    // behaviour the TextFieldTapRegion grouping was built
-                    // around.
-                    onTapOutside: (_) => _focusNode.unfocus(),
-                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
-                    decoration: InputDecoration(
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
-                      // Command-aware placeholder: the staged command's hint,
-                      // else the follow-up/default prompt hint.
-                      hintText: _hintText(context),
-                      hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                child: Actions(
+                  // Browser paste must remain synchronous with its DOM event;
+                  // deferring Flutter's text action behind an async Clipboard
+                  // API read can lose browser user activation.
+                  actions: kIsWeb ? const {} : {PasteTextIntent: _pasteAction},
+                  child: CallbackShortcuts(
+                    // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
+                    // plain Enter stays a newline via textInputAction below.
+                    bindings: <ShortcutActivator, VoidCallback>{
+                      const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
+                      const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
+                    },
+                    child: TextField(
+                      controller: _controller,
+                      scrollController: _textScrollController,
+                      focusNode: _focusNode,
+                      minLines: 1,
+                      maxLines: 6,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      contextMenuBuilder: (_, editableTextState) =>
+                          _buildComposerContextMenu(editableTextState: editableTextState),
+                      // Material's default keeps focus on mobile touch taps;
+                      // this composer wants outside taps (e.g. the picker
+                      // pills above the region) to dismiss the keyboard — the
+                      // behaviour the TextFieldTapRegion grouping was built
+                      // around.
+                      onTapOutside: (_) => _focusNode.unfocus(),
+                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
+                        // Command-aware placeholder: the staged command's hint,
+                        // else the follow-up/default prompt hint.
+                        hintText: _hintText(context),
+                        hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                      ),
                     ),
                   ),
                 ),
@@ -1206,6 +1247,36 @@ class _PromptInputState extends State<PromptInput> {
           if (voiceFirst) _buildTypingVoicePill(context) else _buildTypingActionRow(context),
         ],
       ),
+    );
+  }
+
+  Widget _buildComposerContextMenu({required EditableTextState editableTextState}) {
+    final buttonItems = [...editableTextState.contextMenuButtonItems];
+    if (!kIsWeb && widget.attachmentsSupported) {
+      final pasteIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.paste);
+      final existingPaste = pasteIndex < 0 ? null : buttonItems[pasteIndex];
+      final pasteItem = ContextMenuButtonItem(
+        type: ContextMenuButtonType.paste,
+        label: existingPaste?.label,
+        onPressed: () => unawaited(
+          _pasteImageOrText(
+            onTextPaste:
+                existingPaste?.onPressed ?? () => unawaited(editableTextState.pasteText(SelectionChangedCause.toolbar)),
+            onImagePasted: editableTextState.hideToolbar,
+          ),
+        ),
+      );
+      if (pasteIndex >= 0) {
+        buttonItems[pasteIndex] = pasteItem;
+      } else {
+        final selectAllIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.selectAll);
+        buttonItems.insert(selectAllIndex < 0 ? buttonItems.length : selectAllIndex, pasteItem);
+      }
+    }
+
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      anchors: editableTextState.contextMenuAnchors,
+      buttonItems: buttonItems,
     );
   }
 
@@ -1376,11 +1447,7 @@ class _PromptInputState extends State<PromptInput> {
       if (!mounted || draftIdentity != widget.draftIdentity || !widget.attachmentsSupported || attachment == null) {
         return;
       }
-      if (_attachmentsDecodedSizeWith(attachment: attachment) > maxInlineMessageAttachmentBytes) {
-        _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
-        return;
-      }
-      setState(() => _attachments.add(attachment));
+      _stageAttachment(attachment: attachment);
     } on AttachmentTooLargeError {
       if (!mounted || draftIdentity != widget.draftIdentity) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
@@ -1392,6 +1459,57 @@ class _PromptInputState extends State<PromptInput> {
       if (!mounted || draftIdentity != widget.draftIdentity) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
     }
+  }
+
+  /// Reads an image before allowing Flutter's normal text paste to run. An
+  /// image wins when the clipboard exposes both binary and text formats.
+  Future<bool> _handlePasteImage() async {
+    if (!widget.attachmentsSupported) return false;
+    final draftIdentity = widget.draftIdentity;
+    final Uint8List? bytes;
+    try {
+      bytes = await _imageClipboard.readImage();
+    } catch (error, stackTrace) {
+      loge("Failed to read a pasted image", error, stackTrace);
+      return false;
+    }
+
+    // Never let an asynchronous paste land in a composer that replaced the
+    // one where the action started.
+    if (!mounted || draftIdentity != widget.draftIdentity || !widget.attachmentsSupported) return true;
+    if (bytes == null) return false;
+
+    try {
+      final attachment = _imagePicker.attachmentFromBytes(bytes: bytes, filename: null);
+      _stageAttachment(attachment: attachment);
+    } on AttachmentTooLargeError {
+      _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
+    } on UnsupportedAttachmentImageError {
+      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
+    } catch (error, stackTrace) {
+      loge("Failed to attach a pasted image", error, stackTrace);
+      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+    }
+    return true;
+  }
+
+  Future<void> _pasteImageOrText({
+    required VoidCallback onTextPaste,
+    required VoidCallback onImagePasted,
+  }) async {
+    if (await _handlePasteImage()) {
+      onImagePasted();
+    } else {
+      onTextPaste();
+    }
+  }
+
+  void _stageAttachment({required ComposerAttachment attachment}) {
+    if (_attachmentsDecodedSizeWith(attachment: attachment) > maxInlineMessageAttachmentBytes) {
+      _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
+      return;
+    }
+    setState(() => _attachments.add(attachment));
   }
 
   /// Total decoded bytes the staged strip would carry with [attachment]
