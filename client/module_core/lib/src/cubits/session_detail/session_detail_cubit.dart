@@ -84,7 +84,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   bool _waitingForConnection = false;
   bool _wasPaused = false;
   bool _wasConnected = false;
+
+  // A disconnect invalidates capability snapshots that could authorize image sends.
   int _connectionGeneration = 0;
+  final Map<int, int> _activeLoadingRefreshes = {};
   bool _connectionRefreshQueued = false;
 
   /// Set when a resume/reconnect requires the next successful silent refresh
@@ -168,14 +171,36 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   // ---------------------------------------------------------------------------
 
   Future<_SessionRefreshResult> _loadMessages({required bool isReload}) async {
+    final connectionGeneration = _connectionGeneration;
+    _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
     emit(const SessionDetailState.loading());
-    final result = isReload
-        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
-        : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+    late final SessionDetailLoadResult result;
+    try {
+      result = isReload
+          ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
+          : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+    } finally {
+      final remaining = (_activeLoadingRefreshes[connectionGeneration] ?? 1) - 1;
+      if (remaining == 0) {
+        _activeLoadingRefreshes.remove(connectionGeneration);
+      } else {
+        _activeLoadingRefreshes[connectionGeneration] = remaining;
+      }
+    }
     if (isClosed) return _SessionRefreshResult.closed;
 
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
+        if (connectionGeneration != _connectionGeneration) {
+          if (_isConnected) {
+            if (!_activeLoadingRefreshes.containsKey(_connectionGeneration)) {
+              unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.connectionReconnected));
+            }
+          } else {
+            _waitingForConnection = true;
+          }
+          return _SessionRefreshResult.staleConnection;
+        }
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
         final effectiveProjectId = snapshot.projectId;
@@ -1172,7 +1197,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final isConnected = status is ConnectionConnected;
     final reconnected = isConnected && !_wasConnected;
-    if (isConnected != _wasConnected) _connectionGeneration++;
+    if (!isConnected && _wasConnected) _connectionGeneration++;
     _wasConnected = isConnected;
     if (!isConnected) {
       _connectionRefreshQueued = false;

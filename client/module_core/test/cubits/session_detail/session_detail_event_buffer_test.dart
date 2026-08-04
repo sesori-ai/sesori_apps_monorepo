@@ -448,9 +448,9 @@ void main() {
       expect(refreshed.supportsPromptAttachments, isNull);
     });
 
-    test("queued attachment waits for capability refresh after reconnect", () async {
+    test("queued attachment waits for a current capability load after reconnect", () async {
       final mockLoadService = MockSessionDetailLoadService();
-      final refresh = Completer<SessionDetailLoadResult>();
+      final refreshes = <Completer<SessionDetailLoadResult>>[];
       const snapshot = SessionDetailSnapshot(
         projectId: "project-1",
         pluginId: "codex",
@@ -484,7 +484,11 @@ void main() {
           sessionId: _sessionId,
           projectId: any(named: "projectId"),
         ),
-      ).thenAnswer((_) => refresh.future);
+      ).thenAnswer((_) {
+        final refresh = Completer<SessionDetailLoadResult>();
+        refreshes.add(refresh);
+        return refresh.future;
+      });
       var sendCalls = 0;
       when(
         () => mockSessionRepository.sendMessage(
@@ -518,25 +522,29 @@ void main() {
       expect(sendCalls, 1);
       expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
 
+      unawaited(cubit.reload());
+      await _awaitCondition(() => refreshes.length == 1);
       connectionStatus.add(
         const ConnectionStatus.connectionLost(
           config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
         ),
       );
       await Future<void>.delayed(Duration.zero);
-      expect((cubit.state as SessionDetailLoaded).supportsPromptAttachments, isNull);
+      expect(cubit.state, isA<SessionDetailLoading>());
 
       connectionStatus.add(connectedStatus);
-      await untilCalled(
-        () => mockLoadService.reload(
-          sessionId: _sessionId,
-          projectId: any(named: "projectId"),
+      expect(sendCalls, 1);
+
+      refreshes.first.complete(
+        const SessionDetailLoadResult.loaded(
+          snapshot: snapshot,
+          isBridgeConnected: true,
         ),
       );
+      await _awaitCondition(() => refreshes.length == 2);
       expect(sendCalls, 1);
-      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
 
-      refresh.complete(
+      refreshes[1].complete(
         const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
           isBridgeConnected: true,
