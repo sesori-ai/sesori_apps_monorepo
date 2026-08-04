@@ -161,7 +161,7 @@ tokens.
 - **Step 1 documentation validation:** `git diff --check` passed; plan/tracker
   slug, exact titles, three-step denominator, line targets, selected options,
   and diagnostic prefix agree
-- **Step 1 changed lines:** 619 documentation-only lines including delivery metadata
+- **Step 1 changed lines:** 665 documentation-only lines including delivery metadata
 - **Step 1 PR:** [#725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725)
   open from `6a6e8cf9`
 - **Step 2 implementation:** pending
