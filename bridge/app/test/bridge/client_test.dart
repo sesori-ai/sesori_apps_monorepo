@@ -180,7 +180,10 @@ void main() {
         accessTokenProvider: FakeAccessTokenProvider(""),
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
-      final statesFuture = _recordStates(client.connectionState, 2);
+      final statesFuture = _recordStates(
+        stream: client.connectionState,
+        count: 2,
+      )..ignore();
 
       final connection = await client.connect();
       _closeAfterTest(client: client, connection: connection);
@@ -200,12 +203,21 @@ void main() {
         accessTokenProvider: _ThrowingAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
-      final statesFuture = _recordStates(client.connectionState, 2);
+      final states = <RelayConnectionState>[];
+      final disconnected = Completer<void>();
+      client.connectionState.listen((state) {
+        states.add(state);
+        if (state is RelayDisconnected && !disconnected.isCompleted) {
+          disconnected.complete();
+        }
+      });
 
       await expectLater(client.connect(), throwsA(isA<StateError>()));
+      await disconnected.future.timeout(const Duration(seconds: 2));
+      // Drain the microtask queue so any falsely emitted connected state that
+      // would follow the disconnected one is still observed.
+      await pumpEventQueue();
 
-      final states = await statesFuture;
-      expect(states, hasLength(2));
       expect(states[0], isA<RelayConnecting>());
       expect(states[1], isA<RelayDisconnected>());
       expect(states.whereType<RelayConnected>(), isEmpty);
@@ -336,7 +348,10 @@ void main() {
         bridgeIdProvider: FakeBridgeIdProvider(),
         connectTimeout: const Duration(milliseconds: 500),
       );
-      final statesFuture = _recordStates(client.connectionState, 2);
+      final statesFuture = _recordStates(
+        stream: client.connectionState,
+        count: 2,
+      )..ignore();
 
       await expectLater(client.connect(), throwsA(isA<TimeoutException>()));
       final states = await statesFuture;
@@ -386,7 +401,10 @@ void main() {
         accessTokenProvider: FakeAccessTokenProvider(""),
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
-      final statesFuture = _recordStates(client.connectionState, 5);
+      final statesFuture = _recordStates(
+        stream: client.connectionState,
+        count: 5,
+      )..ignore();
       var connection = await client.connect();
       addTearDown(() => client.closeIfCurrent(connection: connection));
 
@@ -590,7 +608,7 @@ void main() {
         RelaySendOutcome.sent,
       );
       await firstFrame1.future.timeout(const Duration(seconds: 2));
-      expect(received1.whereType<List<int>>(), hasLength(1));
+      expect(received1, hasLength(1));
 
       // Drop the connection, waiting for the client to observe it first.
       client.read(connection: connection).listen((_) {});
@@ -619,7 +637,7 @@ void main() {
         RelaySendOutcome.sent,
       );
       await firstFrame2.future.timeout(const Duration(seconds: 2));
-      expect(received2.whereType<List<int>>(), hasLength(1));
+      expect(received2, hasLength(1));
     });
 
     test("stale send and close cannot affect a successor connection", () async {
@@ -678,7 +696,7 @@ void main() {
         RelaySendOutcome.sent,
       );
       await firstFrame.future.timeout(const Duration(seconds: 2));
-      expect(received.whereType<List<int>>(), hasLength(1));
+      expect(received, hasLength(1));
     });
 
     test("closeIfCurrent detaches synchronously before its handshake", () async {
@@ -749,9 +767,9 @@ class _ThrowingAccessTokenProvider extends FakeAccessTokenProvider {
 /// Subscribes to [stream] before any connect and completes once [count]
 /// events have been observed, returning the recorded events. Event-driven
 /// replacement for fixed `Future.delayed` sleeps after connect.
-Future<List<RelayConnectionState>> _recordStates(
-  Stream<RelayConnectionState> stream,
-  int count, {
+Future<List<RelayConnectionState>> _recordStates({
+  required Stream<RelayConnectionState> stream,
+  required int count,
   Duration timeout = const Duration(seconds: 5),
 }) async {
   final states = <RelayConnectionState>[];
