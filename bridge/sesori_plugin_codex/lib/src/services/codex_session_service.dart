@@ -2,6 +2,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../codex_config_reader.dart";
 import "../codex_metadata_repository.dart";
 import "../models/codex_collaboration_mode.dart";
 import "../repositories/codex_catalog_repository.dart";
@@ -11,6 +12,12 @@ import "../repositories/codex_skill_repository.dart";
 import "../repositories/codex_thread_repository.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/models/codex_thread_record.dart";
+
+typedef CodexSessionMessageRead = ({
+  String rolloutPath,
+  Map<String, PluginToolStatus> structuredToolStatusByCallId,
+  CodexConfigDefaults config,
+});
 
 /// Layer-3 coordination for the migrated Codex session operations.
 class CodexSessionService {
@@ -382,12 +389,11 @@ class CodexSessionService {
     _threadModels.remove(sessionId);
   }
 
-  Future<List<PluginMessageWithParts>> getSessionMessages({
+  Future<CodexSessionMessageRead?> prepareSessionMessageRead({
     required String sessionId,
-    required PluginSessionStatus sessionStatus,
   }) async {
     final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
-    if (path == null) return const [];
+    if (path == null) return null;
     Map<String, PluginToolStatus> structuredToolStatusByCallId;
     try {
       structuredToolStatusByCallId = await _toolOutcomeRepository.readStatuses(
@@ -401,12 +407,24 @@ class CodexSessionService {
       );
       structuredToolStatusByCallId = const {};
     }
-    return _messageRepository.readMessages(
+    return (
       rolloutPath: path,
-      sessionId: sessionId,
-      sessionStatus: sessionStatus,
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
+    );
+  }
+
+  List<PluginMessageWithParts> getSessionMessages({
+    required String sessionId,
+    required CodexSessionMessageRead read,
+    required PluginSessionStatus sessionStatus,
+  }) {
+    return _messageRepository.readMessages(
+      rolloutPath: read.rolloutPath,
+      sessionId: sessionId,
+      sessionStatus: sessionStatus,
+      structuredToolStatusByCallId: read.structuredToolStatusByCallId,
+      config: read.config,
     );
   }
 

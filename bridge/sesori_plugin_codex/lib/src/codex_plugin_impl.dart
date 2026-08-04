@@ -1058,15 +1058,23 @@ class CodexPlugin implements CodexManagedApi {
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
-  ) {
-    final sessionStatus =
-        _activeTurnByThread.containsKey(sessionId) || _provisionalAcceptedTurnThreadIds.contains(sessionId)
-        ? const PluginSessionStatus.busy()
-        : _sessionStatuses[sessionId] ?? const PluginSessionStatus.idle();
+  ) async {
+    final read = await _sessionService.prepareSessionMessageRead(
+      sessionId: sessionId,
+    );
+    if (read == null) return const [];
     return _sessionService.getSessionMessages(
       sessionId: sessionId,
-      sessionStatus: sessionStatus,
+      read: read,
+      sessionStatus: _sessionStatusForReplay(sessionId: sessionId),
     );
+  }
+
+  PluginSessionStatus _sessionStatusForReplay({required String sessionId}) {
+    if (_activeTurnByThread.containsKey(sessionId) || _provisionalAcceptedTurnThreadIds.contains(sessionId)) {
+      return const PluginSessionStatus.busy();
+    }
+    return _sessionStatuses[sessionId] ?? const PluginSessionStatus.busy();
   }
 
   @override

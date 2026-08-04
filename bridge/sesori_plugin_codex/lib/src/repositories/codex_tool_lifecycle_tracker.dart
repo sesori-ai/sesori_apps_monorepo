@@ -207,7 +207,10 @@ class CodexToolLifecycleTracker {
     if (thread == null || sessionStatus is! PluginSessionStatusIdle) {
       return const [];
     }
-    return _advanceChronologySegment(thread: thread);
+    return _advanceChronologySegment(
+      thread: thread,
+      includeNonRolloutCalls: true,
+    );
   }
 
   bool shouldReplayLegacyImage({
@@ -494,10 +497,11 @@ class CodexToolLifecycleTracker {
 
   List<CodexProjectedTool> _advanceChronologySegment({
     required _ThreadToolLifecycle thread,
+    bool includeNonRolloutCalls = false,
   }) {
     final updates = <CodexProjectedTool>[];
     for (final tool in thread.tools.values) {
-      if (!tool.isRolloutCall ||
+      if ((!includeNonRolloutCalls && !tool.isRolloutCall) ||
           tool.status != PluginToolStatus.running ||
           tool.chronologySegment != thread.chronologySegment) {
         continue;

@@ -237,7 +237,9 @@ class CodexMessageRepository {
               info: assistantInfo(id: messageId, time: messageTime),
               tool: "image_generation",
               title: null,
-              status: generation.status,
+              status: generation.status == PluginToolStatus.running && sessionStatus is PluginSessionStatusIdle
+                  ? PluginToolStatus.error
+                  : generation.status,
               output: null,
               attachments: generation.attachments,
             ),

@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:codex_plugin/src/api/codex_app_server_api.dart";
@@ -301,14 +302,41 @@ void main() {
     );
 
     expect(
-      await service.getSessionMessages(
+      service.getSessionMessages(
         sessionId: "session-1",
+        read: (await service.prepareSessionMessageRead(sessionId: "session-1"))!,
         sessionStatus: const PluginSessionStatus.idle(),
       ),
       isEmpty,
     );
     expect(messageRepository.statuses, isEmpty);
     expect(messageRepository.sessionStatus, const PluginSessionStatus.idle());
+  });
+
+  test("resolves replay activity after reading persisted outcomes", () async {
+    final messageRepository = _RecordingMessageRepository();
+    final outcomes = _DelayedToolOutcomeRepository();
+    final service = _newService(
+      catalogRepository: _FixedPathCatalogRepository(),
+      messageRepository: messageRepository,
+      toolOutcomeRepository: outcomes,
+    );
+    var sessionStatus = const PluginSessionStatus.idle();
+
+    final readFuture = service.prepareSessionMessageRead(
+      sessionId: "session-1",
+    );
+    await outcomes.readStarted.future;
+    sessionStatus = const PluginSessionStatus.busy();
+    outcomes.allowRead.complete();
+    final read = await readFuture;
+    service.getSessionMessages(
+      sessionId: "session-1",
+      read: read!,
+      sessionStatus: sessionStatus,
+    );
+
+    expect(messageRepository.sessionStatus, const PluginSessionStatus.busy());
   });
 }
 
@@ -344,6 +372,23 @@ class _DeleteFailingCatalogRepository extends CodexCatalogRepository {
 
   @override
   bool deleteSession({required String sessionId}) => false;
+}
+
+class _DelayedToolOutcomeRepository extends CodexToolOutcomeRepository {
+  _DelayedToolOutcomeRepository()
+    : super(
+        storage: _ReadFailingToolOutcomeStorage(),
+      );
+
+  final readStarted = Completer<void>();
+  final allowRead = Completer<void>();
+
+  @override
+  Future<Map<String, PluginToolStatus>> readStatuses({required String sessionId}) async {
+    readStarted.complete();
+    await allowRead.future;
+    return const {};
+  }
 }
 
 class _FixedPathCatalogRepository extends CodexCatalogRepository {

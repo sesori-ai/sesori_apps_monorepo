@@ -293,15 +293,22 @@ origin/main
   `f06aa211`, then merged `origin/main` at `b4455593` as `0232ffc2`. Existing
   production commit `8f0f4ece` remains in its original stack position; no
   rebase, reset, reorder, or cherry-pick occurred.
-- **Step 6 production verification:** All 58 focused rollout/service tests and
-  all 307 Codex package tests pass. `dart analyze --fatal-infos` reports no
-  issues. Both branch and working-tree `git diff --check` pass.
+- **Step 6 production verification:** The 136 focused rollout, session-service,
+  lifecycle-tracker, and write-path tests pass, as do all 310 Codex package
+  tests. `dart analyze --fatal-infos` reports no issues. Both branch and
+  working-tree `git diff --check` pass.
 - **Step 6 architecture review:** `aristotle-impl-review` approved the branch
   against `origin/main` with no findings. It confirmed the plugin, service,
-  repository, and tracker ownership flow remains cohesive and proportional.
-- **Step 6 behavior:** Replay receives the plugin's authoritative current
-  activity. Idle history terminalizes unresolved tools as errors, while active,
-  provisional, or retry-backed sessions preserve running state.
+  repository, and tracker ownership flow remains cohesive and proportional. A
+  follow-up review rejected an initial callback-based activity recheck because
+  it reversed the plugin-to-service dependency; the correction instead splits
+  durable history preparation from synchronous projection so the plugin reads
+  its own activity only after the service await, without a lower-layer callback.
+- **Step 6 behavior:** Replay uses confirmed current plugin activity after
+  asynchronous outcome preparation. Confirmed-idle history terminalizes
+  unresolved rollout and image-generation tools as errors, while active,
+  provisional, retry-backed, or activity-unknown sessions preserve running
+  state.
 - **Step 6 cleanup:** No persistence, transport, cache, or lifecycle artifact
   becomes obsolete in this step. The temporary `PluginSessionStatus` replay
   boundary is intentionally replaced by Step 8's sealed replay disposition.
