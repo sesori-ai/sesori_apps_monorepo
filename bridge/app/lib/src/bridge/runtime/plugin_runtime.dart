@@ -587,6 +587,37 @@ class PluginRuntime {
     }
   }
 
+  /// Best-effort, budgeted cancellation of in-flight agent work across every
+  /// started plugin. Invoked when bridge shutdown begins so session-teardown
+  /// drains (relay completions, session operations, plugin-event tails) are
+  /// not held open by agent-coupled requests — an ACP `session/prompt`
+  /// awaiting a busy agent, a `session/load`/`session/resume` replay, or a
+  /// lazy agent respawn — while the agent process is still alive and can
+  /// answer a cancellation.
+  ///
+  /// Uses the same per-plugin `interruptActiveWork` contract as the forced-
+  /// stop path ([_interruptActiveWork]) but emits no terminal handoff: the
+  /// ongoing session teardown drains whatever events the cancellation
+  /// produces. Never throws; isolates and logs per-plugin failures.
+  Future<void> interruptActiveWorkForShutdown() {
+    return Future.wait([
+      for (final slot in _slots.values)
+        if (slot.plugin case final plugin?) _interruptPluginForShutdown(slot, plugin),
+    ]);
+  }
+
+  Future<void> _interruptPluginForShutdown(_PluginRuntimeSlot slot, BridgePlugin plugin) async {
+    try {
+      await plugin.interruptActiveWork(budget: _shutdownBudget).timeout(_shutdownBudget);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        'Plugin "${slot.registration.descriptor.id}" could not interrupt active work during shutdown',
+        error,
+        stackTrace,
+      );
+    }
+  }
+
   Future<void> disposeStartedApis() => _disposeStartedApisFuture ??= _disposeStartedApis();
 
   Future<void> _disposeStartedApis() async {

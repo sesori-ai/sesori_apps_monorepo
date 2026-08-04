@@ -204,9 +204,24 @@ class BridgeRuntimeRunner {
     // loss listener assigns with `??=` so a loss never overwrites an already
     // decided intentional exit.
     SupervisedExitCode? requestedSupervisedExit;
+    BridgeRestartService? restartService;
     final shutdownCoordinator = BridgeShutdownCoordinator(
       startAbortSignal: startAbortController.signal,
-      backstopExitCode: () => requestedSupervisedExit?.code ?? 0,
+      backstopExitCode: () {
+        final exit = requestedSupervisedExit;
+        if (exit != null) return exit.code;
+        // The supervised-restart respawn sentinel is folded into the slot in
+        // the try's finally, which has not run when the backstop fires
+        // mid-teardown; consult the handoff flag directly so a hung teardown
+        // still reports the sentinel and the GUI respawns.
+        if (restartService?.supervisedRestartRequested ?? false) {
+          return SupervisedExitCode.restart.code;
+        }
+        return 0;
+      },
+      // Last resort before a forced exit: stop plugin backends so their agent
+      // processes are not orphaned when the teardown (or a phase) hangs.
+      emergencyDisposal: () => pluginRuntime?.disposeStartedApis() ?? Future<void>.value(),
     );
     shutdownCoordinator
       ..addPhase(
@@ -762,7 +777,7 @@ class BridgeRuntimeRunner {
         shutdownCoordinator.add(disposable: controlStatusNotifier.dispose);
       }
 
-      final restartService = BridgeRestartService(
+      restartService = BridgeRestartService(
         processRepository: processRepository,
         commandBuilder: const BridgeRestartCommandBuilder(),
         binaryPath: managedRuntimePaths.binaryPath,
@@ -843,6 +858,21 @@ class BridgeRuntimeRunner {
         );
       }
 
+      // Start the ordered shutdown the moment the session begins shutting
+      // down (any trigger: signal, supervised logout/restart, control-channel
+      // loss), so the coordinator's backstop bounds the session teardown
+      // itself — a teardown blocked on in-flight agent work must not hang the
+      // process with no deadline. The runner's finally joins the same
+      // (memoized) shutdown future, so a failure here is still surfaced there
+      // with the exit-code policy applied.
+      unawaited(
+        // The runner's finally awaits the same (memoized) shutdown future and
+        // applies the exit-code policy there, so the failure is already
+        // surfaced; this early-start copy must not raise an unhandled error.
+        activeRuntime.session.shutdownRequested
+            .then((_) => shutdownCoordinator.shutdown())
+            .catchError((Object _, StackTrace __) {}),
+      );
       registerSignalHandlers(session: activeRuntime.session, subscriptions: subscriptions);
       // start() synchronously subscribes local route-trigger listeners before
       // the debug server can expose mutation routes.

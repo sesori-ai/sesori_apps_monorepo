@@ -17,16 +17,22 @@ class BridgeShutdownCoordinator {
     required StartAbortSignal startAbortSignal,
     int Function()? backstopExitCode,
     void Function(int code)? exitProcess,
+    Future<void> Function()? emergencyDisposal,
   }) : _backstopExitCode = backstopExitCode ?? _alwaysZero,
        _exitProcess = exitProcess ?? io.exit,
-       _startAbortSignal = startAbortSignal;
+       _startAbortSignal = startAbortSignal,
+       _emergencyDisposal = emergencyDisposal;
 
   static int _alwaysZero() => 0;
   static const Duration _backstopSlack = Duration(seconds: 10);
 
+  /// How long the backstop waits for [emergencyDisposal] before exiting.
+  static const Duration _emergencyDisposalCap = Duration(seconds: 3);
+
   final int Function() _backstopExitCode;
   final void Function(int code) _exitProcess;
   final StartAbortSignal _startAbortSignal;
+  final Future<void> Function()? _emergencyDisposal;
   final Map<BridgeShutdownPhase, List<_ShutdownAction>> _actions = {
     for (final phase in BridgeShutdownPhase.values) phase: <_ShutdownAction>[],
   };
@@ -61,7 +67,7 @@ class BridgeShutdownCoordinator {
     final totalSw = Stopwatch()..start();
     final backstop = Timer(shutdownBudget + _backstopSlack, () {
       Log.e("Failed to finish gracefully after ${totalSw.elapsedMilliseconds}ms - forcing exit");
-      _exitProcess(_backstopExitCode());
+      unawaited(_emergencyDisposalThenExit());
     });
     Object? firstError;
     StackTrace? firstStackTrace;
@@ -103,6 +109,20 @@ class BridgeShutdownCoordinator {
 
   bool _isExpected(Object error) {
     return error is PluginStartAbortedException && _startAbortSignal.isAborted;
+  }
+
+  /// Last-resort disposal before the backstop exits the process: kicks the
+  /// registered emergency disposal (e.g. stopping plugin backend processes so
+  /// they are not orphaned by a forced exit) and bounds it with
+  /// [_emergencyDisposalCap]. Never throws — the exit happens regardless.
+  Future<void> _emergencyDisposalThenExit() async {
+    try {
+      await _emergencyDisposal?.call().timeout(_emergencyDisposalCap);
+    } on Object catch (error, stackTrace) {
+      Log.w("[shutdown] emergency disposal failed; exiting anyway", error, stackTrace);
+    } finally {
+      _exitProcess(_backstopExitCode());
+    }
   }
 }
 

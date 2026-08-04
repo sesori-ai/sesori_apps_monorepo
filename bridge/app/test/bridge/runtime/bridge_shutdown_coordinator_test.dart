@@ -248,6 +248,47 @@ void main() {
       });
     });
 
+    test("backstop runs the emergency disposal (capped) before forcing exit", () {
+      fakeAsync((async) {
+        final exitCalls = <int>[];
+        var emergencyRuns = 0;
+        final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
+          emergencyDisposal: () async {
+            emergencyRuns++;
+            await Completer<void>().future;
+          },
+          exitProcess: exitCalls.add,
+        );
+        coordinator.add(disposable: () => Completer<void>().future);
+
+        unawaited(coordinator.shutdown());
+        async.elapse(const Duration(seconds: 11));
+        expect(emergencyRuns, 1);
+        expect(exitCalls, isEmpty, reason: "exit waits for the bounded emergency disposal");
+
+        async.elapse(const Duration(seconds: 3));
+        expect(exitCalls, [0]);
+      });
+    });
+
+    test("backstop exits promptly when the emergency disposal completes early", () {
+      fakeAsync((async) {
+        final exitCalls = <int>[];
+        final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
+          emergencyDisposal: () async {},
+          exitProcess: exitCalls.add,
+        );
+        coordinator.add(disposable: () => Completer<void>().future);
+
+        unawaited(coordinator.shutdown());
+        async.elapse(const Duration(seconds: 11));
+
+        expect(exitCalls, [0]);
+      });
+    });
+
     test("backstop never fires when shutdown completes in time", () {
       fakeAsync((async) {
         final exitCalls = <int>[];
