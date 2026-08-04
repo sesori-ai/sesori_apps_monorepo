@@ -52,7 +52,7 @@
 | [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
 | [x] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 643 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) merged as `c6c73650` |
 | [x] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 342 actual | [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) merged as `b4455593` |
-| [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 300 actual | [PR #743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743) open; verified after D5 and current `main` merged forward |
+| [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 380 actual | [PR #743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743) open; verified after D5 and current `main` merged forward |
 | [ ] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 308 | Existing `cdd3a305` + `c4767b04`; blocked on Step 6 |
 | [ ] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,084 | Existing `d4e30b87` + `e86bb66f`; blocked on Step 7 |
 | [ ] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 707 | Existing `ef2356c4`; blocked on Step 8 |
@@ -314,7 +314,7 @@ origin/main
 - **Step 6 cleanup:** No persistence, transport, cache, or lifecycle artifact
   becomes obsolete in this step. The temporary `PluginSessionStatus` replay
   boundary is intentionally replaced by Step 8's sealed replay disposition.
-- **Step 6 change size:** 300 lines against the PR merge base, including
+- **Step 6 change size:** 380 lines against the PR merge base, including
   production code, tests, and tracker updates. This is below the 1,500-line
   soft cap.
 - **Step 6 delivery:** Pushed and opened as
