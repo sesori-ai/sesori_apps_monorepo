@@ -149,11 +149,11 @@ void main() {
       service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
       service.reconnect();
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
       verify(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).called(1);
       service.disconnect();
       tokenCompleter.complete("fresh-token");
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await pumpEventQueue();
 
       expect(factory.callCount, 0);
       expect(service.currentStatus, isA<ConnectionDisconnected>());
@@ -188,14 +188,14 @@ void main() {
       service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
       service.reconnect();
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
       verify(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).called(1);
 
       lifecycleController.add(LifecycleState.paused);
       await Future<void>.delayed(Duration.zero);
       tokenCompleter.complete("fresh-token");
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       expect(service.currentStatus, const ConnectionStatus.connectionLost(config: config));
       expect(factory.callCount, 0);
@@ -341,7 +341,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       now = now.add(const Duration(seconds: 30));
       lifecycleController.add(LifecycleState.resumed);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // The resumed reconnect never re-fetches /health ...
       verifyNever(() => resumedClient.sendRequest(any()));
@@ -410,7 +410,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       now = now.add(const Duration(seconds: 30));
       lifecycleController.add(LifecycleState.resumed);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       final freshStatus = service.currentStatus;
       expect(freshStatus, isA<ConnectionConnected>());
@@ -511,9 +511,9 @@ void main() {
         now = now.add(const Duration(seconds: 30));
         lifecycleController.add(LifecycleState.resumed);
 
-        // Far below the 1s backoff: if the first attempt were still gated on the
-        // backoff timer the factory would not have been called again yet.
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        // pumpEventQueue fires no timers: if the first attempt were still gated
+        // on the 1s backoff timer, the factory would not have been called yet.
+        await pumpEventQueue();
 
         expect(factory.callCount, 2);
         expect(service.currentStatus, isA<ConnectionConnected>());
@@ -697,14 +697,14 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       now = now.add(const Duration(seconds: 30));
       lifecycleController.add(LifecycleState.resumed);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
       expect(factory.callCount, 2);
       expect(service.currentStatus, isA<ConnectionConnected>());
 
       // Releasing Attempt 1's token must NOT open a third socket: it detects it
       // was superseded and bails after the await.
       firstToken.complete("token-stale");
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
 
       expect(factory.callCount, 2);
       expect(service.currentStatus, isA<ConnectionConnected>());
@@ -768,7 +768,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       now = now.add(const Duration(seconds: 30));
       lifecycleController.add(LifecycleState.resumed);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
 
       expect(factory.callCount, 2);
       expect(service.relayClient, isNull);
@@ -777,7 +777,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       now = now.add(const Duration(seconds: 30));
       lifecycleController.add(LifecycleState.resumed);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       verify(firstReconnectClient.disconnect).called(greaterThanOrEqualTo(1));
       expect(factory.callCount, 3);
@@ -785,7 +785,7 @@ void main() {
       expect(service.currentStatus, isA<ConnectionConnected>());
 
       firstConnect.complete();
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
 
       verifyNever(() => firstReconnectClient.sendRequest(any()));
       expect(service.relayClient, same(secondReconnectClient));
@@ -844,14 +844,14 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       now = now.add(const Duration(seconds: 30));
       lifecycleController.add(LifecycleState.resumed);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
 
       expect(factory.callCount, 2);
 
       lifecycleController.add(LifecycleState.paused);
       await Future<void>.delayed(Duration.zero);
       reconnectConnect.complete();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       expect(service.currentStatus, const ConnectionStatus.connectionLost(config: config));
       expect(service.relayClient, isNull);
@@ -1031,7 +1031,7 @@ void main() {
       verify(initialClient.disconnect).called(1);
 
       refreshedToken.complete("fresh-token");
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       expect(factory.callCount, 2);
       expect(service.relayClient, same(replacementClient));
