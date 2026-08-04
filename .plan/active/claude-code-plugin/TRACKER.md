@@ -148,6 +148,15 @@
   earlier figure of 987 was measured against the pre-merge Step 1 base and is
   superseded.
 
+  Registered the new package in the `update-dependencies` skill's inventory:
+  the workspace list, the environment-constraint table, the per-package
+  `dart pub outdated` block, the bridge dependency order, and the member count
+  in the analyze step. That skill's own Phase 0 warns that a package missing
+  from its tables is the workflow's most common failure and names one that was
+  missed for weeks, so this lands with the package rather than later. Verified
+  by running the skill's Phase 0.1 discovery and reconciling: every pubspec in
+  the repository is now named in the inventory.
+
   DTOs were moved out of this step into the steps that consume them. Measured
   against the Codex analog, Freezed expands roughly tenfold
   (`codex_rollout_dto.dart`: 326 source lines, 3,286 generated), so the original
