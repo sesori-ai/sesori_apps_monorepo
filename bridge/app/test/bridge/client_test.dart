@@ -463,6 +463,7 @@ void main() {
       // Send a message and verify receipt.
       serverWs.add("hello");
       await firstMessage.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(messages, hasLength(1));
 
       // Close the server-side WebSocket — the client stream should end.
@@ -508,6 +509,7 @@ void main() {
       // Deliver a message so we know the loop is running.
       serverWs.add("ping");
       await firstMessage.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(messageCount, equals(1));
 
       // Drop the connection from the server side.
@@ -549,6 +551,7 @@ void main() {
 
       serverWs1.add("first");
       await firstMessage1.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(msgs1, hasLength(1));
 
       // Drop the connection from the server side, waiting for the client to
@@ -575,7 +578,9 @@ void main() {
 
       serverWs2.add("second");
       await firstMessage2.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(msgs2, hasLength(1));
+
       await sub2.cancel();
     });
 
@@ -791,6 +796,10 @@ Future<List<RelayConnectionState>> _recordStates({
   });
   try {
     await reached.future.timeout(timeout);
+    // Keep observing through a microtask drain so any state emitted right
+    // after the expected count (e.g. a duplicate) is still recorded before
+    // callers run their exact-length assertions.
+    await pumpEventQueue();
   } finally {
     await sub.cancel();
   }
