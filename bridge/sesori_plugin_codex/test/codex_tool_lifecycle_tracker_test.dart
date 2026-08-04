@@ -228,6 +228,15 @@ void main() {
             "// @exec: {invalid}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
       },
     });
+    final multilineDirectedMarker = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-multiline-directed-marker",
+        "name": "exec",
+        "input": "//\n@exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'});",
+      },
+    });
     final mixedDirectedWrapper = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -303,6 +312,13 @@ void main() {
       target.observeRolloutLine(
         threadId: "thread-1",
         line: malformedDirectedWrapper,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: multilineDirectedMarker,
       ),
       hasLength(1),
     );

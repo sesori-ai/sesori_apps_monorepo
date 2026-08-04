@@ -617,7 +617,7 @@ final RegExp _generatedImageInvocationPrefixPattern = RegExp(
 );
 
 final RegExp _generatedExecDirectivePattern = RegExp(
-  r"^\s*//\s*@exec:\s*(\{[^\r\n]*\})[ \t]*(?:\r?\n|$)",
+  r"^[ \t]*//[ \t]*@exec:[ \t]*(\{[^\r\n]*\})[ \t]*(?:\r?\n|$)",
 );
 
 final RegExp _forwardedGeneratedImageInvocationPrefixPattern = RegExp(
@@ -648,7 +648,8 @@ bool _isGeneratedImageInvocation(String input) {
     openParenthesisIndex: forwarded.end - 1,
   );
   if (callEnd == null) return false;
-  final variable = forwarded.group(1)!;
+  final variable = forwarded.group(1);
+  if (variable == null) return false;
   return RegExp(
     "^\\s*;\\s*generatedImage\\(\\s*${RegExp.escape(variable)}\\s*\\)\\s*;?\\s*\$",
   ).hasMatch(invocation.substring(callEnd));
