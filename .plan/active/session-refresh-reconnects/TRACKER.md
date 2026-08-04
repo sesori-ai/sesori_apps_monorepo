@@ -5,10 +5,10 @@
 - **Plan slug:** `session-refresh-reconnects`
 - **Implementation base:** `main` at
   `7b2fa65ad1b210dd6a52714e14ce9b5951d0aa68`
-- **Series state:** Step 1/3 merged; Step 2/3 implementation complete
-- **Current step:** prepare the Step 2 implementation PR
-- **Next action:** commit, push, and open the Step 2 PR, then collect Step 3
-  observation evidence
+- **Series state:** Step 1/3 merged; Step 2/3 PR open
+- **Current step:** Step 2 implementation PR
+  [#734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734)
+- **Next action:** review and merge Step 2, then collect Step 3 observation evidence
 - **Searchable diagnostic prefix:** `[session-refresh]`
 - **External overlap:** PR
   [#722](https://github.com/sesori-ai/sesori_apps_monorepo/pull/722) owns bridge
@@ -65,7 +65,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | [PR #725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725) merged |
-| [ ] | 2/3 | `opencode-session-reconnects` | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 220-400 | Implementation complete; PR pending |
+| [ ] | 2/3 | `opencode-session-reconnects` | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 220-400 | [PR #734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734) open |
 | [ ] | 3/3 | Owner-provided assessment branch | `🌱 [session-refresh-reconnects] docs: assess session refresh evidence [step 3/3]` | 80-200 | Blocked on Step 2 observation evidence |
 
 ## Step 1 Checklist
@@ -108,7 +108,7 @@
 - [x] Prove intended reconnect/resume/stale/command refreshes log their cause and
   retain current behavior.
 - [x] Run targeted tests, strict module analysis, and `git diff --check`.
-- [ ] Record actual change count, verification, review, and delivery evidence.
+- [x] Record actual change count, verification, review, and delivery evidence.
 
 ## Observation Log
 
@@ -180,13 +180,13 @@ tokens.
   merged
 - **Step 2 implementation:** debug refresh traces, targeted command-catalog
   invalidation, bounded retry/coalescing, and full-snapshot generation fencing
-- **Step 2 scope variance:** 928 total changed lines including tracker metadata
+- **Step 2 scope variance:** 932 total changed lines including tracker metadata
   (846 code/test) versus 220-400 planned; architecture findings added non-null
   identity, retained invalidations, bounded retries, and generation fencing
 - **Step 2 verification:** `dart test` passed all 1,008 `module_core` tests;
   `dart analyze --fatal-infos` and `git diff --check` passed
 - **Step 2 review:** two architecture passes completed; all findings fixed under
   the user-approved generation-fence decision and two-pass review cap
-- **Step 2 PR:** pending
+- **Step 2 PR:** [#734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734) open
 - **Step 3 evidence assessment:** pending
 - **Final disposition:** pending
