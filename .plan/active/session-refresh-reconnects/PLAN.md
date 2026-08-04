@@ -3,11 +3,11 @@
 ## Status
 
 - **Plan slug:** `session-refresh-reconnects`
-- **Status:** Active - Step 1/3 plan documentation
+- **Status:** Active - Step 2/3 diagnostic logging
 - **Plan date:** 2026-08-04
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main` at
-  `2408b57487bb7a6048cf61221bc777b9c81ab70c`
+  `5aaf979dd25b645a69964d0211eda5cd92126037`
 - **Current branch:** `opencode-session-reconnects`
 - **Plan PR:** [#725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725)
 - **Delivery:** one plan PR, one selected implementation PR, and one
@@ -19,19 +19,19 @@ committed implementation scope.
 
 ## Goal
 
-Stop session detail from visibly refreshing after an ordinary message when no
-authoritative transcript reload is required, and make every genuine silent
-refresh locally diagnosable if the symptom recurs.
+Identify the exact trigger behind each visible session-detail refresh before
+changing refresh behavior, then use that evidence to select the smallest safe
+correction.
 
 The work proceeds evidence-first:
 
-1. add debug-only, consistently tagged refresh diagnostics;
-2. remove the demonstrated unnecessary full-detail refresh while preserving
-   released bridge compatibility for dynamic command discovery;
-3. observe the resulting behavior and record whether any intended reconnect,
-   resume, or stale-data refresh still loses live state; and
-4. implement a larger reconciliation or transport contract only if evidence
-   justifies a separate follow-up plan.
+1. add debug-only, consistently tagged refresh diagnostics without changing
+   refresh behavior or adding mutable Cubit coordination fields;
+2. observe ordinary sends and intended reconnect/resume/stale paths;
+3. identify which trigger correlates with the reported refresh and live-state
+   loss; and
+4. select any behavioral correction or Cubit refactor only through a separate,
+   evidence-backed implementation plan.
 
 This is not a commitment to implement every option listed below.
 
@@ -123,7 +123,7 @@ detail refresh:
 
 | Trigger | Current behavior | Initial assessment |
 |---|---|---|
-| Matching `sessions.updated` | Full detail snapshot | Incorrect for detail; selected for correction |
+| Matching `sessions.updated` | Full detail snapshot | Suspect; retain unchanged until diagnostics correlate it with the symptom |
 | `command.executed` | Coalesced full detail snapshot | Retain initially; validate command-history need if observed |
 | Connection disconnected -> connected | Immediate full detail snapshot and view reassertion | Intended reconciliation path |
 | Lifecycle paused/hidden -> resumed | Immediate full detail snapshot when connected | Intended today; reassess only with evidence |
@@ -148,8 +148,8 @@ Example shape:
 ```text
 [session-refresh] action=observed trigger=connection_reconnected
 [session-refresh] action=queued trigger=data_may_be_stale
-[session-refresh] action=started trigger=connection_reconnected refreshId=7
-[session-refresh] action=completed trigger=connection_reconnected refreshId=7 result=applied durationMs=183
+[session-refresh] action=started trigger=connection_reconnected
+[session-refresh] action=completed trigger=connection_reconnected result=applied durationMs=183
 ```
 
 These causal diagnostics are available only when the observation build has
@@ -174,21 +174,21 @@ Required trigger values are:
 - `waiting_for_connection`
 - `queued_event`
 
-Required actions are `observed`, `ignored`, `redirected`, `queued`,
-`coalesced`, `started`, and `completed`. Completion results are `applied`, `failed`,
+Required actions are `observed`, `ignored`, `queued`, `coalesced`, `started`,
+and `completed`. Completion results are `applied`, `failed`,
 `waiting_for_connection`, and `closed`.
 
 Diagnostics must make these facts reconstructable:
 
 1. which external trigger was observed;
-2. whether it was ignored, redirected, queued, or started immediately;
+2. whether it was ignored, queued, coalesced, or started immediately;
 3. which refresh attempt eventually ran;
 4. whether the snapshot applied, failed, or waited for connection; and
 5. how long the attempt took.
 
-A small Cubit-local monotonic `refreshId` may correlate start/completion. If
-coalescing retains more than one cause, use a bounded set of the private trigger
-enum rather than an unbounded string list or nullable coordination fields.
+Start/completion are unambiguous because the existing Cubit permits only one
+active full refresh. Duration uses a local `Stopwatch`; diagnostics add no
+mutable Cubit fields, trigger registries, or retained trace state.
 
 The diagnostics contain no prompts, transcripts, source code, message parts,
 command names, paths, request bodies, or raw errors. The new causal trace itself
@@ -202,39 +202,18 @@ existing warning-level logger. The bounded `action=completed result=failed`
 causal entry remains debug-only; correcting the pre-existing operational failure
 log does not elevate the causal trace or duplicate its purpose.
 
-### Redirect project invalidation to command refresh
+### Preserve current behavior
 
-A matching `SesoriSessionsUpdated` must no longer call
-`_requestEventDrivenRefresh` or set `isRefreshing`.
+Step 2 changes no refresh trigger, queueing rule, request, state publication,
+compatibility fallback, or wire contract. In particular, matching
+`SesoriSessionsUpdated` continues through the existing coalesced full-detail
+refresh so observation can establish whether it actually causes the reported
+symptom.
 
-Instead, while detail is loaded it requests a lightweight command-catalog
-refresh through a targeted `SessionDetailLoadService` operation. The service
-retains command loading and repository access; the Cubit owns only UI-trigger
-single-flight/trailing coalescing and state publication. That operation:
-
-- reads only the commands needed by the composer;
-- preserves transcript, streaming text, statuses, pending interactions,
-  children, title/archive state, selected agent/model, and queued messages;
-- preserves a staged command only when the refreshed catalog still contains it;
-- has at most one active request and one trailing request so event bursts do not
-  create unbounded reads;
-- preserves the current command catalog on failure; and
-- does not show the full-detail refresh indicator.
-
-During `SessionDetailLoading`, a matching event remains buffered. After the
-initial snapshot loads, replay performs the same targeted command refresh. This
-retains the command-discovery behavior added for Cursor without a second full
-session snapshot.
-
-Released v1.6.0 bridges can emit `sessions.updated` for command discovery, while
-the same event also carries PR invalidation. The new client therefore retains
-the targeted command refresh as a compatibility fallback even though some
-events will cause one unnecessary command read. Add the required dated
-compatibility comment naming v1.6.0 and the exact removal condition. Do not
-silently remove this fallback until those bridges are unsupported or a declared
-capability makes the distinction reliable.
-
-No new wire event is added in Step 2.
+Step 2 adds no mutable Cubit coordination fields. Consolidating the five stream
+subscriptions into a `CompositeSubscription` and replacing independent refresh,
+connection, and lifecycle flags with composed sealed states are maintainability
+follow-ups, not logging work.
 
 ### Do not bundle state reconciliation
 
@@ -248,23 +227,18 @@ reconnect/resume/stale refreshes before larger machinery is approved.
 
 1. Every silent-refresh trigger and terminal outcome emits debug diagnostics
    beginning with `[session-refresh]`.
-2. A normal accepted text prompt plus ordinary session/message/part/status SSE
-   events does not invoke `SessionDetailLoadService.reload`.
-3. A matching `sessions.updated` event while loaded does not set
-   `isRefreshing`, fetch messages, or replace any non-command detail state.
-4. A matching `sessions.updated` event during initial loading still causes the
-   final command catalog to reflect the bridge's later command snapshot.
-5. Irrelevant-project events cause no detail or command refresh.
-6. Bursts produce at most one active and one trailing command refresh.
-7. A command-refresh failure preserves the current catalog and remains locally
-   observable without changing the successful detail state; silent-refresh
-   failures retain the original error and stack in their operational warning.
-8. Reconnect, resume, stale-data, waiting-for-connection, and command-executed
-   paths retain their current full-refresh behavior and expose their reason in
-   diagnostics.
-9. No backend-name check, analytics event, wire contract, database field,
-   persisted state, generated source, or UI copy is added.
-10. PR #722 remains the sole owner of bridge relay request concurrency.
+2. `sessions.updated`, command execution, reconnect, resume, stale-data,
+   waiting-for-connection, and queued paths retain their current behavior.
+3. Matching and irrelevant-project `sessions.updated` events are distinguishable
+   as started versus ignored without logging project identifiers.
+4. Existing cooldown and active-refresh coalescing remains unchanged and reports
+   bounded queued/coalesced actions.
+5. Silent-refresh failures retain original error and stack context in the
+   operational warning while the causal entry contains no raw error.
+6. Diagnostics add no mutable Cubit fields or retained coordination state.
+7. No backend-name check, analytics event, wire contract, database field,
+   persisted state, generated source, UI copy, or request behavior is added.
+8. PR #722 remains the sole owner of bridge relay request concurrency.
 
 ## Evidence Assessment
 
@@ -296,7 +270,7 @@ Decision rules:
 | Evidence | Decision |
 |---|---|
 | No recurrence after representative ordinary-send use plus at least one deliberately exercised intended full refresh | Retire this plan with larger options deferred |
-| `project_sessions_updated` starts a full refresh | Step 2 regression; fix within this plan |
+| `project_sessions_updated` starts a full refresh near the symptom | Record it as evidence for the behavioral/maintainability follow-up |
 | `command_executed` after a plain text prompt | Investigate event mapping before changing client reconciliation |
 | `connection_reconnected` | Correlate client/bridge/relay logs and PR #722 before changing refresh policy |
 | `lifecycle_resumed` after a brief interruption | Assess whether view reassertion can be separated from full data reload |
@@ -316,8 +290,8 @@ separately. These are planning ranges, not commitments.
 
 | Option | Handwritten production | Tests | Generated | Total | Current decision |
 |---|---:|---:|---:|---:|---|
-| Debug refresh diagnostics only | 15-30 | 30-60 | 0 | 45-90 | Selected and included in Step 2 |
-| Stop unnecessary detail refresh; target command catalog | 80-140 | 140-260 | 0 | 220-400 combined with diagnostics | Selected for Step 2 |
+| Debug refresh diagnostics only | 201 actual | 121 actual | 0 | 322 actual | Implemented in Step 2 |
+| Stop unnecessary detail refresh; target command catalog | 80-140 | 140-260 | 0 | 220-400 combined with diagnostics | Deferred pending trigger evidence and Cubit maintainability design |
 | Transcript-only mutation epoch | 45-90 | 100-180 | 0 | 145-270 | Deferred; fixes observed content only |
 | Grouped snapshot reconciliation | 140-260 | 300-550 | 0 | 440-810 | Deferred pending intended-refresh reproduction |
 | Apply-live event journal and replay | 120-220 | 250-450 | 0 | 370-670 | Rejected without a server cursor |
@@ -406,8 +380,8 @@ revisions would be a separate cross-stack architecture effort.
   implicit steps.
 - Step 1 is documentation-only and uses the current owner-provided branch and
   worktree. Do not create another branch or worktree in this session.
-- Step 2 implements only the debug diagnostics and unnecessary-refresh
-  correction locked above.
+- Step 2 implements only debug diagnostics and operational failure-log context;
+  it changes no refresh behavior.
 - Step 3 records evidence and either retires the plan or hands justified larger
   work to a separately reviewed plan. It contains no production change unless a
   direct Step 2 regression must be corrected.
@@ -425,7 +399,7 @@ revisions would be a separate cross-stack architecture effort.
 | Step | Branch | Exact PR title | Changed-line target | Outcome |
 |---|---|---|---:|---|
 | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | Publish the evidence, selected first fix, diagnostics contract, option register, and assessment gates |
-| 2/3 | Owner-provided implementation branch | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 220-400 | Add searchable debug diagnostics and redirect project invalidation to targeted command refresh |
+| 2/3 | `opencode-session-reconnects` | `🌿 [session-refresh-reconnects] chore(client): trace session detail refresh causes [step 2/3]` | 120-250 | Add searchable debug diagnostics without changing refresh behavior |
 | 3/3 | Owner-provided assessment branch | `🌱 [session-refresh-reconnects] docs: assess session refresh evidence [step 3/3]` | 80-200 | Record observations, final option decisions, any follow-up-plan handoff, and retire this plan |
 
 ## Step 1/3 - Publish The Assessment Plan
@@ -455,14 +429,11 @@ revisions would be a separate cross-stack architecture effort.
   those diagnostics.
 - Pass or preserve trigger causes through immediate, queued, cooldown,
   reconnect, waiting-for-connection, and failure-restoration paths.
-- Replace matching `sessions.updated` full-detail refresh with a bounded targeted
-  command operation on `SessionDetailLoadService`; the Cubit retains only
-  trigger coalescing and loaded-state publication.
 - Preserve original errors and stack traces in operational silent-refresh
   failure warnings without adding payload data to the debug causal trace.
-- Preserve initial-load command discovery and released v1.6.0 compatibility.
-- Add focused regressions for normal sends, event bursts, initial-load replay,
-  unrelated projects, failures, and retained intended refresh reasons.
+- Add no mutable Cubit fields and preserve every existing refresh behavior.
+- Add focused regressions for matching/irrelevant project invalidations,
+  failures, and retained intended refresh reasons.
 
 ### Verification
 

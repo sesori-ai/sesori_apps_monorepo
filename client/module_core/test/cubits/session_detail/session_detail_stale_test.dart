@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/logging/logging.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
@@ -349,7 +350,8 @@ void main() {
 
     test("sendMessage forwards selectedAgentModel variant to repository", () async {
       when(
-        () => mockSessionRepository.sendMessage(attachments: const [],
+        () => mockSessionRepository.sendMessage(
+          attachments: const [],
           sessionId: sessionId,
           text: "hello",
           agent: "coder",
@@ -379,14 +381,16 @@ void main() {
       await _awaitLoaded(cubit);
       cubit.selectVariant(const SessionVariant(id: "low"));
 
-      await cubit.sendMessage(attachments: const [],
+      await cubit.sendMessage(
+        attachments: const [],
         text: "hello",
         command: null,
         inputMode: ComposerInputMode.typed,
       );
 
       verify(
-        () => mockSessionRepository.sendMessage(attachments: const [],
+        () => mockSessionRepository.sendMessage(
+          attachments: const [],
           sessionId: sessionId,
           text: "hello",
           agent: "coder",
@@ -593,29 +597,39 @@ void main() {
     test(
       "silent refresh failure logs warning and resets isRefreshing to false without changing state",
       () async {
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: FakeLifecycleSource(),
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
+        final logs = <String>[];
+        final previousLogLevel = logLevel;
+        setLogLevel(LogLevel.debug);
+        addTearDown(() => setLogLevel(previousLogLevel));
+        final cubit = runZoned(
+          () => SessionDetailCubit(
+            mockConnectionService,
+            loadService: loadService,
+            promptDispatcher: promptDispatcher,
+            permissionRepository: mockPermissionRepository,
+            sessionViewingService: stubbedSessionViewingService(),
+            projectViewingService: stubbedProjectViewingService(),
+            lifecycleSource: FakeLifecycleSource(),
+            composerDraftRepository: inMemoryComposerDraftRepository(),
+            productAnalyticsService: stubbedProductAnalyticsService(),
+            sessionId: sessionId,
+            projectId: "project-1",
+            notificationCanceller: mockNotificationCanceller,
+            failureReporter: MockFailureReporter(),
+          ),
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, line) => logs.add(line),
+          ),
         );
         addTearDown(cubit.close);
 
         await _awaitLoaded(cubit);
         final before = cubit.state as SessionDetailLoaded;
+        final error = StateError("silent refresh sentinel");
 
         when(
           () => mockSessionService.getMessages(sessionId: sessionId),
-        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        ).thenThrow(error);
 
         final emitted = <SessionDetailState>[];
         final sub = cubit.stream.listen(emitted.add);
@@ -631,6 +645,21 @@ void main() {
         expect(afterFailure.messages, before.messages);
         expect(afterFailure.selectedAgent, before.selectedAgent);
         expect(afterFailure.selectedAgentModel, before.selectedAgentModel);
+        expect(logs, contains(contains("Silent refresh failed: Bad state: silent refresh sentinel")));
+        expect(logs, contains(contains("SessionDetailCubit._doSilentRefresh")));
+        expect(
+          logs,
+          contains(
+            allOf(
+              contains("[session-refresh] action=completed trigger=data_may_be_stale"),
+              contains("result=failed"),
+            ),
+          ),
+        );
+        expect(
+          logs.where((line) => line.startsWith("[session-refresh]")),
+          everyElement(isNot(contains("silent refresh sentinel"))),
+        );
       },
     );
 
