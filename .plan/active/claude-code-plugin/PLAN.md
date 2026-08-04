@@ -150,11 +150,9 @@ Condensed research carried into Step 2 (all marked verify-at-implementation in
 - New `MessagePartType` values, relay changes, database migrations, and product
   analytics. This harness adds no new authoritative user action beyond the ones
   the existing harnesses already instrument.
-- New shared wire types. **Under review:** plan review found that widening the
-  client's `harnessSupportsPromptAttachments` branch violates the plugin-boundary
-  invariant, and the compliant fix adds an additive capability flag to
-  `PluginMetadata`. That decision is pending; this exclusion stands until it is
-  made. See Plan Review Record.
+- New shared wire types, including a prompt-attachment capability flag on
+  `PluginMetadata`. Plan review argued for one; the user decided on 2026-08-04 to
+  widen the existing dated gate instead. See Plan Review Record.
 
 Reasoning-effort variants were previously excluded pending evidence. Step 2
 found `supportsEffort` and `supportedEffortLevels` declared per model in the
@@ -838,13 +836,25 @@ registry's `respond` callback is explicitly session-keyed rather than
 client-bound, because `AcpApprovalRegistry.forClient`'s single-client binding is
 impossible with one process per session.
 
-**Pending — violation 9, prompt-attachment capability.** The reviewer found that
-widening `harnessSupportsPromptAttachments` in `client/module_core` to a second
-harness id violates the plugin-boundary invariant, and that the compliant fix is
-an additive `PluginMetadata` capability flag following the existing
-`supportsSessionOptions` precedent. That is correct architecturally but expands
-scope into shared wire types, all four descriptors, and client code beyond this
-plan's three files. It is a user decision and is recorded in `TRACKER.md`.
+**Declined by the user — violation 9, prompt-attachment capability.** The
+reviewer found that widening `harnessSupportsPromptAttachments` in
+`client/module_core` to a second harness id violates the plugin-boundary
+invariant, and that the compliant fix is an additive `PluginMetadata` capability
+flag following the existing `supportsSessionOptions` precedent.
+
+The finding is architecturally correct. The user decided on 2026-08-04 to widen
+the existing gate as planned, and that decision supersedes the review. The
+reasoning: the fix expands scope into shared wire types, all four descriptors,
+and client code well beyond this plan's three client files, and the gate it
+targets is already marked temporary with a dated comment. It also is not the
+one-line change it appears to be — a plain `@Default(false)` would silently
+disable OpenCode attachments for a new app against an older bridge, so the field
+would have to be nullable with a dated legacy fallback, since absence genuinely
+means "old bridge, apply the legacy rule" rather than "not supported".
+
+Step 15 therefore widens the gate and keeps its dated comment. Do not reopen this
+without new evidence; the capability migration remains available as its own
+future PR.
 
 The corrected plan was not re-reviewed merely to obtain an approval verdict, per
 the repository's plan-review process.

@@ -28,10 +28,13 @@
   and put the two domain enums in `lib/src/models/` rather than `api/models/`;
   and made the approval registry's `respond` session-keyed rather than
   client-bound.
-- **Deferred to the user:** violation 9 — replacing the client's
+- **Declined by the user:** violation 9 — replacing the client's
   `harnessSupportsPromptAttachments` branch with a `PluginMetadata` capability
   flag. Architecturally correct, but it expands scope into shared wire types, all
-  four descriptors, and client code beyond this plan's three files.
+  four descriptors, and client code beyond this plan's three files, and the gate
+  is already dated and temporary. The user decided on 2026-08-04 to widen the
+  gate as planned; that decision supersedes the review and must not be reopened
+  without new evidence.
 - **Note:** the reviewer confirmed the protocol-verification changes are
   architecturally sound and flagged none of them, and treated the three
   user-locked decisions as binding.
@@ -122,6 +125,18 @@
   documentation-only step.
 
 ## Findings And Plan Deltas
+
+- **2026-08-04 — Prompt-attachment gate stays a client branch (user decision):**
+  plan review wanted a `PluginMetadata` capability flag replacing
+  `harnessSupportsPromptAttachments`. The user chose to widen the existing dated
+  gate instead, keeping this series scoped. Noted for whoever does the capability
+  migration later: a plain `@Default(false)` is wrong, because a new app against
+  an older bridge would silently lose OpenCode attachments — the field needs to
+  be nullable so absence can mean "old bridge, apply the legacy rule".
+- **2026-08-04 — One PR open at a time (user decision):** successors are built
+  locally and their PRs open only after the current PR merges. PR #739 (step 2)
+  was closed for this reason and reopens against `main` after #737 merges; its
+  branch and commits are intact.
 
 - **2026-08-04 — Route decision:** Bespoke stream-json over stdio rather than the
   `claude-agent-acp` Node adapter. The adapter would add a Node runtime
