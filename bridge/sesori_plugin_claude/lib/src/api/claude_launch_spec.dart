@@ -7,7 +7,18 @@ import "../models/claude_permission_mode.dart";
 /// "new and resumed at once" and "neither" unrepresentable, and each carries
 /// only the session id it needs.
 sealed class ClaudeSessionLaunch {
-  const ClaudeSessionLaunch({required this.sessionId});
+  /// Rejects an id the CLI would refuse.
+  ///
+  /// `--session-id` requires a UUID, and every transcript filename observed was
+  /// one, so a non-UUID id is always a defect — either a caller that minted the
+  /// wrong thing or a corrupted persisted row. Failing here names the problem;
+  /// failing at spawn surfaces it as an opaque CLI startup error attached to a
+  /// session the user just tried to open.
+  ClaudeSessionLaunch({required this.sessionId}) {
+    if (!_uuidPattern.hasMatch(sessionId)) {
+      throw ArgumentError.value(sessionId, "sessionId", "must be a UUID");
+    }
+  }
 
   /// The Claude session id. For a new session the bridge pre-generates it so
   /// the Sesori-to-backend binding is durable from the very first event.
@@ -16,13 +27,17 @@ sealed class ClaudeSessionLaunch {
 
 /// Starts a new session under a bridge-generated id (`--session-id`).
 final class ClaudeNewSession extends ClaudeSessionLaunch {
-  const ClaudeNewSession({required super.sessionId});
+  ClaudeNewSession({required super.sessionId});
 }
 
 /// Continues an existing session from its transcript (`--resume`).
 final class ClaudeResumedSession extends ClaudeSessionLaunch {
-  const ClaudeResumedSession({required super.sessionId});
+  ClaudeResumedSession({required super.sessionId});
 }
+
+final RegExp _uuidPattern = RegExp(
+  r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+);
 
 /// The verified command line for one long-lived Claude stream-json process.
 ///
@@ -33,7 +48,7 @@ final class ClaudeResumedSession extends ClaudeSessionLaunch {
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/active/claude-code-plugin/PROTOCOL.md` section 1.
 class ClaudeLaunchSpec {
-  const ClaudeLaunchSpec({
+  ClaudeLaunchSpec({
     required this.binaryPath,
     required this.launch,
     required this.model,
@@ -81,13 +96,19 @@ class ClaudeLaunchSpec {
     // Enables the token-level `stream_event` deltas the client renders.
     "--include-partial-messages",
     ...permissionPromptToolArguments,
-    if (permissionMode != null) ...["--permission-mode", permissionMode!.cliValue],
-    if (model != null) ...["--model", model!],
-    if (effort != null) ...["--effort", effort!.wireValue],
+    // Pattern-bound rather than null-checked so a later edit cannot separate the
+    // check from the dereference.
+    if (permissionMode case final mode?) ...["--permission-mode", mode.cliValue],
+    if (model case final model?) ...["--model", model],
+    if (effort case final effort?) ...["--effort", effort.wireValue],
+    // Single-token `--flag=value`, matching the Agent SDK's own argument builder
+    // (`sdk.mjs` emits `--session-id=${id}` and `--resume=${id}`). The CLI
+    // accepts both spellings, so this is parity rather than correctness — but
+    // parity is the contract this package holds itself to, and it removes a
+    // place for future drift.
     switch (launch) {
-      ClaudeNewSession() => "--session-id",
-      ClaudeResumedSession() => "--resume",
+      ClaudeNewSession() => "--session-id=${launch.sessionId}",
+      ClaudeResumedSession() => "--resume=${launch.sessionId}",
     },
-    launch.sessionId,
   ];
 }

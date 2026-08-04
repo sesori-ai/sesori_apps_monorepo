@@ -45,7 +45,7 @@ Load-bearing details, each observed:
     `control_request` is emitted, the turn completes `subtype: "success"`, and
     the only trace is an entry in `result.permission_denials`;
   - an `initialize` control request alone does **not** enable prompts;
-  - with it, `can_use_tool` arrives as documented in section 4.
+  - with it, `can_use_tool` arrives as documented in section 5.
 
   A plugin that omits this flag would appear to work while every write, edit,
   and command was refused. Its presence is not optional and must have a test.
@@ -55,8 +55,10 @@ Load-bearing details, each observed:
 - The bridge's environment is inherited. `HOME` is **never** overridden — doing
   so breaks macOS keychain lookup and reports a logged-in user as logged out.
   `CLAUDE_CONFIG_DIR` is for test isolation only.
-- The SDK writes resume as `--resume=<id>` (single token). Both forms are
-  accepted; match the SDK.
+- **The SDK joins id flags with `=`.** `sdk.mjs` emits `--resume=${id}` *and*
+  `--session-id=${id}`, both single tokens. The CLI accepts the two-token form
+  too, so this is parity rather than correctness — but the launch spec matches
+  the SDK on both flags so there is one less place to drift.
 
 **OPEN:** the auto-update and telemetry environment variables to set for a
 supervised child. Not yet probed; resolve before the descriptor lands.
@@ -263,7 +265,7 @@ plan's research did not have:
 | `tool_name`, `display_name`, `description`, `input` | card content |
 | `tool_use_id` | **links the permission to its tool part** |
 | `agent_id` | set for subagent-originated asks |
-| `permission_suggestions` | the only rules `always` may ever echo |
+| `permission_suggestions` | candidate rules for `always`, **filtered** — see the eligibility rule below |
 | `blocked_path` | path that triggered the ask |
 | `decision_reason` | **may contain ANSI escapes — sanitize before rendering** |
 | `decision_reason_type` | typed: `rule`, `mode`, `subcommandResults`, `permissionPromptTool`, `hook`, `asyncAgent`, `sandboxOverride`, `workingDir`, `safetyCheck`, `classifier`, `other` |
@@ -288,16 +290,45 @@ Fixed reply mapping (unchanged by verification):
 | Sesori reply | Claude response |
 |---|---|
 | `once` | plain `allow`; never send `updatedPermissions` |
-| `always` | `allow` plus an echo of the request's own `permission_suggestions`; never a broader rule; not offered at all when `suppress_always_allow_rule` is set |
+| `always` | `allow` plus **eligible** suggestions only (below); a plain `allow` when none are eligible; not offered at all when `suppress_always_allow_rule` is set |
 | `reject` | `deny` with a short message |
 
-**Design note on `permission_suggestions`:** the observed suggestion was
-`{"type":"setMode","mode":"acceptEdits","destination":"session"}` — a *session
-mode change*, not a per-tool rule. Echoing it for `always` would switch the
-whole session to auto-accepting edits, which is materially broader than "always
-allow this tool". Step 9 must decide whether `always` echoes `setMode`
-suggestions or only rule-shaped ones. Recommendation: echo rule-shaped
-suggestions and decline to escalate on `setMode`.
+### `always` must filter `permission_suggestions`, not echo them
+
+**Decided, not open.** Echoing the request's suggestions verbatim is unsafe. The
+SDK's `PermissionUpdate` union (`sdk.d.ts`) has six variants and a `destination`
+that reaches beyond the session:
+
+```ts
+{type:'addRules'|'replaceRules'|'removeRules', rules, behavior, destination}
+{type:'setMode', mode, destination}
+{type:'addDirectories'|'removeDirectories', directories, destination}
+
+destination: 'userSettings'|'projectSettings'|'localSettings'|'session'|'cliArg'
+```
+
+The one suggestion actually observed was
+`{"type":"setMode","mode":"acceptEdits","destination":"session"}` — a **session
+mode change**, not a per-tool rule. A user tapping "always" on a single `Write`
+means "stop asking me about this"; echoing that suggestion would instead put the
+whole session into `acceptEdits`, silently auto-approving every later edit. The
+same blind echo could widen the accessible directory set (`addDirectories`) or
+write a rule into `userSettings`, which **outlives the session and the project**.
+
+Eligibility rule for `always`:
+
+- Echo **only** `addRules`.
+- Echo **only** `destination: "session"`.
+- Never echo `setMode`, `addDirectories`, `removeDirectories`, `replaceRules`,
+  or `removeRules`.
+- If nothing survives the filter, `always` sends a plain `allow` — the same
+  effect as `once` for that ask. Degrading is correct: the grant the user asked
+  for is not expressible, and silently granting a broader one is the failure
+  this rule exists to prevent.
+
+This satisfies Success Criterion 3 literally: `always` never escalates beyond
+what the backend suggested *and* never beyond what the user asked for. The two
+are not the same thing, which is the trap.
 
 **OPEN:** live `can_use_tool` captures for `AskUserQuestion` and `ExitPlanMode`,
 including whether answer keys are the full question text. Capture before Step 9.
@@ -431,7 +462,6 @@ Carried into their consuming steps rather than blocking the scaffold:
 | Slash-command dispatch in stream-json | Step 12 |
 | `attachment` record payload shape | Step 6 |
 | Auto-update / telemetry environment variables | Step 13 |
-| Permission-mode versus agent product decision | Step 11 |
 
 ## 12. Captured Fixtures
 

@@ -34,8 +34,11 @@ binary the user already has installed and logged in.
    token-by-token, renders thinking, and renders tool cards through their
    pending → running → completed lifecycle.
 3. Tool permission requests reach the phone as permission cards; once, always,
-   and reject all round-trip correctly, and `always` never escalates beyond the
-   permissions the backend itself suggested.
+   and reject all round-trip correctly, and `always` grants exactly the one tool
+   the user approved — never a session-wide mode change, a widened directory
+   set, or a rule that outlives the session, **even when the backend itself
+   suggests one**. The backend's suggestions are candidates to filter, not a
+   ceiling to trust.
 4. `AskUserQuestion` and `ExitPlanMode` render as question cards and their
    answers reach the backend in the exact shapes the CLI expects.
 5. Model catalog and mid-session model switching work, and the client nav-bar
@@ -316,33 +319,28 @@ how. An unexpected exit mid-turn finishes the turn as interrupted rather than
 errored when the bridge sent the signal, and cancels that session's approvals.
 
 **`ClaudeApprovalRegistry`** — architecturally identical to
-`AcpApprovalRegistry`: injected emit and respond callbacks, bridge-minted `br-N`
-ids, permission/question bifurcation, and a `cancelForSession`/`dispose` contract
-that resolves every pending request *and* emits its replied or rejected event.
-Claude specifics: requests arrive on a known session's own process, so there is
-no session-resolution ambiguity; asks flagged `requires_user_interaction` become
-questions and everything else a permission; `once` maps to a plain allow,
-`always` echoes only the backend's own `permission_suggestions` and is withheld
-entirely when `suppress_always_allow_rule` is set, and `reject` maps to deny with
-a short message. `decision_reason` may carry ANSI escapes and is sanitized before
-it reaches the phone.
-
+`AcpApprovalRegistry`, with one structural difference.
 `AcpApprovalRegistry.forClient` binds to a single `AcpStdioClient` because ACP
 runs one process for every session. One process per session makes that binding
 impossible, so the injected `respond` is **session-keyed** rather than
 client-bound, and the composition root wires it to
 `ClaudeSessionProcessRepository`, which resolves the session to its client and
-writes the `control_response`. The registry itself never holds a client.
+writes the `control_response`. The registry itself never holds a client. Because
+each request arrives on its own session's process, there is no session-resolution
+ambiguity to begin with.
 
 It keeps the rest verbatim: bridge-minted `br-N` ids, permission/question
 bifurcation, and a `cancelForSession`/`dispose` contract that resolves every
 pending request *and* emits its replied or rejected event. Claude specifics: asks
 flagged `requires_user_interaction` become questions and everything else a
-permission; `once` maps to a plain allow, `always` echoes only the backend's own
-`permission_suggestions` and is withheld entirely when
-`suppress_always_allow_rule` is set, and `reject` maps to deny with a short
-message. `decision_reason` may carry ANSI escapes and is sanitized before it
-reaches the phone.
+permission; `once` maps to a plain allow; `always` maps to allow plus **only the
+eligible suggestions** defined in `PROTOCOL.md` section 5 — session-scoped
+`addRules` and nothing else, degrading to a plain allow when none qualify, so it
+can never flip the session's permission mode, widen its directories, or write a
+rule that outlives the session — and is withheld entirely when
+`suppress_always_allow_rule` is set; `reject` maps to deny with a short message.
+`decision_reason` may carry ANSI escapes and is sanitized before it reaches the
+phone.
 
 **`ClaudeEventMapper`** — lives at `lib/src/`, not in `repositories/`, because it
 consumes two Layer-2 components.
@@ -765,11 +763,15 @@ in the PR that introduces it. The step total is unchanged.
   interaction-shaped tools appear.
 - Honor `suppress_always_allow_rule` by withholding the always affordance, and
   sanitize ANSI escapes out of `decision_reason` before it reaches the phone.
-- Decide and record whether `always` may echo a `setMode` suggestion. The
-  observed suggestion for a file write was
-  `{type: setMode, mode: acceptEdits, destination: session}`, which escalates
-  the whole session rather than allowing one tool; the recommendation is to echo
-  rule-shaped suggestions only.
+- Filter `permission_suggestions` before echoing them for `always`: session-scoped
+  `addRules` only, never `setMode`, `addDirectories`, or a destination that
+  persists past the session, degrading to a plain allow when nothing qualifies.
+  This is decided, not open — see `PROTOCOL.md` section 5. The one suggestion
+  actually observed for a file write was
+  `{type: setMode, mode: acceptEdits, destination: session}`, so a naive echo
+  would put the whole session into auto-accept from a single "always" tap.
+- Test the filter directly, one case per rejected variant: it is the only thing
+  standing between a one-tool grant and a session-wide or persisted one.
 - Cover cancel-on-abort, cancel-on-dispose, and cancel-on-process-exit.
 - Verify: focused and full package tests, fatal analysis, implementation review.
 
