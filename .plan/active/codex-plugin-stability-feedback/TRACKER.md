@@ -4,18 +4,16 @@
 
 - **Plan slug:** `codex-plugin-stability-feedback`
 - **Implementation base:** `origin/main` at
-  `c6c7365095e67aff6d431b18f206a2fd40d2202c`
+  `b44555939c3fa9dec40080fff2337a196273493a`
 - **Stack root:** `2408b574`
-- **Series state:** Steps 1 through 4 merged through PR
-  [#733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733); Step 5 PR
-  [#740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) is open;
-  D6 through D9 remain in stack order
-- **Current step:** Step 5/11
-- **Current branch:** `codex-stability-deep-test-5-file-tool-identity`
+- **Series state:** Steps 1 through 5 merged through PR
+  [#740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740); Step 6 is
+  verified locally; D7 through D9 remain in stack order
+- **Current step:** Step 6/11
+- **Current branch:** `codex-stability-deep-test-6-restart-tool-terminalization`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Monitor Step 5 CI and review; merge it before forwarding D5
-  into D6
+- **Next action:** Push and open Step 6, then monitor CI and review
 
 ## Plan Review
 
@@ -38,7 +36,7 @@
 | [x] | F-06 failed tool replay | Fixed on `main` | `codex-stability-6-failed-tool-status`; [#717](https://github.com/sesori-ai/sesori_apps_monorepo/pull/717); `20521cc2` | Preserve error/output/exit-code replay |
 | [x] | F-07 generated image convergence | Fixed on `main` | `codex-stability-7-image-generation-history`; [#718](https://github.com/sesori-ai/sesori_apps_monorepo/pull/718); `2408b574`; [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724); [#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) | Durable images and exact generated wrappers converge live and cold |
 | [x] | F-08 late abort identity | Fixed on `main` | D4; `a32b6c29`; [#733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733); `c6c73650` | Late completion updates and retires only its failed canonical card |
-| [ ] | F-09 file identity | Fixed on stack | D5 `9da8f2e1`; D8 `d4e30b87` | Steps 5 and 8 deliver behavior and typed boundary |
+| [ ] | F-09 file identity | Behavior fixed on `main`; typed boundary on stack | D5 `9da8f2e1`; [#740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740); `b4455593`; D8 `d4e30b87` | Step 8 completes the typed boundary |
 | [ ] | F-10 restart terminalization | Fixed on stack | D6 `8f0f4ece`; D8 `d4e30b87` | Steps 6 and 8 deliver behavior and service-owned policy |
 | [ ] | F-11 archive history | Fixed on stack | D7; `cdd3a305` | Step 7 proves archive/unarchive readable and delete destructive |
 | [ ] | F-12 generated repository instructions | Confirmed; not fixed | Documented on D9 `ef2356c4` | Step 10 must hide complete generated AGENTS envelopes without hiding authored text |
@@ -51,8 +49,8 @@
 | [x] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 299 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged as `7b2fa65a` |
 | [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
 | [x] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 643 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) merged as `c6c73650` |
-| [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 342 actual | [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) open; verified after D4 and current `main` merged forward |
-| [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 70 | Existing `8f0f4ece`; blocked on Step 5 |
+| [x] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 342 actual | [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) merged as `b4455593` |
+| [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 115 actual | Existing `8f0f4ece`; verified after D5 and current `main` merged forward |
 | [ ] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 308 | Existing `cdd3a305` + `c4767b04`; blocked on Step 6 |
 | [ ] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,084 | Existing `d4e30b87` + `e86bb66f`; blocked on Step 7 |
 | [ ] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 707 | Existing `ef2356c4`; blocked on Step 8 |
@@ -286,7 +284,28 @@ origin/main
   production code, focused tests, and tracker updates. This is below the
   1,500-line soft cap.
 - **Step 5 delivery:** Pushed and opened as
-  [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740).
+  [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740), which
+  passed all 11 checks and merged as `b4455593` on 2026-08-04 with zero
+  unresolved threads.
+- **Step 6 base update:** Merged the complete local D5 branch forward as
+  `f06aa211`, then merged `origin/main` at `b4455593` as `0232ffc2`. Existing
+  production commit `8f0f4ece` remains in its original stack position; no
+  rebase, reset, reorder, or cherry-pick occurred.
+- **Step 6 production verification:** All 58 focused rollout/service tests and
+  all 307 Codex package tests pass. `dart analyze --fatal-infos` reports no
+  issues. Both branch and working-tree `git diff --check` pass.
+- **Step 6 architecture review:** `aristotle-impl-review` approved the branch
+  against `origin/main` with no findings. It confirmed the plugin, service,
+  repository, and tracker ownership flow remains cohesive and proportional.
+- **Step 6 behavior:** Replay receives the plugin's authoritative current
+  activity. Idle history terminalizes unresolved tools as errors, while active,
+  provisional, or retry-backed sessions preserve running state.
+- **Step 6 cleanup:** No persistence, transport, cache, or lifecycle artifact
+  becomes obsolete in this step. The temporary `PluginSessionStatus` replay
+  boundary is intentionally replaced by Step 8's sealed replay disposition.
+- **Step 6 change size:** 115 lines against the PR merge base, including
+  production code, tests, and tracker updates. This is below the 1,500-line
+  soft cap.
 
 ## Findings And Plan Deltas
 
