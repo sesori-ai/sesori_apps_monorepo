@@ -961,6 +961,82 @@ void main() {
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
 
+    test("replacement bridge detaches the connected client before refreshing auth", () async {
+      final bridgeStatusController = StreamController<BridgeStatus>.broadcast();
+      addTearDown(bridgeStatusController.close);
+      final initialSseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(initialSseController.close);
+
+      final initialClient = MockRelayClient();
+      when(initialClient.connect).thenAnswer((_) async {});
+      when(() => initialClient.isConnected).thenReturn(true);
+      when(() => initialClient.connectionState).thenReturn(RelayClientConnectionState.connected);
+      when(() => initialClient.didResume).thenReturn(false);
+      when(() => initialClient.sendRequest(any())).thenAnswer(
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
+      );
+      when(() => initialClient.subscribeSse(any())).thenAnswer((_) => initialSseController.stream);
+      when(() => initialClient.bridgeStatus).thenAnswer((_) => bridgeStatusController.stream);
+      when(initialClient.disconnect).thenAnswer((_) async {});
+
+      final replacementSseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(replacementSseController.close);
+      final replacementClient = MockRelayClient();
+      when(replacementClient.connect).thenAnswer((_) async {});
+      when(() => replacementClient.isConnected).thenReturn(true);
+      when(() => replacementClient.connectionState).thenReturn(RelayClientConnectionState.connected);
+      when(() => replacementClient.didResume).thenReturn(true);
+      when(() => replacementClient.subscribeSse(any())).thenAnswer((_) => replacementSseController.stream);
+      when(() => replacementClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(replacementClient.disconnect).thenAnswer((_) async {});
+
+      final clients = <MockRelayClient>[initialClient, replacementClient];
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+
+      final refreshedToken = Completer<String?>();
+      when(
+        () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
+      ).thenAnswer((_) => refreshedToken.future);
+
+      // The relay emits bridge_connected, but intentionally no disconnected
+      // event, when one live bridge connection replaces another.
+      bridgeStatusController.add(BridgeStatus.online);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(service.currentStatus, isA<ConnectionReconnecting>());
+      expect(service.relayClient, isNull);
+      expect(factory.callCount, 1);
+      verify(initialClient.disconnect).called(1);
+
+      refreshedToken.complete("fresh-token");
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(factory.callCount, 2);
+      expect(service.relayClient, same(replacementClient));
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
     test("socket closing while parked is recovered like an SSE drop", () async {
       final socketClosedController = StreamController<void>.broadcast();
       addTearDown(socketClosedController.close);
