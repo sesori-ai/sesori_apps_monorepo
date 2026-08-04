@@ -1932,6 +1932,41 @@ void main() {
     expect(editableText.controller.text, "pasted after");
   });
 
+  testWidgets("delayed context-menu text fallback uses the original selection", (tester) async {
+    final imageRead = Completer<Uint8List?>();
+    when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == "Clipboard.getData") return <String, Object>{"text": "pasted"};
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "before after");
+    final editableText = tester.widget<EditableText>(find.byType(EditableText));
+    editableText.controller.selection = const TextSelection(baseOffset: 0, extentOffset: 6);
+
+    final textField = tester.widget<TextField>(find.byType(TextField));
+    final editableTextState = tester.state<EditableTextState>(find.byType(EditableText));
+    final toolbar =
+        textField.contextMenuBuilder!(
+              tester.element(find.byType(TextField)),
+              editableTextState,
+            )
+            as AdaptiveTextSelectionToolbar;
+    final pasteItem = toolbar.buttonItems!.singleWhere((item) => item.type == ContextMenuButtonType.paste);
+
+    pasteItem.onPressed!();
+    editableText.controller.selection = TextSelection.collapsed(offset: editableText.controller.text.length);
+    imageRead.complete(null);
+    await tester.pumpAndSettle();
+
+    expect(editableText.controller.text, "pasted after");
+  });
+
   testWidgets("delayed text paste uses the selection from the original intent", (tester) async {
     final imageRead = Completer<Uint8List?>();
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);

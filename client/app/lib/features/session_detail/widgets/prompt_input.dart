@@ -1296,14 +1296,21 @@ class _PromptInputState extends State<PromptInput> {
       final pasteItem = ContextMenuButtonItem(
         type: ContextMenuButtonType.paste,
         label: existingPaste?.label,
-        onPressed: () => unawaited(
-          _pasteImageOrText(
-            onTextPaste: existingPasteCallback == null
-                ? () => editableTextState.pasteText(SelectionChangedCause.toolbar)
-                : () async => existingPasteCallback(),
-            onImagePasted: editableTextState.hideToolbar,
-          ),
-        ),
+        onPressed: () {
+          // Preserve the selection from the paste intent; the image probe may
+          // outlive the menu, so a later caret move must not redirect the text
+          // fallback.
+          final initialValue = editableTextState.textEditingValue;
+          unawaited(
+            _pasteImageOrText(
+              initialValue: initialValue,
+              onTextPaste: existingPasteCallback == null
+                  ? () => editableTextState.pasteText(SelectionChangedCause.toolbar)
+                  : () async => existingPasteCallback(),
+              onImagePasted: editableTextState.hideToolbar,
+            ),
+          );
+        },
       );
       if (pasteIndex >= 0) {
         buttonItems[pasteIndex] = pasteItem;
@@ -1543,12 +1550,18 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   Future<void> _pasteImageOrText({
+    required TextEditingValue initialValue,
     required Future<void> Function() onTextPaste,
     required VoidCallback onImagePasted,
   }) async {
     try {
       switch (await _handlePasteImage()) {
         case _PasteImageResult.noImage:
+          // Restore the caret captured when paste was pressed so the fallback
+          // replaces the same selection, unless the user typed meanwhile.
+          if (_controller.text == initialValue.text && initialValue.selection.isValid) {
+            _controller.selection = initialValue.selection;
+          }
           await onTextPaste();
           return;
         case _PasteImageResult.handled:
