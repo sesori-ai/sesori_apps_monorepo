@@ -4,16 +4,15 @@
 
 - **Plan slug:** `codex-plugin-stability-feedback`
 - **Implementation base:** `origin/main` at
-  `4785f4c7a4b7701b6614752d8c89bfce526db37a`
+  `22f65807e525a7c1e7aa68e66cc8d0c9b6a4976d`
 - **Stack root:** `2408b574`
-- **Series state:** Steps 1 through 7 merged; Step 8 PR
-  [#749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) is open;
-  D9 remains in stack order
-- **Current step:** Step 8/11
-- **Current branch:** `codex-stability-deep-test-8-typed-boundaries`
+- **Series state:** Steps 1 through 8 merged; Step 9 is verified locally and
+  remains in stack order
+- **Current step:** Step 9/11
+- **Current branch:** `codex-stability-deep-test-9-mobile-images`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Monitor Step 8 PR #749 and begin Step 9 locally
+- **Next action:** Push and open Step 9
 
 ## Plan Review
 
@@ -36,9 +35,9 @@
 | [x] | F-06 failed tool replay | Fixed on `main` | `codex-stability-6-failed-tool-status`; [#717](https://github.com/sesori-ai/sesori_apps_monorepo/pull/717); `20521cc2` | Preserve error/output/exit-code replay |
 | [x] | F-07 generated image convergence | Fixed on `main` | `codex-stability-7-image-generation-history`; [#718](https://github.com/sesori-ai/sesori_apps_monorepo/pull/718); `2408b574`; [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724); [#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) | Durable images and exact generated wrappers converge live and cold |
 | [x] | F-08 late abort identity | Fixed on `main` | D4; `a32b6c29`; [#733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733); `c6c73650` | Late completion updates and retires only its failed canonical card |
-| [ ] | F-09 file identity | Behavior fixed on `main`; typed boundary on stack | D5 `9da8f2e1`; [#740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740); `b4455593`; D8 `d4e30b87` | Step 8 completes the typed boundary |
-| [ ] | F-10 restart terminalization | Behavior fixed on `main`; typed boundary on stack | D6 `8f0f4ece`; [#743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743); `4b779cc2`; D8 `d4e30b87` | Step 8 completes the typed boundary |
-| [ ] | F-11 archive history | Fixed on stack | D7; `cdd3a305` | Step 7 proves archive/unarchive readable and delete destructive |
+| [x] | F-09 file identity | Fixed on `main` | D5 `9da8f2e1`; [#740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740); `b4455593`; D8 `d4e30b87`; [#749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749); `22f65807` | Typed boundary merged |
+| [x] | F-10 restart terminalization | Fixed on `main` | D6 `8f0f4ece`; [#743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743); `4b779cc2`; D8 `d4e30b87`; [#749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749); `22f65807` | Typed boundary merged |
+| [x] | F-11 archive history | Fixed on `main` | D7; `cdd3a305`; [#746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746); `4785f4c7` | Archive/unarchive remains readable and delete remains destructive |
 | [ ] | F-12 generated repository instructions | Confirmed; not fixed | Documented on D9 `ef2356c4` | Step 10 must hide complete generated AGENTS envelopes without hiding authored text |
 
 ## Delivery Steps
@@ -52,8 +51,8 @@
 | [x] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 342 actual | [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) merged as `b4455593` |
 | [x] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 380 actual | [PR #743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743) merged as `4b779cc2` |
 | [x] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 384 actual | [PR #746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746) merged as `4785f4c7` |
-| [ ] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,174 actual | [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) open; verified after Step 7 and current `main` merged forward |
-| [ ] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 707 | Existing `ef2356c4`; blocked on Step 8 |
+| [x] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,174 actual | [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) merged as `22f65807` |
+| [ ] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 963 actual | Existing `ef2356c4`; verified after Step 8 and current `main` merged forward |
 | [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 70–140 | Planned after D9; confirmed F-12 fix |
 | [ ] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Blocked on Step 10 merge |
 
@@ -367,6 +366,37 @@ origin/main
   This is below the 1,500-line soft cap.
 - **Step 8 delivery:** Pushed and opened as
   [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749).
+- **Step 8 merge:** PR
+  [#749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749)
+  merged as `22f65807` on 2026-08-04 with all checks passing and no unresolved
+  threads.
+- **Step 9 successor update:** Merged the complete local Step 8 branch forward
+  as `3096c2db`, then merged `origin/main` at `22f65807` as `078a3dc1`.
+  Existing production commit `ef2356c4` remains in its original stack position;
+  no rebase, reset, reorder, or cherry-pick occurred.
+- **Step 9 verification:** Shared and client code generation completed with zero
+  changed outputs. Fatal analysis passes in shared, plugin interface, OpenCode,
+  Codex, bridge foundation, bridge app, client core, and mobile. Full-suite runs
+  passed all 360 shared, 149 plugin-interface, 409 OpenCode, 316 Codex, 66
+  bridge-foundation, 2,429 bridge-app, and 1,008 client-core tests. After the
+  final reconnect fence, 33 focused client-core and 43 mobile cubit tests pass.
+  The report also retains the completed real-iOS image-selection and submission
+  evidence.
+- **Step 9 architecture review:** The first review found that a pre-disconnect
+  silent refresh could restore old attachment capability after reconnect; the
+  second found the equivalent full-load/recovery path. Both paths now fence
+  capability-bearing snapshots by connection generation and require a fresh
+  current-connection load before queued images drain. Focused regressions cover
+  both races. After the second rejection, the owner selected fix-and-verify
+  without a prohibited third review.
+- **Step 9 analytics:** The accepted session-message outcome remains the
+  authoritative existing event. No image-, provider-, or plugin-specific event
+  or parameter was added.
+- **Step 9 cleanup:** The hardcoded composer attachment-support helper is
+  removed. No database or cache artifact is obsolete.
+- **Step 9 change size:** 963 lines against the PR merge base, including the
+  compatible wire model, bridge/plugin/client flow, tests, report, and tracker.
+  This is below the 1,500-line soft cap.
 
 ## Findings And Plan Deltas
 
