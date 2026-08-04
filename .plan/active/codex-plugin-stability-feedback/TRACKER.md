@@ -4,20 +4,16 @@
 
 - **Plan slug:** `codex-plugin-stability-feedback`
 - **Implementation base:** `origin/main` at
-  `7b2fa65ad1b210dd6a52714e14ce9b5951d0aa68`
+  `5aaf979dd25b645a69964d0211eda5cd92126037`
 - **Stack root:** `2408b574`
-- **Series state:** Step 1 PR
-  [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) and Step 2
-  PR [#731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731)
-  merged; Step 3 PR
-  [#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) open; D4
-  through D9 remain in stack order
-- **Current step:** Step 3/11
-- **Current branch:** `codex-stability-deep-test-3-image-wrapper-projection`
+- **Series state:** Steps 1 through 3 merged through PR
+  [#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732); D3 and
+  current `main` are merged forward into D4; D4 through D9 remain in stack order
+- **Current step:** Step 4/11
+- **Current branch:** `codex-stability-deep-test-4-late-abort-tool-identity`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Monitor Step 3 CI and review; merge it before forwarding D3
-  into D4
+- **Next action:** Commit the Step 4 tracker, then open Step 4 against `main`
 
 ## Plan Review
 
@@ -38,7 +34,7 @@
 | [x] | F-04 prompt image history | Fixed on `main` | `codex-stability-5-prompt-images`; [#715](https://github.com/sesori-ai/sesori_apps_monorepo/pull/715); `6930b3a9` | Preserve stable text/file replay regressions |
 | [x] | F-05 debug SSE UTF-8 | Fixed on `main` | `codex-stability-1-debug-sse`; [#709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/709); `025ba43b` | Preserve same-connection UTF-8 regression |
 | [x] | F-06 failed tool replay | Fixed on `main` | `codex-stability-6-failed-tool-status`; [#717](https://github.com/sesori-ai/sesori_apps_monorepo/pull/717); `20521cc2` | Preserve error/output/exit-code replay |
-| [ ] | F-07 generated image convergence | Durable history fixed; wrappers stacked | `codex-stability-7-image-generation-history`; [#718](https://github.com/sesori-ai/sesori_apps_monorepo/pull/718); `2408b574` | Steps 1 and 3 deliver `c3ab5fcb` and `36ee48e9` |
+| [x] | F-07 generated image convergence | Fixed on `main` | `codex-stability-7-image-generation-history`; [#718](https://github.com/sesori-ai/sesori_apps_monorepo/pull/718); `2408b574`; [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724); [#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) | Durable images and exact generated wrappers converge live and cold |
 | [ ] | F-08 late abort identity | Fixed on stack | D4; `a32b6c29` | Step 4 proves late completion updates the failed card |
 | [ ] | F-09 file identity | Fixed on stack | D5 `9da8f2e1`; D8 `d4e30b87` | Steps 5 and 8 deliver behavior and typed boundary |
 | [ ] | F-10 restart terminalization | Fixed on stack | D6 `8f0f4ece`; D8 `d4e30b87` | Steps 6 and 8 deliver behavior and service-owned policy |
@@ -51,8 +47,8 @@
 |---|---|---|---|---:|---|
 | [x] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as `149e7914` |
 | [x] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 299 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged as `7b2fa65a` |
-| [ ] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) open; verified; D2 and current `main` merged forward |
-| [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | Existing `a32b6c29`; blocked on Step 3 |
+| [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
+| [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 157 actual | Verified; D3 merged forward as `e1f2cc78`, current `main` as `9cf73e30` |
 | [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 214 | Existing `9da8f2e1`; blocked on Step 4 |
 | [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 70 | Existing `8f0f4ece`; blocked on Step 5 |
 | [ ] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 308 | Existing `cdd3a305` + `c4767b04`; blocked on Step 6 |
@@ -219,7 +215,23 @@ origin/main
   including production code, tests, and plan/tracker updates. This is below the
   1,500-line soft cap.
 - **Step 3 delivery:** Pushed and opened as
-  [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732).
+  [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732), which
+  merged as `5aaf979d` on 2026-08-04.
+- **Step 3 late review:** One bot thread arrived as PR #732 merged. It correctly
+  identified that a content loop shadowing the image-result variable is invalid
+  JavaScript and must remain visible. Step 4 carries correction `443b4433` and a
+  regression that failed before the fix; the merged-PR thread received a reply
+  and was resolved.
+- **Step 4 base update:** Merged the complete local D3 branch forward as
+  `e1f2cc78`, then merged `origin/main` at `5aaf979d` as `9cf73e30`. Existing
+  production commit `a32b6c29` remains in its original stack position; no
+  rebase, reset, reorder, or cherry-pick occurred.
+- **Step 4 production verification:** All 34 focused lifecycle-tracker tests and
+  all 302 Codex package tests pass. `dart analyze --fatal-infos` reports no
+  issues. Both branch and working-tree `git diff --check` pass.
+- **Step 4 change size:** 157 lines against the PR merge base,
+  including the inherited Step 3 correction, production code, tests, and
+  plan/tracker updates. This is below the 1,500-line soft cap.
 
 ## Findings And Plan Deltas
 
