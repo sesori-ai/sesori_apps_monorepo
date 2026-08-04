@@ -7,13 +7,14 @@
   `009bb44a72683d0a1bc6dacd13cbc19397e92d43`
 - **Stack root:** `2408b574`
 - **Series state:** Historical F-01 through F-07 baseline PRs merged; remaining
-  D1 through D9 branches exist and are pushed; Step 1 is verified and ready for
-  commit
+  D1 through D9 branches exist and are pushed; Step 1 PR
+  [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) is open
 - **Current step:** Step 1/11
 - **Current branch:** `codex-stability-deep-test-1-image-wrapper-directive`
-- **Plan PR:** Pending; combined with Step 1 production fix by user direction
-- **Next action:** Commit/push the updated D1 branch and open the first PR
-  against `main`
+- **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
+  combined with Step 1 production fix by user direction
+- **Next action:** Monitor Step 1 CI and review; merge it before forwarding D1
+  into D2
 
 ## Plan Review
 
@@ -45,7 +46,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 841 actual | Verified; D1 merged current `origin/main` forward at `636546f6` |
+| [ ] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 844 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) open; verified; D1 merged current `origin/main` forward at `636546f6` |
 | [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 73 | Existing `58585e1f`; blocked on Step 1 merge-forward |
 | [ ] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | Existing `36ee48e9`; blocked on Step 2 |
 | [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | Existing `a32b6c29`; blocked on Step 3 |
@@ -157,10 +158,11 @@ origin/main
 - **Step 1 production verification:** All 29 focused lifecycle-tracker tests and
   all 297 Codex package tests pass. `dart analyze --fatal-infos` reports no
   issues. Both branch and staged `git diff --check` pass.
-- **Step 1 change size:** 841 lines against `origin/main`: 812 plan/tracker
+- **Step 1 change size:** 844 lines against `origin/main`: 815 plan/tracker
   additions plus 27 production/test additions and 2 deletions. This is below the
   1,500-line soft cap.
-- **Step 1 delivery:** Pending commit, push, and PR.
+- **Step 1 delivery:** Plan/tracker committed as `d3ec1923`, pushed, and opened
+  as [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724).
 
 ## Findings And Plan Deltas
 

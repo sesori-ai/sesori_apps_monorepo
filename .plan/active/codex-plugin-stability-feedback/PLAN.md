@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `codex-plugin-stability-feedback`
-- **Status:** Active — Step 1/11 ready for delivery
+- **Status:** Active — Step 1/11 PR
+  [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) open
 - **Plan date:** 2026-08-04
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `origin/main` at
@@ -11,8 +12,8 @@
 - **Stack root:** merged Codex image-history fix `2408b574`
 - **Delivery:** nine existing deep-test branches in their exact ancestry order,
   one additional confirmed finding fix, and one plan-retirement PR
-- **Plan PR:** Step 1/11, combined with the first unmerged production fix at the
-  user's direction
+- **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
+  combined with the first unmerged production fix at the user's direction
 
 This document and `TRACKER.md` are the implementation authority for the
 remaining Codex stability series. The evidence report at
@@ -396,7 +397,7 @@ already merged before this durable plan existed.
 
 | Step | Branch | Exact PR title | Existing/target size | Primary finding |
 |---|---|---|---:|---|
-| 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 841 total | F-07 |
+| 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 844 total | F-07 |
 | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 73 | F-02 |
 | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | F-07 |
 | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | F-08 |
