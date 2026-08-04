@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan slug:** `relay-request-concurrency`
-- **Implementation base:** merged Step 8 at
-  `1d5816d14559b5970fad317921c12d29f66b4a23`
-- **Series state:** Steps 1–8 merged; over-defensive implementation
+- **Implementation base:** merged Step 9 at
+  `2fd3423ebb426a4889ca6d87a008e45240f7e42d`
+- **Series state:** Steps 1–9 merged; Step 10 retirement prepared. Over-defensive implementation
   [#716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) remains closed without merge
-- **Current step:** Step 9/10 implementation ready for delivery
+- **Current step:** Step 10/10 retirement
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** open, review, and merge Step 9
+- **Next action:** open and merge the documentation-only retirement PR
 
 ## Incident Evidence
 
@@ -102,8 +102,8 @@
 | [x] | 6/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | [PR #703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) merged as `e4605eb1` with 1,054 changed lines |
 | [x] | 7/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: simplify remaining concurrency plan [step 7/10]` | 350–550 | [PR #720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/720) merged as `6233da3e` with 543 changed lines; PR #716 closed without merge |
 | [x] | 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | 500–900 | [PR #721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721) merged as `1d5816d1` with 709 changed lines |
-| [ ] | 9/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | Implementation ready from `1d5816d1`; verification and architecture review pass |
-| [ ] | 10/10 | `relay-request-concurrency-retire-plan` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | 50–150 | Blocked on Step 9 merge |
+| [x] | 9/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | [PR #722](https://github.com/sesori-ai/sesori_apps_monorepo/pull/722) merged as `2fd3423e` with 1,185 changed lines and 11/11 checks passing |
+| [x] | 10/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | 50–150 | Documentation-only retirement prepared from current `main`; PR pending |
 
 ## Exact PR Titles
 
@@ -448,3 +448,25 @@
   tracked and untracked diff with no findings. Lifecycle ownership, synchronous
   tracking, incarnation/epoch fencing, restart sequencing, summary ordering,
   teardown draining, and proportional scope passed.
+- **Step 9/10 review feedback:** three duplicate bot findings correctly identified
+  that an encryption failure could suppress an already-accepted restart. Commit
+  `7d6f5023` separated response delivery from restart dispatch so encryption
+  failure remains observable without cancelling the accepted action. All three
+  bot threads were answered and resolved; Cubic approved the correction.
+- **Step 9/10 delivery:** [PR #722](https://github.com/sesori-ai/sesori_apps_monorepo/pull/722)
+  merged as `2fd3423ebb426a4889ca6d87a008e45240f7e42d` with 1,185
+  changed lines and 11/11 checks passing.
+- **Final outcome:** all thirteen success criteria are complete. The observed
+  relay head-of-line failure is removed while explicit family/project ordering,
+  exact response fencing, restart execution, and bounded shutdown draining remain.
+  No wire, database, persisted-data, client API, UI, analytics, or plugin-interface
+  change was introduced.
+- **Final cleanup assessment:** directly obsolete route/restart ownership,
+  mutable relay-handle operations, redundant interaction lanes, broad mutation
+  tails, handler-owned project workflows, and single-route diagnostics were
+  removed in their owning steps. No further causally obsolete artifacts were
+  found. The unmerged provisional-visibility implementation requires no cleanup;
+  its bounded transient remains an explicitly accepted risk.
+- **Step 10/10 validation:** GitHub merge state, titles, merge SHAs, changed-line
+  counts, and checks were cross-checked through Step 9. The active plan directory
+  is removed, the completed directory is present, and `git diff --check` passes.
