@@ -1,10 +1,18 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "cursor_event_mapper.dart";
+
 /// Adds Cursor's question extensions on top of the standard ACP permission
 /// handling: `cursor/ask_question` (multiple-choice) and `cursor/create_plan`
 /// (accept/reject), both blocking requests that the bridge surfaces as
 /// questions.
+///
+/// Also acknowledges Cursor's non-blocking extension *requests* that cursor-agent
+/// misnames as notifications (`sendNonBlockingExtensionNotification` → ACP
+/// `extMethod` → JSON-RPC request): `cursor/generate_image` and
+/// `cursor/update_todos`. Those arrive on [serverRequests], not the notification
+/// stream, so they must be handled here rather than only in [CursorEventMapper].
 ///
 /// NOTE: Cursor's exact reply payload shapes are not formally documented; the
 /// builders below are best-effort and should be confirmed against a real
@@ -13,14 +21,21 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
   CursorApprovalRegistry({
     required AcpStdioClient client,
     required super.emit,
+    required CursorEventMapper eventMapper,
+    required void Function(BridgeSseEvent event) emitContent,
     super.idGenerator,
     super.activeSessionResolver,
-  }) : super(
+  }) : _eventMapper = eventMapper,
+       _emitContent = emitContent,
+       super(
          respond: (id, result) =>
              client.respondToServerRequest(id: id, result: result),
          respondError: (id, code, message) => client
              .respondToServerRequestWithError(id: id, code: code, message: message),
        );
+
+  final CursorEventMapper _eventMapper;
+  final void Function(BridgeSseEvent event) _emitContent;
 
   @override
   bool handleExtensionRequest(AcpServerRequest request) {
@@ -31,8 +46,29 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       case "cursor/create_plan":
         _handleCreatePlan(request);
         return true;
+      case "cursor/generate_image":
+        _handleNonBlockingExtension(request);
+        return true;
+      case "cursor/update_todos":
+        _handleNonBlockingExtension(request);
+        return true;
     }
     return false;
+  }
+
+  /// cursor-agent sends these via `extMethod` (JSON-RPC request with id) even
+  /// though it treats the call as fire-and-forget. Ack immediately and map the
+  /// payload through the same event mapper used for true notifications.
+  void _handleNonBlockingExtension(AcpServerRequest request) {
+    final params = Map<String, dynamic>.from(request.params);
+    if ((params["sessionId"] as String?)?.trim().isEmpty ?? true) {
+      final resolved = resolveSessionId(params);
+      if (resolved.isNotEmpty) params["sessionId"] = resolved;
+    }
+    _eventMapper
+        .map(AcpNotification(method: request.method, params: params))
+        .forEach(_emitContent);
+    respond(request.id, const <String, Object?>{});
   }
 
   void _handleAskQuestion(AcpServerRequest request) {

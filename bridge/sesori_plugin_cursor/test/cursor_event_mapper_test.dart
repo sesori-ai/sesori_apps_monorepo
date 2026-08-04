@@ -1,3 +1,6 @@
+import "dart:io";
+import "dart:typed_data";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -48,7 +51,122 @@ void main() {
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "hi");
     });
 
-    test("standard ACP images are inherited while cursor image extensions stay dropped", () {
+    test("cursor/generate_image maps to a standard inline file part", () async {
+      mapper.beginTurn("s-image");
+      final file = File("${Directory.systemTemp.path}/cursor-event-mapper-${DateTime.now().microsecondsSinceEpoch}.png");
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+      file.writeAsBytesSync(
+        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
+      );
+
+      expect(
+        mapper.map(
+          AcpNotification(
+            method: "cursor/generate_image",
+            params: {"sessionId": "s-image", "filePath": file.path},
+          ),
+        ).whereType<BridgeSseMessagePartUpdated>().single.part.type,
+        PluginMessagePartType.file,
+      );
+    });
+
+    test("cursor/generate_image accepts legacy path params", () async {
+      mapper.beginTurn("s-image-legacy");
+      final file = File("${Directory.systemTemp.path}/legacy-output.png");
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+      file.writeAsBytesSync(
+        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
+      );
+
+      expect(
+        mapper.map(
+          AcpNotification(
+            method: "cursor/generate_image",
+            params: {"sessionId": "s-image-legacy", "path": file.path},
+          ),
+        ).whereType<BridgeSseMessagePartUpdated>().single.part.type,
+        PluginMessagePartType.file,
+      );
+    });
+
+    test("cursor/generate_image resolves sessionId from active turn", () async {
+      final resolverMapper = CursorEventMapper(
+        launchDirectory: "/repo",
+        pluginId: CursorPlugin.pluginId,
+        configurationTracker: AcpSessionConfigurationTracker(),
+        contentMapper: const AcpContentMapper(),
+        activeSessionResolver: () => "s-active",
+      );
+      resolverMapper.beginTurn("s-active");
+      final file = File("${Directory.systemTemp.path}/cursor-active-turn-image.png");
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+      file.writeAsBytesSync(
+        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
+      );
+
+      expect(
+        resolverMapper
+            .map(
+              AcpNotification(
+                method: "cursor/generate_image",
+                params: {"filePath": file.path, "description": "test"},
+              ),
+            )
+            .whereType<BridgeSseMessagePartUpdated>()
+            .single
+            .part
+            .type,
+        PluginMessagePartType.file,
+      );
+    });
+
+    test("cursor/generate_image resolves sessionId from toolCallId", () async {
+      mapper.beginTurn("s1");
+      final file = File("${Directory.systemTemp.path}/cursor-toolcall-image.png");
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+      file.writeAsBytesSync(
+        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
+      );
+
+      mapper.map(
+        const AcpNotification(
+          method: "session/update",
+          params: {
+            "sessionId": "s1",
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "img-tool-1",
+              "title": "Generate Image: test",
+              "status": "completed",
+            },
+          },
+        ),
+      );
+
+      expect(
+        mapper.map(
+          AcpNotification(
+            method: "cursor/generate_image",
+            params: {
+              "toolCallId": "img-tool-1",
+              "filePath": file.path,
+              "description": "test",
+            },
+          ),
+        ).whereType<BridgeSseMessagePartUpdated>().single.part.type,
+        PluginMessagePartType.file,
+      );
+    });
+
+    test("standard ACP images still work alongside cursor generate_image", () {
       mapper.beginTurn("s-image");
       final standard = mapper.map(
         const AcpNotification(
@@ -70,16 +188,6 @@ void main() {
       expect(
         standard.whereType<BridgeSseMessagePartUpdated>().single.part.type,
         PluginMessagePartType.file,
-      );
-
-      expect(
-        mapper.map(
-          const AcpNotification(
-            method: "cursor/generate_image",
-            params: {"sessionId": "s-image", "path": "/private/output.png"},
-          ),
-        ),
-        isEmpty,
       );
     });
 

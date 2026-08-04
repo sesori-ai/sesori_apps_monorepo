@@ -115,11 +115,14 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
        _sessionOptionsService = cursorSessionOptionsService,
        _configurationTracker = configurationTracker,
        _sessionCleanupService = sessionCleanupService,
+       _eventMapper = mapper,
        super(
          id: pluginId,
          agentDisplayName: "Cursor",
          eventMapper: mapper,
-       );
+       ) {
+    mapper.bindActiveSessionResolver(() => activeTurnSessionId);
+  }
 
   final CursorCatalogService _catalogService;
   final AcpCommandListener _catalogCommandListener;
@@ -127,6 +130,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   final CursorSessionOptionsService _sessionOptionsService;
   final AcpSessionConfigurationTracker _configurationTracker;
   final CursorSessionCleanupService _sessionCleanupService;
+  final CursorEventMapper _eventMapper;
 
   String? _appliedModelId;
   String? _appliedModeId;
@@ -143,6 +147,8 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     return CursorApprovalRegistry(
       client: client,
       emit: emitActivityEvent,
+      eventMapper: _eventMapper,
+      emitContent: emitEvent,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }

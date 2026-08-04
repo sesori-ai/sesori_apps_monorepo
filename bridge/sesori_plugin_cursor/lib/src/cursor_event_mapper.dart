@@ -1,6 +1,8 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "repositories/mappers/cursor_generate_image_mapper.dart";
+
 /// Cursor's event mapper: the standard ACP `session/update` handling from
 /// [AcpEventMapper] plus Cursor's `cursor/*` notification extensions.
 class CursorEventMapper extends AcpEventMapper {
@@ -9,7 +11,20 @@ class CursorEventMapper extends AcpEventMapper {
     required super.pluginId,
     required super.configurationTracker,
     required super.contentMapper,
-  }) : super(agentId: pluginId);
+    CursorGenerateImageMapper? generateImageMapper,
+    String? Function()? activeSessionResolver,
+  }) : _generateImageMapper =
+           generateImageMapper ?? CursorGenerateImageMapper(contentMapper: contentMapper),
+       _activeSessionResolver = activeSessionResolver,
+       super(agentId: pluginId);
+
+  final CursorGenerateImageMapper _generateImageMapper;
+  String? Function()? _activeSessionResolver;
+
+  /// Binds the active turn session after [CursorPlugin] construction.
+  void bindActiveSessionResolver(String? Function()? resolver) {
+    _activeSessionResolver = resolver;
+  }
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
@@ -18,10 +33,58 @@ class CursorEventMapper extends AcpEventMapper {
         final sessionId = notification.params["sessionId"] as String?;
         if (sessionId == null || sessionId.isEmpty) return const [];
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
+      case "cursor/generate_image":
+        // Live cursor-agent actually sends this as an extMethod *request*
+        // (see CursorApprovalRegistry); keep the notification path for any
+        // agent that uses true extNotification.
+        return _mapGenerateImage(notification: notification);
     }
-    // cursor/task, cursor/generate_image and other extension notifications
-    // have no sesori analog — dropped.
+    // cursor/task and other extension notifications have no sesori analog.
     return const [];
+  }
+
+  List<BridgeSseEvent> _mapGenerateImage({required AcpNotification notification}) {
+    final params = notification.params;
+    final sessionId = _sessionIdFromGenerateImageParams(params: params);
+    final path = _pathFromGenerateImageParams(params: params);
+    if (sessionId == null || sessionId.isEmpty || path == null || path.trim().isEmpty) {
+      return const [];
+    }
+
+    final blocks = _generateImageMapper.mapPath(path: path);
+    if (blocks.isEmpty) return const [];
+
+    final messageId = params["messageId"];
+    final identityUpdate = messageId is String && messageId.isNotEmpty
+        ? {"messageId": messageId}
+        : const <String, dynamic>{};
+    return appendAssistantMappedBlocks(
+      sessionId: sessionId,
+      identityUpdate: identityUpdate,
+      blocks: blocks,
+      evaluateTextHaltNotice: false,
+    );
+  }
+
+  String? _sessionIdFromGenerateImageParams({required Map<String, dynamic> params}) {
+    final sessionId = params["sessionId"];
+    if (sessionId is String && sessionId.trim().isNotEmpty) return sessionId;
+    final toolCallId = params["toolCallId"];
+    if (toolCallId is String && toolCallId.isNotEmpty) {
+      final fromTool = sessionIdForToolCallId(toolCallId: toolCallId);
+      if (fromTool != null && fromTool.isNotEmpty) return fromTool;
+    }
+    final active = _activeSessionResolver?.call();
+    if (active != null && active.trim().isNotEmpty) return active;
+    return null;
+  }
+
+  static String? _pathFromGenerateImageParams({required Map<String, dynamic> params}) {
+    for (final key in const ["filePath", "path", "filename"]) {
+      final value = params[key];
+      if (value is String && value.trim().isNotEmpty) return value;
+    }
+    return null;
   }
 
   @override

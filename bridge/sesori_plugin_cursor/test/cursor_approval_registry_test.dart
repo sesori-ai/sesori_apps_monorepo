@@ -1,3 +1,6 @@
+import "dart:io";
+import "dart:typed_data";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
@@ -9,6 +12,8 @@ void main() {
     late FakeAcpProcess fake;
     late AcpStdioClient client;
     late List<BridgeSseEvent> emitted;
+    late List<BridgeSseEvent> contentEmitted;
+    late CursorEventMapper eventMapper;
     late CursorApprovalRegistry registry;
     // The session whose turn is "in flight"; the registry falls back to it for
     // requests that carry no sessionId of their own (e.g. cursor/create_plan).
@@ -22,10 +27,20 @@ void main() {
       );
       await client.connect();
       emitted = [];
+      contentEmitted = [];
       activeSession = "active-s";
+      eventMapper = CursorEventMapper(
+        launchDirectory: "/repo",
+        pluginId: CursorPlugin.pluginId,
+        configurationTracker: AcpSessionConfigurationTracker(),
+        contentMapper: const AcpContentMapper(),
+        activeSessionResolver: () => activeSession,
+      );
       registry = CursorApprovalRegistry(
         client: client,
         emit: emitted.add,
+        eventMapper: eventMapper,
+        emitContent: contentEmitted.add,
         activeSessionResolver: () => activeSession,
       );
       registry.attach(client.serverRequests);
@@ -269,6 +284,59 @@ void main() {
       });
       await pump();
       expect(emitted.single, isA<BridgeSsePermissionAsked>());
+    });
+
+    test("cursor/generate_image request maps to an inline file part and acks", () async {
+      // Live cursor-agent calls connection.extMethod("cursor/generate_image", …)
+      // which is a JSON-RPC *request* (with id), not a notification — despite the
+      // local helper name sendNonBlockingExtensionNotification.
+      eventMapper.beginTurn("active-s");
+      final file = File("${Directory.systemTemp.path}/cursor-generate-image-req.png");
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+      file.writeAsBytesSync(
+        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
+      );
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 42,
+        "method": "cursor/generate_image",
+        "params": {
+          "toolCallId": "img-1",
+          "filePath": file.path,
+          "description": "test",
+        },
+      });
+      await pump();
+
+      expect(
+        contentEmitted.whereType<BridgeSseMessagePartUpdated>().single.part.type,
+        PluginMessagePartType.file,
+      );
+      final reply = fake.written.last;
+      expect(reply["id"], 42);
+      expect(reply["result"], isA<Map>());
+      expect(reply.containsKey("error"), isFalse);
+    });
+
+    test("cursor/update_todos request is acknowledged and mapped", () async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 43,
+        "method": "cursor/update_todos",
+        "params": {"toolCallId": "todo-1", "todos": <Object?>[]},
+      });
+      await pump();
+
+      expect(
+        contentEmitted.whereType<BridgeSseTodoUpdated>().single.sessionID,
+        "active-s",
+      );
+      final reply = fake.written.last;
+      expect(reply["id"], 43);
+      expect(reply.containsKey("error"), isFalse);
     });
   });
 }

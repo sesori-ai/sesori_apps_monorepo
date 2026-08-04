@@ -180,6 +180,16 @@ class AcpEventMapper {
   /// characters in the opaque agent-supplied ids.
   final Map<String, Map<String, _LiveTool>> _liveTools = {};
 
+  /// Resolves the live session that owns [toolCallId], when a harness extension
+  /// omits `sessionId` but carries the originating tool call id.
+  String? sessionIdForToolCallId({required String? toolCallId}) {
+    if (toolCallId == null || toolCallId.isEmpty) return null;
+    for (final entry in _liveTools.entries) {
+      if (entry.value.containsKey(toolCallId)) return entry.key;
+    }
+    return null;
+  }
+
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
 
@@ -422,6 +432,32 @@ class AcpEventMapper {
       content: update["content"],
       scope: tracker.mappingScope,
     );
+    return appendAssistantMappedBlocks(
+      sessionId: sessionId,
+      identityUpdate: update,
+      blocks: blocks,
+      evaluateTextHaltNotice: true,
+    );
+  }
+
+  /// Appends pre-mapped assistant content into the same ordered message state
+  /// used by `agent_message_chunk`. Harness extensions that surface images
+  /// outside standard ACP chunks call this after local normalization.
+  List<BridgeSseEvent> appendAssistantMappedBlocks({
+    required String sessionId,
+    required Map<String, dynamic> identityUpdate,
+    required Iterable<AcpMappedContentBlock> blocks,
+    required bool evaluateTextHaltNotice,
+  }) {
+    final identity = _chunkIdentity(
+      sessionId: sessionId,
+      update: identityUpdate,
+      role: _ChunkRole.assistant,
+    );
+    final tracker = (_contentTrackers[sessionId] ??= {}).putIfAbsent(
+      identity.messageId,
+      AcpContentTracker.new,
+    );
     if (blocks.isEmpty) return const [];
     final hasTrackableContent = blocks.any(
       (block) => block is AcpMappedImageContentBlock || (block is AcpMappedTextContentBlock && block.text.isNotEmpty),
@@ -430,7 +466,8 @@ class AcpEventMapper {
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
 
-    if (!identity.hasAcpMessageId &&
+    if (evaluateTextHaltNotice &&
+        !identity.hasAcpMessageId &&
         tracker.snapshot.composition != AcpContentComposition.mixed &&
         blocks.every((block) => block is AcpMappedTextContentBlock)) {
       final text = blocks.whereType<AcpMappedTextContentBlock>().map((block) => block.text).join();
