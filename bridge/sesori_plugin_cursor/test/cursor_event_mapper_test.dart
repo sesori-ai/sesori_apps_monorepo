@@ -3,6 +3,7 @@ import "dart:typed_data";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
+import "package:cursor_plugin/src/repositories/mappers/cursor_generate_image_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -14,6 +15,7 @@ void main() {
       pluginId: CursorPlugin.pluginId,
       configurationTracker: AcpSessionConfigurationTracker(),
       contentMapper: const AcpContentMapper(),
+      generateImageMapper: const CursorGenerateImageMapper(),
     );
 
     test("cursor/update_todos maps to a todo update", () {
@@ -93,15 +95,17 @@ void main() {
       );
     });
 
-    test("cursor/generate_image resolves sessionId from active turn", () async {
-      final resolverMapper = CursorEventMapper(
+    test("cursor/generate_image resolves sessionId from the last begun turn", () async {
+      // No sessionId and no toolCallId in the payload: the mapper attributes
+      // it to the session whose turn most recently began.
+      final turnMapper = CursorEventMapper(
         launchDirectory: "/repo",
         pluginId: CursorPlugin.pluginId,
         configurationTracker: AcpSessionConfigurationTracker(),
         contentMapper: const AcpContentMapper(),
-        activeSessionResolver: () => "s-active",
+        generateImageMapper: const CursorGenerateImageMapper(),
       );
-      resolverMapper.beginTurn("s-active");
+      turnMapper.beginTurn("s-active");
       final file = File("${Directory.systemTemp.path}/cursor-active-turn-image.png");
       addTearDown(() {
         if (file.existsSync()) file.deleteSync();
@@ -111,7 +115,7 @@ void main() {
       );
 
       expect(
-        resolverMapper
+        turnMapper
             .map(
               AcpNotification(
                 method: "cursor/generate_image",

@@ -10,6 +10,7 @@ import "cursor_binary.dart";
 import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
+import "repositories/mappers/cursor_generate_image_mapper.dart";
 import "services/cursor_catalog_service.dart";
 import "services/cursor_session_cleanup_service.dart";
 import "services/cursor_session_options_service.dart";
@@ -81,6 +82,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
         pluginId: pluginId,
         configurationTracker: configurationTracker,
         contentMapper: contentMapper,
+        generateImageMapper: const CursorGenerateImageMapper(),
       ),
       contentMapper: contentMapper,
       processFactory: processFactory,
@@ -115,14 +117,11 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
        _sessionOptionsService = cursorSessionOptionsService,
        _configurationTracker = configurationTracker,
        _sessionCleanupService = sessionCleanupService,
-       _eventMapper = mapper,
        super(
          id: pluginId,
          agentDisplayName: "Cursor",
          eventMapper: mapper,
-       ) {
-    mapper.bindActiveSessionResolver(() => activeTurnSessionId);
-  }
+       );
 
   final CursorCatalogService _catalogService;
   final AcpCommandListener _catalogCommandListener;
@@ -130,7 +129,6 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   final CursorSessionOptionsService _sessionOptionsService;
   final AcpSessionConfigurationTracker _configurationTracker;
   final CursorSessionCleanupService _sessionCleanupService;
-  final CursorEventMapper _eventMapper;
 
   String? _appliedModelId;
   String? _appliedModeId;
@@ -147,8 +145,7 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
     return CursorApprovalRegistry(
       client: client,
       emit: emitActivityEvent,
-      eventMapper: _eventMapper,
-      emitContent: emitEvent,
+      onFireAndForgetNotification: handleAgentNotification,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }

@@ -199,6 +199,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     return AcpApprovalRegistry.forClient(
       client: client,
       emit: emitActivityEvent,
+      onFireAndForgetNotification: handleAgentNotification,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }
@@ -248,6 +249,26 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   AcpInitializeResult? get initializeResult => _initResult;
   void emitEvent(BridgeSseEvent event) => _eventBuffer.add(event);
 
+  /// The single handler for agent-originated notifications: replay suppression,
+  /// then mapping through [eventMapper] into the event buffer. Also the forward
+  /// target for fire-and-forget extension *requests* reclassified by the
+  /// approval registry (see [AcpApprovalRegistry.fireAndForgetExtensionMethods]),
+  /// so both wire shapes share one mapping path.
+  void handleAgentNotification(AcpNotification notification) {
+    if (notification.method == AcpMethods.sessionUpdate) {
+      final sid = notification.params["sessionId"];
+      final update = notification.params["update"];
+      final isCommandUpdate = update is Map && update["sessionUpdate"] == "available_commands_update";
+      if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
+        // Replay from an in-flight resume-load — drop so old history does
+        // not re-stream into the live conversation.
+        _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
+        return;
+      }
+    }
+    eventMapper.map(notification).forEach(_eventBuffer.add);
+  }
+
   /// Approval state participates in the activity summary, so invalidate that
   /// summary after forwarding each approval transition.
   void emitActivityEvent(BridgeSseEvent event) {
@@ -278,20 +299,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           notifications: client.notifications,
           tracker: _commandTracker,
         );
-        _notificationSubscription = client.notifications.listen((notification) {
-          if (notification.method == AcpMethods.sessionUpdate) {
-            final sid = notification.params["sessionId"];
-            final update = notification.params["update"];
-            final isCommandUpdate = update is Map && update["sessionUpdate"] == "available_commands_update";
-            if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
-              // Replay from an in-flight resume-load — drop so old history does
-              // not re-stream into the live conversation.
-              _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
-              return;
-            }
-          }
-          eventMapper.map(notification).forEach(_eventBuffer.add);
-        });
+        _notificationSubscription = client.notifications.listen(handleAgentNotification);
         final registry = buildApprovalRegistry(client);
         _approvalRegistry = registry;
         registry.attach(client.serverRequests);

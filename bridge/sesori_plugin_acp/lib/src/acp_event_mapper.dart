@@ -432,32 +432,50 @@ class AcpEventMapper {
       content: update["content"],
       scope: tracker.mappingScope,
     );
-    return appendAssistantMappedBlocks(
+    return _appendAssistantBlocks(
       sessionId: sessionId,
-      identityUpdate: update,
+      identity: identity,
+      tracker: tracker,
       blocks: blocks,
       evaluateTextHaltNotice: true,
     );
   }
 
-  /// Appends pre-mapped assistant content into the same ordered message state
-  /// used by `agent_message_chunk`. Harness extensions that surface images
-  /// outside standard ACP chunks call this after local normalization.
-  List<BridgeSseEvent> appendAssistantMappedBlocks({
+  /// Appends assistant image blocks normalized locally on the bridge (a harness
+  /// extension that surfaces images outside standard ACP chunks) into the same
+  /// ordered message state used by `agent_message_chunk`.
+  List<BridgeSseEvent> appendAssistantImageBlocks({
     required String sessionId,
-    required Map<String, dynamic> identityUpdate,
+    required String? messageId,
     required Iterable<AcpMappedContentBlock> blocks,
-    required bool evaluateTextHaltNotice,
   }) {
     final identity = _chunkIdentity(
       sessionId: sessionId,
-      update: identityUpdate,
+      update: messageId == null
+          ? const <String, dynamic>{}
+          : <String, dynamic>{"messageId": messageId},
       role: _ChunkRole.assistant,
     );
     final tracker = (_contentTrackers[sessionId] ??= {}).putIfAbsent(
       identity.messageId,
       AcpContentTracker.new,
     );
+    return _appendAssistantBlocks(
+      sessionId: sessionId,
+      identity: identity,
+      tracker: tracker,
+      blocks: blocks,
+      evaluateTextHaltNotice: false,
+    );
+  }
+
+  List<BridgeSseEvent> _appendAssistantBlocks({
+    required String sessionId,
+    required ({String messageId, bool hasAcpMessageId}) identity,
+    required AcpContentTracker tracker,
+    required Iterable<AcpMappedContentBlock> blocks,
+    required bool evaluateTextHaltNotice,
+  }) {
     if (blocks.isEmpty) return const [];
     final hasTrackableContent = blocks.any(
       (block) => block is AcpMappedImageContentBlock || (block is AcpMappedTextContentBlock && block.text.isNotEmpty),

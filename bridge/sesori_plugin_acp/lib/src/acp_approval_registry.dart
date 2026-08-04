@@ -55,11 +55,13 @@ class AcpApprovalRegistry {
     required void Function(BridgeSseEvent event) emit,
     required AcpResponder respond,
     required AcpErrorResponder respondError,
+    void Function(AcpNotification notification)? onFireAndForgetNotification,
     String Function()? idGenerator,
     String? Function()? activeSessionResolver,
   }) : _emit = emit,
        _respond = respond,
        _respondError = respondError,
+       _onFireAndForgetNotification = onFireAndForgetNotification,
        _injectedIdGenerator = idGenerator,
        _activeSessionResolver = activeSessionResolver;
 
@@ -67,6 +69,7 @@ class AcpApprovalRegistry {
   factory AcpApprovalRegistry.forClient({
     required AcpStdioClient client,
     required void Function(BridgeSseEvent event) emit,
+    void Function(AcpNotification notification)? onFireAndForgetNotification,
     String Function()? idGenerator,
     String? Function()? activeSessionResolver,
   }) {
@@ -74,6 +77,7 @@ class AcpApprovalRegistry {
       emit: emit,
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
       respondError: (id, code, message) => client.respondToServerRequestWithError(id: id, code: code, message: message),
+      onFireAndForgetNotification: onFireAndForgetNotification,
       idGenerator: idGenerator,
       activeSessionResolver: activeSessionResolver,
     );
@@ -82,6 +86,7 @@ class AcpApprovalRegistry {
   final void Function(BridgeSseEvent event) _emit;
   final AcpResponder _respond;
   final AcpErrorResponder _respondError;
+  final void Function(AcpNotification notification)? _onFireAndForgetNotification;
   final String Function()? _injectedIdGenerator;
 
   /// Resolves the session a server request belongs to when the request itself
@@ -145,6 +150,16 @@ class AcpApprovalRegistry {
   /// Override to handle harness-specific server requests (e.g. Cursor's
   /// `cursor/ask_question`). Return true if handled. Base handles none.
   bool handleExtensionRequest(AcpServerRequest request) => false;
+
+  /// Harness extension methods the agent sends as JSON-RPC *requests* (ACP
+  /// `extMethod`) but treats as fire-and-forget notifications (ACP
+  /// `extNotification`) — cursor-agent's `sendNonBlockingExtensionNotification`
+  /// does exactly this. The base handler acks them immediately (the agent
+  /// awaits no result, and an unanswered request would hang it) and re-injects
+  /// the payload into the plugin's notification pipeline, so one mapping path
+  /// serves both wire shapes. Do not also handle these in
+  /// [handleExtensionRequest]; this classification takes precedence.
+  Set<String> get fireAndForgetExtensionMethods => const {};
 
   // --- Lifecycle ---
 
@@ -317,6 +332,18 @@ class AcpApprovalRegistry {
   void _handle(AcpServerRequest request) {
     if (request.method == AcpMethods.sessionRequestPermission) {
       _handlePermission(request);
+      return;
+    }
+    if (fireAndForgetExtensionMethods.contains(request.method)) {
+      // Fire-and-forget: the agent awaits no result. Ack so it never blocks,
+      // then re-inject into the notification pipeline.
+      _respond(request.id, const <String, Object?>{});
+      final forward = _onFireAndForgetNotification;
+      if (forward == null) {
+        Log.w("[acp] ${request.method} declared fire-and-forget with no notification forward wired; dropping");
+      } else {
+        forward(AcpNotification(method: request.method, params: request.params));
+      }
       return;
     }
     if (handleExtensionRequest(request)) return;

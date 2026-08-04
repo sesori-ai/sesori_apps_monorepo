@@ -13,9 +13,7 @@ import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmen
 /// Local paths never leave this mapper; only basename metadata and inline bytes
 /// cross the plugin boundary.
 final class CursorGenerateImageMapper {
-  const CursorGenerateImageMapper({required AcpContentMapper contentMapper}) : _contentMapper = contentMapper;
-
-  final AcpContentMapper _contentMapper;
+  const CursorGenerateImageMapper();
 
   List<AcpMappedContentBlock> mapPath({required String path}) {
     final normalizedPath = path.trim();
@@ -27,7 +25,6 @@ final class CursorGenerateImageMapper {
     final basename = normalizePluginMessageAttachmentFilename(
       filename: p.basename(normalizedPath),
     );
-    final uri = basename == null ? null : "file:///$basename";
 
     try {
       final file = File(normalizedPath);
@@ -42,13 +39,9 @@ final class CursorGenerateImageMapper {
       }
       if (length > maxInlineMessageAttachmentBytes) {
         return [
-          AcpMappedMetadataImageContentBlock(
-            attachment:
-                PluginMessageAttachment.metadata(
-                      mime: _mimeHintFromBasename(basename: basename),
-                      filename: basename,
-                    )
-                    as PluginMessageAttachmentMetadata,
+          _metadata(
+            mime: _mimeHintFromBasename(basename: basename),
+            filename: basename,
             reason: AcpImageDegradationReason.oversized,
           ),
         ];
@@ -56,22 +49,54 @@ final class CursorGenerateImageMapper {
 
       final bytes = file.readAsBytesSync();
       final mime = _mimeFromBytes(bytes: bytes) ?? _mimeHintFromBasename(basename: basename);
-      final content = <String, Object?>{
-        "type": "image",
-        "data": base64Encode(bytes),
-        "mimeType": mime,
-      };
-      if (uri != null) content["uri"] = uri;
-      return _contentMapper.map(content: content);
+      if (mime == _unsupportedMime) {
+        return [
+          _metadata(
+            mime: mime,
+            filename: basename,
+            reason: AcpImageDegradationReason.unsupported,
+          ),
+        ];
+      }
+      return [
+        AcpMappedInlineImageContentBlock(
+          attachment:
+              PluginMessageAttachment.inlineImage(
+                    mime: mime,
+                    base64: base64Encode(bytes),
+                    filename: basename,
+                  )
+                  as PluginMessageAttachmentInlineImage,
+          decodedBytes: bytes.length,
+        ),
+      ];
     } on Object {
       _logUnavailable();
       return const [];
     }
   }
 
+  AcpMappedMetadataImageContentBlock _metadata({
+    required String mime,
+    required String? filename,
+    required AcpImageDegradationReason reason,
+  }) {
+    return AcpMappedMetadataImageContentBlock(
+      attachment:
+          PluginMessageAttachment.metadata(
+                mime: mime,
+                filename: filename,
+              )
+              as PluginMessageAttachmentMetadata,
+      reason: reason,
+    );
+  }
+
   void _logUnavailable() {
     Log.w("[cursor] generate_image source unavailable");
   }
+
+  static const String _unsupportedMime = "application/octet-stream";
 
   static String _mimeHintFromBasename({required String? basename}) {
     final extension = basename == null ? null : p.extension(basename).toLowerCase();
@@ -81,7 +106,7 @@ final class CursorGenerateImageMapper {
       ".jpg" || ".jpeg" => "image/jpeg",
       ".png" => "image/png",
       ".webp" => "image/webp",
-      _ => "application/octet-stream",
+      _ => _unsupportedMime,
     };
   }
 

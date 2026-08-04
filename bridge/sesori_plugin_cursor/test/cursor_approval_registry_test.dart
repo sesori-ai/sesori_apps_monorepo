@@ -1,6 +1,3 @@
-import "dart:io";
-import "dart:typed_data";
-
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
@@ -12,8 +9,7 @@ void main() {
     late FakeAcpProcess fake;
     late AcpStdioClient client;
     late List<BridgeSseEvent> emitted;
-    late List<BridgeSseEvent> contentEmitted;
-    late CursorEventMapper eventMapper;
+    late List<AcpNotification> forwarded;
     late CursorApprovalRegistry registry;
     // The session whose turn is "in flight"; the registry falls back to it for
     // requests that carry no sessionId of their own (e.g. cursor/create_plan).
@@ -27,20 +23,12 @@ void main() {
       );
       await client.connect();
       emitted = [];
-      contentEmitted = [];
+      forwarded = [];
       activeSession = "active-s";
-      eventMapper = CursorEventMapper(
-        launchDirectory: "/repo",
-        pluginId: CursorPlugin.pluginId,
-        configurationTracker: AcpSessionConfigurationTracker(),
-        contentMapper: const AcpContentMapper(),
-        activeSessionResolver: () => activeSession,
-      );
       registry = CursorApprovalRegistry(
         client: client,
         emit: emitted.add,
-        eventMapper: eventMapper,
-        emitContent: contentEmitted.add,
+        onFireAndForgetNotification: forwarded.add,
         activeSessionResolver: () => activeSession,
       );
       registry.attach(client.serverRequests);
@@ -286,42 +274,35 @@ void main() {
       expect(emitted.single, isA<BridgeSsePermissionAsked>());
     });
 
-    test("cursor/generate_image request maps to an inline file part and acks", () async {
+    test("cursor/generate_image request is acked and forwarded as a notification", () async {
       // Live cursor-agent calls connection.extMethod("cursor/generate_image", …)
       // which is a JSON-RPC *request* (with id), not a notification — despite the
-      // local helper name sendNonBlockingExtensionNotification.
-      eventMapper.beginTurn("active-s");
-      final file = File("${Directory.systemTemp.path}/cursor-generate-image-req.png");
-      addTearDown(() {
-        if (file.existsSync()) file.deleteSync();
-      });
-      file.writeAsBytesSync(
-        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
-      );
-
+      // local helper name sendNonBlockingExtensionNotification. The registry
+      // acks immediately and re-injects the payload unchanged; mapping happens
+      // in CursorEventMapper (see cursor_event_mapper_test.dart).
       fake.emit({
         "jsonrpc": "2.0",
         "id": 42,
         "method": "cursor/generate_image",
         "params": {
           "toolCallId": "img-1",
-          "filePath": file.path,
+          "filePath": "/tmp/out.png",
           "description": "test",
         },
       });
       await pump();
 
-      expect(
-        contentEmitted.whereType<BridgeSseMessagePartUpdated>().single.part.type,
-        PluginMessagePartType.file,
-      );
       final reply = fake.written.last;
       expect(reply["id"], 42);
-      expect(reply["result"], isA<Map>());
+      expect(reply["result"], isA<Map<String, Object?>>());
       expect(reply.containsKey("error"), isFalse);
+      final forwardedNotification = forwarded.single;
+      expect(forwardedNotification.method, "cursor/generate_image");
+      expect(forwardedNotification.params["filePath"], "/tmp/out.png");
+      expect(forwardedNotification.params.containsKey("sessionId"), isFalse);
     });
 
-    test("cursor/update_todos request is acknowledged and mapped", () async {
+    test("cursor/update_todos request is acked and forwarded as a notification", () async {
       fake.emit({
         "jsonrpc": "2.0",
         "id": 43,
@@ -330,13 +311,11 @@ void main() {
       });
       await pump();
 
-      expect(
-        contentEmitted.whereType<BridgeSseTodoUpdated>().single.sessionID,
-        "active-s",
-      );
       final reply = fake.written.last;
       expect(reply["id"], 43);
       expect(reply.containsKey("error"), isFalse);
+      expect(forwarded.single.method, "cursor/update_todos");
+      expect(forwarded.single.params["toolCallId"], "todo-1");
     });
   });
 }

@@ -5,78 +5,82 @@ import "repositories/mappers/cursor_generate_image_mapper.dart";
 
 /// Cursor's event mapper: the standard ACP `session/update` handling from
 /// [AcpEventMapper] plus Cursor's `cursor/*` notification extensions.
+///
+/// cursor-agent sends some extensions (`cursor/generate_image`,
+/// `cursor/update_todos`) as `extMethod` JSON-RPC *requests* even though it
+/// treats them as fire-and-forget; the approval registry acks and re-injects
+/// those into the notification pipeline (see
+/// [AcpApprovalRegistry.fireAndForgetExtensionMethods]), so this mapper is the
+/// single handling site for both wire shapes.
 class CursorEventMapper extends AcpEventMapper {
   CursorEventMapper({
     required super.launchDirectory,
     required super.pluginId,
     required super.configurationTracker,
     required super.contentMapper,
-    CursorGenerateImageMapper? generateImageMapper,
-    String? Function()? activeSessionResolver,
-  }) : _generateImageMapper =
-           generateImageMapper ?? CursorGenerateImageMapper(contentMapper: contentMapper),
-       _activeSessionResolver = activeSessionResolver,
+    required CursorGenerateImageMapper generateImageMapper,
+  }) : _generateImageMapper = generateImageMapper,
        super(agentId: pluginId);
 
   final CursorGenerateImageMapper _generateImageMapper;
-  String? Function()? _activeSessionResolver;
 
-  /// Binds the active turn session after [CursorPlugin] construction.
-  void bindActiveSessionResolver(String? Function()? resolver) {
-    _activeSessionResolver = resolver;
+  /// The session that most recently began a turn — the last-resort attribution
+  /// for Cursor extension payloads that omit `sessionId` (cursor-agent's
+  /// extension calls carry only the originating `toolCallId`, or nothing).
+  String? _lastTurnSessionId;
+
+  @override
+  void beginTurn(String sessionId) {
+    _lastTurnSessionId = sessionId;
+    super.beginTurn(sessionId);
   }
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
     switch (notification.method) {
       case "cursor/update_todos":
-        final sessionId = notification.params["sessionId"] as String?;
-        if (sessionId == null || sessionId.isEmpty) return const [];
+        final sessionId = _extensionSessionId(notification.params);
+        if (sessionId == null) return const [];
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "cursor/generate_image":
-        // Live cursor-agent actually sends this as an extMethod *request*
-        // (see CursorApprovalRegistry); keep the notification path for any
-        // agent that uses true extNotification.
         return _mapGenerateImage(notification: notification);
     }
     // cursor/task and other extension notifications have no sesori analog.
-    return const [];
+    return super.mapExtension(notification);
   }
 
   List<BridgeSseEvent> _mapGenerateImage({required AcpNotification notification}) {
     final params = notification.params;
-    final sessionId = _sessionIdFromGenerateImageParams(params: params);
+    final sessionId = _extensionSessionId(params);
     final path = _pathFromGenerateImageParams(params: params);
-    if (sessionId == null || sessionId.isEmpty || path == null || path.trim().isEmpty) {
+    if (sessionId == null || path == null) {
       return const [];
     }
 
     final blocks = _generateImageMapper.mapPath(path: path);
     if (blocks.isEmpty) return const [];
 
-    final messageId = params["messageId"];
-    final identityUpdate = messageId is String && messageId.isNotEmpty
-        ? {"messageId": messageId}
-        : const <String, dynamic>{};
-    return appendAssistantMappedBlocks(
+    final rawMessageId = params["messageId"];
+    return appendAssistantImageBlocks(
       sessionId: sessionId,
-      identityUpdate: identityUpdate,
+      messageId: rawMessageId is String && rawMessageId.isNotEmpty ? rawMessageId : null,
       blocks: blocks,
-      evaluateTextHaltNotice: false,
     );
   }
 
-  String? _sessionIdFromGenerateImageParams({required Map<String, dynamic> params}) {
-    final sessionId = params["sessionId"];
-    if (sessionId is String && sessionId.trim().isNotEmpty) return sessionId;
+  /// The session an extension payload belongs to: its explicit `sessionId`,
+  /// else the session owning the originating `toolCallId`, else the most
+  /// recent turn's session. Null only when none is available — the caller must
+  /// drop the payload (an event stamped with "" is discarded by the client).
+  String? _extensionSessionId(Map<String, dynamic> params) {
+    final explicit = params["sessionId"];
+    if (explicit is String && explicit.trim().isNotEmpty) return explicit;
     final toolCallId = params["toolCallId"];
     if (toolCallId is String && toolCallId.isNotEmpty) {
       final fromTool = sessionIdForToolCallId(toolCallId: toolCallId);
-      if (fromTool != null && fromTool.isNotEmpty) return fromTool;
+      if (fromTool != null) return fromTool;
     }
-    final active = _activeSessionResolver?.call();
-    if (active != null && active.trim().isNotEmpty) return active;
-    return null;
+    return _lastTurnSessionId;
   }
 
   static String? _pathFromGenerateImageParams({required Map<String, dynamic> params}) {
