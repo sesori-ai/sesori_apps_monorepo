@@ -203,15 +203,21 @@ void main() {
         accessTokenProvider: _ThrowingAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
-      final statesFuture = _recordStates(
-        stream: client.connectionState,
-        count: 2,
-      )..ignore();
+      final states = <RelayConnectionState>[];
+      final disconnected = Completer<void>();
+      client.connectionState.listen((state) {
+        states.add(state);
+        if (state is RelayDisconnected && !disconnected.isCompleted) {
+          disconnected.complete();
+        }
+      });
 
       await expectLater(client.connect(), throwsA(isA<StateError>()));
+      await disconnected.future.timeout(const Duration(seconds: 2));
+      // Drain the microtask queue so any falsely emitted connected state that
+      // would follow the disconnected one is still observed.
+      await pumpEventQueue();
 
-      final states = await statesFuture;
-      expect(states, hasLength(2));
       expect(states[0], isA<RelayConnecting>());
       expect(states[1], isA<RelayDisconnected>());
       expect(states.whereType<RelayConnected>(), isEmpty);
