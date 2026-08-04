@@ -587,7 +587,12 @@ class RelayClient {
       );
     }
     final encryptedBytes = await encryptor.encrypt(jsonBytes);
-    final payload = Uint8List.fromList([_messageVersion, ...encryptedBytes]);
+    // Preallocate instead of spreading the ciphertext into a boxed List<int>:
+    // a max-size attachment would otherwise materialize tens of millions of
+    // boxed integers and exhaust mobile memory before the frame is sent.
+    final payload = Uint8List(encryptedBytes.length + 1);
+    payload[0] = _messageVersion;
+    payload.setRange(1, payload.length, encryptedBytes);
     channel.sink.add(payload);
   }
 
@@ -617,7 +622,9 @@ class RelayClient {
 
     final jsonBytes = utf8.encode(jsonEncode(message.toJson()));
     final encryptedBytes = await encryptor.encrypt(jsonBytes);
-    final payload = Uint8List.fromList([_messageVersion, ...encryptedBytes]);
+    final payload = Uint8List(encryptedBytes.length + 1);
+    payload[0] = _messageVersion;
+    payload.setRange(1, payload.length, encryptedBytes);
     _pendingHandshakeFrame = payload;
     channel.sink.add(payload);
   }

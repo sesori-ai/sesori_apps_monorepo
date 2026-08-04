@@ -197,7 +197,6 @@ void main() {
     registerFallbackValue(ComposerInputMode.typed);
   });
 
-
   Finder semanticsWithLabel(String label) =>
       find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == label);
 
@@ -557,9 +556,8 @@ void main() {
   });
 
   testWidgets("send stays disabled until the composer holds text", (tester) async {
-    VoidCallback? sendAction() => tester
-        .widget<PregoButtonsSolid>(find.widgetWithIcon(PregoButtonsSolid, TablerRegular.arrow_up))
-        .onPressed;
+    VoidCallback? sendAction() =>
+        tester.widget<PregoButtonsSolid>(find.widgetWithIcon(PregoButtonsSolid, TablerRegular.arrow_up)).onPressed;
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1219,7 +1217,8 @@ void main() {
       ),
     );
     when(
-      () => cubit.sendMessage(attachments: const [],
+      () => cubit.sendMessage(
+        attachments: const [],
         text: "typed transcript",
         command: null,
         inputMode: ComposerInputMode.voiceAssisted,
@@ -1234,7 +1233,8 @@ void main() {
     await tester.pump();
 
     verify(
-      () => cubit.sendMessage(attachments: const [],
+      () => cubit.sendMessage(
+        attachments: const [],
         text: "typed transcript",
         command: null,
         inputMode: ComposerInputMode.voiceAssisted,
@@ -1250,7 +1250,8 @@ void main() {
       ),
     );
     when(
-      () => cubit.sendMessage(attachments: const [],
+      () => cubit.sendMessage(
+        attachments: const [],
         text: "typed replacement",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1270,7 +1271,8 @@ void main() {
     await tester.pump();
 
     verify(
-      () => cubit.sendMessage(attachments: const [],
+      () => cubit.sendMessage(
+        attachments: const [],
         text: "typed replacement",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1286,7 +1288,8 @@ void main() {
       ),
     );
     when(
-      () => cubit.sendMessage(attachments: const [],
+      () => cubit.sendMessage(
+        attachments: const [],
         text: "typed",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1299,7 +1302,8 @@ void main() {
     await tester.pump();
 
     verify(
-      () => cubit.sendMessage(attachments: const [],
+      () => cubit.sendMessage(
+        attachments: const [],
         text: "typed",
         command: null,
         inputMode: ComposerInputMode.typed,
@@ -1896,6 +1900,36 @@ void main() {
     expect(editableText.controller.text, "pasted after");
     verify(imageClipboard.readImage).called(1);
     verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+  });
+
+  testWidgets("an unsupported pasted image falls back to text paste", (tester) async {
+    final bytes = Uint8List.fromList(const [0, 1, 2, 3, 4, 5, 6, 7]);
+    when(imageClipboard.readImage).thenAnswer((_) async => bytes);
+    when(
+      () => imagePicker.attachmentFromBytes(bytes: bytes, filename: null),
+    ).thenThrow(const UnsupportedAttachmentImageError());
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == "Clipboard.getData") return <String, Object>{"text": "pasted"};
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "before after");
+    final editableText = tester.widget<EditableText>(find.byType(EditableText));
+    editableText.controller.selection = const TextSelection(baseOffset: 0, extentOffset: 6);
+
+    final actionContext = tester.element(
+      find.descendant(of: find.byType(EditableText), matching: find.byType(RawGestureDetector)).first,
+    );
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.pumpAndSettle();
+
+    expect(find.text("That image format isn't supported."), findsOneWidget);
+    expect(editableText.controller.text, "pasted after");
   });
 
   testWidgets("delayed text paste uses the selection from the original intent", (tester) async {

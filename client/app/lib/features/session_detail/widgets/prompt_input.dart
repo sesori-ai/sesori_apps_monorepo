@@ -1330,8 +1330,7 @@ class _PromptInputState extends State<PromptInput> {
         child: Row(
           spacing: PregoSpacing.sm,
           children: [
-            for (var index = 0; index < _attachments.length; index++)
-              _buildAttachmentThumbnail(context, index: index),
+            for (var index = 0; index < _attachments.length; index++) _buildAttachmentThumbnail(context, index: index),
           ],
         ),
       ),
@@ -1526,16 +1525,21 @@ class _PromptInputState extends State<PromptInput> {
 
     try {
       final attachment = _imagePicker.attachmentFromBytes(bytes: bytes, filename: null);
-      _stageAttachment(attachment: attachment);
+      if (_stageAttachment(attachment: attachment)) return _PasteImageResult.handled;
+      // The staged strip is already at its aggregate budget, so no image was
+      // added; fall back so the clipboard's text is not swallowed.
+      return _PasteImageResult.noImage;
     } on AttachmentTooLargeError {
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
+      return _PasteImageResult.noImage;
     } on UnsupportedAttachmentImageError {
       _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
+      return _PasteImageResult.noImage;
     } catch (error, stackTrace) {
       loge("Failed to attach a pasted image", error, stackTrace);
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+      return _PasteImageResult.noImage;
     }
-    return _PasteImageResult.handled;
   }
 
   Future<void> _pasteImageOrText({
@@ -1565,12 +1569,14 @@ class _PromptInputState extends State<PromptInput> {
         !widget.attachmentsSupported;
   }
 
-  void _stageAttachment({required ComposerAttachment attachment}) {
+  /// Stages an attachment and reports whether it fit the aggregate budget.
+  bool _stageAttachment({required ComposerAttachment attachment}) {
     if (_attachmentsDecodedSizeWith(attachment: attachment) > maxComposerPromptAttachmentBytes) {
       _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
-      return;
+      return false;
     }
     setState(() => _attachments.add(attachment));
+    return true;
   }
 
   /// Total decoded bytes the staged strip would carry with [attachment]
