@@ -1,41 +1,168 @@
 ---
 name: sesori-plan-worker
-description: Execute implementation plans and multi-step PR series end to end. Use when the user asks to implement, continue, or work the next step of a plan, when working from PLAN.md or TRACKER.md, or when a monitored plan-series PR merges.
+description: Execute plans and multi-step PR series end to end. Use when the user asks to implement or continue an existing plan, work a planned step, or when a monitored plan-series PR merges and its successor should advance automatically.
 ---
 
-# sesori-plan-worker
+# Plan Worker
 
-Treat the plan as an editable guide. Follow the user's latest direction,
-implement the smallest complete change, and keep plan/tracker truth current when
-execution changes assumptions, scope, status, or later steps.
+When this skill is loaded, your default role is to execute an existing plan,
+but the user's current instruction is authoritative. A plan is an editable
+guide, not a boundary on what you may do.
+
+## User Direction
+
+- Follow user requests whether or not they appear in the plan.
+- Do not refuse work because a request is unplanned, changes the plan, creates a
+  plan, or falls outside this role.
+- Update `PLAN.md`, `TRACKER.md`, step files, or other planning artifacts when
+  the user asks. You do not need to send plan edits back to the plan maker.
+- If a request conflicts with the plan, mention the conflict briefly when it
+  matters. Diverging because the plan is stale, incorrect, or has a clearly
+  better implementation path is acceptable; ask the user before making a
+  considerable divergence, then update durable plan truth as appropriate.
+- Ask when a material ambiguity, destructive action, security concern, or
+  meaningful scope tradeoff requires a decision.
 
 ## Execution
 
 1. Read relevant repository instructions and inspect the current code and tests.
-2. Locate the matching active plan when one is referenced; ask only if the match
-   or a material decision is genuinely ambiguous.
-3. Implement and verify the current work, updating durable plan state when
-   needed.
-4. Follow repository review and delivery rules, including monitoring every PR
-   immediately after opening it.
+2. If the request refers to a plan, locate the best matching active plan and read
+   only the portions needed for the current work. Ask which plan only when the
+   match is genuinely ambiguous.
+3. Implement the smallest complete change that satisfies the user's request.
+4. Keep relevant plan and tracker state accurate when execution changes future
+   work, assumptions, scope, or status.
+5. Run focused verification required by the change and repository instructions.
+6. Report the result, verification, and any unresolved risk or blocker.
 
-## One Step Ahead
+Do not impose one-PR limits, waves, branch names, worktrees, tracker schemas, or
+delivery steps unless the user, current plan, repository instructions, or the
+default multi-step workflow below need them. Never create or switch worktrees
+automatically. Follow normal Git safety rules and publish changes only when the
+user, repository instructions, or the workflow below calls for it. If a PR is
+opened, load the `monitor-pr` skill, start `pr_monitor` immediately, and follow
+its reports.
+
+## One-Step-Ahead Multi-PR Execution
 
 Unless the user says otherwise, keep one plan-series PR open and work at most
 one successor step locally:
 
-- While Step `x` is in PR, create a new local branch for the next planned step
-  from Step `x` and start it without waiting for another request.
-- Keep that successor branch local until Step `x` merges. Do not raise its PR,
-  and do not begin another step while it is only local.
-- Pause the successor as needed to address Step `x` monitor reports, then return
-  to it without discarding local work.
-- Do not poll for the merge. A `[PR Monitor]` merged report is the trigger to
-  sync the successor branch with the updated target branch, finish and verify
-  it, update plan state, push it, raise its PR, and start its monitor.
-- Once the successor is in PR, immediately create a local branch for the next
-  step and begin it. Do not wait for the user to ask.
-- Do not advance after a PR closes without merging. Report genuine blockers and
-  preserve local work.
+- While Step `x` is in PR, create a new local branch for Step `x + 1`, start it
+  without waiting for another request, and keep it local until Step `x` merges.
+- Do not start Step `x + 2` until Step `x + 1` is in PR.
+- Pause local successor work as needed to address Step `x` monitor reports.
+- Treat the `[PR Monitor]` merged report as the trigger; do not poll for merge or
+  wait for user permission. Sync Step `x + 1` with the updated target branch,
+  finish and verify it, raise its PR, start its monitor, then begin Step `x + 2`
+  locally when it exists.
+- Do not advance after a PR closes without merging. Preserve work and report any
+  blocker that prevents the handoff.
 
-The user can override this pipeline at any time.
+When a task is split across multiple PRs, title every PR
+`<emoji> [<slug>] <description> [step <x>/<y>]`. For durable planned work,
+`<slug>` is exactly the plan directory name under `.plan`; do not derive it from
+the branch, title, or stage. Without a durable plan, choose one stable,
+lowercase kebab-case slug. Keep one fixed step order/total and exact complexity
+emoji for each planned step, and do not add the slug/step wrapper to a single-PR
+task.
+
+## PR Complexity and Communication
+
+Assign every PR one implementation-complexity level using this fixed scale:
+
+- `🌱` — trivial: isolated documentation, copy, or mechanical work;
+- `🌿` — straightforward: localized implementation with a small blast radius;
+- `⚙️` — moderate: several files or layers, meaningful state, or notable edge
+  cases;
+- `🚧` — complex: cross-layer flow, persistence, concurrency, lifecycle,
+  compatibility, or security-sensitive behavior; and
+- `🚨` — very complex: several coupled high-complexity concerns or a broad,
+  high-stakes migration.
+
+Complexity is implementation/review difficulty, not the risk rating. Reassess a
+planned level against the actual diff, coupling, migration/codegen, concurrency,
+compatibility, privacy/security, and verification burden. If it changes, update
+the durable plan/tracker before opening the PR. For a single PR, prefix the
+normal title with `<emoji>`; for a series, use the emoji-first format above.
+
+Every PR body you create or materially update must contain concise Markdown
+sections with these headings:
+
+- `## Complexity` — the emoji, label, and a one-sentence rationale;
+- `## What` — what was changed;
+- `## Why` — why it was changed;
+- `## Risk and test focus` — risk level, potentially impacted flows, screens,
+  data, integrations, or functionality, plus the most valuable checks; and
+- `## Expected result` — expected user-visible behavior, database/persisted-data
+  effects, and internal/refactor-only effects.
+
+State `None` or `No user-visible/database change` when that is the useful
+answer; never omit the category and make the reviewer infer it. Keep existing
+verification details as an additional section. Create/update bodies with real
+multiline Markdown through `--body-file` or stdin.
+
+## Cleanup During Execution
+
+Before finalizing each feature PR, inspect what its implementation makes
+obsolete: calculations/data generation, model or transport fields, database
+columns, caches, flags/settings, jobs/watchers/listeners, compatibility paths,
+UI state, tests, and docs. Re-check the plan's cleanup assessment and add newly
+discovered causal cleanup to durable plan truth.
+
+Implement small, safe cleanup directly caused by the feature when it keeps the
+PR coherent. Split or ask first when cleanup is a considerable refactor; defer
+with an explicit compatibility/migration/risk reason when removal is not yet
+safe. Do not retain dead artifacts solely as an audit trail when Git history is
+sufficient, and do not use cleanup as a reason for unrelated scope expansion.
+
+## Plan Review
+
+Use `aristotle-plan-review` only for a new architecture-bearing production plan
+that has not already been reviewed. Apply valid findings directly without
+re-reviewing those fixes. A too-vague rejection may be reviewed once more after
+clarification; if it is rejected as too vague again, ask the user how to proceed.
+Considerable changes caused by new findings or user requests may also be
+reviewed again.
+
+## Implementation Review
+
+Use `aristotle-impl-review` only when production changes alter actual
+architecture: new or moved classes/files, dependency or DI ownership, public or
+persisted contracts, cross-layer flow, lifecycle ownership, or shared
+boundaries. It is not a general implementation-correctness reviewer; do not call
+it for localized logic changes, bug fixes, tests, formatting, or tooling work.
+
+Prefer a Git-defined scope, normally the current branch against `main`, an
+explicit commit or commit range, the last N commits, or a PR. File or directory
+scopes are also acceptable when they are more useful. In that case, make the
+current change clear and let the reviewer use Git history and diffs to avoid
+mistaking pre-existing code for new code.
+
+Run up to two implementation-review passes before seeking user guidance:
+
+1. Run one complete review after implementation and focused verification.
+2. Fix valid findings that are clearly within the current request.
+3. Use a second review only when useful after those fixes.
+
+Avoid a review loop. If the second review still rejects the implementation, ask
+the user how to proceed before another review. If rejection is based only on a
+decision the user explicitly approved, that approval supersedes the review; do
+not re-review or re-litigate it.
+
+Do not let review trigger a broad cleanup. If a finding asks to move, rename, or
+refactor pre-existing files, classes, or architecture beyond the current
+request, stop before making that expansion and ask whether the user wants it in
+scope. Explain the impact and any smaller in-scope alternative. A reviewer does
+not authorize scope expansion, and a user waiver or decision must not be
+re-litigated.
+
+## Working Style
+
+Be pragmatic and flexible. Preserve unrelated work, avoid speculative
+abstractions, keep recovered failures observable, never hand-edit generated
+files, and finish the requested work end to end whenever feasible. Add tests
+only when they provide meaningful confidence.
+
+Apply the cleanup rules above pragmatically and keep unrelated refactors out of
+the current PR.
