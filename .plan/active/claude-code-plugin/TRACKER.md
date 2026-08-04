@@ -5,10 +5,10 @@
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
   `ca7470fd6ead8f7e1ff0d58e3591e7ce25a5314d`
-- **Series state:** Step 1/17 in progress
+- **Series state:** Step 1/17 open for review
 - **Current step:** 1/17 — raise the plan
-- **Plan PR:** pending
-- **Next action:** open the Step 1 PR, then begin Step 2 protocol ground truth
+- **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737)
+- **Next action:** Step 2 protocol ground truth and package scaffold
 
 ## Plan Review
 
@@ -22,7 +22,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 900-1,100 | PR open |
+| [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 900-1,100 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) open; 997 changed lines |
 | [ ] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | Not started |
 | [ ] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,000-1,400 | Not started |
 | [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,100-1,500 | Not started |
