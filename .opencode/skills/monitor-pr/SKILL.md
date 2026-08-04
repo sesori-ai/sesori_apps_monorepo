@@ -36,7 +36,8 @@ act as follows, addressing everything in the report in one batch:
 | New inline comments / `changes_requested` | Follow the `address-pr-comments` skill: fetch unresolved threads, assess validity, implement fixes, reply to every thread. |
 | New issue comments | Read them (`gh pr view <number> --repo owner/repo --comments`) and act only if they request something. |
 | Approved + CI passing + 0 unresolved threads | Nothing to fix — summarize the PR state to the user. |
-| `— MERGED` / `— CLOSED` | The monitor already stopped itself. Nothing to do. |
+| `— MERGED` | The monitor already stopped itself. If this is a multi-step plan-series PR with a remaining successor, load `sesori-plan-worker` and perform its automatic merged-step handoff without waiting for the user. Otherwise, nothing to do. |
+| `— CLOSED` | The monitor already stopped itself. Do not advance a plan series from an unmerged PR. |
 
 > **Owner-account comments are NOT your own replies.** The agent pushes commits
 > and posts review replies using the **same GitHub account as the human owner**,
