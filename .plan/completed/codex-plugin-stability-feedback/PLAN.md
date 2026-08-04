@@ -355,15 +355,15 @@ already merged before this durable plan existed.
 
 ### Finding step F-12 — Repository instructions appeared as a user message
 
-- **State:** Confirmed and documented in Delivery Step 9/11; fix required in
-  Delivery Step 10/11.
+- **State:** Fixed on `main` in Delivery Step 10/11.
 - **Observed impact:** A fresh iOS-created session rendered generated repository
   instructions and a local path as a large authored user message before the real
   image prompt.
-- **Likely boundary:** Existing `CodexMessageRepository` generated-context
-  filtering does not recognize Codex's non-angle-bracket AGENTS header.
-- **Delivery:** discovery/report update in `ef2356c4` on D9; fix branch
-  `codex-plugin-stability-feedback-f12-generated-repository-instructions`.
+- **Boundary:** Existing `CodexMessageRepository` generated-context filtering
+  did not recognize Codex's non-angle-bracket AGENTS header.
+- **Delivery:** discovery/report update in `ef2356c4` on D9; fix merged through
+  [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753) as
+  `09b71131`.
 - **Acceptance:** Complete generated AGENTS envelopes disappear from cold
   history; authored marker-like text, mixed content, and near matches remain.
 

@@ -54,7 +54,7 @@
 | [x] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,174 actual | [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) merged as `22f65807` |
 | [x] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 1,325 actual | [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) merged as `5a67ee65` |
 | [x] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 170 actual | [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753) merged as `09b71131` |
-| [x] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Final state recorded and plan moved to `.plan/completed/` |
+| [x] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | [PR #756](https://github.com/sesori-ai/sesori_apps_monorepo/pull/756); final state recorded and plan moved to `.plan/completed/` |
 
 ## Exact PR Titles
 
@@ -430,9 +430,9 @@ origin/main
   named-parameter and compact-envelope findings were fixed after a failing
   compact regression; Cubic's authoritative-event filtering suggestion remained
   unresolved with the authored-content rationale.
-- **Step 11 final audit:** All twelve findings are checked, all eleven delivery
-  rows have their PR links and merge states, and the separately owned relay
-  message-version defect remains outside this plan.
+- **Step 11 final audit:** All twelve findings are checked, Steps 1 through 10
+  have merged PR links and states, Step 11 is this archival PR, and the
+  separately owned relay message-version defect remains outside this plan.
 - **Step 11 verification:** Documentation-only move and tracker finalization;
   `git diff --check` passes. No Dart or Flutter suites are required.
 
