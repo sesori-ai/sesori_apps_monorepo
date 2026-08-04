@@ -545,7 +545,10 @@ void main() {
       startGate: Future<void>.value(),
       pluginFactory: (_) => plugin = _FakePlugin(api: api),
     );
-    final runtime = _runtime(factory: factory);
+    final runtime = _runtime(
+      factory: factory,
+      shutdownBudget: const Duration(milliseconds: 20),
+    );
     addTearDown(runtime.dispose);
     await runtime.start(pluginId: "one");
     plugin.interruptActiveWorkHandler = (_) => Completer<Set<String>>().future;
@@ -1574,6 +1577,7 @@ enum _TestOperation {
 PluginRuntime _runtime({
   required _FakeGenerationFactory factory,
   BridgePluginDescriptor descriptor = const _FakeDescriptor(),
+  Duration shutdownBudget = const Duration(seconds: 1),
 }) {
   final runtime = PluginRuntime(
     registrations: [
@@ -1587,7 +1591,7 @@ PluginRuntime _runtime({
     setupProcesses: const _UnusedHostProcessService(),
     environment: const {},
     clock: const ServerClock(),
-    shutdownBudget: const Duration(seconds: 1),
+    shutdownBudget: shutdownBudget,
   );
   runtime.applyAccess(
     entries: const [

@@ -858,21 +858,6 @@ class BridgeRuntimeRunner {
         );
       }
 
-      // Start the ordered shutdown the moment the session begins shutting
-      // down (any trigger: signal, supervised logout/restart, control-channel
-      // loss), so the coordinator's backstop bounds the session teardown
-      // itself — a teardown blocked on in-flight agent work must not hang the
-      // process with no deadline. The runner's finally joins the same
-      // (memoized) shutdown future, so a failure here is still surfaced there
-      // with the exit-code policy applied.
-      unawaited(
-        // The runner's finally awaits the same (memoized) shutdown future and
-        // applies the exit-code policy there, so the failure is already
-        // surfaced; this early-start copy must not raise an unhandled error.
-        activeRuntime.session.shutdownRequested
-            .then((_) => shutdownCoordinator.shutdown())
-            .catchError((Object _, StackTrace __) {}),
-      );
       registerSignalHandlers(session: activeRuntime.session, subscriptions: subscriptions);
       // start() synchronously subscribes local route-trigger listeners before
       // the debug server can expose mutation routes.
@@ -883,6 +868,24 @@ class BridgeRuntimeRunner {
         debugPort: options.debugPort,
         runtime: activeRuntime,
         shutdownCoordinator: shutdownCoordinator,
+      );
+      // Start the ordered shutdown the moment the session begins shutting down
+      // (any trigger: signal, supervised logout/restart, control-channel loss),
+      // so the coordinator's backstop bounds the session teardown itself — a
+      // teardown blocked on in-flight agent work must not hang the process
+      // with no deadline. Registered only after the debug server is assigned:
+      // the coordinator's signal phase reads `debugServer` (beginShutdown), so
+      // a shutdown racing the async server start would otherwise miss it, and
+      // no agent-coupled work can exist before startup completes anyway. The
+      // runner's finally joins the same (memoized) shutdown future, so a
+      // failure here is still surfaced there with the exit-code policy applied.
+      unawaited(
+        // The runner's finally awaits the same (memoized) shutdown future and
+        // applies the exit-code policy there, so the failure is already
+        // surfaced; this early-start copy must not raise an unhandled error.
+        activeRuntime.session.shutdownRequested
+            .then((_) => shutdownCoordinator.shutdown())
+            .catchError((Object _, StackTrace __) {}),
       );
       // Background: check + download + stage + apply-in-place on a 4h cadence.
       // The swap takes effect on the next launch (or a phone-triggered restart).
