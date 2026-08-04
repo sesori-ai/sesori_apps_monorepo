@@ -67,8 +67,6 @@ void main() {
         secret: "x",
         initialReconnectDelay: const Duration(milliseconds: 20),
       );
-      final states = <ControlChannelConnectionState>[];
-      client.connectionState.listen(states.add);
       await client.connect();
       addTearDown(client.dispose);
 
