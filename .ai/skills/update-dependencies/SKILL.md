@@ -31,6 +31,7 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `bridge/sesori_plugin_codex/pubspec.yaml`
 - `bridge/sesori_plugin_acp/pubspec.yaml`
 - `bridge/sesori_plugin_cursor/pubspec.yaml`
+- `bridge/sesori_plugin_claude/pubspec.yaml`
 - `bridge/app/pubspec.yaml` (CLI relay server)
 
 **Standalone packages** (NOT in any workspace — resolve independently with their own lockfile):
@@ -148,6 +149,7 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `bridge/sesori_plugin_codex/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_acp/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_cursor/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_claude/pubspec.yaml` | ✅ | — | caret |
 | `shared/sesori_shared/pubspec.yaml` | ✅ | — | caret |
 
 Example:
@@ -223,6 +225,7 @@ set -e
 (cd bridge/sesori_plugin_codex && dart pub outdated)
 (cd bridge/sesori_plugin_acp && dart pub outdated)
 (cd bridge/sesori_plugin_cursor && dart pub outdated)
+(cd bridge/sesori_plugin_claude && dart pub outdated)
 (cd bridge/app && dart pub outdated)
 ```
 
@@ -250,7 +253,7 @@ set -e
 <step name="3.1">For each pubspec.yaml, in this order:
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
-2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/app`
+2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/sesori_plugin_claude`, `bridge/app`
 3. Client workspace members (dependency order): `client/module_auth`, `client/module_core`, `client/module_prego`, `client/module_desktop_core`, `client/app`, `client/desktop`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.
@@ -313,7 +316,7 @@ For each, confirm one of two outcomes: either (a) its pubspec(s) appear in the d
 ```bash
 set -e
 (cd shared && make analyze)   # sesori_shared + no_slop_linter
-(cd bridge && make analyze)   # all 8 bridge members, in workspace dependency order
+(cd bridge && make analyze)   # all 9 bridge members, in workspace dependency order
 (cd client && make analyze)   # all 6 client members, in workspace dependency order (with --fatal-infos)
 ```
 
