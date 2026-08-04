@@ -62,6 +62,10 @@ jobs:
         run: dart analyze --fatal-infos
         working-directory: bridge/sesori_plugin_cursor
 
+      - name: Analyze sesori_plugin_claude
+        run: dart analyze --fatal-infos
+        working-directory: bridge/sesori_plugin_claude
+
       - name: Run tests for bridge/app
         run: dart test
         working-directory: bridge/app
@@ -93,6 +97,10 @@ jobs:
       - name: Run tests for sesori_plugin_cursor
         run: dart test
         working-directory: bridge/sesori_plugin_cursor
+
+      - name: Run tests for sesori_plugin_claude
+        run: dart test
+        working-directory: bridge/sesori_plugin_claude
 
   build-smoke:
     runs-on: ubuntu-latest
