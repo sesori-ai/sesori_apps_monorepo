@@ -47,7 +47,7 @@
 | [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,200-1,400 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) merged; see the verification log for the measured diff |
 | [x] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | [PR #752](https://github.com/sesori-ai/sesori_apps_monorepo/pull/752) merged 2026-08-09 as `7e460bc9`; see the verification log for the measured diff |
 | [x] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,200-1,500 (recorded overage) | Complete locally and rebased onto merged Step 2; ready to open against `main` |
-| [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 | Not started |
+| [x] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,200-1,500 | Complete locally; awaiting Step 3 before its PR opens |
 | [ ] | 5/17 | `claude-code-plugin-content-mapper` | `⚙️ [claude-code-plugin] feat(claude): map content blocks to parts [step 5/17]` | 1,000-1,400 | Not started |
 | [ ] | 6/17 | `claude-code-plugin-history-mapper` | `⚙️ [claude-code-plugin] feat(claude): replay transcript history [step 6/17]` | 1,000-1,400 | Not started |
 | [ ] | 7/17 | `claude-code-plugin-tool-tracker` | `⚙️ [claude-code-plugin] feat(claude): track tool lifecycle [step 7/17]` | 1,000-1,400 | Not started |
@@ -188,8 +188,58 @@
   below the repository's 1.2-1.9x norm, so the overage is production code rather
   than test bulk.
 
+- Step 4/17 (2026-08-04): added `ClaudeTranscriptRecord`, `ClaudeTranscriptApi`,
+  `ClaudeSessionRecord`, and `ClaudeTranscriptCatalogRepository`.
+  `dart analyze --fatal-infos` and all 76 package tests pass.
+
+  Verified live against the developer's real `~/.claude`: **1,888 transcript
+  files reduced to 180 sessions**, 143 titled, all 180 carrying a git branch,
+  created time, and updated time, across 42 distinct projects; ordering
+  newest-first and per-project pagination both confirmed. 37 ms to enumerate
+  paths and 993 ms to scan headers inside `Isolate.run`. Synthetic fixtures
+  alone would not have caught the filename finding below.
+
+  1,251 changed lines against the Step 3 base, within the 1,200-1,500 estimate
+  and under the soft cap — the hand-written-envelope decision below is what kept
+  it there.
+
 ## Findings And Plan Deltas
 
+- **2026-08-04 — Most of `projects/` is not sessions:** the Step 2 capture came
+  from one freshly created transcript, which made the tree look uniform. In a
+  real `~/.claude`, 1,695 of 1,888 files are subagent transcripts named
+  `agent-<slug>-<hex>.jsonl` living in the same directories. Enumerating every
+  `.jsonl` would have reported roughly ten times too many sessions with
+  non-id ids. The catalog now filters on a UUID filename stem **and** on records
+  not all being `isSidechain` — 5 of 120 sampled UUID-named files were entirely
+  sidechain, so neither filter alone suffices. `PROTOCOL.md` section 9 is
+  corrected.
+- **2026-08-04 — Sixteen record types, not six:** the survey found `mode`,
+  `permission-mode`, `bridge-session`, `file-history-snapshot`,
+  `file-history-delta`, `pr-link`, `agent-name`, `started`, `result`, and
+  `system` beyond the six recorded. This is the concrete justification for
+  tolerant unknown absorption. `mode`/`permission-mode` are worth a look at Step
+  11; `pr-link` carries PR metadata the session list already has a slot for, and
+  is noted as a later opportunity rather than scope.
+- **2026-08-04 — Enumeration must be bounded:** the surveyed tree held 1,060 MiB
+  across 1,888 files (largest single transcript 17.6 MiB), so full reads are not
+  viable. Everything the catalog needs is in the first ≤50 lines (title record
+  median line 13), so the API reads a bounded 64-line header and takes
+  `updatedAt` from file mtime.
+- **2026-08-04 — Step 4 envelopes are hand-written, revising "run codegen":**
+  the open record-type set makes absorption the real work, the four
+  catalog-relevant types share one field set, and a generated union measured at
+  roughly 800 extra lines against a 1,500 cap. Consistent with the boundary Step
+  3 set for this package: hand-written envelopes, generated content shapes.
+  Step 5's content blocks remain the only candidate for generation. The
+  `freezed`/`json_serializable` dependencies were removed from the scaffold in
+  the Step 2 review (below) because nothing used them; they return in whichever
+  step first generates a file, if any does.
+- **2026-08-04 — Titles are 79% covered and stay first-party:** `ai-title` was
+  present in 143 of 180 real sessions. `last-prompt.lastPrompt` would reach
+  about 88% but is the user's own prompt text, so it is deliberately not used as
+  a title fallback; untitled sessions map to a null title. Revisit only if this
+  looks wrong in the Step 16 live run.
 - **2026-08-05 — `always` must filter suggestions, not echo them (from PR #752
   review):** the plan said `always` echoes the request's own
   `permission_suggestions`, treating "what the backend suggested" as a safe

@@ -418,10 +418,48 @@ output.
 
 Munging replaces path separators with `-`, producing names like
 `-private-tmp-…-scratchpad-probe1`. It is lossy and ambiguous — **never
-un-munge**. The filename minus `.jsonl` is the session id.
+un-munge**.
 
-Observed record types in a single-turn transcript: `ai-title`,
-`queue-operation`, `user`, `attachment`, `assistant`, `last-prompt`.
+### Most files under `projects/` are not sessions
+
+Corrected in Step 4. The original capture came from one freshly created
+single-turn transcript, which made the tree look far more uniform than it is. A
+survey of a real long-lived `~/.claude` found **1,888 transcript files of which
+only 193 were sessions**. The rest are subagent transcripts named
+`agent-<slug>-<hex>.jsonl`, sitting in the same `projects/<munged-cwd>/`
+directories.
+
+So "the filename minus `.jsonl` is the session id" holds **only for files whose
+stem is a UUID**. Enumerating every `.jsonl` reports roughly ten times too many
+sessions, most with ids that are not ids at all.
+
+Two independent filters are both required:
+
+1. **The filename stem must be a UUID.** This removes the `agent-*` bulk.
+2. **The records must not all be `isSidechain: true`.** Five of 120 sampled
+   UUID-named files contained zero non-sidechain records — a subagent transcript
+   that happens to be UUID-named. The per-record flag alone would not have caught
+   the `agent-*` files, and the filename alone would not have caught these.
+
+### Record types
+
+The single-turn capture recorded six types. The same survey found **sixteen**,
+which is the strongest evidence in this document that tolerant unknown
+absorption is a requirement rather than a precaution:
+
+`assistant`, `user`, `mode`, `last-prompt`, `attachment`, `ai-title`,
+`permission-mode`, `bridge-session`, `queue-operation`, `file-history-snapshot`,
+`system`, `pr-link`, `file-history-delta`, `agent-name`, `started`, `result`.
+
+Only four carry `cwd` and `isSidechain`: `user`, `assistant`, `attachment`, and
+`system`. Those four are the project-attribution and sidechain-detection
+surface; everything else is metadata keyed by `sessionId` alone.
+
+`mode` and `permission-mode` records are the persisted counterpart of the
+control protocol's mode switching (section 6) and are worth revisiting at Step
+11. `pr-link` carries `prNumber`/`prUrl`/`prRepository`, which the Sesori
+session list already has a slot for; out of scope here, noted as a later
+opportunity.
 
 | Record | Observed keys |
 |---|---|
@@ -434,14 +472,46 @@ Observed record types in a single-turn transcript: `ai-title`,
 
 Consequences for the catalog and history mapper:
 
-- **`ai-title.aiTitle` is the session title source.** No heuristic needed.
+- **`ai-title.aiTitle` is the session title source.** No heuristic needed — but
+  it is not always written. It was present in 143 of 180 real sessions (79%);
+  the remaining fifth are genuinely untitled and map to a null `PluginSession
+  .title`. `last-prompt.lastPrompt` would raise coverage to about 88%, and is
+  deliberately **not** used: it is the user's own prompt text, and putting
+  prompt content into a session title moves user data somewhere new for a
+  9-point gain. Revisit only if untitled sessions look wrong in the Step 16
+  live run.
 - **`isSidechain` is the sidechain marker** — a boolean on the record itself, not
-  a separate directory. Exclude sidechain records from enumeration.
+  a separate directory. Necessary but not sufficient; see the filename rule
+  above.
 - Every content record carries its own `cwd`, so project attribution needs no
-  directory-name parsing.
+  directory-name parsing. All 180 real sessions had one.
 - `gitBranch` is present and free; `version` records the writing CLI version.
+  Both were populated on all 180.
+- The filename id and the records' own `sessionId` agreed on 120 of 120 sampled
+  transcripts, so cross-checking them is cheap and a disagreement is a real
+  anomaly worth skipping.
 - `attachment` records are context attachments (memory files and similar), not
   user images.
+
+### Enumeration cost
+
+Reading these transcripts in full is not viable: the surveyed tree held
+**1,060 MiB across 1,888 files**, median session 536 KiB, p90 ~7 MiB, largest
+17.6 MiB.
+
+Everything the catalog needs sits at the top of the file. Across 60 sampled
+transcripts the `ai-title` record's line number was at most 50 (median 13), and
+`cwd`/`sessionId`/`gitBranch`/`version` arrive on the first content record. A
+bounded 64-line header read therefore covers the observed range with margin, and
+a title written past the bound degrades to an untitled session rather than a
+wrong one.
+
+`updatedAt` cannot come from a bounded header, so it comes from the transcript's
+mtime — exact for an append-only file.
+
+Measured end to end on the surveyed tree: 37 ms to enumerate paths, **993 ms to
+scan 180 session headers** inside `Isolate.run`. Acceptable for a refresh-time
+operation off the main isolate; it would not be acceptable on it.
 
 **OPEN:** the `attachment.attachment` payload shape, and whether user-supplied
 images appear as `user` message content blocks or as `attachment` records.

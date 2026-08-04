@@ -714,17 +714,33 @@ work is one coherent layer with no generated code, so it is delivered whole.
 
 ### Step 4/17 — Enumerate Transcript Sessions
 
-- Add the transcript record DTOs this step consumes — `user`, `assistant`,
-  `attachment`, `ai-title`, `last-prompt`, `queue-operation`, and unknown — and
-  run codegen.
+- Add the transcript record envelopes this step consumes — a content variant
+  covering `user`, `assistant`, `attachment`, and `system`, plus `ai-title` and
+  an unknown fallback. Hand-written, not generated: see the note below.
 - Add `ClaudeTranscriptApi` with injected-environment root resolution and
-  `ClaudeCatalogRepository` with isolate-backed scanning.
-- Take the session title from `ai-title.aiTitle` and exclude records flagged
-  `isSidechain`; both are first-party fields, so neither needs a heuristic.
-- Add captured, trimmed, anonymized transcript fixtures as inline Dart literals.
+  `ClaudeTranscriptCatalogRepository` with isolate-backed scanning over a
+  bounded header read.
+- Take the session title from `ai-title.aiTitle` and exclude subagent
+  transcripts by **both** the `agent-*` filename shape and the per-record
+  `isSidechain` flag; neither filter alone is sufficient.
+- Add trimmed, anonymized transcript fixtures as inline Dart literals.
 - Cover the scan, malformed lines, the half-written last line, sidechain
-  exclusion, and privacy-safe diagnostics.
-- Verify: focused and full package tests, fatal analysis, implementation review.
+  exclusion, filename/record id disagreement, pagination, and privacy-safe
+  diagnostics.
+- Verify: focused and full package tests, fatal analysis, a live run against a
+  real `~/.claude` tree, implementation review.
+
+**These envelopes are hand-written, revising this step's original "run
+codegen".** Two reasons, both discovered during the step. First, the record type
+set is open — sixteen types observed against six documented — so the work is
+absorbing unknown types, not modelling each one, and the four types the catalog
+cares about carry identical fields and collapse into one variant with a closed
+`kind` enum. Second, the cap: Freezed expands roughly tenfold in this
+repository, and a generated union here measured out at roughly 800 generated
+lines, which would have pushed the step past 1,500. Step 3 already established
+the boundary this package follows — hand-written envelopes, generated content
+shapes — and transcript records are envelopes. Step 5's content blocks remain
+the generated-DTO case.
 
 ### Step 5/17 — Map Content Blocks To Parts
 
