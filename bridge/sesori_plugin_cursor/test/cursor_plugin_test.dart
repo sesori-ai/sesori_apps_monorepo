@@ -229,7 +229,7 @@ void main() {
     test("captureSessionConfig populates providers, effort variants, and mode agents", () async {
       capture(catalogResult(), fromNewSession: true);
 
-      final providers = await plugin.getProviders(projectId: "/repo");
+      final providers = await providersAfterWarmup();
       expect(providers.providers, hasLength(1));
       final provider = providers.providers.single;
       expect(provider.id, "cursor");
@@ -252,10 +252,20 @@ void main() {
     test("getSessionOptions delegates one plugin-scoped tracker snapshot", () async {
       capture(catalogResult(), fromNewSession: true);
 
-      final result = await plugin.getSessionOptions(
+      final optionsFuture = plugin.getSessionOptions(
         projectId: "/another-project",
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       );
+      // Service the catalog warm-up probe so it completes instantly instead of
+      // waiting out the 12s total probe timeout with no agent on hand.
+      await respond("initialize", const {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      await respond("cursor/list_available_models", const {"models": <Object?>[]});
+
+      final result = await optionsFuture;
 
       final options = (result as PluginSessionOptionsDiscoveryObserved).options;
       expect(options.completeness, PluginSessionOptionsCompleteness.partial);
@@ -994,7 +1004,7 @@ void main() {
     test("a models-only capture surfaces effort variants once thought_level is captured", () async {
       capture(modelCatalog("gpt-5.4", includeMode: false), fromNewSession: true);
       capture(catalogResult(), fromNewSession: false);
-      final full = await plugin.getProviders(projectId: "/repo");
+      final full = await providersAfterWarmup();
       expect(full.providers.single.models.first.variants, ["medium", "low", "high"]);
     });
 

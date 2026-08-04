@@ -814,6 +814,7 @@ class BridgeRuntimeRunner {
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
         statusNotifier: controlStatusNotifier,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
       ).create();
       runtime = BridgeRuntime(
         database: database,

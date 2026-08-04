@@ -75,6 +75,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     restartService: effectiveRestartService,
     filesystemAccessOk: true,
     statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
   ).create();
   final runtime = BridgeRuntime(
     database: db,
