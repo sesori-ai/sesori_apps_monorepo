@@ -3,12 +3,12 @@
 ## Status
 
 - **Plan slug:** `codex-plugin-stability-feedback`
-- **Status:** Active — Step 2/11 PR
-  [#731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) open
+- **Status:** Active — preparing Step 3/11 after Step 2 PR
+  [#731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged
 - **Plan date:** 2026-08-04
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `origin/main` at
-  `4f890087cbebe1fa23e410c18e53257f707102c0`
+  `7b2fa65ad1b210dd6a52714e14ce9b5951d0aa68`
 - **Stack root:** merged Codex image-history fix `2408b574`
 - **Delivery:** nine existing deep-test branches in their exact ancestry order,
   one additional confirmed finding fix, and one plan-retirement PR
