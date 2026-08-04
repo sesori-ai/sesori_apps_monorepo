@@ -214,10 +214,12 @@ void main() {
 
       await expectLater(client.connect(), throwsA(isA<StateError>()));
       await disconnected.future.timeout(const Duration(seconds: 2));
-      // Drain the microtask queue so any falsely emitted connected state that
-      // would follow the disconnected one is still observed.
+      // Drain the microtask queue so any falsely emitted connected state (or a
+      // duplicate disconnected state) that would follow the first disconnected
+      // one is still observed before the exact-sequence assertion.
       await pumpEventQueue();
 
+      expect(states, hasLength(2));
       expect(states[0], isA<RelayConnecting>());
       expect(states[1], isA<RelayDisconnected>());
       expect(states.whereType<RelayConnected>(), isEmpty);
@@ -461,6 +463,7 @@ void main() {
       // Send a message and verify receipt.
       serverWs.add("hello");
       await firstMessage.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(messages, hasLength(1));
 
       // Close the server-side WebSocket — the client stream should end.
@@ -506,6 +509,7 @@ void main() {
       // Deliver a message so we know the loop is running.
       serverWs.add("ping");
       await firstMessage.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(messageCount, equals(1));
 
       // Drop the connection from the server side.
@@ -547,6 +551,7 @@ void main() {
 
       serverWs1.add("first");
       await firstMessage1.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(msgs1, hasLength(1));
 
       // Drop the connection from the server side, waiting for the client to
@@ -573,7 +578,9 @@ void main() {
 
       serverWs2.add("second");
       await firstMessage2.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(msgs2, hasLength(1));
+
       await sub2.cancel();
     });
 
@@ -608,6 +615,9 @@ void main() {
         RelaySendOutcome.sent,
       );
       await firstFrame1.future.timeout(const Duration(seconds: 2));
+      // Let any duplicate frame the client might have sent surface before the
+      // exact one-frame assertion runs.
+      await pumpEventQueue();
       expect(received1, hasLength(1));
 
       // Drop the connection, waiting for the client to observe it first.
@@ -637,6 +647,7 @@ void main() {
         RelaySendOutcome.sent,
       );
       await firstFrame2.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(received2, hasLength(1));
     });
 
@@ -696,6 +707,7 @@ void main() {
         RelaySendOutcome.sent,
       );
       await firstFrame.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(received, hasLength(1));
     });
 
@@ -784,6 +796,10 @@ Future<List<RelayConnectionState>> _recordStates({
   });
   try {
     await reached.future.timeout(timeout);
+    // Keep observing through a microtask drain so any state emitted right
+    // after the expected count (e.g. a duplicate) is still recorded before
+    // callers run their exact-length assertions.
+    await pumpEventQueue();
   } finally {
     await sub.cancel();
   }
