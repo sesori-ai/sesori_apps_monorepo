@@ -637,6 +637,21 @@ final RegExp _forwardedGeneratedImageInvocationPrefixPattern = RegExp(
   r"tools\.image_gen__[A-Za-z0-9_]+\s*\(",
 );
 
+final RegExp _contentForwardedGeneratedImageRemainderPattern = RegExp(
+  r'^\s*;\s*'
+  r'for\s*\(\s*const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s+of\s+\(\s*'
+  r'([A-Za-z_$][A-Za-z0-9_$]*)\?\.content\s*\?\?\s*\[\s*\]\s*\)\s*\)\s*\{\s*'
+  r'if\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\.type\s*===\s*"image"\s*\)\s*'
+  r'image\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*;\s*'
+  r'else\s+if\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\.type\s*===\s*"text"\s*\)\s*'
+  r'text\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\.text\s*\)\s*;\s*\}\s*'
+  r'if\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\?\.image_url\s*\)\s*'
+  r'generatedImage\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*;\s*'
+  r'(?:text\s*\(\s*JSON\.stringify\s*\(\s*\{\s*structuredContent\s*:\s*'
+  r'([A-Za-z_$][A-Za-z0-9_$]*)\?\.structuredContent\s*,\s*_meta\s*:\s*'
+  r'([A-Za-z_$][A-Za-z0-9_$]*)\?\._meta\s*\}\s*\)\s*\)\s*;?\s*)?$',
+);
+
 final RegExp _nestedToolInvocationPrefixPattern = RegExp(
   r"\btools\.[A-Za-z_$][A-Za-z0-9_$.]*\s*\(",
 );
@@ -731,9 +746,26 @@ bool _isGeneratedImageInvocation(String input) {
   if (callEnd == null) return false;
   final variable = forwarded.group(1);
   if (variable == null) return false;
-  return RegExp(
+  final remainder = invocation.substring(callEnd);
+  if (RegExp(
     "^\\s*;\\s*generatedImage\\(\\s*${RegExp.escape(variable)}\\s*\\)\\s*;?\\s*\$",
-  ).hasMatch(invocation.substring(callEnd));
+  ).hasMatch(remainder)) {
+    return true;
+  }
+  final contentForwarded = _contentForwardedGeneratedImageRemainderPattern.firstMatch(
+    remainder,
+  );
+  if (contentForwarded == null) return false;
+  final contentVariable = contentForwarded.group(1);
+  return [2, 7, 8].every(
+        (group) => contentForwarded.group(group) == variable,
+      ) &&
+      [9, 10].every(
+        (group) => contentForwarded.group(group) == null || contentForwarded.group(group) == variable,
+      ) &&
+      [3, 4, 5, 6].every(
+        (group) => contentForwarded.group(group) == contentVariable,
+      );
 }
 
 bool _isValidGeneratedExecDirective({required RegExpMatch directive}) {
