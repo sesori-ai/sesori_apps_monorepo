@@ -388,7 +388,8 @@ revisions would be a separate cross-stack architecture effort.
 - Every step updates `TRACKER.md` with base, actual changed-line count,
   verification, review, PR/merge link, and option decisions.
 - Implementation tests and analysis run only for touched client packages.
-- Run `aristotle-impl-review` only if Step 2 changes an architecture boundary;
+- Run `architecture-implementation-review` only if Step 2 changes an
+  architecture boundary;
   the currently selected localized Cubit/repository behavior is not expected to
   require it.
 - Step 3 moves `.plan/active/session-refresh-reconnects/` to
