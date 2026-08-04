@@ -1113,6 +1113,9 @@ void main() {
       const generatedWithoutPath =
           "# AGENTS.md instructions\n\n"
           "<INSTRUCTIONS>\nrepository marker\n</INSTRUCTIONS>";
+      const generatedCompact =
+          "# AGENTS.md instructions\n\n"
+          "<INSTRUCTIONS>repository marker</INSTRUCTIONS>";
       String userMessageLine({required String id, required String text}) => jsonEncode({
         "type": "response_item",
         "payload": {
@@ -1132,6 +1135,7 @@ void main() {
         extraLines: [
           userMessageLine(id: "generated-with-path", text: generatedWithPath),
           userMessageLine(id: "generated-without-path", text: generatedWithoutPath),
+          userMessageLine(id: "generated-compact", text: generatedCompact),
           userMessageLine(id: "generated-with-outer-whitespace", text: "  $generatedWithPath\n"),
           userMessageLine(id: "authored-exact-envelope", text: generatedWithPath),
           jsonEncode({

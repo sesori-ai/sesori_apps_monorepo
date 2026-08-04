@@ -420,7 +420,8 @@ class CodexMessageRepository {
   }) {
     final texts = [
       for (final item in content)
-        if (item case CodexRolloutInputTextDto(:final text) when text.isNotEmpty && !_isGeneratedContext(text)) text,
+        if (item case CodexRolloutInputTextDto(:final text) when text.isNotEmpty && !_isGeneratedContext(text: text))
+          text,
     ];
     return texts.isEmpty ? null : texts.join();
   }
@@ -550,10 +551,10 @@ enum _GeneratedContextTag {
 
 final _generatedRepositoryInstructions = RegExp(
   r"^# AGENTS\.md instructions(?: for [^\r\n]+)?\r?\n\r?\n"
-  r"<INSTRUCTIONS>\r?\n[\s\S]*\r?\n</INSTRUCTIONS>$",
+  r"<INSTRUCTIONS>(?:\r?\n)?[\s\S]*?(?:\r?\n)?</INSTRUCTIONS>$",
 );
 
-bool _isGeneratedContext(String text) {
+bool _isGeneratedContext({required String text}) {
   final normalized = text.trim();
   return _GeneratedContextTag.values.any((tag) => tag.wraps(normalized)) ||
       _generatedRepositoryInstructions.hasMatch(normalized);
