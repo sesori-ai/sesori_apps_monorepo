@@ -51,7 +51,7 @@
 | [x] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 299 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged as `7b2fa65a` |
 | [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
 | [x] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 643 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) merged as `c6c73650` |
-| [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 309 actual | [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) open; verified after D4 and current `main` merged forward |
+| [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 342 actual | [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) open; verified after D4 and current `main` merged forward |
 | [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 70 | Existing `8f0f4ece`; blocked on Step 5 |
 | [ ] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 308 | Existing `cdd3a305` + `c4767b04`; blocked on Step 6 |
 | [ ] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,084 | Existing `d4e30b87` + `e86bb66f`; blocked on Step 7 |
@@ -273,10 +273,16 @@ origin/main
   two convention fixes. Redirected wait results now check the selected canonical
   identity before suppressing executor output; its regression failed before the
   change. New mapper/test helpers now use required named parameters throughout.
+  A subsequent Cubic finding correctly required decoded wrappers to contain a
+  complete patch envelope and file header before entering the FIFO; the malformed
+  predecessor regression failed before validation. Cubic's request to remove the
+  `fileChange` start pre-drain was declined: that drain is the ordinary-flow seam
+  that discovers the rollout ID before native stable-item mapping, and no image
+  ordering regression was demonstrated.
 - **Step 5 cleanup:** The duplicate native `exec-*` file-change presentation is
   no longer emitted for correlated patches. No additional obsolete persisted,
   transport, cache, flag, listener, or compatibility state was found.
-- **Step 5 change size:** 309 lines against the PR merge base, including
+- **Step 5 change size:** 342 lines against the PR merge base, including
   production code, focused tests, and tracker updates. This is below the
   1,500-line soft cap.
 - **Step 5 delivery:** Pushed and opened as

@@ -378,7 +378,12 @@ class CodexRolloutToolMapper {
     }
     try {
       final decoded = jsonDecode(invocation.group(2)!);
-      return decoded is String && decoded.isNotEmpty ? decoded : null;
+      if (decoded is! String ||
+          !_patchEnvelopePattern.hasMatch(decoded) ||
+          !_patchFileHeaderPattern.hasMatch(decoded)) {
+        return null;
+      }
+      return decoded;
     } on FormatException {
       return null;
     }
@@ -674,6 +679,11 @@ final RegExp _codeModeFileChangeInvocationPattern = RegExp(
 final RegExp _patchFileHeaderPattern = RegExp(
   r'^\*\*\* (?:Add|Update|Delete) File: (.+)$',
   multiLine: true,
+);
+
+final RegExp _patchEnvelopePattern = RegExp(
+  r'^\*\*\* Begin Patch\r?\n.+\r?\n\*\*\* End Patch\s*$',
+  dotAll: true,
 );
 
 final RegExp _generatedExecDirectivePattern = RegExp(

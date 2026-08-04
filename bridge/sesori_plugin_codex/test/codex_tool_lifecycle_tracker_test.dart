@@ -212,6 +212,23 @@ void main() {
 
   test("correlates a code-mode patch with its app-server file change", () {
     final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "call_id": "call-malformed-patch",
+          "name": "exec",
+          "input":
+              'const patch = "not a patch";\n'
+              "text(await tools.apply_patch(patch));\n",
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-1",
+          },
+        },
+      }),
+    );
     final call = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
