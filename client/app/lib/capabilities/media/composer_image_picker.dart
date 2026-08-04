@@ -3,10 +3,9 @@ import "dart:typed_data";
 import "package:image_picker/image_picker.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 /// The picked image cannot be sent inline: even after the picker's downscale
-/// pass it decodes past [maxInlineMessageAttachmentBytes].
+/// pass it exceeds [maxComposerPromptAttachmentBytes].
 final class AttachmentTooLargeError implements Exception {
   const AttachmentTooLargeError();
 }
@@ -49,23 +48,30 @@ class ComposerImagePicker {
     );
     if (file == null) return null;
 
-    final bytes = await file.readAsBytes();
-    // Judge size by the conservative decoded estimate of the base64 form the
-    // wire carries, so anything accepted here also passes receivers using the
-    // shared [isInlineMessageAttachmentWithinSizeLimit] check.
-    final base64Length = 4 * ((bytes.length + 2) ~/ 3);
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64Length)) {
+    return attachmentFromBytes(
+      bytes: await file.readAsBytes(),
+      filename: file.name,
+    );
+  }
+
+  /// Validates image bytes from any composer source and creates the attachment
+  /// shape used by the existing send pipeline.
+  ComposerAttachment attachmentFromBytes({
+    required Uint8List bytes,
+    required String? filename,
+  }) {
+    if (bytes.length > maxComposerPromptAttachmentBytes) {
       throw const AttachmentTooLargeError();
     }
 
     final mime = _sniffImageMime(bytes: bytes);
     if (mime == null) throw const UnsupportedAttachmentImageError();
 
-    final name = file.name.trim();
+    final name = filename?.trim();
     return ComposerAttachment(
       mime: mime,
       bytes: bytes,
-      filename: name.isEmpty ? null : name,
+      filename: name == null || name.isEmpty ? null : name,
     );
   }
 

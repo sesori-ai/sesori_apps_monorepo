@@ -1,6 +1,8 @@
 import "dart:typed_data";
 
-/// Writes image bytes to the platform clipboard.
+/// Reads and writes image bytes on the platform clipboard.
 abstract interface class ImageClipboard {
+  Future<Uint8List?> readImage();
+
   Future<void> writeImage({required Uint8List bytes});
 }

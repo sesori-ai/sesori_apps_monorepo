@@ -687,7 +687,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachmentUnsupported => 'That image format isn\'t supported.';
 
   @override
-  String get sessionDetailAttachmentBudgetExceeded => 'Attached images are limited to 5 MB per message.';
+  String get sessionDetailAttachmentBudgetExceeded => 'Attached images are limited to 50 MB per message.';
 
   @override
   String get sessionDetailAttachmentsNotWithCommands => 'Images can\'t be sent with slash commands.';

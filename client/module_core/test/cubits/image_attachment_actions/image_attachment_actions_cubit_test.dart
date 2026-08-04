@@ -27,6 +27,9 @@ final class _FakeImageClipboard implements ImageClipboard {
   Object? error;
 
   @override
+  Future<Uint8List?> readImage() async => null;
+
+  @override
   Future<void> writeImage({required Uint8List bytes}) async {
     final error = this.error;
     if (error != null) throw error;
