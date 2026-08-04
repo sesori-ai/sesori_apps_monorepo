@@ -210,6 +210,82 @@ void main() {
     expect(completed?.status, PluginToolStatus.completed);
   });
 
+  test("correlates code-mode commands containing invocation-like text", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _codeModeExecCall(
+        callId: "call-raw",
+        turnId: "turn-1",
+        input: "await tools.exec_command({cmd: \"echo 'tools.exec_command('\"});",
+      ),
+    );
+
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-1",
+              turnId: "turn-1",
+            ),
+          )
+          ?.canonicalId,
+      "call-raw",
+    );
+  });
+
+  test("correlates code-mode commands with invocation whitespace", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _codeModeExecCall(
+        callId: "call-raw",
+        turnId: "turn-1",
+        input: "await tools.exec_command ({cmd: 'pwd'});",
+      ),
+    );
+
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-1",
+              turnId: "turn-1",
+            ),
+          )
+          ?.canonicalId,
+      "call-raw",
+    );
+  });
+
+  test("does not correlate invocation text inside a string", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _codeModeExecCall(
+        callId: "call-raw",
+        turnId: "turn-1",
+        input: "console.log('tools.exec_command(');",
+      ),
+    );
+
+    expect(
+      target.observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-1",
+          turnId: "turn-1",
+        ),
+      ),
+      isNull,
+    );
+  });
+
   test("suppresses only complete generated image wrapper invocations", () {
     final target = tracker();
     final wrapper = CodexRolloutLineDto.fromJson({
@@ -299,6 +375,74 @@ void main() {
             "text(JSON.stringify({structuredContent:r?.structuredContent,_meta:r?._meta}));\n",
       },
     });
+    final malformedDirectedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-malformed-directed-image-wrapper",
+        "name": "exec",
+        "input":
+            "// @exec: {invalid}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
+      },
+    });
+    final multilineDirectedMarker = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-multiline-directed-marker",
+        "name": "exec",
+        "input": "//\n@exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'});",
+      },
+    });
+    final mixedDirectedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-mixed-directed-image-wrapper",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); await tools.exec_command({cmd: 'keep visible'});",
+      },
+    });
+    final directedWrapperWithTrailingCode = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-trailing-code",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield-time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); console.log('keep visible');",
+      },
+    });
+    final directedWrapperWithCallLikePrompt = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-call-like-prompt",
+        "name": "exec",
+        "input": "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'draw cat(s)'});",
+      },
+    });
+    final directedWrapperWithParenthesizedTrailingCode = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-parenthesized-trailing-code",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); process.exitCode = (1);",
+      },
+    });
+    final directedWrapperWithNestedToolCall = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-nested-tool",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: (await tools.exec_command({cmd: 'keep visible'}), 'cat')});",
+      },
+    });
     final unrelatedForwarding = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -341,6 +485,41 @@ void main() {
     expect(
       target.observeRolloutLine(
         threadId: "thread-1",
+        line: malformedDirectedWrapper,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: multilineDirectedMarker,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: mixedDirectedWrapper,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithTrailingCode,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithCallLikePrompt,
+      ),
+      isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
         line: previewForwardedWrapper,
       ),
       isEmpty,
@@ -348,7 +527,21 @@ void main() {
     expect(
       target.observeRolloutLine(
         threadId: "thread-1",
+        line: directedWrapperWithParenthesizedTrailingCode,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
         line: imageWrapperWithAnotherTool,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithNestedToolCall,
       ),
       hasLength(1),
     );
@@ -1227,13 +1420,25 @@ CodexRolloutLineDto _rawExecCall({
   required String callId,
   required String? turnId,
 }) {
+  return _codeModeExecCall(
+    callId: callId,
+    turnId: turnId,
+    input: "await tools.exec_command({cmd: 'pwd'});",
+  );
+}
+
+CodexRolloutLineDto _codeModeExecCall({
+  required String callId,
+  required String? turnId,
+  required String input,
+}) {
   return CodexRolloutLineDto.fromJson({
     "type": "response_item",
     "payload": {
       "type": "custom_tool_call",
       "call_id": callId,
       "name": "exec",
-      "input": "await tools.exec_command({cmd: 'pwd'});",
+      "input": input,
       if (turnId != null)
         "internal_chat_message_metadata_passthrough": {
           "turn_id": turnId,
