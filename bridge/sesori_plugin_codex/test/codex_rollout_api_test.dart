@@ -1223,6 +1223,13 @@ void main() {
             },
           }),
           jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "retry",
+            },
+          }),
+          jsonEncode({
             "type": "response_item",
             "payload": {
               "type": "image_generation_call",
@@ -1247,11 +1254,15 @@ void main() {
       );
 
       expect(
-        busyMessages.map((message) => message.parts.single.state?.status),
+        busyMessages
+            .where((message) => message.parts.single.type == PluginMessagePartType.tool)
+            .map((message) => message.parts.single.state?.status),
         everyElement(PluginToolStatus.running),
       );
       expect(
-        idleMessages.map((message) => message.parts.single.state?.status),
+        idleMessages
+            .where((message) => message.parts.single.type == PluginMessagePartType.tool)
+            .map((message) => message.parts.single.state?.status),
         everyElement(PluginToolStatus.error),
       );
     });

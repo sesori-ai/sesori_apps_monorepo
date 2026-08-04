@@ -1063,6 +1063,9 @@ class CodexPlugin implements CodexManagedApi {
       sessionId: sessionId,
     );
     if (read == null) return const [];
+    // Let queued app-server activity update after the synchronous rollout
+    // snapshot before deciding whether interrupted tools are truly idle.
+    await Future<void>.delayed(Duration.zero);
     return _sessionService.getSessionMessages(
       sessionId: sessionId,
       read: read,

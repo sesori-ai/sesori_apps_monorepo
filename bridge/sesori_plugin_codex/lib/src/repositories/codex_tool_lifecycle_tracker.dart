@@ -501,9 +501,10 @@ class CodexToolLifecycleTracker {
   }) {
     final updates = <CodexProjectedTool>[];
     for (final tool in thread.tools.values) {
-      if ((!includeNonRolloutCalls && !tool.isRolloutCall) ||
-          tool.status != PluginToolStatus.running ||
-          tool.chronologySegment != thread.chronologySegment) {
+      final appliesToCurrentReplay = tool.isRolloutCall
+          ? tool.chronologySegment == thread.chronologySegment
+          : includeNonRolloutCalls;
+      if (!appliesToCurrentReplay || tool.status != PluginToolStatus.running) {
         continue;
       }
       tool.status = PluginToolStatus.error;

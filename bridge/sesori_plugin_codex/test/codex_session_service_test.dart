@@ -313,7 +313,7 @@ void main() {
     expect(messageRepository.sessionStatus, const PluginSessionStatus.idle());
   });
 
-  test("resolves replay activity after reading persisted outcomes", () async {
+  test("prepares the transcript before replay activity is supplied", () async {
     final messageRepository = _RecordingMessageRepository();
     final outcomes = _DelayedToolOutcomeRepository();
     final service = _newService(
@@ -327,9 +327,10 @@ void main() {
       sessionId: "session-1",
     );
     await outcomes.readStarted.future;
-    sessionStatus = const PluginSessionStatus.busy();
     outcomes.allowRead.complete();
     final read = await readFuture;
+    expect(messageRepository.prepareCount, 1);
+    sessionStatus = const PluginSessionStatus.busy();
     service.getSessionMessages(
       sessionId: "session-1",
       read: read!,
@@ -409,10 +410,20 @@ class _RecordingMessageRepository extends CodexMessageRepository {
 
   Map<String, PluginToolStatus>? statuses;
   PluginSessionStatus? sessionStatus;
+  int prepareCount = 0;
 
   @override
-  List<PluginMessageWithParts> readMessages({
+  CodexPreparedMessageRead prepareMessageRead({
     required String rolloutPath,
+    required String sessionId,
+  }) {
+    prepareCount += 1;
+    return CodexPreparedMessageRead(lines: const []);
+  }
+
+  @override
+  List<PluginMessageWithParts> projectMessages({
+    required CodexPreparedMessageRead read,
     required String sessionId,
     required PluginSessionStatus sessionStatus,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,

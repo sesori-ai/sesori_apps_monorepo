@@ -304,11 +304,13 @@ origin/main
   it reversed the plugin-to-service dependency; the correction instead splits
   durable history preparation from synchronous projection so the plugin reads
   its own activity only after the service await, without a lower-layer callback.
-- **Step 6 behavior:** Replay uses confirmed current plugin activity after
-  asynchronous outcome preparation. Confirmed-idle history terminalizes
-  unresolved rollout and image-generation tools as errors, while active,
-  provisional, retry-backed, or activity-unknown sessions preserve running
-  state.
+- **Step 6 behavior:** Replay snapshots the rollout and persisted outcomes,
+  yields queued app-server activity, then resolves current plugin activity
+  before projection. Confirmed-idle history terminalizes unresolved rollout
+  tools and image generations from every chronology segment as errors, while
+  active, provisional, retry-backed, or activity-unknown sessions preserve
+  running state. The prepared service context is opaque and immutable to its
+  plugin caller.
 - **Step 6 cleanup:** No persistence, transport, cache, or lifecycle artifact
   becomes obsolete in this step. The temporary `PluginSessionStatus` replay
   boundary is intentionally replaced by Step 8's sealed replay disposition.

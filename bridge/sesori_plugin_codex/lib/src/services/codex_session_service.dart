@@ -13,11 +13,19 @@ import "../repositories/codex_thread_repository.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/models/codex_thread_record.dart";
 
-typedef CodexSessionMessageRead = ({
-  String rolloutPath,
-  Map<String, PluginToolStatus> structuredToolStatusByCallId,
-  CodexConfigDefaults config,
-});
+final class CodexSessionMessageRead {
+  const CodexSessionMessageRead._({
+    required CodexPreparedMessageRead messages,
+    required Map<String, PluginToolStatus> structuredToolStatusByCallId,
+    required CodexConfigDefaults config,
+  }) : _messages = messages,
+       _structuredToolStatusByCallId = structuredToolStatusByCallId,
+       _config = config;
+
+  final CodexPreparedMessageRead _messages;
+  final Map<String, PluginToolStatus> _structuredToolStatusByCallId;
+  final CodexConfigDefaults _config;
+}
 
 /// Layer-3 coordination for the migrated Codex session operations.
 class CodexSessionService {
@@ -407,8 +415,11 @@ class CodexSessionService {
       );
       structuredToolStatusByCallId = const {};
     }
-    return (
-      rolloutPath: path,
+    return CodexSessionMessageRead._(
+      messages: _messageRepository.prepareMessageRead(
+        rolloutPath: path,
+        sessionId: sessionId,
+      ),
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
     );
@@ -419,12 +430,12 @@ class CodexSessionService {
     required CodexSessionMessageRead read,
     required PluginSessionStatus sessionStatus,
   }) {
-    return _messageRepository.readMessages(
-      rolloutPath: read.rolloutPath,
+    return _messageRepository.projectMessages(
+      read: read._messages,
       sessionId: sessionId,
       sessionStatus: sessionStatus,
-      structuredToolStatusByCallId: read.structuredToolStatusByCallId,
-      config: read.config,
+      structuredToolStatusByCallId: read._structuredToolStatusByCallId,
+      config: read._config,
     );
   }
 
