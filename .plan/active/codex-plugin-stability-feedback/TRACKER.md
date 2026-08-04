@@ -4,18 +4,16 @@
 
 - **Plan slug:** `codex-plugin-stability-feedback`
 - **Implementation base:** `origin/main` at
-  `5aaf979dd25b645a69964d0211eda5cd92126037`
+  `c6c7365095e67aff6d431b18f206a2fd40d2202c`
 - **Stack root:** `2408b574`
-- **Series state:** Steps 1 through 3 merged through PR
-  [#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732); Step 4 PR
-  [#733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) open; D5
-  through D9 remain in stack order
-- **Current step:** Step 4/11
-- **Current branch:** `codex-stability-deep-test-4-late-abort-tool-identity`
+- **Series state:** Steps 1 through 4 merged through PR
+  [#733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733); Step 5 is
+  verified locally; D6 through D9 remain in stack order
+- **Current step:** Step 5/11
+- **Current branch:** `codex-stability-deep-test-5-file-tool-identity`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Monitor Step 4 CI and review; merge it before forwarding D4
-  into D5
+- **Next action:** Push and open Step 5, then monitor CI and review
 
 ## Plan Review
 
@@ -37,7 +35,7 @@
 | [x] | F-05 debug SSE UTF-8 | Fixed on `main` | `codex-stability-1-debug-sse`; [#709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/709); `025ba43b` | Preserve same-connection UTF-8 regression |
 | [x] | F-06 failed tool replay | Fixed on `main` | `codex-stability-6-failed-tool-status`; [#717](https://github.com/sesori-ai/sesori_apps_monorepo/pull/717); `20521cc2` | Preserve error/output/exit-code replay |
 | [x] | F-07 generated image convergence | Fixed on `main` | `codex-stability-7-image-generation-history`; [#718](https://github.com/sesori-ai/sesori_apps_monorepo/pull/718); `2408b574`; [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724); [#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) | Durable images and exact generated wrappers converge live and cold |
-| [ ] | F-08 late abort identity | Fixed on stack | D4; `a32b6c29` | Step 4 proves late completion updates the failed card |
+| [x] | F-08 late abort identity | Fixed on `main` | D4; `a32b6c29`; [#733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733); `c6c73650` | Late completion updates and retires only its failed canonical card |
 | [ ] | F-09 file identity | Fixed on stack | D5 `9da8f2e1`; D8 `d4e30b87` | Steps 5 and 8 deliver behavior and typed boundary |
 | [ ] | F-10 restart terminalization | Fixed on stack | D6 `8f0f4ece`; D8 `d4e30b87` | Steps 6 and 8 deliver behavior and service-owned policy |
 | [ ] | F-11 archive history | Fixed on stack | D7; `cdd3a305` | Step 7 proves archive/unarchive readable and delete destructive |
@@ -50,8 +48,8 @@
 | [x] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as `149e7914` |
 | [x] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 299 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged as `7b2fa65a` |
 | [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
-| [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 643 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) open; verified; D3 and current `main` merged forward |
-| [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 214 | Existing `9da8f2e1`; blocked on Step 4 |
+| [x] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 643 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) merged as `c6c73650` |
+| [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 283 actual | Existing `9da8f2e1`; verified after D4 and current `main` merged forward |
 | [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 70 | Existing `8f0f4ece`; blocked on Step 5 |
 | [ ] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 308 | Existing `cdd3a305` + `c4767b04`; blocked on Step 6 |
 | [ ] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,084 | Existing `d4e30b87` + `e86bb66f`; blocked on Step 7 |
@@ -253,7 +251,28 @@ origin/main
   including the inherited Step 3 correction, production code, tests, and
   plan/tracker updates. This is below the 1,500-line soft cap.
 - **Step 4 delivery:** Pushed and opened as
-  [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733).
+  [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733), which
+  passed all 12 checks and merged as `c6c73650` on 2026-08-04 with zero
+  unresolved threads.
+- **Step 5 base update:** Merged the complete local D4 branch forward as
+  `39d7dac7`, then merged `origin/main` at `c6c73650` as `d3425e53`. Existing
+  production commit `9da8f2e1` remains in its original stack position; no
+  rebase, reset, reorder, or cherry-pick occurred. Conflicts preserved D4's
+  per-item late-command lifecycle while extending the same tracker-owned
+  correlation boundary to D5 file changes.
+- **Step 5 production verification:** All 39 focused lifecycle-tracker tests and
+  all 307 Codex package tests pass. `dart analyze --fatal-infos` reports no
+  issues. Both branch and working-tree `git diff --check` pass.
+- **Step 5 behavior:** Exact generated code-mode `tools.apply_patch` wrappers
+  project as canonical edit tools, retain their patch/path presentation, and
+  correlate same-turn app-server `fileChange` start/completion events onto that
+  identity. Ordinary command ordering remains unchanged.
+- **Step 5 cleanup:** The duplicate native `exec-*` file-change presentation is
+  no longer emitted for correlated patches. No additional obsolete persisted,
+  transport, cache, flag, listener, or compatibility state was found.
+- **Step 5 change size:** 283 lines against the PR merge base, including
+  production code, focused tests, and tracker updates. This is below the
+  1,500-line soft cap.
 
 ## Findings And Plan Deltas
 
