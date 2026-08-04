@@ -63,7 +63,10 @@ This is head-of-line blocking in the bridge transport. The stalled request was
 not introduced by PR #686; that PR exposed the pre-existing behavior during
 long-running testing.
 
-## Success Criteria
+## Success Criteria — Complete
+
+All criteria below were implemented and verified across Steps 2–9. The accepted
+bounded creation-visibility risk in criterion 10 remains intentional.
 
 1. A routed request never blocks the relay read loop from processing a later
    frame.

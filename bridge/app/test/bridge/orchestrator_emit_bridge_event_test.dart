@@ -451,6 +451,183 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("initial SSE summary is detached and reserves summary delivery order", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    final socket = await relayServer.nextClient();
+    final messages = StreamIterator<dynamic>(socket);
+    final roomKey = await _exchangeRoomKey(
+      socket: socket,
+      messages: messages,
+      connID: 404,
+    );
+    await harness.activatePlugins();
+
+    const directory = "/projects/subscription-order";
+    const oldSession = PluginSession(
+      id: "initial-session",
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: "Initial session",
+      time: PluginSessionTime(created: 1, updated: 1, archived: null),
+    );
+    const newSession = PluginSession(
+      id: "later-session",
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: "Later session",
+      time: PluginSessionTime(created: 2, updated: 2, archived: null),
+    );
+    final plugin = harness.plugins.single;
+    final initialReadStarted = Completer<void>();
+    final releaseInitialRead = Completer<void>();
+    plugin
+      ..activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "initial-session", awaitingInput: false)],
+        ),
+      ]
+      ..currentProjectResult = const PluginProject(id: directory, directory: directory)
+      ..sessionsResult = const [oldSession, newSession]
+      ..getProjectStarted = initialReadStarted
+      ..getProjectGate = releaseInitialRead;
+    final summaries = <SesoriProjectsSummary>[];
+    final summarySubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriProjectsSummary)
+        .cast<SesoriProjectsSummary>()
+        .listen(summaries.add);
+
+    try {
+      await _sendEncryptedRelayMessage(
+        socket: socket,
+        connID: 404,
+        roomKey: roomKey,
+        message: const RelayMessage.sseSubscribe(path: "/events"),
+      );
+      await initialReadStarted.future.timeout(const Duration(seconds: 2));
+
+      final laterReadStarted = Completer<void>();
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [PluginActiveSession(id: "later-session", awaitingInput: true)],
+          ),
+        ]
+        ..activeSummaryReadStarted = laterReadStarted;
+      plugin.emitEvent(const BridgeSseProjectUpdated());
+      await _sendEncryptedRelayMessage(
+        socket: socket,
+        connID: 404,
+        roomKey: roomKey,
+        message: const RelayMessage.projectView(projectId: "relay-remains-responsive"),
+      );
+
+      try {
+        await _waitFor(
+          () => harness.composition.projectViewTracker.activeProjectIds.contains("relay-remains-responsive"),
+          reason: "relay control while initial summary is blocked",
+          timeout: const Duration(milliseconds: 500),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(
+          laterReadStarted.isCompleted,
+          isFalse,
+          reason: "the later summary must wait behind the already-enqueued initial build",
+        );
+      } finally {
+        if (!releaseInitialRead.isCompleted) releaseInitialRead.complete();
+      }
+
+      await laterReadStarted.future.timeout(const Duration(seconds: 2));
+      await _waitFor(() => summaries.length == 2, reason: "initial and later summaries");
+      expect(
+        summaries.map((summary) => summary.projects.single.activeSessions.single.awaitingInput),
+        [false, true],
+      );
+    } finally {
+      if (!releaseInitialRead.isCompleted) releaseInitialRead.complete();
+      await summarySubscription.cancel();
+      await harness.composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+      await messages.cancel();
+    }
+  });
+
+  test("shutdown drains a detached initial summary without broadcasting it late", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    final socket = await relayServer.nextClient();
+    final messages = StreamIterator<dynamic>(socket);
+    final roomKey = await _exchangeRoomKey(
+      socket: socket,
+      messages: messages,
+      connID: 405,
+    );
+    await harness.activatePlugins();
+    final summaryStarted = Completer<void>();
+    final summaryGate = Completer<void>();
+    _configureBlockingProjectSummary(
+      plugin: harness.plugins.single,
+      started: summaryStarted,
+      gate: summaryGate,
+    );
+    final summaries = <SesoriProjectsSummary>[];
+    final summarySubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriProjectsSummary)
+        .cast<SesoriProjectsSummary>()
+        .listen(summaries.add);
+    var stopped = false;
+    runFuture.then((_) => stopped = true).ignore();
+
+    try {
+      await _sendEncryptedRelayMessage(
+        socket: socket,
+        connID: 405,
+        roomKey: roomKey,
+        message: const RelayMessage.sseSubscribe(path: "/events"),
+      );
+      await summaryStarted.future.timeout(const Duration(seconds: 2));
+
+      await harness.composition.session.cancel();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(stopped, isFalse);
+
+      summaryGate.complete();
+      await runFuture.timeout(const Duration(seconds: 5));
+      expect(summaries, isEmpty);
+    } finally {
+      if (!summaryGate.isCompleted) summaryGate.complete();
+      await summarySubscription.cancel();
+      await harness.composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+      await messages.cancel();
+    }
+  });
+
   test("shutdown drains in-flight post-normalization work", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
@@ -700,6 +877,7 @@ class _OrchestratorHarness {
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(
       database: database,

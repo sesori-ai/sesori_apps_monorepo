@@ -3,18 +3,6 @@ import "package:test/test.dart";
 
 void main() {
   group("ReplyToPermissionRequest", () {
-    test("constructs with required named parameters", () {
-      const request = ReplyToPermissionRequest(
-        requestId: "perm-123",
-        sessionId: "ses-456",
-        reply: PermissionReply.once,
-      );
-
-      expect(request.requestId, "perm-123");
-      expect(request.sessionId, "ses-456");
-      expect(request.reply, PermissionReply.once);
-    });
-
     test("toJson produces correct JSON", () {
       const request = ReplyToPermissionRequest(
         requestId: "perm-123",

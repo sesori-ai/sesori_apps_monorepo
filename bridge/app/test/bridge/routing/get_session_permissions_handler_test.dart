@@ -34,6 +34,7 @@ void main() {
       );
       handler = GetSessionPermissionsHandler(
         permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        suppressPendingPermissions: false,
       );
     });
 
@@ -61,6 +62,68 @@ void main() {
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
+    });
+
+    test("returns 400 for an empty session id when pending permissions are suppressed", () async {
+      final suppressedHandler = GetSessionPermissionsHandler(
+        permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        suppressPendingPermissions: true,
+      );
+
+      await expectLater(
+        () => suppressedHandler.handle(
+          makeRequest("POST", "/session/permissions"),
+          body: const SessionIdRequest(sessionId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
+    });
+
+    test("preserves not-found for an unknown session when pending permissions are suppressed", () async {
+      final suppressedHandler = GetSessionPermissionsHandler(
+        permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        suppressPendingPermissions: true,
+      );
+
+      await expectLater(
+        suppressedHandler.handle(
+          makeRequest("POST", "/session/permissions"),
+          body: const SessionIdRequest(sessionId: "unknown"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+    });
+
+    test("returns no pending permissions when snapshot suppression is enabled", () async {
+      plugin.pendingPermissionsResult = [
+        const PluginPendingPermission(
+          id: "p-1",
+          sessionID: "backend-root",
+          displaySessionId: "backend-root",
+          tool: "bash",
+          description: "Run ls",
+        ),
+      ];
+      final suppressedHandler = GetSessionPermissionsHandler(
+        permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        suppressPendingPermissions: true,
+      );
+
+      final response = await suppressedHandler.handle(
+        makeRequest("POST", "/session/permissions"),
+        body: const SessionIdRequest(sessionId: "root"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, const PendingPermissionResponse(data: []));
     });
 
     test("maps plugin permissions to shared, preserving displaySessionId", () async {
@@ -104,6 +167,7 @@ void main() {
       );
       final derivedHandler = GetSessionPermissionsHandler(
         permissionRepository: repository,
+        suppressPendingPermissions: false,
       );
 
       await expectLater(
@@ -181,6 +245,7 @@ void main() {
           plugin: derivedPlugin,
           sessionDao: db.sessionDao,
         ),
+        suppressPendingPermissions: false,
       );
 
       final response = await derivedHandler.handle(
