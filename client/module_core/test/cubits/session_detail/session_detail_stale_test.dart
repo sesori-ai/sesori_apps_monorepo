@@ -1282,12 +1282,22 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
   if (cubit.state is SessionDetailLoaded) return;
   await cubit.stream
       .firstWhere((state) => state is SessionDetailLoaded)
-      .timeout(const Duration(seconds: 5));
+      .timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => fail(
+          "Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}",
+        ),
+      );
 }
 
 Future<void> _awaitFailed(SessionDetailCubit cubit) async {
   if (cubit.state is SessionDetailFailed) return;
   await cubit.stream
       .firstWhere((state) => state is SessionDetailFailed)
-      .timeout(const Duration(seconds: 5));
+      .timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => fail(
+          "Timed out waiting for SessionDetailFailed; current state: ${cubit.state}",
+        ),
+      );
 }
