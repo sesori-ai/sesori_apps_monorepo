@@ -3,10 +3,9 @@ import "dart:typed_data";
 import "package:image_picker/image_picker.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 /// The picked image cannot be sent inline: even after the picker's downscale
-/// pass it decodes past [maxInlineMessageAttachmentBytes].
+/// pass it exceeds [maxComposerPromptAttachmentBytes].
 final class AttachmentTooLargeError implements Exception {
   const AttachmentTooLargeError();
 }
@@ -61,11 +60,7 @@ class ComposerImagePicker {
     required Uint8List bytes,
     required String? filename,
   }) {
-    // Judge size by the conservative decoded estimate of the base64 form the
-    // wire carries, so anything accepted here also passes receivers using the
-    // shared [isInlineMessageAttachmentWithinSizeLimit] check.
-    final base64Length = 4 * ((bytes.length + 2) ~/ 3);
-    if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64Length)) {
+    if (bytes.length > maxComposerPromptAttachmentBytes) {
       throw const AttachmentTooLargeError();
     }
 

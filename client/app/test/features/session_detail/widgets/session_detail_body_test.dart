@@ -23,6 +23,7 @@ import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_butto
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
@@ -1427,6 +1428,33 @@ void main() {
     );
   });
 
+  testWidgets("expanded editor keyboard paste stages an image attachment", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
+    when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
+    when(
+      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+    ).thenReturn(attachment);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.tap(find.byIcon(TablerRegular.maximize));
+    await tester.pumpAndSettle();
+
+    final sheetEditor = find.descendant(of: find.byType(PromptEditorSheet), matching: find.byType(EditableText));
+    final actionContext = tester.element(
+      find.descendant(of: sheetEditor, matching: find.byType(RawGestureDetector)).first,
+    );
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.pumpAndSettle();
+
+    verify(imageClipboard.readImage).called(1);
+    verify(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
+    Navigator.of(tester.element(find.byType(PromptEditorSheet))).pop();
+    await tester.pumpAndSettle();
+    expect(semanticsWithLabel("Attached image"), findsOneWidget);
+  });
+
   testWidgets("recording swaps the pill chrome for the cancel target and waveform", (tester) async {
     final stopCompleter = Completer<String>();
     when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
@@ -1782,7 +1810,11 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
     expect(composerFocus(tester).hasFocus, isFalse);
 
-    await tester.tap(find.byTooltip("Remove attachment"));
+    final removeButton = find.descendant(
+      of: find.byTooltip("Remove attachment"),
+      matching: find.byType(PregoTappable),
+    );
+    tester.widget<PregoTappable>(removeButton).onTap!.call();
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("screenshot.png"), findsNothing);
     // Nothing left to show: the composer collapses back to its resting pill.
@@ -1863,6 +1895,68 @@ void main() {
 
     expect(editableText.controller.text, "pasted after");
     verify(imageClipboard.readImage).called(1);
+    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+  });
+
+  testWidgets("delayed text paste uses the selection from the original intent", (tester) async {
+    final imageRead = Completer<Uint8List?>();
+    when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == "Clipboard.getData") return <String, Object>{"text": "pasted"};
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "before after");
+    final editableText = tester.widget<EditableText>(find.byType(EditableText));
+    editableText.controller.selection = const TextSelection(baseOffset: 0, extentOffset: 6);
+
+    final actionContext = tester.element(
+      find.descendant(of: find.byType(EditableText), matching: find.byType(RawGestureDetector)).first,
+    );
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    editableText.controller.selection = TextSelection.collapsed(offset: editableText.controller.text.length);
+    imageRead.complete(null);
+    await tester.pumpAndSettle();
+
+    expect(editableText.controller.text, "pasted after");
+  });
+
+  testWidgets("a clipboard image settling after send is discarded", (tester) async {
+    final imageRead = Completer<Uint8List?>();
+    when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
+    when(
+      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+    ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
+    when(
+      () => cubit.sendMessage(
+        text: any(named: "text"),
+        command: any(named: "command"),
+        inputMode: any(named: "inputMode"),
+        attachments: any(named: "attachments"),
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "send now");
+    await tester.pump();
+
+    final actionContext = tester.element(
+      find.descendant(of: find.byType(EditableText), matching: find.byType(RawGestureDetector)).first,
+    );
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    imageRead.complete(_tinyPng);
+    await tester.pumpAndSettle();
+
+    expect(semanticsWithLabel("Attached image"), findsNothing);
     verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
@@ -1961,9 +2055,9 @@ void main() {
 
   testWidgets("an image pushing the strip past the per-message budget is rejected", (tester) async {
     // Two picks: a tiny renderable image, then one whose size alone nearly
-    // fills the shared inline budget — staging it would push the combined
+    // fills the outbound composer budget — staging it would push the combined
     // strip past the limit, so it is refused with a notice instead.
-    final huge = Uint8List(maxInlineMessageAttachmentBytes - 32);
+    final huge = Uint8List(maxComposerPromptAttachmentBytes - 32);
     huge.setAll(0, const [0xFF, 0xD8, 0xFF]);
     final answers = <ComposerAttachment>[
       ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "small.png"),
@@ -1985,7 +2079,7 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.photo));
     await tester.pumpAndSettle();
 
-    expect(find.text("Attached images are limited to 5 MB per message."), findsOneWidget);
+    expect(find.text("Attached images are limited to 50 MB per message."), findsOneWidget);
     // The refused image was never staged; the first one is untouched.
     expect(semanticsWithLabel("small.png"), findsOneWidget);
     expect(semanticsWithLabel("huge.jpg"), findsNothing);

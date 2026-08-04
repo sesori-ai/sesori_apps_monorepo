@@ -26,25 +26,51 @@ import "voice_cancel_button.dart";
 
 enum _VoiceState { idle, recording, transcribing }
 
-final class _ComposerPasteAction extends Action<PasteTextIntent> {
-  final Future<bool> Function() _pasteImage;
+enum _PasteImageResult { noImage, handled, stale }
 
-  _ComposerPasteAction({required Future<bool> Function() pasteImage}) : _pasteImage = pasteImage;
+final class _ComposerPasteAction extends Action<PasteTextIntent> {
+  final Future<_PasteImageResult> Function() _pasteImage;
+  final TextEditingController _controller;
+
+  _ComposerPasteAction({
+    required Future<_PasteImageResult> Function() pasteImage,
+    required TextEditingController controller,
+  }) : _pasteImage = pasteImage,
+       _controller = controller;
 
   @override
   Object? invoke(PasteTextIntent intent) {
     // callingAction is available only during this synchronous override call,
     // so retain Flutter's normal text-paste action before reading the image.
     final textPasteAction = callingAction;
-    unawaited(_pasteImageOrText(intent: intent, textPasteAction: textPasteAction));
+    final initialValue = _controller.value;
+    unawaited(
+      _pasteImageOrText(
+        intent: intent,
+        textPasteAction: textPasteAction,
+        initialValue: initialValue,
+      ),
+    );
     return null;
   }
 
   Future<void> _pasteImageOrText({
     required PasteTextIntent intent,
     required Action<PasteTextIntent>? textPasteAction,
+    required TextEditingValue initialValue,
   }) async {
-    if (!await _pasteImage()) textPasteAction?.invoke(intent);
+    try {
+      if (await _pasteImage() != _PasteImageResult.noImage) return;
+      // Preserve the selection from the paste intent when only the caret moved
+      // while the clipboard image probe was pending. Never overwrite text that
+      // genuinely changed during that interval.
+      if (_controller.text == initialValue.text && initialValue.selection.isValid) {
+        _controller.selection = initialValue.selection;
+      }
+      textPasteAction?.invoke(intent);
+    } catch (error, stackTrace) {
+      loge("Failed to handle composer paste", error, stackTrace);
+    }
   }
 
   @override
@@ -126,6 +152,7 @@ class _PromptInputState extends State<PromptInput> {
   final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
   late final Action<PasteTextIntent> _pasteAction;
+  int _pasteGeneration = 0;
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
@@ -207,7 +234,10 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void initState() {
     super.initState();
-    _pasteAction = _ComposerPasteAction(pasteImage: _handlePasteImage);
+    _pasteAction = _ComposerPasteAction(
+      pasteImage: _handlePasteImage,
+      controller: _controller,
+    );
     final chatInputModeCubit = context.read<ChatInputModeCubit>();
     _chatInputMode = chatInputModeCubit.state;
     _chatInputModeSub = chatInputModeCubit.stream.listen((inputMode) {
@@ -396,6 +426,7 @@ class _PromptInputState extends State<PromptInput> {
       );
     }
 
+    _pasteGeneration++;
     if (_attachments.isNotEmpty) {
       setState(_attachments.clear);
     }
@@ -420,6 +451,7 @@ class _PromptInputState extends State<PromptInput> {
       // The owning Cubit already persisted each edit, so only restore the new
       // immutable snapshot here. Staged attachments belong to the previous
       // session and never carry across.
+      _pasteGeneration++;
       _attachments.clear();
       _restoreDraft(draft: widget.initialDraft);
     }
@@ -781,6 +813,8 @@ class _PromptInputState extends State<PromptInput> {
       context,
       controller: _controller,
       placeholder: _hintText(context),
+      pasteAction: _pasteAction,
+      contextMenuBuilder: (_, editableTextState) => _buildComposerContextMenu(editableTextState: editableTextState),
     );
     if (!mounted) return;
     // Return the keyboard to the inline field. Via [_enterTypingMode] because
@@ -1255,13 +1289,15 @@ class _PromptInputState extends State<PromptInput> {
     if (!kIsWeb && widget.attachmentsSupported) {
       final pasteIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.paste);
       final existingPaste = pasteIndex < 0 ? null : buttonItems[pasteIndex];
+      final existingPasteCallback = existingPaste?.onPressed;
       final pasteItem = ContextMenuButtonItem(
         type: ContextMenuButtonType.paste,
         label: existingPaste?.label,
         onPressed: () => unawaited(
           _pasteImageOrText(
-            onTextPaste:
-                existingPaste?.onPressed ?? () => unawaited(editableTextState.pasteText(SelectionChangedCause.toolbar)),
+            onTextPaste: existingPasteCallback == null
+                ? () => editableTextState.pasteText(SelectionChangedCause.toolbar)
+                : () async => existingPasteCallback(),
             onImagePasted: editableTextState.hideToolbar,
           ),
         ),
@@ -1463,21 +1499,27 @@ class _PromptInputState extends State<PromptInput> {
 
   /// Reads an image before allowing Flutter's normal text paste to run. An
   /// image wins when the clipboard exposes both binary and text formats.
-  Future<bool> _handlePasteImage() async {
-    if (!widget.attachmentsSupported) return false;
+  Future<_PasteImageResult> _handlePasteImage() async {
+    if (!widget.attachmentsSupported) return _PasteImageResult.noImage;
     final draftIdentity = widget.draftIdentity;
+    final pasteGeneration = _pasteGeneration;
     final Uint8List? bytes;
     try {
       bytes = await _imageClipboard.readImage();
     } catch (error, stackTrace) {
       loge("Failed to read a pasted image", error, stackTrace);
-      return false;
+      return _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)
+          ? _PasteImageResult.stale
+          : _PasteImageResult.noImage;
     }
 
     // Never let an asynchronous paste land in a composer that replaced the
     // one where the action started.
-    if (!mounted || draftIdentity != widget.draftIdentity || !widget.attachmentsSupported) return true;
-    if (bytes == null) return false;
+    if (_isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
+      return _PasteImageResult.stale;
+    }
+    if (!mounted) return _PasteImageResult.stale;
+    if (bytes == null) return _PasteImageResult.noImage;
 
     try {
       final attachment = _imagePicker.attachmentFromBytes(bytes: bytes, filename: null);
@@ -1490,22 +1532,38 @@ class _PromptInputState extends State<PromptInput> {
       loge("Failed to attach a pasted image", error, stackTrace);
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
     }
-    return true;
+    return _PasteImageResult.handled;
   }
 
   Future<void> _pasteImageOrText({
-    required VoidCallback onTextPaste,
+    required Future<void> Function() onTextPaste,
     required VoidCallback onImagePasted,
   }) async {
-    if (await _handlePasteImage()) {
-      onImagePasted();
-    } else {
-      onTextPaste();
+    try {
+      switch (await _handlePasteImage()) {
+        case _PasteImageResult.noImage:
+          await onTextPaste();
+          return;
+        case _PasteImageResult.handled:
+          if (mounted) onImagePasted();
+          return;
+        case _PasteImageResult.stale:
+          return;
+      }
+    } catch (error, stackTrace) {
+      loge("Failed to handle composer paste", error, stackTrace);
     }
   }
 
+  bool _isPasteStale({required String draftIdentity, required int pasteGeneration}) {
+    return !mounted ||
+        draftIdentity != widget.draftIdentity ||
+        pasteGeneration != _pasteGeneration ||
+        !widget.attachmentsSupported;
+  }
+
   void _stageAttachment({required ComposerAttachment attachment}) {
-    if (_attachmentsDecodedSizeWith(attachment: attachment) > maxInlineMessageAttachmentBytes) {
+    if (_attachmentsDecodedSizeWith(attachment: attachment) > maxComposerPromptAttachmentBytes) {
       _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
       return;
     }
@@ -1513,9 +1571,8 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   /// Total decoded bytes the staged strip would carry with [attachment]
-  /// added. The per-message inline budget reuses the per-image transport
-  /// limit, so a many-image prompt cannot multiply relay frames past what a
-  /// single maximal image is allowed to cost.
+  /// added. The outbound budget is aggregate, so multiple images cannot each
+  /// consume the full transport allowance.
   int _attachmentsDecodedSizeWith({required ComposerAttachment attachment}) {
     var total = attachment.bytes.length;
     for (final staged in _attachments) {

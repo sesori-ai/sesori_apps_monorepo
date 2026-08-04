@@ -1363,10 +1363,10 @@ abstract class AppLocalizations {
   /// **'That image format isn\'t supported.'**
   String get sessionDetailAttachmentUnsupported;
 
-  /// Snackbar shown when adding another image would push the message's combined attachment size past the inline limit.
+  /// Snackbar shown when adding another image would push the message's combined attachment size past the outbound composer limit.
   ///
   /// In en, this message translates to:
-  /// **'Attached images are limited to 5 MB per message.'**
+  /// **'Attached images are limited to 50 MB per message.'**
   String get sessionDetailAttachmentBudgetExceeded;
 
   /// Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images.
