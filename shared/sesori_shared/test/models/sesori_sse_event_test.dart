@@ -12,6 +12,15 @@ void main() {
     expect(SesoriSseEvent.fromJson(json), event);
   });
 
+  test('command catalog update round-trips its plugin scope', () {
+    const event = SesoriSseEvent.commandCatalogUpdated(pluginId: 'cursor');
+
+    final json = event.toJson();
+
+    expect(json, {'type': 'command.catalog.updated', 'pluginId': 'cursor'});
+    expect(SesoriSseEvent.fromJson(json), event);
+  });
+
   // ---------------------------------------------------------------------------
   // Round-trip JSON compatibility
   // ---------------------------------------------------------------------------

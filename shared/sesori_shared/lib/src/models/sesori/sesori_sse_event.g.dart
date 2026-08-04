@@ -69,6 +69,16 @@ Map<String, dynamic> _$SesoriPluginManagementChangedToJson(
   'type': instance.$type,
 };
 
+SesoriCommandCatalogUpdated _$SesoriCommandCatalogUpdatedFromJson(Map json) =>
+    SesoriCommandCatalogUpdated(
+      pluginId: json['pluginId'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriCommandCatalogUpdatedToJson(
+  SesoriCommandCatalogUpdated instance,
+) => <String, dynamic>{'pluginId': instance.pluginId, 'type': instance.$type};
+
 SesoriSessionCreated _$SesoriSessionCreatedFromJson(Map json) =>
     SesoriSessionCreated(
       info: Session.fromJson(Map<String, dynamic>.from(json['info'] as Map)),

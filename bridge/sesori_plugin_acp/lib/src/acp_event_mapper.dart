@@ -340,13 +340,10 @@ class AcpEventMapper {
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "available_commands_update":
         // The advertised commands themselves are tracked by AcpCommandTracker
-        // (served via getCommands); this makes the matching client session
-        // re-fetch its snapshot so the new command list becomes visible.
+        // and served via getCommands. The catalog is process-wide, while the
+        // options-change event retains the originating session for persistence.
         return [
-          BridgeSseSessionsUpdated(
-            sessionID: sessionId,
-            projectID: projectForSession(sessionId: sessionId),
-          ),
+          const BridgeSseCommandCatalogUpdated(),
           BridgeSseSessionOptionsChanged(sessionID: sessionId),
         ];
       case "session_info_update":

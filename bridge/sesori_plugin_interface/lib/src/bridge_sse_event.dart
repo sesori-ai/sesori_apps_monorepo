@@ -32,6 +32,11 @@ class BridgeSseGlobalDisposed extends BridgeSseEvent {
   const BridgeSseGlobalDisposed();
 }
 
+/// Signals that the emitting plugin's process-wide command catalog changed.
+class BridgeSseCommandCatalogUpdated extends BridgeSseEvent {
+  const BridgeSseCommandCatalogUpdated();
+}
+
 class BridgeSseSessionCreated extends BridgeSseEvent {
   final Map<String, dynamic> info;
   const BridgeSseSessionCreated({required this.info});

@@ -17,7 +17,7 @@ class BridgeEventMapper {
   }) : _failureReporter = failureReporter;
 
   /// Maps a [BridgeSseEvent] to a [SesoriSseEvent], or null if unmappable.
-  SesoriSseEvent? map(BridgeSseEvent event) {
+  SesoriSseEvent? map({required BridgeSseEvent event, required String pluginId}) {
     try {
       return switch (event) {
         BridgeSseTerminalHandoff() => throw StateError("terminal handoff must be unwrapped by Orchestrator"),
@@ -25,6 +25,7 @@ class BridgeEventMapper {
         BridgeSseServerHeartbeat() => null,
         BridgeSseServerInstanceDisposed() => null,
         BridgeSseGlobalDisposed() => null,
+        BridgeSseCommandCatalogUpdated() => SesoriSseEvent.commandCatalogUpdated(pluginId: pluginId),
         BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionsUpdated(:final projectID) => SesoriSseEvent.sessionsUpdated(projectID: projectID),

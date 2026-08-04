@@ -579,19 +579,13 @@ void main() {
       expect(late.whereType<BridgeSseMessagePartDelta>().single.messageID, firstId);
     });
 
-    test("plan maps to a todo update, commands mark their project sessions stale", () {
+    test("plan maps to a todo update, commands invalidate the plugin catalog", () {
       expect(
         mapper.map(update({"sessionUpdate": "plan", "entries": const <Object?>[]})).single,
         isA<BridgeSseTodoUpdated>(),
       );
-      mapper.setSessionProject("s1", "/repo/other");
       final events = mapper.map(update({"sessionUpdate": "available_commands_update"}));
-      expect(
-        events.whereType<BridgeSseSessionsUpdated>().single,
-        isA<BridgeSseSessionsUpdated>()
-            .having((event) => event.sessionID, "sessionID", "s1")
-            .having((event) => event.projectID, "projectID", "/repo/other"),
-      );
+      expect(events.whereType<BridgeSseCommandCatalogUpdated>(), hasLength(1));
       expect(
         events.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "s1",
