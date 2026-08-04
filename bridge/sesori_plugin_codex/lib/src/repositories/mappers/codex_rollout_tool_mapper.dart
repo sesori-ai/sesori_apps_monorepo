@@ -139,9 +139,7 @@ class CodexRolloutToolMapper {
       :final name,
       :final input,
     ) when name.toLowerCase() == "exec") {
-      const marker = "tools.exec_command(";
-      final first = input.indexOf(marker);
-      return first >= 0 && input.indexOf(marker, first + marker.length) < 0;
+      return _hasSingleCodeModeCommandInvocation(input);
     }
     return false;
   }
@@ -642,6 +640,71 @@ final RegExp _forwardedGeneratedImageInvocationPrefixPattern = RegExp(
 final RegExp _nestedToolInvocationPrefixPattern = RegExp(
   r"\btools\.[A-Za-z_$][A-Za-z0-9_$.]*\s*\(",
 );
+
+final RegExp _codeModeCommandInvocationPrefixPattern = RegExp(
+  r"\btools\.exec_command\s*\(",
+);
+
+bool _hasSingleCodeModeCommandInvocation(String source) {
+  var invocationCount = 0;
+  int? quote;
+  var escaped = false;
+  var inLineComment = false;
+  var inBlockComment = false;
+  for (var index = 0; index < source.length; index++) {
+    final current = source.codeUnitAt(index);
+    final next = index + 1 < source.length ? source.codeUnitAt(index + 1) : null;
+    if (inLineComment) {
+      if (current == 0x0A || current == 0x0D) inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (current == 0x2A && next == 0x2F) {
+        inBlockComment = false;
+        index++;
+      }
+      continue;
+    }
+    if (quote != null) {
+      if (escaped) {
+        escaped = false;
+      } else if (current == 0x5C) {
+        escaped = true;
+      } else if (current == quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (current == 0x2F && next == 0x2F) {
+      inLineComment = true;
+      index++;
+      continue;
+    }
+    if (current == 0x2F && next == 0x2A) {
+      inBlockComment = true;
+      index++;
+      continue;
+    }
+    if (current == 0x22 || current == 0x27 || current == 0x60) {
+      quote = current;
+      continue;
+    }
+    final invocation = _codeModeCommandInvocationPrefixPattern.matchAsPrefix(
+      source,
+      index,
+    );
+    if (invocation == null) continue;
+    final invocationEnd = _matchingInvocationEnd(
+      source: source,
+      openParenthesisIndex: invocation.end - 1,
+    );
+    if (invocationEnd == null) return false;
+    invocationCount++;
+    if (invocationCount > 1) return false;
+    index = invocationEnd - 1;
+  }
+  return invocationCount == 1;
+}
 
 bool _isGeneratedImageInvocation(String input) {
   final directive = _generatedExecDirectivePattern.firstMatch(input);

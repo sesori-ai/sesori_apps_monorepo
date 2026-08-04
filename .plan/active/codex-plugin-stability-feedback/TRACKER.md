@@ -48,7 +48,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as `149e7914` |
-| [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 135 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) open; verified; D1 and current `main` merged forward |
+| [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 299 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) open; verified; D1 and current `main` merged forward |
 | [ ] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | Existing `36ee48e9`; blocked on Step 2 |
 | [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | Existing `a32b6c29`; blocked on Step 3 |
 | [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 214 | Existing `9da8f2e1`; blocked on Step 4 |
@@ -185,11 +185,17 @@ origin/main
   `8ee54e0b`, then merged `origin/main` at `4f890087` as `24e07907`. Existing
   production commit `58585e1f` remains in its original stack position; no
   rebase, reset, reorder, or cherry-pick occurred.
-- **Step 2 production verification:** The focused lifecycle-tracker test suite
-  and all 298 Codex package tests pass. `dart analyze --fatal-infos` reports no
+- **Step 2 production verification:** All 33 focused lifecycle-tracker tests and
+  all 301 Codex package tests pass. `dart analyze --fatal-infos` reports no
   issues. Both the branch comparison and current working-tree `git diff --check`
   pass.
-- **Step 2 change size:** 135 lines against the PR merge base,
+- **Step 2 PR review:** Four bot threads produced one valid correction group.
+  The code-mode classifier now finds exactly one balanced command invocation
+  outside strings and comments while accepting invocation whitespace; three
+  regressions failed before the correction. The separate direct and code-mode
+  queues remain intentional because a direct rollout `exec_command` record is
+  authoritative and the custom code-mode call is only its fallback.
+- **Step 2 change size:** 299 lines against the PR merge base,
   including production code, tests, and plan/tracker updates. This is below the
   1,500-line soft cap.
 - **Step 2 delivery:** Pushed and opened as
@@ -215,3 +221,8 @@ origin/main
 - **2026-08-04 — Automatic continuation:** After every merge notification,
   proceed immediately with the next numbered step without another user prompt;
   stop only for a material decision or blocker.
+- **2026-08-04 — Code-mode fallback ordering:** Preserve direct rollout command
+  correlation ahead of the custom code-mode fallback. A shared FIFO would let
+  an outer custom wrapper claim the app-server item before its authoritative
+  direct rollout call; no ordinary-flow evidence justifies that regression to
+  protect a theoretical mixed-form ordering case.
