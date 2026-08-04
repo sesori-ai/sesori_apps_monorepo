@@ -138,6 +138,46 @@ void main() {
       expect(loaded, isA<SessionDetailLoadResultLoaded>());
     });
 
+    test("reloadCommands reads only the command catalog", () async {
+      connectionStatus.add(connectedStatus);
+      final command = testCommandInfo(name: "compact", template: "/compact");
+      when(
+        () => repository.listCommands(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
+
+      final result = await service.reloadCommands(projectId: "project-1", pluginId: "plugin-1");
+
+      expect(result, isA<SessionCommandCatalogLoadResultLoaded>());
+      expect((result as SessionCommandCatalogLoadResultLoaded).commands, [command]);
+      verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+      verifyNoMoreInteractions(repository);
+    });
+
+    test("reloadCommands waits for a connection without reading the catalog", () async {
+      final result = await service.reloadCommands(projectId: "project-1", pluginId: "plugin-1");
+
+      expect(result, isA<SessionCommandCatalogLoadResultWaitingForConnection>());
+      verifyNever(
+        () => repository.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
+    });
+
+    test("reloadCommands preserves command failures as typed results", () async {
+      connectionStatus.add(connectedStatus);
+      final error = ApiError.generic();
+      when(
+        () => repository.listCommands(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer((_) async => ApiResponse.error(error));
+
+      final result = await service.reloadCommands(projectId: "project-1", pluginId: "plugin-1");
+
+      expect(result, isA<SessionCommandCatalogLoadResultFailed>());
+      expect((result as SessionCommandCatalogLoadResultFailed).error, same(error));
+    });
+
     test("loads children before pending input", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);

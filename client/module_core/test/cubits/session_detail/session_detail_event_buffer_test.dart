@@ -229,7 +229,7 @@ void main() {
     test("refreshes commands when sessions.updated arrives during loading", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final loadCompleter = Completer<SessionDetailLoadResult>();
-      var reloadCount = 0;
+      var commandReloadCount = 0;
 
       when(
         () => mockLoadService.load(
@@ -238,30 +238,14 @@ void main() {
         ),
       ).thenAnswer((_) => loadCompleter.future);
       when(
-        () => mockLoadService.reload(
-          sessionId: _sessionId,
-          projectId: any(named: "projectId"),
+        () => mockLoadService.reloadCommands(
+          projectId: "project-1",
+          pluginId: "opencode",
         ),
       ).thenAnswer((_) async {
-        reloadCount++;
-        return SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
-            projectId: "project-1",
-            pluginId: "opencode",
-            messages: const <MessageWithParts>[],
-            pendingQuestions: const <PendingQuestion>[],
-            pendingPermissions: const <PendingPermission>[],
-            childSessions: const <Session>[],
-            statuses: const <String, SessionStatus>{},
-            agents: const <AgentInfo?>[],
-            providerData: null,
-            commands: [testCommandInfo(name: "compact", template: "/compact")],
-            canonicalSessionTitle: null,
-            promptDefaults: null,
-            isRootSession: true,
-            isArchived: false,
-          ),
-          isBridgeConnected: true,
+        commandReloadCount++;
+        return SessionCommandCatalogLoadResult.loaded(
+          commands: [testCommandInfo(name: "compact", template: "/compact")],
         );
       });
 
@@ -284,20 +268,30 @@ void main() {
             agents: <AgentInfo?>[],
             providerData: null,
             commands: <CommandInfo>[],
-            canonicalSessionTitle: null,
+            canonicalSessionTitle: "Initial title",
             promptDefaults: null,
             isRootSession: true,
-            isArchived: false,
+            isArchived: true,
           ),
           isBridgeConnected: true,
         ),
       );
 
-      for (var i = 0; i < 100 && reloadCount == 0; i++) {
+      for (var i = 0; i < 100 && commandReloadCount == 0; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 5));
       }
-      expect(reloadCount, 1);
+      expect(commandReloadCount, 1);
       await _awaitLoadedWithCommand(cubit, command: "compact");
+      final loaded = cubit.state as SessionDetailLoaded;
+      expect(loaded.sessionTitle, "Initial title");
+      expect(loaded.isArchived, isTrue);
+      expect(loaded.isRefreshing, isFalse);
+      verifyNever(
+        () => mockLoadService.reload(
+          sessionId: any(named: "sessionId"),
+          projectId: any(named: "projectId"),
+        ),
+      );
     });
 
     test("clears pending events when load fails", () async {

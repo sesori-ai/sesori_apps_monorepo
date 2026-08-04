@@ -4,12 +4,11 @@
 
 - **Plan slug:** `session-refresh-reconnects`
 - **Implementation base:** `main` at
-  `2408b57487bb7a6048cf61221bc777b9c81ab70c`
-- **Series state:** Step 1/3 PR open
-- **Current step:** plan PR
-  [#725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725)
-- **Next action:** review and merge Step 1, then implement debug diagnostics and
-  the unnecessary-detail-refresh correction in Step 2
+  `7b2fa65ad1b210dd6a52714e14ce9b5951d0aa68`
+- **Series state:** Step 1/3 merged; Step 2/3 implementation complete
+- **Current step:** prepare the Step 2 implementation PR
+- **Next action:** commit, push, and open the Step 2 PR, then collect Step 3
+  observation evidence
 - **Searchable diagnostic prefix:** `[session-refresh]`
 - **External overlap:** PR
   [#722](https://github.com/sesori-ai/sesori_apps_monorepo/pull/722) owns bridge
@@ -51,8 +50,8 @@
 
 | Option | Status | Planned/actual scope | Decision evidence |
 |---|---|---:|---|
-| Debug refresh diagnostics with `[session-refresh]` | Selected for Step 2 | 45-90 estimated changed lines alone | Needed to identify future refresh cause without guessing |
-| Redirect `sessions.updated` to command-only refresh | Selected for Step 2 | 220-400 estimated changed lines combined with diagnostics | Removes wrong full-detail reload while retaining v1.6.0 command compatibility |
+| Debug refresh diagnostics with `[session-refresh]` | Implemented in Step 2 | Included in 846 code/test changed lines before delivery metadata | Every bounded trigger/action/result is searchable without payload data |
+| Redirect `sessions.updated` to command-only refresh | Implemented in Step 2 | Included in 846 code/test changed lines before delivery metadata | Preserves v1.6.0 command discovery without replacing detail state |
 | Transcript-only mutation epoch | Deferred | 145-270 estimated | Do not protect only the observed field before testing intended refreshes |
 | Grouped snapshot reconciliation | Deferred | 440-810 estimated | Preferred client hardening only if intended refresh reproduces state rollback |
 | Apply-live event journal/replay | Rejected | 370-670 estimated | Non-idempotent deltas and modal side effects are unsafe without a cursor |
@@ -65,8 +64,8 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | [PR #725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725) open |
-| [ ] | 2/3 | Owner-provided implementation branch | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 220-400 | Blocked on Step 1 merge |
+| [x] | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | [PR #725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725) merged |
+| [ ] | 2/3 | `opencode-session-reconnects` | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 220-400 | Implementation complete; PR pending |
 | [ ] | 3/3 | Owner-provided assessment branch | `🌱 [session-refresh-reconnects] docs: assess session refresh evidence [step 3/3]` | 80-200 | Blocked on Step 2 observation evidence |
 
 ## Step 1 Checklist
@@ -83,32 +82,32 @@
 
 ## Step 2 Checklist
 
-- [ ] Add a private closed trigger model; do not branch on log strings.
-- [ ] Add debug-only `observed`, `ignored`, `redirected`, `queued`, `coalesced`,
+- [x] Add a private closed trigger model; do not branch on log strings.
+- [x] Add debug-only `observed`, `ignored`, `redirected`, `queued`, `coalesced`,
   `started`, and `completed` diagnostics with the exact `[session-refresh]`
   prefix.
-- [ ] Treat a missing causal entry as evidence only in a build configured for
+- [x] Treat a missing causal entry as evidence only in a build configured for
   `LogLevel.debug` or `LogLevel.trace`; add no release-visible causal logging or
   production log-level toggle.
-- [ ] Correlate start/completion with a Cubit-local refresh ID and duration.
-- [ ] Keep prompt/transcript/code/path/command/raw-error data out of the causal
+- [x] Correlate start/completion with a Cubit-local refresh ID and duration.
+- [x] Keep prompt/transcript/code/path/command/raw-error data out of the causal
   diagnostics.
-- [ ] Stop matching `sessions.updated` from invoking full snapshot reload.
-- [ ] Expose targeted command loading through `SessionDetailLoadService`; the
+- [x] Stop matching `sessions.updated` from invoking full snapshot reload.
+- [x] Expose targeted command loading through `SessionDetailLoadService`; the
   Cubit owns at most one active and one trailing trigger.
-- [ ] Preserve staged command only when still available.
-- [ ] Preserve existing commands after refresh failure.
-- [ ] Preserve original error and stack context in operational silent-refresh
+- [x] Preserve staged command only when still available.
+- [x] Preserve existing commands after refresh failure.
+- [x] Preserve original error and stack context in operational silent-refresh
   failure warnings while keeping bounded causal entries debug-only.
-- [ ] Retain initial-load event buffering and v1.6.0 bridge compatibility with a
+- [x] Retain initial-load event buffering and v1.6.0 bridge compatibility with a
   dated cleanup comment.
-- [ ] Prove normal accepted text sends plus ordinary SSE do not reload.
-- [ ] Prove matching project events never fetch or replace transcript state.
-- [ ] Prove initial-load command discovery still converges.
-- [ ] Prove irrelevant projects, bursts, and failures behave as specified.
-- [ ] Prove intended reconnect/resume/stale/command refreshes log their cause and
+- [x] Prove normal accepted text sends plus ordinary SSE do not reload.
+- [x] Prove matching project events never fetch or replace transcript state.
+- [x] Prove initial-load command discovery still converges.
+- [x] Prove irrelevant projects, bursts, and failures behave as specified.
+- [x] Prove intended reconnect/resume/stale/command refreshes log their cause and
   retain current behavior.
-- [ ] Run targeted tests, strict module analysis, and `git diff --check`.
+- [x] Run targeted tests, strict module analysis, and `git diff --check`.
 - [ ] Record actual change count, verification, review, and delivery evidence.
 
 ## Observation Log
@@ -156,6 +155,21 @@ tokens.
   architecture-bearing client flow and deferred wire boundaries, so
   `aristotle-plan-review` was correctly invoked and approved it.
 
+## Step 2 Architecture Review
+
+- **Reviewer:** `aristotle-impl-review`
+- **Date:** 2026-08-04
+- **Reviewed scope:** Step 2 production changes in `SessionDetailCubit` and
+  `SessionDetailLoadService`
+- **Pass 1 findings applied:** require non-null plugin identity at the Service
+  boundary and retain failed/connection-blocked command invalidations.
+- **Pass 2 finding applied with user approval:** generation-fence targeted
+  command publication against a subsequently applied full command-bearing
+  snapshot.
+- **Final status:** both allowed review passes rejected before their findings
+  were fixed. The user selected the recommended generation fence; all findings
+  are implemented and verified, with no third review under the two-pass cap.
+
 ## Verification Log
 
 - **Step 1 documentation validation:** `git diff --check` passed; plan/tracker
@@ -163,10 +177,16 @@ tokens.
   and diagnostic prefix agree
 - **Step 1 changed lines:** 665 documentation-only lines including delivery metadata
 - **Step 1 PR:** [#725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725)
-  open from `6a6e8cf9`
-- **Step 2 implementation:** pending
-- **Step 2 verification:** pending
-- **Step 2 review:** pending
+  merged
+- **Step 2 implementation:** debug refresh traces, targeted command-catalog
+  invalidation, bounded retry/coalescing, and full-snapshot generation fencing
+- **Step 2 scope variance:** 928 total changed lines including tracker metadata
+  (846 code/test) versus 220-400 planned; architecture findings added non-null
+  identity, retained invalidations, bounded retries, and generation fencing
+- **Step 2 verification:** `dart test` passed all 1,008 `module_core` tests;
+  `dart analyze --fatal-infos` and `git diff --check` passed
+- **Step 2 review:** two architecture passes completed; all findings fixed under
+  the user-approved generation-fence decision and two-pass review cap
 - **Step 2 PR:** pending
 - **Step 3 evidence assessment:** pending
 - **Final disposition:** pending

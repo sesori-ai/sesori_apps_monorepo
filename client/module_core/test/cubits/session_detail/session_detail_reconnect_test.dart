@@ -204,7 +204,7 @@ void main() {
     expect(cubit.state, isA<SessionDetailLoaded>());
   });
 
-  test("ignores sessions.updated events from unrelated projects", () async {
+  test("redirects matching sessions.updated bursts to command-only refreshes", () async {
     final mockLoadService = MockSessionDetailLoadService();
     final mockSessionRepository = MockSessionRepository();
     final mockConnectionService = MockConnectionService();
@@ -213,6 +213,11 @@ void main() {
     final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     final globalEvents = StreamController<SseEvent>.broadcast();
     final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
+    final commandRefresh = Completer<SessionCommandCatalogLoadResult>();
+    var commandReloadCount = 0;
+    final initialCommand = testCommandInfo(name: "review", template: "/review-old");
+    final firstRefreshedCommand = testCommandInfo(name: "review", template: "/review-current");
+    final trailingCommand = testCommandInfo(name: "review", template: "/review-latest");
 
     addTearDown(sessionEvents.close);
     addTearDown(globalEvents.close);
@@ -235,22 +240,22 @@ void main() {
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
 
-    const loadedResult = SessionDetailLoadResult.loaded(
+    final loadedResult = SessionDetailLoadResult.loaded(
       snapshot: SessionDetailSnapshot(
         projectId: "project-1",
         pluginId: "opencode",
-        messages: <MessageWithParts>[],
-        pendingQuestions: <PendingQuestion>[],
-        pendingPermissions: <PendingPermission>[],
-        childSessions: <Session>[],
-        statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        messages: [_messageWithParts()],
+        pendingQuestions: const <PendingQuestion>[],
+        pendingPermissions: const <PendingPermission>[],
+        childSessions: const <Session>[],
+        statuses: const <String, SessionStatus>{},
+        agents: const <AgentInfo?>[],
         providerData: null,
-        commands: <CommandInfo>[],
-        canonicalSessionTitle: null,
+        commands: [initialCommand],
+        canonicalSessionTitle: "Detail title",
         promptDefaults: null,
         isRootSession: true,
-        isArchived: false,
+        isArchived: true,
       ),
       isBridgeConnected: true,
     );
@@ -264,13 +269,15 @@ void main() {
       (_) async => loadedResult,
     );
     when(
-      () => mockLoadService.reload(
-        sessionId: _sessionId,
-        projectId: any(named: "projectId"),
+      () => mockLoadService.reloadCommands(
+        projectId: "project-1",
+        pluginId: "opencode",
       ),
-    ).thenAnswer(
-      (_) async => loadedResult,
-    );
+    ).thenAnswer((_) {
+      commandReloadCount++;
+      if (commandReloadCount == 1) return commandRefresh.future;
+      return Future.value(SessionCommandCatalogLoadResult.loaded(commands: [trailingCommand]));
+    });
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
@@ -286,14 +293,17 @@ void main() {
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
+      eventRefreshMinInterval: const Duration(milliseconds: 10),
     );
     addTearDown(cubit.close);
 
     await _awaitLoaded(cubit);
     verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
+    cubit.stageCommand(initialCommand);
+    final before = cubit.state as SessionDetailLoaded;
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
-    await Future<void>.delayed(Duration.zero);
+    await pumpEventQueue();
 
     verifyNever(
       () => mockLoadService.reload(
@@ -301,11 +311,97 @@ void main() {
         projectId: any(named: "projectId"),
       ),
     );
+    verifyNever(
+      () => mockLoadService.reloadCommands(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    );
 
+    for (var i = 0; i < 3; i++) {
+      globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
+    }
+    await pumpEventQueue();
+
+    expect(commandReloadCount, 1);
+    final duringRefresh = cubit.state as SessionDetailLoaded;
+    expect(duringRefresh.isRefreshing, isFalse);
+    expect(duringRefresh.messages, before.messages);
+
+    commandRefresh.complete(
+      SessionCommandCatalogLoadResult.loaded(commands: [firstRefreshedCommand]),
+    );
+    for (var i = 0; i < 100 && commandReloadCount < 2; i++) {
+      await pumpEventQueue();
+    }
+
+    expect(commandReloadCount, 2);
+    final refreshed = cubit.state as SessionDetailLoaded;
+    expect(refreshed.availableCommands, [trailingCommand]);
+    expect(refreshed.stagedCommand, trailingCommand);
+    expect(refreshed.messages, before.messages);
+    verifyNever(
+      () => mockLoadService.reload(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
+    );
+
+    final error = StateError("command refresh sentinel");
+    final recoveredCommand = testCommandInfo(name: "review", template: "/review-recovered");
+    var recoveryAttempts = 0;
+    when(
+      () => mockLoadService.reloadCommands(
+        projectId: "project-1",
+        pluginId: "opencode",
+      ),
+    ).thenAnswer((_) async {
+      recoveryAttempts++;
+      if (recoveryAttempts == 1) {
+        return SessionCommandCatalogLoadResult.failed(
+          error: error,
+          stackTrace: StackTrace.current,
+        );
+      }
+      return SessionCommandCatalogLoadResult.loaded(commands: [recoveredCommand]);
+    });
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
-    await Future<void>.delayed(Duration.zero);
+    await pumpEventQueue();
 
-    verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
+    final afterFailure = cubit.state as SessionDetailLoaded;
+    expect(afterFailure.availableCommands, [trailingCommand]);
+    expect(afterFailure.stagedCommand, trailingCommand);
+
+    for (var i = 0; i < 100 && recoveryAttempts < 2; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    expect(recoveryAttempts, 2);
+    expect((cubit.state as SessionDetailLoaded).availableCommands, [recoveredCommand]);
+
+    final staleTargetedRefresh = Completer<SessionCommandCatalogLoadResult>();
+    when(
+      () => mockLoadService.reloadCommands(
+        projectId: "project-1",
+        pluginId: "opencode",
+      ),
+    ).thenAnswer((_) => staleTargetedRefresh.future);
+    when(
+      () => mockLoadService.reload(
+        sessionId: _sessionId,
+        projectId: "project-1",
+      ),
+    ).thenAnswer((_) async => loadedResult);
+    globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
+    await pumpEventQueue();
+
+    await cubit.reload();
+    expect((cubit.state as SessionDetailLoaded).availableCommands, [initialCommand]);
+
+    staleTargetedRefresh.complete(
+      SessionCommandCatalogLoadResult.loaded(commands: [trailingCommand]),
+    );
+    await pumpEventQueue();
+    expect((cubit.state as SessionDetailLoaded).availableCommands, [initialCommand]);
   });
 }
 
