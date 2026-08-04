@@ -50,7 +50,7 @@
 | [x] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as `149e7914` |
 | [x] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 299 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged as `7b2fa65a` |
 | [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
-| [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 584 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) open; verified; D3 and current `main` merged forward |
+| [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 643 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) open; verified; D3 and current `main` merged forward |
 | [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 214 | Existing `9da8f2e1`; blocked on Step 4 |
 | [ ] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 70 | Existing `8f0f4ece`; blocked on Step 5 |
 | [ ] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 308 | Existing `cdd3a305` + `c4767b04`; blocked on Step 6 |
@@ -228,8 +228,8 @@ origin/main
   `e1f2cc78`, then merged `origin/main` at `5aaf979d` as `9cf73e30`. Existing
   production commit `a32b6c29` remains in its original stack position; no
   rebase, reset, reorder, or cherry-pick occurred.
-- **Step 4 production verification:** All 37 focused lifecycle-tracker tests and
-  all 305 Codex package tests pass. `dart analyze --fatal-infos` reports no
+- **Step 4 production verification:** All 38 focused lifecycle-tracker tests and
+  all 306 Codex package tests pass. `dart analyze --fatal-infos` reports no
   issues. Both branch and working-tree `git diff --check` pass.
 - **Step 4 PR review:** Repeated bot-review rounds exposed two valid lifecycle
   seams but also made the thread-wide cleanup approach increasingly coupled.
@@ -245,8 +245,11 @@ origin/main
   the plugin only drains, forwards evidence, and emits returned projections.
   Regressions cover omitted turn IDs, external/newer turns, pending completed
   candidates, stale late rollout output, repeated literal `Output:` text, and
-  executor-envelope overlap.
-- **Step 4 change size:** 584 lines against the PR merge base,
+  executor-envelope overlap. Turn-scoped terminal evidence now leaves a newer
+  rollout turn untouched. Late app-server `aggregatedOutput` replaces the
+  provisional rollout envelope as the authoritative process output, removing
+  the custom overlap parser and handling repeated polling envelopes directly.
+- **Step 4 change size:** 643 lines against the PR merge base,
   including the inherited Step 3 correction, production code, tests, and
   plan/tracker updates. This is below the 1,500-line soft cap.
 - **Step 4 delivery:** Pushed and opened as

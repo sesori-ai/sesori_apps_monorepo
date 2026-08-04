@@ -1120,7 +1120,10 @@ void main() {
             "Output:\n"
             "early output\n"
             "Output:\n"
-            "literal output",
+            "literal output\n"
+            "Script running with cell ID 7\n"
+            "Output:\n"
+            "second poll output",
       ),
     );
     final aborted = target
@@ -1145,6 +1148,7 @@ void main() {
             "early output\n"
             "Output:\n"
             "literal output\n"
+            "second poll output\n"
             "late command output",
       ),
     );
@@ -1160,6 +1164,10 @@ void main() {
     );
     expect(
       RegExp("literal output").allMatches(lateCompletion?.output ?? ""),
+      hasLength(1),
+    );
+    expect(
+      RegExp("second poll output").allMatches(lateCompletion?.output ?? ""),
       hasLength(1),
     );
 
@@ -1277,6 +1285,59 @@ void main() {
         line: _toolOutput(
           callId: "call-old",
           output: "stale old output",
+        ),
+      ),
+      isEmpty,
+    );
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-new",
+              turnId: "turn-2",
+            ),
+          )
+          ?.canonicalId,
+      "call-new",
+    );
+  });
+
+  test("older terminal notification preserves rollout state for a newer turn", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-old", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-old",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-2"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-new", turnId: "turn-2"),
+      );
+
+    expect(
+      target.observeTerminalNotification(
+        notification: _terminalNotification(
+          method: "turn/completed",
+          turnId: "turn-1",
+          turnStatus: "failed",
         ),
       ),
       isEmpty,
@@ -1818,13 +1879,18 @@ CodexServerNotification _commandNotification({
 
 CodexServerNotification _terminalNotification({
   required String method,
+  String? turnId,
   String? turnStatus,
 }) {
   return CodexServerNotification(
     method: method,
     params: {
       "threadId": "thread-1",
-      if (turnStatus != null) "turn": {"status": turnStatus},
+      if (turnId != null || turnStatus != null)
+        "turn": {
+          "id": ?turnId,
+          "status": ?turnStatus,
+        },
     },
   );
 }

@@ -1169,6 +1169,12 @@ void main() {
       rollout.writeAsStringSync(record.substring(0, split), mode: FileMode.append);
 
       final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      final failedTool = plugin.events.firstWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part.messageID == "call-error" &&
+            event.part.state?.status == PluginToolStatus.error,
+      );
       fake.pushNotification("error", {
         "threadId": sessionId,
         "error": {"message": "turn failed"},
@@ -1178,6 +1184,7 @@ void main() {
 
       rollout.writeAsStringSync("${record.substring(split)}\n", mode: FileMode.append);
       await idle.timeout(const Duration(seconds: 1));
+      await failedTool.timeout(const Duration(seconds: 1));
       expect(
         events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.messageID),
         contains("call-error"),

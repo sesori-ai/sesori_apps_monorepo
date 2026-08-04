@@ -6,11 +6,6 @@ import "../codex_app_server_client.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
 import "models/codex_projected_tool.dart";
 
-final RegExp _executorOutputBoundaryPattern = RegExp(
-  r"(?:^|\r?\n)(?:Final )?Output:\r?\n",
-  caseSensitive: false,
-);
-
 /// Reduces Codex's rollout and app-server evidence into canonical tool state.
 ///
 /// Codex persists a `call_*` rollout id but emits a separate `exec-*`
@@ -110,7 +105,7 @@ class CodexToolLifecycleTracker {
           tool: retainedTool,
           item: item,
           completed: true,
-          mergeLateOutput: true,
+          useAggregatedOutput: true,
         );
       }
     }
@@ -164,7 +159,7 @@ class CodexToolLifecycleTracker {
       tool: tool,
       item: item,
       completed: notification.method == "item/completed",
-      mergeLateOutput: isLateCompletion,
+      useAggregatedOutput: isLateCompletion,
     );
     if (notification.method == "item/completed") {
       thread.appServerItemAliases.remove(itemId);
@@ -216,7 +211,15 @@ class CodexToolLifecycleTracker {
         "Expected a terminal app-server notification",
       ),
     };
-    final thread = _threads.remove(threadId);
+    final thread = _threads[threadId];
+    final notificationTurnId = _notificationTurnId(
+      params: notification.params,
+    );
+    if (thread?.activeTurnId case final activeTurnId?
+        when notificationTurnId != null && activeTurnId != notificationTurnId) {
+      return const [];
+    }
+    _threads.remove(threadId);
     final updates = <CodexProjectedTool>[];
     if (thread != null) {
       for (final tool in thread.tools.values) {
@@ -540,7 +543,7 @@ class CodexToolLifecycleTracker {
     required _TrackedTool tool,
     required Map<Object?, Object?> item,
     required bool completed,
-    required bool mergeLateOutput,
+    required bool useAggregatedOutput,
   }) {
     final command = item["command"];
     tool.title ??= _rolloutToolMapper.logicalCommandTitle(
@@ -549,11 +552,8 @@ class CodexToolLifecycleTracker {
     if (item["aggregatedOutput"] case final String output) {
       final clippedOutput = _rolloutToolMapper.clipOutput(output);
       tool.appServerOutput = clippedOutput;
-      if (mergeLateOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
-        tool.rolloutOutput = _mergeLateOutput(
-          previous: tool.rolloutOutput,
-          current: clippedOutput,
-        );
+      if (useAggregatedOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
+        tool.rolloutOutput = clippedOutput;
       }
     }
     final exitCode = item["exitCode"];
@@ -598,30 +598,6 @@ class CodexToolLifecycleTracker {
     ]);
   }
 
-  String? _mergeLateOutput({
-    required String? previous,
-    required String current,
-  }) {
-    if (previous == null || previous.isEmpty) {
-      return _rolloutToolMapper.clipOutput(current);
-    }
-    if (previous.endsWith(current)) return previous;
-    if (current.contains(previous)) {
-      return _rolloutToolMapper.clipOutput(current);
-    }
-    final outputBoundary = _executorOutputBoundaryPattern.firstMatch(previous);
-    if (outputBoundary != null) {
-      final previousProcessOutput = previous.substring(outputBoundary.end);
-      if (previousProcessOutput.isNotEmpty && current.startsWith(previousProcessOutput)) {
-        return _mergeOutput(
-          previous: previous,
-          current: current.substring(previousProcessOutput.length),
-        );
-      }
-    }
-    return _mergeOutput(previous: previous, current: current);
-  }
-
   void _mergeAttachments({
     required List<PluginMessageAttachment> accumulated,
     required Iterable<PluginMessageAttachment> current,
@@ -635,6 +611,13 @@ class CodexToolLifecycleTracker {
   }
 
   String _cellKey({required String turnId, required String cellId}) => "$turnId\u0000$cellId";
+
+  String? _notificationTurnId({required Map<String, dynamic> params}) {
+    final turn = params["turn"];
+    return _usefulText(
+      value: turn is Map ? turn["id"] : params["turnId"],
+    );
+  }
 
   String? _usefulText({required Object? value}) {
     if (value is! String) return null;
