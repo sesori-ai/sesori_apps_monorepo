@@ -55,6 +55,12 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String snapshotToken,
   }) = SesoriPluginManagementChanged;
 
+  /// Invalidates the process-wide slash-command catalog for one plugin.
+  @FreezedUnionValue("command.catalog.updated")
+  const factory SesoriSseEvent.commandCatalogUpdated({
+    required String pluginId,
+  }) = SesoriCommandCatalogUpdated;
+
   // ---------------------------------------------------------------------------
   // Session — all implement SesoriSessionEvent
   // ---------------------------------------------------------------------------

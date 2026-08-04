@@ -1413,7 +1413,7 @@ class OrchestratorSession {
       }
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
-      final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event);
+      final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event: event, pluginId: pluginId);
       if (generation != null &&
           !_pluginRuntime.isCurrentEvent(
             pluginId: pluginId,

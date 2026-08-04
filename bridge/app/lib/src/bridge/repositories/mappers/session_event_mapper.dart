@@ -46,6 +46,7 @@ class SessionEventMapper {
       BridgeSseServerHeartbeat() ||
       BridgeSseServerInstanceDisposed() ||
       BridgeSseGlobalDisposed() ||
+      BridgeSseCommandCatalogUpdated() ||
       BridgeSseSessionOptionsChanged() ||
       BridgeSsePtyCreated() ||
       BridgeSsePtyUpdated() ||
@@ -260,6 +261,7 @@ class SessionEventMapper {
       BridgeSseServerHeartbeat() ||
       BridgeSseServerInstanceDisposed() ||
       BridgeSseGlobalDisposed() ||
+      BridgeSseCommandCatalogUpdated() ||
       BridgeSseSessionOptionsChanged() ||
       BridgeSsePtyCreated() ||
       BridgeSsePtyUpdated() ||

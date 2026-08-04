@@ -226,10 +226,9 @@ void main() {
       expect(state.children.first.id, "child-1");
     });
 
-    test("refreshes commands when sessions.updated arrives during loading", () async {
+    test("refreshes only commands when a catalog update arrives during loading", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final loadCompleter = Completer<SessionDetailLoadResult>();
-      var reloadCount = 0;
 
       when(
         () => mockLoadService.load(
@@ -238,36 +237,24 @@ void main() {
         ),
       ).thenAnswer((_) => loadCompleter.future);
       when(
-        () => mockLoadService.reload(
-          sessionId: _sessionId,
-          projectId: any(named: "projectId"),
+        () => mockSessionRepository.listCommands(
+          projectId: "project-1",
+          pluginId: "opencode",
         ),
-      ).thenAnswer((_) async {
-        reloadCount++;
-        return SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
-            projectId: "project-1",
-            pluginId: "opencode",
-            messages: const <MessageWithParts>[],
-            pendingQuestions: const <PendingQuestion>[],
-            pendingPermissions: const <PendingPermission>[],
-            childSessions: const <Session>[],
-            statuses: const <String, SessionStatus>{},
-            agents: const <AgentInfo?>[],
-            providerData: null,
-            commands: [testCommandInfo(name: "compact", template: "/compact")],
-            canonicalSessionTitle: null,
-            promptDefaults: null,
-            isRootSession: true,
-            isArchived: false,
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          CommandListResponse(
+            items: [testCommandInfo(name: "compact", template: "/compact")],
           ),
-          isBridgeConnected: true,
-        );
-      });
+        ),
+      );
 
       final cubit = createCubit(loadService: mockLoadService);
       globalEvents.add(
-        SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")),
+        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "cursor")),
+      );
+      globalEvents.add(
+        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
       );
       await Future<void>.delayed(Duration.zero);
 
@@ -293,11 +280,98 @@ void main() {
         ),
       );
 
-      for (var i = 0; i < 100 && reloadCount == 0; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-      }
-      expect(reloadCount, 1);
       await _awaitLoadedWithCommand(cubit, command: "compact");
+      verify(
+        () => mockSessionRepository.listCommands(
+          projectId: "project-1",
+          pluginId: "opencode",
+        ),
+      ).called(1);
+      verifyNever(
+        () => mockSessionRepository.listCommands(
+          projectId: "project-1",
+          pluginId: "cursor",
+        ),
+      );
+      verifyNever(
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      );
+    });
+
+    test("keeps the newest command catalog when refreshes finish out of order", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            pluginId: "opencode",
+            messages: <MessageWithParts>[],
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo?>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+      final responses = <Completer<ApiResponse<CommandListResponse>>>[];
+      when(
+        () => mockSessionRepository.listCommands(
+          projectId: "project-1",
+          pluginId: "opencode",
+        ),
+      ).thenAnswer((_) {
+        final response = Completer<ApiResponse<CommandListResponse>>();
+        responses.add(response);
+        return response.future;
+      });
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+
+      globalEvents.add(
+        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
+      );
+      await _awaitCondition(() => responses.length == 1);
+      globalEvents.add(
+        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
+      );
+      await _awaitCondition(() => responses.length == 2);
+
+      responses[1].complete(
+        ApiResponse.success(
+          CommandListResponse(
+            items: [testCommandInfo(name: "newest", template: "/newest")],
+          ),
+        ),
+      );
+      await _awaitLoadedWithCommand(cubit, command: "newest");
+      responses[0].complete(
+        ApiResponse.success(
+          CommandListResponse(
+            items: [testCommandInfo(name: "stale", template: "/stale")],
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.availableCommands.map((command) => command.name), ["newest"]);
     });
 
     test("clears pending events when load fails", () async {
@@ -592,4 +666,12 @@ Future<void> _awaitLoadedWithCommand(
     await Future<void>.delayed(const Duration(milliseconds: 5));
   }
   fail("Timed out waiting for '$command'; current state: ${cubit.state}");
+}
+
+Future<void> _awaitCondition(bool Function() condition) async {
+  for (var i = 0; i < 100; i++) {
+    if (condition()) return;
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+  fail("Timed out waiting for condition");
 }

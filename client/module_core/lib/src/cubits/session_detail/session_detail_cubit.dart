@@ -31,7 +31,6 @@ import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
 enum _SessionRefreshTrigger {
-  projectSessionsUpdated("project_sessions_updated"),
   commandExecuted("command_executed"),
   connectionReconnected("connection_reconnected"),
   lifecycleResumed("lifecycle_resumed"),
@@ -79,6 +78,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
+  int _commandCatalogGeneration = 0;
   Timer? _eventRefreshCooldown;
   bool _eventRefreshQueued = false;
   bool _needsStaleRefresh = false;
@@ -291,17 +291,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     );
   }
 
-  /// Coalesces event-driven staleness signals (sessions.updated,
-  /// command.executed, dataMayBeStale) into at most one silent refresh per
-  /// [eventRefreshMinInterval]. While the agent works, the bridge can emit
-  /// these in sustained bursts (e.g. sessions.updated on every PR-sync tick),
-  /// and each silent refresh refetches the whole session snapshot — ~10
-  /// encrypted relay round-trips — so refreshing per event keeps the radio
-  /// and main isolate busy for the entire turn. The first signal after a
-  /// quiet period still refreshes immediately; follow-ups within the cooldown
-  /// collapse into a single trailing refresh. Reconnect and app-resume
-  /// refreshes bypass this on purpose: they must run promptly and re-assert
-  /// the bridge-side view declaration.
+  /// Coalesces event-driven staleness signals (command.executed,
+  /// dataMayBeStale) into at most one silent refresh per
+  /// [eventRefreshMinInterval]. Repeated signals would otherwise each refetch
+  /// the whole session snapshot — ~10 encrypted relay round-trips. The first
+  /// signal after a quiet period still refreshes immediately; follow-ups within
+  /// the cooldown collapse into a single trailing refresh. Reconnect and
+  /// app-resume refreshes bypass this on purpose: they must run promptly and
+  /// re-assert the bridge-side view declaration.
   void _requestEventDrivenRefresh({required _SessionRefreshTrigger trigger}) {
     _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
     if (state is! SessionDetailLoaded) {
@@ -382,6 +379,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<_SessionRefreshResult> _doSilentRefresh() async {
     final current = state;
     if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
+    final commandCatalogGeneration = _commandCatalogGeneration;
 
     emit(current.copyWith(isRefreshing: true, queuedMessages: _promptQueue.items));
 
@@ -428,6 +426,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           final preservedSelectedAgent = latest.selectedAgent;
           final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
+          final availableCommands = commandCatalogGeneration == _commandCatalogGeneration
+              ? snapshot.commands
+              : latest.availableCommands;
           final availableVariants = _deriveAvailableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
@@ -455,12 +456,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               isArchived: snapshot.isArchived,
               availableAgents: availableAgents,
               availableProviders: availableProviders,
-              availableCommands: snapshot.commands,
+              availableCommands: availableCommands,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _resolveStagedCommand(
-                availableCommands: snapshot.commands,
+                availableCommands: availableCommands,
                 stagedCommand: preservedStagedCommand,
               ),
               queuedMessages: _promptQueue.items,
@@ -529,6 +530,38 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required _SessionRefreshTrigger trigger,
   }) {
     logd("[session-refresh] action=${action.name} trigger=${trigger.logValue}");
+  }
+
+  void _onCommandCatalogUpdated({required String pluginId}) {
+    final current = state;
+    if (current is! SessionDetailLoaded || current.pluginId != pluginId) return;
+    final generation = ++_commandCatalogGeneration;
+    unawaited(_refreshCommandCatalog(pluginId: pluginId, generation: generation));
+  }
+
+  Future<void> _refreshCommandCatalog({required String pluginId, required int generation}) async {
+    try {
+      final response = await _sessionRepository.listCommands(projectId: _projectId, pluginId: pluginId);
+      if (isClosed || generation != _commandCatalogGeneration) return;
+      switch (response) {
+        case SuccessResponse(:final data):
+          final latest = state;
+          if (latest is! SessionDetailLoaded || latest.pluginId != pluginId) return;
+          emit(
+            latest.copyWith(
+              availableCommands: data.items,
+              stagedCommand: _resolveStagedCommand(
+                availableCommands: data.items,
+                stagedCommand: latest.stagedCommand,
+              ),
+            ),
+          );
+        case ErrorResponse(:final error):
+          logw("Failed to refresh command catalog", error);
+      }
+    } on Object catch (error, stackTrace) {
+      logw("Failed to refresh command catalog", error, stackTrace);
+    }
   }
 
   CommandInfo? _resolveStagedCommand({
@@ -669,6 +702,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         sessionID: sessionID,
         displaySessionId: displaySessionId,
       ),
+      // The loaded session identifies its plugin after the initial snapshot,
+      // so retain catalog invalidations until that scope can be matched.
+      SesoriCommandCatalogUpdated() => true,
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -676,6 +712,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriGlobalDisposed() ||
       SesoriCatalogImportProgress() ||
       SesoriPluginManagementChanged() ||
+      SesoriSessionsUpdated() ||
       SesoriSessionDeleted() ||
       SesoriSessionDiff() ||
       SesoriSessionError() ||
@@ -712,10 +749,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       // Unseen-state changes are list-level concerns handled by the tracker;
       // the detail screen does not react to them.
       SesoriSessionUnseenChanged() => false,
-      // Command catalogs can change while the initial snapshot is in flight
-      // (Cursor advertises them during the concurrent history load), so retain
-      // a matching project invalidation and refresh once loading completes.
-      SesoriSessionsUpdated(:final projectID) => projectID.isNotEmpty && projectID == _projectId,
     };
   }
 
@@ -748,6 +781,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         case final SesoriQuestionRejected event
             when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
           _onQuestionResolved(event.requestID);
+        case SesoriCommandCatalogUpdated(:final pluginId):
+          _onCommandCatalogUpdated(pluginId: pluginId);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -759,6 +794,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
             SesoriPluginManagementChanged() ||
+            SesoriSessionsUpdated() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||
             SesoriMessagePartUpdated() ||
@@ -795,19 +831,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriSessionUnseenChanged() ||
             SesoriSessionPromptDefaultsChanged():
           break;
-        case SesoriSessionsUpdated(:final projectID):
-          if (projectID.isNotEmpty && projectID == _projectId) {
-            _requestEventDrivenRefresh(trigger: _SessionRefreshTrigger.projectSessionsUpdated);
-          } else {
-            _logRefresh(
-              action: _SessionRefreshAction.observed,
-              trigger: _SessionRefreshTrigger.projectSessionsUpdated,
-            );
-            _logRefresh(
-              action: _SessionRefreshAction.ignored,
-              trigger: _SessionRefreshTrigger.projectSessionsUpdated,
-            );
-          }
       }
     } catch (e, st) {
       loge("SSE global event handler error", e, st);

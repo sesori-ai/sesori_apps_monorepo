@@ -577,7 +577,7 @@ class _CatalogImportEventSoak {
     if (normalized.length != 1) {
       throw StateError("known-session input produced ${normalized.length} translated events; expected one");
     }
-    final shared = bridgeEventMapper.map(normalized.single);
+    final shared = bridgeEventMapper.map(event: normalized.single, pluginId: source.pluginId);
     if (shared == null) throw StateError("known-session event did not map to a shared event");
     final encoded = jsonEncode(shared.toJson());
     if (encoded.contains(fixture.sessions.first.id)) {

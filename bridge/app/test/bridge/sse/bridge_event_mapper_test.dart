@@ -15,6 +15,8 @@ void main() {
       );
     });
 
+    SesoriSseEvent? mapEvent(BridgeSseEvent event) => mapper.map(event: event, pluginId: "test-plugin");
+
     test("filters plugin lifecycle events from bridge-global wire semantics", () {
       const lifecycleEvents = <BridgeSseEvent>[
         BridgeSseServerConnected(),
@@ -24,19 +26,28 @@ void main() {
       ];
 
       for (final event in lifecycleEvents) {
-        expect(mapper.map(event), isNull, reason: event.runtimeType.toString());
+        expect(mapEvent(event), isNull, reason: event.runtimeType.toString());
       }
     });
 
     test("does not expose the internal session-options change event to clients", () {
       expect(
-        mapper.map(const BridgeSseSessionOptionsChanged(sessionID: "backend-session")),
+        mapEvent(const BridgeSseSessionOptionsChanged(sessionID: "backend-session")),
         isNull,
       );
     });
 
-    test("maps session.created with provided enriched payload", () {
+    test("attributes command catalog updates to their source plugin", () {
       final result = mapper.map(
+        event: const BridgeSseCommandCatalogUpdated(),
+        pluginId: "cursor",
+      );
+
+      expect(result, const SesoriCommandCatalogUpdated(pluginId: "cursor"));
+    });
+
+    test("maps session.created with provided enriched payload", () {
+      final result = mapEvent(
         const BridgeSseSessionCreated(
           info: {
             "id": "s1",
@@ -67,7 +78,7 @@ void main() {
     });
 
     test("maps session.updated with provided enriched payload", () {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseSessionUpdated(
           info: {
             "id": "s1",
@@ -99,14 +110,14 @@ void main() {
     });
 
     test("maps session.diff without diff payload", () async {
-      final result = mapper.map(const BridgeSseSessionDiff(sessionID: "s1"));
+      final result = mapEvent(const BridgeSseSessionDiff(sessionID: "s1"));
 
       expect(result, isA<SesoriSessionDiff>());
       expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
     });
 
     test("maps stale project sessions to sessions.updated", () {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseSessionsUpdated(sessionID: "s1", projectID: "p1"),
       );
 
@@ -115,7 +126,7 @@ void main() {
     });
 
     test("maps command.executed events", () {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseCommandExecuted(
           name: "review",
           sessionID: "s1",
@@ -133,7 +144,7 @@ void main() {
     });
 
     test("passes file message part updates with normalized attachment data", () async {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -163,7 +174,7 @@ void main() {
     });
 
     test("filters snapshot message part updates", () async {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -188,7 +199,7 @@ void main() {
     });
 
     test("filters patch message part updates", () async {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -213,7 +224,7 @@ void main() {
     });
 
     test("filters compaction message part updates", () async {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -238,7 +249,7 @@ void main() {
     });
 
     test("passes agent message part updates", () async {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -264,7 +275,7 @@ void main() {
     });
 
     test("passes retry message part updates", () async {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -291,7 +302,7 @@ void main() {
 
     test("truncates tool output to 500 characters", () async {
       final longOutput = List.filled(1000, "x").join();
-      final result = mapper.map(
+      final result = mapEvent(
         BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -325,7 +336,7 @@ void main() {
     });
 
     test("passes through text message parts", () async {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -353,7 +364,7 @@ void main() {
     });
 
     test("keeps short tool output unchanged", () async {
-      final result = mapper.map(
+      final result = mapEvent(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -386,7 +397,7 @@ void main() {
     });
 
     test("map() drops BridgeSseProjectUpdated (the orchestrator builds the summary)", () {
-      final result = mapper.map(const BridgeSseProjectUpdated());
+      final result = mapEvent(const BridgeSseProjectUpdated());
 
       expect(result, isNull);
     });

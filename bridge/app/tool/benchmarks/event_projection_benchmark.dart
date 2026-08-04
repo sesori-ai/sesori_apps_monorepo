@@ -292,7 +292,7 @@ class _EventProjectionBenchmark {
     if (output.length != 1) {
       throw StateError("event projection emitted ${output.length} events; expected 1");
     }
-    final mapped = bridgeEventMapper.map(output.single);
+    final mapped = bridgeEventMapper.map(event: output.single, pluginId: _pluginId);
     if (mapped == null) throw StateError("projected session update did not map to a shared event");
     sseManager.enqueueEvent(mapped);
   }

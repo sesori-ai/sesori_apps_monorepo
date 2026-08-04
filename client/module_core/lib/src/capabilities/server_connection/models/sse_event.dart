@@ -37,6 +37,7 @@ class SseEvent {
     SesoriGlobalDisposed() ||
     SesoriCatalogImportProgress() ||
     SesoriPluginManagementChanged() ||
+    SesoriCommandCatalogUpdated() ||
     SesoriPtyCreated() ||
     SesoriPtyUpdated() ||
     SesoriPtyExited() ||

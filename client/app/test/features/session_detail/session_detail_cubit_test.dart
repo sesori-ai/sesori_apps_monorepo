@@ -1277,7 +1277,20 @@ void main() {
           (_) async => ApiResponse.success(SessionListResponse(items: [oldChild, newChild])),
         );
 
-        globalEvents.add(SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")));
+        connectionStatus.add(
+          ConnectionStatus.connected(
+            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: testHealthResponse(),
+          ),
+        );
+        sessionEvents.add(
+          const SesoriCommandExecuted(
+            name: "refresh",
+            sessionID: sessionId,
+            arguments: "",
+            messageID: "refresh-message",
+          ),
+        );
         await Future<void>.delayed(const Duration(milliseconds: 10));
       },
       expect: () => [
@@ -1341,7 +1354,20 @@ void main() {
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
 
-      globalEvents.add(SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")));
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+      sessionEvents.add(
+        const SesoriCommandExecuted(
+          name: "refresh",
+          sessionID: sessionId,
+          arguments: "",
+          messageID: "refresh-message",
+        ),
+      );
       await slowRefreshStarted.future;
 
       cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
@@ -1917,8 +1943,13 @@ void main() {
       );
 
       when(() => mockConnectionService.currentStatus).thenReturn(connected);
-      globalEvents.add(
-        SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")),
+      sessionEvents.add(
+        const SesoriCommandExecuted(
+          name: "refresh",
+          sessionID: sessionId,
+          arguments: "",
+          messageID: "refresh-message",
+        ),
       );
       await slowRefreshStarted.future;
 
