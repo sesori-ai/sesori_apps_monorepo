@@ -215,6 +215,23 @@ void main() {
 
   test("correlates a code-mode patch with its app-server file change", () {
     final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "custom_tool_call",
+          "call_id": "call-malformed-patch",
+          "name": "exec",
+          "input":
+              'const patch = "not a patch";\n'
+              "text(await tools.apply_patch(patch));\n",
+          "internal_chat_message_metadata_passthrough": {
+            "turn_id": "turn-1",
+          },
+        },
+      }),
+    );
     final call = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -242,6 +259,7 @@ void main() {
         method: "item/started",
         itemId: "exec-file-1",
         turnId: "turn-1",
+        status: "inProgress",
       ),
     );
     final completed = target.observeAppServerTool(
@@ -253,11 +271,28 @@ void main() {
         status: "completed",
       ),
     );
-    final rolloutResult = target
+    target
         .observeRolloutLine(
           threadId: "thread-1",
           line: _toolOutput(
             callId: "call-patch",
+            output: "Script running with cell ID 7\nOutput:\n{}",
+          ),
+        )
+        .single;
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _waitCall(
+        callId: "call-wait",
+        turnId: "turn-1",
+        cellId: "7",
+      ),
+    );
+    final rolloutResult = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: _toolOutput(
+            callId: "call-wait",
             output: "Script completed\nOutput:\n{}",
           ),
         )
@@ -273,6 +308,82 @@ void main() {
     expect(rolloutResult.tool, "edit");
     expect(rolloutResult.output, contains("*** Add File: marker.txt"));
     expect(rolloutResult.output, isNot(contains("Script completed")));
+  });
+
+  test("correlates code-mode commands containing invocation-like text", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _codeModeExecCall(
+        callId: "call-raw",
+        turnId: "turn-1",
+        input: "await tools.exec_command({cmd: \"echo 'tools.exec_command('\"});",
+      ),
+    );
+
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-1",
+              turnId: "turn-1",
+            ),
+          )
+          ?.canonicalId,
+      "call-raw",
+    );
+  });
+
+  test("correlates code-mode commands with invocation whitespace", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _codeModeExecCall(
+        callId: "call-raw",
+        turnId: "turn-1",
+        input: "await tools.exec_command ({cmd: 'pwd'});",
+      ),
+    );
+
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-1",
+              turnId: "turn-1",
+            ),
+          )
+          ?.canonicalId,
+      "call-raw",
+    );
+  });
+
+  test("does not correlate invocation text inside a string", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _codeModeExecCall(
+        callId: "call-raw",
+        turnId: "turn-1",
+        input: "console.log('tools.exec_command(');",
+      ),
+    );
+
+    expect(
+      target.observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-1",
+          turnId: "turn-1",
+        ),
+      ),
+      isNull,
+    );
   });
 
   test("suppresses only complete generated image wrapper invocations", () {
@@ -364,6 +475,89 @@ void main() {
             "text(JSON.stringify({structuredContent:r?.structuredContent,_meta:r?._meta}));\n",
       },
     });
+    final wrapperWithShadowedResultVariable = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-image-wrapper-with-shadowed-result",
+        "name": "exec",
+        "input":
+            "const r = await tools.image_gen__imagegen({prompt: 'private'});\n"
+            "for (const r of (r?.content ?? [])) {\n"
+            '  if (r.type === "image") image(r);\n'
+            '  else if (r.type === "text") text(r.text);\n'
+            "}\n"
+            "if (r?.image_url) generatedImage(r);\n",
+      },
+    });
+    final malformedDirectedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-malformed-directed-image-wrapper",
+        "name": "exec",
+        "input":
+            "// @exec: {invalid}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
+      },
+    });
+    final multilineDirectedMarker = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-multiline-directed-marker",
+        "name": "exec",
+        "input": "//\n@exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'});",
+      },
+    });
+    final mixedDirectedWrapper = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-mixed-directed-image-wrapper",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); await tools.exec_command({cmd: 'keep visible'});",
+      },
+    });
+    final directedWrapperWithTrailingCode = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-trailing-code",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield-time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); console.log('keep visible');",
+      },
+    });
+    final directedWrapperWithCallLikePrompt = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-call-like-prompt",
+        "name": "exec",
+        "input": "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'draw cat(s)'});",
+      },
+    });
+    final directedWrapperWithParenthesizedTrailingCode = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-parenthesized-trailing-code",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); process.exitCode = (1);",
+      },
+    });
+    final directedWrapperWithNestedToolCall = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-nested-tool",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: (await tools.exec_command({cmd: 'keep visible'}), 'cat')});",
+      },
+    });
     final unrelatedForwarding = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -406,6 +600,41 @@ void main() {
     expect(
       target.observeRolloutLine(
         threadId: "thread-1",
+        line: malformedDirectedWrapper,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: multilineDirectedMarker,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: mixedDirectedWrapper,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithTrailingCode,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithCallLikePrompt,
+      ),
+      isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
         line: previewForwardedWrapper,
       ),
       isEmpty,
@@ -413,7 +642,28 @@ void main() {
     expect(
       target.observeRolloutLine(
         threadId: "thread-1",
+        line: directedWrapperWithParenthesizedTrailingCode,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
         line: imageWrapperWithAnotherTool,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: wrapperWithShadowedResultVariable,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithNestedToolCall,
       ),
       hasLength(1),
     );
@@ -965,7 +1215,15 @@ void main() {
       threadId: "thread-1",
       line: _toolOutput(
         callId: "call-exec",
-        output: "Script running with cell ID 7\nOutput:\n",
+        output:
+            "Script running with cell ID 7\n"
+            "Output:\n"
+            "early output\n"
+            "Output:\n"
+            "literal output\n"
+            "Script running with cell ID 7\n"
+            "Output:\n"
+            "second poll output",
       ),
     );
     final aborted = target
@@ -974,7 +1232,9 @@ void main() {
           line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
         )
         .single;
-    target.clearSettledThread(threadId: "thread-1");
+    target.observeTerminalNotification(
+      notification: _terminalNotification(method: "error"),
+    );
 
     final lateCompletion = target.observeAppServerTool(
       imageGeneration: null,
@@ -984,7 +1244,12 @@ void main() {
         turnId: "turn-1",
         status: "completed",
         exitCode: 0,
-        output: "late command output",
+        output:
+            "early output\n"
+            "Output:\n"
+            "literal output\n"
+            "second poll output\n"
+            "late command output",
       ),
     );
 
@@ -992,18 +1257,266 @@ void main() {
     expect(aborted.status, PluginToolStatus.error);
     expect(lateCompletion?.canonicalId, "call-exec");
     expect(lateCompletion?.status, PluginToolStatus.error);
-
-    target.clearSettledThread(threadId: "thread-1");
+    expect(lateCompletion?.output, contains("late command output"));
     expect(
-      target.observeAppServerTool(
+      RegExp("early output").allMatches(lateCompletion?.output ?? ""),
+      hasLength(1),
+    );
+    expect(
+      RegExp("literal output").allMatches(lateCompletion?.output ?? ""),
+      hasLength(1),
+    );
+    expect(
+      RegExp("second poll output").allMatches(lateCompletion?.output ?? ""),
+      hasLength(1),
+    );
+
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-exec",
+          output: "stale output",
+        ),
+      ),
+      isEmpty,
+    );
+  });
+
+  test("failed turn completion without rollout abort keeps late completion failed", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-exec", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
         imageGeneration: null,
         notification: _commandNotification(
-          method: "item/completed",
+          method: "item/started",
           itemId: "exec-1",
           turnId: "turn-1",
         ),
+      )
+      ..observeTerminalNotification(
+        notification: _terminalNotification(
+          method: "turn/completed",
+          turnStatus: "failed",
+        ),
+      );
+
+    final lateCompletion = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _commandNotification(
+        method: "item/completed",
+        itemId: "exec-1",
+        turnId: "turn-1",
+        status: "completed",
+        exitCode: 0,
       ),
-      isNull,
+    );
+
+    expect(lateCompletion?.canonicalId, "call-exec");
+    expect(lateCompletion?.status, PluginToolStatus.error);
+  });
+
+  test("late completion preserves a newer active turn", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-old", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-old",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-old",
+          output: "Script running with cell ID 7\nOutput:\nearly output",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
+      )
+      ..observeTerminalNotification(
+        notification: _terminalNotification(method: "error"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-2"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-new", turnId: "turn-2"),
+      );
+
+    final lateCompletion = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _commandNotification(
+        method: "item/completed",
+        itemId: "exec-old",
+        turnId: null,
+        status: "completed",
+        exitCode: 0,
+        output: "late old output",
+      ),
+    );
+
+    expect(lateCompletion?.output, contains("late old output"));
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-old",
+          output: "stale old output",
+        ),
+      ),
+      isEmpty,
+    );
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-new",
+              turnId: "turn-2",
+            ),
+          )
+          ?.canonicalId,
+      "call-new",
+    );
+  });
+
+  test("older terminal notification preserves rollout state for a newer turn", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-old", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-old",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-2"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-new", turnId: "turn-2"),
+      );
+
+    expect(
+      target.observeTerminalNotification(
+        notification: _terminalNotification(
+          method: "turn/completed",
+          turnId: "turn-1",
+          turnStatus: "failed",
+        ),
+      ),
+      isEmpty,
+    );
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-new",
+              turnId: "turn-2",
+            ),
+          )
+          ?.canonicalId,
+      "call-new",
+    );
+  });
+
+  test("late completion preserves externally started turn correlation", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-old", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-old",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
+      )
+      ..observeTerminalNotification(
+        notification: _terminalNotification(method: "error"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-external", turnId: "turn-2"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-external",
+          output: "already completed",
+        ),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/completed",
+          itemId: "exec-old",
+          turnId: "turn-1",
+          status: "completed",
+          exitCode: 0,
+        ),
+      );
+
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-external",
+              turnId: "turn-2",
+            ),
+          )
+          ?.canonicalId,
+      "call-external",
     );
   });
 
@@ -1249,19 +1762,33 @@ void main() {
 
   test("clear removes all lifecycle and alias state", () {
     final target = tracker();
-    target.observeRolloutLine(
-      threadId: "thread-1",
-      line: _shellCall(callId: "call-1", turnId: "turn-1"),
-    );
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-1", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-1",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeTerminalNotification(
+        notification: _terminalNotification(method: "error"),
+      );
     target.clear();
 
     expect(
       target.observeAppServerTool(
         imageGeneration: null,
         notification: _commandNotification(
-          method: "item/started",
+          method: "item/completed",
           itemId: "exec-1",
           turnId: "turn-1",
+          status: "completed",
+          exitCode: 0,
         ),
       ),
       isNull,
@@ -1292,13 +1819,25 @@ CodexRolloutLineDto _rawExecCall({
   required String callId,
   required String? turnId,
 }) {
+  return _codeModeExecCall(
+    callId: callId,
+    turnId: turnId,
+    input: "await tools.exec_command({cmd: 'pwd'});",
+  );
+}
+
+CodexRolloutLineDto _codeModeExecCall({
+  required String callId,
+  required String? turnId,
+  required String input,
+}) {
   return CodexRolloutLineDto.fromJson({
     "type": "response_item",
     "payload": {
       "type": "custom_tool_call",
       "call_id": callId,
       "name": "exec",
-      "input": "await tools.exec_command({cmd: 'pwd'});",
+      "input": input,
       if (turnId != null)
         "internal_chat_message_metadata_passthrough": {
           "turn_id": turnId,
@@ -1416,7 +1955,7 @@ CodexRolloutLineDto _userMessageEvent({required String message}) {
 CodexServerNotification _commandNotification({
   required String method,
   required String itemId,
-  required String turnId,
+  required String? turnId,
   String? status,
   int? exitCode,
   String? output,
@@ -1425,7 +1964,7 @@ CodexServerNotification _commandNotification({
     method: method,
     params: {
       "threadId": "thread-1",
-      "turnId": turnId,
+      "turnId": ?turnId,
       "item": {
         "type": "commandExecution",
         "id": itemId,
@@ -1442,7 +1981,7 @@ CodexServerNotification _fileChangeNotification({
   required String method,
   required String itemId,
   required String turnId,
-  String status = "inProgress",
+  required String status,
 }) {
   return CodexServerNotification(
     method: method,
@@ -1482,4 +2021,22 @@ extension on CodexToolLifecycleTracker {
           )
         : observeCorrelatableAppServerItem(event: correlatableItem);
   }
+}
+
+CodexServerNotification _terminalNotification({
+  required String method,
+  String? turnId,
+  String? turnStatus,
+}) {
+  return CodexServerNotification(
+    method: method,
+    params: {
+      "threadId": "thread-1",
+      if (turnId != null || turnStatus != null)
+        "turn": {
+          "id": ?turnId,
+          "status": ?turnStatus,
+        },
+    },
+  );
 }

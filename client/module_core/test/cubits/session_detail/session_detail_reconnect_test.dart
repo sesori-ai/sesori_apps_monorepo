@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/logging/logging.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -215,10 +216,14 @@ void main() {
     final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     final globalEvents = StreamController<SseEvent>.broadcast();
     final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
+    final logs = <String>[];
+    final previousLogLevel = logLevel;
+    setLogLevel(LogLevel.debug);
 
     addTearDown(sessionEvents.close);
     addTearDown(globalEvents.close);
     addTearDown(connectionStatus.close);
+    addTearDown(() => setLogLevel(previousLogLevel));
 
     when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);
     when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
@@ -275,20 +280,25 @@ void main() {
       (_) async => loadedResult,
     );
 
-    final cubit = SessionDetailCubit(
-      mockConnectionService,
-      loadService: mockLoadService,
-      promptDispatcher: mockSessionRepository,
-      permissionRepository: mockPermissionRepository,
-      sessionViewingService: stubbedSessionViewingService(),
-      projectViewingService: stubbedProjectViewingService(),
-      lifecycleSource: FakeLifecycleSource(),
-      composerDraftRepository: inMemoryComposerDraftRepository(),
-      productAnalyticsService: stubbedProductAnalyticsService(),
-      sessionId: _sessionId,
-      projectId: "project-1",
-      notificationCanceller: mockNotificationCanceller,
-      failureReporter: MockFailureReporter(),
+    final cubit = runZoned(
+      () => SessionDetailCubit(
+        mockConnectionService,
+        loadService: mockLoadService,
+        promptDispatcher: mockSessionRepository,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
+        sessionId: _sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      ),
+      zoneSpecification: ZoneSpecification(
+        print: (self, parent, zone, line) => logs.add(line),
+      ),
     );
     addTearDown(cubit.close);
 
@@ -304,11 +314,29 @@ void main() {
         projectId: any(named: "projectId"),
       ),
     );
+    expect(
+      logs,
+      containsAll([
+        contains("[session-refresh] action=observed trigger=project_sessions_updated"),
+        contains("[session-refresh] action=ignored trigger=project_sessions_updated"),
+      ]),
+    );
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
     await Future<void>.delayed(Duration.zero);
 
     verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
+    expect(
+      logs,
+      containsAll([
+        contains("[session-refresh] action=started trigger=project_sessions_updated"),
+        allOf(
+          contains("[session-refresh] action=completed trigger=project_sessions_updated"),
+          contains("result=applied"),
+          contains("durationMs="),
+        ),
+      ]),
+    );
   });
 }
 

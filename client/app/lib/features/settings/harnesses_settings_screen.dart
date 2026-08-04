@@ -52,7 +52,12 @@ class _HarnessesSettingsBody extends StatelessWidget {
           PregoButtonsIconGlass(
             icon: TablerRegular.x,
             semanticLabel: loc.settingsClose,
-            onPressed: () => context.goRoute(const AppRoute.projects()),
+            // This page is raised as a modal from more than one place, so
+            // closing it means going back to whatever raised it. Only a
+            // deep link arrives with nothing underneath, and that falls back
+            // to the app's home.
+            onPressed: () =>
+                context.canPop() ? context.pop() : context.goRoute(const AppRoute.projects()),
           ),
         ],
         onRefresh: cubit.refresh,

@@ -180,13 +180,15 @@ void main() {
         accessTokenProvider: FakeAccessTokenProvider(""),
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
-      final states = <RelayConnectionState>[];
-      client.connectionState.listen(states.add);
+      final statesFuture = _recordStates(
+        stream: client.connectionState,
+        count: 2,
+      )..ignore();
 
       final connection = await client.connect();
       _closeAfterTest(client: client, connection: connection);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
 
+      final states = await statesFuture;
       expect(states, hasLength(2));
       expect(states[0], isA<RelayConnecting>());
       expect(states[1], isA<RelayConnected>());
@@ -202,10 +204,20 @@ void main() {
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
       final states = <RelayConnectionState>[];
-      client.connectionState.listen(states.add);
+      final disconnected = Completer<void>();
+      client.connectionState.listen((state) {
+        states.add(state);
+        if (state is RelayDisconnected && !disconnected.isCompleted) {
+          disconnected.complete();
+        }
+      });
 
       await expectLater(client.connect(), throwsA(isA<StateError>()));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await disconnected.future.timeout(const Duration(seconds: 2));
+      // Drain the microtask queue so any falsely emitted connected state (or a
+      // duplicate disconnected state) that would follow the first disconnected
+      // one is still observed before the exact-sequence assertion.
+      await pumpEventQueue();
 
       expect(states, hasLength(2));
       expect(states[0], isA<RelayConnecting>());
@@ -338,11 +350,13 @@ void main() {
         bridgeIdProvider: FakeBridgeIdProvider(),
         connectTimeout: const Duration(milliseconds: 500),
       );
-      final states = <RelayConnectionState>[];
-      client.connectionState.listen(states.add);
+      final statesFuture = _recordStates(
+        stream: client.connectionState,
+        count: 2,
+      )..ignore();
 
       await expectLater(client.connect(), throwsA(isA<TimeoutException>()));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final states = await statesFuture;
 
       expect(states[0], isA<RelayConnecting>());
       expect(states[1], isA<RelayDisconnected>());
@@ -389,8 +403,10 @@ void main() {
         accessTokenProvider: FakeAccessTokenProvider(""),
         bridgeIdProvider: FakeBridgeIdProvider(),
       );
-      final states = <RelayConnectionState>[];
-      client.connectionState.listen(states.add);
+      final statesFuture = _recordStates(
+        stream: client.connectionState,
+        count: 5,
+      )..ignore();
       var connection = await client.connect();
       addTearDown(() => client.closeIfCurrent(connection: connection));
 
@@ -405,8 +421,8 @@ void main() {
       final serverWs2Future = server.nextClient();
       connection = await client.reconnect(connection: connection);
       await serverWs2Future;
-      await Future<void>.delayed(const Duration(milliseconds: 50));
 
+      final states = await statesFuture;
       expect(
         states.map((state) => state.runtimeType).toList(),
         equals([RelayConnecting, RelayConnected, RelayDisconnected, RelayConnecting, RelayConnected]),
@@ -430,19 +446,24 @@ void main() {
       final serverWs = await server.nextClient();
 
       final messages = <RelayClientMessage>[];
+      final firstMessage = Completer<void>();
       final done = Completer<void>();
 
       client
           .read(connection: connection)
           .listen(
-            messages.add,
+            (message) {
+              messages.add(message);
+              if (!firstMessage.isCompleted) firstMessage.complete();
+            },
             onDone: done.complete,
             onError: done.completeError,
           );
 
       // Send a message and verify receipt.
       serverWs.add("hello");
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await firstMessage.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(messages, hasLength(1));
 
       // Close the server-side WebSocket — the client stream should end.
@@ -472,12 +493,14 @@ void main() {
       final serverWs = await server.nextClient();
 
       var messageCount = 0;
+      final firstMessage = Completer<void>();
       final loopExited = Completer<void>();
 
       unawaited(
         (() async {
           await for (final _ in client.read(connection: connection)) {
             messageCount++;
+            if (!firstMessage.isCompleted) firstMessage.complete();
           }
           loopExited.complete();
         })(),
@@ -485,7 +508,8 @@ void main() {
 
       // Deliver a message so we know the loop is running.
       serverWs.add("ping");
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await firstMessage.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(messageCount, equals(1));
 
       // Drop the connection from the server side.
@@ -517,16 +541,25 @@ void main() {
 
       // Verify the first connection works.
       final msgs1 = <RelayClientMessage>[];
-      final sub1 = client.read(connection: connection).listen(msgs1.add);
+      final firstMessage1 = Completer<void>();
+      final sub1 = client.read(connection: connection).listen(
+        (message) {
+          msgs1.add(message);
+          if (!firstMessage1.isCompleted) firstMessage1.complete();
+        },
+      );
 
       serverWs1.add("first");
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await firstMessage1.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(msgs1, hasLength(1));
-      await sub1.cancel();
 
-      // Drop the connection from the server side.
+      // Drop the connection from the server side, waiting for the client to
+      // observe it before reconnecting.
+      final dropped = client.connectionState.firstWhere((state) => state is RelayDisconnected);
       await serverWs1.close();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await dropped.timeout(const Duration(seconds: 2));
+      await sub1.cancel();
 
       // Reconnect — the server will accept a new WebSocket.
       final serverWs2Future = server.nextClient();
@@ -535,11 +568,19 @@ void main() {
 
       // Verify the second connection works.
       final msgs2 = <RelayClientMessage>[];
-      final sub2 = client.read(connection: connection).listen(msgs2.add);
+      final firstMessage2 = Completer<void>();
+      final sub2 = client.read(connection: connection).listen(
+        (message) {
+          msgs2.add(message);
+          if (!firstMessage2.isCompleted) firstMessage2.complete();
+        },
+      );
 
       serverWs2.add("second");
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await firstMessage2.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(msgs2, hasLength(1));
+
       await sub2.cancel();
     });
 
@@ -559,7 +600,11 @@ void main() {
 
       // Capture data received by the server on each connection.
       final received1 = <dynamic>[];
-      serverWs1.listen(received1.add);
+      final firstFrame1 = Completer<void>();
+      serverWs1.listen((data) {
+        received1.add(data);
+        if (!firstFrame1.isCompleted && data is! String) firstFrame1.complete();
+      });
 
       expect(
         client.sendIfCurrent(
@@ -569,12 +614,17 @@ void main() {
         ),
         RelaySendOutcome.sent,
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await firstFrame1.future.timeout(const Duration(seconds: 2));
+      // Let any duplicate frame the client might have sent surface before the
+      // exact one-frame assertion runs.
+      await pumpEventQueue();
       expect(received1, hasLength(1));
 
-      // Drop connection.
+      // Drop the connection, waiting for the client to observe it first.
+      client.read(connection: connection).listen((_) {});
+      final dropped = client.connectionState.firstWhere((state) => state is RelayDisconnected);
       await serverWs1.close();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await dropped.timeout(const Duration(seconds: 2));
 
       // Reconnect.
       final serverWs2Future = server.nextClient();
@@ -582,7 +632,11 @@ void main() {
       final serverWs2 = await serverWs2Future;
 
       final received2 = <dynamic>[];
-      serverWs2.listen(received2.add);
+      final firstFrame2 = Completer<void>();
+      serverWs2.listen((data) {
+        received2.add(data);
+        if (!firstFrame2.isCompleted && data is! String) firstFrame2.complete();
+      });
 
       expect(
         client.sendIfCurrent(
@@ -592,7 +646,8 @@ void main() {
         ),
         RelaySendOutcome.sent,
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await firstFrame2.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(received2, hasLength(1));
     });
 
@@ -625,7 +680,11 @@ void main() {
       _closeAfterTest(client: client, connection: secondConnection);
       final secondSocket = await secondSocketFuture;
       final received = <dynamic>[];
-      secondSocket.listen(received.add);
+      final firstFrame = Completer<void>();
+      secondSocket.listen((data) {
+        received.add(data);
+        if (!firstFrame.isCompleted && data is! String) firstFrame.complete();
+      });
 
       expect(
         client.sendIfCurrent(
@@ -647,7 +706,8 @@ void main() {
         ),
         RelaySendOutcome.sent,
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await firstFrame.future.timeout(const Duration(seconds: 2));
+      await pumpEventQueue();
       expect(received, hasLength(1));
     });
 
@@ -714,6 +774,36 @@ void main() {
 class _ThrowingAccessTokenProvider extends FakeAccessTokenProvider {
   @override
   String get accessToken => throw StateError("auth token unavailable");
+}
+
+/// Subscribes to [stream] before any connect and completes once [count]
+/// events have been observed, returning the recorded events. Event-driven
+/// replacement for fixed `Future.delayed` sleeps after connect.
+Future<List<RelayConnectionState>> _recordStates({
+  required Stream<RelayConnectionState> stream,
+  required int count,
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final states = <RelayConnectionState>[];
+  if (count <= 0) return states;
+  final reached = Completer<void>();
+  late final StreamSubscription<RelayConnectionState> sub;
+  sub = stream.listen((state) {
+    states.add(state);
+    if (!reached.isCompleted && states.length >= count) {
+      reached.complete();
+    }
+  });
+  try {
+    await reached.future.timeout(timeout);
+    // Keep observing through a microtask drain so any state emitted right
+    // after the expected count (e.g. a duplicate) is still recorded before
+    // callers run their exact-length assertions.
+    await pumpEventQueue();
+  } finally {
+    await sub.cancel();
+  }
+  return states;
 }
 
 Future<Map<String, dynamic>> _firstTextFrame(WebSocket socket) async {

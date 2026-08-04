@@ -173,7 +173,13 @@ void main() {
 
       expect(children.map((route) => route.path), equals(["notifications", "harnesses", "profile"]));
       expect(children[0].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<NotificationSettingsScreen>());
-      expect(children[1].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<HarnessesSettingsScreen>());
+      // Harnesses rise as a modal from the settings list and from the
+      // new-session harness menu alike, so the route carries its own
+      // fullscreen-dialog page rather than the default push.
+      final harnessesPage =
+          children[1].pageBuilder!(_FakeBuildContext(), _FakeGoRouterState()) as CupertinoPage<void>;
+      expect(harnessesPage.fullscreenDialog, isTrue);
+      expect(harnessesPage.child, isA<HarnessesSettingsScreen>());
       expect(children[1].routes, isEmpty);
       expect(children[2].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
       expect(

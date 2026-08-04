@@ -5,10 +5,13 @@
 - **Started:** 2026-08-03
 - **Completed:** 2026-08-04
 - **Merged baseline:** `2408b574` on `origin/main`
-- **Deep-test branches:** `codex-stability-deep-test-*` stack
-- **Status:** Complete
-- **Release decision:** The original stability stack is ready for code review.
-  Follow-up finding F-12 is documented for a separate PR.
+- **Deep-test branches:** originally validated as the local
+  `codex-stability-deep-test-*` stack, then delivered through the stability
+  feedback PR series
+- **Status:** Original deep-test matrix complete; F-12 follow-up open
+- **Release decision:** Ready for code review for the original stability matrix.
+  The separately reproduced F-12 generated-instructions defect remains open and
+  is scheduled for Step 10 of the delivery plan.
 
 The final production stack, in order, is:
 
@@ -21,7 +24,13 @@ The final production stack, in order, is:
 7. `cdd3a305` `fix(codex): preserve locally archived history`
 8. `d4e30b87` `refactor(codex): type replay and item boundaries`
 
-No pull requests were opened for the deep-test stack.
+The first six deep-test steps subsequently merged through PRs
+[#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
+[#731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731),
+[#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732),
+[#733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733),
+[#740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740), and
+[#743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743).
 
 ## Purpose
 
@@ -100,7 +109,7 @@ summaries and only the identifiers needed to correlate a finding.
   rollout `call_*` card before collapsing after completion.
 - **Cause:** Codex uses distinct app-server and rollout IDs. Code-mode wrappers
   needed a narrower correlation path than direct function calls.
-- **Fix:** Merged commit `e5cb9d86` fixed direct commands. Local commit
+- **Fix:** Merged commit `e5cb9d86` fixed direct commands. Deep-test commit
   `58585e1f` correlates a wrapper containing exactly one command invocation by
   turn when no stable function-call candidate exists.
 - **Result:** One canonical ID progresses from running to terminal and remains
@@ -163,7 +172,7 @@ summaries and only the identifiers needed to correlate a finding.
 - **Cause:** Durable image records and generated code-mode wrappers were
   projected independently, and directed/content-forwarding variants were not
   classified consistently.
-- **Fix:** Merged commit `2408b574` restores durable images. Local commits
+- **Fix:** Merged commit `2408b574` restores durable images. Deep-test commits
   `c3ab5fcb` and `36ee48e9` recognize only complete generated wrapper forms and
   suppress their shell projection without hiding mixed-purpose code.
 - **Result:** Each generation has one completed `image_generation` identity and
@@ -177,7 +186,7 @@ summaries and only the identifiers needed to correlate a finding.
   appeared as a separate completed command.
 - **Cause:** Turn termination discarded the app-server alias before the already
   started item emitted its own terminal event.
-- **Fix:** Local commit `a32b6c29` retains aliases only for started items that
+- **Fix:** Deep-test commit `a32b6c29` retains aliases only for started items that
   have not completed and retires each alias at item completion.
 - **Result:** The late event updates the same canonical failed card; restart
   introduces no duplicate.
@@ -191,7 +200,7 @@ summaries and only the identifiers needed to correlate a finding.
   produce different live and cold cards.
 - **Cause:** File changes lacked the same narrow turn correlation used for
   code-mode commands, and the wrapper patch was not projected as an edit.
-- **Fix:** Local commit `9da8f2e1` recognizes the exact single-patch wrapper,
+- **Fix:** Deep-test commit `9da8f2e1` recognizes the exact single-patch wrapper,
   correlates app-server file changes to its canonical rollout ID, and preserves
   the patch as edit output. Follow-up `d4e30b87` parses file-change lifecycle
   data into a sealed typed event before coordination and repository tracking.
@@ -206,9 +215,11 @@ summaries and only the identifiers needed to correlate a finding.
   call still displayed `Running` with no way to stop it.
 - **Cause:** The last chronology segment had neither output nor later turn
   evidence. History reconstruction did not receive authoritative session status.
-- **Fix:** Local commit `8f0f4ece` makes replay honor session activity. Follow-up
-  `d4e30b87` keeps the policy in `CodexSessionService`, which maps session status
-  to an explicit preserve-or-terminalize replay disposition.
+- **Fix:** Deep-test commit `8f0f4ece` introduced idle-gated replay
+  terminalization. PR #743 refined the activity snapshot and interrupted-image
+  handling before merge. Follow-up `d4e30b87` keeps the policy in
+  `CodexSessionService`, which maps session status to an explicit
+  preserve-or-terminalize replay disposition.
 - **Result:** The interrupted call replays as `Failed`. A separate live
   30-second call remained `Running` during active snapshots and completed
   normally, proving active work is not closed prematurely.
@@ -223,8 +234,8 @@ summaries and only the identifiers needed to correlate a finding.
 - **Cause:** Sesori's bridge database intentionally owns archive state and has no
   backend unarchive callback, but the Codex plugin also archived the backend
   thread destructively.
-- **Fix:** Local commit `cdd3a305` keeps Codex archive local-only so the readable
-  rollout remains in the normal catalog.
+- **Fix:** Deep-test commit `cdd3a305` keeps Codex archive local-only so the
+  readable rollout remains in the normal catalog.
 - **Result:** Rename persisted, archive and unarchive preserved the transcript,
   and delete removed the disposable session without changing another session.
 
@@ -264,8 +275,8 @@ summaries and only the identifiers needed to correlate a finding.
 
 ## Automated Verification
 
-- `dart test` in `bridge/sesori_plugin_codex`: 305 tests passed on the final
-  stack.
+- `dart test` in `bridge/sesori_plugin_codex`: 315 tests passed after the typed
+  boundary changes were merged forward over the first seven delivery steps.
 - `dart analyze --fatal-infos` in `bridge/sesori_plugin_codex`: no issues.
 - Targeted tests cover generated image wrappers, canonical shell and file-change
   identity, late abort completion, active-versus-idle rollout replay, and
@@ -276,6 +287,10 @@ summaries and only the identifiers needed to correlate a finding.
 
 ## Residual Observations
 
+- F-12 was reproduced after the original matrix was finalized: generated
+  repository instructions and a local path can appear as an authored user
+  message. The active stability plan tracks the fix in Step 10; this report does
+  not claim that follow-up is resolved.
 - Codex persisted encrypted reasoning records for the tested Sol turns, but
   every record had an empty `summary`. The plugin correctly rendered no empty or
   invented reasoning. A future upstream turn with a non-empty summary is needed
@@ -315,8 +330,8 @@ and deletion all converged across bridge snapshots and the iOS UI.
 
 The empty upstream reasoning summaries and one non-reproduced shutdown stall are
 documented residual coverage limits, not demonstrated release blockers. The
-eight deep-test production commits are ready for review as a stack; no PRs were
-created.
+eight deep-test production commits are being reviewed and merged in their
+original stack order.
 
 The follow-up mobile-image branch additionally validates image selection and
 submission from the iOS app through Codex. F-12 remains intentionally outside

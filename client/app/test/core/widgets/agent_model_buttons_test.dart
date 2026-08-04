@@ -10,8 +10,8 @@ import "package:theme_prego/module_prego.dart";
 final _agents = [
   _agent(name: "build", description: "The default agent. Executes tools and edits files."),
   _agent(name: "plan", description: "Plan mode. Disallows all edit tools."),
-  _agent(name: "sesori-plan-maker", description: "Creates implementation-ready, reviewed plans."),
-  _agent(name: "sesori-plan-worker", description: "Executes one reviewed plan step end to end."),
+  _agent(name: "aristotle-plan-review", description: "Reviews architecture-bearing development plans."),
+  _agent(name: "aristotle-impl-review", description: "Reviews architecture-bearing production changes."),
 ];
 
 AgentInfo _agent({required String name, required String description}) =>
@@ -35,7 +35,7 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
           AgentModelButtons(
             surfaceStyle: PregoComposerSurfaceStyle.subtle,
             agents: agents,
-            selectedAgent: "sesori-plan-worker",
+            selectedAgent: "aristotle-impl-review",
             onAgentSelected: onAgentSelected,
             providers: const [],
             selectedAgentModel: null,
@@ -54,7 +54,7 @@ void main() {
     testWidgets("shows every agent, with none clipped out of reach", (tester) async {
       await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: (_) {}));
 
-      await tester.tap(find.text("sesori-plan-worker"));
+      await tester.tap(find.text("aristotle-impl-review"));
       await tester.pumpAndSettle();
 
       // Each agent is on screen, and the popup hides nothing below its fold —
@@ -71,7 +71,7 @@ void main() {
       final selected = <String>[];
       await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: selected.add));
 
-      await tester.tap(find.text("sesori-plan-worker"));
+      await tester.tap(find.text("aristotle-impl-review"));
       await tester.pumpAndSettle();
 
       // Aimed at the lower edge of a row, where the popup's tap arithmetic used
@@ -89,7 +89,7 @@ void main() {
       ];
       await tester.pumpWidget(_buildApp(agents: agents, onAgentSelected: (_) {}));
 
-      await tester.tap(find.text("sesori-plan-worker"));
+      await tester.tap(find.text("aristotle-impl-review"));
       await tester.pumpAndSettle();
 
       // Past the cap the rows scroll rather than being cut off.

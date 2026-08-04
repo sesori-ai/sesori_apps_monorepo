@@ -1492,8 +1492,9 @@ void main() {
           inputMode: ComposerInputMode.typed,
         );
       },
-      skip: 1,
+
       expect: () => [
+        isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
@@ -1545,8 +1546,9 @@ void main() {
           inputMode: ComposerInputMode.typed,
         );
       },
-      skip: 1,
+
       expect: () => [
+        isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",

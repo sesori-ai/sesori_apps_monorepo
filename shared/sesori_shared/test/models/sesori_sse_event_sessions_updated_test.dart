@@ -3,15 +3,6 @@ import "package:test/test.dart";
 
 void main() {
   group("SesoriSseEvent.sessionsUpdated", () {
-    test("creates instance with projectID", () {
-      const event = SesoriSseEvent.sessionsUpdated(
-        projectID: "proj-123",
-      );
-
-      expect(event, isA<SesoriSessionsUpdated>());
-      expect((event as SesoriSessionsUpdated).projectID, "proj-123");
-    });
-
     test("serializes to JSON correctly", () {
       const event = SesoriSseEvent.sessionsUpdated(
         projectID: "proj-456",

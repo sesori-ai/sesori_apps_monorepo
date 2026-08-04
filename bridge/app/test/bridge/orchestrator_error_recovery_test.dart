@@ -82,6 +82,7 @@ void main() {
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final running = await startTestOrchestratorSession(session: composition.session);
     final runFuture = running.stopped;
@@ -156,6 +157,7 @@ void main() {
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create().session;
 
     final startFuture = session.start();
@@ -208,6 +210,7 @@ void main() {
         restartService: buildTestRestartService(),
         filesystemAccessOk: true,
         statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
       );
 
       final session = orchestrator.create().session;
@@ -325,6 +328,7 @@ class _TestHarness {
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
     );
 
     final session = orchestrator.create().session;

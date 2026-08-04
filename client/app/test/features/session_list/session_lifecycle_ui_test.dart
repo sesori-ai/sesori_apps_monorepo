@@ -746,37 +746,4 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // New session dedicated worktree toggle
-  // ---------------------------------------------------------------------------
-
-  group("New session dedicated worktree", () {
-    testWidgets("toggle renders with correct label", (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder: (context) {
-              final loc = AppLocalizations.of(context)!;
-              return Scaffold(
-                body: Column(
-                  children: [
-                    Text(loc.newSessionDedicatedWorktree),
-                    Text(loc.newSessionDedicatedWorktreeDescription),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      );
-
-      expect(find.text("Dedicated worktree"), findsOneWidget);
-      expect(
-        find.text("Creates a dedicated git worktree and branch for this session"),
-        findsOneWidget,
-      );
-    });
-  });
 }

@@ -23,6 +23,7 @@ class CodexToolLifecycleTracker {
 
   final CodexRolloutToolMapper _rolloutToolMapper;
   final Map<String, _ThreadToolLifecycle> _threads = {};
+  final Map<String, Map<String, _TrackedTool>> _retainedCommandsByThread = {};
 
   /// Applies one typed rollout record and returns complete canonical upserts.
   List<CodexProjectedTool> observeRolloutLine({
@@ -54,6 +55,21 @@ class CodexToolLifecycleTracker {
   CodexProjectedTool? observeCorrelatableAppServerItem({
     required CodexCorrelatableItemEventDto event,
   }) {
+    if (event.lifecycle == CodexCorrelatableItemLifecycle.completed) {
+      final retainedCommands = _retainedCommandsByThread[event.threadId];
+      final retainedTool = retainedCommands?.remove(event.itemId);
+      if (retainedTool != null) {
+        if (retainedCommands!.isEmpty) {
+          _retainedCommandsByThread.remove(event.threadId);
+        }
+        return _applyCorrelatableAppServerItem(
+          tool: retainedTool,
+          event: event,
+          useAggregatedOutput: true,
+        );
+      }
+    }
+
     final thread = _threads[event.threadId];
     if (thread == null) return null;
 
@@ -95,10 +111,29 @@ class CodexToolLifecycleTracker {
     final tool = thread.tools[canonicalId];
     if (tool == null || !tool.isRolloutCall) return null;
 
+    final snapshot = _applyCorrelatableAppServerItem(
+      tool: tool,
+      event: event,
+    );
+    if (event.lifecycle == CodexCorrelatableItemLifecycle.completed) {
+      thread.appServerItemAliases.remove(event.itemId);
+    }
+    return snapshot;
+  }
+
+  CodexProjectedTool _applyCorrelatableAppServerItem({
+    required _TrackedTool tool,
+    required CodexCorrelatableItemEventDto event,
+    bool useAggregatedOutput = false,
+  }) {
     if (event case CodexCommandExecutionEventDto(:final command, :final aggregatedOutput)) {
       tool.title ??= _rolloutToolMapper.logicalCommandTitle(command);
       if (aggregatedOutput != null) {
-        tool.appServerOutput = _rolloutToolMapper.clipOutput(aggregatedOutput);
+        final clippedOutput = _rolloutToolMapper.clipOutput(aggregatedOutput);
+        tool.appServerOutput = clippedOutput;
+        if (useAggregatedOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
+          tool.rolloutOutput = clippedOutput;
+        }
       }
     }
     final status = switch (event) {
@@ -106,11 +141,7 @@ class CodexToolLifecycleTracker {
       CodexFileChangeEventDto() => _fileChangeStatus(event: event),
     };
     tool.status = _mergeStatus(previous: tool.status, current: status);
-    final snapshot = tool.snapshot();
-    if (event.lifecycle == CodexCorrelatableItemLifecycle.completed) {
-      thread.appServerItemAliases.remove(event.itemId);
-    }
-    return snapshot;
+    return tool.snapshot();
   }
 
   /// Applies image and dynamic-tool app-server evidence that does not use the
@@ -163,6 +194,26 @@ class CodexToolLifecycleTracker {
       return tool.snapshot();
     }
 
+    final itemType = item["type"];
+    final isCommandExecution = itemType == "commandExecution";
+    final isCorrelatedTool = isCommandExecution || itemType == "fileChange";
+    if (isCorrelatedTool && notification.method == "item/completed") {
+      final retainedCommands = _retainedCommandsByThread[threadId];
+      final retainedTool = retainedCommands?.remove(itemId);
+      if (retainedTool != null) {
+        if (retainedCommands!.isEmpty) {
+          _retainedCommandsByThread.remove(threadId);
+        }
+        return _applyAppServerTool(
+          tool: retainedTool,
+          item: item,
+          isCommandExecution: isCommandExecution,
+          completed: true,
+          useAggregatedOutput: isCommandExecution,
+        );
+      }
+    }
+
     final thread = _threads[threadId];
     if (thread == null) return null;
 
@@ -205,6 +256,7 @@ class CodexToolLifecycleTracker {
       CodexReplayToolDisposition.preserveRunning => const [],
       CodexReplayToolDisposition.terminalize => _advanceChronologySegment(
         thread: thread,
+        includeNonRolloutCalls: true,
       ),
     };
   }
@@ -219,18 +271,64 @@ class CodexToolLifecycleTracker {
 
   void clearThread({required String threadId}) {
     _threads.remove(threadId);
+    _retainedCommandsByThread.remove(threadId);
   }
 
-  /// Discards terminal state unless a started app-server item can still finish.
-  void clearSettledThread({required String threadId}) {
+  /// Settles terminal tools and discards state unless a started item can finish.
+  List<CodexProjectedTool> observeTerminalNotification({
+    required CodexServerNotification notification,
+  }) {
+    final threadId = _usefulText(value: notification.params["threadId"]);
+    if (threadId == null) return const [];
+    final terminalStatus = switch (notification.method) {
+      "turn/completed" => _turnCompletionStatus(
+        params: notification.params,
+      ),
+      "error" || "thread/closed" || "thread/status/changed" => PluginToolStatus.error,
+      _ => throw ArgumentError.value(
+        notification.method,
+        "notification.method",
+        "Expected a terminal app-server notification",
+      ),
+    };
     final thread = _threads[threadId];
-    if (thread == null || thread.appServerItemAliases.isEmpty) {
-      _threads.remove(threadId);
+    final notificationTurnId = _notificationTurnId(
+      params: notification.params,
+    );
+    if (thread?.activeTurnId case final activeTurnId?
+        when notificationTurnId != null && activeTurnId != notificationTurnId) {
+      return const [];
     }
+    _threads.remove(threadId);
+    final updates = <CodexProjectedTool>[];
+    if (thread != null) {
+      for (final tool in thread.tools.values) {
+        if (!tool.isRolloutCall || tool.status != PluginToolStatus.running) {
+          continue;
+        }
+        tool.status = terminalStatus;
+        updates.add(tool.snapshot());
+      }
+      if (thread.appServerItemAliases.isNotEmpty) {
+        final retainedCommands = _retainedCommandsByThread.putIfAbsent(
+          threadId,
+          () => {},
+        );
+        for (final MapEntry(key: itemId, value: canonicalId) in thread.appServerItemAliases.entries) {
+          final tool = thread.tools[canonicalId];
+          if (tool != null) retainedCommands[itemId] = tool;
+        }
+        if (retainedCommands.isEmpty) {
+          _retainedCommandsByThread.remove(threadId);
+        }
+      }
+    }
+    return updates;
   }
 
   void clear() {
     _threads.clear();
+    _retainedCommandsByThread.clear();
   }
 
   List<CodexProjectedTool> _observeRolloutPayload({
@@ -356,7 +454,7 @@ class CodexToolLifecycleTracker {
       tool.outstandingCellIds.clear();
     }
 
-    if (!thread.codeModeFileCallIds.contains(result.callId) || result.status == PluginToolStatus.error) {
+    if (!thread.codeModeFileCallIds.contains(canonicalId) || result.status == PluginToolStatus.error) {
       tool.rolloutOutput = _mergeOutput(
         previous: tool.rolloutOutput,
         current: result.output,
@@ -447,12 +545,14 @@ class CodexToolLifecycleTracker {
 
   List<CodexProjectedTool> _advanceChronologySegment({
     required _ThreadToolLifecycle thread,
+    bool includeNonRolloutCalls = false,
   }) {
     final updates = <CodexProjectedTool>[];
     for (final tool in thread.tools.values) {
-      if (!tool.isRolloutCall ||
-          tool.status != PluginToolStatus.running ||
-          tool.chronologySegment != thread.chronologySegment) {
+      final appliesToCurrentReplay = tool.isRolloutCall
+          ? tool.chronologySegment == thread.chronologySegment
+          : includeNonRolloutCalls;
+      if (!appliesToCurrentReplay || tool.status != PluginToolStatus.running) {
         continue;
       }
       tool.status = PluginToolStatus.error;
@@ -554,6 +654,48 @@ class CodexToolLifecycleTracker {
     };
   }
 
+  PluginToolStatus _turnCompletionStatus({
+    required Map<String, dynamic> params,
+  }) {
+    final turn = params["turn"];
+    final rawStatus = turn is Map ? turn["status"] : null;
+    return switch (rawStatus) {
+      "failed" || "interrupted" => PluginToolStatus.error,
+      _ => PluginToolStatus.completed,
+    };
+  }
+
+  CodexProjectedTool _applyAppServerTool({
+    required _TrackedTool tool,
+    required Map<Object?, Object?> item,
+    required bool isCommandExecution,
+    required bool completed,
+    required bool useAggregatedOutput,
+  }) {
+    if (isCommandExecution) {
+      final command = item["command"];
+      tool.title ??= _rolloutToolMapper.logicalCommandTitle(
+        command is String ? command : null,
+      );
+      if (item["aggregatedOutput"] case final String output) {
+        final clippedOutput = _rolloutToolMapper.clipOutput(output);
+        tool.appServerOutput = clippedOutput;
+        if (useAggregatedOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
+          tool.rolloutOutput = clippedOutput;
+        }
+      }
+    }
+    final exitCode = isCommandExecution ? item["exitCode"] : null;
+    final status = isCommandExecution && exitCode is num && exitCode.toInt() != 0
+        ? PluginToolStatus.error
+        : _appServerStatus(
+            raw: item["status"],
+            completed: completed,
+          );
+    tool.status = _mergeStatus(previous: tool.status, current: status);
+    return tool.snapshot();
+  }
+
   PluginToolStatus _mergeStatus({
     required PluginToolStatus previous,
     required PluginToolStatus current,
@@ -598,6 +740,13 @@ class CodexToolLifecycleTracker {
   }
 
   String _cellKey({required String turnId, required String cellId}) => "$turnId\u0000$cellId";
+
+  String? _notificationTurnId({required Map<String, dynamic> params}) {
+    final turn = params["turn"];
+    return _usefulText(
+      value: turn is Map ? turn["id"] : params["turnId"],
+    );
+  }
 
   String? _usefulText({required Object? value}) {
     if (value is! String) return null;

@@ -12,8 +12,10 @@ import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/composer_surface_style.dart";
 import "../../core/widgets/connection_banner.dart";
+import "../../core/widgets/project_nav_subtitle.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
+import "new_session_options_skeleton.dart";
 import "new_session_plugin_chooser.dart";
 
 class NewSessionScreen extends StatelessWidget {
@@ -57,6 +59,16 @@ class _NewSessionBody extends StatefulWidget {
   @override
   State<_NewSessionBody> createState() => _NewSessionBodyState();
 }
+
+/// Height of one options row, and the gap between rows — the rhythm the
+/// loading skeleton stands in for (Figma node 4435:16803).
+const double _optionRowHeight = 40;
+const double _optionRowSpacing = PregoSpacing.xl;
+
+/// Horizontal inset of the options block. Narrower than the composer's, so the
+/// row content lands on the design's margin once each row's own padding is
+/// added.
+const double _optionsHorizontalPadding = 10;
 
 class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
@@ -189,7 +201,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     }
 
     return Padding(
-      padding: EdgeInsetsDirectional.only(top: prego.spacing.sm),
+      padding: EdgeInsetsDirectional.only(top: prego.spacing.sm, start: prego.spacing.lg),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -215,12 +227,50 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
+  /// The options above the composer: which harness runs the session, and
+  /// whether it gets a workspace of its own.
+  ///
+  /// Until the bridge has answered what it can run, neither question has an
+  /// answer to show, so the block shimmers placeholders on the rows' own
+  /// rhythm rather than popping controls in one at a time. A later discovery
+  /// (a reconnect) keeps the controls it already has, disabled — blanking a
+  /// known harness back to a shimmer would lose more than it says.
+  Widget _buildOptions({required AgentModelData? data}) {
+    if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
+      return const NewSessionOptionsSkeleton(
+        rowHeight: _optionRowHeight,
+        rowSpacing: _optionRowSpacing,
+      );
+    }
+
+    final hasPlugins = data.plugins.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        NewSessionPluginChooser(
+          plugins: data.plugins,
+          selectedPluginId: data.plugin?.id,
+          isSelectionEnabled: data.backendScope.isVerified && !data.isPluginDiscoveryInFlight,
+          onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(pluginId: pluginId),
+          onSettingsPressed: () => context.pushRoute(const AppRoute.settingsHarnesses()),
+        ),
+        ?_buildOptionsStatus(data: data),
+        if (data.supportsDedicatedWorktrees) ...[
+          if (hasPlugins) const SizedBox(height: _optionRowSpacing),
+          _DedicatedWorkspaceRow(
+            value: _dedicatedWorktree,
+            onChanged: (value) => setState(() => _dedicatedWorktree = value),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cubit = context.watch<NewSessionCubit>();
     final state = cubit.state;
     final loc = context.loc;
-    final prego = context.prego;
     final isSending = state is NewSessionSending;
     final composerData = state.agentModelData;
     final isComposerEnabled = cubit.canCreateSession && !isSending;
@@ -255,9 +305,12 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
         // Toolbar navigation is explicit: unlike Android system back, it must
         // not be vetoed by the composer's keyboard-dismissal PopScope.
         onBack: _dismissScreen,
-        // The options own their scroll while the composer remains fixed, so
-        // use the full viewport behind a fixed title just like session chat.
-        titleMode: PregoTopNavigationTitleMode.inline,
+        // The same back-leading block the sessions list wears, so stepping into
+        // the composer keeps the project's repository in view. Only the title
+        // line changes — this screen is about the session being started, not
+        // the project it belongs to.
+        titleMode: PregoTopNavigationTitleMode.backLeading,
+        subtitle: buildProjectNavSubtitle(context),
         reserveBarSpace: false,
         scrollable: false,
         banner: ConnectionBanner.maybeFor(context),
@@ -290,39 +343,15 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                     child: PregoTopBarInsetBuilder(
                       builder: (context, topInset, child) => SingleChildScrollView(
                         key: const Key("new_session_options_scroll"),
-                        padding: EdgeInsetsDirectional.fromSTEB(16, topInset + 8, 16, 8),
+                        padding: EdgeInsetsDirectional.fromSTEB(
+                          _optionsHorizontalPadding,
+                          topInset + _optionRowSpacing,
+                          _optionsHorizontalPadding,
+                          8,
+                        ),
                         child: child,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          NewSessionPluginChooser(
-                            plugins: composerData?.plugins ?? const [],
-                            selectedPluginId: composerData?.plugin?.id,
-                            isComposerDataLoading: composerData?.isLoading ?? false,
-                            isSelectionEnabled:
-                                (composerData?.backendScope.isVerified ?? false) &&
-                                !(composerData?.isPluginDiscoveryInFlight ?? false),
-                            onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(
-                              pluginId: pluginId,
-                            ),
-                          ),
-                          ?_buildOptionsStatus(data: composerData),
-                          if (composerData?.plugins.isNotEmpty ?? false) SizedBox(height: prego.spacing.sm),
-                          if (composerData?.supportsDedicatedWorktrees ?? false)
-                            SwitchListTile(
-                              title: Text(loc.newSessionDedicatedWorktree),
-                              subtitle: Text(
-                                loc.newSessionDedicatedWorktreeDescription,
-                                style: prego.textTheme.textXs.regular.copyWith(
-                                  color: prego.colors.textSecondary,
-                                ),
-                              ),
-                              value: _dedicatedWorktree,
-                              onChanged: (value) => setState(() => _dedicatedWorktree = value),
-                            ),
-                        ],
-                      ),
+                      child: _buildOptions(data: composerData),
                     ),
                   ),
                   Padding(
@@ -375,6 +404,49 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Whether the session gets a git worktree of its own instead of working in
+/// the project checkout everyone shares.
+class _DedicatedWorkspaceRow extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _DedicatedWorkspaceRow({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+
+    return SizedBox(
+      height: _optionRowHeight,
+      // The label names what the switch does, so they must reach a screen
+      // reader as one control rather than as stray text beside a bare toggle.
+      child: MergeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Padding(
+                padding: EdgeInsetsDirectional.only(start: prego.spacing.lg, end: prego.spacing.md),
+                child: Text(
+                  context.loc.newSessionDedicatedWorkspace,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+                ),
+              ),
+            ),
+            PregoSwitch(
+              key: const Key("new_session_dedicated_workspace"),
+              value: value,
+              onChanged: onChanged,
+            ),
+          ],
+        ),
       ),
     );
   }

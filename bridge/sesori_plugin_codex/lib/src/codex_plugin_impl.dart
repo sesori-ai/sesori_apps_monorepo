@@ -352,6 +352,16 @@ class CodexPlugin implements CodexManagedApi {
     if (terminalHistory && threadId != null) {
       await _rolloutTailer.finish(sessionId: threadId);
       if (_isSupersededTurnLifecycleNotification(notification)) return;
+      for (final tool in _toolLifecycleTracker.observeTerminalNotification(
+        notification: notification,
+      )) {
+        _eventMapper
+            .mapProjectedTool(
+              threadId: threadId,
+              tool: tool,
+            )
+            .forEach(_eventBuffer.add);
+      }
     }
     // Keep work state busy until the terminal rollout drain has emitted its
     // final tool updates. Forced runtime teardown waits for this transition
@@ -390,9 +400,6 @@ class CodexPlugin implements CodexManagedApi {
             tool: projectedTool,
           )
           .forEach(_eventBuffer.add);
-    }
-    if (threadId != null && terminalHistory) {
-      _toolLifecycleTracker.clearSettledThread(threadId: threadId);
     }
     if (activityChanged) {
       _eventBuffer.add(const BridgeSseProjectUpdated());
@@ -1030,6 +1037,17 @@ class CodexPlugin implements CodexManagedApi {
   Future<void> archiveSession({required String sessionId}) async {
     // Codex moves archived rollouts out of the readable session catalog, while
     // the bridge contract intentionally keeps archive state local-only.
+    // Explicitly retained as commented code rather than deleted at reviewer
+    // request to document the disabled backend behavior.
+    // try {
+    //   final client = await _connectedClient();
+    //   await client.request(
+    //     method: "thread/archive",
+    //     params: {"threadId": sessionId},
+    //   );
+    // } catch (_) {
+    //   // Best-effort — mobile DB archive state is authoritative.
+    // }
   }
 
   @override
@@ -1055,15 +1073,26 @@ class CodexPlugin implements CodexManagedApi {
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
-  ) {
-    final sessionStatus =
-        _activeTurnByThread.containsKey(sessionId) || _provisionalAcceptedTurnThreadIds.contains(sessionId)
-        ? const PluginSessionStatus.busy()
-        : _sessionStatuses[sessionId] ?? const PluginSessionStatus.idle();
+  ) async {
+    final read = await _sessionService.prepareSessionMessageRead(
+      sessionId: sessionId,
+    );
+    if (read == null) return const [];
+    // Let queued app-server activity update after the synchronous rollout
+    // snapshot before deciding whether interrupted tools are truly idle.
+    await Future<void>.delayed(Duration.zero);
     return _sessionService.getSessionMessages(
       sessionId: sessionId,
-      sessionStatus: sessionStatus,
+      read: read,
+      sessionStatus: _sessionStatusForReplay(sessionId: sessionId),
     );
+  }
+
+  PluginSessionStatus _sessionStatusForReplay({required String sessionId}) {
+    if (_activeTurnByThread.containsKey(sessionId) || _provisionalAcceptedTurnThreadIds.contains(sessionId)) {
+      return const PluginSessionStatus.busy();
+    }
+    return _sessionStatuses[sessionId] ?? const PluginSessionStatus.busy();
   }
 
   @override
