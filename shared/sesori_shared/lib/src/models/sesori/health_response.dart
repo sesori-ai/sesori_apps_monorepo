@@ -15,6 +15,8 @@ sealed class HealthResponse with _$HealthResponse {
     // never sends it decodes to null and is treated as "not degraded".
     // COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Make this non-null and remove client null fallbacks once those bridges are unsupported.
     required bool? filesystemAccessDegraded,
+    // COMPATIBILITY 2026-08-04 (v1.6.0): The public v1.6.0 bridge omits dedicated command-catalog event support. Make this required once v1.6.0 bridges are unsupported.
+    @Default(false) bool supportsSessionCommandsUpdated,
   }) = _HealthResponse;
 
   factory HealthResponse.fromJson(Map<String, dynamic> json) => _$HealthResponseFromJson(json);

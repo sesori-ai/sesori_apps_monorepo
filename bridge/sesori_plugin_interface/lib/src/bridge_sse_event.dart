@@ -43,11 +43,15 @@ class BridgeSseSessionUpdated extends BridgeSseEvent {
   const BridgeSseSessionUpdated({required this.info, required this.titleChanged});
 }
 
-/// Signals that every session under [projectID] should be re-fetched.
-class BridgeSseSessionsUpdated extends BridgeSseEvent {
+/// Signals that the command catalog changed for [sessionID].
+///
+/// Plugin emitters provide the backend session identity and project context.
+/// Bridge core replaces both with the stable Sesori session identity and its
+/// authoritative persisted project before relay delivery.
+class BridgeSseSessionCommandsUpdated extends BridgeSseEvent {
   final String sessionID;
   final String projectID;
-  const BridgeSseSessionsUpdated({
+  const BridgeSseSessionCommandsUpdated({
     required this.sessionID,
     required this.projectID,
   });

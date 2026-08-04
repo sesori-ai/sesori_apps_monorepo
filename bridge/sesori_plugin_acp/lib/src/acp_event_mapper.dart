@@ -341,9 +341,9 @@ class AcpEventMapper {
       case "available_commands_update":
         // The advertised commands themselves are tracked by AcpCommandTracker
         // (served via getCommands); this makes the matching client session
-        // re-fetch its snapshot so the new command list becomes visible.
+        // re-fetch only its command catalog.
         return [
-          BridgeSseSessionsUpdated(
+          BridgeSseSessionCommandsUpdated(
             sessionID: sessionId,
             projectID: projectForSession(sessionId: sessionId),
           ),

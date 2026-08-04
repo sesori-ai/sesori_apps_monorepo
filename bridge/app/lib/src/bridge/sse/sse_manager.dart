@@ -46,10 +46,12 @@ class SSEManager {
   /// Registers [connID] as an SSE subscriber.
   ///
   /// [path] is accepted for API compatibility with call sites but is not used
-  /// by this manager.
+  /// by this manager. [supportsSessionCommandsUpdated] controls only the wire
+  /// representation selected when each queued command-catalog event is sent.
   void subscribePath({
     required int connID,
     required String path,
+    required bool supportsSessionCommandsUpdated,
     required RelayClient client,
     required RelayConnection connection,
   }) {
@@ -65,6 +67,7 @@ class SSEManager {
             client: client,
             connection: connection,
             subscriptionOwner: subscriptionOwner,
+            supportsSessionCommandsUpdated: supportsSessionCommandsUpdated,
           ),
           onError: _createErrorHandler(connID),
         );
@@ -79,6 +82,7 @@ class SSEManager {
           client: client,
           connection: connection,
           subscriptionOwner: subscriptionOwner,
+          supportsSessionCommandsUpdated: supportsSessionCommandsUpdated,
         ),
         onError: _createErrorHandler(connID),
       );
@@ -203,6 +207,7 @@ class SSEManager {
     required RelayClient client,
     required RelayConnection connection,
     required Object subscriptionOwner,
+    required bool supportsSessionCommandsUpdated,
   }) {
     SessionEncryptor? encryptor;
 
@@ -220,7 +225,15 @@ class SSEManager {
         return cryptoService.createSessionEncryptor(secretKey);
       }();
 
-      final eventData = jsonEncode(_toOpenCodeFormat(event));
+      // COMPATIBILITY 2026-08-04 (v1.6.0): The public v1.6.0 app only
+      // understands sessions.updated. Remove this mapping once v1.6.0 apps are
+      // unsupported.
+      final deliveryEvent = switch (event) {
+        SesoriSessionCommandsUpdated(:final projectID) when !supportsSessionCommandsUpdated =>
+          SesoriSseEvent.sessionsUpdated(projectID: projectID),
+        _ => event,
+      };
+      final eventData = jsonEncode(_toOpenCodeFormat(deliveryEvent));
       final relayMessage = RelayMessage.sseEvent(data: eventData);
       final payloadBytes = utf8.encode(jsonEncode(relayMessage.toJson()));
       Log.v("[sse] sending ${payloadBytes.length} bytes to connID=$connID");

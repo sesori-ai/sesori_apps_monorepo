@@ -50,11 +50,17 @@ Map<String, dynamic> _$RelaySseEventToJson(RelaySseEvent instance) =>
 
 RelaySseSubscribe _$RelaySseSubscribeFromJson(Map json) => RelaySseSubscribe(
   path: json['path'] as String,
+  supportsSessionCommandsUpdated:
+      json['supportsSessionCommandsUpdated'] as bool? ?? false,
   $type: json['type'] as String?,
 );
 
 Map<String, dynamic> _$RelaySseSubscribeToJson(RelaySseSubscribe instance) =>
-    <String, dynamic>{'path': instance.path, 'type': instance.$type};
+    <String, dynamic>{
+      'path': instance.path,
+      'supportsSessionCommandsUpdated': instance.supportsSessionCommandsUpdated,
+      'type': instance.$type,
+    };
 
 RelaySseUnsubscribe _$RelaySseUnsubscribeFromJson(Map json) =>
     RelaySseUnsubscribe($type: json['type'] as String?);

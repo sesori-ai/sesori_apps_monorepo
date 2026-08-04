@@ -14,6 +14,18 @@ void main() {
     expect(event.sessionId, equals("session-123"));
   });
 
+  test("sessionCommandsUpdated exposes its stable sessionId", () {
+    final event = SseEvent(
+      data: const SesoriSseEvent.sessionCommandsUpdated(
+        sessionID: "session-123",
+        projectID: "project-456",
+      ),
+    );
+
+    expect(event.sessionId, equals("session-123"));
+    expect(event.data, isA<SesoriSessionEvent>());
+  });
+
   test("catalogImportProgress is a global non-session event", () {
     final event = SseEvent(
       data: const SesoriSseEvent.catalogImportProgress(

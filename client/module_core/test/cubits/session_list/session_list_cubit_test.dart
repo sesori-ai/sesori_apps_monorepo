@@ -1333,6 +1333,23 @@ void main() {
       expect(afterSessionUpdate.sessions.single.pullRequest, mergedPullRequest);
 
       eventController.add(
+        SseEvent(
+          data: const SesoriSessionCommandsUpdated(
+            sessionID: "s1",
+            projectID: projectId,
+          ),
+        ),
+      );
+      await pumpEventQueue();
+      expect((cubit.state as SessionListLoaded).sessions.single.pullRequest, mergedPullRequest);
+      verify(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).called(1);
+
+      eventController.add(
         SseEvent(data: const SesoriSessionsUpdated(projectID: projectId)),
       );
       final afterAuthoritativeRefresh =

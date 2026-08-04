@@ -55,8 +55,8 @@ void main() {
           expectedBackendIds: ids.keys.toSet(),
         ),
         (
-          name: "sessions updated",
-          event: const BridgeSseSessionsUpdated(sessionID: "backend-session", projectID: "project"),
+          name: "session commands updated",
+          event: const BridgeSseSessionCommandsUpdated(sessionID: "backend-session", projectID: "project"),
           expectedBackendIds: {"backend-session"},
         ),
         (
@@ -199,6 +199,23 @@ void main() {
           reason: testCase.name,
         );
       }
+    });
+
+    test("normalizes command update identity while retaining plugin project context", () {
+      final mapped = mapper.map(
+        event: const BridgeSseSessionCommandsUpdated(
+          sessionID: "backend-session",
+          projectID: "backend-project",
+        ),
+        sessionIdsByBackendId: ids,
+      );
+
+      expect(
+        mapped,
+        isA<BridgeSseSessionCommandsUpdated>()
+            .having((event) => event.sessionID, "sessionID", "ses-session")
+            .having((event) => event.projectID, "projectID", "backend-project"),
+      );
     });
 
     test("drops an event when any required session reference is unknown", () {

@@ -412,7 +412,14 @@ class RelayClient {
 
     final controller = StreamController<RelaySseEvent>.broadcast();
     _sseController = controller;
-    unawaited(_sendEncryptedMessage(RelayMessage.sseSubscribe(path: path)));
+    unawaited(
+      _sendEncryptedMessage(
+        RelayMessage.sseSubscribe(
+          path: path,
+          supportsSessionCommandsUpdated: true,
+        ),
+      ),
+    );
     return controller.stream;
   }
 

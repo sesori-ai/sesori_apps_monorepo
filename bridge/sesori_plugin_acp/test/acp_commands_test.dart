@@ -183,6 +183,12 @@ void main() {
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
       expect(options.commands.single.name, "create_plan");
       expect(
+        emitted.whereType<BridgeSseSessionCommandsUpdated>().single,
+        isA<BridgeSseSessionCommandsUpdated>()
+            .having((event) => event.sessionID, "sessionID", "s1")
+            .having((event) => event.projectID, "projectID", cwd),
+      );
+      expect(
         emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "s1",
       );
@@ -224,7 +230,7 @@ void main() {
     });
   });
 
-  test("history replay advertises commands and emits a session refresh", () async {
+  test("history replay advertises commands and emits a command-catalog refresh", () async {
     final live = FakeAcpProcess();
     final replay = FakeAcpProcess();
     final processes = [live, replay];
@@ -338,8 +344,10 @@ void main() {
 
       expect((await plugin.getCommands(projectId: "/repo")).single.name, "from_replay");
       expect(
-        emitted.whereType<BridgeSseSessionsUpdated>().single.sessionID,
-        "s1",
+        emitted.whereType<BridgeSseSessionCommandsUpdated>().single,
+        isA<BridgeSseSessionCommandsUpdated>()
+            .having((event) => event.sessionID, "sessionID", "s1")
+            .having((event) => event.projectID, "projectID", "/repo/worktree"),
       );
       expect(
         emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,

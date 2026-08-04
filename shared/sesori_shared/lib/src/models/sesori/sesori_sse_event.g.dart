@@ -89,6 +89,21 @@ Map<String, dynamic> _$SesoriSessionUpdatedToJson(
   SesoriSessionUpdated instance,
 ) => <String, dynamic>{'info': instance.info.toJson(), 'type': instance.$type};
 
+SesoriSessionCommandsUpdated _$SesoriSessionCommandsUpdatedFromJson(Map json) =>
+    SesoriSessionCommandsUpdated(
+      sessionID: json['sessionID'] as String,
+      projectID: json['projectID'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriSessionCommandsUpdatedToJson(
+  SesoriSessionCommandsUpdated instance,
+) => <String, dynamic>{
+  'sessionID': instance.sessionID,
+  'projectID': instance.projectID,
+  'type': instance.$type,
+};
+
 SesoriSessionDeleted _$SesoriSessionDeletedFromJson(Map json) =>
     SesoriSessionDeleted(
       info: Session.fromJson(Map<String, dynamic>.from(json['info'] as Map)),

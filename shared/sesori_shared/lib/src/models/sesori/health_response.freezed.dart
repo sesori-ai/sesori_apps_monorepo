@@ -20,7 +20,8 @@ mixin _$HealthResponse {
 // warn the user. Nullable for backward compatibility: an older bridge that
 // never sends it decodes to null and is treated as "not degraded".
 // COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Make this non-null and remove client null fallbacks once those bridges are unsupported.
- bool? get filesystemAccessDegraded;
+ bool? get filesystemAccessDegraded;// COMPATIBILITY 2026-08-04 (v1.6.0): The public v1.6.0 bridge omits dedicated command-catalog event support. Make this required once v1.6.0 bridges are unsupported.
+ bool get supportsSessionCommandsUpdated;
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -33,16 +34,16 @@ $HealthResponseCopyWith<HealthResponse> get copyWith => _$HealthResponseCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded)&&(identical(other.supportsSessionCommandsUpdated, supportsSessionCommandsUpdated) || other.supportsSessionCommandsUpdated == supportsSessionCommandsUpdated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,healthy,version,filesystemAccessDegraded);
+int get hashCode => Object.hash(runtimeType,healthy,version,filesystemAccessDegraded,supportsSessionCommandsUpdated);
 
 @override
 String toString() {
-  return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded)';
+  return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded, supportsSessionCommandsUpdated: $supportsSessionCommandsUpdated)';
 }
 
 
@@ -53,7 +54,7 @@ abstract mixin class $HealthResponseCopyWith<$Res>  {
   factory $HealthResponseCopyWith(HealthResponse value, $Res Function(HealthResponse) _then) = _$HealthResponseCopyWithImpl;
 @useResult
 $Res call({
- bool healthy, String version, bool? filesystemAccessDegraded
+ bool healthy, String version, bool? filesystemAccessDegraded, bool supportsSessionCommandsUpdated
 });
 
 
@@ -70,12 +71,13 @@ class _$HealthResponseCopyWithImpl<$Res>
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = freezed,Object? supportsSessionCommandsUpdated = null,}) {
   return _then(_self.copyWith(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,filesystemAccessDegraded: freezed == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,supportsSessionCommandsUpdated: null == supportsSessionCommandsUpdated ? _self.supportsSessionCommandsUpdated : supportsSessionCommandsUpdated // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -87,7 +89,7 @@ as bool?,
 @JsonSerializable()
 
 class _HealthResponse implements HealthResponse {
-  const _HealthResponse({required this.healthy, required this.version, required this.filesystemAccessDegraded});
+  const _HealthResponse({required this.healthy, required this.version, required this.filesystemAccessDegraded, this.supportsSessionCommandsUpdated = false});
   factory _HealthResponse.fromJson(Map<String, dynamic> json) => _$HealthResponseFromJson(json);
 
 @override final  bool healthy;
@@ -98,6 +100,8 @@ class _HealthResponse implements HealthResponse {
 // never sends it decodes to null and is treated as "not degraded".
 // COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Make this non-null and remove client null fallbacks once those bridges are unsupported.
 @override final  bool? filesystemAccessDegraded;
+// COMPATIBILITY 2026-08-04 (v1.6.0): The public v1.6.0 bridge omits dedicated command-catalog event support. Make this required once v1.6.0 bridges are unsupported.
+@override@JsonKey() final  bool supportsSessionCommandsUpdated;
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -112,16 +116,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded)&&(identical(other.supportsSessionCommandsUpdated, supportsSessionCommandsUpdated) || other.supportsSessionCommandsUpdated == supportsSessionCommandsUpdated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,healthy,version,filesystemAccessDegraded);
+int get hashCode => Object.hash(runtimeType,healthy,version,filesystemAccessDegraded,supportsSessionCommandsUpdated);
 
 @override
 String toString() {
-  return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded)';
+  return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded, supportsSessionCommandsUpdated: $supportsSessionCommandsUpdated)';
 }
 
 
@@ -132,7 +136,7 @@ abstract mixin class _$HealthResponseCopyWith<$Res> implements $HealthResponseCo
   factory _$HealthResponseCopyWith(_HealthResponse value, $Res Function(_HealthResponse) _then) = __$HealthResponseCopyWithImpl;
 @override @useResult
 $Res call({
- bool healthy, String version, bool? filesystemAccessDegraded
+ bool healthy, String version, bool? filesystemAccessDegraded, bool supportsSessionCommandsUpdated
 });
 
 
@@ -149,12 +153,13 @@ class __$HealthResponseCopyWithImpl<$Res>
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = freezed,Object? supportsSessionCommandsUpdated = null,}) {
   return _then(_HealthResponse(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,filesystemAccessDegraded: freezed == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,supportsSessionCommandsUpdated: null == supportsSessionCommandsUpdated ? _self.supportsSessionCommandsUpdated : supportsSessionCommandsUpdated // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

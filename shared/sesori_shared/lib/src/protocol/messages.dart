@@ -26,7 +26,11 @@ sealed class RelayMessage with _$RelayMessage {
   const factory RelayMessage.sseEvent({required String data}) = RelaySseEvent;
 
   @FreezedUnionValue("sse_subscribe")
-  const factory RelayMessage.sseSubscribe({required String path}) = RelaySseSubscribe;
+  const factory RelayMessage.sseSubscribe({
+    required String path,
+    // COMPATIBILITY 2026-08-04 (v1.6.0): The public v1.6.0 app omits dedicated command-catalog event support. Make this required once v1.6.0 apps are unsupported.
+    @Default(false) bool supportsSessionCommandsUpdated,
+  }) = RelaySseSubscribe;
 
   @FreezedUnionValue("sse_unsubscribe")
   const factory RelayMessage.sseUnsubscribe() = RelaySseUnsubscribe;

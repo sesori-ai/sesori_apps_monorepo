@@ -182,6 +182,7 @@ class _CatalogImportEventSoak {
         sseManager.subscribePath(
           connID: 1,
           path: "/global/event",
+          supportsSessionCommandsUpdated: true,
           client: relay.client,
           connection: relay.connection,
         );

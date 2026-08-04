@@ -230,6 +230,35 @@ void main() {
       expect(failureReporter.recordedIdentifiers, ["bridge.sse.session_event"]);
     });
 
+    test("resolves command updates to the stable session and authoritative project", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+
+      final output = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 2,
+          event: const BridgeSseSessionCommandsUpdated(
+            sessionID: "backend-root",
+            projectID: "untrusted-backend-project",
+          ),
+        ),
+      );
+
+      expect(
+        output.single,
+        isA<BridgeSseSessionCommandsUpdated>()
+            .having((event) => event.sessionID, "sessionID", "stable-root")
+            .having((event) => event.projectID, "projectID", "project-stable-root"),
+      );
+    });
+
     test("recursively drains out-of-order descendants under a durable same-plugin parent", () async {
       await _insertRoot(
         database: database,

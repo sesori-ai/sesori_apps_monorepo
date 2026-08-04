@@ -47,6 +47,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriSessionUpdated.fromJson(
             json
           );
+                case 'session.commands.updated':
+          return SesoriSessionCommandsUpdated.fromJson(
+            json
+          );
                 case 'session.deleted':
           return SesoriSessionDeleted.fromJson(
             json
@@ -754,6 +758,81 @@ $SessionCopyWith<$Res> get info {
     return _then(_self.copyWith(info: value));
   });
 }
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriSessionCommandsUpdated implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriSessionCommandsUpdated({required this.sessionID, required this.projectID, final  String? $type}): $type = $type ?? 'session.commands.updated';
+  factory SesoriSessionCommandsUpdated.fromJson(Map<String, dynamic> json) => _$SesoriSessionCommandsUpdatedFromJson(json);
+
+ final  String sessionID;
+ final  String projectID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriSessionCommandsUpdatedCopyWith<SesoriSessionCommandsUpdated> get copyWith => _$SesoriSessionCommandsUpdatedCopyWithImpl<SesoriSessionCommandsUpdated>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriSessionCommandsUpdatedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionCommandsUpdated&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.projectID, projectID) || other.projectID == projectID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sessionID,projectID);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.sessionCommandsUpdated(sessionID: $sessionID, projectID: $projectID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriSessionCommandsUpdatedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriSessionCommandsUpdatedCopyWith(SesoriSessionCommandsUpdated value, $Res Function(SesoriSessionCommandsUpdated) _then) = _$SesoriSessionCommandsUpdatedCopyWithImpl;
+@useResult
+$Res call({
+ String sessionID, String projectID
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriSessionCommandsUpdatedCopyWithImpl<$Res>
+    implements $SesoriSessionCommandsUpdatedCopyWith<$Res> {
+  _$SesoriSessionCommandsUpdatedCopyWithImpl(this._self, this._then);
+
+  final SesoriSessionCommandsUpdated _self;
+  final $Res Function(SesoriSessionCommandsUpdated) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,Object? projectID = null,}) {
+  return _then(SesoriSessionCommandsUpdated(
+sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
 }
 
 /// @nodoc

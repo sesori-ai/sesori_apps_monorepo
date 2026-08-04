@@ -40,5 +40,11 @@ void main() {
 
       expect(event, isNot(isA<SesoriSessionEvent>()));
     });
+
+    test("contains only project-level list scope", () {
+      const event = SesoriSseEvent.sessionsUpdated(projectID: "proj-test");
+
+      expect(event.toJson().keys, unorderedEquals(["type", "projectID"]));
+    });
   });
 }

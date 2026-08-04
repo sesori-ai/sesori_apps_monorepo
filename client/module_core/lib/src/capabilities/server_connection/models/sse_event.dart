@@ -13,6 +13,7 @@ class SseEvent {
   static String? _extractSessionId(SesoriSseEvent event) => switch (event) {
     SesoriSessionCreated(:final info) => info.id,
     SesoriSessionUpdated(:final info) => info.id,
+    SesoriSessionCommandsUpdated(:final sessionID) => sessionID,
     SesoriSessionDeleted(:final info) => info.id,
     SesoriSessionDiff(:final sessionID) => sessionID,
     SesoriSessionError(:final sessionID) => sessionID,

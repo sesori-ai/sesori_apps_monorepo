@@ -142,6 +142,24 @@ void main() {
     });
   });
 
+  group('sessionCommandsUpdated round-trip', () {
+    test('preserves its explicit session and project scope', () {
+      const event = SesoriSseEvent.sessionCommandsUpdated(
+        sessionID: 'ses_commands',
+        projectID: 'project_commands',
+      );
+
+      final json = event.toJson();
+
+      expect(json, {
+        'type': 'session.commands.updated',
+        'sessionID': 'ses_commands',
+        'projectID': 'project_commands',
+      });
+      expect(SesoriSseEvent.fromJson(json), event);
+    });
+  });
+
   group('sessionDeleted round-trip', () {
     test('serializes and deserializes correctly', () {
       const session = Session(
@@ -490,6 +508,14 @@ void main() {
         status: SessionStatus.idle(),
       );
       expect(status, isA<SesoriSessionEvent>());
+    });
+
+    test('sessionCommandsUpdated implements SesoriSessionEvent', () {
+      const event = SesoriSseEvent.sessionCommandsUpdated(
+        sessionID: 'x',
+        projectID: 'p',
+      );
+      expect(event, isA<SesoriSessionEvent>());
     });
 
     test('messageUpdated implements SesoriSessionEvent', () {

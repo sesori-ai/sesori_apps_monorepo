@@ -2036,6 +2036,7 @@ class OrchestratorSession {
           _sseManager.subscribePath(
             connID: connID,
             path: subscribe.path,
+            supportsSessionCommandsUpdated: subscribe.supportsSessionCommandsUpdated,
             client: _client,
             connection: connection,
           );

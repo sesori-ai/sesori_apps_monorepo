@@ -21,7 +21,7 @@ class SessionEventMapper {
     }
     return switch (event) {
       BridgeSseTerminalHandoff(:final event) => backendSessionIds(event: event),
-      BridgeSseSessionsUpdated(:final sessionID) ||
+      BridgeSseSessionCommandsUpdated(:final sessionID) ||
       BridgeSseSessionDiff(:final sessionID) ||
       BridgeSseSessionCompacted(:final sessionID) ||
       BridgeSseSessionStatus(:final sessionID) ||
@@ -113,8 +113,8 @@ class SessionEventMapper {
         final session? => BridgeSseSessionDeleted(info: session.toJson()),
         null => null,
       },
-      BridgeSseSessionsUpdated(:final sessionID, :final projectID) => switch (mapped(sessionID)) {
-        final sessionId? => BridgeSseSessionsUpdated(sessionID: sessionId, projectID: projectID),
+      BridgeSseSessionCommandsUpdated(:final sessionID, :final projectID) => switch (mapped(sessionID)) {
+        final sessionId? => BridgeSseSessionCommandsUpdated(sessionID: sessionId, projectID: projectID),
         null => null,
       },
       BridgeSseSessionDiff(:final sessionID) => switch (mapped(sessionID)) {

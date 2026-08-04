@@ -10,6 +10,8 @@ _HealthResponse _$HealthResponseFromJson(Map json) => _HealthResponse(
   healthy: json['healthy'] as bool,
   version: json['version'] as String,
   filesystemAccessDegraded: json['filesystemAccessDegraded'] as bool?,
+  supportsSessionCommandsUpdated:
+      json['supportsSessionCommandsUpdated'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$HealthResponseToJson(_HealthResponse instance) =>
@@ -17,4 +19,5 @@ Map<String, dynamic> _$HealthResponseToJson(_HealthResponse instance) =>
       'healthy': instance.healthy,
       'version': instance.version,
       'filesystemAccessDegraded': ?instance.filesystemAccessDegraded,
+      'supportsSessionCommandsUpdated': instance.supportsSessionCommandsUpdated,
     };

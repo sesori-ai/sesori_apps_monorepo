@@ -98,6 +98,7 @@ class SseEventTracker with Disposable {
           }
         case SesoriSessionCreated() ||
             SesoriSessionUpdated() ||
+            SesoriSessionCommandsUpdated() ||
             SesoriSessionDeleted() ||
             SesoriServerConnected() ||
             SesoriServerHeartbeat() ||

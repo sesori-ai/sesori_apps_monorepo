@@ -27,7 +27,10 @@ class BridgeEventMapper {
         BridgeSseGlobalDisposed() => null,
         BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
-        BridgeSseSessionsUpdated(:final projectID) => SesoriSseEvent.sessionsUpdated(projectID: projectID),
+        BridgeSseSessionCommandsUpdated(:final sessionID, :final projectID) => SesoriSseEvent.sessionCommandsUpdated(
+          sessionID: sessionID,
+          projectID: projectID,
+        ),
         BridgeSseSessionOptionsChanged() => null,
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),

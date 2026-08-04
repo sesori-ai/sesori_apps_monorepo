@@ -20,6 +20,7 @@ class HealthRepository {
       healthy: true,
       version: _bridgeVersion,
       filesystemAccessDegraded: !_filesystemAccessOk,
+      supportsSessionCommandsUpdated: true,
     );
   }
 }

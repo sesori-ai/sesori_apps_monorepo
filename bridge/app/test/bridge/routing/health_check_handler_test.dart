@@ -45,6 +45,7 @@ void main() {
       expect(response.healthy, isTrue);
       expect(response.version, equals("9.9.9"));
       expect(response.filesystemAccessDegraded, isFalse);
+      expect(response.supportsSessionCommandsUpdated, isTrue);
     });
 
     test("reports filesystemAccessDegraded when access is not ok", () async {

@@ -8,7 +8,6 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
-import "package:sesori_dart_core/src/logging/logging.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -205,7 +204,7 @@ void main() {
     expect(cubit.state, isA<SessionDetailLoaded>());
   });
 
-  test("ignores sessions.updated events from unrelated projects", () async {
+  test("uses sessions.updated only for the public v1.6.0 command fallback", () async {
     final mockLoadService = MockSessionDetailLoadService();
     final mockSessionRepository = MockSessionRepository();
     final mockConnectionService = MockConnectionService();
@@ -214,14 +213,9 @@ void main() {
     final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     final globalEvents = StreamController<SseEvent>.broadcast();
     final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
-    final logs = <String>[];
-    final previousLogLevel = logLevel;
-    setLogLevel(LogLevel.debug);
-
     addTearDown(sessionEvents.close);
     addTearDown(globalEvents.close);
     addTearDown(connectionStatus.close);
-    addTearDown(() => setLogLevel(previousLogLevel));
 
     when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);
     when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
@@ -276,26 +270,30 @@ void main() {
     ).thenAnswer(
       (_) async => loadedResult,
     );
-
-    final cubit = runZoned(
-      () => SessionDetailCubit(
-        mockConnectionService,
-        loadService: mockLoadService,
-        promptDispatcher: mockSessionRepository,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: _sessionId,
+    when(
+      () => mockLoadService.loadCommands(
         projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
+        pluginId: "opencode",
       ),
-      zoneSpecification: ZoneSpecification(
-        print: (self, parent, zone, line) => logs.add(line),
+    ).thenAnswer(
+      (_) async => SessionCommandsLoadResult.loaded(
+        commands: [testCommandInfo(name: "compact", template: "/compact")],
       ),
+    );
+    final cubit = SessionDetailCubit(
+      mockConnectionService,
+      loadService: mockLoadService,
+      promptDispatcher: mockSessionRepository,
+      permissionRepository: mockPermissionRepository,
+      sessionViewingService: stubbedSessionViewingService(),
+      projectViewingService: stubbedProjectViewingService(),
+      lifecycleSource: FakeLifecycleSource(),
+      composerDraftRepository: inMemoryComposerDraftRepository(),
+      productAnalyticsService: stubbedProductAnalyticsService(),
+      sessionId: _sessionId,
+      projectId: "project-1",
+      notificationCanceller: mockNotificationCanceller,
+      failureReporter: MockFailureReporter(),
     );
     addTearDown(cubit.close);
 
@@ -303,36 +301,49 @@ void main() {
     verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
-    await Future<void>.delayed(Duration.zero);
+    await pumpEventQueue();
+
+    verifyNever(
+      () => mockLoadService.loadCommands(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    );
+
+    final commandsUpdated = cubit.stream.firstWhere(
+      (state) => state is SessionDetailLoaded && state.availableCommands.any((command) => command.name == "compact"),
+    );
+    globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
+    await commandsUpdated.timeout(const Duration(seconds: 1));
+
+    verify(() => mockLoadService.loadCommands(projectId: "project-1", pluginId: "opencode")).called(1);
+
+    const capableStatus = ConnectionStatus.connected(
+      config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+      health: HealthResponse(
+        healthy: true,
+        version: "1.7.0",
+        filesystemAccessDegraded: null,
+        supportsSessionCommandsUpdated: true,
+      ),
+    );
+    connectionStatus.add(capableStatus);
+    await pumpEventQueue();
+    globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
+    await pumpEventQueue();
+
+    verifyNever(
+      () => mockLoadService.loadCommands(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    );
 
     verifyNever(
       () => mockLoadService.reload(
-        sessionId: _sessionId,
+        sessionId: any(named: "sessionId"),
         projectId: any(named: "projectId"),
       ),
-    );
-    expect(
-      logs,
-      containsAll([
-        contains("[session-refresh] action=observed trigger=project_sessions_updated"),
-        contains("[session-refresh] action=ignored trigger=project_sessions_updated"),
-      ]),
-    );
-
-    globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
-    await Future<void>.delayed(Duration.zero);
-
-    verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
-    expect(
-      logs,
-      containsAll([
-        contains("[session-refresh] action=started trigger=project_sessions_updated"),
-        allOf(
-          contains("[session-refresh] action=completed trigger=project_sessions_updated"),
-          contains("result=applied"),
-          contains("durationMs="),
-        ),
-      ]),
     );
   });
 }

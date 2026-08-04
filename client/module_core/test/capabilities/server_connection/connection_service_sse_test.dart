@@ -177,6 +177,35 @@ void main() {
       expect(logs, contains(contains("Ignoring unknown SSE event type: plugin.future.changed")));
     });
 
+    test("routes session.commands.updated through the matching stable session stream", () async {
+      final result = await service.connect(config);
+      expect(result, isA<SuccessResponse<HealthResponse>>());
+      final matchingEvent = service.sessionEvents("session-1").first;
+
+      sseController.add(
+        RelaySseEvent(
+          data: jsonEncode({
+            "payload": {
+              "type": "session.commands.updated",
+              "properties": {
+                "sessionID": "session-1",
+                "projectID": "project-1",
+              },
+            },
+          }),
+        ),
+      );
+
+      final event = await matchingEvent.timeout(const Duration(seconds: 1));
+      expect(
+        event,
+        const SesoriSessionCommandsUpdated(
+          sessionID: "session-1",
+          projectID: "project-1",
+        ),
+      );
+    });
+
     test("still reports a malformed payload for a known event type", () async {
       final previousLogLevel = logLevel;
       setLogLevel(LogLevel.none);

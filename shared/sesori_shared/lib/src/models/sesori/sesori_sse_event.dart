@@ -71,6 +71,15 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required Session info,
   }) = SesoriSessionUpdated;
 
+  /// Invalidates the command catalog for one session without invalidating its
+  /// transcript or other session-detail state.
+  @FreezedUnionValue("session.commands.updated")
+  @Implements<SesoriSessionEvent>()
+  const factory SesoriSseEvent.sessionCommandsUpdated({
+    required String sessionID,
+    required String projectID,
+  }) = SesoriSessionCommandsUpdated;
+
   @FreezedUnionValue("session.deleted")
   @Implements<SesoriSessionEvent>()
   const factory SesoriSseEvent.sessionDeleted({
@@ -281,9 +290,8 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @FreezedUnionValue("vcs.branch.updated")
   const factory SesoriSseEvent.vcsBranchUpdated() = SesoriVcsBranchUpdated;
 
-  /// Notifies phones that PR data changed for sessions in this project.
-  /// Unlike [sessionUpdated] (single session content change), this triggers
-  /// a full session list re-fetch to pick up updated PR metadata.
+  /// Invalidates the project-level session list, including rendered PR data.
+  /// This never signals that a session transcript or command catalog changed.
   @FreezedUnionValue("sessions.updated")
   const factory SesoriSseEvent.sessionsUpdated({
     required String projectID,

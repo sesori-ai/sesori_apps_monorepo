@@ -30,6 +30,28 @@ class SessionDetailLoadService {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
+  Future<SessionCommandsLoadResult> loadCommands({
+    required String projectId,
+    required String pluginId,
+  }) async {
+    if (_connectionService.currentStatus is! ConnectionConnected) {
+      return const SessionCommandsLoadResult.waitingForConnection();
+    }
+
+    try {
+      final response = await _repository.listCommands(projectId: projectId, pluginId: pluginId);
+      return switch (response) {
+        SuccessResponse(:final data) => SessionCommandsLoadResult.loaded(commands: data.items),
+        ErrorResponse(:final error) => SessionCommandsLoadResult.failed(
+          error: error,
+          stackTrace: error.stackTrace,
+        ),
+      };
+    } on Object catch (error, stackTrace) {
+      return SessionCommandsLoadResult.failed(error: error, stackTrace: stackTrace);
+    }
+  }
+
   Future<SessionDetailLoadResult> _loadSnapshot({
     required String sessionId,
     required String projectId,
@@ -269,4 +291,38 @@ final class SessionDetailLoadResultFailed extends SessionDetailLoadResult {
   final StackTrace? stackTrace;
 
   const SessionDetailLoadResultFailed({required this.error, required this.stackTrace});
+}
+
+sealed class SessionCommandsLoadResult {
+  const SessionCommandsLoadResult();
+
+  const factory SessionCommandsLoadResult.loaded({
+    required List<CommandInfo> commands,
+  }) = SessionCommandsLoadResultLoaded;
+
+  const factory SessionCommandsLoadResult.waitingForConnection() = SessionCommandsLoadResultWaitingForConnection;
+
+  const factory SessionCommandsLoadResult.failed({
+    // ignore: no_slop_linter/prefer_specific_type
+    required Object error,
+    required StackTrace? stackTrace,
+  }) = SessionCommandsLoadResultFailed;
+}
+
+final class SessionCommandsLoadResultLoaded extends SessionCommandsLoadResult {
+  final List<CommandInfo> commands;
+
+  const SessionCommandsLoadResultLoaded({required this.commands});
+}
+
+final class SessionCommandsLoadResultWaitingForConnection extends SessionCommandsLoadResult {
+  const SessionCommandsLoadResultWaitingForConnection();
+}
+
+final class SessionCommandsLoadResultFailed extends SessionCommandsLoadResult {
+  // ignore: no_slop_linter/prefer_specific_type
+  final Object error;
+  final StackTrace? stackTrace;
+
+  const SessionCommandsLoadResultFailed({required this.error, required this.stackTrace});
 }

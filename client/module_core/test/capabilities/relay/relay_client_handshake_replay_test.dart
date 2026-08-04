@@ -56,6 +56,22 @@ void main() {
     expect(client.isConnected, isTrue);
     expect(client.didResume, isTrue);
     verifyNever(roomKeyStorage.clearRoomKey);
+
+    final subscriptionFrameReady = outgoing.moveNext();
+    client.subscribeSse("/global/event");
+    expect(await subscriptionFrameReady.timeout(const Duration(seconds: 1)), isTrue);
+    final subscriptionFrame = Uint8List.fromList(outgoing.current! as List<int>);
+    final subscriptionJson = jsonDecodeMap(
+      utf8.decode(await unframe(subscriptionFrame, encryptor: encryptor)),
+    );
+
+    expect(
+      RelayMessage.fromJson(subscriptionJson),
+      const RelaySseSubscribe(
+        path: "/global/event",
+        supportsSessionCommandsUpdated: true,
+      ),
+    );
   });
 }
 

@@ -108,6 +108,125 @@ void main() {
       expect((secondMsg as RelaySseEvent).data, equals(expectedData));
     });
 
+    test("delivers command updates according to subscriber capability", () async {
+      final roomKey = makeRoomKey();
+      final client = _RecordingRelayClient();
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
+      manager.setRoomKey(roomKey);
+      addTearDown(manager.stop);
+
+      manager.subscribeForTest(
+        1,
+        client,
+        supportsSessionCommandsUpdated: true,
+      );
+      manager.subscribeForTest(
+        2,
+        client,
+        supportsSessionCommandsUpdated: false,
+      );
+      manager.enqueueEvent(
+        const SesoriSseEvent.sessionCommandsUpdated(
+          sessionID: "session-1",
+          projectID: "project-1",
+        ),
+      );
+
+      await _waitForSendCount(client, 2);
+
+      final capableEvent = await _decryptSentEvent(
+        client: client,
+        sendIndex: client.sentConnIDs.indexOf(1),
+        roomKey: roomKey,
+      );
+      final legacyEvent = await _decryptSentEvent(
+        client: client,
+        sendIndex: client.sentConnIDs.indexOf(2),
+        roomKey: roomKey,
+      );
+      expect(
+        capableEvent,
+        isA<SesoriSessionCommandsUpdated>()
+            .having((event) => event.sessionID, "sessionID", "session-1")
+            .having((event) => event.projectID, "projectID", "project-1"),
+      );
+      expect(
+        legacyEvent,
+        isA<SesoriSessionsUpdated>().having((event) => event.projectID, "projectID", "project-1"),
+      );
+    });
+
+    test("orphan replay uses the reconnecting subscriber capability", () async {
+      final roomKey = makeRoomKey();
+      final client = _RecordingRelayClient();
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
+      manager.setRoomKey(roomKey);
+      addTearDown(manager.stop);
+
+      manager.subscribeForTest(
+        1,
+        client,
+        supportsSessionCommandsUpdated: false,
+      );
+      manager.unsubscribe(1);
+      manager.enqueueEvent(
+        const SesoriSseEvent.sessionCommandsUpdated(
+          sessionID: "session-capable",
+          projectID: "project-capable",
+        ),
+      );
+      manager.subscribeForTest(
+        2,
+        client,
+        supportsSessionCommandsUpdated: true,
+      );
+      await _waitForSendCount(client, 1);
+      await _pumpEventLoop();
+
+      manager.unsubscribe(2);
+      manager.enqueueEvent(
+        const SesoriSseEvent.sessionCommandsUpdated(
+          sessionID: "session-legacy",
+          projectID: "project-legacy",
+        ),
+      );
+      manager.subscribeForTest(
+        3,
+        client,
+        supportsSessionCommandsUpdated: false,
+      );
+      await _waitForSendCount(client, 2);
+
+      final capableEvent = await _decryptSentEvent(
+        client: client,
+        sendIndex: 0,
+        roomKey: roomKey,
+      );
+      final legacyEvent = await _decryptSentEvent(
+        client: client,
+        sendIndex: 1,
+        roomKey: roomKey,
+      );
+      expect(
+        capableEvent,
+        isA<SesoriSessionCommandsUpdated>()
+            .having((event) => event.sessionID, "sessionID", "session-capable")
+            .having((event) => event.projectID, "projectID", "project-capable"),
+      );
+      expect(
+        legacyEvent,
+        isA<SesoriSessionsUpdated>().having((event) => event.projectID, "projectID", "project-legacy"),
+      );
+    });
+
     test("without room key events are not sent", () async {
       final client = _RecordingRelayClient();
       final manager = SSEManager(
@@ -425,6 +544,32 @@ Future<Map<String, dynamic>> _decryptEnvelope(
   return jsonDecode(utf8.decode(decrypted)) as Map<String, dynamic>;
 }
 
+Future<SesoriSseEvent> _decryptSentEvent({
+  required _RecordingRelayClient client,
+  required int sendIndex,
+  required List<int> roomKey,
+}) async {
+  final relayMessage = RelayMessage.fromJson(
+    await _decryptEnvelope(client.sentPayloads[sendIndex], roomKey),
+  );
+  if (relayMessage is! RelaySseEvent) {
+    throw StateError("Expected an SSE relay message, got ${relayMessage.runtimeType}");
+  }
+  final wireEnvelope = jsonDecodeMap(relayMessage.data);
+  final payload = switch (wireEnvelope["payload"]) {
+    final Map<String, dynamic> value => value,
+    _ => throw StateError("Expected an SSE payload object"),
+  };
+  final properties = switch (payload["properties"]) {
+    final Map<String, dynamic> value => value,
+    _ => throw StateError("Expected SSE properties"),
+  };
+  return SesoriSseEvent.fromJson({
+    ...properties,
+    "type": payload["type"],
+  });
+}
+
 Future<void> _waitForSendCount(_RecordingRelayClient client, int count) async {
   if (client.sentConnIDs.length >= count) return;
   // The recording client emits per recorded send, so the wait is event-driven
@@ -533,10 +678,15 @@ class _CompletingFailureReporter extends CapturingFailureReporter {
 }
 
 extension on SSEManager {
-  void subscribeForTest(int connID, RelayClient client) {
+  void subscribeForTest(
+    int connID,
+    RelayClient client, {
+    bool supportsSessionCommandsUpdated = false,
+  }) {
     subscribePath(
       connID: connID,
       path: "/global/event",
+      supportsSessionCommandsUpdated: supportsSessionCommandsUpdated,
       client: client,
       connection: _testRelayConnection,
     );

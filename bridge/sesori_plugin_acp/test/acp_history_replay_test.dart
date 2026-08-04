@@ -250,7 +250,10 @@ void main() {
       await loading;
       await pump();
 
-      expect(emitted.whereType<BridgeSseSessionsUpdated>(), isNotEmpty);
+      expect(
+        emitted.whereType<BridgeSseSessionCommandsUpdated>(),
+        isNotEmpty,
+      );
     });
 
     test("a genuine RPC error (not -32601/-32602) still surfaces as a typed failure", () async {

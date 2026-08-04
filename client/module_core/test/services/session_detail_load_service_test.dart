@@ -46,6 +46,63 @@ void main() {
       await connectionStatus.close();
     });
 
+    test("loadCommands returns commands from the command repository route", () async {
+      connectionStatus.add(connectedStatus);
+      final commands = [testCommandInfo(name: "review", template: "/review")];
+      when(
+        () => repository.listCommands(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: commands)));
+
+      final result = await service.loadCommands(projectId: "project-1", pluginId: "plugin-1");
+
+      expect(result, isA<SessionCommandsLoadResultLoaded>());
+      expect((result as SessionCommandsLoadResultLoaded).commands, commands);
+      verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    });
+
+    test("loadCommands waits without requesting when disconnected", () async {
+      final result = await service.loadCommands(projectId: "project-1", pluginId: "plugin-1");
+
+      expect(result, isA<SessionCommandsLoadResultWaitingForConnection>());
+      verifyNever(
+        () => repository.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
+    });
+
+    test("loadCommands preserves an API failure instead of returning an empty catalog", () async {
+      connectionStatus.add(connectedStatus);
+      final error = ApiError.generic();
+      when(
+        () => repository.listCommands(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer((_) async => ApiResponse.error(error));
+
+      final result = await service.loadCommands(projectId: "project-1", pluginId: "plugin-1");
+
+      expect(result, isA<SessionCommandsLoadResultFailed>());
+      final failed = result as SessionCommandsLoadResultFailed;
+      expect(failed.error, same(error));
+      expect(failed.stackTrace, same(error.stackTrace));
+    });
+
+    test("loadCommands preserves a thrown error and stack trace", () async {
+      connectionStatus.add(connectedStatus);
+      final error = StateError("command catalog unavailable");
+      final stackTrace = StackTrace.fromString("command-catalog-stack");
+      when(
+        () => repository.listCommands(projectId: "project-1", pluginId: "plugin-1"),
+      ).thenAnswer((_) => Future<ApiResponse<CommandListResponse>>.error(error, stackTrace));
+
+      final result = await service.loadCommands(projectId: "project-1", pluginId: "plugin-1");
+
+      expect(result, isA<SessionCommandsLoadResultFailed>());
+      final failed = result as SessionCommandsLoadResultFailed;
+      expect(failed.error, same(error));
+      expect(failed.stackTrace, same(stackTrace));
+    });
+
     test("load returns exactly one typed outcome without emitting ui state", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);

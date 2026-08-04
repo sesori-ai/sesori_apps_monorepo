@@ -105,13 +105,17 @@ void main() {
       expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
     });
 
-    test("maps stale project sessions to sessions.updated", () {
+    test("maps command-catalog invalidation to the dedicated session event", () {
       final result = mapper.map(
-        const BridgeSseSessionsUpdated(sessionID: "s1", projectID: "p1"),
+        const BridgeSseSessionCommandsUpdated(sessionID: "s1", projectID: "p1"),
       );
 
-      expect(result, isA<SesoriSessionsUpdated>());
-      expect((result! as SesoriSessionsUpdated).projectID, "p1");
+      expect(
+        result,
+        isA<SesoriSessionCommandsUpdated>()
+            .having((event) => event.sessionID, "sessionID", "s1")
+            .having((event) => event.projectID, "projectID", "p1"),
+      );
     });
 
     test("maps command.executed events", () {
