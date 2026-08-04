@@ -239,6 +239,7 @@ void main() {
         method: "item/started",
         itemId: "exec-file-1",
         turnId: "turn-1",
+        status: "inProgress",
       ),
     );
     final completed = target.observeAppServerTool(
@@ -250,11 +251,28 @@ void main() {
         status: "completed",
       ),
     );
-    final rolloutResult = target
+    target
         .observeRolloutLine(
           threadId: "thread-1",
           line: _toolOutput(
             callId: "call-patch",
+            output: "Script running with cell ID 7\nOutput:\n{}",
+          ),
+        )
+        .single;
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _waitCall(
+        callId: "call-wait",
+        turnId: "turn-1",
+        cellId: "7",
+      ),
+    );
+    final rolloutResult = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: _toolOutput(
+            callId: "call-wait",
             output: "Script completed\nOutput:\n{}",
           ),
         )
@@ -1943,7 +1961,7 @@ CodexServerNotification _fileChangeNotification({
   required String method,
   required String itemId,
   required String turnId,
-  String status = "inProgress",
+  required String status,
 }) {
   return CodexServerNotification(
     method: method,

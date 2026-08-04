@@ -151,7 +151,7 @@ class CodexRolloutToolMapper {
       :final name,
       :final input,
     ) when name.toLowerCase() == "exec") {
-      return _codeModeFileChangePatch(input);
+      return _codeModeFileChangePatch(input: input);
     }
     return null;
   }
@@ -362,16 +362,16 @@ class CodexRolloutToolMapper {
     final usefulId = _usefulText(callId) ?? _usefulText(id);
     if (usefulId == null) return null;
     final usefulName = _usefulText(name) ?? "tool";
-    final fileChangePatch = usefulName.toLowerCase() == "exec" ? _codeModeFileChangePatch(input) : null;
+    final fileChangePatch = usefulName.toLowerCase() == "exec" ? _codeModeFileChangePatch(input: input) : null;
     return CodexRolloutToolCall(
       id: usefulId,
       turnId: _usefulText(turnId),
       tool: fileChangePatch == null ? normalizeToolName(usefulName) : "edit",
-      title: fileChangePatch == null ? toolCallTitle(input) : _fileChangeTitle(fileChangePatch),
+      title: fileChangePatch == null ? toolCallTitle(input) : _fileChangeTitle(patch: fileChangePatch),
     );
   }
 
-  String? _codeModeFileChangePatch(String input) {
+  String? _codeModeFileChangePatch({required String input}) {
     final invocation = _codeModeFileChangeInvocationPattern.firstMatch(input);
     if (invocation == null || invocation.group(1) != invocation.group(3)) {
       return null;
@@ -384,7 +384,7 @@ class CodexRolloutToolMapper {
     }
   }
 
-  String? _fileChangeTitle(String patch) {
+  String? _fileChangeTitle({required String patch}) {
     final paths = _patchFileHeaderPattern
         .allMatches(patch)
         .map((match) => match.group(1))

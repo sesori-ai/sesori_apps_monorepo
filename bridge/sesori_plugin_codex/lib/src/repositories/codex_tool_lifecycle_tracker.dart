@@ -392,7 +392,7 @@ class CodexToolLifecycleTracker {
       tool.outstandingCellIds.clear();
     }
 
-    if (!thread.codeModeFileCallIds.contains(result.callId) || result.status == PluginToolStatus.error) {
+    if (!thread.codeModeFileCallIds.contains(canonicalId) || result.status == PluginToolStatus.error) {
       tool.rolloutOutput = _mergeOutput(
         previous: tool.rolloutOutput,
         current: result.output,
