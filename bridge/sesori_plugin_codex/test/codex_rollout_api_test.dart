@@ -1106,6 +1106,72 @@ void main() {
       expect(messages.last.parts.single.text, "Visible answer");
     });
 
+    test("readMessages excludes only complete generated repository instructions", () {
+      const generatedWithPath =
+          "# AGENTS.md instructions for /sanitized/project\n\n"
+          "<INSTRUCTIONS>\nrepository marker\n</INSTRUCTIONS>";
+      const generatedWithoutPath =
+          "# AGENTS.md instructions\n\n"
+          "<INSTRUCTIONS>\nrepository marker\n</INSTRUCTIONS>";
+      String userMessageLine({required String id, required String text}) => jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "id": id,
+          "role": "user",
+          "content": [
+            {"type": "input_text", "text": text},
+          ],
+        },
+      });
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/04/rollout-generated-repository-instructions.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        cwd: "/repo/app",
+        extraLines: [
+          userMessageLine(id: "generated-with-path", text: generatedWithPath),
+          userMessageLine(id: "generated-without-path", text: generatedWithoutPath),
+          userMessageLine(id: "generated-with-outer-whitespace", text: "  $generatedWithPath\n"),
+          userMessageLine(id: "authored-exact-envelope", text: generatedWithPath),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": generatedWithPath,
+            },
+          }),
+          userMessageLine(
+            id: "near-match-case",
+            text: "# agents.md instructions\n\n<INSTRUCTIONS>\nmarker\n</INSTRUCTIONS>",
+          ),
+          userMessageLine(
+            id: "incomplete-envelope",
+            text: "# AGENTS.md instructions\n\n<INSTRUCTIONS>\nmarker",
+          ),
+          userMessageLine(
+            id: "mixed-envelope",
+            text: "$generatedWithoutPath\nVisible authored text",
+          ),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.map((message) => message.info.id), [
+        "authored-exact-envelope",
+        "near-match-case",
+        "incomplete-envelope",
+        "mixed-envelope",
+      ]);
+      expect(messages.first.parts.single.text, generatedWithPath);
+    });
+
     test("readMessages preserves compacted rollout records as completed tools", () {
       final path = _writeRollout(
         codexHome,
