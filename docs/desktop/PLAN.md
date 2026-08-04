@@ -18,7 +18,7 @@
 > 1. **Current pointer** (above): set **Last completed phase** to the PR you just
 >    raised and **Next up** to the following ☐.
 > 2. **§9 PR status index**: flip that PR's row ☐ → ☑.
-> 3. **Phase doc Aristotle line**: set `impl ☑` for that PR (with the merge ref,
+> 3. **Phase doc architecture-review line**: set `impl ☑` for that PR (with the merge ref,
 >    e.g. `impl ☑ (merged #352)` once known — a raised-but-unmerged PR may cite
 >    the PR number or be filled in on the reconciling pass).
 > 4. **Phase doc Findings log / Plan-deltas**: record what shipped and any deltas.
@@ -57,7 +57,7 @@
 >    the plan — e.g. a branch named `…-phase-2` while the first ☐ is still in
 >    Phase 1. The plan always wins; never infer the phase/PR from the branch name.
 > 4. **Default scope = one PR per session** (matches "one feature branch per
->    PR"). Implement the single next PR, run both Aristotle gates (§5), open it,
+>    PR"). Implement the single next PR, run both architecture-review gates (§5), open it,
 >    then stop unless the user says otherwise.
 > 5. **MT rows are user-run manual checkpoints, not PRs.** When the first ☐ is an
 >    `MT-N` row, do not implement anything: present that checkpoint's checklist
@@ -257,8 +257,8 @@ mobile release.**
   `SemanticVersion`, `BinaryDownloadClient`, `ChecksumValidator`,
   `ArchiveExtractor` for analogous desktop primitives (separate workspace → mirror
   the pattern, don't import bridge foundation).
-- **Every implementation PR** runs through `aristotle-plan-review` before coding
-  **and** `aristotle-impl-review` before opening — the architecture gate is
+- **Every implementation PR** runs through `architecture-plan-review` before coding
+  **and** `architecture-implementation-review` before opening — the architecture gate is
   per-PR, never per-phase (a later PR in a phase must not bypass it).
 - **Every pending PR carries a Regression guide** (see the per-PR template in the
   phase docs): the blast radius of the change — which existing behaviours could
@@ -269,7 +269,7 @@ mobile release.**
   and the Current pointer moved. A PR that ships without this breaks the resume
   rule for the next session.
 
-## 6. Component design (Aristotle-aligned)
+## 6. Component design (architecture-aligned)
 
 ### Bridge side (supervised mode; gated by `--control-url`)
 
@@ -332,7 +332,7 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | A2 | macOS **not** sandboxed (Developer ID, not MAS) | the bridge spawns `git`/`opencode`/`ps` |
 | A3 | Single token authority (GUI), helper token-provided | eliminates cross-process refresh-rotation race |
 | A4 | Control-protocol DTOs in `sesori_shared` | only shared point between bridge + client workspaces; pure data |
-| A5 | `ControlChannelServer` name kept (vs Aristotle's `Listener`) | `Listener` implies one-way subscription; this is a duplex socket host; `Server` is now an explicit transport-host suffix and `DebugServer` is the precedent |
+| A5 | `ControlChannelServer` name kept (vs the architecture reviewer's `Listener`) | `Listener` implies one-way subscription; this is a duplex socket host; `Server` is now an explicit transport-host suffix and `DebugServer` is the precedent |
 | A6 | `bridgeId` persistence = a small file-backed storage **inside `auth/`** (no Dao) — **implemented as `BridgeIdStorage`** | one string; no DB/migration; keeps it within the self-contained auth subsystem so auth code doesn't depend on top-level `repositories/`. Removing `bridgeId` from `TokenData` also deleted the token↔bridgeId carry-over re-reads; legacy ids are adopted once from `token.json` via an injected `readLegacyBridgeId` seam |
 | A7 | First-run provisioning UI is **v1** | first launch downloads OpenCode; user must see progress |
 | A8 | Control-channel secret delivered **off-argv** (inherited FD/pipe or stdin handshake), not `--control-secret` | argv is readable by other local processes/users; this channel issues bearer tokens, so an argv-leaked secret = token theft |

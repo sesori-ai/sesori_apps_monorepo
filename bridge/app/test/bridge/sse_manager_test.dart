@@ -380,7 +380,8 @@ void main() {
     test("EventQueue onError callback reports failure when send function throws", () async {
       final roomKey = makeRoomKey();
       final throwingClient = _ThrowingRelayClient();
-      final capturingReporter = CapturingFailureReporter();
+      final failureReported = Completer<void>();
+      final capturingReporter = _CompletingFailureReporter(reported: failureReported);
       final manager = SSEManager(
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
@@ -393,13 +394,7 @@ void main() {
       manager.enqueueEvent(_event("repo-err"));
 
       // Wait for the send function to throw and the onError callback to fire.
-      final deadline = DateTime.now().add(const Duration(seconds: 5));
-      while (capturingReporter.recordedIdentifiers.isEmpty) {
-        if (DateTime.now().isAfter(deadline)) {
-          fail("Timed out waiting for failure report from onError callback");
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-      }
+      await failureReported.future.timeout(const Duration(seconds: 5));
 
       expect(
         capturingReporter.recordedIdentifiers,
@@ -431,14 +426,26 @@ Future<Map<String, dynamic>> _decryptEnvelope(
 }
 
 Future<void> _waitForSendCount(_RecordingRelayClient client, int count) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 5));
-  while (DateTime.now().isBefore(deadline)) {
-    if (client.sentConnIDs.length >= count) return;
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+  if (client.sentConnIDs.length >= count) return;
+  // The recording client emits per recorded send, so the wait is event-driven
+  // instead of polling on a real clock.
+  final reached = Completer<void>();
+  late final StreamSubscription<int> sub;
+  sub = client.sends.listen((recorded) {
+    if (!reached.isCompleted && recorded >= count) {
+      reached.complete();
+    }
+  });
+  try {
+    await reached.future.timeout(const Duration(seconds: 5));
+  } on TimeoutException catch (error) {
+    fail(
+      "Timed out waiting for $count sends "
+      "(got ${client.sentConnIDs.length}): $error",
+    );
+  } finally {
+    await sub.cancel();
   }
-  throw TimeoutException(
-    "Timed out waiting for $count sends (got ${client.sentConnIDs.length})",
-  );
 }
 
 Future<void> _pumpEventLoop() => Future<void>.delayed(const Duration(milliseconds: 30));
@@ -448,6 +455,11 @@ class _RecordingRelayClient extends RelayClient {
   final List<List<int>> sentPayloads = <List<int>>[];
   RelaySendOutcome nextOutcome = RelaySendOutcome.sent;
   void Function()? onNextSend;
+  final StreamController<int> _sends = StreamController<int>.broadcast();
+
+  /// Emits the recorded send count after every send, so tests can await
+  /// sends without polling.
+  Stream<int> get sends => _sends.stream;
 
   _RecordingRelayClient()
     : super(
@@ -464,6 +476,7 @@ class _RecordingRelayClient extends RelayClient {
   }) {
     sentConnIDs.add(connID);
     sentPayloads.add(List<int>.from(payload));
+    _sends.add(sentConnIDs.length);
     final outcome = nextOutcome;
     onNextSend?.call();
     return outcome;
@@ -485,6 +498,37 @@ class _ThrowingRelayClient extends RelayClient {
     required List<int> payload,
   }) {
     throw Exception("send failed intentionally");
+  }
+}
+
+/// A [CapturingFailureReporter] that completes a completer on the first
+/// recorded failure, so tests await the report instead of polling.
+class _CompletingFailureReporter extends CapturingFailureReporter {
+  _CompletingFailureReporter({required Completer<void> reported})
+    : _reported = reported;
+
+  final Completer<void> _reported;
+
+  @override
+  Future<void> recordFailure({
+    required Object error,
+    required StackTrace stackTrace,
+    required String uniqueIdentifier,
+    required bool fatal,
+    required String? reason,
+    required Iterable<Object> information,
+  }) async {
+    await super.recordFailure(
+      error: error,
+      stackTrace: stackTrace,
+      uniqueIdentifier: uniqueIdentifier,
+      fatal: fatal,
+      reason: reason,
+      information: information,
+    );
+    if (!_reported.isCompleted) {
+      _reported.complete();
+    }
   }
 }
 

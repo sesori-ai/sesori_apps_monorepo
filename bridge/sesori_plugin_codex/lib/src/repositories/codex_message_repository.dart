@@ -8,6 +8,12 @@ import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
 import "models/codex_projected_tool.dart";
 
+final class CodexPreparedMessageRead {
+  CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lines}) : _lines = List.unmodifiable(lines);
+
+  final List<CodexRolloutLineDto> _lines;
+}
+
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
 class CodexMessageRepository {
   CodexMessageRepository({
@@ -26,6 +32,22 @@ class CodexMessageRepository {
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
   }) {
+    return projectMessages(
+      read: prepareMessageRead(
+        rolloutPath: rolloutPath,
+        sessionId: sessionId,
+      ),
+      sessionId: sessionId,
+      replayToolDisposition: replayToolDisposition,
+      structuredToolStatusByCallId: structuredToolStatusByCallId,
+      config: config,
+    );
+  }
+
+  CodexPreparedMessageRead prepareMessageRead({
+    required String rolloutPath,
+    required String sessionId,
+  }) {
     final List<CodexRolloutLineDto> lines;
     try {
       lines = _rolloutApi.readTranscript(rolloutPath: rolloutPath);
@@ -39,6 +61,17 @@ class CodexMessageRepository {
         stackTrace,
       );
     }
+    return CodexPreparedMessageRead(lines: lines);
+  }
+
+  List<PluginMessageWithParts> projectMessages({
+    required CodexPreparedMessageRead read,
+    required String sessionId,
+    required CodexReplayToolDisposition replayToolDisposition,
+    required Map<String, PluginToolStatus> structuredToolStatusByCallId,
+    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+  }) {
+    final lines = read._lines;
 
     final toolTracker = CodexToolLifecycleTracker(
       rolloutToolMapper: _rolloutToolMapper,
@@ -238,7 +271,11 @@ class CodexMessageRepository {
               info: assistantInfo(id: messageId, time: messageTime),
               tool: "image_generation",
               title: null,
-              status: generation.status,
+              status:
+                  generation.status == PluginToolStatus.running &&
+                      replayToolDisposition == CodexReplayToolDisposition.terminalize
+                  ? PluginToolStatus.error
+                  : generation.status,
               output: null,
               attachments: generation.attachments,
             ),

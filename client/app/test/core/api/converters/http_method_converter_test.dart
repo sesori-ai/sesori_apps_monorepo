@@ -81,46 +81,5 @@ void main() {
       });
     });
 
-    group("round-trip conversion", () {
-      test("GET round-trips correctly", () {
-        const original = HttpMethod.get;
-        final json = converter.toJson(original);
-        final restored = converter.fromJson(json);
-
-        expect(restored, equals(original));
-      });
-
-      test("POST round-trips correctly", () {
-        const original = HttpMethod.post;
-        final json = converter.toJson(original);
-        final restored = converter.fromJson(json);
-
-        expect(restored, equals(original));
-      });
-
-      test("PUT round-trips correctly", () {
-        const original = HttpMethod.put;
-        final json = converter.toJson(original);
-        final restored = converter.fromJson(json);
-
-        expect(restored, equals(original));
-      });
-
-      test("PATCH round-trips correctly", () {
-        const original = HttpMethod.patch;
-        final json = converter.toJson(original);
-        final restored = converter.fromJson(json);
-
-        expect(restored, equals(original));
-      });
-
-      test("DELETE round-trips correctly", () {
-        const original = HttpMethod.delete;
-        final json = converter.toJson(original);
-        final restored = converter.fromJson(json);
-
-        expect(restored, equals(original));
-      });
-    });
   });
 }

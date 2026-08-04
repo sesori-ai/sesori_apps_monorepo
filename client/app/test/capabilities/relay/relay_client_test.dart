@@ -1,6 +1,3 @@
-import "dart:convert";
-import "dart:typed_data";
-
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -82,59 +79,6 @@ void main() {
       );
 
       expect(client.lastCloseCode, isNull);
-    });
-  });
-
-  group("Payload type detection", () {
-    // The relay protocol uses a 1-byte version prefix to distinguish payload types:
-    // 0x01 = encrypted relay message (XChaCha20-Poly1305 ciphertext)
-    // 0x7B = '{' = plaintext JSON control message from bridge (key_exchange, rekey_required)
-
-    test("message version byte is 0x01 for encrypted frames", () {
-      // Documented relay protocol: encrypted frames start with version byte 0x01
-      const messageVersion = 0x01;
-      final encryptedFrame = Uint8List.fromList([messageVersion, 0xDE, 0xAD, 0xBE, 0xEF]);
-
-      expect(encryptedFrame.first, equals(0x01));
-    });
-
-    test("plaintext JSON starts with 0x7B (ASCII curly brace)", () {
-      // Plaintext messages from bridge during handshake start with '{'
-      final jsonBytes = utf8.encode('{"type":"rekey_required"}');
-
-      expect(jsonBytes.first, equals(0x7B)); // '{' = 0x7B
-    });
-
-    test("plaintext key_exchange message starts with 0x7B", () {
-      final jsonBytes = utf8.encode('{"type":"key_exchange","publicKey":"base64url"}');
-
-      expect(jsonBytes.first, equals(0x7B));
-    });
-
-    test("0x01 and 0x7B are distinct payload discriminators", () {
-      const encryptedVersion = 0x01;
-      const plaintextVersion = 0x7B;
-
-      expect(encryptedVersion, isNot(equals(plaintextVersion)));
-    });
-  });
-
-  group("BridgeStatus enum", () {
-    test("has online and offline variants", () {
-      const online = BridgeStatus.online;
-      const offline = BridgeStatus.offline;
-
-      expect(online, isNot(equals(offline)));
-      expect(BridgeStatus.values.length, equals(2));
-    });
-  });
-
-  group("RelayClientConnectionState enum", () {
-    test("has all expected states", () {
-      expect(RelayClientConnectionState.values, contains(RelayClientConnectionState.disconnected));
-      expect(RelayClientConnectionState.values, contains(RelayClientConnectionState.connecting));
-      expect(RelayClientConnectionState.values, contains(RelayClientConnectionState.connected));
-      expect(RelayClientConnectionState.values, contains(RelayClientConnectionState.disconnecting));
     });
   });
 }

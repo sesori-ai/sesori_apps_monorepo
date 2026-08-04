@@ -148,22 +148,26 @@ eagerly "just in case."
 - Do not rerun an unchanged passing command or reread unchanged files solely for
   additional confidence. Expand verification only when impact or a failure gives
   a concrete reason.
-- Aristotle is an architecture reviewer, not a general implementation or code
-  correctness reviewer. Invoke it only for architecture-bearing production work:
-  new or moved production classes/files, dependency or DI ownership changes,
-  public/wire/persisted contracts, cross-layer flow, lifecycle triggers, or
-  shared boundaries.
-- Do not invoke Aristotle for docs, instructions, agent/skill definitions,
-  tests-only edits, formatting, copy, localized bug fixes, ordinary method logic,
-  or non-architectural tooling changes. Broader wording in reviewer metadata
-  applies only within this architecture scope.
-- Apply valid `aristotle-plan-review` findings directly without re-reviewing the
-  fixes. A too-vague rejection may be reviewed once more after clarification;
+- Architecture review is handled by two skills — `architecture-plan-review`
+  and `architecture-implementation-review` — that are architecture reviewers,
+  not general implementation or code correctness reviewers. Invoke them only for
+  architecture-bearing production work: new or moved production classes/files,
+  dependency or DI ownership changes, public/wire/persisted contracts,
+  cross-layer flow, lifecycle triggers, or shared boundaries. Both skills are
+  invoked through a sub-agent: ask a sub-agent to perform the review using the
+  skill, rather than loading the skill directly in the main agent context.
+- Do not invoke the architecture reviewers for docs, instructions, agent/skill
+  definitions, tests-only edits, formatting, copy, localized bug fixes, ordinary
+  method logic, or non-architectural tooling changes. Broader wording in
+  reviewer metadata applies only within this architecture scope.
+- Apply valid `architecture-plan-review` findings directly without re-reviewing
+  the fixes. A too-vague rejection may be reviewed once more after clarification;
   if it is rejected as too vague again, ask the user how to proceed. Considerable
   plan changes caused by new findings or user requests may also be reviewed again.
-- Use `aristotle-impl-review` at most twice before asking the user how to proceed.
-  If rejection is based only on an explicitly approved user decision, that
-  decision supersedes the review; do not re-review or re-litigate it.
+- Use `architecture-implementation-review` at most twice before asking the user
+  how to proceed. If rejection is based only on an explicitly approved user
+  decision, that decision supersedes the review; do not re-review or re-litigate
+  it.
 - Prefer a Git-defined implementation-review scope such as the current branch
   against `main`, a commit range, the last N commits, or a PR. File or directory
   scopes are also valid when useful; the reviewer uses Git history and diffs
@@ -172,8 +176,8 @@ eagerly "just in case."
   finding would move, rename, or refactor pre-existing files, classes, or
   architecture beyond the current request, ask the user whether that scope
   expansion is acceptable before making it.
-- These review rules supersede broader Aristotle requirements in older roadmap
-  or plan documents.
+- These review rules supersede broader requirements in older roadmap or plan
+  documents.
 - Cleanup and refactoring are acceptable when the value is clear. Before a
   considerable refactor, explain its approximate size and ask the user to
   approve it. Prefer a dedicated PR without unrelated functionality changes

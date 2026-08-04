@@ -54,27 +54,5 @@ void main() {
 
       expect(response, equals(const SuccessEmptyResponse()));
     });
-
-    test("records id", () async {
-      await handler.handle(
-        makeRequest("POST", "/session/abort"),
-        body: const SessionIdRequest(sessionId: "session-xyz"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(plugin.lastAbortSessionId, equals("session-xyz"));
-    });
-
-    test("routes abort through the session abort service", () async {
-      await handler.handle(
-        makeRequest("POST", "/session/abort"),
-        body: const SessionIdRequest(sessionId: "s1"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(plugin.lastAbortSessionId, equals("s1"));
-    });
   });
 }

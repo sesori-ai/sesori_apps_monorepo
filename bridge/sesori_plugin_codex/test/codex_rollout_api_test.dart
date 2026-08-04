@@ -1207,6 +1207,67 @@ void main() {
       }
     });
 
+    test("idle replay settles interrupted stable and legacy image generations", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/04/rollout-interrupted-images.jsonl",
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "id": "image-running",
+              "status": "in_progress",
+              "result": "AA==",
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "retry",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "image_generation_call",
+              "status": "in_progress",
+              "result": "AQ==",
+            },
+          }),
+        ],
+      );
+
+      final busyMessages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
+        structuredToolStatusByCallId: const {},
+      );
+      final idleMessages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(
+        busyMessages
+            .where((message) => message.parts.single.type == PluginMessagePartType.tool)
+            .map((message) => message.parts.single.state?.status),
+        everyElement(PluginToolStatus.running),
+      );
+      expect(
+        idleMessages
+            .where((message) => message.parts.single.type == PluginMessagePartType.tool)
+            .map((message) => message.parts.single.state?.status),
+        everyElement(PluginToolStatus.error),
+      );
+    });
+
     test("readMessages prefers durable image events over duplicate response items", () {
       final path = _writeRollout(
         codexHome,
@@ -1963,6 +2024,41 @@ void main() {
       expect(messages, hasLength(2));
       expect(messages[0].parts.first.text, equals("ping"));
       expect(messages[1].parts.first.text, equals("pong"));
+      await plugin.dispose();
+    });
+
+    test("getSessionMessages preserves running tools when activity is unknown", () async {
+      const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaa99";
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaa99.jsonl",
+        sessionId: sessionId,
+        cwd: "/work/sample-app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call",
+              "call_id": "call-running",
+              "name": "exec_command",
+              "arguments": '{"cmd":"sleep 30"}',
+            },
+          }),
+        ],
+      );
+
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
+        projectCwd: "/work/sample-app",
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
+      );
+
+      final messages = await plugin.getSessionMessages(sessionId);
+
+      expect(messages.single.parts.single.state?.status, PluginToolStatus.running);
       await plugin.dispose();
     });
 

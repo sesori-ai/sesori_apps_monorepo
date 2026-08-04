@@ -385,7 +385,16 @@ List<RouteBase> _buildAppRoutes({
         ),
         GoRoute(
           path: _settingsHarnessesRouteSegment,
-          builder: (context, state) => AppRouteDef.settingsHarnesses._buildScreen(context: context, state: state),
+          // Harness settings are reached from two places — the settings list
+          // and the new-session harness menu — and are a detour from both, so
+          // they rise as a modal over whatever raised them and close back onto
+          // it. A CupertinoPage for the same reason settings itself uses one:
+          // only the Cupertino route honours `fullscreenDialog` on Android too.
+          pageBuilder: (context, state) => CupertinoPage<void>(
+            key: state.pageKey,
+            fullscreenDialog: true,
+            child: AppRouteDef.settingsHarnesses._buildScreen(context: context, state: state),
+          ),
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,
