@@ -554,7 +554,10 @@ class Orchestrator {
         PostAgentsHandler(agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
         GetProjectQuestionsHandler(questionRepository: questionRepository),
-        GetSessionPermissionsHandler(permissionRepository: permissionRepository),
+        GetSessionPermissionsHandler(
+          permissionRepository: permissionRepository,
+          suppressPendingPermissions: config.yolo,
+        ),
         ReplyToQuestionHandler(pendingInteractionService: pendingInteractionService),
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
