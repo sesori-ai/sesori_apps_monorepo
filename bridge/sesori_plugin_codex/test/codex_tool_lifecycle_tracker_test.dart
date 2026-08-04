@@ -375,6 +375,21 @@ void main() {
             "text(JSON.stringify({structuredContent:r?.structuredContent,_meta:r?._meta}));\n",
       },
     });
+    final wrapperWithShadowedResultVariable = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-image-wrapper-with-shadowed-result",
+        "name": "exec",
+        "input":
+            "const r = await tools.image_gen__imagegen({prompt: 'private'});\n"
+            "for (const r of (r?.content ?? [])) {\n"
+            '  if (r.type === "image") image(r);\n'
+            '  else if (r.type === "text") text(r.text);\n'
+            "}\n"
+            "if (r?.image_url) generatedImage(r);\n",
+      },
+    });
     final malformedDirectedWrapper = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -535,6 +550,13 @@ void main() {
       target.observeRolloutLine(
         threadId: "thread-1",
         line: imageWrapperWithAnotherTool,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: wrapperWithShadowedResultVariable,
       ),
       hasLength(1),
     );

@@ -757,6 +757,7 @@ bool _isGeneratedImageInvocation(String input) {
   );
   if (contentForwarded == null) return false;
   final contentVariable = contentForwarded.group(1);
+  if (contentVariable == variable) return false;
   return [2, 7, 8].every(
         (group) => contentForwarded.group(group) == variable,
       ) &&
