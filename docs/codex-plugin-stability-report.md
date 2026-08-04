@@ -8,10 +8,8 @@
 - **Deep-test branches:** originally validated as the local
   `codex-stability-deep-test-*` stack, then delivered through the stability
   feedback PR series
-- **Status:** Original deep-test matrix complete; F-12 follow-up open
-- **Release decision:** Ready for code review for the original stability matrix.
-  The separately reproduced F-12 generated-instructions defect remains open and
-  is scheduled for Step 10 of the delivery plan.
+- **Status:** Original deep-test matrix and F-12 follow-up complete
+- **Release decision:** Ready for code review, including the generated repository-instructions privacy fix.
 
 The final production stack, in order, is:
 
@@ -249,8 +247,13 @@ summaries and only the identifiers needed to correlate a finding.
 - **Evidence:** The bridge-backed session and reopened iOS view both retained the
   synthetic message. The report omits its contents because they include local
   repository instructions and paths.
-- **Disposition:** Not caused by attachment capability or image encoding. No fix
-  is included in this branch; investigate and resolve it in a separate PR.
+- **Cause:** Existing generated-context filtering recognized angle-bracket Codex context tags but not the complete
+  `# AGENTS.md instructions` plus
+  `<INSTRUCTIONS>` repository envelope.
+- **Fix:** Step 10 commit `2e534673` recognizes only the full path or no-path generated envelope at the existing
+  cold-history projection boundary.
+- **Result:** Generated repository instructions disappear, while submitted exact envelopes, casing near matches,
+  incomplete envelopes, and mixed authored text remain visible.
 
 ## Final Live Evidence
 
@@ -275,8 +278,8 @@ summaries and only the identifiers needed to correlate a finding.
 
 ## Automated Verification
 
-- `dart test` in `bridge/sesori_plugin_codex`: 315 tests passed after the typed
-  boundary changes were merged forward over the first seven delivery steps.
+- `dart test` in `bridge/sesori_plugin_codex`: 317 tests passed after the Step 10
+  generated-instructions regression was added.
 - `dart analyze --fatal-infos` in `bridge/sesori_plugin_codex`: no issues.
 - Targeted tests cover generated image wrappers, canonical shell and file-change
   identity, late abort completion, active-versus-idle rollout replay, and
@@ -287,10 +290,6 @@ summaries and only the identifiers needed to correlate a finding.
 
 ## Residual Observations
 
-- F-12 was reproduced after the original matrix was finalized: generated
-  repository instructions and a local path can appear as an authored user
-  message. The active stability plan tracks the fix in Step 10; this report does
-  not claim that follow-up is resolved.
 - Codex persisted encrypted reasoning records for the tested Sol turns, but
   every record had an empty `summary`. The plugin correctly rendered no empty or
   invented reasoning. A future upstream turn with a non-empty summary is needed
@@ -334,5 +333,5 @@ eight deep-test production commits are being reviewed and merged in their
 original stack order.
 
 The follow-up mobile-image branch additionally validates image selection and
-submission from the iOS app through Codex. F-12 remains intentionally outside
-that branch's implementation scope and requires a separate PR.
+submission from the iOS app through Codex. Step 10 resolves the separately
+discovered F-12 history projection defect without changing stored rollout data.
