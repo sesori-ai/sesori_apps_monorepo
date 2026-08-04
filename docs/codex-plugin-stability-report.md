@@ -8,8 +8,10 @@
 - **Deep-test branches:** originally validated as the local
   `codex-stability-deep-test-*` stack, then delivered through the stability
   feedback PR series
-- **Status:** Complete
-- **Release decision:** Ready for code review. No reproduced user-visible Codex stability defect remains unresolved.
+- **Status:** Original deep-test matrix complete; F-12 follow-up open
+- **Release decision:** Ready for code review for the original stability matrix.
+  The separately reproduced F-12 generated-instructions defect remains open and
+  is scheduled for Step 10 of the delivery plan.
 
 The final production stack, in order, is:
 
@@ -267,6 +269,10 @@ summaries and only the identifiers needed to correlate a finding.
 
 ## Residual Observations
 
+- F-12 was reproduced after the original matrix was finalized: generated
+  repository instructions and a local path can appear as an authored user
+  message. The active stability plan tracks the fix in Step 10; this report does
+  not claim that follow-up is resolved.
 - Codex persisted encrypted reasoning records for the tested Sol turns, but
   every record had an empty `summary`. The plugin correctly rendered no empty or
   invented reasoning. A future upstream turn with a non-empty summary is needed
