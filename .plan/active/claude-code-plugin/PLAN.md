@@ -10,8 +10,9 @@
 - **Implementation base:** `origin/main` at
   `ca7470fd6ead8f7e1ff0d58e3591e7ce25a5314d`
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Delivery:** one planning PR, thirteen sequential bridge PRs, one activation
-  PR, one client PR, one live-verification PR, and one plan-retirement PR
+- **Delivery:** one planning PR, twelve sequential bridge PRs, one activation PR,
+  one client PR, one live-verification PR, and one plan-retirement PR — seventeen
+  in total
 
 ## Goal
 
@@ -48,8 +49,12 @@ binary the user already has installed and logged in.
    and accept a follow-up turn through `--resume`.
 8. Sessions started in an external terminal appear in Sesori after a refresh,
    under the project matching their working directory.
-9. No Claude-specific concept — tool name, model id, permission mode, transcript
-   path — escapes the plugin package into shared, bridge, or client code.
+9. No Claude *backend payload* concept — tool name, model id, permission mode,
+   transcript path, wire shape — escapes the plugin package into shared, bridge,
+   or client code. Three identity and presentation items are deliberate,
+   enumerated exceptions: `Harness.claude` in `sesori_shared`, the brand asset
+   and display name in `module_prego`, and the harness id in the dated composer
+   attachment gate. Every existing harness carries the same three.
 10. No new `MessagePartType` value and no breaking wire change; the client
     remains data-driven from `GET /plugin` apart from the brand asset and the
     attachment gate.
@@ -348,26 +353,36 @@ inline-attachment limits. Layer 2.
 `tool_use` lifecycle, streamed `input_json_delta` buffering, `tool_result`
 matching by id, and edit-shaped diff detection. Layer 2.
 
-**`ClaudeBackendCatalogRepository`** —
-`ClaudeBackendCatalogRepository({required ClaudeSessionProcessRepository
-processes})`. The DTO-to-internal-model boundary for the backend catalog, kept
-out of `services/` where such mapping does not belong. It reads the retained
-`initialize` payload through the process repository and returns
-`PluginModel` — `variants` populated from `supportedEffortLevels` default-first,
-and omitted entirely for a model that declares no effort support —
-`PluginProvider` for Anthropic, `PluginCommand` from `commands`, and the
-Default/Plan `PluginAgent` pair. `list_models` is its refresh path.
+**`ClaudeBackendCatalogRepository`** — `ClaudeBackendCatalogRepository()`, **no
+collaborators**. The DTO-to-internal-model boundary for the backend catalog, kept
+out of `services/` where such mapping does not belong.
+
+It is a pure mapping over an `initialize` payload handed to it: the caller
+supplies the map, the repository returns `PluginModel` — `variants` populated
+from `supportedEffortLevels` default-first, and omitted entirely for a model that
+declares no effort support — `PluginProvider` for Anthropic, `PluginCommand` from
+`commands`, and the Default/Plan `PluginAgent` pair.
+
+It deliberately does **not** hold `ClaudeSessionProcessRepository`. An earlier
+revision had it fetch the payload itself, which made one Layer-2 component depend
+on a Layer-2 peer — the exact rule this layout states. `ClaudeCatalogService`
+holds both and passes the payload across, so the mapping stays in Layer 2 while
+the peer dependency disappears.
 
 Named distinctly from the transcript catalog on purpose: the two are different
 catalogs over different sources and must not share a name.
 
 **`ClaudeCatalogService`** —
 `ClaudeCatalogService({required ClaudeBackendCatalogRepository catalog,
-required ClaudeSessionProcessRepository processes})`. It exposes the catalog to
-the plugin and turns a model or agent selection into a `set_model` or
-`set_permission_mode` request through the process repository. It holds **no**
-applied-selection cache — that state belongs to the resident process and lives in
-the process repository.
+required ClaudeSessionProcessRepository processes})`. It reads the retained
+`initialize` payload from the process repository, hands it to the catalog
+repository to map, and exposes the result to the plugin. It turns a model or
+agent selection into a `set_model` or `set_permission_mode` request through the
+process repository. It holds **no** applied-selection cache — that state belongs
+to the resident process and lives in the process repository.
+
+Holding both repositories is what keeps them from holding each other; the service
+is the allowed place for that composition.
 
 **`ClaudeTranscriptApi` + `ClaudeTranscriptCatalogRepository`** — resolve the
 transcript
@@ -432,7 +447,7 @@ binary level, and `markReady` on the next success.
 | `getSessions(projectId)` | catalog scan filtered by normalized directory |
 | `getCommands` | slash commands from `system/init`; `PluginCommandSource.command` |
 | `getSessionOptions` | aggregate agents, providers, and commands; `refresh` re-probes |
-| `createSession` | pre-generate the session UUID, spawn with `--session-id`, dispatch the first prompt through the turn queue |
+| `createSession` | pre-generate the session UUID, spawn with `--session-id`, dispatch the first prompt through the turn queue; **the id reported on `system/init` is authoritative** and is cross-checked against the pre-generated UUID (see Session Identity below) |
 | `renameSession` | optimistic only; the mobile database is authoritative (Cursor precedent) |
 | `deleteSession` | kill the resident process, cancel approvals, delete the transcript, forget caches |
 | `archiveSession` / `deleteWorkspace` | no-ops under the best-effort contract |
@@ -452,6 +467,44 @@ binary level, and `markReady` on the next success.
 | `primeSessionDirectory` | documented no-op (global index) |
 | `deletePersistedSession` | idempotent transcript delete |
 | `dispose` | reap processes, cancel approvals, close the event channel; idempotent |
+
+### Session identity
+
+Enumeration, replay, `--resume`, and delete all key on the session id, so a
+mismatch between the id the bridge minted and the id the CLI actually used would
+silently split one session into two views.
+
+`--session-id` pre-binding is **verified**, not assumed: a probe run with a
+pre-generated UUID produced a transcript at `<that uuid>.jsonl`, and every record
+inside reported the same `sessionId`. Multi-turn residency on one process is
+verified the same way — two turns ran on a single process that stayed alive
+between them and exited cleanly only when stdin closed.
+
+The contract is nonetheless defensive rather than trusting: the `session_id`
+reported on `system/init` is the source of truth, cross-checked against the
+pre-generated UUID. A mismatch is logged and the reported id wins, because it is
+the one the transcript is named after. Note that `init` is emitted when a turn
+starts, not when the process spawns, so the check happens on the first turn —
+which is exactly when `createSession` dispatches its first prompt.
+
+### Respawn state durability
+
+Idle reaping plus `--resume` means a session's process is replaced underneath the
+user, so anything the plugin believes about a process must survive that or be
+re-derived. Two properties are unresolved and are settled with evidence before
+Step 10 relies on them, then covered live in Step 16:
+
+1. **Does `--resume` restore the session's last-used model?** If the resumed
+   process honors a persisted model while the plugin believes "default", the
+   applied-model bookkeeping drifts from reality. The nav-bar subtitle is
+   server-stamped from the latest assistant message, so the UI would show one
+   model while the next `set_model` decision is made against another. If resume
+   does restore it, the process repository seeds applied-model from the first
+   post-resume assistant message rather than assuming a default.
+2. **Does an `always` permission grant survive a respawn?** If grants are
+   in-memory session state, users re-see permission cards after every idle
+   window — a visible regression that a transparent-resume check would not catch,
+   because that only asserts the turn completes.
 
 ### Prompt parts to content blocks
 
@@ -555,7 +608,7 @@ transport field, cache, flag, job, or test was found.
 
 | Step | Branch | Exact PR title | Estimate |
 |---|---|---|---:|
-| 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,700-1,900 |
+| 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,200-1,400 |
 | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 |
 | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,000-1,400 |
 | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,100-1,500 |
@@ -745,6 +798,10 @@ transport field, cache, flag, job, or test was found.
 
 - Record the final merged PR and verification evidence in the tracker, then move
   the plan tree from `.plan/active/` to `.plan/completed/` in the same commit.
+- Remove the `mobile-mcp` entry from `.mcp.json`. It exists only for the Step 16
+  simulator run, and every ordinary Claude Code session in this repository starts
+  the servers listed there; leaving it registered would impose that cost
+  permanently for a one-off verification.
 - Confirm all seventeen PRs merged in order and run `git diff --check`. No suites
   and no implementation review.
 
@@ -782,6 +839,8 @@ quota, so prompts stay minimal.
 | E2E-16 | An attached photo is described correctly |
 | E2E-17 | The command catalog lists slash commands and one executes |
 | E2E-18 | A follow-up after the idle-reap window resumes transparently |
+| E2E-18a | After an idle reap, the model shown in the nav-bar subtitle still matches the model the plugin believes is applied |
+| E2E-18b | After an idle reap, a tool previously granted "always" runs without prompting again |
 | E2E-19 | The harness settings card disables and re-enables Claude Code |
 | E2E-20 | The debug-level bridge log has no unhandled errors and no `claude` process leaks after shutdown |
 

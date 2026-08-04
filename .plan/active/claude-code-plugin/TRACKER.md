@@ -43,7 +43,7 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,700-1,900 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) open; 1,784 changed lines after applying the plan review |
+| [x] | 1/17 | `claude-code-support` | `🌱 [claude-code-plugin] docs: plan Claude Code harness plugin [step 1/17]` | 1,200-1,400 | [PR #737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737) open; see the verification log for the measured diff |
 | [ ] | 2/17 | `claude-code-plugin-protocol-scaffold` | `⚙️ [claude-code-plugin] feat(claude): ground protocol and scaffold package [step 2/17]` | 1,100-1,500 | Not started |
 | [ ] | 3/17 | `claude-code-plugin-stream-client` | `⚙️ [claude-code-plugin] feat(claude): add stream-json transport [step 3/17]` | 1,000-1,400 | Not started |
 | [ ] | 4/17 | `claude-code-plugin-transcript-catalog` | `⚙️ [claude-code-plugin] feat(claude): enumerate transcript sessions [step 4/17]` | 1,100-1,500 | Not started |
@@ -119,13 +119,39 @@
   `maxInlineMessageAttachmentBytes`, `BufferedUntilFirstListener`,
   `PluginAuthenticationRequiredException`, `PluginStartAbortedException`,
   `HostProcessCommandExecutor`, `PluginValueOption`, and `PluginQuestionInfo`.
-  `.mcp.json` parses and `git diff --cached --check` passes. The staged diff is
-  997 changed lines; the original 500-800 estimate was corrected to 900-1,100
-  rather than published stale. No Dart or Flutter suites were run for this
-  documentation-only step.
+  `.mcp.json` parses and `git diff --cached --check` passes. No Dart or Flutter
+  suites were run for this documentation-only step.
+
+  **Changed-line measurement, corrected twice.** The figure first recorded here
+  was 997, taken from `git diff --cached --numstat` against a partially staged
+  tree — it undercounted. The correction to 1,784 was also wrong, measured
+  against a stale local `main` that was two commits behind the remote, which
+  added unrelated diff. The authoritative command is
+
+      git diff $(git merge-base origin/main HEAD) --numstat
+
+  which reports **1,300 changed lines** for this step including the review-fix
+  commits. Both earlier numbers are superseded; the method is recorded so the
+  figure can be re-derived rather than trusted.
 
 ## Findings And Plan Deltas
 
+- **2026-08-04 — Multi-turn residency PROVEN:** PR review challenged the
+  assumption that one process serves several turns, noting the CLI docs describe
+  stream-json as producing a final result and exiting. Verified directly: two
+  turns ran on one process, `poll()` confirmed it alive between them, both
+  returned `result` frames, and it exited 0 only when stdin was closed. The
+  architecture's residency model holds. A second `system/init` arrived with the
+  second turn, independently confirming that frame is turn-triggered.
+- **2026-08-04 — `--session-id` pre-binding PROVEN:** a run with a pre-generated
+  UUID produced `<that uuid>.jsonl`, and every record inside reported the same
+  `sessionId`. The plan still treats init's reported id as authoritative and
+  cross-checks it, because the identity chain is load-bearing for enumeration,
+  replay, resume, and delete.
+- **2026-08-04 — Respawn-state durability is an open question:** PR review asked
+  whether `--resume` restores the last-used model and whether an `always` grant
+  survives a respawn. Neither is answered yet; both are now recorded in PLAN.md
+  as pre-Step-10 evidence items with E2E rows 18a and 18b.
 - **2026-08-04 — Prompt-attachment gate stays a client branch (user decision):**
   plan review wanted a `PluginMetadata` capability flag replacing
   `harnessSupportsPromptAttachments`. The user chose to widen the existing dated

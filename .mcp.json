@@ -6,7 +6,7 @@
     },
     "mobile-mcp": {
       "command": "npx",
-      "args": ["@mobilenext/mobile-mcp@latest"]
+      "args": ["-y", "@mobilenext/mobile-mcp@1.0.0"]
     }
   }
 }
