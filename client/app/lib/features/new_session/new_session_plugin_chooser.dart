@@ -189,6 +189,9 @@ class _HarnessesMenuHeader extends StatelessWidget {
                 style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
               ),
             ),
+            // Flutter's tooltip OverlayPortal cannot be laid out below this
+            // anchored menu's follower layer (flutter/flutter#178522). Keep the
+            // accessible label without creating that nested overlay.
             IconButton(
               key: const Key("new_session_harness_settings"),
               onPressed: onSettingsPressed,
@@ -196,8 +199,8 @@ class _HarnessesMenuHeader extends StatelessWidget {
                 TablerRegular.adjustments_horizontal,
                 size: 20,
                 color: prego.colors.textTertiary,
+                semanticLabel: loc.newSessionHarnessSettings,
               ),
-              tooltip: loc.newSessionHarnessSettings,
               visualDensity: VisualDensity.compact,
             ),
           ],

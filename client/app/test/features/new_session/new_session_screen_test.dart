@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
@@ -717,6 +718,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("harnesses-settings"), findsOneWidget);
+  });
+
+  testWidgets("keeps the harness settings icon layout-safe on hover", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await openHarnessMenu(tester);
+
+    final settings = find.byKey(const Key("new_session_harness_settings"));
+    final loc = AppLocalizations.of(tester.element(settings))!;
+    expect(
+      tester.getSemantics(settings),
+      matchesSemantics(
+        label: loc.newSessionHarnessSettings,
+        isButton: true,
+        isFocusable: true,
+        hasEnabledState: true,
+        isEnabled: true,
+        hasTapAction: true,
+        hasFocusAction: true,
+      ),
+    );
+    semantics.dispose();
+
+    final pointer = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(pointer.hover(tester.getCenter(settings)));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("keeps model and variant controls available when no agents load", (tester) async {
