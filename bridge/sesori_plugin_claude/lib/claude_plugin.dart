@@ -10,5 +10,5 @@
 library;
 
 export "src/api/claude_launch_spec.dart";
-export "src/api/models/claude_effort_level.dart";
-export "src/api/models/claude_permission_mode.dart";
+export "src/models/claude_effort_level.dart";
+export "src/models/claude_permission_mode.dart";
