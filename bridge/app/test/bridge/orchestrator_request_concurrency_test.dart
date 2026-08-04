@@ -319,6 +319,7 @@ class _ConcurrencyHarness {
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+        reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(
       database: database,
