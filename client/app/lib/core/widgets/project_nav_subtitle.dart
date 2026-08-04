@@ -9,7 +9,7 @@ import "../extensions/build_context_x.dart";
 /// Tabler set carries no other git-forge brands, so GitLab/Bitbucket use their
 /// regular-weight glyphs and unrecognised hosts fall back to the generic git
 /// mark.
-IconData _providerIcon(RepoProvider provider) => switch (provider) {
+IconData _providerIcon({required RepoProvider provider}) => switch (provider) {
   RepoProvider.github => TablerSolid.brand_github,
   RepoProvider.gitlab => TablerRegular.brand_gitlab,
   RepoProvider.bitbucket => TablerRegular.brand_bitbucket,
@@ -40,7 +40,7 @@ Widget? buildProjectNavSubtitle(BuildContext context) {
     SessionListLoading() => const PregoNavSubtitleSkeleton(),
     SessionListLoaded(repoSlug: final repoSlug?, :final repoProvider) => PregoNavSubtitle(
       text: repoSlug,
-      icon: _providerIcon(repoProvider),
+      icon: _providerIcon(provider: repoProvider),
       status: online ? PregoNavStatus.online : PregoNavStatus.offline,
       infoMessage: repoSlug,
       infoSemanticLabel: loc.sessionListRepoInfoSemantics,

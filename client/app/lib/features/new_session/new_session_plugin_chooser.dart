@@ -117,9 +117,15 @@ class _HarnessTrigger extends StatelessWidget {
 
     return Align(
       alignment: AlignmentDirectional.centerStart,
+      // The row's own text names the harness but not what the choice is for,
+      // so the control announces both: the label says what it picks, the value
+      // says what is picked. The visible text is excluded to keep the harness
+      // name from being read a second time as a loose node.
       child: Semantics(
         button: true,
         label: context.loc.newSessionPluginChooserLabel,
+        value: label,
+        excludeSemantics: true,
         child: InkWell(
           key: const Key("new_session_plugin_trigger"),
           onTap: onPressed,
