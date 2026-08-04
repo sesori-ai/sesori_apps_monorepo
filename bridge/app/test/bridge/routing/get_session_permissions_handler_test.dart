@@ -82,6 +82,24 @@ void main() {
       );
     });
 
+    test("preserves not-found for an unknown session when pending permissions are suppressed", () async {
+      final suppressedHandler = GetSessionPermissionsHandler(
+        permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        suppressPendingPermissions: true,
+      );
+
+      await expectLater(
+        suppressedHandler.handle(
+          makeRequest("POST", "/session/permissions"),
+          body: const SessionIdRequest(sessionId: "unknown"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+    });
+
     test("returns no pending permissions when snapshot suppression is enabled", () async {
       plugin.pendingPermissionsResult = [
         const PluginPendingPermission(

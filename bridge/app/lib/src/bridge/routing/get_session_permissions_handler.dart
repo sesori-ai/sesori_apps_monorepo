@@ -34,12 +34,13 @@ class GetSessionPermissionsHandler extends BodyRequestHandler<SessionIdRequest, 
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    // YOLO suppresses permission prompts from both live events and this snapshot path.
+    final permissions = await _permissionRepository.getPendingPermissions(sessionId: sessionId);
+
+    // Query first to preserve binding/plugin errors; YOLO suppresses only the snapshot response payload.
     if (_suppressPendingPermissions) {
       return const PendingPermissionResponse(data: []);
     }
 
-    final permissions = await _permissionRepository.getPendingPermissions(sessionId: sessionId);
     return PendingPermissionResponse(data: permissions);
   }
 }
