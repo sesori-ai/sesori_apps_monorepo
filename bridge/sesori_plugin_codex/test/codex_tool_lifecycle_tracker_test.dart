@@ -248,6 +248,25 @@ void main() {
             "// @exec: {\"yield-time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); console.log('keep visible');",
       },
     });
+    final directedWrapperWithCallLikePrompt = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-call-like-prompt",
+        "name": "exec",
+        "input": "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'draw cat(s)'});",
+      },
+    });
+    final directedWrapperWithParenthesizedTrailingCode = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-parenthesized-trailing-code",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); process.exitCode = (1);",
+      },
+    });
     final unrelatedForwarding = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -298,6 +317,20 @@ void main() {
       target.observeRolloutLine(
         threadId: "thread-1",
         line: directedWrapperWithTrailingCode,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithCallLikePrompt,
+      ),
+      isEmpty,
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithParenthesizedTrailingCode,
       ),
       hasLength(1),
     );

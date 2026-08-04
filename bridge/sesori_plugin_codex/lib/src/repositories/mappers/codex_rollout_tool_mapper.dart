@@ -612,22 +612,17 @@ class CodexRolloutToolMapper {
   }
 }
 
-final RegExp _generatedImageInvocationPattern = RegExp(
-  r"^\s*(?:await\s+)?tools\.image_gen__[A-Za-z0-9_]+\s*\([\s\S]*\)\s*;?\s*$",
+final RegExp _generatedImageInvocationPrefixPattern = RegExp(
+  r"^\s*(?:await\s+)?tools\.image_gen__[A-Za-z0-9_]+\s*\(",
 );
 
 final RegExp _generatedExecDirectivePattern = RegExp(
   r"^\s*//\s*@exec:\s*(\{[^\r\n]*\})[ \t]*(?:\r?\n|$)",
 );
 
-final RegExp _forwardedGeneratedImageInvocationPattern = RegExp(
+final RegExp _forwardedGeneratedImageInvocationPrefixPattern = RegExp(
   r"^\s*(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*await\s+"
-  r"tools\.image_gen__[A-Za-z0-9_]+\s*\([\s\S]*\)\s*;\s*"
-  r"generatedImage\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)\s*;?\s*$",
-);
-
-final RegExp _callInvocationPattern = RegExp(
-  r"\b([A-Za-z_$][A-Za-z0-9_$.]*)\s*\(",
+  r"tools\.image_gen__[A-Za-z0-9_]+\s*\(",
 );
 
 bool _isGeneratedImageInvocation(String input) {
@@ -636,20 +631,27 @@ bool _isGeneratedImageInvocation(String input) {
     return false;
   }
   final invocation = directive == null ? input : input.substring(directive.end);
-  final calls = _callInvocationPattern.allMatches(invocation).toList(growable: false);
-  if (calls.isEmpty || !calls.first.group(1)!.startsWith("tools.image_gen__")) {
-    return false;
+  final direct = _generatedImageInvocationPrefixPattern.firstMatch(invocation);
+  if (direct != null) {
+    final callEnd = _matchingInvocationEnd(
+      source: invocation,
+      openParenthesisIndex: direct.end - 1,
+    );
+    return callEnd != null && RegExp(r"^\s*;?\s*$").hasMatch(invocation.substring(callEnd));
   }
-  if (calls.length == 1) {
-    return _generatedImageInvocationPattern.hasMatch(invocation);
-  }
-  if (calls.length != 2 || calls[1].group(1) != "generatedImage") {
-    return false;
-  }
-  final forwarded = _forwardedGeneratedImageInvocationPattern.firstMatch(
+  final forwarded = _forwardedGeneratedImageInvocationPrefixPattern.firstMatch(
     invocation,
   );
-  return forwarded != null && forwarded.group(1) == forwarded.group(2);
+  if (forwarded == null) return false;
+  final callEnd = _matchingInvocationEnd(
+    source: invocation,
+    openParenthesisIndex: forwarded.end - 1,
+  );
+  if (callEnd == null) return false;
+  final variable = forwarded.group(1)!;
+  return RegExp(
+    "^\\s*;\\s*generatedImage\\(\\s*${RegExp.escape(variable)}\\s*\\)\\s*;?\\s*\$",
+  ).hasMatch(invocation.substring(callEnd));
 }
 
 bool _isValidGeneratedExecDirective({required RegExpMatch directive}) {
@@ -661,4 +663,67 @@ bool _isValidGeneratedExecDirective({required RegExpMatch directive}) {
   } on FormatException {
     return false;
   }
+}
+
+int? _matchingInvocationEnd({
+  required String source,
+  required int openParenthesisIndex,
+}) {
+  if (openParenthesisIndex < 0 ||
+      openParenthesisIndex >= source.length ||
+      source.codeUnitAt(openParenthesisIndex) != 0x28) {
+    return null;
+  }
+
+  var depth = 0;
+  int? quote;
+  var escaped = false;
+  var inLineComment = false;
+  var inBlockComment = false;
+  for (var index = openParenthesisIndex; index < source.length; index++) {
+    final current = source.codeUnitAt(index);
+    final next = index + 1 < source.length ? source.codeUnitAt(index + 1) : null;
+    if (inLineComment) {
+      if (current == 0x0A || current == 0x0D) inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (current == 0x2A && next == 0x2F) {
+        inBlockComment = false;
+        index++;
+      }
+      continue;
+    }
+    if (quote != null) {
+      if (escaped) {
+        escaped = false;
+      } else if (current == 0x5C) {
+        escaped = true;
+      } else if (current == quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (current == 0x2F && next == 0x2F) {
+      inLineComment = true;
+      index++;
+      continue;
+    }
+    if (current == 0x2F && next == 0x2A) {
+      inBlockComment = true;
+      index++;
+      continue;
+    }
+    if (current == 0x22 || current == 0x27 || current == 0x60) {
+      quote = current;
+      continue;
+    }
+    if (current == 0x28) {
+      depth++;
+    } else if (current == 0x29) {
+      depth--;
+      if (depth == 0) return index + 1;
+    }
+  }
+  return null;
 }
