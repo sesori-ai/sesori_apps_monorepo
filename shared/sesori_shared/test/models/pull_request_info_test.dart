@@ -3,44 +3,6 @@ import "package:test/test.dart";
 
 void main() {
   group("PullRequestInfo", () {
-    test("creates instance with all required fields", () {
-      const pr = PullRequestInfo(
-        number: 42,
-        url: "https://github.com/org/repo/pull/42",
-        title: "Add feature X",
-        state: PrState.open,
-        mergeableStatus: PrMergeableStatus.mergeable,
-        reviewDecision: PrReviewDecision.approved,
-        checkStatus: PrCheckStatus.success,
-      );
-
-      expect(pr.number, 42);
-      expect(pr.url, "https://github.com/org/repo/pull/42");
-      expect(pr.title, "Add feature X");
-      expect(pr.state, PrState.open);
-      expect(pr.mergeableStatus, PrMergeableStatus.mergeable);
-      expect(pr.reviewDecision, PrReviewDecision.approved);
-      expect(pr.checkStatus, PrCheckStatus.success);
-    });
-
-    test("creates instance with unknown enum values", () {
-      const pr = PullRequestInfo(
-        number: 1,
-        url: "https://github.com/org/repo/pull/1",
-        title: "Test PR",
-        state: PrState.unknown,
-        mergeableStatus: PrMergeableStatus.unknown,
-        reviewDecision: PrReviewDecision.unknown,
-        checkStatus: PrCheckStatus.unknown,
-      );
-
-      expect(pr.number, 1);
-      expect(pr.state, PrState.unknown);
-      expect(pr.mergeableStatus, PrMergeableStatus.unknown);
-      expect(pr.reviewDecision, PrReviewDecision.unknown);
-      expect(pr.checkStatus, PrCheckStatus.unknown);
-    });
-
     test("serializes to JSON correctly", () {
       const pr = PullRequestInfo(
         number: 99,

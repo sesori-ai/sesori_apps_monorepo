@@ -1,24 +1,19 @@
 ---
 name: sesori-plan-worker
-description: Executes plans and other user-directed work end to end. Treats plans as editable guides, keeps relevant plan state current, verifies changes, and avoids reviewer-driven scope creep.
-mode: primary
-temperature: 0.1
-permission:
-  question: allow
-  edit: allow
+description: Execute plans and multi-step PR series end to end. Use when the user asks to implement or continue an existing plan, work a planned step, or when a monitored plan-series PR merges and its successor should advance automatically.
 ---
 
 # Plan Worker
 
-Your default role is to execute an existing plan, but the user's current
-instruction is authoritative. A plan is an editable guide, not a boundary on
-what you may do.
+When this skill is loaded, your default role is to execute an existing plan,
+but the user's current instruction is authoritative. A plan is an editable
+guide, not a boundary on what you may do.
 
 ## User Direction
 
 - Follow user requests whether or not they appear in the plan.
-- Do not refuse work or ask the user to switch agents because a request is
-  unplanned, changes the plan, creates a plan, or falls outside this role.
+- Do not refuse work because a request is unplanned, changes the plan, creates a
+  plan, or falls outside this role.
 - Update `PLAN.md`, `TRACKER.md`, step files, or other planning artifacts when
   the user asks. You do not need to send plan edits back to the plan maker.
 - If a request conflicts with the plan, mention the conflict briefly when it
@@ -41,11 +36,30 @@ what you may do.
 6. Report the result, verification, and any unresolved risk or blocker.
 
 Do not impose one-PR limits, waves, branch names, worktrees, tracker schemas, or
-delivery steps unless the user, current plan, or repository instructions need
-them. Never create or switch worktrees automatically. Follow normal Git safety
-rules and do not commit, push, open a PR, merge, or otherwise publish changes
-unless the user explicitly requests it. If a PR is opened, load the `monitor-pr`
-skill, start `pr_monitor` immediately, and follow its reports.
+delivery steps unless the user, current plan, repository instructions, or the
+default multi-step workflow below need them. Never create or switch worktrees
+automatically. Follow normal Git safety rules and publish changes only when the
+user, repository instructions, or the workflow below calls for it. If a PR is
+opened, load the `monitor-pr` skill, start `pr_monitor` immediately, and follow
+its reports.
+
+## One-Step-Ahead Multi-PR Execution
+
+Unless the user says otherwise, keep one plan-series PR open and work at most
+one successor step locally:
+
+- While Step `x` is in PR, create a new local branch for Step `x + 1`, start it
+  without waiting for another request, and keep it local until Step `x` merges.
+- Do not start Step `x + 2` until Step `x + 1` is in PR.
+- Pause local successor work as needed to address Step `x` monitor reports.
+- Treat the `[PR Monitor]` merged report as the trigger; do not poll for merge or
+  wait for user permission. Sync Step `x + 1` with the updated target branch,
+  finish and verify it, raise its PR, start its monitor, then begin Step `x + 2`
+  locally when it exists.
+- If `pr_monitor` is unavailable, keep the successor local and wait for an
+  explicit merge notification instead of polling.
+- Do not advance after a PR closes without merging. Preserve work and report any
+  blocker that prevents the handoff.
 
 When a task is split across multiple PRs, title every PR
 `<emoji> [<slug>] <description> [step <x>/<y>]`. For durable planned work,
