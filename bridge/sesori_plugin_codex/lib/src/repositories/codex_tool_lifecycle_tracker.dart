@@ -137,12 +137,21 @@ class CodexToolLifecycleTracker {
     if (canonicalId == null) return null;
     final tool = thread.tools[canonicalId];
     if (tool == null || !tool.isRolloutCall) return null;
+    final isLateCompletion = notification.method == "item/completed" &&
+        (thread.activeTurnId == null || (turnId != null && thread.activeTurnId != turnId));
 
     tool.title ??= _rolloutToolMapper.logicalCommandTitle(
       item["command"] is String ? item["command"] as String : null,
     );
     if (item["aggregatedOutput"] case final String output) {
-      tool.appServerOutput = _rolloutToolMapper.clipOutput(output);
+      final clippedOutput = _rolloutToolMapper.clipOutput(output);
+      tool.appServerOutput = clippedOutput;
+      if (isLateCompletion && clippedOutput != null && clippedOutput.isNotEmpty) {
+        tool.rolloutOutput = _mergeLateOutput(
+          previous: tool.rolloutOutput,
+          current: clippedOutput,
+        );
+      }
     }
     final exitCode = item["exitCode"];
     final status = exitCode is num && exitCode.toInt() != 0
@@ -155,6 +164,9 @@ class CodexToolLifecycleTracker {
     final snapshot = tool.snapshot();
     if (notification.method == "item/completed") {
       thread.appServerItemAliases.remove(itemId);
+      if (thread.appServerItemAliases.isEmpty && thread.retainedForLateCompletion) {
+        _threads.remove(threadId);
+      }
     }
     return snapshot;
   }
@@ -190,6 +202,8 @@ class CodexToolLifecycleTracker {
     final thread = _threads[threadId];
     if (thread == null || thread.appServerItemAliases.isEmpty) {
       _threads.remove(threadId);
+    } else {
+      thread.retainedForLateCompletion = true;
     }
   }
 
@@ -394,7 +408,9 @@ class CodexToolLifecycleTracker {
     required String turnId,
   }) {
     final updates = _advanceChronologySegment(thread: thread);
-    thread.activeTurnId = _usefulText(value: turnId);
+    thread
+      ..activeTurnId = _usefulText(value: turnId)
+      ..retainedForLateCompletion = false;
     return updates;
   }
 
@@ -505,6 +521,20 @@ class CodexToolLifecycleTracker {
     ]);
   }
 
+  String? _mergeLateOutput({
+    required String? previous,
+    required String current,
+  }) {
+    if (previous == null || previous.isEmpty) {
+      return _rolloutToolMapper.clipOutput(current);
+    }
+    if (previous.endsWith(current)) return previous;
+    if (current.contains(previous)) {
+      return _rolloutToolMapper.clipOutput(current);
+    }
+    return _mergeOutput(previous: previous, current: current);
+  }
+
   void _mergeAttachments({
     required List<PluginMessageAttachment> accumulated,
     required Iterable<PluginMessageAttachment> current,
@@ -539,6 +569,7 @@ class _ThreadToolLifecycle {
   final Set<String> durableImageResults = {};
 
   String? activeTurnId;
+  bool retainedForLateCompletion = false;
   int chronologySegment = 0;
 }
 

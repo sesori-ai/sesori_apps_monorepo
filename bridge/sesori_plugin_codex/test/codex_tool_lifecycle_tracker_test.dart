@@ -1142,18 +1142,75 @@ void main() {
     expect(aborted.status, PluginToolStatus.error);
     expect(lateCompletion?.canonicalId, "call-exec");
     expect(lateCompletion?.status, PluginToolStatus.error);
+    expect(lateCompletion?.output, contains("late command output"));
 
-    target.clearSettledThread(threadId: "thread-1");
     expect(
-      target.observeAppServerTool(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-exec",
+          output: "stale output",
+        ),
+      ),
+      isEmpty,
+    );
+  });
+
+  test("late completion preserves a newer active turn", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-old", turnId: "turn-1"),
+      )
+      ..observeAppServerTool(
+        imageGeneration: null,
+        notification: _commandNotification(
+          method: "item/started",
+          itemId: "exec-old",
+          turnId: "turn-1",
+        ),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "turn_aborted", turnId: "turn-1"),
+      )
+      ..clearSettledThread(threadId: "thread-1")
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-2"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _shellCall(callId: "call-new", turnId: "turn-2"),
+      )
+      ..observeAppServerTool(
         imageGeneration: null,
         notification: _commandNotification(
           method: "item/completed",
-          itemId: "exec-1",
+          itemId: "exec-old",
           turnId: "turn-1",
+          status: "completed",
+          exitCode: 0,
         ),
-      ),
-      isNull,
+      );
+
+    expect(
+      target
+          .observeAppServerTool(
+            imageGeneration: null,
+            notification: _commandNotification(
+              method: "item/started",
+              itemId: "exec-new",
+              turnId: "turn-2",
+            ),
+          )
+          ?.canonicalId,
+      "call-new",
     );
   });
 
