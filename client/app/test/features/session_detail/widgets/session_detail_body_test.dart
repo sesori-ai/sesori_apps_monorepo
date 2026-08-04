@@ -1960,6 +1960,37 @@ void main() {
     verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
+  testWidgets("a clipboard image is discarded after attachment support toggles", (tester) async {
+    final stateController = StreamController<SessionDetailState>();
+    addTearDown(stateController.close);
+    final opencodeState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(opencodeState);
+    whenListen(cubit, stateController.stream, initialState: opencodeState);
+    final imageRead = Completer<Uint8List?>();
+    when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
+    when(
+      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+    ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+
+    final actionContext = tester.element(
+      find.descendant(of: find.byType(EditableText), matching: find.byType(RawGestureDetector)).first,
+    );
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    stateController.add(opencodeState.copyWith(pluginId: "codex"));
+    await tester.pumpAndSettle();
+    stateController.add(opencodeState);
+    await tester.pumpAndSettle();
+    imageRead.complete(_tinyPng);
+    await tester.pumpAndSettle();
+
+    expect(semanticsWithLabel("Attached image"), findsNothing);
+    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+  });
+
   testWidgets("accordion offers no attach action on a harness that drops image parts", (tester) async {
     // TEMPORARY 2026-08-03: remove with the harness gate once every harness
     // carries image parts — see harnessSupportsPromptAttachments.

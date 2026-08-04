@@ -18,6 +18,19 @@ enum RelayClientConnectionState { disconnected, connecting, connected, disconnec
 /// Represents whether the bridge (desktop process) is reachable via the relay.
 enum BridgeStatus { online, offline }
 
+final class RelayMessageTooLargeException implements Exception {
+  final int plaintextBytes;
+  final int maxPlaintextBytes;
+
+  const RelayMessageTooLargeException({
+    required this.plaintextBytes,
+    required this.maxPlaintextBytes,
+  });
+
+  @override
+  String toString() => "Relay message is too large ($plaintextBytes bytes; maximum $maxPlaintextBytes bytes)";
+}
+
 class RelayClient {
   final String relayHost;
   final String? authToken;
@@ -567,6 +580,12 @@ class RelayClient {
     }
 
     final jsonBytes = utf8.encode(jsonEncode(message.toJson()));
+    if (!RelayProtocol.canEncryptMessage(plaintextBytes: jsonBytes.length)) {
+      throw RelayMessageTooLargeException(
+        plaintextBytes: jsonBytes.length,
+        maxPlaintextBytes: RelayProtocol.maxPlaintextMessageBytes,
+      );
+    }
     final encryptedBytes = await encryptor.encrypt(jsonBytes);
     final payload = Uint8List.fromList([_messageVersion, ...encryptedBytes]);
     channel.sink.add(payload);

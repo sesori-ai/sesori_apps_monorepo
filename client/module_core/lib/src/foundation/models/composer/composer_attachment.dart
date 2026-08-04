@@ -4,8 +4,9 @@ import "package:meta/meta.dart";
 
 /// Maximum decoded attachment bytes staged for one outbound prompt.
 ///
-/// This is decimal 50 MB rather than 50 MiB: base64 expansion plus the relay
-/// request envelope must remain below the relay's 64 MiB message limit.
+/// This is decimal 50 MB rather than 50 MiB so ordinary request envelopes fit
+/// below the relay's 64 MiB message limit. RelayClient also preflights the
+/// actual serialized request for prompts with unusually large text or metadata.
 const maxComposerPromptAttachmentBytes = 50 * 1000 * 1000;
 
 /// An image staged in the composer, transmitted inline (base64 `file_data`

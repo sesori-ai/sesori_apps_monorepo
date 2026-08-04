@@ -446,6 +446,9 @@ class _PromptInputState extends State<PromptInput> {
     super.didUpdateWidget(oldWidget);
     final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
+    if (oldWidget.attachmentsSupported != widget.attachmentsSupported) {
+      _pasteGeneration++;
+    }
     if (draftChanged) {
       // The state was reused for another session without initState/dispose.
       // The owning Cubit already persisted each edit, so only restore the new
