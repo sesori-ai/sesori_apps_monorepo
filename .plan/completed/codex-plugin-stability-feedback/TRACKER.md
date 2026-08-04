@@ -3,16 +3,16 @@
 ## Current State
 
 - **Plan slug:** `codex-plugin-stability-feedback`
-- **Implementation base:** `origin/main` at
-  `5a67ee65e63a8594049fd27028700aa5c184b6c8`
+- **Completion base:** `origin/main` at
+  `af60989aa12e4873f278b3f9658b88123bae4414`
 - **Stack root:** `2408b574`
-- **Series state:** Steps 1 through 9 merged; Step 10 PR
-  [#753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753) is open
-- **Current step:** Step 10/11
-- **Current branch:** `codex-plugin-stability-feedback-f12-generated-repository-instructions`
+- **Series state:** Steps 1 through 10 merged; Step 11 records completion and
+  retires the plan
+- **Current step:** Step 11/11
+- **Current branch:** `codex-plugin-stability-feedback-retire-plan`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Monitor Step 10 PR #753 and begin Step 11 locally
+- **Next action:** None after this retirement PR merges
 
 ## Plan Review
 
@@ -38,7 +38,7 @@
 | [x] | F-09 file identity | Fixed on `main` | D5 `9da8f2e1`; [#740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740); `b4455593`; D8 `d4e30b87`; [#749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749); `22f65807` | Typed boundary merged |
 | [x] | F-10 restart terminalization | Fixed on `main` | D6 `8f0f4ece`; [#743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743); `4b779cc2`; D8 `d4e30b87`; [#749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749); `22f65807` | Typed boundary merged |
 | [x] | F-11 archive history | Fixed on `main` | D7; `cdd3a305`; [#746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746); `4785f4c7` | Archive/unarchive remains readable and delete remains destructive |
-| [x] | F-12 generated repository instructions | Fixed on Step 10 branch | Documented on D9 `ef2356c4`; fixed by `2e534673` | Complete generated AGENTS envelopes are hidden without hiding authored text |
+| [x] | F-12 generated repository instructions | Fixed on `main` | Documented on D9 `ef2356c4`; [#753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753); `09b71131` | Complete generated AGENTS envelopes are hidden without hiding authored text |
 
 ## Delivery Steps
 
@@ -53,8 +53,8 @@
 | [x] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 384 actual | [PR #746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746) merged as `4785f4c7` |
 | [x] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,174 actual | [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) merged as `22f65807` |
 | [x] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 1,325 actual | [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) merged as `5a67ee65` |
-| [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 170 actual | [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753) open; merged forward from `5a67ee65` and verified |
-| [ ] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Blocked on Step 10 merge |
+| [x] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 170 actual | [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753) merged as `09b71131` |
+| [x] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Final state recorded and plan moved to `.plan/completed/` |
 
 ## Exact PR Titles
 
@@ -425,9 +425,16 @@ origin/main
   code, regression coverage, report, and tracker updates. This modestly exceeds
   the planned 70-140 line estimate and remains far below the 1,500-line cap.
 - **Step 10 delivery:** Pushed and opened as
-  [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753). Qodo's
+  [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753), which
+  passed 12/12 checks and merged as `09b71131` on 2026-08-04. Qodo's
   named-parameter and compact-envelope findings were fixed after a failing
-  compact regression.
+  compact regression; Cubic's authoritative-event filtering suggestion remained
+  unresolved with the authored-content rationale.
+- **Step 11 final audit:** All twelve findings are checked, all eleven delivery
+  rows have their PR links and merge states, and the separately owned relay
+  message-version defect remains outside this plan.
+- **Step 11 verification:** Documentation-only move and tracker finalization;
+  `git diff --check` passes. No Dart or Flutter suites are required.
 
 ## Findings And Plan Deltas
 

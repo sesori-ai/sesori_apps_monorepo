@@ -3,21 +3,20 @@
 ## Status
 
 - **Plan slug:** `codex-plugin-stability-feedback`
-- **Status:** Active — Step 4/11 PR
-  [#733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) open
+- **Status:** Complete — Steps 1 through 10 merged; Step 11 archives this plan
 - **Plan date:** 2026-08-04
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at
-  `5aaf979dd25b645a69964d0211eda5cd92126037`
+- **Completion base:** `origin/main` at
+  `af60989aa12e4873f278b3f9658b88123bae4414`
 - **Stack root:** merged Codex image-history fix `2408b574`
-- **Delivery:** nine existing deep-test branches in their exact ancestry order,
-  one additional confirmed finding fix, and one plan-retirement PR
+- **Delivery:** eleven PRs in their planned order, including the confirmed
+  finding fix and this plan-retirement PR
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914`; it combined the plan with the first unmerged production
   fix at the user's direction
 
-This document and `TRACKER.md` are the implementation authority for the
-remaining Codex stability series. The evidence report at
+This document and `TRACKER.md` are the completion record for the Codex
+stability series. The evidence report at
 `docs/codex-plugin-stability-report.md` remains the detailed validation record;
 it is not the delivery tracker.
 
