@@ -365,7 +365,10 @@ void main() {
   group("OrchestratorSession relay takeover (ADR A22)", () {
     test("a 4007 replaced-close does not reconnect within the war window", () async {
       final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
-      final harness = await _RegistrationHarness.start(repository: repository);
+      final harness = await _RegistrationHarness.start(
+        repository: repository,
+        backoffPolicy: _takeoverHoldoffBackoff,
+      );
       addTearDown(harness.close);
 
       final firstSocket = await harness.relayServer.nextClient();
@@ -376,8 +379,11 @@ void main() {
       // long backoff, so no reconnect happens within the war window.
       await firstSocket.close(RelayCloseCodes.bridgeReplaced, "replaced");
 
+      // The injected takeover backoff is minutes-order while the ordinary
+      // backoff is 50ms, so any wrongful reconnect would appear almost
+      // immediately — long before this 400ms wait elapses.
       await expectLater(
-        harness.relayServer.nextClient(timeout: const Duration(seconds: 3)),
+        harness.relayServer.nextClient(timeout: const Duration(milliseconds: 400)),
         throwsA(isA<TimeoutException>()),
         reason: "displaced bridge must not reconnect on a tight loop",
       );
@@ -386,7 +392,10 @@ void main() {
 
     test("the 1000/replaced rollout fallback also holds off reconnect", () async {
       final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
-      final harness = await _RegistrationHarness.start(repository: repository);
+      final harness = await _RegistrationHarness.start(
+        repository: repository,
+        backoffPolicy: _takeoverHoldoffBackoff,
+      );
       addTearDown(harness.close);
 
       final firstSocket = await harness.relayServer.nextClient();
@@ -395,7 +404,7 @@ void main() {
       await firstSocket.close(1000, "replaced");
 
       await expectLater(
-        harness.relayServer.nextClient(timeout: const Duration(seconds: 3)),
+        harness.relayServer.nextClient(timeout: const Duration(milliseconds: 400)),
         throwsA(isA<TimeoutException>()),
         reason: "the rollout fallback (1000/replaced) must be treated as a takeover",
       );
@@ -453,6 +462,25 @@ Future<Map<String, dynamic>> _firstTextMessage(WebSocket socket) async {
   return jsonDecodeMap(message as String);
 }
 
+/// Takeover closes must hold off reconnect: the injected takeover backoff is
+/// minutes-order, while the ordinary backoff stays fast so a regression to
+/// the ordinary reconnect path surfaces within a few hundred milliseconds.
+const ReconnectBackoffPolicy _takeoverHoldoffBackoff = ReconnectBackoffPolicy(
+  ordinaryInitial: Duration(milliseconds: 50),
+  ordinaryMax: Duration(seconds: 1),
+  takeoverInitial: Duration(minutes: 5),
+  takeoverMax: Duration(minutes: 5),
+);
+
+/// Fast ordinary reconnect backoff for registration/reconnect scenarios: none
+/// of these tests assert the production 1s cadence, only the reconnect
+/// behavior. The takeover durations stay at production defaults so the
+/// cancel-wakes-long-backoff test remains meaningful.
+const ReconnectBackoffPolicy _registrationTestBackoff = ReconnectBackoffPolicy(
+  ordinaryInitial: Duration(milliseconds: 50),
+  ordinaryMax: Duration(seconds: 1),
+);
+
 Future<void> _waitFor(bool Function() condition, {required String reason}) async {
   final timeoutAt = DateTime.now().add(const Duration(seconds: 10));
   while (!condition()) {
@@ -495,6 +523,7 @@ class _RegistrationHarness {
   static Future<_RegistrationHarness> start({
     required FakeBridgeRegistrationRepository repository,
     Future<void>? connectReturnDelay,
+    ReconnectBackoffPolicy backoffPolicy = _registrationTestBackoff,
   }) async {
     final relayServer = await _CountingRelayServer.start();
     final database = createTestDatabase();
@@ -540,6 +569,7 @@ class _RegistrationHarness {
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+      reconnectBackoff: backoffPolicy,
     );
 
     final composition = orchestrator.create();

@@ -178,6 +178,7 @@ class Orchestrator {
   final BridgeRestartService _restartService;
   final bool _filesystemAccessOk;
   final ControlStatusNotifier? _statusNotifier;
+  final ReconnectBackoffPolicy _reconnectBackoff;
 
   Orchestrator({
     required this.config,
@@ -199,6 +200,7 @@ class Orchestrator {
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
     required ControlStatusNotifier? statusNotifier,
+    required ReconnectBackoffPolicy reconnectBackoff,
   }) : _client = client,
        _legacyMissingPluginId = legacyMissingPluginId,
        _pluginLifecycleService = pluginLifecycleService,
@@ -214,7 +216,8 @@ class Orchestrator {
        _failureReporter = failureReporter,
        _restartService = restartService,
        _filesystemAccessOk = filesystemAccessOk,
-       _statusNotifier = statusNotifier;
+       _statusNotifier = statusNotifier,
+       _reconnectBackoff = reconnectBackoff;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
@@ -614,6 +617,7 @@ class Orchestrator {
       sessionMutationDispatcher: sessionMutationDispatcher,
       restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
+      reconnectBackoff: _reconnectBackoff,
     );
     return (
       session: session,
@@ -690,6 +694,7 @@ class OrchestratorSession {
   final ProjectActivityService _projectActivityService;
   final BridgeRestartDispatcher _restartDispatcher;
   final ControlStatusNotifier? _statusNotifier;
+  final ReconnectBackoffPolicy _reconnectBackoff;
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
@@ -752,6 +757,7 @@ class OrchestratorSession {
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartDispatcher restartDispatcher,
     required ControlStatusNotifier? statusNotifier,
+    required ReconnectBackoffPolicy reconnectBackoff,
   }) : _client = client,
        _pluginEvents = pluginEvents,
        _pluginEventListeners = pluginEventListeners,
@@ -788,7 +794,8 @@ class OrchestratorSession {
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
        _restartDispatcher = restartDispatcher,
-       _statusNotifier = statusNotifier {
+       _statusNotifier = statusNotifier,
+       _reconnectBackoff = reconnectBackoff {
     _restartDispatcher.shutdownRequests
         .listen((request) {
           switch (request) {
@@ -2192,10 +2199,6 @@ class OrchestratorSession {
   // Ordinary drop (network blip, relay restart) reconnects promptly; a
   // takeover drop reconnects on a minutes-order backoff so two always-on
   // bridges don't tight-loop kicking each other (ADR A22).
-  static const _ordinaryInitialBackoff = Duration(seconds: 1);
-  static const _ordinaryMaxBackoff = Duration(seconds: 30);
-  static const _takeoverInitialBackoff = Duration(minutes: 2);
-  static const _takeoverMaxBackoff = Duration(minutes: 5);
 
   /// Waits out a reconnect backoff, but wakes immediately on shutdown so a
   /// pending long wait (a minutes-order takeover backoff, ADR A22) never blocks
@@ -2210,14 +2213,14 @@ class OrchestratorSession {
   }
 
   Duration _initialBackoff({required bool takenOver}) {
-    if (!takenOver) return _ordinaryInitialBackoff;
+    if (!takenOver) return _reconnectBackoff.ordinaryInitial;
     // Jitter the takeover backoff so two mutually-displacing bridges don't
     // resynchronize onto the same retry cadence.
-    return _jitter(_takeoverInitialBackoff);
+    return _jitter(_reconnectBackoff.takeoverInitial);
   }
 
   Duration _nextBackoff(Duration backoff, {required bool takenOver}) {
-    final max = takenOver ? _takeoverMaxBackoff : _ordinaryMaxBackoff;
+    final max = takenOver ? _reconnectBackoff.takeoverMax : _reconnectBackoff.ordinaryMax;
     final next = Duration(microseconds: backoff.inMicroseconds * 2);
     // Re-jitter every takeover step (not just the cap) so two mutually
     // displacing bridges don't resynchronize onto the same retry cadence as
@@ -2298,4 +2301,29 @@ class OrchestratorSession {
       rethrow;
     }
   }
+}
+
+/// Reconnect backoff durations used by the relay loop.
+///
+/// Injectable so tests can exercise backoff and takeover scenarios with
+/// milliseconds-order waits instead of real minutes; production uses
+/// [ReconnectBackoffPolicy.standard].
+class ReconnectBackoffPolicy {
+  const ReconnectBackoffPolicy({
+    this.ordinaryInitial = const Duration(seconds: 1),
+    this.ordinaryMax = const Duration(seconds: 30),
+    this.takeoverInitial = const Duration(minutes: 2),
+    this.takeoverMax = const Duration(minutes: 5),
+  });
+
+  /// Backoff for a plain network drop (network blip, relay restart).
+  final Duration ordinaryInitial;
+  final Duration ordinaryMax;
+
+  /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
+  /// kicking each other (ADR A22).
+  final Duration takeoverInitial;
+  final Duration takeoverMax;
+
+  static const ReconnectBackoffPolicy standard = ReconnectBackoffPolicy();
 }
