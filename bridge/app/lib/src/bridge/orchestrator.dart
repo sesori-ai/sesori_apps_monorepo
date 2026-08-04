@@ -693,6 +693,8 @@ class OrchestratorSession {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
+  final Set<Future<void>> _inFlightRelayCompletions = <Future<void>>{};
+  final Map<String, int> _inFlightRouteCounts = <String, int>{};
   Future<void> _projectsSummaryTail = Future<void>.value();
   final Random _backoffJitter = Random();
   Future<void>? _lifecycleFuture;
@@ -705,12 +707,7 @@ class OrchestratorSession {
   /// diagnostics (the logger emits no timestamps, so durations are explicit).
   DateTime? _cancelRequestedAt;
 
-  /// Privacy-safe identity of the relay request currently being routed.
-  RouteIdentity? _inFlightRouteIdentity;
-
-  /// Completes when [cancel] is first called. Allows in-flight request routing
-  /// to abandon a response instead of awaiting an OpenCode HTTP call that has
-  /// outlived the relay session.
+  /// Completes when [cancel] is first called so reconnect waits wake promptly.
   final Completer<void> _shutdownCompleter = Completer<void>();
   final Completer<void> _firstPhoneConnectedCompleter = Completer<void>();
 
@@ -906,7 +903,7 @@ class OrchestratorSession {
     required Completer<OrchestratorSessionStartResult> readiness,
   }) async {
     final kxManager = KeyExchangeManager(_roomKey);
-    final activePhones = <int, bool>{};
+    final activePhoneIncarnations = <int, Object>{};
 
     Log.d("registering bridge with auth server...");
     await _bridgeRegistrationService.ensureRegistered();
@@ -1025,7 +1022,7 @@ class OrchestratorSession {
       readiness: readiness,
       initialConnection: relayConnection,
       kxManager: kxManager,
-      activePhones: activePhones,
+      activePhoneIncarnations: activePhoneIncarnations,
     );
   }
 
@@ -1051,7 +1048,7 @@ class OrchestratorSession {
     Log.d(
       "[shutdown] session teardown begin "
       "(${sinceCancelMs == null ? "no cancel timestamp" : "${sinceCancelMs}ms since cancel()"}"
-      "${_inFlightRouteIdentity == null ? "" : ", in-flight request: ${_inFlightRouteIdentity!.diagnosticLabel}"})",
+      "${_inFlightRelayWorkDiagnostic(separator: ", ")})",
     );
     await Future.wait([
       attempt(_subscriptions.cancel),
@@ -1067,8 +1064,12 @@ class OrchestratorSession {
         await Future.wait(_pluginEventProcessingTails.values);
       }),
       attempt(_routedRequestDispatcher.drain),
+      attempt(_drainRelayCompletions),
     ]);
-    Log.v("[shutdown] plugin events and routed requests drained (+${teardownSw.elapsedMilliseconds}ms)");
+    Log.v(
+      "[shutdown] plugin events, routed requests, and relay completions drained "
+      "(+${teardownSw.elapsedMilliseconds}ms)",
+    );
     _sessionOperationDispatcher.beginShutdown();
     await attempt(_sessionOperationDispatcher.dispose);
     Log.v("[shutdown] session operations drained (+${teardownSw.elapsedMilliseconds}ms)");
@@ -1121,7 +1122,7 @@ class OrchestratorSession {
     required Completer<OrchestratorSessionStartResult> readiness,
     required RelayConnection initialConnection,
     required KeyExchangeManager kxManager,
-    required Map<int, bool> activePhones,
+    required Map<int, Object> activePhoneIncarnations,
   }) async {
     var connection = initialConnection;
     while (!_cancelled) {
@@ -1141,7 +1142,7 @@ class OrchestratorSession {
             connection: connection,
             roomKey: _roomKey,
             kxManager: kxManager,
-            activePhones: activePhones,
+            activePhoneIncarnations: activePhoneIncarnations,
           );
         } on Object catch (error, stackTrace) {
           if (_cancelled) break;
@@ -1161,7 +1162,7 @@ class OrchestratorSession {
 
       Log.w("Relay connection lost. Reconnecting...");
       _sseManager.orphanAll();
-      activePhones.clear();
+      activePhoneIncarnations.clear();
       // Every phone connection died with the relay link; drop their view
       // declarations so no session stays "watched" by a ghost connection.
       // Phones re-assert their current view on reconnect.
@@ -1247,7 +1248,7 @@ class OrchestratorSession {
       _cancelRequestedAt = DateTime.now();
       Log.d(
         "[shutdown] cancel() requested"
-        "${_inFlightRouteIdentity == null ? "" : " — in-flight request: ${_inFlightRouteIdentity!.diagnosticLabel}"}",
+        "${_inFlightRelayWorkDiagnostic(separator: " — ")}",
       );
     } else {
       Log.v("[shutdown] cancel() again (already shutting down)");
@@ -1282,6 +1283,49 @@ class OrchestratorSession {
       _relayConnection = null;
     }
     await closeFuture;
+  }
+
+  void _trackRelayCompletion({
+    required Future<void> completion,
+    required RouteIdentity? routeIdentity,
+  }) {
+    final routeLabel = routeIdentity?.diagnosticLabel;
+    if (routeLabel != null) {
+      _inFlightRouteCounts.update(routeLabel, (count) => count + 1, ifAbsent: () => 1);
+    }
+
+    late final Future<void> trackedCompletion;
+    trackedCompletion = () async {
+      try {
+        await completion;
+      } finally {
+        _inFlightRelayCompletions.remove(trackedCompletion);
+        if (routeLabel != null) {
+          final remaining = _inFlightRouteCounts[routeLabel]! - 1;
+          if (remaining == 0) {
+            _inFlightRouteCounts.remove(routeLabel);
+          } else {
+            _inFlightRouteCounts[routeLabel] = remaining;
+          }
+        }
+      }
+    }();
+    _inFlightRelayCompletions.add(trackedCompletion);
+    trackedCompletion.ignore();
+  }
+
+  Future<void> _drainRelayCompletions() async {
+    await Future.wait(_inFlightRelayCompletions.toList(growable: false));
+  }
+
+  String _inFlightRelayWorkDiagnostic({required String separator}) {
+    if (_inFlightRelayCompletions.isEmpty) return "";
+    final routes = [
+      for (final MapEntry(key: label, value: count) in _inFlightRouteCounts.entries)
+        count == 1 ? label : "$label x$count",
+    ];
+    return "$separator${_inFlightRelayCompletions.length} in-flight relay completion(s)"
+        "${routes.isEmpty ? "" : ": ${routes.join(", ")}"}";
   }
 
   Future<void> _processPluginEventInOrder(NormalizedSourcedBridgeEvent source) {
@@ -1453,12 +1497,8 @@ class OrchestratorSession {
     required int? generation,
     required bool allowDuringStop,
   }) {
-    final previous = _projectsSummaryTail;
-    final release = Completer<void>();
-    _projectsSummaryTail = release.future;
-    return () async {
-      await previous;
-      try {
+    return _enqueueProjectsSummaryInOrder(
+      operation: () async {
         if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
         final summary = await _buildProjectsSummary();
         if (summary != null) {
@@ -1469,6 +1509,18 @@ class OrchestratorSession {
             allowDuringStop: allowDuringStop,
           );
         }
+      },
+    );
+  }
+
+  Future<void> _enqueueProjectsSummaryInOrder({required Future<void> Function() operation}) {
+    final previous = _projectsSummaryTail;
+    final release = Completer<void>();
+    _projectsSummaryTail = release.future;
+    return () async {
+      await previous;
+      try {
+        await operation();
       } finally {
         release.complete();
       }
@@ -1702,7 +1754,7 @@ class OrchestratorSession {
     required RelayConnection connection,
     required List<int> roomKey,
     required KeyExchangeManager kxManager,
-    required Map<int, bool> activePhones,
+    required Map<int, Object> activePhoneIncarnations,
   }) async {
     var hasMessage = await firstRead;
     while (hasMessage) {
@@ -1737,7 +1789,7 @@ class OrchestratorSession {
               Log.v("phone_connected connID=$connID");
             case "phone_disconnected":
               Log.v("phone_disconnected connID=$connID");
-              activePhones.remove(connID);
+              activePhoneIncarnations.remove(connID);
               _sseManager.removeSubscriber(connID);
               _sessionViewTracker.releaseConnection(connID: connID);
               _projectViewTracker.releaseConnection(connID: connID);
@@ -1804,7 +1856,7 @@ class OrchestratorSession {
             throw Exception("send ready for connId $connID: $e");
           }
 
-          _markPhoneConnected(connID: connID, activePhones: activePhones);
+          _markPhoneConnected(connID: connID, activePhoneIncarnations: activePhoneIncarnations);
           break processMessage;
         }
 
@@ -1824,7 +1876,8 @@ class OrchestratorSession {
             decryptError = e;
           }
 
-          if (activePhones[connID] == true) {
+          final phoneIncarnation = activePhoneIncarnations[connID];
+          if (phoneIncarnation != null) {
             if (decryptError != null || decrypted == null) {
               Log.v(
                 "failed to decrypt from connId $connID: $decryptError",
@@ -1832,10 +1885,12 @@ class OrchestratorSession {
               break processMessage;
             }
             Log.v("decrypted OK from connID=$connID, handling...");
-            await _handleDecryptedMessage(
+            _handleDecryptedMessage(
               connection: connection,
               connID: connID,
               decrypted: decrypted,
+              phoneIncarnation: phoneIncarnation,
+              activePhoneIncarnations: activePhoneIncarnations,
             );
             Log.v("handled message from connID=$connID");
             break processMessage;
@@ -1899,26 +1954,31 @@ class OrchestratorSession {
             throw Exception("send resume ack for connId $connID: $e");
           }
 
-          _markPhoneConnected(connID: connID, activePhones: activePhones);
+          _markPhoneConnected(connID: connID, activePhoneIncarnations: activePhoneIncarnations);
         }
       }
       hasMessage = await iterator.moveNext();
     }
   }
 
-  void _markPhoneConnected({required int connID, required Map<int, bool> activePhones}) {
-    activePhones[connID] = true;
+  void _markPhoneConnected({
+    required int connID,
+    required Map<int, Object> activePhoneIncarnations,
+  }) {
+    activePhoneIncarnations[connID] = Object();
     if (!_firstPhoneConnectedCompleter.isCompleted) {
       _firstPhoneConnectedCompleter.complete();
     }
     Log.d("phone $connID is now active");
   }
 
-  Future<void> _handleDecryptedMessage({
+  void _handleDecryptedMessage({
     required RelayConnection connection,
     required int connID,
     required List<int> decrypted,
-  }) async {
+    required Object phoneIncarnation,
+    required Map<int, Object> activePhoneIncarnations,
+  }) {
     RelayMessage msg;
     try {
       msg = RelayMessage.fromJson(
@@ -1933,91 +1993,32 @@ class OrchestratorSession {
 
     switch (msg) {
       case final RelayRequest req:
+        Log.v("RelayRequest: ${req.method} ${req.path}");
         final dispatch = _routedRequestDispatcher.dispatch(request: req);
-        if (dispatch case final RoutedRequestShutdownRejected rejected) {
-          if (!_cancelled) {
-            try {
-              await _encryptAndSend(
+        switch (dispatch) {
+          case final RoutedRequestShutdownRejected rejected:
+            _trackRelayCompletion(
+              completion: _completeShutdownRejection(
                 connection: connection,
                 connID: connID,
-                message: rejected.response,
-              );
-            } on Object catch (error, stackTrace) {
-              Log.w("failed to send shutdown rejection to connId $connID", error, stackTrace);
-            }
-          }
-          return;
-        }
-        final pendingRoute = (dispatch as RoutedRequestAccepted).pendingRequest;
-        final routeIdentity = pendingRoute.routeIdentity;
-        Log.v("RelayRequest: ${req.method} ${req.path}");
-        _inFlightRouteIdentity = routeIdentity;
-        final routeSw = Stopwatch()..start();
-        // If shutdown wins the race below, this future keeps running in the
-        // background. ignore() marks any later failure as handled so it can
-        // never surface as an unhandled async exception after abandonment.
-        final routeFuture = pendingRoute.completion..ignore();
-        try {
-          final outcome = await Future.any<RoutedRequestOutcome>([
-            routeFuture,
-            _shutdownCompleter.future.then((_) => throw const _ShutdownInProgressException()),
-          ]);
-          final response = outcome.response;
-          if (_cancelled) {
-            Log.v(
-              "[shutdown] route ${routeIdentity.diagnosticLabel} completed after cancel — "
-              "dropping response (status=${response.status})",
+                response: rejected.response,
+                phoneIncarnation: phoneIncarnation,
+                activePhoneIncarnations: activePhoneIncarnations,
+              ),
+              routeIdentity: null,
             );
-            return;
-          }
-          if (routeSw.elapsedMilliseconds > 1000) {
-            Log.d(
-              "[shutdown] slow route ${routeIdentity.diagnosticLabel} for connId $connID "
-              "took ${routeSw.elapsedMilliseconds}ms (cancelled=$_cancelled)",
+          case final RoutedRequestAccepted accepted:
+            final pendingRoute = accepted.pendingRequest;
+            _trackRelayCompletion(
+              completion: _completeRoutedRequest(
+                connection: connection,
+                connID: connID,
+                pendingRoute: pendingRoute,
+                phoneIncarnation: phoneIncarnation,
+                activePhoneIncarnations: activePhoneIncarnations,
+              ),
+              routeIdentity: pendingRoute.routeIdentity,
             );
-          }
-          Log.v("response: status=${response.status}");
-          try {
-            final sendOutcome = await _encryptAndSend(
-              connection: connection,
-              connID: connID,
-              message: response,
-            );
-            if (sendOutcome == RelaySendOutcome.sent) {
-              Log.v("response sent to connID=$connID");
-            } else {
-              Log.v("response dropped because its relay connection is stale");
-            }
-          } finally {
-            if (!_cancelled) {
-              switch (outcome) {
-                case ResponseOnly():
-                  break;
-                case final RestartAccepted accepted:
-                  await _restartDispatcher.dispatch(restart: accepted);
-              }
-            }
-          }
-        } on _ShutdownInProgressException {
-          Log.v(
-            "[shutdown] route ${routeIdentity.diagnosticLabel} will finish without sending a response",
-          );
-          // Keep route-owned services and plugin APIs alive until the operation
-          // settles. The shutdown coordinator's process backstop bounds this
-          // drain if an upstream operation never returns.
-          try {
-            await routeFuture;
-          } on Object catch (error, stackTrace) {
-            Log.w("[shutdown] route ${routeIdentity.diagnosticLabel} failed while draining", error, stackTrace);
-          }
-        } on Object catch (error, stackTrace) {
-          if (_cancelled) {
-            Log.w("[shutdown] route ${routeIdentity.diagnosticLabel} failed during shutdown", error, stackTrace);
-          } else {
-            Log.e("route ${routeIdentity.diagnosticLabel} failed for connId $connID", error, stackTrace);
-          }
-        } finally {
-          _inFlightRouteIdentity = null;
         }
       case final RelaySseSubscribe subscribe:
         Log.v("SseSubscribe: path=${subscribe.path}");
@@ -2028,12 +2029,10 @@ class OrchestratorSession {
             client: _client,
             connection: connection,
           );
-          final projSummary = await _buildProjectsSummary();
-          if (projSummary != null) {
-            _enqueueWireEvent(projSummary);
-            _completionListener.handleSseEvent(projSummary);
-          }
-          Log.v("initial projectsSummary enqueued");
+          _trackRelayCompletion(
+            completion: _completeInitialProjectsSummary(connID: connID),
+            routeIdentity: null,
+          );
         } on Object catch (error, stackTrace) {
           Log.e("sse subscribe failed for connId $connID", error, stackTrace);
         }
@@ -2048,6 +2047,146 @@ class OrchestratorSession {
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }
+  }
+
+  Future<void> _completeRoutedRequest({
+    required RelayConnection connection,
+    required int connID,
+    required PendingRoutedRequest pendingRoute,
+    required Object phoneIncarnation,
+    required Map<int, Object> activePhoneIncarnations,
+  }) async {
+    final routeIdentity = pendingRoute.routeIdentity;
+    final routeSw = Stopwatch()..start();
+    final RoutedRequestOutcome outcome;
+    try {
+      outcome = await pendingRoute.completion;
+    } on Object catch (error, stackTrace) {
+      if (_cancelled) {
+        Log.w("[shutdown] route ${routeIdentity.diagnosticLabel} failed while draining", error, stackTrace);
+      } else {
+        Log.e("route ${routeIdentity.diagnosticLabel} failed for connId $connID", error, stackTrace);
+      }
+      return;
+    }
+
+    final response = outcome.response;
+    if (routeSw.elapsedMilliseconds > 1000) {
+      Log.d(
+        "slow route ${routeIdentity.diagnosticLabel} for connId $connID "
+        "took ${routeSw.elapsedMilliseconds}ms (cancelled=$_cancelled)",
+      );
+    }
+    Log.v("response: status=${response.status}");
+
+    await _deliverRoutedResponse(
+      connection: connection,
+      connID: connID,
+      response: response,
+      routeIdentity: routeIdentity,
+      phoneIncarnation: phoneIncarnation,
+      activePhoneIncarnations: activePhoneIncarnations,
+    );
+
+    if (_cancelled) return;
+    switch (outcome) {
+      case ResponseOnly():
+        break;
+      case final RestartAccepted accepted:
+        try {
+          await _restartDispatcher.dispatch(restart: accepted);
+        } on Object catch (error, stackTrace) {
+          Log.e("route ${routeIdentity.diagnosticLabel} failed for connId $connID", error, stackTrace);
+        }
+    }
+  }
+
+  Future<void> _deliverRoutedResponse({
+    required RelayConnection connection,
+    required int connID,
+    required RelayResponse response,
+    required RouteIdentity routeIdentity,
+    required Object phoneIncarnation,
+    required Map<int, Object> activePhoneIncarnations,
+  }) async {
+    final ({List<int> payload, int cleartextLength}) encrypted;
+    try {
+      encrypted = await _encryptRelayMessage(message: response, connID: connID);
+    } on Object catch (error, stackTrace) {
+      Log.e("failed to encrypt response for ${routeIdentity.diagnosticLabel} and connId $connID", error, stackTrace);
+      return;
+    }
+
+    if (_cancelled) {
+      Log.v(
+        "[shutdown] route ${routeIdentity.diagnosticLabel} completed after cancel — "
+        "dropping response (status=${response.status})",
+      );
+      return;
+    }
+
+    try {
+      final sendOutcome = _sendEncryptedResponseIfCurrent(
+        connection: connection,
+        connID: connID,
+        payload: encrypted.payload,
+        cleartextLength: encrypted.cleartextLength,
+        phoneIncarnation: phoneIncarnation,
+        activePhoneIncarnations: activePhoneIncarnations,
+      );
+      if (sendOutcome == RelaySendOutcome.sent) {
+        Log.v("response sent to connID=$connID");
+      } else if (_cancelled) {
+        Log.v("[shutdown] response dropped after cancellation");
+        return;
+      } else {
+        Log.v("response dropped because its client incarnation or relay connection is stale");
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("failed to send response for ${routeIdentity.diagnosticLabel} to connId $connID", error, stackTrace);
+    }
+  }
+
+  Future<void> _completeShutdownRejection({
+    required RelayConnection connection,
+    required int connID,
+    required RelayResponse response,
+    required Object phoneIncarnation,
+    required Map<int, Object> activePhoneIncarnations,
+  }) async {
+    try {
+      final encrypted = await _encryptRelayMessage(message: response, connID: connID);
+      if (_cancelled) return;
+      _sendEncryptedResponseIfCurrent(
+        connection: connection,
+        connID: connID,
+        payload: encrypted.payload,
+        cleartextLength: encrypted.cleartextLength,
+        phoneIncarnation: phoneIncarnation,
+        activePhoneIncarnations: activePhoneIncarnations,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("failed to send shutdown rejection to connId $connID", error, stackTrace);
+    }
+  }
+
+  Future<void> _completeInitialProjectsSummary({required int connID}) {
+    return _enqueueProjectsSummaryInOrder(
+      operation: () async {
+        try {
+          if (_cancelled) return;
+          final projectsSummary = await _buildProjectsSummary();
+          if (_cancelled) return;
+          if (projectsSummary != null) {
+            _enqueueWireEvent(projectsSummary);
+            _completionListener.handleSseEvent(projectsSummary);
+          }
+          Log.v("initial projectsSummary enqueued");
+        } on Object catch (error, stackTrace) {
+          Log.e("initial projectsSummary failed for connId $connID", error, stackTrace);
+        }
+      },
+    );
   }
 
   // Ordinary drop (network blip, relay restart) reconnects promptly; a
@@ -2096,25 +2235,38 @@ class OrchestratorSession {
     return base + Duration(milliseconds: extra);
   }
 
-  Future<RelaySendOutcome> _encryptAndSend({
-    required RelayConnection connection,
+  Future<({List<int> payload, int cleartextLength})> _encryptRelayMessage({
     required int connID,
     required RelayMessage message,
   }) async {
     final respJson = jsonEncode(message.toJson());
     final jsonBytes = utf8.encode(respJson);
-    Log.v("[response] sending ${jsonBytes.length} bytes to connID=$connID");
+    Log.v("[response] encrypting ${jsonBytes.length} bytes for connID=$connID");
     final cryptoService = RelayCryptoService();
     final encryptionKey = SecretKey(List<int>.from(_roomKey));
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
     final framed = await frame(jsonBytes, encryptor: encryptor);
+    return (payload: framed, cleartextLength: jsonBytes.length);
+  }
+
+  RelaySendOutcome _sendEncryptedResponseIfCurrent({
+    required RelayConnection connection,
+    required int connID,
+    required List<int> payload,
+    required int cleartextLength,
+    required Object phoneIncarnation,
+    required Map<int, Object> activePhoneIncarnations,
+  }) {
+    if (_cancelled) return RelaySendOutcome.stale;
+    if (!identical(activePhoneIncarnations[connID], phoneIncarnation)) return RelaySendOutcome.stale;
+    if (!identical(_relayConnection, connection)) return RelaySendOutcome.stale;
     final outcome = _sendIfCurrent(
       connection: connection,
       connID: connID,
-      payload: framed,
+      payload: payload,
     );
     if (outcome == RelaySendOutcome.sent) {
-      _bytesSentController.add(jsonBytes.length);
+      _bytesSentController.add(cleartextLength);
     }
     return outcome;
   }
@@ -2146,9 +2298,4 @@ class OrchestratorSession {
       rethrow;
     }
   }
-}
-
-/// Thrown when a request is racing against shutdown and shutdown wins.
-class _ShutdownInProgressException implements Exception {
-  const _ShutdownInProgressException();
 }
