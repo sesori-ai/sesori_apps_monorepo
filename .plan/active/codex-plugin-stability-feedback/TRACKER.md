@@ -52,7 +52,7 @@
 | [x] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 342 actual | [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) merged as `b4455593` |
 | [x] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 380 actual | [PR #743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743) merged as `4b779cc2` |
 | [x] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 384 actual | [PR #746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746) merged as `4785f4c7` |
-| [ ] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,160 actual | Existing `d4e30b87` + `e86bb66f`; verified locally and blocked on Step 7 merge |
+| [ ] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,172 actual | Existing `d4e30b87` + `e86bb66f`; verified and ready for PR |
 | [ ] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 707 | Existing `ef2356c4`; blocked on Step 8 |
 | [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 70–140 | Planned after D9; confirmed F-12 fix |
 | [ ] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Blocked on Step 10 merge |
@@ -345,9 +345,10 @@ origin/main
   unresolved thread is the human-owned archive-code retention request that was
   implemented and replied to before merge.
 - **Step 8 successor update:** Merged the complete local Step 7 branch forward
-  as `524d2902`, then merged its review follow-up as `8a5f3506`. Existing
-  production commit `d4e30b87` remains in its original stack position; no
-  rebase, reset, reorder, or cherry-pick occurred.
+  as `524d2902`, merged its review follow-up as `8a5f3506`, then merged
+  `origin/main` at `4785f4c7` as `61511618`. Existing production commit
+  `d4e30b87` remains in its original stack position; no rebase, reset, reorder,
+  or cherry-pick occurred.
 - **Step 8 verification:** Typed command/file parser, mapper, repository,
   service, tracker, outcome, rollout, and write-path coverage passes, as do all
   315 Codex package tests. `dart analyze --fatal-infos` and `git diff --check`
@@ -361,7 +362,7 @@ origin/main
   correction.
 - **Step 8 cleanup:** Raw command/file item interpretation is removed from the
   lifecycle tracker. No wire, database, cache, or client artifact is obsolete.
-- **Step 8 change size:** 1,160 lines against the Step 7 branch, including
+- **Step 8 change size:** 1,172 lines against the PR merge base, including
   generated typed models, production code, tests, report, and tracker updates.
   This is below the 1,500-line soft cap.
 
