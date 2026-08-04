@@ -381,7 +381,7 @@ void main() {
       final roomKey = makeRoomKey();
       final throwingClient = _ThrowingRelayClient();
       final failureReported = Completer<void>();
-      final capturingReporter = _CompletingFailureReporter(failureReported);
+      final capturingReporter = _CompletingFailureReporter(reported: failureReported);
       final manager = SSEManager(
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
@@ -438,6 +438,11 @@ Future<void> _waitForSendCount(_RecordingRelayClient client, int count) async {
   });
   try {
     await reached.future.timeout(const Duration(seconds: 5));
+  } on TimeoutException catch (error) {
+    fail(
+      "Timed out waiting for $count sends "
+      "(got ${client.sentConnIDs.length}): $error",
+    );
   } finally {
     await sub.cancel();
   }
@@ -499,7 +504,8 @@ class _ThrowingRelayClient extends RelayClient {
 /// A [CapturingFailureReporter] that completes a completer on the first
 /// recorded failure, so tests await the report instead of polling.
 class _CompletingFailureReporter extends CapturingFailureReporter {
-  _CompletingFailureReporter(this._reported);
+  _CompletingFailureReporter({required Completer<void> reported})
+    : _reported = reported;
 
   final Completer<void> _reported;
 
