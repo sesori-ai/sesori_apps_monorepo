@@ -290,6 +290,8 @@ class _TransientRefreshException implements Exception {
 const ReconnectBackoffPolicy _fastOrdinaryBackoff = ReconnectBackoffPolicy(
   ordinaryInitial: Duration(milliseconds: 50),
   ordinaryMax: Duration(seconds: 1),
+  takeoverInitial: Duration(minutes: 2),
+  takeoverMax: Duration(minutes: 5),
 );
 
 class _ReauthHarness {

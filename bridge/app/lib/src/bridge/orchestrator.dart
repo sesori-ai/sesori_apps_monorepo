@@ -2310,10 +2310,10 @@ class OrchestratorSession {
 /// [ReconnectBackoffPolicy.standard].
 class ReconnectBackoffPolicy {
   const ReconnectBackoffPolicy({
-    this.ordinaryInitial = const Duration(seconds: 1),
-    this.ordinaryMax = const Duration(seconds: 30),
-    this.takeoverInitial = const Duration(minutes: 2),
-    this.takeoverMax = const Duration(minutes: 5),
+    required this.ordinaryInitial,
+    required this.ordinaryMax,
+    required this.takeoverInitial,
+    required this.takeoverMax,
   });
 
   /// Backoff for a plain network drop (network blip, relay restart).
@@ -2325,5 +2325,10 @@ class ReconnectBackoffPolicy {
   final Duration takeoverInitial;
   final Duration takeoverMax;
 
-  static const ReconnectBackoffPolicy standard = ReconnectBackoffPolicy();
+  static const ReconnectBackoffPolicy standard = ReconnectBackoffPolicy(
+    ordinaryInitial: Duration(seconds: 1),
+    ordinaryMax: Duration(seconds: 30),
+    takeoverInitial: Duration(minutes: 2),
+    takeoverMax: Duration(minutes: 5),
+  );
 }

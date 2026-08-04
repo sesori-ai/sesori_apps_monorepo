@@ -479,6 +479,8 @@ const ReconnectBackoffPolicy _takeoverHoldoffBackoff = ReconnectBackoffPolicy(
 const ReconnectBackoffPolicy _registrationTestBackoff = ReconnectBackoffPolicy(
   ordinaryInitial: Duration(milliseconds: 50),
   ordinaryMax: Duration(seconds: 1),
+  takeoverInitial: Duration(minutes: 2),
+  takeoverMax: Duration(minutes: 5),
 );
 
 Future<void> _waitFor(bool Function() condition, {required String reason}) async {
