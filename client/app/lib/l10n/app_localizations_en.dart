@@ -1306,10 +1306,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameProjectFailed => 'Failed to rename project';
 
   @override
-  String get newSessionDedicatedWorktree => 'Dedicated worktree';
-
-  @override
-  String get newSessionDedicatedWorktreeDescription => 'Creates a dedicated git worktree and branch for this session';
+  String get newSessionDedicatedWorkspace => 'Dedicated workspace';
 
   @override
   String get newSessionPluginChooserLabel => 'Coding tool';
@@ -1324,7 +1321,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionPluginFailed => 'Failed';
 
   @override
-  String get newSessionPluginLoading => 'Loading coding tool options';
+  String get newSessionHarnessSettings => 'Harness settings';
+
+  @override
+  String get newSessionOptionsLoadingSemantics => 'Loading session options';
 
   @override
   String get newSessionOptionsRefresh => 'Refresh';
