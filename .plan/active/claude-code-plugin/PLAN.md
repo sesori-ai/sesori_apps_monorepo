@@ -407,9 +407,12 @@ transport field, cache, flag, job, or test was found.
   validation, not Dart or Flutter suites.
 - Step 17 retires the plan by moving `.plan/active/claude-code-plugin/` to
   `.plan/completed/claude-code-plugin/`, with no production change.
-- Steps form one ordered dependency chain. A successor may target its immediate
-  predecessor while both are open, but merges occur in numeric order and every PR
-  must be independently valid at its own base.
+- Steps form one ordered dependency chain and **only one PR is open at a time**.
+  Do not stack a successor on an open predecessor. The next step is developed
+  locally on its own branch and its PR is opened only after the current PR
+  merges, so every PR targets `main` and reviewers never face a queue of
+  interdependent branches. Merges therefore occur in numeric order by
+  construction, and every PR is independently valid at its own base.
 - Count additions plus deletions from `git diff --numstat`, including generated
   code and tests. Target no more than 1,500 changed lines per PR as a soft cap,
   reassessing at roughly 1,300. In this repository tests run about 1.2–1.9× the

@@ -62,10 +62,13 @@
 
 ## Execution Rules
 
-- Merge in numeric order. A successor may target its immediate predecessor while
-  both are open, but each step must remain independently buildable and valid.
+- **Only one PR is open at a time.** Never stack a successor on an open
+  predecessor. Build the next step locally on its own branch and open its PR only
+  after the current one merges, so every PR targets `main`.
 - After a PR merges, continue automatically with the next numbered step without
   waiting for another user prompt. Stop only for a material decision or blocker.
+- Merge in numeric order; each step must remain independently buildable and
+  valid at its own base.
 - Count additions plus deletions, including generated files and tests, against
   each PR base. Target no more than 1,500 changed lines per PR as a soft cap;
   split coherently first or record why an expected overage is unavoidable.
