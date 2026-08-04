@@ -6,9 +6,10 @@
 > `AGENTS.md`; the active desktop workstream in `docs/desktop/PLAN.md`.
 >
 > **Use it like this:** pick the earliest stage whose dependencies are met;
-> stages can overlap. Every stage still goes through `aristotle-plan-review`
-> before code and `aristotle-impl-review` before a PR — this doc pre-approves no
-> design. Ordering is by what *unblocks* what, biased to keep the `VISION.md`
+> stages can overlap. Every stage still goes through `architecture-plan-review`
+> before code and `architecture-implementation-review` before a PR — this doc
+> pre-approves no design. Ordering is by what *unblocks* what, biased to keep
+> the `VISION.md`
 > invariants (numbered below as I1–I9) intact.
 
 ## Already in flight / landed
@@ -174,4 +175,4 @@
 - The desktop workstream remains paused for human reassessment after parallel
   plugins; this roadmap does not choose its next desktop PR or phase.
 - Nothing here is approved to build ahead of need — each stage earns its design
-  at `aristotle-plan-review` time, against the then-current code.
+  at `architecture-plan-review` time, against the then-current code.

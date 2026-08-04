@@ -160,9 +160,10 @@ the user before planning a considerable refactor.
 
 ## Plan Review
 
-Use `aristotle-plan-review` only for architecture-bearing production plans, as
-defined by repository instructions. Apply valid findings directly and do not
-invoke it again merely to approve those fixes.
+Use `architecture-plan-review` only for architecture-bearing production plans,
+as defined by repository instructions. Ask a sub-agent to perform the review
+using the skill. Apply valid findings directly and do not invoke it again merely
+to approve those fixes.
 
 If the reviewer rejects a plan as too vague, clarify the listed gaps and invoke
 it once more. If the second review also rejects the plan as too vague, ask the

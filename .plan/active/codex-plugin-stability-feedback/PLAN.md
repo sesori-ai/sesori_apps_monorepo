@@ -390,8 +390,9 @@ already merged before this durable plan existed.
 - Generated files change only through their generators.
 - Update `TRACKER.md` in every step with actual base, line count, verification,
   review, PR, merge, and cleanup evidence.
-- Run `aristotle-impl-review` only for architecture-bearing Steps 6, 8, and 9,
-  unless implementation evidence changes another step's architecture scope.
+- Run `architecture-implementation-review` only for architecture-bearing Steps
+  6, 8, and 9, unless implementation evidence changes another step's
+  architecture scope.
 - Step 10 starts with sanitized runtime-shape confirmation. It stays localized
   unless ordinary-flow evidence proves another projection boundary is required.
 - Step 11 contains no production changes and moves the complete plan directory

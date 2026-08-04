@@ -120,20 +120,21 @@ sufficient, and do not use cleanup as a reason for unrelated scope expansion.
 
 ## Plan Review
 
-Use `aristotle-plan-review` only for a new architecture-bearing production plan
-that has not already been reviewed. Apply valid findings directly without
-re-reviewing those fixes. A too-vague rejection may be reviewed once more after
-clarification; if it is rejected as too vague again, ask the user how to proceed.
-Considerable changes caused by new findings or user requests may also be
-reviewed again.
+Use `architecture-plan-review` only for a new architecture-bearing production
+plan that has not already been reviewed. Ask a sub-agent to perform the review
+using the skill. Apply valid findings directly without re-reviewing those fixes.
+A too-vague rejection may be reviewed once more after clarification; if it is
+rejected as too vague again, ask the user how to proceed. Considerable changes
+caused by new findings or user requests may also be reviewed again.
 
 ## Implementation Review
 
-Use `aristotle-impl-review` only when production changes alter actual
-architecture: new or moved classes/files, dependency or DI ownership, public or
-persisted contracts, cross-layer flow, lifecycle ownership, or shared
-boundaries. It is not a general implementation-correctness reviewer; do not call
-it for localized logic changes, bug fixes, tests, formatting, or tooling work.
+Use `architecture-implementation-review` only when production changes alter
+actual architecture: new or moved classes/files, dependency or DI ownership,
+public or persisted contracts, cross-layer flow, lifecycle ownership, or shared
+boundaries. Ask a sub-agent to perform the review using the skill. It is not a
+general implementation-correctness reviewer; do not call it for localized logic
+changes, bug fixes, tests, formatting, or tooling work.
 
 Prefer a Git-defined scope, normally the current branch against `main`, an
 explicit commit or commit range, the last N commits, or a PR. File or directory

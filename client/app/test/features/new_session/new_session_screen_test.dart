@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:bloc_test/bloc_test.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
@@ -26,6 +27,8 @@ class MockPluginRepository extends Mock implements PluginRepository {}
 
 class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository {}
 
+class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {}
+
 AgentInfo _testAgent({required String name, required String description, required String? variant}) {
   return AgentInfo(
     name: name,
@@ -46,9 +49,35 @@ Finder _pickerMenuItem(String label) => find.descendant(
   matching: find.widgetWithText(InkWell, label),
 );
 
+/// The harness row for [pluginId] inside the open harness menu.
+Finder _harnessRow(String pluginId) => find.byKey(Key("new_session_plugin_$pluginId"));
+
+/// The tappable surface of a harness row — null [InkWell.onTap] is how a row
+/// that cannot be picked reports itself.
+InkWell _harnessRowInk(WidgetTester tester, String pluginId) =>
+    tester.widget<InkWell>(find.descendant(of: _harnessRow(pluginId), matching: find.byType(InkWell)));
+
+/// Opens the harness menu, which is where the pickable harnesses live.
+Future<void> openHarnessMenu(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key("new_session_plugin_trigger")));
+  await tester.pumpAndSettle();
+}
+
+/// Dismisses the harness menu through its barrier. Picking a row closes the
+/// menu on its own; a row that cannot be picked leaves it standing.
+Future<void> closeHarnessMenu(WidgetTester tester) async {
+  await tester.tapAt(const Offset(10, 10));
+  await tester.pumpAndSettle();
+}
+
 Widget _buildApp({
   ThemeMode themeMode = ThemeMode.light,
   bool? initialSupportsDedicatedWorktrees = true,
+  SessionListState sessionListState = const SessionListState.loaded(
+    sessions: [],
+    baseBranch: null,
+    repoSlug: null,
+  ),
 }) {
   final router = GoRouter(
     initialLocation: "/new",
@@ -68,6 +97,10 @@ Widget _buildApp({
         ],
       ),
       GoRoute(
+        path: "/settings/harnesses",
+        builder: (context, state) => const Material(child: Text("harnesses-settings")),
+      ),
+      GoRoute(
         path: "/projects/:projectId/sessions/:sessionId",
         builder: (context, state) {
           return Material(
@@ -84,10 +117,17 @@ Widget _buildApp({
     ],
   );
 
+  // The screen wears the sessions bar, whose second line comes from the
+  // project's session-list cubit — the sessions shell provides it in the app.
+  final sessionListCubit = _MockSessionListCubit();
+  when(() => sessionListCubit.state).thenReturn(sessionListState);
+  whenListen(sessionListCubit, const Stream<SessionListState>.empty(), initialState: sessionListState);
+
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
       BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+      BlocProvider<SessionListCubit>.value(value: sessionListCubit),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -345,7 +385,7 @@ void main() {
     await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: false));
     await tester.pump();
 
-    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.byType(PregoSwitch), findsNothing);
 
     projectResponse.complete(
       ApiResponse.success(
@@ -594,48 +634,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NewSessionPluginChooser), findsOneWidget);
-    expect(tester.getTopLeft(find.text("First Tool")).dy, lessThan(tester.getTopLeft(find.text("Second Tool")).dy));
-    expect(tester.getTopLeft(find.text("Second Tool")).dy, lessThan(tester.getTopLeft(find.text("Third Tool")).dy));
+    await openHarnessMenu(tester);
+
+    expect(tester.getTopLeft(_harnessRow("failed-id")).dy, lessThan(tester.getTopLeft(_harnessRow("codex")).dy));
+    expect(tester.getTopLeft(_harnessRow("codex")).dy, lessThan(tester.getTopLeft(_harnessRow("cursor")).dy));
     expect(find.text("Needs attention"), findsOneWidget);
     expect(find.text("Failed"), findsOneWidget);
     expect(find.text("Unavailable"), findsOneWidget);
-    expect(find.text("Restart the bridge to retry."), findsOneWidget);
-    expect(find.text("Check the bridge console."), findsOneWidget);
-    expect(find.byIcon(TablerRegular.plug), findsOneWidget);
-    expect(findBrandLogo("codex"), findsOneWidget);
+    // Codex is the picked harness, so its mark shows twice: on the trigger and
+    // in its row. The plug stands in for the harness this build has no artwork
+    // for, which is only in the menu.
+    expect(findBrandLogo("codex"), findsNWidgets(2));
     expect(findBrandLogo("cursor"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.plug), findsOneWidget);
 
-    // The marks carry their own colours, so a row that can't be picked has to
-    // mute its artwork or it reads as active beside the row's greyed-out text.
-    double markOpacity(String pluginId) => tester
-        .widget<Opacity>(find.ancestor(of: findBrandLogo(pluginId), matching: find.byType(Opacity)).first)
+    // A row that can't be picked dims as a whole, artwork included — the marks
+    // carry their own colours, so a tint alone would leave them reading active.
+    double rowOpacity(String pluginId) => tester
+        .widget<Opacity>(find.descendant(of: _harnessRow(pluginId), matching: find.byType(Opacity)).first)
         .opacity;
-    expect(markOpacity("cursor"), lessThan(1.0));
-    expect(markOpacity("codex"), 1.0);
+    expect(rowOpacity("cursor"), lessThan(1.0));
+    expect(rowOpacity("codex"), 1.0);
 
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_failed-id"))).onTap,
-      isNull,
-    );
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_cursor"))).onTap,
-      isNull,
-    );
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_codex"))).onTap,
-      isNotNull,
-    );
+    expect(_harnessRowInk(tester, "failed-id").onTap, isNull);
+    expect(_harnessRowInk(tester, "cursor").onTap, isNull);
+    expect(_harnessRowInk(tester, "codex").onTap, isNotNull);
     expect(find.text("failed-id"), findsNothing);
     expect(find.text("codex"), findsNothing);
   });
 
-  testWidgets("uses on-brand foreground tokens for a selected plugin in dark mode", (tester) async {
+  testWidgets("names the picked harness on the trigger and checks its row", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
           plugins: const [
+            PluginMetadata(
+              id: "other-id",
+              displayName: "Other Tool",
+              isDefault: false,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
             PluginMetadata(
               id: "degraded-id",
               displayName: "Selected Tool",
@@ -648,18 +689,34 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp(themeMode: ThemeMode.dark));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(tester.widget<Text>(find.text("Selected Tool")).style?.color, PregoColorsDark.textPrimaryOnBrand);
-    expect(tester.widget<Text>(find.text("Needs attention")).style?.color, PregoColorsDark.textSecondaryOnBrand);
+    final trigger = find.byKey(const Key("new_session_plugin_trigger"));
+    expect(find.descendant(of: trigger, matching: find.text("Selected Tool")), findsOneWidget);
+
+    await openHarnessMenu(tester);
+
     expect(
-      tester.widget<Text>(find.text("Check the bridge console.")).style?.color,
-      PregoColorsDark.textSecondaryOnBrand,
+      find.descendant(of: _harnessRow("degraded-id"), matching: find.byIcon(Icons.check)),
+      findsOneWidget,
     );
-    final selectedRow = find.byKey(const Key("new_session_plugin_degraded-id"));
-    final radio = find.descendant(of: selectedRow, matching: find.byIcon(Icons.radio_button_checked));
-    expect(tester.widget<Icon>(radio).color, PregoColorsDark.iconFgBrandOnBrand);
+    expect(
+      find.descendant(of: _harnessRow("other-id"), matching: find.byIcon(Icons.check)),
+      findsNothing,
+    );
+    expect(find.descendant(of: _harnessRow("degraded-id"), matching: find.text("Needs attention")), findsOneWidget);
+  });
+
+  testWidgets("opens harness settings from the menu header", (tester) async {
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await openHarnessMenu(tester);
+
+    await tester.tap(find.byKey(const Key("new_session_harness_settings")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("harnesses-settings"), findsOneWidget);
   });
 
   testWidgets("keeps model and variant controls available when no agents load", (tester) async {
@@ -709,7 +766,7 @@ void main() {
       find.descendant(of: optionsScroll, matching: find.byType(NewSessionPluginChooser)),
       findsOneWidget,
     );
-    expect(find.descendant(of: optionsScroll, matching: find.byType(SwitchListTile)), findsOneWidget);
+    expect(find.descendant(of: optionsScroll, matching: find.byType(PregoSwitch)), findsOneWidget);
     expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
     expect(tester.takeException(), isNull);
 
@@ -764,7 +821,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
-    expect(find.text(loc.newSessionDedicatedWorktree), findsNothing);
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
   });
 
   testWidgets("keeps chooser usable while clearing and reloading composer data", (tester) async {
@@ -813,7 +870,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await openHarnessMenu(tester);
+    await tester.tap(_harnessRow("tool-b"));
     await tester.pump();
 
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsNothing);
@@ -822,12 +880,11 @@ void main() {
       matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
     );
     expect(disabledComposer, findsOneWidget);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-a"))).onTap,
-      isNotNull,
-    );
 
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-a")));
+    await openHarnessMenu(tester);
+    expect(_harnessRowInk(tester, "tool-a").onTap, isNotNull);
+
+    await tester.tap(_harnessRow("tool-a"));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
@@ -900,20 +957,16 @@ void main() {
 
     expect(discoveryCalls, 2);
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-b"))).onTap,
-      isNull,
-    );
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await openHarnessMenu(tester);
+    expect(_harnessRowInk(tester, "tool-b").onTap, isNull);
+    await tester.tap(_harnessRow("tool-b"));
     await tester.pump();
     expect(
-      find.descendant(
-        of: find.byKey(const Key("new_session_plugin_tool-a")),
-        matching: find.byIcon(Icons.radio_button_checked),
-      ),
+      find.descendant(of: _harnessRow("tool-a"), matching: find.byIcon(Icons.check)),
       findsOneWidget,
     );
     verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
+    await closeHarnessMenu(tester);
 
     reconnectDiscovery.complete(
       ApiResponse.success(
@@ -927,17 +980,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isTrue);
-    expect(
-      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-b"))).onTap,
-      isNotNull,
-    );
-    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await openHarnessMenu(tester);
+    expect(_harnessRowInk(tester, "tool-b").onTap, isNotNull);
+    await tester.tap(_harnessRow("tool-b"));
     await tester.pumpAndSettle();
+
+    await openHarnessMenu(tester);
     expect(
-      find.descendant(
-        of: find.byKey(const Key("new_session_plugin_tool-b")),
-        matching: find.byIcon(Icons.radio_button_checked),
-      ),
+      find.descendant(of: _harnessRow("tool-b"), matching: find.byIcon(Icons.check)),
       findsOneWidget,
     );
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
@@ -987,9 +1037,11 @@ void main() {
     final context = tester.element(find.byType(NewSessionScreen));
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
-    expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsOneWidget);
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
-    expect(tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_plugin-1"))).onTap, isNull);
+    await openHarnessMenu(tester);
+    expect(_harnessRow("plugin-1"), findsOneWidget);
+    expect(_harnessRowInk(tester, "plugin-1").onTap, isNull);
+    await closeHarnessMenu(tester);
     expect(
       tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_options_refresh"))).onPressed,
       isNull,
@@ -1014,8 +1066,8 @@ void main() {
     final context = tester.element(find.byType(NewSessionScreen));
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
-    expect(find.text(loc.newSessionPluginChooserLabel), findsNothing);
-    expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsNothing);
+    expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
+    expect(_harnessRow("plugin-1"), findsNothing);
     expect(
       find.ancestor(
         of: find.byType(PromptInput),

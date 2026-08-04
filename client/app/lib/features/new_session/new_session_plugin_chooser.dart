@@ -5,189 +5,156 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 
+/// The harness the new session will run on, shown as the picked harness' mark
+/// and name over an anchored menu listing every harness this bridge reports.
+///
+/// The row carries no chrome of its own: the unfold caret is what says it can
+/// be tapped, matching the Figma "Harness options" block (node 4435:16803).
+/// The menu's header repeats the section name and hangs the settings shortcut
+/// off it, so a harness that needs setting up is one tap from where the user
+/// noticed the problem.
 class NewSessionPluginChooser extends StatelessWidget {
   final List<PluginMetadata> plugins;
   final String? selectedPluginId;
-  final bool isComposerDataLoading;
   final bool isSelectionEnabled;
   final ValueChanged<String> onSelected;
+  final VoidCallback onSettingsPressed;
 
   const NewSessionPluginChooser({
     super.key,
     required this.plugins,
     required this.selectedPluginId,
-    required this.isComposerDataLoading,
     required this.isSelectionEnabled,
     required this.onSelected,
+    required this.onSettingsPressed,
   });
+
+  /// Height of the trigger row and of the menu's header row (Figma: 40 / 52).
+  static const double _triggerHeight = 40;
+  static const double _menuHeaderHeight = 52;
+
+  /// Width of the open menu, shared with the composer's pickers.
+  static const double _menuWidth = 240;
 
   @override
   Widget build(BuildContext context) {
     if (plugins.isEmpty) return const SizedBox.shrink();
-    final prego = context.prego;
+    final loc = context.loc;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsetsDirectional.only(
-            start: prego.spacing.md,
-            bottom: prego.spacing.xs,
-          ),
-          child: Text(
-            context.loc.newSessionPluginChooserLabel,
-            style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
-          ),
+    PluginMetadata? selected;
+    for (final plugin in plugins) {
+      if (plugin.id == selectedPluginId) selected = plugin;
+    }
+
+    // Aligned out here rather than inside the trigger: the menu anchors to the
+    // trigger's painted bounds, and a trigger stretched across the row would
+    // hang the popup off the middle of the screen instead of under the name.
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: PregoAnchorMenu(
+        // The trigger is flat, so the popup is too — a glass bubble hung off a
+        // chrome-less row would read as belonging to something else.
+        flat: true,
+        menuWidth: _menuWidth,
+        triggerBuilder: (context, toggle) => _HarnessTrigger(
+          pluginId: selected?.id,
+          label: selected?.displayName ?? loc.newSessionPluginChooserLabel,
+          height: _triggerHeight,
+          onPressed: toggle,
         ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: prego.colors.bgSurface1,
-            border: Border.all(color: prego.colors.borderSecondary),
-            borderRadius: BorderRadius.circular(prego.radius.lg),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(prego.radius.lg),
-            child: Column(
-              children: [
-                for (var index = 0; index < plugins.length; index++) ...[
-                  if (index > 0) Divider(height: 1, color: prego.colors.borderSecondary),
-                  _PluginChoice(
-                    plugin: plugins[index],
-                    isSelected: plugins[index].id == selectedPluginId,
-                    isLoading: isComposerDataLoading && plugins[index].id == selectedPluginId,
-                    isSelectionEnabled: isSelectionEnabled,
-                    onSelected: onSelected,
-                  ),
-                ],
-              ],
+        entriesBuilder: () => [
+          PregoMenuCustom(
+            height: _menuHeaderHeight,
+            builder: (context, close) => _HarnessesMenuHeader(
+              height: _menuHeaderHeight,
+              onSettingsPressed: () {
+                close();
+                onSettingsPressed();
+              },
             ),
           ),
-        ),
-      ],
+          for (final plugin in plugins)
+            PregoMenuItem(
+              key: Key("new_session_plugin_${plugin.id}"),
+              title: plugin.displayName,
+              subtitle: _lifecycleStatus(context, state: plugin.state),
+              isSelected: plugin.id == selectedPluginId,
+              isEnabled: isSelectionEnabled && plugin.isRoutable,
+              leading: PregoBrandLogo(
+                pluginId: plugin.id,
+                color: context.prego.colors.textSecondary,
+              ),
+              onTap: () => onSelected(plugin.id),
+            ),
+        ],
+      ),
     );
   }
+
+  /// What a harness row says about itself below its name. A ready harness says
+  /// nothing — the absence is the good news.
+  static String? _lifecycleStatus(BuildContext context, {required PluginLifecycleState state}) => switch (state) {
+    PluginLifecycleState.ready => null,
+    PluginLifecycleState.degraded => context.loc.newSessionPluginDegraded,
+    PluginLifecycleState.unavailable => context.loc.newSessionPluginUnavailable,
+    PluginLifecycleState.failed => context.loc.newSessionPluginFailed,
+  };
 }
 
-class _PluginChoice extends StatelessWidget {
-  final PluginMetadata plugin;
-  final bool isSelected;
-  final bool isLoading;
-  final bool isSelectionEnabled;
-  final ValueChanged<String> onSelected;
+/// The picked harness' mark and name over an unfold caret.
+class _HarnessTrigger extends StatelessWidget {
+  final String? pluginId;
+  final String label;
+  final double height;
+  final VoidCallback onPressed;
 
-  const _PluginChoice({
-    required this.plugin,
-    required this.isSelected,
-    required this.isLoading,
-    required this.isSelectionEnabled,
-    required this.onSelected,
+  const _HarnessTrigger({
+    required this.pluginId,
+    required this.label,
+    required this.height,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final isEnabled = isSelectionEnabled && plugin.isRoutable;
-    final primaryTextColor = isSelected
-        ? prego.colors.textPrimaryOnBrand
-        : isEnabled
-        ? prego.colors.textPrimary
-        : prego.colors.textTertiary;
-    final secondaryTextColor = isSelected ? prego.colors.textSecondaryOnBrand : prego.colors.textSecondary;
-    final iconColor = isSelected
-        ? prego.colors.iconFgBrandOnBrand
-        : isEnabled
-        ? prego.colors.bgBrandSolid
-        : prego.colors.textTertiary;
-    final status = switch (plugin.state) {
-      PluginLifecycleState.ready => null,
-      PluginLifecycleState.degraded => context.loc.newSessionPluginDegraded,
-      PluginLifecycleState.unavailable => context.loc.newSessionPluginUnavailable,
-      PluginLifecycleState.failed => context.loc.newSessionPluginFailed,
-    };
+    final borderRadius = BorderRadius.circular(PregoRadius.full);
+    final pluginId = this.pluginId;
 
+    // The row's own text names the harness but not what the choice is for, so
+    // the control announces both: the label says what it picks, the value says
+    // what is picked. The visible text is excluded to keep the harness name
+    // from being read a second time as a loose node.
     return Semantics(
       button: true,
-      selected: isSelected,
-      enabled: isEnabled,
-      child: Material(
-        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1.withValues(alpha: 0),
-        child: InkWell(
-          key: Key("new_session_plugin_${plugin.id}"),
-          onTap: isEnabled ? () => onSelected(plugin.id) : null,
+      label: context.loc.newSessionPluginChooserLabel,
+      value: label,
+      excludeSemantics: true,
+      child: InkWell(
+        key: const Key("new_session_plugin_trigger"),
+        onTap: onPressed,
+        borderRadius: borderRadius,
+        child: SizedBox(
+          height: height,
           child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: prego.spacing.md,
-              vertical: prego.spacing.sm,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  size: 20,
-                  color: iconColor,
-                ),
-                SizedBox(width: prego.spacing.sm),
-                // The mark carries its own colours, so a row that is out of
-                // play mutes it rather than recolouring it — which also dims
-                // the branded artwork a tint could never have reached.
-                Opacity(
-                  opacity: isEnabled ? 1 : _mutedMarkOpacity,
-                  child: PregoBrandLogo(
-                    pluginId: plugin.id,
-                    color: iconColor,
+                if (pluginId != null) ...[
+                  PregoBrandLogo(pluginId: pluginId, color: prego.colors.textSecondary),
+                  SizedBox(width: prego.spacing.sm),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
                   ),
                 ),
                 SizedBox(width: prego.spacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              plugin.displayName,
-                              style: prego.textTheme.textSm.medium.copyWith(
-                                color: primaryTextColor,
-                              ),
-                            ),
-                          ),
-                          if (isLoading) ...[
-                            SizedBox(width: prego.spacing.sm),
-                            SizedBox.square(
-                              dimension: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: iconColor,
-                                semanticsLabel: context.loc.newSessionPluginLoading,
-                              ),
-                            ),
-                          ] else if (status != null)
-                            Text(
-                              status,
-                              style: prego.textTheme.textXs.medium.copyWith(
-                                color: isSelected
-                                    ? prego.colors.textSecondaryOnBrand
-                                    : plugin.state == PluginLifecycleState.degraded
-                                    ? prego.colors.textBrandPrimary
-                                    : prego.colors.textTertiary,
-                              ),
-                            ),
-                        ],
-                      ),
-                      if (plugin.actionHint case final hint?) ...[
-                        SizedBox(height: prego.spacing.xs),
-                        Text(
-                          hint,
-                          style: prego.textTheme.textXs.regular.copyWith(
-                            color: secondaryTextColor,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+                Icon(TablerRegular.selector, size: 16, color: prego.colors.textPrimary),
               ],
             ),
           ),
@@ -197,6 +164,45 @@ class _PluginChoice extends StatelessWidget {
   }
 }
 
-/// How far a harness mark is dimmed on a row that cannot be picked, so it
-/// reads as out of play alongside the row's tertiary text.
-const double _mutedMarkOpacity = 0.4;
+/// The menu's first row: the section name and the shortcut into harness
+/// settings, where harnesses are enabled, restarted and set up.
+class _HarnessesMenuHeader extends StatelessWidget {
+  final double height;
+  final VoidCallback onSettingsPressed;
+
+  const _HarnessesMenuHeader({required this.height, required this.onSettingsPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+
+    return SizedBox(
+      height: height,
+      child: Padding(
+        padding: EdgeInsetsDirectional.only(start: prego.spacing.xl, end: prego.spacing.md),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                loc.settingsHarnessesTitle,
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+              ),
+            ),
+            IconButton(
+              key: const Key("new_session_harness_settings"),
+              onPressed: onSettingsPressed,
+              icon: Icon(
+                TablerRegular.adjustments_horizontal,
+                size: 20,
+                color: prego.colors.textTertiary,
+              ),
+              tooltip: loc.newSessionHarnessSettings,
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

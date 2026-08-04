@@ -2497,17 +2497,11 @@ abstract class AppLocalizations {
   /// **'Failed to rename project'**
   String get renameProjectFailed;
 
-  /// No description provided for @newSessionDedicatedWorktree.
+  /// No description provided for @newSessionDedicatedWorkspace.
   ///
   /// In en, this message translates to:
-  /// **'Dedicated worktree'**
-  String get newSessionDedicatedWorktree;
-
-  /// No description provided for @newSessionDedicatedWorktreeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Creates a dedicated git worktree and branch for this session'**
-  String get newSessionDedicatedWorktreeDescription;
+  /// **'Dedicated workspace'**
+  String get newSessionDedicatedWorkspace;
 
   /// No description provided for @newSessionPluginChooserLabel.
   ///
@@ -2533,11 +2527,17 @@ abstract class AppLocalizations {
   /// **'Failed'**
   String get newSessionPluginFailed;
 
-  /// No description provided for @newSessionPluginLoading.
+  /// No description provided for @newSessionHarnessSettings.
   ///
   /// In en, this message translates to:
-  /// **'Loading coding tool options'**
-  String get newSessionPluginLoading;
+  /// **'Harness settings'**
+  String get newSessionHarnessSettings;
+
+  /// No description provided for @newSessionOptionsLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading session options'**
+  String get newSessionOptionsLoadingSemantics;
 
   /// No description provided for @newSessionOptionsRefresh.
   ///
