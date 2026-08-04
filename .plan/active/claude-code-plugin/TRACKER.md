@@ -176,9 +176,14 @@
   process with 143 (SIGTERM), confirming the graceful path. That run also
   produced the `system/init` timing correction below.
 
-  Recorded overage at ~1,730 changed lines against the 1,500 soft cap; the
-  rationale is in `PLAN.md` under Step 3. No coherent split exists because the
-  parser's only production consumer is the transport itself.
+  Recorded overage: **1,767 changed lines** against the 1,500 soft cap, measured
+  after the rebase onto the Step 2 branch with
+  `git diff --numstat claude-code-plugin-protocol-scaffold HEAD`. An earlier
+  estimate of ~1,730 predates that rebase and is superseded. The rationale is in
+  `PLAN.md` under Step 3: no coherent split exists because the parser's only
+  production consumer is the transport itself, so splitting would ship
+  unconsumed architecture. Tests are 0.67x source, below the repository's
+  1.2-1.9x norm, so the overage is production code rather than test bulk.
 
 ## Findings And Plan Deltas
 
