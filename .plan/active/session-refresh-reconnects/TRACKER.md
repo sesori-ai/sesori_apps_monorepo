@@ -52,7 +52,7 @@
 | Option | Status | Planned/actual scope | Decision evidence |
 |---|---|---:|---|
 | Debug refresh diagnostics with `[session-refresh]` | Selected for Step 2 | 45-90 estimated changed lines alone | Needed to identify future refresh cause without guessing |
-| Redirect `sessions.updated` to command-only refresh | Selected for Step 2 | 180-330 estimated changed lines combined with diagnostics | Removes wrong full-detail reload while retaining v1.6.0 command compatibility |
+| Redirect `sessions.updated` to command-only refresh | Selected for Step 2 | 220-400 estimated changed lines combined with diagnostics | Removes wrong full-detail reload while retaining v1.6.0 command compatibility |
 | Transcript-only mutation epoch | Deferred | 145-270 estimated | Do not protect only the observed field before testing intended refreshes |
 | Grouped snapshot reconciliation | Deferred | 440-810 estimated | Preferred client hardening only if intended refresh reproduces state rollback |
 | Apply-live event journal/replay | Rejected | 370-670 estimated | Non-idempotent deltas and modal side effects are unsafe without a cursor |
@@ -66,7 +66,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [ ] | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | [PR #725](https://github.com/sesori-ai/sesori_apps_monorepo/pull/725) open |
-| [ ] | 2/3 | Owner-provided implementation branch | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 180-330 | Blocked on Step 1 merge |
+| [ ] | 2/3 | Owner-provided implementation branch | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 220-400 | Blocked on Step 1 merge |
 | [ ] | 3/3 | Owner-provided assessment branch | `🌱 [session-refresh-reconnects] docs: assess session refresh evidence [step 3/3]` | 80-200 | Blocked on Step 2 observation evidence |
 
 ## Step 1 Checklist
@@ -84,15 +84,22 @@
 ## Step 2 Checklist
 
 - [ ] Add a private closed trigger model; do not branch on log strings.
-- [ ] Add debug-only `observed`, `ignored`, `queued`, `coalesced`, `started`,
-  and `completed` diagnostics with the exact `[session-refresh]` prefix.
+- [ ] Add debug-only `observed`, `ignored`, `redirected`, `queued`, `coalesced`,
+  `started`, and `completed` diagnostics with the exact `[session-refresh]`
+  prefix.
+- [ ] Treat a missing causal entry as evidence only in a build configured for
+  `LogLevel.debug` or `LogLevel.trace`; add no release-visible causal logging or
+  production log-level toggle.
 - [ ] Correlate start/completion with a Cubit-local refresh ID and duration.
 - [ ] Keep prompt/transcript/code/path/command/raw-error data out of the causal
   diagnostics.
 - [ ] Stop matching `sessions.updated` from invoking full snapshot reload.
-- [ ] Refresh only commands, with at most one active and one trailing request.
+- [ ] Expose targeted command loading through `SessionDetailLoadService`; the
+  Cubit owns at most one active and one trailing trigger.
 - [ ] Preserve staged command only when still available.
 - [ ] Preserve existing commands after refresh failure.
+- [ ] Preserve original error and stack context in operational silent-refresh
+  failure warnings while keeping bounded causal entries debug-only.
 - [ ] Retain initial-load event buffering and v1.6.0 bridge compatibility with a
   dated cleanup comment.
 - [ ] Prove normal accepted text sends plus ordinary SSE do not reload.
@@ -116,8 +123,8 @@ tokens.
 ## Step 3 Decision Checklist
 
 - [ ] Record representative ordinary-send observations after Step 2.
-- [ ] Record at least one naturally occurring or deliberately exercised
-  reconnect/resume refresh when practical.
+- [ ] Record at least one deliberately exercised intended reconnect/resume/stale
+  full refresh in a debug-enabled build before retirement.
 - [ ] If content disappears, tie it to one bounded diagnostic trigger before
   selecting reconciliation.
 - [ ] Mark every option implemented, rejected, deferred, superseded, or handed
@@ -134,6 +141,20 @@ tokens.
 - **Verdict:** approved; pre-review gate passed
 - **Findings applied:** none; the reviewer found no architecture, layering,
   compatibility, ownership, cohesion, naming, or proportionality violations
+
+## PR Review Feedback
+
+- **Valid findings applied:** require a debug-enabled observation build before
+  interpreting missing diagnostics; add the bounded `redirected` action;
+  preserve original error/stack context in operational silent-refresh failures;
+  route targeted command loading through `SessionDetailLoadService`; and require
+  one deliberately exercised intended full refresh before retirement.
+- **Duplicate threads:** the redirected-action and Service-boundary findings were
+  each reported independently by two bot reviewers and share one correction.
+- **Not applied:** the claim that architecture plan review is forbidden for a
+  documentation-only plan conflicts with root guidance. This plan defines an
+  architecture-bearing client flow and deferred wire boundaries, so
+  `aristotle-plan-review` was correctly invoked and approved it.
 
 ## Verification Log
 

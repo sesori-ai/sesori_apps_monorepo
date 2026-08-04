@@ -152,6 +152,14 @@ Example shape:
 [session-refresh] action=completed trigger=connection_reconnected refreshId=7 result=applied durationMs=183
 ```
 
+These causal diagnostics are available only when the observation build has
+`logLevel` set to `LogLevel.debug` or `LogLevel.trace`. Product builds default
+to `LogLevel.info`, so a production occurrence with no matching entry is not
+evidence that the refresh path did not run. Step 3 may draw a no-entry conclusion
+only from a debug-enabled observation build. Otherwise record the symptom and
+reproduce it with debug logging enabled; Step 2 does not add a release-visible
+log level, production toggle, or elevated causal diagnostic.
+
 The implementation uses a private closed enum for trigger decisions. It does
 not compare or branch on diagnostic strings. Diagnostic actions and results are
 bounded values rather than raw event/error text.
@@ -166,8 +174,8 @@ Required trigger values are:
 - `waiting_for_connection`
 - `queued_event`
 
-Required actions are `observed`, `ignored`, `queued`, `coalesced`, `started`,
-and `completed`. Completion results are `applied`, `failed`,
+Required actions are `observed`, `ignored`, `redirected`, `queued`,
+`coalesced`, `started`, and `completed`. Completion results are `applied`, `failed`,
 `waiting_for_connection`, and `closed`.
 
 Diagnostics must make these facts reconstructable:
@@ -183,9 +191,16 @@ coalescing retains more than one cause, use a bounded set of the private trigger
 enum rather than an unbounded string list or nullable coordination fields.
 
 The diagnostics contain no prompts, transcripts, source code, message parts,
-command names, paths, request bodies, or raw errors. Existing operational failure
-logs keep their current useful error/stack behavior; the new causal trace itself
+command names, paths, request bodies, or raw errors. The new causal trace itself
 remains debug-only and is not analytics.
+
+The existing operational silent-refresh failure logs do not currently preserve
+the promised diagnostic context: the typed failure case ignores its stack trace,
+the catch clause does not capture one, and both interpolate the error. Step 2
+must destructure/capture the original stack and pass the error plus stack to the
+existing warning-level logger. The bounded `action=completed result=failed`
+causal entry remains debug-only; correcting the pre-existing operational failure
+log does not elevate the causal trace or duplicate its purpose.
 
 ### Redirect project invalidation to command refresh
 
@@ -193,7 +208,9 @@ A matching `SesoriSessionsUpdated` must no longer call
 `_requestEventDrivenRefresh` or set `isRefreshing`.
 
 Instead, while detail is loaded it requests a lightweight command-catalog
-refresh through the existing repository boundary. That operation:
+refresh through a targeted `SessionDetailLoadService` operation. The service
+retains command loading and repository access; the Cubit owns only UI-trigger
+single-flight/trailing coalescing and state publication. That operation:
 
 - reads only the commands needed by the composer;
 - preserves transcript, streaming text, statuses, pending interactions,
@@ -240,7 +257,8 @@ reconnect/resume/stale refreshes before larger machinery is approved.
 5. Irrelevant-project events cause no detail or command refresh.
 6. Bursts produce at most one active and one trailing command refresh.
 7. A command-refresh failure preserves the current catalog and remains locally
-   observable without changing the successful detail state.
+   observable without changing the successful detail state; silent-refresh
+   failures retain the original error and stack in their operational warning.
 8. Reconnect, resume, stale-data, waiting-for-connection, and command-executed
    paths retain their current full-refresh behavior and expose their reason in
    diagnostics.
@@ -277,14 +295,15 @@ Decision rules:
 
 | Evidence | Decision |
 |---|---|
-| No recurrence after representative ordinary-send use | Retire this plan with larger options deferred |
+| No recurrence after representative ordinary-send use plus at least one deliberately exercised intended full refresh | Retire this plan with larger options deferred |
 | `project_sessions_updated` starts a full refresh | Step 2 regression; fix within this plan |
 | `command_executed` after a plain text prompt | Investigate event mapping before changing client reconciliation |
 | `connection_reconnected` | Correlate client/bridge/relay logs and PR #722 before changing refresh policy |
 | `lifecycle_resumed` after a brief interruption | Assess whether view reassertion can be separated from full data reload |
 | `data_may_be_stale` after the replay-risk window | Keep refresh; test whether live state is overwritten during it |
 | Content disappears during an intended refresh | Create a focused reconciliation follow-up from the options below |
-| UI appears to refresh with no `[session-refresh]` entry | Diagnose a different state/UI path; do not add snapshot machinery |
+| UI appears to refresh with no `[session-refresh]` entry in a debug-enabled observation build | Diagnose a different state/UI path; do not add snapshot machinery |
+| UI appears to refresh with no entry in a default product build | Record the symptom but draw no causal conclusion; reproduce with debug logging enabled |
 
 If evidence selects grouped reconciliation or a new wire protocol, create a
 separate plan with its own slug, fixed delivery, compatibility analysis, and
@@ -298,7 +317,7 @@ separately. These are planning ranges, not commitments.
 | Option | Handwritten production | Tests | Generated | Total | Current decision |
 |---|---:|---:|---:|---:|---|
 | Debug refresh diagnostics only | 15-30 | 30-60 | 0 | 45-90 | Selected and included in Step 2 |
-| Stop unnecessary detail refresh; target command catalog | 60-110 | 120-220 | 0 | 180-330 combined with diagnostics | Selected for Step 2 |
+| Stop unnecessary detail refresh; target command catalog | 80-140 | 140-260 | 0 | 220-400 combined with diagnostics | Selected for Step 2 |
 | Transcript-only mutation epoch | 45-90 | 100-180 | 0 | 145-270 | Deferred; fixes observed content only |
 | Grouped snapshot reconciliation | 140-260 | 300-550 | 0 | 440-810 | Deferred pending intended-refresh reproduction |
 | Apply-live event journal and replay | 120-220 | 250-450 | 0 | 370-670 | Rejected without a server cursor |
@@ -406,7 +425,7 @@ revisions would be a separate cross-stack architecture effort.
 | Step | Branch | Exact PR title | Changed-line target | Outcome |
 |---|---|---|---:|---|
 | 1/3 | `opencode-session-reconnects` | `🌱 [session-refresh-reconnects] docs: plan session refresh diagnosis [step 1/3]` | 550-750 | Publish the evidence, selected first fix, diagnostics contract, option register, and assessment gates |
-| 2/3 | Owner-provided implementation branch | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 180-330 | Add searchable debug diagnostics and redirect project invalidation to targeted command refresh |
+| 2/3 | Owner-provided implementation branch | `⚙️ [session-refresh-reconnects] fix(client): stop unnecessary session detail refreshes [step 2/3]` | 220-400 | Add searchable debug diagnostics and redirect project invalidation to targeted command refresh |
 | 3/3 | Owner-provided assessment branch | `🌱 [session-refresh-reconnects] docs: assess session refresh evidence [step 3/3]` | 80-200 | Record observations, final option decisions, any follow-up-plan handoff, and retire this plan |
 
 ## Step 1/3 - Publish The Assessment Plan
@@ -432,10 +451,15 @@ revisions would be a separate cross-stack architecture effort.
 
 - Add the closed refresh-trigger model and `[session-refresh]` debug lifecycle
   diagnostics.
+- Require a debug-enabled observation build before interpreting the absence of
+  those diagnostics.
 - Pass or preserve trigger causes through immediate, queued, cooldown,
   reconnect, waiting-for-connection, and failure-restoration paths.
-- Replace matching `sessions.updated` full-detail refresh with bounded targeted
-  command refresh.
+- Replace matching `sessions.updated` full-detail refresh with a bounded targeted
+  command operation on `SessionDetailLoadService`; the Cubit retains only
+  trigger coalescing and loaded-state publication.
+- Preserve original errors and stack traces in operational silent-refresh
+  failure warnings without adding payload data to the debug causal trace.
 - Preserve initial-load command discovery and released v1.6.0 compatibility.
 - Add focused regressions for normal sends, event bursts, initial-load replay,
   unrelated projects, failures, and retained intended refresh reasons.
@@ -453,7 +477,8 @@ revisions would be a separate cross-stack architecture effort.
 ### Scope
 
 - Record representative post-fix observations and any recurrence using only the
-  bounded evidence fields above.
+  bounded evidence fields above. Retirement requires at least one deliberately
+  exercised intended reconnect/resume/stale refresh in a debug-enabled build.
 - Mark every option implemented, rejected, deferred, superseded, or handed to a
   named follow-up plan.
 - If no justified follow-up remains, move the plan directory to completed.
