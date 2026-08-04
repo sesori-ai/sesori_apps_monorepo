@@ -239,7 +239,7 @@ summaries and only the identifiers needed to correlate a finding.
 
 ### F-12: Repository Instructions Appeared As A User Message
 
-- **Severity:** High.
+- **Severity:** High
 - **Reproduced:** A fresh Codex session created from the iOS app during the
   follow-up mobile-image validation.
 - **Impact:** On history load, a repository-instruction envelope was rendered as

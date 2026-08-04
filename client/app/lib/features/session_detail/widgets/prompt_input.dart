@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/gestures.dart" show kPrimaryButton;
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -24,6 +25,60 @@ import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
 enum _VoiceState { idle, recording, transcribing }
+
+enum _PasteImageResult { noImage, handled, stale }
+
+final class _ComposerPasteAction extends Action<PasteTextIntent> {
+  final Future<_PasteImageResult> Function() _pasteImage;
+  final TextEditingController _controller;
+
+  _ComposerPasteAction({
+    required Future<_PasteImageResult> Function() pasteImage,
+    required TextEditingController controller,
+  }) : _pasteImage = pasteImage,
+       _controller = controller;
+
+  @override
+  Object? invoke(PasteTextIntent intent) {
+    // callingAction is available only during this synchronous override call,
+    // so retain Flutter's normal text-paste action before reading the image.
+    final textPasteAction = callingAction;
+    final initialValue = _controller.value;
+    unawaited(
+      _pasteImageOrText(
+        intent: intent,
+        textPasteAction: textPasteAction,
+        initialValue: initialValue,
+      ),
+    );
+    return null;
+  }
+
+  Future<void> _pasteImageOrText({
+    required PasteTextIntent intent,
+    required Action<PasteTextIntent>? textPasteAction,
+    required TextEditingValue initialValue,
+  }) async {
+    try {
+      if (await _pasteImage() != _PasteImageResult.noImage) return;
+      // Preserve the selection from the paste intent when only the caret moved
+      // while the clipboard image probe was pending. Never overwrite text that
+      // genuinely changed during that interval.
+      if (_controller.text == initialValue.text && initialValue.selection.isValid) {
+        _controller.selection = initialValue.selection;
+      }
+      textPasteAction?.invoke(intent);
+    } catch (error, stackTrace) {
+      loge("Failed to handle composer paste", error, stackTrace);
+    }
+  }
+
+  @override
+  bool get isActionEnabled => callingAction?.isActionEnabled ?? false;
+
+  @override
+  bool consumesKey(PasteTextIntent intent) => callingAction?.consumesKey(intent) ?? false;
+}
 
 typedef PromptSubmitCallback =
     void Function({
@@ -52,9 +107,9 @@ class PromptInput extends StatefulWidget {
   final ValueChanged<CommandInfo> onCommandSelected;
   final VoidCallback onCommandCleared;
 
-  /// Whether this composer offers image attachments. Owners resolve it from
-  /// the plugin's declared prompt capabilities.
-  final bool attachmentsSupported;
+  /// Whether this composer offers image attachments. Null keeps already staged
+  /// images while current bridge capability is being resolved.
+  final bool? attachmentsSupported;
 
   /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header;
@@ -96,6 +151,8 @@ class _PromptInputState extends State<PromptInput> {
   final _controller = TextEditingController();
   final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
+  late final Action<PasteTextIntent> _pasteAction;
+  int _pasteGeneration = 0;
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
@@ -172,9 +229,15 @@ class _PromptInputState extends State<PromptInput> {
 
   ComposerImagePicker get _imagePicker => getIt<ComposerImagePicker>();
 
+  ImageClipboard get _imageClipboard => getIt<ImageClipboard>();
+
   @override
   void initState() {
     super.initState();
+    _pasteAction = _ComposerPasteAction(
+      pasteImage: _handlePasteImage,
+      controller: _controller,
+    );
     final chatInputModeCubit = context.read<ChatInputModeCubit>();
     _chatInputMode = chatInputModeCubit.state;
     _chatInputModeSub = chatInputModeCubit.stream.listen((inputMode) {
@@ -304,7 +367,10 @@ class _PromptInputState extends State<PromptInput> {
     return _voiceState;
   }
 
-  bool get _hasSendableContent => _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+  bool get _hasSendableContent {
+    final hasContent = _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+    return hasContent && (_attachments.isEmpty || widget.attachmentsSupported == true);
+  }
 
   /// Switches to the typing layout and raises the keyboard. Focus is
   /// requested post-frame because the field only mounts with the typing
@@ -337,6 +403,7 @@ class _PromptInputState extends State<PromptInput> {
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
     final attachments = List<ComposerAttachment>.unmodifiable(_attachments);
+    if (attachments.isNotEmpty && widget.attachmentsSupported != true) return;
     if (stagedCommand != null) {
       if (attachments.isNotEmpty) {
         // The bridge's command paths read only the text part, so images sent
@@ -363,6 +430,7 @@ class _PromptInputState extends State<PromptInput> {
       );
     }
 
+    _pasteGeneration++;
     if (_attachments.isNotEmpty) {
       setState(_attachments.clear);
     }
@@ -382,17 +450,21 @@ class _PromptInputState extends State<PromptInput> {
     super.didUpdateWidget(oldWidget);
     final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
+    if (oldWidget.attachmentsSupported != widget.attachmentsSupported) {
+      _pasteGeneration++;
+    }
     if (draftChanged) {
       // The state was reused for another session without initState/dispose.
       // The owning Cubit already persisted each edit, so only restore the new
       // immutable snapshot here. Staged attachments belong to the previous
       // session and never carry across.
+      _pasteGeneration++;
       _attachments.clear();
       _restoreDraft(draft: widget.initialDraft);
     }
     // Switching the new-session harness to one that drops image parts strands
     // whatever was staged for the previous pick, so drop it with the action.
-    if (!widget.attachmentsSupported && _attachments.isNotEmpty) {
+    if (widget.attachmentsSupported == false && _attachments.isNotEmpty) {
       setState(_attachments.clear);
     }
     if (oldWidget.surfaceStyleController != widget.surfaceStyleController || draftChanged || stagedCommandChanged) {
@@ -748,6 +820,8 @@ class _PromptInputState extends State<PromptInput> {
       context,
       controller: _controller,
       placeholder: _hintText(context),
+      pasteAction: _pasteAction,
+      contextMenuBuilder: (_, editableTextState) => _buildComposerContextMenu(editableTextState: editableTextState),
     );
     if (!mounted) return;
     // Return the keyboard to the inline field. Via [_enterTypingMode] because
@@ -1154,36 +1228,44 @@ class _PromptInputState extends State<PromptInput> {
                 // Clear the expand button on the trailing edge so text never
                 // runs underneath it.
                 padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, 36, 0),
-                child: CallbackShortcuts(
-                  // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
-                  // plain Enter stays a newline via textInputAction below.
-                  bindings: <ShortcutActivator, VoidCallback>{
-                    const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
-                    const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
-                  },
-                  child: TextField(
-                    controller: _controller,
-                    scrollController: _textScrollController,
-                    focusNode: _focusNode,
-                    minLines: 1,
-                    maxLines: 6,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    // Material's default keeps focus on mobile touch taps;
-                    // this composer wants outside taps (e.g. the picker
-                    // pills above the region) to dismiss the keyboard — the
-                    // behaviour the TextFieldTapRegion grouping was built
-                    // around.
-                    onTapOutside: (_) => _focusNode.unfocus(),
-                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
-                    decoration: InputDecoration(
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
-                      // Command-aware placeholder: the staged command's hint,
-                      // else the follow-up/default prompt hint.
-                      hintText: _hintText(context),
-                      hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                child: Actions(
+                  // Browser paste must remain synchronous with its DOM event;
+                  // deferring Flutter's text action behind an async Clipboard
+                  // API read can lose browser user activation.
+                  actions: kIsWeb ? const {} : {PasteTextIntent: _pasteAction},
+                  child: CallbackShortcuts(
+                    // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
+                    // plain Enter stays a newline via textInputAction below.
+                    bindings: <ShortcutActivator, VoidCallback>{
+                      const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
+                      const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
+                    },
+                    child: TextField(
+                      controller: _controller,
+                      scrollController: _textScrollController,
+                      focusNode: _focusNode,
+                      minLines: 1,
+                      maxLines: 6,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      contextMenuBuilder: (_, editableTextState) =>
+                          _buildComposerContextMenu(editableTextState: editableTextState),
+                      // Material's default keeps focus on mobile touch taps;
+                      // this composer wants outside taps (e.g. the picker
+                      // pills above the region) to dismiss the keyboard — the
+                      // behaviour the TextFieldTapRegion grouping was built
+                      // around.
+                      onTapOutside: (_) => _focusNode.unfocus(),
+                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
+                        // Command-aware placeholder: the staged command's hint,
+                        // else the follow-up/default prompt hint.
+                        hintText: _hintText(context),
+                        hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                      ),
                     ),
                   ),
                 ),
@@ -1209,6 +1291,45 @@ class _PromptInputState extends State<PromptInput> {
     );
   }
 
+  Widget _buildComposerContextMenu({required EditableTextState editableTextState}) {
+    final buttonItems = [...editableTextState.contextMenuButtonItems];
+    if (!kIsWeb && widget.attachmentsSupported == true) {
+      final pasteIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.paste);
+      final existingPaste = pasteIndex < 0 ? null : buttonItems[pasteIndex];
+      final existingPasteCallback = existingPaste?.onPressed;
+      final pasteItem = ContextMenuButtonItem(
+        type: ContextMenuButtonType.paste,
+        label: existingPaste?.label,
+        onPressed: () {
+          // Preserve the selection from the paste intent; the image probe may
+          // outlive the menu, so a later caret move must not redirect the text
+          // fallback.
+          final initialValue = editableTextState.textEditingValue;
+          unawaited(
+            _pasteImageOrText(
+              initialValue: initialValue,
+              onTextPaste: existingPasteCallback == null
+                  ? () => editableTextState.pasteText(SelectionChangedCause.toolbar)
+                  : () async => existingPasteCallback(),
+              onImagePasted: editableTextState.hideToolbar,
+            ),
+          );
+        },
+      );
+      if (pasteIndex >= 0) {
+        buttonItems[pasteIndex] = pasteItem;
+      } else {
+        final selectAllIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.selectAll);
+        buttonItems.insert(selectAllIndex < 0 ? buttonItems.length : selectAllIndex, pasteItem);
+      }
+    }
+
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      anchors: editableTextState.contextMenuAnchors,
+      buttonItems: buttonItems,
+    );
+  }
+
   /// The staged attachments' thumbnails, scrollable when they outgrow the
   /// row, each with a remove badge.
   Widget _buildAttachmentStrip(BuildContext context) {
@@ -1220,8 +1341,7 @@ class _PromptInputState extends State<PromptInput> {
         child: Row(
           spacing: PregoSpacing.sm,
           children: [
-            for (var index = 0; index < _attachments.length; index++)
-              _buildAttachmentThumbnail(context, index: index),
+            for (var index = 0; index < _attachments.length; index++) _buildAttachmentThumbnail(context, index: index),
           ],
         ),
       ),
@@ -1356,7 +1476,7 @@ class _PromptInputState extends State<PromptInput> {
   Widget _buildOptionsAccordion() {
     return ComposerOptionsAccordion(
       actionsEnabled: _displayedVoiceState == _VoiceState.idle,
-      showAttachImage: widget.attachmentsSupported,
+      showAttachImage: widget.attachmentsSupported == true,
       onSlashCommandsTap: _openCommandPicker,
       onAttachImageTap: _handleAttachImage,
     );
@@ -1373,14 +1493,13 @@ class _PromptInputState extends State<PromptInput> {
     final draftIdentity = widget.draftIdentity;
     try {
       final attachment = await _imagePicker.pickImage();
-      if (!mounted || draftIdentity != widget.draftIdentity || !widget.attachmentsSupported || attachment == null) {
+      if (!mounted ||
+          draftIdentity != widget.draftIdentity ||
+          widget.attachmentsSupported != true ||
+          attachment == null) {
         return;
       }
-      if (_attachmentsDecodedSizeWith(attachment: attachment) > maxInlineMessageAttachmentBytes) {
-        _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
-        return;
-      }
-      setState(() => _attachments.add(attachment));
+      _stageAttachment(attachment: attachment);
     } on AttachmentTooLargeError {
       if (!mounted || draftIdentity != widget.draftIdentity) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
@@ -1394,10 +1513,95 @@ class _PromptInputState extends State<PromptInput> {
     }
   }
 
+  /// Reads an image before allowing Flutter's normal text paste to run. An
+  /// image wins when the clipboard exposes both binary and text formats.
+  Future<_PasteImageResult> _handlePasteImage() async {
+    if (widget.attachmentsSupported != true) return _PasteImageResult.noImage;
+    final draftIdentity = widget.draftIdentity;
+    final pasteGeneration = _pasteGeneration;
+    final Uint8List? bytes;
+    try {
+      bytes = await _imageClipboard.readImage();
+    } catch (error, stackTrace) {
+      loge("Failed to read a pasted image", error, stackTrace);
+      return _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)
+          ? _PasteImageResult.stale
+          : _PasteImageResult.noImage;
+    }
+
+    // Never let an asynchronous paste land in a composer that replaced the
+    // one where the action started.
+    if (_isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
+      return _PasteImageResult.stale;
+    }
+    if (!mounted) return _PasteImageResult.stale;
+    if (bytes == null) return _PasteImageResult.noImage;
+
+    try {
+      final attachment = _imagePicker.attachmentFromBytes(bytes: bytes, filename: null);
+      if (_stageAttachment(attachment: attachment)) return _PasteImageResult.handled;
+      // The staged strip is already at its aggregate budget, so no image was
+      // added; fall back so the clipboard's text is not swallowed.
+      return _PasteImageResult.noImage;
+    } on AttachmentTooLargeError {
+      _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
+      return _PasteImageResult.noImage;
+    } on UnsupportedAttachmentImageError {
+      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
+      return _PasteImageResult.noImage;
+    } catch (error, stackTrace) {
+      loge("Failed to attach a pasted image", error, stackTrace);
+      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+      return _PasteImageResult.noImage;
+    }
+  }
+
+  Future<void> _pasteImageOrText({
+    required TextEditingValue initialValue,
+    required Future<void> Function() onTextPaste,
+    required VoidCallback onImagePasted,
+  }) async {
+    try {
+      switch (await _handlePasteImage()) {
+        case _PasteImageResult.noImage:
+          // Restore the caret captured when paste was pressed so the fallback
+          // replaces the same selection, unless the user typed meanwhile.
+          if (_controller.text == initialValue.text && initialValue.selection.isValid) {
+            _controller.selection = initialValue.selection;
+          }
+          await onTextPaste();
+          return;
+        case _PasteImageResult.handled:
+          if (mounted) onImagePasted();
+          return;
+        case _PasteImageResult.stale:
+          return;
+      }
+    } catch (error, stackTrace) {
+      loge("Failed to handle composer paste", error, stackTrace);
+    }
+  }
+
+  bool _isPasteStale({required String draftIdentity, required int pasteGeneration}) {
+    return !mounted ||
+        draftIdentity != widget.draftIdentity ||
+        pasteGeneration != _pasteGeneration ||
+        widget.attachmentsSupported != true;
+  }
+
+  /// Stages an attachment and reports whether it fit the aggregate budget.
+  bool _stageAttachment({required ComposerAttachment attachment}) {
+    if (_attachmentsDecodedSizeWith(attachment: attachment) > maxComposerPromptAttachmentBytes) {
+      _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
+      return false;
+    }
+    setState(() => _attachments.add(attachment));
+    return true;
+  }
+
   /// Total decoded bytes the staged strip would carry with [attachment]
-  /// added. The per-message inline budget reuses the per-image transport
-  /// limit, so a many-image prompt cannot multiply relay frames past what a
-  /// single maximal image is allowed to cost.
+  /// added. The outbound budget is aggregate, so multiple images cannot each
+  /// consume the full transport allowance.
   int _attachmentsDecodedSizeWith({required ComposerAttachment attachment}) {
     var total = attachment.bytes.length;
     for (final staged in _attachments) {

@@ -16,9 +16,10 @@ T _$identity<T>(T value) => value;
 mixin _$PluginMetadata {
 
  String get id; String get displayName; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint;// COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
-// per-plugin capability, so attachments stay disabled rather than risking
-// silent loss. Remove @Default and require supportsPromptAttachments once
-// those bridges are unsupported.
+// per-plugin capability. Unknown plugins stay disabled; the client
+// repository narrowly restores released legacy OpenCode support from the
+// enclosing response's legacy capability signal. Remove @Default and that
+// mapping once those bridges are unsupported.
  bool get supportsPromptAttachments;
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
@@ -98,9 +99,10 @@ class _PluginMetadata implements PluginMetadata {
 @override@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) final  PluginLifecycleState state;
 @override final  String? actionHint;
 // COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
-// per-plugin capability, so attachments stay disabled rather than risking
-// silent loss. Remove @Default and require supportsPromptAttachments once
-// those bridges are unsupported.
+// per-plugin capability. Unknown plugins stay disabled; the client
+// repository narrowly restores released legacy OpenCode support from the
+// enclosing response's legacy capability signal. Remove @Default and that
+// mapping once those bridges are unsupported.
 @override@JsonKey() final  bool supportsPromptAttachments;
 
 /// Create a copy of PluginMetadata

@@ -4,16 +4,15 @@
 
 - **Plan slug:** `codex-plugin-stability-feedback`
 - **Implementation base:** `origin/main` at
-  `22f65807e525a7c1e7aa68e66cc8d0c9b6a4976d`
+  `5a67ee65e63a8594049fd27028700aa5c184b6c8`
 - **Stack root:** `2408b574`
-- **Series state:** Steps 1 through 8 merged; Step 9 PR
-  [#751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) is open;
-  Step 10 is verified locally
+- **Series state:** Steps 1 through 9 merged; Step 10 is merged forward and
+  pending final verification
 - **Current step:** Step 10/11
 - **Current branch:** `codex-plugin-stability-feedback-f12-generated-repository-instructions`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Monitor Step 9 PR #751; open Step 10 after Step 9 merges
+- **Next action:** Verify the merged-forward Step 10 branch and open its PR
 
 ## Plan Review
 
@@ -53,8 +52,8 @@
 | [x] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 380 actual | [PR #743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743) merged as `4b779cc2` |
 | [x] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 384 actual | [PR #746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746) merged as `4785f4c7` |
 | [x] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,174 actual | [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) merged as `22f65807` |
-| [ ] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 965 actual | [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) open; verified after Step 8 and current `main` merged forward |
-| [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 140 actual | `2e534673`; verified locally; blocked only on Step 9 merge |
+| [x] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 1,325 actual | [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) merged as `5a67ee65` |
+| [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 140 actual | `2e534673`; merged forward from `5a67ee65`; final verification pending |
 | [ ] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Blocked on Step 10 merge |
 
 ## Exact PR Titles
@@ -399,7 +398,12 @@ origin/main
   compatible wire model, bridge/plugin/client flow, tests, report, and tracker.
   This is below the 1,500-line soft cap.
 - **Step 9 delivery:** Pushed and opened as
-  [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751).
+  [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751), which
+  passed 15/15 checks and merged as `5a67ee65` on 2026-08-04. Review follow-ups
+  preserved legacy OpenCode compatibility, retained staged images while
+  capability is unresolved, fenced stale load failures, validated Codex inline
+  image payloads, and kept the declined capability-cache thread open with its
+  rationale.
 - **Step 10 successor update:** Branched directly from the pushed Step 9 head; no rebase, reset, reorder, or cherry-pick occurred.
 - **Step 10 sanitized shape:** Confirmed the privacy-safe runtime structure as
   an exact `# AGENTS.md instructions` header with an optional `for <directory>`

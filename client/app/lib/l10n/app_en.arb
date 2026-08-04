@@ -434,9 +434,9 @@
   "@sessionDetailAttachmentUnsupported": {
     "description": "Snackbar shown when the picked file is not a recognized image format and cannot be attached."
   },
-  "sessionDetailAttachmentBudgetExceeded": "Attached images are limited to 5 MB per message.",
+  "sessionDetailAttachmentBudgetExceeded": "Attached images are limited to 50 MB per message.",
   "@sessionDetailAttachmentBudgetExceeded": {
-    "description": "Snackbar shown when adding another image would push the message's combined attachment size past the inline limit."
+    "description": "Snackbar shown when adding another image would push the message's combined attachment size past the outbound composer limit."
   },
   "sessionDetailAttachmentsNotWithCommands": "Images can't be sent with slash commands.",
   "@sessionDetailAttachmentsNotWithCommands": {

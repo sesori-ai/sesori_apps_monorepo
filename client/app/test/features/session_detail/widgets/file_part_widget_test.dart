@@ -40,6 +40,9 @@ class _FakeImageClipboard implements ImageClipboard {
   Uint8List? copiedBytes;
 
   @override
+  Future<Uint8List?> readImage() async => null;
+
+  @override
   Future<void> writeImage({required Uint8List bytes}) async {
     copiedBytes = bytes;
   }

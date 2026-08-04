@@ -4,8 +4,8 @@ import "dart:typed_data";
 import "package:flutter_test/flutter_test.dart";
 import "package:image_picker/image_picker.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 class MockImagePicker extends Mock implements ImagePicker {}
 
@@ -39,6 +39,16 @@ void main() {
   test("a dismissed picker stages nothing", () async {
     stubPick(null);
     expect(await picker.pickImage(), isNull);
+  });
+
+  test("clipboard bytes use the same validation and have no filename", () {
+    final bytes = jpegBytes();
+
+    final attachment = picker.attachmentFromBytes(bytes: bytes, filename: null);
+
+    expect(attachment.mime, "image/jpeg");
+    expect(attachment.bytes, same(bytes));
+    expect(attachment.filename, isNull);
   });
 
   test("sniffs the mime from content and keeps the picker filename", () async {
@@ -87,17 +97,14 @@ void main() {
     expect(picker.pickImage, throwsA(isA<UnsupportedAttachmentImageError>()));
   });
 
-  test("an image over the inline transport limit is rejected", () async {
-    stubPick(XFile.fromData(jpegBytes(maxInlineMessageAttachmentBytes + 1), name: "huge.jpg"));
+  test("an image over the outbound composer limit is rejected", () async {
+    stubPick(XFile.fromData(jpegBytes(maxComposerPromptAttachmentBytes + 1), name: "huge.jpg"));
 
     expect(picker.pickImage, throwsA(isA<AttachmentTooLargeError>()));
   });
 
-  test("an exactly-boundary image passes the shared conservative check", () async {
-    // The conservative decoded estimate of the base64 form can overshoot the
-    // raw byte count by up to two bytes, so the accepted maximum sits just
-    // under the raw limit — anything accepted here is accepted by receivers.
-    final bytes = jpegBytes(maxInlineMessageAttachmentBytes - 2);
+  test("an exactly-boundary image passes the outbound composer check", () async {
+    final bytes = jpegBytes(maxComposerPromptAttachmentBytes);
     stubPick(XFile.fromData(bytes, name: "big.jpg"));
 
     final attachment = await picker.pickImage();

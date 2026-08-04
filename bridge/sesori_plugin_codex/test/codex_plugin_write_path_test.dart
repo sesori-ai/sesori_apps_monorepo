@@ -6,6 +6,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
@@ -170,6 +171,62 @@ void main() {
         "type": "image",
         "url": "data:image/png;base64,AQID",
       });
+    });
+
+    test("sendPrompt rejects malformed and oversized inline image data", () async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.initialize();
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "thread": {"id": "t-invalid-image"},
+          },
+        ),
+        for (var index = 0; index < 3; index++)
+          const _Response(
+            result: {
+              "turn": {"id": "u-invalid-image"},
+            },
+          ),
+      ]);
+
+      final invalidParts = <PluginPromptPart>[
+        const PluginPromptPart.fileData(
+          mime: "data:image/png",
+          base64: "AQID",
+          filename: "bad-mime.png",
+        ),
+        const PluginPromptPart.fileData(
+          mime: "image/png",
+          base64: "not base64",
+          filename: "bad-data.png",
+        ),
+        const PluginPromptPart.fileData(
+          mime: "image/png",
+          base64: "",
+          filename: "empty.png",
+        ),
+        PluginPromptPart.fileData(
+          mime: "image/png",
+          base64: base64Encode(Uint8List(shared.maxInlineMessageAttachmentBytes + 1)),
+          filename: "too-large.png",
+        ),
+      ];
+
+      for (final part in invalidParts) {
+        await expectLater(
+          plugin.sendPrompt(
+            sessionId: "t-invalid-image",
+            parts: [part],
+            variant: null,
+            agent: null,
+            model: null,
+          ),
+          throwsA(isA<Exception>()),
+        );
+      }
+
+      expect(fake.sentMethods, ["initialize", "thread/resume"]);
     });
 
     test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
