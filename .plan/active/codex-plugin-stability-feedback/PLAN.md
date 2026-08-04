@@ -3,8 +3,8 @@
 ## Status
 
 - **Plan slug:** `codex-plugin-stability-feedback`
-- **Status:** Active — preparing Step 3/11 after Step 2 PR
-  [#731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged
+- **Status:** Active — Step 3/11 PR
+  [#732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) open
 - **Plan date:** 2026-08-04
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `origin/main` at
