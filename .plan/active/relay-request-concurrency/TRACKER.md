@@ -3,14 +3,13 @@
 ## Current State
 
 - **Plan slug:** `relay-request-concurrency`
-- **Implementation base:** merged corrected Step 7 at
-  `6233da3e17f00517663b64e4eb5b789a47206514`
-- **Series state:** Steps 1–7 merged; over-defensive implementation
+- **Implementation base:** merged Step 8 at
+  `1d5816d14559b5970fad317921c12d29f66b4a23`
+- **Series state:** Steps 1–8 merged; over-defensive implementation
   [#716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/716) remains closed without merge
-- **Current step:** Step 8/10 PR
-  [#721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721) open
+- **Current step:** Step 9/10 implementation ready for delivery
 - **Plan PR:** [#687](https://github.com/sesori-ai/sesori_apps_monorepo/pull/687) merged
-- **Next action:** review and merge Step 8; Step 9 remains blocked
+- **Next action:** open, review, and merge Step 9
 
 ## Incident Evidence
 
@@ -102,8 +101,8 @@
 | [x] | 5/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): preserve session action order [step 5/10]` | 900–1,400 | [PR #700](https://github.com/sesori-ai/sesori_apps_monorepo/pull/700) merged as `5ba0d3a6` with 1,534 changed lines |
 | [x] | 6/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] refactor(bridge): scope session family mutations [step 6/10]` | 750–1,250 | [PR #703](https://github.com/sesori-ai/sesori_apps_monorepo/pull/703) merged as `e4605eb1` with 1,054 changed lines |
 | [x] | 7/10 | `plan-parallel-requests` | `🌱 [relay-request-concurrency] docs: simplify remaining concurrency plan [step 7/10]` | 350–550 | [PR #720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/720) merged as `6233da3e` with 543 changed lines; PR #716 closed without merge |
-| [ ] | 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | 500–900 | [PR #721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721) open from `6233da3e` |
-| [ ] | 9/10 | `relay-request-concurrency-dispatch` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | Blocked on Step 8 merge |
+| [x] | 8/10 | `plan-parallel-requests` | `⚙️ [relay-request-concurrency] refactor(bridge): simplify domain mutation ordering [step 8/10]` | 500–900 | [PR #721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721) merged as `1d5816d1` with 709 changed lines |
+| [ ] | 9/10 | `plan-parallel-requests` | `🚧 [relay-request-concurrency] fix(bridge): route client requests concurrently [step 9/10]` | 950–1,450 | Implementation ready from `1d5816d1`; verification and architecture review pass |
 | [ ] | 10/10 | `relay-request-concurrency-retire-plan` | `🌱 [relay-request-concurrency] docs: retire concurrent routing plan [step 10/10]` | 50–150 | Blocked on Step 9 merge |
 
 ## Exact PR Titles
@@ -427,4 +426,25 @@
   typed outcomes, dependency direction, lifecycle ownership, and proportionality
   passed.
 - **Step 8/10 delivery:** [PR #721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/721)
-  is open from `6233da3e` at 709 changed lines.
+  merged as `1d5816d14559b5970fad317921c12d29f66b4a23` at 709 changed lines.
+- **Step 9/10 implementation:** relay frame ingestion now synchronously dispatches
+  and tracks routed transport completions without awaiting business work. Opaque
+  phone-incarnation tokens plus exact relay handles fence final encrypted sends;
+  accepted restarts still dispatch exactly once after sent, stale, or current
+  send-failure disposition. Initial SSE summaries reserve the existing summary
+  tail before detached construction, and teardown drains all session-owned relay
+  completions alongside the shared routed-request barrier.
+- **Step 9/10 cleanup:** removed the single in-flight route identity and the
+  shutdown-mislabeled completion-only slow-route diagnostic. Multi-operation
+  counts retain privacy-safe shutdown context. No timers, pools, new production
+  classes, wire/data, client, shared, plugin-interface, generated, or analytics
+  changes were added.
+- **Step 9/10 verification:** 2,428 full `bridge/app` tests pass. Focused request
+  concurrency, response fencing, restart disposition, registration/reconnect,
+  token re-auth, SSE summary ordering, error recovery, and shutdown suites pass;
+  strict `dart analyze --fatal-infos` reports no issues and `git diff --check`
+  passes.
+- **Step 9/10 architecture review:** `aristotle-impl-review` approved the complete
+  tracked and untracked diff with no findings. Lifecycle ownership, synchronous
+  tracking, incarnation/epoch fencing, restart sequencing, summary ordering,
+  teardown draining, and proportional scope passed.

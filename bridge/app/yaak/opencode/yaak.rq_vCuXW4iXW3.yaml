@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_vCuXW4iXW3
 createdAt: 2026-03-13T12:40:22.635390
-updatedAt: 2026-04-27T08:20:01.795664
+updatedAt: 2026-08-03T08:09:40.655760
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_McTnzzzzcF
 authentication: {}
@@ -35,11 +35,11 @@ url: ${[ base_url ]}/session
 urlParameters:
 - enabled: false
   name: directory
-  value: ''
+  value: ${[ directory ]}
   id: tg69Aa6EmW
 - enabled: true
   name: roots
-  value: 'true'
+  value: 'false'
   id: NKnwfKRbGd
 - enabled: false
   name: start
@@ -56,4 +56,19 @@ urlParameters:
 - enabled: true
   name: ''
   value: ''
-  id: ttf8wj4vRB
+  id: Qdypid4k6j
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
