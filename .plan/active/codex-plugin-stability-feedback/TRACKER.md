@@ -46,14 +46,14 @@
 |---|---|---|---|---:|---|
 | [x] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as `149e7914` |
 | [x] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 299 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) merged as `7b2fa65a` |
-| [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 159 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
+| [x] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 170 actual | [PR #732](https://github.com/sesori-ai/sesori_apps_monorepo/pull/732) merged as `5aaf979d` |
 | [x] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 643 actual | [PR #733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/733) merged as `c6c73650` |
 | [x] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 342 actual | [PR #740](https://github.com/sesori-ai/sesori_apps_monorepo/pull/740) merged as `b4455593` |
 | [x] | 6/11 | `codex-stability-deep-test-6-restart-tool-terminalization` | `⚙️ [codex-plugin-stability-feedback] fix(codex): settle interrupted tools after restart [step 6/11]` | 380 actual | [PR #743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/743) merged as `4b779cc2` |
 | [x] | 7/11 | `codex-stability-deep-test-7-local-archive-history` | `🌿 [codex-plugin-stability-feedback] fix(codex): preserve locally archived history [step 7/11]` | 384 actual | [PR #746](https://github.com/sesori-ai/sesori_apps_monorepo/pull/746) merged as `4785f4c7` |
 | [x] | 8/11 | `codex-stability-deep-test-8-typed-boundaries` | `🚧 [codex-plugin-stability-feedback] refactor(codex): type replay and item boundaries [step 8/11]` | 1,174 actual | [PR #749](https://github.com/sesori-ai/sesori_apps_monorepo/pull/749) merged as `22f65807` |
 | [x] | 9/11 | `codex-stability-deep-test-9-mobile-images` | `🚧 [codex-plugin-stability-feedback] feat(codex): support mobile image prompts [step 9/11]` | 1,325 actual | [PR #751](https://github.com/sesori-ai/sesori_apps_monorepo/pull/751) merged as `5a67ee65` |
-| [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 159 actual | [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753) open; merged forward from `5a67ee65` and verified |
+| [ ] | 10/11 | `codex-plugin-stability-feedback-f12-generated-repository-instructions` | `🌿 [codex-plugin-stability-feedback] fix(codex): hide generated repository instructions [step 10/11]` | 170 actual | [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753) open; merged forward from `5a67ee65` and verified |
 | [ ] | 11/11 | `codex-plugin-stability-feedback-retire-plan` | `🌱 [codex-plugin-stability-feedback] docs: retire Codex stability feedback plan [step 11/11]` | 40–100 | Blocked on Step 10 merge |
 
 ## Exact PR Titles
@@ -421,11 +421,13 @@ origin/main
   architecture change, wire change, database change, or analytics change was
   required, so no implementation architecture review applies.
 - **Step 10 cleanup:** Stored Codex rollouts remain untouched; only generated history projection changes. No artifact is obsolete.
-- **Step 10 change size:** 159 lines against merged `main`, including production
+- **Step 10 change size:** 170 lines against merged `main`, including production
   code, regression coverage, report, and tracker updates. This modestly exceeds
   the planned 70-140 line estimate and remains far below the 1,500-line cap.
 - **Step 10 delivery:** Pushed and opened as
-  [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753).
+  [PR #753](https://github.com/sesori-ai/sesori_apps_monorepo/pull/753). Qodo's
+  named-parameter and compact-envelope findings were fixed after a failing
+  compact regression.
 
 ## Findings And Plan Deltas
 
