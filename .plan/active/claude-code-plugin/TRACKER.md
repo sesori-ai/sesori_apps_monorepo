@@ -4,10 +4,11 @@
 
 - **Plan slug:** `claude-code-plugin`
 - **Implementation base:** `origin/main` at
-  `ca7470fd6ead8f7e1ff0d58e3591e7ce25a5314d`
-- **Series state:** Steps 1/17 and 2/17 open for review
+  `22f65807` (Step 2 rebased onto it after Step 1 merged)
+- **Series state:** Step 1/17 merged; Step 2/17 ready to open
 - **Current step:** 2/17 — protocol ground truth and package scaffold
-- **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737)
+- **Plan PR:** [#737](https://github.com/sesori-ai/sesori_apps_monorepo/pull/737),
+  merged 2026-08-04 as `6d641532`
 - **Next action:** Step 3 stream-json transport
 
 ## Plan Review
@@ -140,9 +141,12 @@
   Makefile, and CI plumbing, and added the verified launch contract
   (`ClaudeLaunchSpec`, `ClaudePermissionMode`, `ClaudeEffortLevel`).
   `dart pub get` at `bridge/`, `dart analyze --fatal-infos`, all 12 package
-  tests, and `git diff --cached --check` pass. The 987 changed-line diff against
-  its Step 1 base is within the corrected 900-1,100 estimate and below the
-  1,500-line soft cap.
+  tests, and `git diff --check` pass. Measured with the authoritative command
+  recorded under Step 1, `git diff $(git merge-base origin/main HEAD) --numstat`
+  reports **1,078 changed lines** after the rebase onto merged `main` — just
+  under the 1,100-1,500 estimate and well below the 1,500-line soft cap. An
+  earlier figure of 987 was measured against the pre-merge Step 1 base and is
+  superseded.
 
   DTOs were moved out of this step into the steps that consume them. Measured
   against the Codex analog, Freezed expands roughly tenfold
