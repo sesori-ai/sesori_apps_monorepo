@@ -3,17 +3,18 @@
 ## Status
 
 - **Plan slug:** `codex-plugin-stability-feedback`
-- **Status:** Active — Step 1/11 PR
-  [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) open
+- **Status:** Active — preparing Step 2/11 after Step 1 PR
+  [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged
 - **Plan date:** 2026-08-04
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `origin/main` at
-  `009bb44a72683d0a1bc6dacd13cbc19397e92d43`
+  `4f890087cbebe1fa23e410c18e53257f707102c0`
 - **Stack root:** merged Codex image-history fix `2408b574`
 - **Delivery:** nine existing deep-test branches in their exact ancestry order,
   one additional confirmed finding fix, and one plan-retirement PR
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
-  combined with the first unmerged production fix at the user's direction
+  merged as `149e7914`; it combined the plan with the first unmerged production
+  fix at the user's direction
 
 This document and `TRACKER.md` are the implementation authority for the
 remaining Codex stability series. The evidence report at
@@ -381,6 +382,9 @@ already merged before this durable plan existed.
 - A successor may target its immediate predecessor while both are open, but
   merges occur in numeric order. Do not delete a predecessor branch while a
   dependent PR uses it as a base.
+- After a merge notification, immediately continue with the next numbered step
+  without waiting for another user prompt. Stop only for a material decision or
+  blocker.
 - Count additions plus deletions, generated code, tests, and plan updates against
   each PR base. Reassess near 1,300 lines; prefer a coherent split before 1,500.
 - Generated files change only through their generators.

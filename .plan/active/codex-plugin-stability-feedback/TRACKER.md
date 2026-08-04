@@ -4,17 +4,17 @@
 
 - **Plan slug:** `codex-plugin-stability-feedback`
 - **Implementation base:** `origin/main` at
-  `009bb44a72683d0a1bc6dacd13cbc19397e92d43`
+  `4f890087cbebe1fa23e410c18e53257f707102c0`
 - **Stack root:** `2408b574`
-- **Series state:** Historical F-01 through F-07 baseline PRs merged; remaining
-  D1 through D9 branches exist and are pushed; Step 1 PR
-  [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) is open
-- **Current step:** Step 1/11
-- **Current branch:** `codex-stability-deep-test-1-image-wrapper-directive`
+- **Series state:** Step 1 PR
+  [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged;
+  D1 and current `main` are merged forward into D2; D2 through D9 remain in
+  stack order
+- **Current step:** Step 2/11
+- **Current branch:** `codex-stability-deep-test-2-code-mode-tool-identity`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
-  combined with Step 1 production fix by user direction
-- **Next action:** Monitor Step 1 CI and review; merge it before forwarding D1
-  into D2
+  merged as `149e7914` with the Step 1 production fix
+- **Next action:** Commit, push, and open Step 2 against `main`
 
 ## Plan Review
 
@@ -46,8 +46,8 @@
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) open; verified; D1 merged current `origin/main` forward at `636546f6` |
-| [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 73 | Existing `58585e1f`; blocked on Step 1 merge-forward |
+| [x] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as `149e7914` |
+| [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 132 actual | Verified; D1 merged forward as `8ee54e0b`, current `main` as `24e07907` |
 | [ ] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | Existing `36ee48e9`; blocked on Step 2 |
 | [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | Existing `a32b6c29`; blocked on Step 3 |
 | [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 214 | Existing `9da8f2e1`; blocked on Step 4 |
@@ -130,6 +130,8 @@ origin/main
 
 - Merge PRs in numeric order. A successor may target its immediate predecessor
   while open, but every step must be independently valid at its base.
+- After each merge notification, continue automatically with the next numbered
+  step. Stop only for a material decision or blocker.
 - Update this tracker in every step with actual base SHA, changed-line count,
   tests, analysis, review, PR URL, merge SHA, and finding-state changes.
 - Target at most 1,500 changed lines per PR, counting generated code and tests.
@@ -170,13 +172,25 @@ origin/main
 - **Step 1 accepted review risk:** Four subsequent bot threads requested broader
   JavaScript regex/template/delimiter parsing for unobserved generated wrappers.
   The owner accepted the bounded risk on 2026-08-04 rather than growing this
-  localized classifier into a partial JavaScript tokenizer. Every thread has a
-  rationale reply and remains open for human closure.
+  localized classifier into a partial JavaScript tokenizer. Every thread
+  received a rationale reply and was closed before merge.
 - **Step 1 change size:** 1,100 lines against the PR merge base: 842 plan/tracker
   additions plus 250 production/test additions and 8 deletions. This is below the
   1,500-line soft cap.
-- **Step 1 delivery:** Plan/tracker committed as `d3ec1923`, pushed, and opened
-  as [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724).
+- **Step 1 delivery:** Plan/tracker committed as `d3ec1923`; PR
+  [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as
+  `149e7914` on 2026-08-04 with zero unresolved threads.
+- **Step 2 base update:** Merged the complete local D1 branch forward as
+  `8ee54e0b`, then merged `origin/main` at `4f890087` as `24e07907`. Existing
+  production commit `58585e1f` remains in its original stack position; no
+  rebase, reset, reorder, or cherry-pick occurred.
+- **Step 2 production verification:** The focused lifecycle-tracker test suite
+  and all 298 Codex package tests pass. `dart analyze --fatal-infos` reports no
+  issues. Both the branch comparison and current working-tree `git diff --check`
+  pass.
+- **Step 2 change size:** 132 lines against the PR merge base,
+  including production code, tests, and plan/tracker updates. This is below the
+  1,500-line soft cap.
 
 ## Findings And Plan Deltas
 
@@ -195,3 +209,6 @@ origin/main
   for unobserved regex-literal, template-interpolation, and malformed-delimiter
   wrapper shapes; no broader JavaScript tokenizer is planned without new runtime
   evidence.
+- **2026-08-04 — Automatic continuation:** After every merge notification,
+  proceed immediately with the next numbered step without another user prompt;
+  stop only for a material decision or blocker.
