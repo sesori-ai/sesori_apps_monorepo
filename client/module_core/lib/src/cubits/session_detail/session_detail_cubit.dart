@@ -189,18 +189,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
     if (isClosed) return _SessionRefreshResult.closed;
 
+    if (connectionGeneration != _connectionGeneration) {
+      if (_isConnected) {
+        if (!_activeLoadingRefreshes.containsKey(_connectionGeneration)) {
+          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.connectionReconnected));
+        }
+      } else {
+        _waitingForConnection = true;
+      }
+      return _SessionRefreshResult.staleConnection;
+    }
+
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
-        if (connectionGeneration != _connectionGeneration) {
-          if (_isConnected) {
-            if (!_activeLoadingRefreshes.containsKey(_connectionGeneration)) {
-              unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.connectionReconnected));
-            }
-          } else {
-            _waitingForConnection = true;
-          }
-          return _SessionRefreshResult.staleConnection;
-        }
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
         final effectiveProjectId = snapshot.projectId;
@@ -267,7 +268,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (active != null) {
       _logRefresh(action: _SessionRefreshAction.coalesced, trigger: trigger);
       if (trigger == _SessionRefreshTrigger.connectionReconnected) {
-        _queueConnectionRefreshAfter(active);
+        _queueConnectionRefreshAfter(activeRefresh: active);
       }
       // This call raced an in-flight refresh. If a staleness signal is
       // queued with no cooldown armed to drain it (the pause path cancels
@@ -320,7 +321,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     );
   }
 
-  void _queueConnectionRefreshAfter(Future<void> activeRefresh) {
+  void _queueConnectionRefreshAfter({required Future<void> activeRefresh}) {
     if (_connectionRefreshQueued) return;
     _connectionRefreshQueued = true;
     unawaited(
@@ -1315,6 +1316,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final removed = _promptQueue.cancel(index);
     if (removed != null) {
       _emitQueueUpdate(current);
+      _tryDrainQueue();
     }
   }
 
@@ -1335,6 +1337,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final pendingSubmission = _promptQueue.items.firstOrNull;
     if (pendingSubmission == null) return;
     if (pendingSubmission.attachments.isNotEmpty && current.supportsPromptAttachments != true) {
+      // Preserve authored FIFO order: the blocked image stays visible and
+      // cancellable rather than allowing later text prompts to overtake it.
       return;
     }
     final submission = _promptQueue.dequeue();

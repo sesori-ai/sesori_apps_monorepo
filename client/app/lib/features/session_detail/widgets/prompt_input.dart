@@ -52,9 +52,9 @@ class PromptInput extends StatefulWidget {
   final ValueChanged<CommandInfo> onCommandSelected;
   final VoidCallback onCommandCleared;
 
-  /// Whether this composer offers image attachments. Owners resolve it from
-  /// the plugin's declared prompt capabilities.
-  final bool attachmentsSupported;
+  /// Whether this composer offers image attachments. Null keeps already staged
+  /// images while current bridge capability is being resolved.
+  final bool? attachmentsSupported;
 
   /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header;
@@ -304,7 +304,10 @@ class _PromptInputState extends State<PromptInput> {
     return _voiceState;
   }
 
-  bool get _hasSendableContent => _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+  bool get _hasSendableContent {
+    final hasContent = _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+    return hasContent && (_attachments.isEmpty || widget.attachmentsSupported == true);
+  }
 
   /// Switches to the typing layout and raises the keyboard. Focus is
   /// requested post-frame because the field only mounts with the typing
@@ -337,6 +340,7 @@ class _PromptInputState extends State<PromptInput> {
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
     final attachments = List<ComposerAttachment>.unmodifiable(_attachments);
+    if (attachments.isNotEmpty && widget.attachmentsSupported != true) return;
     if (stagedCommand != null) {
       if (attachments.isNotEmpty) {
         // The bridge's command paths read only the text part, so images sent
@@ -392,7 +396,7 @@ class _PromptInputState extends State<PromptInput> {
     }
     // Switching the new-session harness to one that drops image parts strands
     // whatever was staged for the previous pick, so drop it with the action.
-    if (!widget.attachmentsSupported && _attachments.isNotEmpty) {
+    if (widget.attachmentsSupported == false && _attachments.isNotEmpty) {
       setState(_attachments.clear);
     }
     if (oldWidget.surfaceStyleController != widget.surfaceStyleController || draftChanged || stagedCommandChanged) {
@@ -1356,7 +1360,7 @@ class _PromptInputState extends State<PromptInput> {
   Widget _buildOptionsAccordion() {
     return ComposerOptionsAccordion(
       actionsEnabled: _displayedVoiceState == _VoiceState.idle,
-      showAttachImage: widget.attachmentsSupported,
+      showAttachImage: widget.attachmentsSupported == true,
       onSlashCommandsTap: _openCommandPicker,
       onAttachImageTap: _handleAttachImage,
     );
@@ -1373,7 +1377,10 @@ class _PromptInputState extends State<PromptInput> {
     final draftIdentity = widget.draftIdentity;
     try {
       final attachment = await _imagePicker.pickImage();
-      if (!mounted || draftIdentity != widget.draftIdentity || !widget.attachmentsSupported || attachment == null) {
+      if (!mounted ||
+          draftIdentity != widget.draftIdentity ||
+          widget.attachmentsSupported != true ||
+          attachment == null) {
         return;
       }
       if (_attachmentsDecodedSizeWith(attachment: attachment) > maxInlineMessageAttachmentBytes) {

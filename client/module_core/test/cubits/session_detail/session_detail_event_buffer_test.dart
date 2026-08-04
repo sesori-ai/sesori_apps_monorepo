@@ -629,7 +629,7 @@ void main() {
         ),
       ).thenAnswer((_) async {
         sendCalls++;
-        return ApiResponse<void>.error(ApiError.generic());
+        return sendCalls == 1 ? ApiResponse<void>.error(ApiError.generic()) : ApiResponse<void>.success(null);
       });
 
       final cubit = createCubit(loadService: mockLoadService);
@@ -683,6 +683,93 @@ void main() {
       final state = cubit.state as SessionDetailLoaded;
       expect(state.supportsPromptAttachments, isFalse);
       expect(state.queuedMessages, hasLength(1));
+
+      await cubit.sendMessage(
+        text: "continue without the image",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      expect(sendCalls, 1);
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(2));
+
+      cubit.cancelQueuedMessage(0);
+      await _awaitCondition(() => sendCalls == 2);
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+    });
+
+    test("stale pre-disconnect failure cannot overwrite the reconnect load", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      const snapshot = SessionDetailSnapshot(
+        projectId: "project-1",
+        pluginId: "codex",
+        supportsPromptAttachments: true,
+        messages: <MessageWithParts>[],
+        pendingQuestions: <PendingQuestion>[],
+        pendingPermissions: <PendingPermission>[],
+        childSessions: <Session>[],
+        statuses: <String, SessionStatus>{},
+        agents: <AgentInfo?>[],
+        providerData: null,
+        commands: <CommandInfo>[],
+        canonicalSessionTitle: null,
+        promptDefaults: null,
+        isRootSession: true,
+        isArchived: false,
+      );
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: snapshot,
+          isBridgeConnected: true,
+        ),
+      );
+      final refreshes = <Completer<SessionDetailLoadResult>>[];
+      when(
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer((_) {
+        final refresh = Completer<SessionDetailLoadResult>();
+        refreshes.add(refresh);
+        return refresh.future;
+      });
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+
+      unawaited(cubit.reload());
+      await _awaitCondition(() => refreshes.length == 1);
+      connectionStatus.add(
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      connectionStatus.add(connectedStatus);
+
+      refreshes.first.complete(
+        SessionDetailLoadResult.failed(
+          error: ApiError.generic(),
+          stackTrace: StackTrace.current,
+        ),
+      );
+      await _awaitCondition(() => refreshes.length == 2);
+      expect(cubit.state, isA<SessionDetailLoading>());
+
+      refreshes[1].complete(
+        const SessionDetailLoadResult.loaded(
+          snapshot: snapshot,
+          isBridgeConnected: true,
+        ),
+      );
+      await _awaitLoaded(cubit);
+      expect((cubit.state as SessionDetailLoaded).supportsPromptAttachments, isTrue);
     });
 
     test("clears pending events when load fails", () async {

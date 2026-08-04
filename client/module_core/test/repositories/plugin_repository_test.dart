@@ -79,7 +79,7 @@ void main() {
           .having(
             (value) => value.data.plugins.single.supportsPromptAttachments,
             "supportsPromptAttachments",
-            isFalse,
+            isTrue,
           )
           .having(
             (value) => value.data.plugins,
@@ -91,10 +91,40 @@ void main() {
                 isDefault: true,
                 state: PluginLifecycleState.ready,
                 actionHint: null,
+                supportsPromptAttachments: true,
               ),
             ],
           ),
     );
+  });
+
+  test("preserves legacy OpenCode attachment support when discovery omits capabilities", () async {
+    const response = PluginListResponse(
+      bridgeId: null,
+      supportsSessionOptions: false,
+      plugins: [
+        PluginMetadata(
+          id: legacyMissingPluginId,
+          displayName: "OpenCode",
+          isDefault: true,
+          state: PluginLifecycleState.ready,
+          actionHint: null,
+        ),
+        PluginMetadata(
+          id: "codex",
+          displayName: "Codex",
+          isDefault: false,
+          state: PluginLifecycleState.ready,
+          actionHint: null,
+        ),
+      ],
+    );
+    when(api.listPlugins).thenAnswer((_) async => ApiResponse.success(response));
+
+    final result = await repository.listPlugins() as SuccessResponse<PluginDiscoverySnapshot>;
+
+    expect(result.data.plugins.first.supportsPromptAttachments, isTrue);
+    expect(result.data.plugins.last.supportsPromptAttachments, isFalse);
   });
 
   test("surfaces errors other than an unsupported discovery route", () async {

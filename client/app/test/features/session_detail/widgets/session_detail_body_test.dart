@@ -108,7 +108,7 @@ SessionDetailLoaded _loadedState({
   Map<String, SessionStatus> childStatuses = const {},
   SessionStatus sessionStatus = const SessionStatus.idle(),
   String? pluginId = "opencode",
-  bool supportsPromptAttachments = true,
+  bool? supportsPromptAttachments = true,
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
@@ -194,7 +194,6 @@ void main() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
     registerFallbackValue(ComposerInputMode.typed);
   });
-
 
   Finder semanticsWithLabel(String label) =>
       find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == label);
@@ -1812,6 +1811,53 @@ void main() {
     expect(find.byIcon(TablerRegular.photo), findsNothing);
     // The accordion still opens for its other action.
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
+  });
+
+  testWidgets("staged attachment survives unresolved support but cannot send", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(
+      () => cubit.sendMessage(
+        text: any(named: "text"),
+        command: any(named: "command"),
+        inputMode: any(named: "inputMode"),
+        attachments: any(named: "attachments"),
+      ),
+    ).thenAnswer((_) async {});
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(states.close);
+    final supported = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      pluginId: "codex",
+      supportsPromptAttachments: true,
+    );
+    whenListen(cubit, states.stream, initialState: supported);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+
+    states.add(supported.copyWith(supportsPromptAttachments: null));
+    await tester.pumpAndSettle();
+    expect(semanticsWithLabel("screenshot.png"), findsOneWidget);
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    verifyNever(
+      () => cubit.sendMessage(
+        text: any(named: "text"),
+        command: any(named: "command"),
+        inputMode: any(named: "inputMode"),
+        attachments: any(named: "attachments"),
+      ),
+    );
+
+    states.add(supported.copyWith(supportsPromptAttachments: false));
+    await tester.pumpAndSettle();
+    expect(semanticsWithLabel("screenshot.png"), findsNothing);
   });
 
   testWidgets("send includes the staged attachment and clears the strip", (tester) async {
