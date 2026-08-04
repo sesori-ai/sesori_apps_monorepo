@@ -276,6 +276,16 @@ void main() {
             "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); process.exitCode = (1);",
       },
     });
+    final directedWrapperWithNestedToolCall = CodexRolloutLineDto.fromJson({
+      "type": "response_item",
+      "payload": {
+        "type": "custom_tool_call",
+        "call_id": "call-directed-image-wrapper-with-nested-tool",
+        "name": "exec",
+        "input":
+            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: (await tools.exec_command({cmd: 'keep visible'}), 'cat')});",
+      },
+    });
     final unrelatedForwarding = CodexRolloutLineDto.fromJson({
       "type": "response_item",
       "payload": {
@@ -347,6 +357,13 @@ void main() {
       target.observeRolloutLine(
         threadId: "thread-1",
         line: directedWrapperWithParenthesizedTrailingCode,
+      ),
+      hasLength(1),
+    );
+    expect(
+      target.observeRolloutLine(
+        threadId: "thread-1",
+        line: directedWrapperWithNestedToolCall,
       ),
       hasLength(1),
     );

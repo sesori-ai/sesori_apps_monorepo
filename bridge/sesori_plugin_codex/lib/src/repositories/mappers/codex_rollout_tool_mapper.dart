@@ -625,6 +625,10 @@ final RegExp _forwardedGeneratedImageInvocationPrefixPattern = RegExp(
   r"tools\.image_gen__[A-Za-z0-9_]+\s*\(",
 );
 
+final RegExp _nestedToolInvocationPrefixPattern = RegExp(
+  r"\btools\.[A-Za-z_$][A-Za-z0-9_$.]*\s*\(",
+);
+
 bool _isGeneratedImageInvocation(String input) {
   final directive = _generatedExecDirectivePattern.firstMatch(input);
   if (directive != null && !_isValidGeneratedExecDirective(directive: directive)) {
@@ -718,6 +722,9 @@ int? _matchingInvocationEnd({
     if (current == 0x22 || current == 0x27 || current == 0x60) {
       quote = current;
       continue;
+    }
+    if (index > openParenthesisIndex && _nestedToolInvocationPrefixPattern.matchAsPrefix(source, index) != null) {
+      return null;
     }
     if (current == 0x28) {
       depth++;
