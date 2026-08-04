@@ -56,6 +56,8 @@ one successor step locally:
   wait for user permission. Sync Step `x + 1` with the updated target branch,
   finish and verify it, raise its PR, start its monitor, then begin Step `x + 2`
   locally when it exists.
+- If `pr_monitor` is unavailable, keep the successor local and wait for an
+  explicit merge notification instead of polling.
 - Do not advance after a PR closes without merging. Preserve work and report any
   blocker that prevents the handoff.
 
