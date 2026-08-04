@@ -206,7 +206,9 @@ class CodexToolLifecycleTracker {
     final threadId = _usefulText(value: notification.params["threadId"]);
     if (threadId == null) return const [];
     final terminalStatus = switch (notification.method) {
-      "turn/completed" => PluginToolStatus.completed,
+      "turn/completed" => _turnCompletionStatus(
+        params: notification.params,
+      ),
       "error" || "thread/closed" || "thread/status/changed" => PluginToolStatus.error,
       _ => throw ArgumentError.value(
         notification.method,
@@ -520,6 +522,17 @@ class CodexToolLifecycleTracker {
       "completed" => PluginToolStatus.completed,
       "inProgress" || "in_progress" => PluginToolStatus.running,
       _ => completed ? PluginToolStatus.completed : PluginToolStatus.running,
+    };
+  }
+
+  PluginToolStatus _turnCompletionStatus({
+    required Map<String, dynamic> params,
+  }) {
+    final turn = params["turn"];
+    final rawStatus = turn is Map ? turn["status"] : null;
+    return switch (rawStatus) {
+      "failed" || "interrupted" => PluginToolStatus.error,
+      _ => PluginToolStatus.completed,
     };
   }
 

@@ -1175,7 +1175,7 @@ void main() {
     );
   });
 
-  test("terminal error without rollout abort keeps late completion failed", () {
+  test("failed turn completion without rollout abort keeps late completion failed", () {
     final target = tracker();
     target
       ..observeRolloutLine(
@@ -1195,7 +1195,10 @@ void main() {
         ),
       )
       ..observeTerminalNotification(
-        notification: _terminalNotification(method: "error"),
+        notification: _terminalNotification(
+          method: "turn/completed",
+          turnStatus: "failed",
+        ),
       );
 
     final lateCompletion = target.observeAppServerTool(
@@ -1813,9 +1816,15 @@ CodexServerNotification _commandNotification({
   );
 }
 
-CodexServerNotification _terminalNotification({required String method}) {
+CodexServerNotification _terminalNotification({
+  required String method,
+  String? turnStatus,
+}) {
   return CodexServerNotification(
     method: method,
-    params: const {"threadId": "thread-1"},
+    params: {
+      "threadId": "thread-1",
+      if (turnStatus != null) "turn": {"status": turnStatus},
+    },
   );
 }
