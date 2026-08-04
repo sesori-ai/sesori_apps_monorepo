@@ -12,11 +12,29 @@
 
 ## Plan Review
 
-- **Verdict:** pending
+- **Verdict:** REJECTED, nine violations
 - **Reviewer:** `aristotle-plan-review`
-- **Date:** pending
-- **Reviewed scope:** `.plan/active/claude-code-plugin/PLAN.md`
-- **Applied corrections:** pending
+- **Date:** 2026-08-04
+- **Reviewed scope:** `.plan/active/claude-code-plugin/PLAN.md`, with
+  `TRACKER.md` and `PROTOCOL.md` as supporting context
+- **Applied corrections:** violations 1-8 applied directly and not re-reviewed,
+  per the repository plan-review process — added the Layer-2
+  `ClaudeSessionProcessRepository` so no `services/` file imports `api/`; moved
+  `initialize` DTO mapping into a new `ClaudeBackendCatalogRepository` and gave
+  the two catalogs distinct names; moved `ClaudeEventMapper` and
+  `ClaudeHistoryMapper` up to `lib/src/` to remove Layer-2 peer dependencies;
+  gave applied model/agent/mode a single owner; declared constructor
+  collaborators for every non-trivial class; declared the launch contract's files
+  and put the two domain enums in `lib/src/models/` rather than `api/models/`;
+  and made the approval registry's `respond` session-keyed rather than
+  client-bound.
+- **Deferred to the user:** violation 9 — replacing the client's
+  `harnessSupportsPromptAttachments` branch with a `PluginMetadata` capability
+  flag. Architecturally correct, but it expands scope into shared wire types, all
+  four descriptors, and client code beyond this plan's three files.
+- **Note:** the reviewer confirmed the protocol-verification changes are
+  architecturally sound and flagged none of them, and treated the three
+  user-locked decisions as binding.
 
 ## Delivery Steps
 

@@ -147,11 +147,18 @@ Condensed research carried into Step 2 (all marked verify-at-implementation in
 - Any managed runtime, download, or version provisioning. The plugin resolves an
   existing binary and reports setup state; it never installs one.
 - Any login flow, credential storage, or auth mutation.
-- Reasoning-effort variants unless Step 11 finds first-party support; the
-  decision is recorded there with evidence rather than assumed now.
-- New shared wire types, new `MessagePartType` values, relay changes, database
-  migrations, and product analytics. This harness adds no new authoritative user
-  action beyond the ones the existing harnesses already instrument.
+- New `MessagePartType` values, relay changes, database migrations, and product
+  analytics. This harness adds no new authoritative user action beyond the ones
+  the existing harnesses already instrument.
+- New shared wire types. **Under review:** plan review found that widening the
+  client's `harnessSupportsPromptAttachments` branch violates the plugin-boundary
+  invariant, and the compliant fix adds an additive capability flag to
+  `PluginMetadata`. That decision is pending; this exclusion stands until it is
+  made. See Plan Review Record.
+
+Reasoning-effort variants were previously excluded pending evidence. Step 2
+found `supportsEffort` and `supportedEffortLevels` declared per model in the
+`initialize` response, so **variants are in scope** and Step 11 maps them.
 
 ### Naming
 
@@ -195,22 +202,36 @@ bridge/sesori_plugin_claude/
                           json_serializable {any_map:true,explicit_to_json:true}
   lib/claude_plugin.dart          barrel; exports ClaudePluginDescriptor
   lib/claude_testing.dart         barrel; exports FakeClaudeProcess
-  lib/src/api/
+  lib/src/api/                    LAYER 1 — wire boundary
     claude_stream_client.dart     ndjson stdio client for ONE process
-    claude_process_factory.dart   launch spec + host-routed factory
+    claude_process_factory.dart   host-routed process seam
+    claude_launch_spec.dart       the verified argument vector
     claude_transcript_api.dart    ~/.claude/projects reader
-    models/                       freezed stream, control, and transcript DTOs
-  lib/src/repositories/
-    claude_catalog_repository.dart      transcript scan -> session records
-    mappers/claude_event_mapper.dart    stream messages -> BridgeSseEvent
-    mappers/claude_history_mapper.dart  transcript -> PluginMessageWithParts
+    models/                       wire DTOs ONLY (stream, control, transcript)
+  lib/src/models/                 package-local domain models, no wire coupling
+    claude_permission_mode.dart   dual-spelled mode enum (CLI vs control)
+    claude_effort_level.dart      reasoning effort levels
+  lib/src/repositories/           LAYER 2 — normalization; no peer dependencies
+    claude_session_process_repository.dart  per-session client map; spawn vs
+                                            resume; per-session teardown; the
+                                            applied model/agent/mode of each
+                                            resident process; control-request
+                                            dispatch by session id
+    claude_transcript_catalog_repository.dart  transcript scan -> session records
+    claude_backend_catalog_repository.dart     initialize payload -> PluginModel,
+                                               PluginProvider, PluginCommand,
+                                               PluginAgent
     mappers/claude_content_mapper.dart  content blocks -> parts/attachments
     trackers/claude_tool_tracker.dart   tool_use lifecycle + delta buffering
-  lib/src/services/
-    claude_session_service.dart   residency, turn queue, idle reaping, interrupt
-    claude_catalog_service.dart   model/agent/command catalog + applied cache
-  lib/src/claude_approval_registry.dart  can_use_tool -> permissions/questions
-  lib/src/claude_plugin_impl.dart        ClaudePlugin
+  lib/src/services/               LAYER 3 — coordination; imports repositories only
+    claude_session_service.dart   turn queue, generation fencing, idle-reap
+                                  policy, interrupt, exit classification
+    claude_catalog_service.dart   catalog exposure + switch requests
+  lib/src/                        above Layer 2 — consumers of Layer-2 components
+    claude_event_mapper.dart      stream messages -> BridgeSseEvent
+    claude_history_mapper.dart    transcript -> PluginMessageWithParts
+    claude_approval_registry.dart can_use_tool -> permissions/questions
+    claude_plugin_impl.dart       ClaudePlugin — LAYER 4 composition root
   lib/src/runtime/
     claude_plugin_descriptor.dart  const descriptor
     claude_bridge_plugin.dart      SteadyPluginLifecycle wrapper
@@ -220,6 +241,20 @@ bridge/sesori_plugin_claude/
 
 Layering follows the house style: `api/` is the wire boundary, `repositories/`
 normalizes, `services/` coordinates, `runtime/` is descriptor and lifecycle glue.
+
+Two placement rules this layout exists to satisfy, both taken from the shipped
+plugins rather than invented here:
+
+- **No file under `services/` imports `api/`.** `CodexSessionService` takes only
+  repositories, and `AcpStdioClient` is owned by `AcpPlugin`, never by a service.
+  With N processes rather than one, the client map is per-session state that
+  belongs to a repository, so `ClaudeSessionProcessRepository` is the Layer-2
+  boundary every service and mapper goes through to reach a process.
+- **No Layer-2 component depends on another Layer-2 component.**
+  `ClaudeEventMapper` consumes the content mapper and the tool tracker, and
+  `ClaudeHistoryMapper` consumes the content mapper, so both consumers live at
+  `lib/src/` — exactly where ACP puts `acp_event_mapper.dart` and
+  `acp_session_loader.dart` relative to its own `repositories/` components.
 
 ### Component contracts
 
@@ -236,28 +271,66 @@ resolved init future, `sendUserMessage`, `sendControlRequest` with request-id
 correlation, `sendControlResponse`, a process-exit future, and `dispose`.
 Unknown message types are debug-logged and dropped, never warned per line.
 
-**`ClaudeSessionService`** — owns per-session residency (client, applied model,
-applied agent, idle timer) plus the turn queue ported from
-`AcpPlugin._SessionTurnState`: a `tail` future chain, a `pending` count, and a
-`generation` re-checked after every await. The first pending turn emits busy
-status plus a project-updated event; turn completion emits idle or error.
-Residency reuses a live process, otherwise spawns with `--resume` for an
-existing session or `--session-id` for a new one. Idle reaping runs off
-`host.clock` and gracefully disposes only that session's client. An unexpected
-exit mid-turn finishes the turn as interrupted rather than errored when the
-bridge sent the signal, cancels that session's approvals, and drops residency.
+**`ClaudeSessionProcessRepository`** — the Layer-2 boundary over the transport,
+and the only component that touches `api/`.
+`ClaudeSessionProcessRepository({required ClaudeProcessFactory processFactory,
+required String binaryPath, required Map<String, String> environment})`.
+
+It owns the `sessionId -> resident process` map and everything that is
+per-process state: the `ClaudeStreamClient`, the applied model, applied agent,
+and applied permission mode, and the spawn-versus-resume argument choice
+(`--session-id` for a new session, `--resume` for an existing one). It exposes
+session-keyed operations — ensure resident, send a turn, send a control request,
+answer a control request, tear one session down, tear all down — plus a merged
+stream of `(sessionId, ClaudeStreamMessage)` and per-session exit futures. Every
+other component reaches a process through this repository, never directly.
+
+Applied selection lives here and nowhere else: it is per-resident-process state
+whose single invalidation trigger is that process being respawned, so it has one
+owner by construction.
+
+**`ClaudeSessionService`** —
+`ClaudeSessionService({required ClaudeSessionProcessRepository processes,
+required ClaudeApprovalRegistry approvals, required Clock clock})`. It holds no
+client and imports nothing from `api/`.
+
+It owns the turn queue ported from `AcpPlugin._SessionTurnState`: a `tail` future
+chain, a `pending` count, and a `generation` re-checked after every await. The
+first pending turn emits busy status plus a project-updated event; turn
+completion emits idle or error. It owns the idle-reap policy and asks the
+repository to tear a session down when the window elapses; the repository owns
+how. An unexpected exit mid-turn finishes the turn as interrupted rather than
+errored when the bridge sent the signal, and cancels that session's approvals.
 
 **`ClaudeApprovalRegistry`** — architecturally identical to
-`AcpApprovalRegistry`: injected emit and respond callbacks, bridge-minted `br-N`
-ids, permission/question bifurcation, and a `cancelForSession`/`dispose` contract
-that resolves every pending request *and* emits its replied or rejected event.
-Claude specifics: requests arrive on a known session's own process, so there is
-no session-resolution ambiguity; `AskUserQuestion` and `ExitPlanMode` become
-questions and everything else a permission; `once` maps to a plain allow,
-`always` echoes only the backend's own `permission_suggestions`, and `reject`
-maps to deny with a short message.
+`AcpApprovalRegistry`, with one deliberate difference in how it responds.
+`ClaudeApprovalRegistry({required void Function(BridgeSseEvent) emit,
+required void Function({required String sessionId, required String requestId,
+required Map<String, Object?> payload}) respond})`.
 
-**`ClaudeEventMapper`** — the hard contract shared with the Codex and ACP
+`AcpApprovalRegistry.forClient` binds to a single `AcpStdioClient` because ACP
+runs one process for every session. One process per session makes that binding
+impossible, so the injected `respond` is **session-keyed** rather than
+client-bound, and the composition root wires it to
+`ClaudeSessionProcessRepository`, which resolves the session to its client and
+writes the `control_response`. The registry itself never holds a client.
+
+It keeps the rest verbatim: bridge-minted `br-N` ids, permission/question
+bifurcation, and a `cancelForSession`/`dispose` contract that resolves every
+pending request *and* emits its replied or rejected event. Claude specifics: asks
+flagged `requires_user_interaction` become questions and everything else a
+permission; `once` maps to a plain allow, `always` echoes only the backend's own
+`permission_suggestions` and is withheld entirely when
+`suppress_always_allow_rule` is set, and `reject` maps to deny with a short
+message. `decision_reason` may carry ANSI escapes and is sanitized before it
+reaches the phone.
+
+**`ClaudeEventMapper`** — lives at `lib/src/`, not in `repositories/`, because it
+consumes two Layer-2 components.
+`ClaudeEventMapper({required ClaudeContentMapper content,
+required ClaudeToolTracker tools})`.
+
+It carries the hard contract shared with the Codex and ACP
 mappers: every `info` map on a session or message event is sesori-schema JSON
 built from `sesori_shared` typed models via `.toJson()`. It maps stream deltas to
 message and part updates, `tool_result` blocks to tool completion or error,
@@ -269,7 +342,37 @@ subtitle derives from the latest assistant message and renders only when both ar
 non-null. Per-turn state is pruned at turn boundaries and per-session maps are
 nested rather than keyed by composite strings.
 
-**`ClaudeTranscriptApi` + `ClaudeCatalogRepository`** — resolve the transcript
+**`ClaudeContentMapper`** — `ClaudeContentMapper()`, no collaborators. Content
+blocks to plugin parts and attachments under the existing tool-output and
+inline-attachment limits. Layer 2.
+
+**`ClaudeToolTracker`** — `ClaudeToolTracker()`, no collaborators. Owns the
+`tool_use` lifecycle, streamed `input_json_delta` buffering, `tool_result`
+matching by id, and edit-shaped diff detection. Layer 2.
+
+**`ClaudeBackendCatalogRepository`** —
+`ClaudeBackendCatalogRepository({required ClaudeSessionProcessRepository
+processes})`. The DTO-to-internal-model boundary for the backend catalog, kept
+out of `services/` where such mapping does not belong. It reads the retained
+`initialize` payload through the process repository and returns
+`PluginModel` — `variants` populated from `supportedEffortLevels` default-first,
+and omitted entirely for a model that declares no effort support —
+`PluginProvider` for Anthropic, `PluginCommand` from `commands`, and the
+Default/Plan `PluginAgent` pair. `list_models` is its refresh path.
+
+Named distinctly from the transcript catalog on purpose: the two are different
+catalogs over different sources and must not share a name.
+
+**`ClaudeCatalogService`** —
+`ClaudeCatalogService({required ClaudeBackendCatalogRepository catalog,
+required ClaudeSessionProcessRepository processes})`. It exposes the catalog to
+the plugin and turns a model or agent selection into a `set_model` or
+`set_permission_mode` request through the process repository. It holds **no**
+applied-selection cache — that state belongs to the resident process and lives in
+the process repository.
+
+**`ClaudeTranscriptApi` + `ClaudeTranscriptCatalogRepository`** — resolve the
+transcript
 root as `environment["CLAUDE_CONFIG_DIR"]` else `resolveUserHomeDirectory(...)`
 plus `/.claude`, mirroring `CodexRolloutApi`'s injected-environment pattern; that
 injected map is also the tests' pinning seam. Directory scans run in
@@ -280,11 +383,28 @@ is user data. Sidechain and subagent records are excluded from enumeration. No
 live tailer is needed: the live stream carries everything, and externally started
 sessions appear on the next enumeration.
 
-**`ClaudeHistoryMapper`** — transcript records to `PluginMessageWithParts`,
-reusing the content mapper so replayed history matches live rendering. A failed
-load throws `PluginOperationException`; it never returns an empty list, because
-an empty list means a genuinely empty thread and the phone renders
-error-with-retry only for throws.
+**`ClaudeHistoryMapper`** — lives at `lib/src/` for the same reason as the event
+mapper: it consumes a Layer-2 component.
+`ClaudeHistoryMapper({required ClaudeContentMapper content,
+required ClaudeTranscriptCatalogRepository transcripts})`.
+
+Transcript records to `PluginMessageWithParts`, reusing the content mapper so
+replayed history matches live rendering. A failed load throws
+`PluginOperationException`; it never returns an empty list, because an empty list
+means a genuinely empty thread and the phone renders error-with-retry only for
+throws.
+
+**`ClaudePlugin`** — the Layer-4 composition root. It constructs one instance of
+each component and injects every collaborator explicitly:
+`ClaudePlugin({required ClaudeSessionProcessRepository processes,
+required ClaudeTranscriptCatalogRepository transcripts,
+required ClaudeBackendCatalogRepository catalog,
+required ClaudeSessionService sessions,
+required ClaudeCatalogService catalogService,
+required ClaudeApprovalRegistry approvals,
+required ClaudeEventMapper events,
+required ClaudeHistoryMapper history})`. No constructor default creates a hidden
+production dependency.
 
 **`ClaudePluginDescriptor`** — templated on `cursor_plugin_descriptor.dart`. It
 declares id, displayName, `bridgeDerived` ownership, `plugin` options scope, and
@@ -475,10 +595,18 @@ transport field, cache, flag, job, or test was found.
   with either a confirmed shape or a recorded absence.
 - Create the package with its pubspec, analysis options, build config, and
   barrels, plus Wave-1 workspace, Makefile, and CI plumbing.
-- Add the Freezed and JSON DTOs for stream messages, control payloads, and
-  transcript records, with tolerant unknown variants, and run codegen.
+- Add the verified launch contract in named files at declared layers:
+  `lib/src/api/claude_launch_spec.dart` holds the argument vector and the sealed
+  new-versus-resumed launch variant (Layer 1, because it describes the process
+  invocation); `lib/src/models/claude_permission_mode.dart` and
+  `lib/src/models/claude_effort_level.dart` hold the two closed scalar sets.
+  Those enums are **domain** models, not wire DTOs: the permission mode is
+  spelled `manual` on the launch flag and `default` in the control protocol, so
+  both the launch path and the control path depend on it. They therefore live in
+  a package-local `models/` directory rather than `api/models/`, which is
+  reserved for wire DTOs, so neither path imports the other.
 - Verify: `dart pub get` at `bridge/`, `dart analyze --fatal-infos` and
-  `dart test` in the new package, `make codegen`, implementation review.
+  `dart test` in the new package, implementation review.
 
 ### Step 3/17 — Add The Stream-JSON Transport
 
@@ -509,8 +637,9 @@ transport field, cache, flag, job, or test was found.
 
 ### Step 6/17 — Replay Transcript History
 
-- Add `ClaudeHistoryMapper` producing `PluginMessageWithParts` from transcript
-  records through the Step 5 mapper.
+- Add `ClaudeHistoryMapper` at `lib/src/` — not in `repositories/mappers/`,
+  because it consumes the Layer-2 content mapper — producing
+  `PluginMessageWithParts` from transcript records through the Step 5 mapper.
 - Prove throw-on-failure rather than empty-list, and record the shape parity that
   Step 8 must match.
 - Verify: focused and full package tests, fatal analysis, implementation review.
@@ -524,9 +653,11 @@ transport field, cache, flag, job, or test was found.
 
 ### Step 8/17 — Map Stream Events To SSE
 
-- Add `ClaudeEventMapper` over the Step 5 and Step 7 components: message and part
-  envelopes, text and thinking deltas, tool parts, retry status, the todo
-  staleness signal, error result envelopes, and provider/model stamping.
+- Add `ClaudeEventMapper` at `lib/src/` — not in `repositories/mappers/`, because
+  it consumes the Layer-2 content mapper and tool tracker — over the Step 5 and
+  Step 7 components: message and part envelopes, text and thinking deltas, tool
+  parts, retry status, the todo staleness signal, error result envelopes, and
+  provider/model stamping.
 - Prove live shapes match the Step 6 history shapes.
 - The Codex analog ran larger than this budget; if codegen or coverage pushes
   this past the cap, record the overage rationale here before opening the PR.
@@ -542,20 +673,32 @@ transport field, cache, flag, job, or test was found.
 
 ### Step 10/17 — Add Session Residency And The Turn Queue
 
-- Add `ClaudeSessionService` with residency, the serialized turn queue with
-  generation fencing re-checked after every await, interrupt, idle reaping, and
-  interrupted-not-errored classification for signalled exits.
+- Add `ClaudeSessionProcessRepository` (Layer 2) owning the per-session client
+  map, spawn-versus-resume argument choice, per-session teardown, applied
+  selection state, and session-keyed control dispatch.
+- Add `ClaudeSessionService` (Layer 3) over that repository: the serialized turn
+  queue with generation fencing re-checked after every await, interrupt, the
+  idle-reap policy, and interrupted-not-errored classification for signalled
+  exits. It imports nothing from `api/`.
 - Cover turn serialization, fencing, resume-versus-new spawn arguments, idle reap
   followed by transparent resume, and approval cancellation on exit.
 - Verify: focused and full package tests, fatal analysis, implementation review.
 
 ### Step 11/17 — Add The Model And Agent Catalog
 
-- Add `ClaudeCatalogService` owning models, agents, providers, and commands, plus
-  `set_model` and `set_permission_mode` application with an applied-selection
-  cache cleared on respawn.
-- Record the reasoning-effort variant decision with the evidence gathered in
-  Step 2; ship without variants if the pinned CLI has no first-party support.
+- Add `ClaudeBackendCatalogRepository` (Layer 2), which performs all
+  `initialize`-payload DTO mapping to `PluginModel`, `PluginProvider`,
+  `PluginCommand`, and `PluginAgent`. That mapping belongs in a repository, not a
+  service.
+- Add `ClaudeCatalogService` (Layer 3) over that repository plus the process
+  repository. It exposes the catalog and turns a selection into a `set_model` or
+  `set_permission_mode` request. It holds no applied-selection cache — that state
+  belongs to the resident process and lives in the process repository.
+- Source the catalog from the retained `initialize` response rather than separate
+  probes; `list_models` is the refresh path only.
+- Ship effort variants. Step 2 confirmed `supportsEffort` and
+  `supportedEffortLevels` are declared per model, so variants are first-party
+  data — default-first, and omitted entirely for models that declare no support.
 - Verify: focused and full package tests, fatal analysis, implementation review.
 
 ### Step 12/17 — Implement The Plugin API Surface
@@ -672,7 +815,36 @@ quota, so prompts stay minimal.
 
 ## Plan Review Record
 
-`aristotle-plan-review` is an architecture reviewer for architecture-bearing
-production plans, which this is. The review verdict, date, reviewed scope, and
-any applied corrections are recorded in `TRACKER.md` when the review runs, before
-Step 2 begins.
+`aristotle-plan-review` rejected this plan on 2026-08-04 with nine violations.
+Eight are applied above; the ninth is a scope decision awaiting the user.
+
+**Applied — layering (violations 1–5).** The plan had `services/` importing
+`api/` directly: `ClaudeSessionService` owned and spawned `ClaudeStreamClient`,
+and `ClaudeCatalogService` read the retained `initialize` response straight off
+it. The repository's own precedent contradicted that —`CodexSessionService` takes
+only repositories and `AcpStdioClient` is owned by `AcpPlugin`. A Layer-2
+`ClaudeSessionProcessRepository` now owns the per-session client map and is the
+only component that touches `api/`. `initialize`-payload DTO mapping moved out of
+the service into `ClaudeBackendCatalogRepository`, and the two catalogs were given
+distinct names. `ClaudeEventMapper` and `ClaudeHistoryMapper` moved from
+`repositories/mappers/` up to `lib/src/`, because a Layer-2 component may not
+depend on another Layer-2 component — the placement ACP already uses.
+
+**Applied — ownership and declarations (violations 6–8).** Applied model, agent,
+and permission mode were owned by two classes with one invalidation trigger; they
+now belong solely to the resident process in the process repository. Every
+non-trivial class now declares its constructor collaborators. The approval
+registry's `respond` callback is explicitly session-keyed rather than
+client-bound, because `AcpApprovalRegistry.forClient`'s single-client binding is
+impossible with one process per session.
+
+**Pending — violation 9, prompt-attachment capability.** The reviewer found that
+widening `harnessSupportsPromptAttachments` in `client/module_core` to a second
+harness id violates the plugin-boundary invariant, and that the compliant fix is
+an additive `PluginMetadata` capability flag following the existing
+`supportsSessionOptions` precedent. That is correct architecturally but expands
+scope into shared wire types, all four descriptors, and client code beyond this
+plan's three files. It is a user decision and is recorded in `TRACKER.md`.
+
+The corrected plan was not re-reviewed merely to obtain an approval verdict, per
+the repository's plan-review process.
