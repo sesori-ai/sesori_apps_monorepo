@@ -8,13 +8,14 @@
 - **Stack root:** `2408b574`
 - **Series state:** Step 1 PR
   [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged;
-  D1 and current `main` are merged forward into D2; D2 through D9 remain in
-  stack order
+  Step 2 PR [#731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731)
+  open; D3 through D9 remain in stack order
 - **Current step:** Step 2/11
 - **Current branch:** `codex-stability-deep-test-2-code-mode-tool-identity`
 - **Plan PR:** [#724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724),
   merged as `149e7914` with the Step 1 production fix
-- **Next action:** Commit, push, and open Step 2 against `main`
+- **Next action:** Monitor Step 2 CI and review; merge it before forwarding D2
+  into D3
 
 ## Plan Review
 
@@ -47,7 +48,7 @@
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---:|---|
 | [x] | 1/11 | `codex-stability-deep-test-1-image-wrapper-directive` | `🌿 [codex-plugin-stability-feedback] fix(codex): recognize directed image wrappers [step 1/11]` | 1,100 actual | [PR #724](https://github.com/sesori-ai/sesori_apps_monorepo/pull/724) merged as `149e7914` |
-| [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 132 actual | Verified; D1 merged forward as `8ee54e0b`, current `main` as `24e07907` |
+| [ ] | 2/11 | `codex-stability-deep-test-2-code-mode-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify code-mode command identity [step 2/11]` | 135 actual | [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731) open; verified; D1 and current `main` merged forward |
 | [ ] | 3/11 | `codex-stability-deep-test-3-image-wrapper-projection` | `⚙️ [codex-plugin-stability-feedback] fix(codex): hide generated image wrappers [step 3/11]` | 118 | Existing `36ee48e9`; blocked on Step 2 |
 | [ ] | 4/11 | `codex-stability-deep-test-4-late-abort-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): retain late command identity after abort [step 4/11]` | 86 | Existing `a32b6c29`; blocked on Step 3 |
 | [ ] | 5/11 | `codex-stability-deep-test-5-file-tool-identity` | `⚙️ [codex-plugin-stability-feedback] fix(codex): unify file change identity [step 5/11]` | 214 | Existing `9da8f2e1`; blocked on Step 4 |
@@ -188,9 +189,11 @@ origin/main
   and all 298 Codex package tests pass. `dart analyze --fatal-infos` reports no
   issues. Both the branch comparison and current working-tree `git diff --check`
   pass.
-- **Step 2 change size:** 132 lines against the PR merge base,
+- **Step 2 change size:** 135 lines against the PR merge base,
   including production code, tests, and plan/tracker updates. This is below the
   1,500-line soft cap.
+- **Step 2 delivery:** Pushed and opened as
+  [PR #731](https://github.com/sesori-ai/sesori_apps_monorepo/pull/731).
 
 ## Findings And Plan Deltas
 
