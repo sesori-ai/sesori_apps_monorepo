@@ -83,13 +83,21 @@ extension AppRouteToGoRoute on AppRouteDef {
   }
 
   Widget _buildScreen({required BuildContext context, required GoRouterState state}) {
-    final route = AppRoute.fromDef(
+    return AppRoute.fromDef(
       def: this,
       pathParams: state.pathParameters,
       queryParams: state.uri.queryParameters,
-    );
+    ).screen;
+  }
+}
 
-    return switch (route) {
+extension on AppRoute {
+  /// The screen this decoded route shows. Separate from [AppRouteToGoRoute._buildScreen]
+  /// so a page builder that already resolved its route — to choose a page type
+  /// from the route's own parameters — builds the screen from that same
+  /// instance instead of decoding the URL a second time.
+  Widget get screen {
+    return switch (this) {
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
       AppRouteProjects() => const ProjectListScreen(),
@@ -396,8 +404,8 @@ List<RouteBase> _buildAppRoutes({
           // Android too. The pushed page is the MaterialPage go_router would
           // have built itself, so it keeps the platform's push transition.
           pageBuilder: (context, state) {
-            final child = AppRouteDef.settingsHarnesses._buildScreen(context: context, state: state);
             final route = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters);
+            final child = route.screen;
             return switch (route.presentation) {
               HarnessSettingsPresentation.modal => CupertinoPage<void>(
                 key: state.pageKey,
