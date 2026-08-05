@@ -357,8 +357,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       reverseMotion: const Spring.snappy(),
       // No alignment: the panel positions itself from the trigger rect so it can
       // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
-      triggerBuilder: (context, showModal) =>
-          widget.triggerBuilder(context, () => unawaited(showModal())),
+      triggerBuilder: (context, showModal) => widget.triggerBuilder(context, () => unawaited(showModal())),
       builder: (context, triggerRect) {
         final panel = _flatPanel(context, triggerRect: triggerRect);
         if (spotlight == null) return panel;
@@ -500,8 +499,8 @@ class _FlatMenuTile extends StatelessWidget {
         // second radius here would round the shared edges between adjacent rows.
         borderRadius: BorderRadius.zero,
         child: ConstrainedBox(
-          // Matches GlassMenuItem's 44px iOS/Material touch target.
-          constraints: const BoxConstraints(minHeight: 44),
+          // Matches Figma design of 54px touch target.
+          constraints: const BoxConstraints(minHeight: 54),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -580,8 +579,7 @@ double _glassItemHeight(BuildContext context, {required bool hasSubtitle}) {
 /// Height of a [PregoMenuLabel]'s glass row. [GlassMenuLabel] pins its box to
 /// the declared height, so it must clear the label's line box — at a large text
 /// scale that outgrows the 30px the package would otherwise assume.
-double _glassLabelHeight(BuildContext context) =>
-    math.max(30, _lineHeight(context, style: _labelStyle(context.prego)));
+double _glassLabelHeight(BuildContext context) => math.max(30, _lineHeight(context, style: _labelStyle(context.prego)));
 
 /// Height of a [PregoMenuDivider]'s glass row — [GlassMenuDivider]'s own
 /// default, named so the height budget can account for it.
@@ -620,10 +618,9 @@ double _lineHeight(BuildContext context, {required TextStyle style}) {
 TextStyle _labelStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
 
-TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive}) =>
-    prego.textTheme.textSm.medium.copyWith(
-      color: isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textPrimary,
-    );
+TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive}) => prego.textTheme.textSm.medium.copyWith(
+  color: isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textPrimary,
+);
 
 Color _iconColor(PregoDesignSystem prego, {required bool isDestructive}) =>
     isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textSecondary;
@@ -631,5 +628,4 @@ Color _iconColor(PregoDesignSystem prego, {required bool isDestructive}) =>
 TextStyle _subtitleStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);
 
-Widget _selectedCheck(PregoDesignSystem prego) =>
-    Icon(Icons.check, size: 16, color: prego.colors.bgBrandSolid);
+Widget _selectedCheck(PregoDesignSystem prego) => Icon(Icons.check, size: 16, color: prego.colors.bgBrandSolid);
