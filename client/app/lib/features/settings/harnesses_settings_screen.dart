@@ -17,23 +17,33 @@ import "widgets/settings_section.dart";
 const double _contentTopPadding = 10.0;
 
 class HarnessesSettingsScreen extends StatelessWidget {
-  const HarnessesSettingsScreen({super.key});
+  const HarnessesSettingsScreen({super.key, required this.presentation});
+
+  /// How the page was raised, which decides how the user leaves it: a pushed
+  /// page goes back, a modal one closes.
+  final HarnessSettingsPresentation presentation;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => PluginManagementCubit(service: getIt<PluginManagementService>()),
-      child: const _HarnessesSettingsBody(),
+      child: _HarnessesSettingsBody(presentation: presentation),
     );
   }
 }
 
 class _HarnessesSettingsBody extends StatelessWidget {
-  const _HarnessesSettingsBody();
+  const _HarnessesSettingsBody({required this.presentation});
+
+  final HarnessSettingsPresentation presentation;
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final isModal = switch (presentation) {
+      HarnessSettingsPresentation.modal => true,
+      HarnessSettingsPresentation.pushed => false,
+    };
     final cubit = context.read<PluginManagementCubit>();
     final state = context.watch<PluginManagementCubit>().state;
 
@@ -48,21 +58,23 @@ class _HarnessesSettingsBody extends StatelessWidget {
         title: loc.settingsHarnessesTitle,
         titleMode: PregoTopNavigationTitleMode.inline,
         banner: ConnectionBanner.maybeFor(context),
-        // The page always rises as a modal, so closing is the only way out and
-        // the close button below owns it. An implied back chevron would be a
-        // second, redundant dismissal in the same bar.
-        automaticallyImplyLeading: false,
+        // A modal has no page below it to go back to, so the close button is
+        // its only way out and an implied back chevron would be a second,
+        // redundant dismissal in the same bar. A pushed page is the other way
+        // round: the settings list sits underneath and the back chevron is the
+        // way back to it.
+        automaticallyImplyLeading: !isModal,
         actions: [
-          PregoButtonsIconGlass(
-            icon: TablerRegular.x,
-            semanticLabel: loc.settingsClose,
-            // This page is raised as a modal from more than one place, so
-            // closing it means going back to whatever raised it. Only a
-            // deep link arrives with nothing underneath, and that falls back
-            // to the app's home.
-            onPressed: () =>
-                context.canPop() ? context.pop() : context.goRoute(const AppRoute.projects()),
-          ),
+          if (isModal)
+            PregoButtonsIconGlass(
+              icon: TablerRegular.x,
+              semanticLabel: loc.settingsClose,
+              // Closing the modal means going back to whatever raised it. Only
+              // a deep link arrives with nothing underneath, and that falls
+              // back to the app's home.
+              onPressed: () =>
+                  context.canPop() ? context.pop() : context.goRoute(const AppRoute.projects()),
+            ),
         ],
         onRefresh: cubit.refresh,
         slivers: [

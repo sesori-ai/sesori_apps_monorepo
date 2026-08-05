@@ -3,18 +3,41 @@ import "package:test/test.dart";
 
 void main() {
   group("AppRoute", () {
-    test("settings Harnesses route round-trips without extra state", () {
-      const route = AppRoute.settingsHarnesses();
+    test("settings Harnesses route round-trips its presentation", () {
+      for (final presentation in HarnessSettingsPresentation.values) {
+        final route = AppRoute.settingsHarnesses(presentation: presentation);
 
-      expect(route.buildPath(), "/settings/harnesses");
-      expect(
-        AppRoute.fromDef(
-          def: AppRouteDef.settingsHarnesses,
-          pathParams: const {},
-          queryParams: const {},
-        ),
-        isA<AppRouteSettingsHarnesses>(),
-      );
+        expect(route.buildPath(), "/settings/harnesses?presentation=${presentation.name}");
+        expect(
+          AppRoute.fromDef(
+            def: AppRouteDef.settingsHarnesses,
+            pathParams: const {},
+            queryParams: {harnessSettingsPresentationQueryParam: presentation.name},
+          ),
+          isA<AppRouteSettingsHarnesses>().having(
+            (route) => route.presentation,
+            "presentation",
+            presentation,
+          ),
+        );
+      }
+    });
+
+    test("settings Harnesses route without a known presentation decodes as a modal", () {
+      for (final queryParams in [const <String, String>{}, const {harnessSettingsPresentationQueryParam: "sheet"}]) {
+        expect(
+          AppRoute.fromDef(
+            def: AppRouteDef.settingsHarnesses,
+            pathParams: const {},
+            queryParams: queryParams,
+          ),
+          isA<AppRouteSettingsHarnesses>().having(
+            (route) => route.presentation,
+            "presentation",
+            HarnessSettingsPresentation.modal,
+          ),
+        );
+      }
     });
 
     test("settings Harness management route is removed", () {

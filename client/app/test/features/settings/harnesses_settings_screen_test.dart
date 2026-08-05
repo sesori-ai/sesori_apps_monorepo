@@ -75,7 +75,7 @@ Widget _app() {
         path: "/",
         builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
           value: StubConnectionOverlayCubit(),
-          child: const HarnessesSettingsScreen(),
+          child: const HarnessesSettingsScreen(presentation: HarnessSettingsPresentation.modal),
         ),
       ),
       GoRoute(
@@ -96,7 +96,9 @@ Widget _app() {
 /// The app's real route table with a stand-in for whatever screen raises
 /// harness settings — the new-session harness menu in production. Exercises the
 /// close button's pop branch, which `_app` (mounted at the router root) cannot.
-Widget _appPushedFromOpener() {
+Widget _appPushedFromOpener({
+  HarnessSettingsPresentation presentation = HarnessSettingsPresentation.modal,
+}) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
@@ -106,7 +108,7 @@ Widget _appPushedFromOpener() {
         path: "/opener",
         builder: (context, state) => Scaffold(
           body: TextButton(
-            onPressed: () => context.pushRoute(const AppRoute.settingsHarnesses()),
+            onPressed: () => context.pushRoute(AppRoute.settingsHarnesses(presentation: presentation)),
             child: const Text("open-harnesses"),
           ),
         ),
@@ -894,5 +896,35 @@ void main() {
     expect(find.byType(HarnessesSettingsScreen), findsNothing);
     expect(find.text("open-harnesses"), findsOneWidget);
     expect(find.text("projects-route"), findsNothing);
+  });
+
+  testWidgets("raised as a modal, the bar closes with the X and shows no back button", (tester) async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await tester.pumpWidget(_appPushedFromOpener());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("open-harnesses"));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel("Close settings"), findsOneWidget);
+    expect(find.bySemanticsLabel("Back"), findsNothing);
+  });
+
+  testWidgets("pushed onto the settings stack, the bar goes back and shows no close button", (tester) async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await tester.pumpWidget(_appPushedFromOpener(presentation: HarnessSettingsPresentation.pushed));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("open-harnesses"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HarnessesSettingsScreen), findsOneWidget);
+    expect(find.bySemanticsLabel("Close settings"), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel("Back"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HarnessesSettingsScreen), findsNothing);
+    expect(find.text("open-harnesses"), findsOneWidget);
   });
 }

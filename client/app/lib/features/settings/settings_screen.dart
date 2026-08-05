@@ -121,7 +121,11 @@ class _SettingsBody extends StatelessWidget {
                       icon: TablerRegular.plug,
                       title: Text(loc.settingsHarnessesTitle),
                       trailing: const Icon(TablerRegular.chevron_right),
-                      onTap: () => context.pushRoute(const AppRoute.settingsHarnesses()),
+                      onTap: () => context.pushRoute(
+                        const AppRoute.settingsHarnesses(
+                          presentation: HarnessSettingsPresentation.pushed,
+                        ),
+                      ),
                       isLast: true,
                     ),
                   ],

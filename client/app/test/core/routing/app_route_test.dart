@@ -41,7 +41,17 @@ void main() {
       expect(const AppRoute.login().buildPath(), "/login");
       expect(const AppRoute.projects().buildPath(), "/projects");
       expect(const AppRoute.settings().buildPath(), "/settings");
-      expect(const AppRoute.settingsHarnesses().buildPath(), "/settings/harnesses");
+    });
+
+    test("carries the presentation for settingsHarnesses", () {
+      expect(
+        const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal).buildPath(),
+        "/settings/harnesses?presentation=modal",
+      );
+      expect(
+        const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.pushed).buildPath(),
+        "/settings/harnesses?presentation=pushed",
+      );
     });
 
     test("substitutes projectId for sessions", () {
@@ -173,13 +183,28 @@ void main() {
 
       expect(children.map((route) => route.path), equals(["notifications", "harnesses", "profile"]));
       expect(children[0].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<NotificationSettingsScreen>());
-      // Harnesses rise as a modal from the settings list and from the
-      // new-session harness menu alike, so the route carries its own
-      // fullscreen-dialog page rather than the default push.
-      final harnessesPage =
-          children[1].pageBuilder!(_FakeBuildContext(), _FakeGoRouterState()) as CupertinoPage<void>;
-      expect(harnessesPage.fullscreenDialog, isTrue);
-      expect(harnessesPage.child, isA<HarnessesSettingsScreen>());
+      // Harnesses rise as a modal from the new-session harness menu and push
+      // in from the settings list, so the route builds its own page per
+      // presentation instead of taking the default push for both.
+      final harnessesModalPage =
+          children[1].pageBuilder!(
+                _FakeBuildContext(),
+                _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "modal"}),
+              )
+              as CupertinoPage<void>;
+      expect(harnessesModalPage.fullscreenDialog, isTrue);
+      expect(harnessesModalPage.child, isA<HarnessesSettingsScreen>());
+      final harnessesPushedPage =
+          children[1].pageBuilder!(
+                _FakeBuildContext(),
+                _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "pushed"}),
+              )
+              as MaterialPage<void>;
+      expect(harnessesPushedPage.child, isA<HarnessesSettingsScreen>());
+      expect(
+        (harnessesPushedPage.child as HarnessesSettingsScreen).presentation,
+        HarnessSettingsPresentation.pushed,
+      );
       expect(children[1].routes, isEmpty);
       expect(children[2].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
       expect(

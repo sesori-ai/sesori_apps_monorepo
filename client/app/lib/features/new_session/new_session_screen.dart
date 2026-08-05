@@ -292,7 +292,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           selectedPluginId: data.plugin?.id,
           isSelectionEnabled: data.backendScope.isVerified && !data.isPluginDiscoveryInFlight,
           onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(pluginId: pluginId),
-          onSettingsPressed: () => context.pushRoute(const AppRoute.settingsHarnesses()),
+          onSettingsPressed: () => context.pushRoute(
+            const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
+          ),
         ),
         if (status != null) _buildOptionsStatus(status: status),
         if (data.supportsDedicatedWorktrees) ...[

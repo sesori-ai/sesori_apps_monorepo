@@ -95,7 +95,7 @@ extension AppRouteToGoRoute on AppRouteDef {
       AppRouteProjects() => const ProjectListScreen(),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
-      AppRouteSettingsHarnesses() => const HarnessesSettingsScreen(),
+      AppRouteSettingsHarnesses(:final presentation) => HarnessesSettingsScreen(presentation: presentation),
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
@@ -385,16 +385,28 @@ List<RouteBase> _buildAppRoutes({
         ),
         GoRoute(
           path: _settingsHarnessesRouteSegment,
-          // Harness settings are reached from two places — the settings list
-          // and the new-session harness menu — and are a detour from both, so
-          // they rise as a modal over whatever raised them and close back onto
-          // it. A CupertinoPage for the same reason settings itself uses one:
-          // only the Cupertino route honours `fullscreenDialog` on Android too.
-          pageBuilder: (context, state) => CupertinoPage<void>(
-            key: state.pageKey,
-            fullscreenDialog: true,
-            child: AppRouteDef.settingsHarnesses._buildScreen(context: context, state: state),
-          ),
+          // Harness settings are reached from two places, and the route says
+          // which one. From the settings list they are the next page of that
+          // stack, so they push in like every other settings page. From the
+          // new-session harness menu they are a detour from an unrelated
+          // screen, so they rise as a modal and close back onto it.
+          //
+          // The modal is a CupertinoPage for the same reason settings itself
+          // uses one: only the Cupertino route honours `fullscreenDialog` on
+          // Android too. The pushed page is the MaterialPage go_router would
+          // have built itself, so it keeps the platform's push transition.
+          pageBuilder: (context, state) {
+            final child = AppRouteDef.settingsHarnesses._buildScreen(context: context, state: state);
+            final route = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters);
+            return switch (route.presentation) {
+              HarnessSettingsPresentation.modal => CupertinoPage<void>(
+                key: state.pageKey,
+                fullscreenDialog: true,
+                child: child,
+              ),
+              HarnessSettingsPresentation.pushed => MaterialPage<void>(key: state.pageKey, child: child),
+            };
+          },
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,
