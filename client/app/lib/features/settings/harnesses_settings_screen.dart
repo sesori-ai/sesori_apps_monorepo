@@ -48,6 +48,10 @@ class _HarnessesSettingsBody extends StatelessWidget {
         title: loc.settingsHarnessesTitle,
         titleMode: PregoTopNavigationTitleMode.inline,
         banner: ConnectionBanner.maybeFor(context),
+        // The page always rises as a modal, so closing is the only way out and
+        // the close button below owns it. An implied back chevron would be a
+        // second, redundant dismissal in the same bar.
+        automaticallyImplyLeading: false,
         actions: [
           PregoButtonsIconGlass(
             icon: TablerRegular.x,
