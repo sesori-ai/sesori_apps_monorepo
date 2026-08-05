@@ -437,17 +437,18 @@ class AcpEventMapper {
       identity: identity,
       tracker: tracker,
       blocks: blocks,
-      evaluateTextHaltNotice: true,
     );
   }
 
   /// Appends assistant image blocks normalized locally on the bridge (a harness
   /// extension that surfaces images outside standard ACP chunks) into the same
-  /// ordered message state used by `agent_message_chunk`.
+  /// ordered message state used by `agent_message_chunk`. The image-typed
+  /// parameter also guarantees structurally that this path can never trip the
+  /// text-only halt-notice classification in [_appendAssistantBlocks].
   List<BridgeSseEvent> appendAssistantImageBlocks({
     required String sessionId,
     required String? messageId,
-    required Iterable<AcpMappedContentBlock> blocks,
+    required Iterable<AcpMappedImageContentBlock> blocks,
   }) {
     final identity = _chunkIdentity(
       sessionId: sessionId,
@@ -465,7 +466,6 @@ class AcpEventMapper {
       identity: identity,
       tracker: tracker,
       blocks: blocks,
-      evaluateTextHaltNotice: false,
     );
   }
 
@@ -474,7 +474,6 @@ class AcpEventMapper {
     required ({String messageId, bool hasAcpMessageId}) identity,
     required AcpContentTracker tracker,
     required Iterable<AcpMappedContentBlock> blocks,
-    required bool evaluateTextHaltNotice,
   }) {
     if (blocks.isEmpty) return const [];
     final hasTrackableContent = blocks.any(
@@ -484,8 +483,7 @@ class AcpEventMapper {
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
 
-    if (evaluateTextHaltNotice &&
-        !identity.hasAcpMessageId &&
+    if (!identity.hasAcpMessageId &&
         tracker.snapshot.composition != AcpContentComposition.mixed &&
         blocks.every((block) => block is AcpMappedTextContentBlock)) {
       final text = blocks.whereType<AcpMappedTextContentBlock>().map((block) => block.text).join();

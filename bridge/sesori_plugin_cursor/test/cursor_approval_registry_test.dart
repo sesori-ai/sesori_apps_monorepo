@@ -14,6 +14,9 @@ void main() {
     // The session whose turn is "in flight"; the registry falls back to it for
     // requests that carry no sessionId of their own (e.g. cursor/create_plan).
     String? activeSession;
+    // When set, the fire-and-forget forward throws — simulating a bug in the
+    // notification mapping path downstream of the registry.
+    bool throwOnForward = false;
 
     setUp(() async {
       fake = FakeAcpProcess();
@@ -25,10 +28,14 @@ void main() {
       emitted = [];
       forwarded = [];
       activeSession = "active-s";
+      throwOnForward = false;
       registry = CursorApprovalRegistry(
         client: client,
         emit: emitted.add,
-        onFireAndForgetNotification: forwarded.add,
+        onFireAndForgetNotification: (notification) {
+          if (throwOnForward) throw StateError("notification mapping failure");
+          forwarded.add(notification);
+        },
         activeSessionResolver: () => activeSession,
       );
       registry.attach(client.serverRequests);
@@ -316,6 +323,40 @@ void main() {
       expect(reply.containsKey("error"), isFalse);
       expect(forwarded.single.method, "cursor/update_todos");
       expect(forwarded.single.params["toolCallId"], "todo-1");
+    });
+
+    test("a throwing notification forward never breaks the approval channel", () async {
+      // The forward runs on the serverRequests subscription that also answers
+      // permissions; a throw in the mapping path must be contained to the one
+      // payload — the request is still acked and later approvals still surface.
+      throwOnForward = true;
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 44,
+        "method": "cursor/generate_image",
+        "params": {"filePath": "/tmp/out.png"},
+      });
+      await pump();
+
+      final ack = fake.written.last;
+      expect(ack["id"], 44);
+      expect(ack.containsKey("error"), isFalse);
+
+      throwOnForward = false;
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 45,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": "s1",
+          "toolCall": {"kind": "execute", "title": "Run"},
+          "options": [
+            {"optionId": "ok", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(emitted.single, isA<BridgeSsePermissionAsked>());
     });
   });
 }

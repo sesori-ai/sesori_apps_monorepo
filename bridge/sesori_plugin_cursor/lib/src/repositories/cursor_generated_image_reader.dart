@@ -8,18 +8,21 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
     show isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
-/// Reads Cursor `cursor/generate_image` host paths and maps them into the same
-/// bounded inline-image content blocks used for standard ACP assistant images.
+/// Reads Cursor `cursor/generate_image` host paths from the local filesystem
+/// and maps the bytes into the same bounded inline-image content blocks used
+/// for standard ACP assistant images. Named a reader, not a mapper: filesystem
+/// access is repository-role work, which is why it lives outside `mappers/`.
 ///
-/// Local paths never leave this mapper; only basename metadata and inline bytes
-/// cross the plugin boundary.
-final class CursorGenerateImageMapper {
-  const CursorGenerateImageMapper();
+/// Local paths never leave this class over the transport; only basename
+/// metadata and inline bytes cross the plugin boundary. Local bridge logs do
+/// keep the path — that is sanctioned diagnostic context, not payload leakage.
+final class CursorGeneratedImageReader {
+  const CursorGeneratedImageReader();
 
-  List<AcpMappedContentBlock> mapPath({required String path}) {
+  List<AcpMappedImageContentBlock> read({required String path}) {
     final normalizedPath = path.trim();
     if (normalizedPath.isEmpty) {
-      _logUnavailable();
+      Log.w("[cursor] generate_image dropped: empty source path");
       return const [];
     }
 
@@ -38,15 +41,11 @@ final class CursorGenerateImageMapper {
       } finally {
         raf.closeSync();
       }
-      if (bytes.isEmpty) {
-        _logUnavailable();
-        return const [];
-      }
 
       final mime = _mimeFromBytes(bytes: bytes);
       if (bytes.length > maxInlineMessageAttachmentBytes) {
         return [
-          _metadata(
+          AcpContentMapper.metadataImageBlock(
             mime: mime ?? _mimeHintFromBasename(basename: basename),
             filename: basename,
             reason: AcpImageDegradationReason.oversized,
@@ -54,10 +53,11 @@ final class CursorGenerateImageMapper {
         ];
       }
       if (mime == null) {
-        // No image signature: never promote arbitrary bytes to an image on the
-        // strength of a filename extension — degrade to metadata.
+        // No image signature (including an empty file): never promote arbitrary
+        // bytes to an image on the strength of a filename extension — degrade
+        // to metadata.
         return [
-          _metadata(
+          AcpContentMapper.metadataImageBlock(
             mime: _mimeHintFromBasename(basename: basename),
             filename: basename,
             reason: AcpImageDegradationReason.invalid,
@@ -70,7 +70,7 @@ final class CursorGenerateImageMapper {
       // (same policy as the standard ACP image path).
       if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64.length)) {
         return [
-          _metadata(
+          AcpContentMapper.metadataImageBlock(
             mime: mime,
             filename: basename,
             reason: AcpImageDegradationReason.oversized,
@@ -90,43 +90,23 @@ final class CursorGenerateImageMapper {
         ),
       ];
     } on Object catch (error, stack) {
-      Log.w("[cursor] generate_image source unavailable", error, stack);
+      Log.w("[cursor] generate_image source unreadable: $normalizedPath", error, stack);
       return const [];
     }
   }
 
-  AcpMappedMetadataImageContentBlock _metadata({
-    required String mime,
-    required String? filename,
-    required AcpImageDegradationReason reason,
-  }) {
-    return AcpMappedMetadataImageContentBlock(
-      attachment:
-          PluginMessageAttachment.metadata(
-                mime: mime,
-                filename: filename,
-              )
-              as PluginMessageAttachmentMetadata,
-      reason: reason,
-    );
-  }
-
-  void _logUnavailable() {
-    Log.w("[cursor] generate_image source unavailable");
-  }
-
   static const String _unsupportedMime = "application/octet-stream";
 
+  /// Extension-derived mime for degraded metadata blocks. Only the `.jpg`
+  /// alias is local knowledge; the supported set itself is
+  /// [AcpContentMapper.supportedRasterMimeEssences], so adding an inline-able
+  /// type there extends this hint automatically.
   static String _mimeHintFromBasename({required String? basename}) {
     final extension = basename == null ? null : p.extension(basename).toLowerCase();
-    return switch (extension) {
-      ".bmp" => "image/bmp",
-      ".gif" => "image/gif",
-      ".jpg" || ".jpeg" => "image/jpeg",
-      ".png" => "image/png",
-      ".webp" => "image/webp",
-      _ => _unsupportedMime,
-    };
+    if (extension == null || extension.length < 2) return _unsupportedMime;
+    final essence = "image/${extension == ".jpg" ? "jpeg" : extension.substring(1)}";
+    if (AcpContentMapper.supportedRasterMimeEssences.contains(essence)) return essence;
+    return _unsupportedMime;
   }
 
   static String? _mimeFromBytes({required Uint8List bytes}) {

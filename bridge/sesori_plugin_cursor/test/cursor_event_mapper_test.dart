@@ -3,20 +3,40 @@ import "dart:typed_data";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
-import "package:cursor_plugin/src/repositories/mappers/cursor_generate_image_mapper.dart";
+import "package:cursor_plugin/src/repositories/cursor_generated_image_reader.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 void main() {
   group("CursorEventMapper", () {
-    final mapper = CursorEventMapper(
-      launchDirectory: "/repo",
-      pluginId: CursorPlugin.pluginId,
-      configurationTracker: AcpSessionConfigurationTracker(),
-      contentMapper: const AcpContentMapper(),
-      generateImageMapper: const CursorGenerateImageMapper(),
-    );
+    CursorEventMapper buildMapper({String? Function()? activeSessionResolver}) {
+      return CursorEventMapper(
+        launchDirectory: "/repo",
+        pluginId: CursorPlugin.pluginId,
+        configurationTracker: AcpSessionConfigurationTracker(),
+        contentMapper: const AcpContentMapper(),
+        generatedImageReader: const CursorGeneratedImageReader(),
+        activeSessionResolver: activeSessionResolver ?? () => null,
+      );
+    }
+
+    final mapper = buildMapper();
+
+    // Microsecond-stamped names: parallel worktrees run this suite against the
+    // same systemTemp concurrently, so fixed names can race.
+    File writeTempPng(String prefix) {
+      final file = File(
+        "${Directory.systemTemp.path}/$prefix-${DateTime.now().microsecondsSinceEpoch}.png",
+      );
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+      file.writeAsBytesSync(
+        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
+      );
+      return file;
+    }
 
     test("cursor/update_todos maps to a todo update", () {
       final events = mapper.map(
@@ -55,71 +75,32 @@ void main() {
 
     test("cursor/generate_image maps to a standard inline file part", () async {
       mapper.beginTurn("s-image");
-      final file = File("${Directory.systemTemp.path}/cursor-event-mapper-${DateTime.now().microsecondsSinceEpoch}.png");
-      addTearDown(() {
-        if (file.existsSync()) file.deleteSync();
-      });
-      file.writeAsBytesSync(
-        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
-      );
+      final file = writeTempPng("cursor-event-mapper");
 
-      expect(
-        mapper.map(
-          AcpNotification(
-            method: "cursor/generate_image",
-            params: {"sessionId": "s-image", "filePath": file.path},
-          ),
-        ).whereType<BridgeSseMessagePartUpdated>().single.part.type,
-        PluginMessagePartType.file,
-      );
+      final part = mapper
+          .map(
+            AcpNotification(
+              method: "cursor/generate_image",
+              params: {"sessionId": "s-image", "filePath": file.path},
+            ),
+          )
+          .whereType<BridgeSseMessagePartUpdated>()
+          .single
+          .part;
+      expect(part.type, PluginMessagePartType.file);
+      expect(part.sessionID, "s-image");
     });
 
     test("cursor/generate_image accepts legacy path params", () async {
       mapper.beginTurn("s-image-legacy");
-      final file = File("${Directory.systemTemp.path}/legacy-output.png");
-      addTearDown(() {
-        if (file.existsSync()) file.deleteSync();
-      });
-      file.writeAsBytesSync(
-        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
-      );
+      final file = writeTempPng("cursor-event-mapper-legacy");
 
       expect(
-        mapper.map(
-          AcpNotification(
-            method: "cursor/generate_image",
-            params: {"sessionId": "s-image-legacy", "path": file.path},
-          ),
-        ).whereType<BridgeSseMessagePartUpdated>().single.part.type,
-        PluginMessagePartType.file,
-      );
-    });
-
-    test("cursor/generate_image resolves sessionId from the last begun turn", () async {
-      // No sessionId and no toolCallId in the payload: the mapper attributes
-      // it to the session whose turn most recently began.
-      final turnMapper = CursorEventMapper(
-        launchDirectory: "/repo",
-        pluginId: CursorPlugin.pluginId,
-        configurationTracker: AcpSessionConfigurationTracker(),
-        contentMapper: const AcpContentMapper(),
-        generateImageMapper: const CursorGenerateImageMapper(),
-      );
-      turnMapper.beginTurn("s-active");
-      final file = File("${Directory.systemTemp.path}/cursor-active-turn-image.png");
-      addTearDown(() {
-        if (file.existsSync()) file.deleteSync();
-      });
-      file.writeAsBytesSync(
-        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
-      );
-
-      expect(
-        turnMapper
+        mapper
             .map(
               AcpNotification(
                 method: "cursor/generate_image",
-                params: {"filePath": file.path, "description": "test"},
+                params: {"sessionId": "s-image-legacy", "path": file.path},
               ),
             )
             .whereType<BridgeSseMessagePartUpdated>()
@@ -130,21 +111,37 @@ void main() {
       );
     });
 
-    test("cursor/generate_image resolves sessionId from toolCallId", () async {
-      mapper.beginTurn("s1");
-      final file = File("${Directory.systemTemp.path}/cursor-toolcall-image.png");
-      addTearDown(() {
-        if (file.existsSync()) file.deleteSync();
-      });
-      file.writeAsBytesSync(
-        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
-      );
+    test("cursor/generate_image resolves sessionId from the plugin's active turn", () async {
+      // No sessionId and no toolCallId in the payload: attribution comes from
+      // the plugin-supplied resolver, not any mapper-side turn tracking.
+      final turnMapper = buildMapper(activeSessionResolver: () => "s-active");
+      final file = writeTempPng("cursor-active-turn-image");
 
-      mapper.map(
+      final part = turnMapper
+          .map(
+            AcpNotification(
+              method: "cursor/generate_image",
+              params: {"filePath": file.path, "description": "test"},
+            ),
+          )
+          .whereType<BridgeSseMessagePartUpdated>()
+          .single
+          .part;
+      expect(part.type, PluginMessagePartType.file);
+      expect(part.sessionID, "s-active");
+    });
+
+    test("cursor/generate_image prefers the originating toolCallId over the active turn", () async {
+      // The resolver answers a different session than the one owning the tool
+      // call, so this fails if the toolCallId chain is broken or deleted.
+      final chainMapper = buildMapper(activeSessionResolver: () => "s-other");
+      final file = writeTempPng("cursor-toolcall-image");
+
+      chainMapper.map(
         const AcpNotification(
           method: "session/update",
           params: {
-            "sessionId": "s1",
+            "sessionId": "sA",
             "update": {
               "sessionUpdate": "tool_call",
               "toolCallId": "img-tool-1",
@@ -155,19 +152,83 @@ void main() {
         ),
       );
 
+      final part = chainMapper
+          .map(
+            AcpNotification(
+              method: "cursor/generate_image",
+              params: {
+                "toolCallId": "img-tool-1",
+                "filePath": file.path,
+                "description": "test",
+              },
+            ),
+          )
+          .whereType<BridgeSseMessagePartUpdated>()
+          .single
+          .part;
+      expect(part.type, PluginMessagePartType.file);
+      expect(part.sessionID, "sA");
+    });
+
+    test("cursor/generate_image with no resolvable session drops the payload", () async {
+      // No sessionId, no toolCallId, resolver answers null: the payload must be
+      // dropped — an event stamped with "" would be discarded by the client.
+      final orphanMapper = buildMapper();
+      final file = writeTempPng("cursor-orphan-image");
+
       expect(
-        mapper.map(
+        orphanMapper.map(
           AcpNotification(
             method: "cursor/generate_image",
-            params: {
-              "toolCallId": "img-tool-1",
-              "filePath": file.path,
-              "description": "test",
-            },
+            params: {"filePath": file.path, "description": "test"},
           ),
-        ).whereType<BridgeSseMessagePartUpdated>().single.part.type,
-        PluginMessagePartType.file,
+        ),
+        isEmpty,
       );
+    });
+
+    test("generate_image lands as an ordered part inside the live assistant message", () {
+      // The whole point of routing through appendAssistantImageBlocks is that
+      // the image joins the in-progress assistant message in stream order,
+      // instead of being emitted as a standalone sidecar message.
+      final orderedMapper = buildMapper();
+      orderedMapper.beginTurn("s1");
+      final file = writeTempPng("cursor-ordered-image");
+      const messageId = "s1-t1-assistant-a0";
+
+      AcpNotification textChunk(String text) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": text},
+          },
+        },
+      );
+
+      final first = orderedMapper.map(textChunk("Here it is:"));
+      final image = orderedMapper.map(
+        AcpNotification(
+          method: "cursor/generate_image",
+          params: {"sessionId": "s1", "filePath": file.path},
+        ),
+      );
+      final second = orderedMapper.map(textChunk("Done."));
+
+      expect(first.whereType<BridgeSseMessagePartDelta>().single.partID, "$messageId-text");
+
+      final imagePart = image.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(imagePart.id, "$messageId-image-1");
+      expect(imagePart.messageID, messageId);
+      expect(
+        image.whereType<BridgeSseMessageUpdated>(),
+        isEmpty,
+        reason: "the image must join the live message, not open a new envelope",
+      );
+
+      expect(second.whereType<BridgeSseMessagePartDelta>().single.partID, "$messageId-text-1");
+      expect(second.whereType<BridgeSseMessageUpdated>(), isEmpty);
     });
 
     test("standard ACP images still work alongside cursor generate_image", () {

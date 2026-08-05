@@ -55,7 +55,7 @@ class AcpApprovalRegistry {
     required void Function(BridgeSseEvent event) emit,
     required AcpResponder respond,
     required AcpErrorResponder respondError,
-    void Function(AcpNotification notification)? onFireAndForgetNotification,
+    required void Function(AcpNotification notification) onFireAndForgetNotification,
     String Function()? idGenerator,
     String? Function()? activeSessionResolver,
   }) : _emit = emit,
@@ -69,7 +69,7 @@ class AcpApprovalRegistry {
   factory AcpApprovalRegistry.forClient({
     required AcpStdioClient client,
     required void Function(BridgeSseEvent event) emit,
-    void Function(AcpNotification notification)? onFireAndForgetNotification,
+    required void Function(AcpNotification notification) onFireAndForgetNotification,
     String Function()? idGenerator,
     String? Function()? activeSessionResolver,
   }) {
@@ -86,7 +86,7 @@ class AcpApprovalRegistry {
   final void Function(BridgeSseEvent event) _emit;
   final AcpResponder _respond;
   final AcpErrorResponder _respondError;
-  final void Function(AcpNotification notification)? _onFireAndForgetNotification;
+  final void Function(AcpNotification notification) _onFireAndForgetNotification;
   final String Function()? _injectedIdGenerator;
 
   /// Resolves the session a server request belongs to when the request itself
@@ -338,11 +338,13 @@ class AcpApprovalRegistry {
       // Fire-and-forget: the agent awaits no result. Ack so it never blocks,
       // then re-inject into the notification pipeline.
       _respond(request.id, const <String, Object?>{});
-      final forward = _onFireAndForgetNotification;
-      if (forward == null) {
-        Log.w("[acp] ${request.method} declared fire-and-forget with no notification forward wired; dropping");
-      } else {
-        forward(AcpNotification(method: request.method, params: request.params));
+      try {
+        _onFireAndForgetNotification(AcpNotification(method: request.method, params: request.params));
+      } on Object catch (error, stack) {
+        // The forward runs on the serverRequests subscription that also answers
+        // permissions/questions; a throw inside notification mapping must break
+        // only this payload, never the approval channel.
+        Log.w("[acp] ${request.method} notification forward failed", error, stack);
       }
       return;
     }

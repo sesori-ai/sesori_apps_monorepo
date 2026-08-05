@@ -101,7 +101,10 @@ final class AcpContentMapper {
   static const int _maxUriCharactersForFilename = 4096;
   static const int _maxMimeCharacters = 255;
   static const String _fallbackMime = "application/octet-stream";
-  static const Set<String> _supportedRasterMimeEssences = {
+  /// The closed set of raster mime essences the client renders inline. Public
+  /// so harness-local image sources (e.g. Cursor's generated-image reader)
+  /// share this one enumeration instead of drifting copies.
+  static const Set<String> supportedRasterMimeEssences = {
     "image/bmp",
     "image/gif",
     "image/jpeg",
@@ -437,22 +440,22 @@ final class AcpContentMapper {
   }) {
     final normalizedMime = _normalizeMime(raw: mime);
     final filename = _filenameFromUri(uri: uri);
-    if (!_supportedRasterMimeEssences.contains(_mimeEssence(mime: normalizedMime))) {
-      return _metadata(
+    if (!supportedRasterMimeEssences.contains(_mimeEssence(mime: normalizedMime))) {
+      return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,
         reason: AcpImageDegradationReason.unsupported,
       );
     }
     if (data.isEmpty) {
-      return _metadata(
+      return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,
         reason: AcpImageDegradationReason.invalid,
       );
     }
     if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: data.length)) {
-      return _metadata(
+      return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,
         reason: AcpImageDegradationReason.oversized,
@@ -461,14 +464,14 @@ final class AcpContentMapper {
 
     final normalized = _tryNormalizeBase64(encoded: data);
     if (normalized == null) {
-      return _metadata(
+      return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,
         reason: AcpImageDegradationReason.invalid,
       );
     }
     if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: normalized.length)) {
-      return _metadata(
+      return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,
         reason: AcpImageDegradationReason.oversized,
@@ -477,7 +480,7 @@ final class AcpContentMapper {
 
     final decodedBytes = decodedBase64Length(base64Data: normalized);
     if (decodedBytes > maxInlineMessageAttachmentBytes) {
-      return _metadata(
+      return metadataImageBlock(
         mime: normalizedMime,
         filename: filename,
         reason: AcpImageDegradationReason.oversized,
@@ -495,7 +498,10 @@ final class AcpContentMapper {
     );
   }
 
-  AcpMappedMetadataImageContentBlock _metadata({
+  /// Builds the degraded metadata-only image block. Public and static for the
+  /// same reason as [supportedRasterMimeEssences]: harness-local image sources
+  /// must produce the identical shape without maintaining a copy.
+  static AcpMappedMetadataImageContentBlock metadataImageBlock({
     required String mime,
     required String? filename,
     required AcpImageDegradationReason reason,

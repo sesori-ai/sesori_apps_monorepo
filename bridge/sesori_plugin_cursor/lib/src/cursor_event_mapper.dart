@@ -1,7 +1,7 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "repositories/mappers/cursor_generate_image_mapper.dart";
+import "repositories/cursor_generated_image_reader.dart";
 
 /// Cursor's event mapper: the standard ACP `session/update` handling from
 /// [AcpEventMapper] plus Cursor's `cursor/*` notification extensions.
@@ -18,22 +18,22 @@ class CursorEventMapper extends AcpEventMapper {
     required super.pluginId,
     required super.configurationTracker,
     required super.contentMapper,
-    required CursorGenerateImageMapper generateImageMapper,
-  }) : _generateImageMapper = generateImageMapper,
+    required CursorGeneratedImageReader generatedImageReader,
+    required String? Function() activeSessionResolver,
+  }) : _generatedImageReader = generatedImageReader,
+       _activeSessionResolver = activeSessionResolver,
        super(agentId: pluginId);
 
-  final CursorGenerateImageMapper _generateImageMapper;
+  final CursorGeneratedImageReader _generatedImageReader;
 
-  /// The session that most recently began a turn — the last-resort attribution
-  /// for Cursor extension payloads that omit `sessionId` (cursor-agent's
-  /// extension calls carry only the originating `toolCallId`, or nothing).
-  String? _lastTurnSessionId;
-
-  @override
-  void beginTurn(String sessionId) {
-    _lastTurnSessionId = sessionId;
-    super.beginTurn(sessionId);
-  }
+  /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
+  /// last-resort attribution for Cursor extension payloads that omit
+  /// `sessionId` (cursor-agent's extension calls carry only the originating
+  /// `toolCallId`, or nothing). The same closure backs the approval registry's
+  /// session fallback, so "which session does an unattributed payload belong
+  /// to" has exactly one owner: the plugin, which also clears its state when a
+  /// session is deleted.
+  final String? Function() _activeSessionResolver;
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
@@ -54,10 +54,18 @@ class CursorEventMapper extends AcpEventMapper {
     final sessionId = _extensionSessionId(params);
     final path = _pathFromGenerateImageParams(params: params);
     if (sessionId == null || path == null) {
+      // The registry already acked the request, so this drop is the last place
+      // a lost image can be observed. Local logs keep the path (sanctioned
+      // diagnostic context); only the transport stays basename-only.
+      Log.w(
+        "[cursor] ${notification.method} dropped: "
+        "${sessionId == null ? "no resolvable session" : "session $sessionId"}, "
+        "${path == null ? "no source path" : "path ${path.trim()}"}",
+      );
       return const [];
     }
 
-    final blocks = _generateImageMapper.mapPath(path: path);
+    final blocks = _generatedImageReader.read(path: path);
     if (blocks.isEmpty) return const [];
 
     final rawMessageId = params["messageId"];
@@ -68,23 +76,30 @@ class CursorEventMapper extends AcpEventMapper {
     );
   }
 
-  /// The session an extension payload belongs to: its explicit `sessionId`,
-  /// else the session owning the originating `toolCallId`, else the most
-  /// recent turn's session. Null only when none is available — the caller must
-  /// drop the payload (an event stamped with "" is discarded by the client).
+  /// The session an extension payload belongs to: its explicit `sessionId`
+  /// (trimmed, matching [AcpApprovalRegistry.resolveSessionId]), else the
+  /// session owning the originating `toolCallId`, else the plugin's active
+  /// turn. Null only when none is available — the caller must drop the payload
+  /// (an event stamped with "" is discarded by the client).
   String? _extensionSessionId(Map<String, dynamic> params) {
     final explicit = params["sessionId"];
-    if (explicit is String && explicit.trim().isNotEmpty) return explicit;
+    if (explicit is String) {
+      final trimmed = explicit.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
     final toolCallId = params["toolCallId"];
     if (toolCallId is String && toolCallId.isNotEmpty) {
       final fromTool = sessionIdForToolCallId(toolCallId: toolCallId);
       if (fromTool != null) return fromTool;
     }
-    return _lastTurnSessionId;
+    return _activeSessionResolver();
   }
 
+  /// `filePath` is the live-verified key; `path` has provenance from the
+  /// pre-PR wire tests. A bare filename is deliberately not accepted: it would
+  /// resolve against the bridge process CWD, not the session's project.
   static String? _pathFromGenerateImageParams({required Map<String, dynamic> params}) {
-    for (final key in const ["filePath", "path", "filename"]) {
+    for (final key in const ["filePath", "path"]) {
       final value = params[key];
       if (value is String && value.trim().isNotEmpty) return value;
     }
