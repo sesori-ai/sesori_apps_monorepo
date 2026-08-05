@@ -70,6 +70,17 @@ const double _optionRowSpacing = PregoSpacing.xl;
 /// added.
 const double _optionsHorizontalPadding = 10;
 
+/// Bottom padding of the options scroll view, so the last row can rest clear of
+/// the composer.
+const double _optionsBottomPadding = 8;
+
+/// Height of the floating refresh action, and the gap it keeps above the
+/// composer (Figma node 4691:7507). Together they are the band it floats in —
+/// reserved as extra scroll padding so a long options block can still be
+/// scrolled out from under it.
+const double _refreshHeight = 36;
+const double _refreshBottomGap = PregoSpacing.xl;
+
 class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
@@ -163,66 +174,78 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
-  Widget? _buildOptionsStatus({required AgentModelData? data}) {
+  /// Where the harness options came from, or why they are missing.
+  ///
+  /// Null while a load is still in flight or before a routable harness is
+  /// known — there is nothing honest to say yet. The same answer gates the
+  /// floating refresh action, so the explanation and the way to act on it
+  /// appear and disappear together.
+  ({String message, bool isFailure})? _resolveOptionsStatus({required AgentModelData? data}) {
     final plugin = data?.plugin;
     if (data == null || plugin == null || !plugin.isRoutable || data.isLoading) return null;
 
     final loc = context.loc;
-    final prego = context.prego;
-    final cubit = context.read<NewSessionCubit>();
-    final optionsState = data.optionsState;
-    final String message;
-    final bool isFailure;
-    switch (optionsState) {
-      case NewSessionOptionsFailureState(:final reason):
-        message = reason.localizedMessage(loc);
-        isFailure = true;
-      case NewSessionOptionsFailureRetainedState():
-        message = loc.newSessionOptionsUpdateFailedRetained;
-        isFailure = true;
-      case NewSessionOptionsRefreshFailureUnavailableState():
-        message = loc.newSessionOptionsRefreshFailedUnavailable;
-        isFailure = true;
-      case NewSessionOptionsLoadFailureUnavailableState():
-        message = loc.newSessionOptionsLoadFailedUnavailable;
-        isFailure = true;
-      case NewSessionOptionsUnavailableState():
-        message = loc.newSessionOptionsUnavailable;
-        isFailure = false;
-      case NewSessionOptionsUnsupportedState() ||
-          NewSessionOptionsAvailableState(source: NewSessionOptionsSource.legacy):
-        message = loc.newSessionOptionsLegacyBridge;
-        isFailure = false;
-      case NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate):
-        message = loc.newSessionOptionsCached;
-        isFailure = false;
-      case NewSessionOptionsLoadingState() || NewSessionOptionsRefreshingState():
-        return null;
-    }
+    return switch (data.optionsState) {
+      NewSessionOptionsFailureState(:final reason) => (message: reason.localizedMessage(loc), isFailure: true),
+      NewSessionOptionsFailureRetainedState() => (message: loc.newSessionOptionsUpdateFailedRetained, isFailure: true),
+      NewSessionOptionsRefreshFailureUnavailableState() => (
+        message: loc.newSessionOptionsRefreshFailedUnavailable,
+        isFailure: true,
+      ),
+      NewSessionOptionsLoadFailureUnavailableState() => (
+        message: loc.newSessionOptionsLoadFailedUnavailable,
+        isFailure: true,
+      ),
+      NewSessionOptionsUnavailableState() => (message: loc.newSessionOptionsUnavailable, isFailure: false),
+      NewSessionOptionsUnsupportedState() ||
+      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.legacy) => (
+        message: loc.newSessionOptionsLegacyBridge,
+        isFailure: false,
+      ),
+      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate) => (
+        message: loc.newSessionOptionsCached,
+        isFailure: false,
+      ),
+      NewSessionOptionsLoadingState() || NewSessionOptionsRefreshingState() => null,
+    };
+  }
 
+  Widget _buildOptionsStatus({required ({String message, bool isFailure}) status}) {
+    final prego = context.prego;
     return Padding(
-      padding: EdgeInsetsDirectional.only(top: prego.spacing.sm, start: prego.spacing.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Text(
-              message,
-              style: prego.textTheme.textXs.regular.copyWith(
-                color: isFailure ? prego.colors.fgErrorPrimary : prego.colors.textSecondary,
-              ),
-            ),
-          ),
-          SizedBox(width: prego.spacing.sm),
-          PregoButtonsSolid(
-            key: const Key("new_session_options_refresh"),
-            label: loc.newSessionOptionsRefresh,
-            hierarchy: PregoButtonsSolidHierarchy.link,
-            size: PregoButtonsSolidSize.sm,
-            leadingIcon: TablerRegular.refresh,
-            onPressed: cubit.canRefreshOptions ? cubit.refreshOptions : null,
-          ),
-        ],
+      padding: EdgeInsetsDirectional.only(
+        top: prego.spacing.sm,
+        start: prego.spacing.lg,
+        end: prego.spacing.lg,
+      ),
+      child: Text(
+        status.message,
+        style: prego.textTheme.textXs.regular.copyWith(
+          color: status.isFailure ? prego.colors.fgErrorPrimary : prego.colors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  /// The refresh action, floating centred just above the composer (Figma node
+  /// 4691:7507). It reloads the whole options block rather than any one row,
+  /// so it stays with the composer instead of scrolling away inside the block
+  /// it acts on. Floating rather than in flow: a cramped viewport — landscape
+  /// with a multiline draft — must still spend its height on the composer.
+  Widget _buildOptionsRefresh({required NewSessionCubit cubit}) {
+    return Positioned(
+      bottom: _refreshBottomGap,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: PregoButtonsSolid(
+          key: const Key("new_session_options_refresh"),
+          label: context.loc.newSessionOptionsRefresh,
+          hierarchy: PregoButtonsSolidHierarchy.tertiary,
+          size: PregoButtonsSolidSize.sm,
+          leadingIcon: TablerRegular.refresh,
+          onPressed: cubit.canRefreshOptions ? cubit.refreshOptions : null,
+        ),
       ),
     );
   }
@@ -235,7 +258,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   /// rhythm rather than popping controls in one at a time. A later discovery
   /// (a reconnect) keeps the controls it already has, disabled — blanking a
   /// known harness back to a shimmer would lose more than it says.
-  Widget _buildOptions({required AgentModelData? data}) {
+  Widget _buildOptions({
+    required AgentModelData? data,
+    required ({String message, bool isFailure})? status,
+  }) {
     if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
       return const NewSessionOptionsSkeleton(
         rowHeight: _optionRowHeight,
@@ -254,7 +280,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(pluginId: pluginId),
           onSettingsPressed: () => context.pushRoute(const AppRoute.settingsHarnesses()),
         ),
-        ?_buildOptionsStatus(data: data),
+        if (status != null) _buildOptionsStatus(status: status),
         if (data.supportsDedicatedWorktrees) ...[
           if (hasPlugins) const SizedBox(height: _optionRowSpacing),
           _DedicatedWorkspaceRow(
@@ -273,6 +299,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final isSending = state is NewSessionSending;
     final composerData = state.agentModelData;
+    final optionsStatus = _resolveOptionsStatus(data: composerData);
     final isComposerEnabled = cubit.canCreateSession && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
@@ -340,18 +367,25 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
               child: Column(
                 children: [
                   Expanded(
-                    child: PregoTopBarInsetBuilder(
-                      builder: (context, topInset, child) => SingleChildScrollView(
-                        key: const Key("new_session_options_scroll"),
-                        padding: EdgeInsetsDirectional.fromSTEB(
-                          _optionsHorizontalPadding,
-                          topInset + _optionRowSpacing,
-                          _optionsHorizontalPadding,
-                          8,
+                    child: Stack(
+                      children: [
+                        PregoTopBarInsetBuilder(
+                          builder: (context, topInset, child) => SingleChildScrollView(
+                            key: const Key("new_session_options_scroll"),
+                            padding: EdgeInsetsDirectional.fromSTEB(
+                              _optionsHorizontalPadding,
+                              topInset + _optionRowSpacing,
+                              _optionsHorizontalPadding,
+                              optionsStatus == null
+                                  ? _optionsBottomPadding
+                                  : _optionsBottomPadding + _refreshHeight + _refreshBottomGap,
+                            ),
+                            child: child,
+                          ),
+                          child: _buildOptions(data: composerData, status: optionsStatus),
                         ),
-                        child: child,
-                      ),
-                      child: _buildOptions(data: composerData),
+                        if (optionsStatus != null) _buildOptionsRefresh(cubit: cubit),
+                      ],
                     ),
                   ),
                   Padding(

@@ -800,11 +800,20 @@ void main() {
     expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
     expect(tester.takeException(), isNull);
 
+    // The refresh action floats above the composer rather than riding the
+    // options it reloads, so scrolling must not carry it away.
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsNothing);
+
     final composerTop = tester.getTopLeft(find.byType(PromptInput)).dy;
+    final refreshRect = tester.getRect(refresh);
+    expect(refreshRect.bottom, lessThanOrEqualTo(composerTop));
+
     await tester.drag(optionsScroll, const Offset(0, -250));
     await tester.pumpAndSettle();
 
     expect(tester.getTopLeft(find.byType(PromptInput)).dy, closeTo(composerTop, 0.01));
+    expect(tester.getRect(refresh), refreshRect);
     expect(tester.takeException(), isNull);
   });
 

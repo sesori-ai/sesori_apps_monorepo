@@ -1327,7 +1327,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionOptionsLoadingSemantics => 'Loading session options';
 
   @override
-  String get newSessionOptionsRefresh => 'Refresh';
+  String get newSessionOptionsRefresh => 'Refresh the model list';
 
   @override
   String get newSessionOptionsCached => 'Using cached coding tool options.';

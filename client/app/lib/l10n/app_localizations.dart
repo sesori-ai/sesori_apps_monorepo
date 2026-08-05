@@ -2542,7 +2542,7 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionOptionsRefresh.
   ///
   /// In en, this message translates to:
-  /// **'Refresh'**
+  /// **'Refresh the model list'**
   String get newSessionOptionsRefresh;
 
   /// No description provided for @newSessionOptionsCached.

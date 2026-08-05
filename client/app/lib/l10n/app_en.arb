@@ -762,7 +762,7 @@
   "newSessionPluginFailed": "Failed",
   "newSessionHarnessSettings": "Harness settings",
   "newSessionOptionsLoadingSemantics": "Loading session options",
-  "newSessionOptionsRefresh": "Refresh",
+  "newSessionOptionsRefresh": "Refresh the model list",
   "newSessionOptionsCached": "Using cached coding tool options.",
   "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",
   "newSessionOptionsLoadFailedUnavailable": "Couldn’t load options. You can create with defaults or try again.",
