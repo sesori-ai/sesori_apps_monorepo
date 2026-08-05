@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "repositories/cursor_generated_image_reader.dart";
@@ -96,12 +97,17 @@ class CursorEventMapper extends AcpEventMapper {
   }
 
   /// `filePath` is the live-verified key; `path` has provenance from the
-  /// pre-PR wire tests. A bare filename is deliberately not accepted: it would
-  /// resolve against the bridge process CWD, not the session's project.
+  /// pre-PR wire tests. Only absolute paths are accepted: a relative or bare
+  /// value would resolve against the bridge process CWD, not the session's
+  /// project, so it must never be opened.
   static String? _pathFromGenerateImageParams({required Map<String, dynamic> params}) {
     for (final key in const ["filePath", "path"]) {
       final value = params[key];
-      if (value is String && value.trim().isNotEmpty) return value;
+      if (value is! String) continue;
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) continue;
+      if (p.isAbsolute(trimmed)) return trimmed;
+      Log.w("[cursor] generate_image rejected non-absolute source path: $trimmed");
     }
     return null;
   }

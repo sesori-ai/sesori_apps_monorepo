@@ -170,6 +170,30 @@ void main() {
       expect(part.sessionID, "sA");
     });
 
+    test("cursor/generate_image rejects a relative source path, even one that exists", () {
+      // A relative path resolves against the bridge process CWD, not the
+      // session's project — it must be rejected at the boundary, never read.
+      final name = "cursor-relative-image-${DateTime.now().microsecondsSinceEpoch}.png";
+      final file = File(name);
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+      file.writeAsBytesSync(
+        Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]),
+      );
+
+      final relativeMapper = buildMapper(activeSessionResolver: () => "s-rel");
+      expect(
+        relativeMapper.map(
+          AcpNotification(
+            method: "cursor/generate_image",
+            params: {"sessionId": "s-rel", "filePath": name},
+          ),
+        ),
+        isEmpty,
+      );
+    });
+
     test("cursor/generate_image with no resolvable session drops the payload", () async {
       // No sessionId, no toolCallId, resolver answers null: the payload must be
       // dropped — an event stamped with "" would be discarded by the client.
