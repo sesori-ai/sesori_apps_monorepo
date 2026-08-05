@@ -958,9 +958,6 @@ class _BlockingRestartDispatcher implements BridgeRestartDispatcher {
 
 class _AlwaysRestartableService implements BridgeRestartService {
   @override
-  bool get supervisedRestartRequested => false;
-
-  @override
   Future<bool> canRestart() async => true;
 
   @override
@@ -992,6 +989,7 @@ BridgeRestartService _spawnableRestartService({
     cliArgs: const <String>[],
     currentPid: 4321,
     isSupervised: false,
+    onSupervisedRestartRequested: () {},
   );
 }
 

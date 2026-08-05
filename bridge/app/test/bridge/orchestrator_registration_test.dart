@@ -692,9 +692,6 @@ class _RecordingRestartService implements BridgeRestartService {
   int? connIdAtHandoff;
 
   @override
-  bool get supervisedRestartRequested => false;
-
-  @override
   Future<bool> canRestart() async => restartable;
 
   @override

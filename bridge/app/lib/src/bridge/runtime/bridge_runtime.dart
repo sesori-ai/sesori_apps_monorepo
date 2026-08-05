@@ -85,12 +85,12 @@ class BridgeRuntime {
   }
 }
 
-Future<DebugServer?> startDebugServerIfRequested({
+Future<void> startDebugServerIfRequested({
   required int? debugPort,
   required BridgeRuntime runtime,
   required BridgeShutdownCoordinator shutdownCoordinator,
 }) async {
-  if (debugPort == null) return null;
+  if (debugPort == null) return;
 
   final bandwidthTracker = runtime.createBandwidthTracker();
   shutdownCoordinator.add(disposable: bandwidthTracker.dispose);
@@ -98,10 +98,19 @@ Future<DebugServer?> startDebugServerIfRequested({
   try {
     final debugServer = runtime.createDebugServer(port: debugPort);
     await debugServer.start();
-    return debugServer;
+    // Registered only once the server is listening, so the coordinator's
+    // phase closures never capture a half-started server.
+    shutdownCoordinator
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
+        action: debugServer.beginShutdown,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.drain,
+        action: debugServer.drain,
+      );
   } on Object catch (error, stackTrace) {
     Log.w("failed to start debug server", error, stackTrace);
-    return null;
   }
 }
 

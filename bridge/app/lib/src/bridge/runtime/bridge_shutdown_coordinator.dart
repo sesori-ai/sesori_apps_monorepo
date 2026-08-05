@@ -27,7 +27,12 @@ class BridgeShutdownCoordinator {
   static const Duration _backstopSlack = Duration(seconds: 10);
 
   /// How long the backstop waits for [emergencyDisposal] before exiting.
-  static const Duration _emergencyDisposalCap = Duration(seconds: 3);
+  /// Sized above the plugins' agent-process kill escalation so it can run to
+  /// completion — ACP's teardown SIGTERMs the agent, waits up to 5s, then
+  /// SIGKILLs; a smaller cap would exit the bridge before the SIGKILL and
+  /// orphan an agent that ignores SIGTERM, the exact outcome this hook
+  /// exists to prevent.
+  static const Duration _emergencyDisposalCap = Duration(seconds: 6);
 
   final int Function() _backstopExitCode;
   final void Function(int code) _exitProcess;

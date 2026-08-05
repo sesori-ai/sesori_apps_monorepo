@@ -49,5 +49,6 @@ BridgeRestartService buildTestRestartService() {
     cliArgs: const <String>[],
     currentPid: 0,
     isSupervised: false,
+    onSupervisedRestartRequested: () {},
   );
 }

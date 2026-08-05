@@ -91,9 +91,6 @@ class _FakeRestartService implements BridgeRestartService {
   int handoffCalls = 0;
 
   @override
-  bool get supervisedRestartRequested => false;
-
-  @override
   Future<bool> canRestart() async => true;
 
   @override

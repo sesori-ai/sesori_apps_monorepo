@@ -588,25 +588,31 @@ class PluginRuntime {
   }
 
   /// Best-effort, budgeted cancellation of in-flight agent work across every
-  /// started plugin. Invoked when bridge shutdown begins so session-teardown
+  /// started plugin. Invoked by the composition root's shutdown coordinator
+  /// as a signal-phase action — after [beginShutdown] has fenced new lease
+  /// acquisitions, and awaited before the drain phase — so session-teardown
   /// drains (relay completions, session operations, plugin-event tails) are
   /// not held open by agent-coupled requests — an ACP `session/prompt`
   /// awaiting a busy agent, a `session/load`/`session/resume` replay, or a
   /// lazy agent respawn — while the agent process is still alive and can
   /// answer a cancellation.
   ///
-  /// Uses the same per-plugin `interruptActiveWork` contract as the forced-
-  /// stop path ([_interruptActiveWork]) but emits no terminal handoff: the
-  /// ongoing session teardown drains whatever events the cancellation
-  /// produces. Never throws; isolates and logs per-plugin failures.
+  /// Unlike the forced-stop path ([_interruptActiveWork]) there is no barrier
+  /// drain of pre-fence operations first (interrupting them is the point) and
+  /// no terminal handoff afterwards; cancellation events the plugins emit
+  /// reach the concurrently tearing-down session only on a best-effort basis.
+  /// Never throws; isolates and logs per-plugin failures.
   Future<void> interruptActiveWorkForShutdown() {
     return Future.wait([
       for (final slot in _slots.values)
-        if (slot.plugin case final plugin?) _interruptPluginForShutdown(slot, plugin),
+        if (slot.plugin case final plugin?) _interruptPluginForShutdown(slot: slot, plugin: plugin),
     ]);
   }
 
-  Future<void> _interruptPluginForShutdown(_PluginRuntimeSlot slot, BridgePlugin plugin) async {
+  Future<void> _interruptPluginForShutdown({
+    required _PluginRuntimeSlot slot,
+    required BridgePlugin plugin,
+  }) async {
     try {
       await plugin.interruptActiveWork(budget: _shutdownBudget).timeout(_shutdownBudget);
     } on Object catch (error, stackTrace) {

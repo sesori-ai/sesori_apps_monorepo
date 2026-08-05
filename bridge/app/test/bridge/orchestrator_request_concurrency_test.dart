@@ -543,9 +543,6 @@ class _RecordingRestartService implements BridgeRestartService {
   int? closeAttemptCountAtHandoff;
 
   @override
-  bool get supervisedRestartRequested => false;
-
-  @override
   Future<bool> canRestart() async {
     final started = canRestartStarted;
     if (started != null && !started.isCompleted) started.complete();

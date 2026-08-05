@@ -100,7 +100,6 @@ import "../../updater/services/update_lifecycle_service.dart";
 import "../../updater/services/update_reconciliation_service.dart";
 import "../../updater/services/update_service.dart";
 import "../../version.dart";
-import "../debug_server.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../log_failure_reporter.dart";
@@ -188,7 +187,6 @@ class BridgeRuntimeRunner {
     PluginRuntime? pluginRuntime;
     PluginLifecycleService? pluginLifecycleService;
     BridgeRuntime? runtime;
-    DebugServer? debugServer;
     CatalogImportConsoleListener? catalogImportConsoleListener;
     Future<void>? sessionRun;
     // The single typed slot for a deliberate supervised exit (restart /
@@ -204,24 +202,15 @@ class BridgeRuntimeRunner {
     // loss listener assigns with `??=` so a loss never overwrites an already
     // decided intentional exit.
     SupervisedExitCode? requestedSupervisedExit;
-    BridgeRestartService? restartService;
+    // Shared by the ordered pluginDispose phase and the backstop's emergency
+    // disposal so the two cannot drift.
+    Future<void> disposePluginApis() => pluginRuntime?.disposeStartedApis() ?? Future<void>.value();
     final shutdownCoordinator = BridgeShutdownCoordinator(
       startAbortSignal: startAbortController.signal,
-      backstopExitCode: () {
-        final exit = requestedSupervisedExit;
-        if (exit != null) return exit.code;
-        // The supervised-restart respawn sentinel is folded into the slot in
-        // the try's finally, which has not run when the backstop fires
-        // mid-teardown; consult the handoff flag directly so a hung teardown
-        // still reports the sentinel and the GUI respawns.
-        if (restartService?.supervisedRestartRequested ?? false) {
-          return SupervisedExitCode.restart.code;
-        }
-        return 0;
-      },
+      backstopExitCode: () => requestedSupervisedExit?.code ?? 0,
       // Last resort before a forced exit: stop plugin backends so their agent
       // processes are not orphaned when the teardown (or a phase) hangs.
-      emergencyDisposal: () => pluginRuntime?.disposeStartedApis() ?? Future<void>.value(),
+      emergencyDisposal: disposePluginApis,
     );
     shutdownCoordinator
       ..addPhase(
@@ -234,15 +223,22 @@ class BridgeRuntimeRunner {
       )
       ..addPhase(
         phase: BridgeShutdownPhase.signal,
+        // Cancel in-flight agent work (budgeted, best-effort) so the drain
+        // phase is not held open by agent-coupled requests — an in-flight
+        // turn, a resume-load, a lazy agent respawn — while the agent process
+        // is still alive and can answer a cancellation. Signal actions fire in
+        // registration order, so `beginShutdown` above has already fenced new
+        // lease acquisitions, and the phase is awaited before drain begins.
+        action: () => pluginRuntime?.interruptActiveWorkForShutdown() ?? Future<void>.value(),
+        budget: _pluginShutdownBudget,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
         action: () => runtime?.catalogImportService.beginShutdown(),
       )
       ..addPhase(
         phase: BridgeShutdownPhase.signal,
         action: () => runtime?.session.beginShutdown(),
-      )
-      ..addPhase(
-        phase: BridgeShutdownPhase.signal,
-        action: () => debugServer?.beginShutdown(),
       )
       ..addPhase(
         phase: BridgeShutdownPhase.signal,
@@ -257,12 +253,8 @@ class BridgeRuntimeRunner {
         action: () => sessionRun ?? Future<void>.value(),
       )
       ..addPhase(
-        phase: BridgeShutdownPhase.drain,
-        action: () => debugServer?.drain() ?? Future<void>.value(),
-      )
-      ..addPhase(
         phase: BridgeShutdownPhase.pluginDispose,
-        action: () => pluginRuntime?.disposeStartedApis() ?? Future<void>.value(),
+        action: disposePluginApis,
         budget: _pluginShutdownBudget,
       )
       ..addPhase(
@@ -777,7 +769,7 @@ class BridgeRuntimeRunner {
         shutdownCoordinator.add(disposable: controlStatusNotifier.dispose);
       }
 
-      restartService = BridgeRestartService(
+      final restartService = BridgeRestartService(
         processRepository: processRepository,
         commandBuilder: const BridgeRestartCommandBuilder(),
         binaryPath: managedRuntimePaths.binaryPath,
@@ -787,6 +779,12 @@ class BridgeRuntimeRunner {
         // exits with the sentinel code instead of spawning a successor (which
         // would replay --control-url with no off-argv secret and fail closed).
         isSupervised: options.isSupervised,
+        // Record the GUI-respawn sentinel the moment the handoff is decided —
+        // before the shutdown it triggers — so the normal return, the error
+        // paths, and a hung-teardown backstop all report the same code.
+        onSupervisedRestartRequested: () {
+          requestedSupervisedExit = SupervisedExitCode.restart;
+        },
       );
 
       // Run startup diagnostics before composing the runtime so the
@@ -864,28 +862,10 @@ class BridgeRuntimeRunner {
       final sessionStart = activeRuntime.session.start();
       sessionStart.ignore();
       sessionRun = activeRuntime.session.waitUntilStopped();
-      debugServer = await startDebugServerIfRequested(
+      await startDebugServerIfRequested(
         debugPort: options.debugPort,
         runtime: activeRuntime,
         shutdownCoordinator: shutdownCoordinator,
-      );
-      // Start the ordered shutdown the moment the session begins shutting down
-      // (any trigger: signal, supervised logout/restart, control-channel loss),
-      // so the coordinator's backstop bounds the session teardown itself — a
-      // teardown blocked on in-flight agent work must not hang the process
-      // with no deadline. Registered only after the debug server is assigned:
-      // the coordinator's signal phase reads `debugServer` (beginShutdown), so
-      // a shutdown racing the async server start would otherwise miss it, and
-      // no agent-coupled work can exist before startup completes anyway. The
-      // runner's finally joins the same (memoized) shutdown future, so a
-      // failure here is still surfaced there with the exit-code policy applied.
-      unawaited(
-        // The runner's finally awaits the same (memoized) shutdown future and
-        // applies the exit-code policy there, so the failure is already
-        // surfaced; this early-start copy must not raise an unhandled error.
-        activeRuntime.session.shutdownRequested
-            .then((_) => shutdownCoordinator.shutdown())
-            .catchError((Object _, StackTrace __) {}),
       );
       // Background: check + download + stage + apply-in-place on a 4h cadence.
       // The swap takes effect on the next launch (or a phone-triggered restart).
@@ -917,37 +897,35 @@ class BridgeRuntimeRunner {
         onboardingPreparation = null;
       }
 
-      try {
-        final startResult = await sessionStart;
-        if (startResult == OrchestratorSessionStartResult.ready) {
-          if (onboardingPreparation case final preparation?) {
-            final decision = await Future.any<AppClientOnboardingDecision>([
-              sessionRun.then((_) => AppClientOnboardingDecision.skip),
-              preparation,
-            ]);
-            if (decision == AppClientOnboardingDecision.prompt) {
-              _presentAppOnboardingPrompt(environment: environment);
-              await _waitForFirstPhoneConnection(
-                firstPhoneConnected: activeRuntime.session.firstPhoneConnected,
-                sessionRun: sessionRun,
-                environment: environment,
-              );
-            }
+      // Start the ordered shutdown the moment the session begins shutting down
+      // (any trigger: signal, supervised logout/restart, control-channel loss),
+      // so the coordinator's signal phase interrupts in-flight agent work and
+      // its backstop bounds the session teardown itself — a teardown blocked
+      // on agent-coupled requests must not hang the process with no deadline.
+      // Registered after startup wiring so every phase action and disposable
+      // above is in place (no agent-coupled work can exist before startup
+      // completes anyway). The runner's finally joins the same (memoized)
+      // shutdown future and applies the exit-code policy there, so this
+      // early-start copy only marks its error as handled.
+      activeRuntime.session.shutdownRequested.then((_) => shutdownCoordinator.shutdown()).ignore();
+
+      final startResult = await sessionStart;
+      if (startResult == OrchestratorSessionStartResult.ready) {
+        if (onboardingPreparation case final preparation?) {
+          final decision = await Future.any<AppClientOnboardingDecision>([
+            sessionRun.then((_) => AppClientOnboardingDecision.skip),
+            preparation,
+          ]);
+          if (decision == AppClientOnboardingDecision.prompt) {
+            _presentAppOnboardingPrompt(environment: environment);
+            await _waitForFirstPhoneConnection(
+              firstPhoneConnected: activeRuntime.session.firstPhoneConnected,
+              sessionRun: sessionRun,
+              environment: environment,
+            );
           }
-          await sessionRun;
         }
-      } finally {
-        // A supervised phone-triggered restart handed the session off by exiting
-        // rather than spawning a successor; resolve the GUI-respawn sentinel here
-        // (in a finally) so it survives even if session teardown throws —
-        // otherwise the error path below would return a crash code and
-        // the GUI would back off instead of respawning. `restartService` is only
-        // in scope inside this try, hence resolving into the outer-scoped local.
-        // Assigned before the outer `finally`'s shutdown runs, so a hung-shutdown
-        // backstop reports the same code too.
-        if (restartService.supervisedRestartRequested) {
-          requestedSupervisedExit = SupervisedExitCode.restart;
-        }
+        await sessionRun;
       }
       return requestedSupervisedExit?.code ?? 0;
     } on PluginStartAbortedException {

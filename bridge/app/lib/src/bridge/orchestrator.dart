@@ -845,9 +845,9 @@ class OrchestratorSession {
   Future<void> get firstPhoneConnected => _firstPhoneConnectedCompleter.future;
   RoutedRequestDispatcher get routedRequestDispatcher => _routedRequestDispatcher;
 
-  /// Completes when [beginShutdown] starts the graceful shutdown, so
-  /// composition-root machinery (e.g. the shutdown coordinator's backstop)
-  /// can start bounding the session teardown at the same moment.
+  /// Completes when [beginShutdown] starts the graceful shutdown, so the
+  /// composition root can start the ordered shutdown coordinator (agent-work
+  /// interrupt, backstop deadline) the moment the session begins tearing down.
   Future<void> get shutdownRequested => _shutdownCompleter.future;
 
   Future<OrchestratorSessionStartResult> start() {
@@ -1265,11 +1265,6 @@ class OrchestratorSession {
         "[shutdown] cancel() requested"
         "${_inFlightRelayWorkDiagnostic(separator: " — ")}",
       );
-      // Interrupt in-flight agent work now (budgeted, best-effort) so the
-      // teardown drains below are not held open by agent-coupled requests
-      // (an in-flight turn, a resume-load, a lazy agent respawn) while the
-      // agent process is still alive and can answer a cancellation.
-      unawaited(_pluginRuntime.interruptActiveWorkForShutdown());
     } else {
       Log.v("[shutdown] cancel() again (already shutting down)");
     }

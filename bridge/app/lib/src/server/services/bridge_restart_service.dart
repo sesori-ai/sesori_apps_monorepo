@@ -17,10 +17,10 @@ import '../repositories/process_repository.dart';
 ///   ([spawnSuccessor]); the successor waits this pid out before enforcing
 ///   single-live-bridge.
 /// - **supervised** — the desktop GUI owns this process's lifecycle and respawns
-///   it, so no successor is spawned. Instead [performRestartHandoff] records that
-///   a supervised restart was requested ([supervisedRestartRequested]); the
-///   composition root reads that flag once the session ends and exits with the
-///   GUI-respawn sentinel code. Spawning a supervised successor would replay
+///   it, so no successor is spawned. Instead [performRestartHandoff] notifies
+///   the composition root (`onSupervisedRestartRequested`) at the moment the
+///   handoff is decided, so the GUI-respawn sentinel exit code is recorded
+///   before any shutdown runs. Spawning a supervised successor would replay
 ///   `--control-url` into a detached child with no off-argv secret and fail
 ///   closed, so supervised mode must never call [spawnSuccessor].
 ///
@@ -36,12 +36,14 @@ class BridgeRestartService {
     required List<String> cliArgs,
     required int currentPid,
     required bool isSupervised,
+    required void Function() onSupervisedRestartRequested,
   }) : _processRepository = processRepository,
        _commandBuilder = commandBuilder,
        _binaryPath = binaryPath,
        _cliArgs = cliArgs,
        _currentPid = currentPid,
-       _isSupervised = isSupervised;
+       _isSupervised = isSupervised,
+       _onSupervisedRestartRequested = onSupervisedRestartRequested;
 
   final ProcessRepository _processRepository;
   final BridgeRestartCommandBuilder _commandBuilder;
@@ -50,13 +52,12 @@ class BridgeRestartService {
   final int _currentPid;
   final bool _isSupervised;
 
-  bool _supervisedRestartRequested = false;
-
-  /// Whether a supervised restart handoff has been performed, so the composition
-  /// root can exit with the GUI-respawn sentinel code instead of a clean 0. Only
-  /// ever set in supervised mode; standalone spawns a successor and leaves this
-  /// false.
-  bool get supervisedRestartRequested => _supervisedRestartRequested;
+  /// Invoked the moment a supervised restart handoff is decided, before the
+  /// shutdown it triggers, so the composition root can record the GUI-respawn
+  /// sentinel exit code ahead of any teardown (including a hung one whose
+  /// backstop force-exits). Only ever invoked in supervised mode; standalone
+  /// spawns a successor instead.
+  final void Function() _onSupervisedRestartRequested;
 
   /// Whether an explicit restart can be delivered right now, so the handler only
   /// promises a restart it can actually carry out.
@@ -97,7 +98,7 @@ class BridgeRestartService {
   /// Performs the restart handoff for the active run mode and reports whether the
   /// caller should now request graceful shutdown.
   ///
-  /// - **supervised:** records [supervisedRestartRequested] and returns `true`
+  /// - **supervised:** notifies `onSupervisedRestartRequested` and returns `true`
   ///   without spawning a successor — the desktop GUI respawns this process after
   ///   it exits with the sentinel code.
   /// - **standalone:** spawns a successor and returns whether it started; `false`
@@ -105,7 +106,7 @@ class BridgeRestartService {
   Future<bool> performRestartHandoff() async {
     if (_isSupervised) {
       Log.i('Supervised restart: exiting for GUI respawn (no successor spawn)');
-      _supervisedRestartRequested = true;
+      _onSupervisedRestartRequested();
       return true;
     }
     Log.i('Standalone restart: spawning successor bridge');

@@ -43,10 +43,12 @@ class _RecordingProcessRunner implements ProcessRunner {
 void main() {
   late Directory tempDir;
   late _RecordingProcessRunner runner;
+  late int supervisedRestartNotifications;
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('bridge-restart-service');
     runner = _RecordingProcessRunner();
+    supervisedRestartNotifications = 0;
   });
 
   tearDown(() async {
@@ -75,6 +77,7 @@ void main() {
       cliArgs: cliArgs,
       currentPid: 7777,
       isSupervised: isSupervised,
+      onSupervisedRestartRequested: () => supervisedRestartNotifications++,
     );
   }
 
@@ -129,7 +132,7 @@ void main() {
 
     expect(proceed, isTrue);
     expect(runner.detachedCalls, hasLength(1));
-    expect(service.supervisedRestartRequested, isFalse);
+    expect(supervisedRestartNotifications, 0);
   });
 
   test('performRestartHandoff keeps running when the standalone successor cannot spawn', () async {
@@ -137,16 +140,16 @@ void main() {
     final service = buildService(binaryPath: '/opt/sesori/sesori-bridge');
 
     expect(await service.performRestartHandoff(), isFalse);
-    expect(service.supervisedRestartRequested, isFalse);
+    expect(supervisedRestartNotifications, 0);
   });
 
-  test('performRestartHandoff records the supervised intent and never spawns a successor', () async {
+  test('performRestartHandoff notifies the supervised intent and never spawns a successor', () async {
     final service = buildService(binaryPath: '/opt/sesori/sesori-bridge', isSupervised: true);
 
     final proceed = await service.performRestartHandoff();
 
     expect(proceed, isTrue);
-    expect(service.supervisedRestartRequested, isTrue);
+    expect(supervisedRestartNotifications, 1);
     // The desktop GUI respawns a supervised bridge; spawning our own successor
     // would replay --control-url with no off-argv secret and fail closed.
     expect(runner.detachedCalls, isEmpty);

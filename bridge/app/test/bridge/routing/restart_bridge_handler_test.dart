@@ -64,6 +64,7 @@ void main() {
       cliArgs: const ['run'],
       currentPid: 1234,
       isSupervised: isSupervised,
+      onSupervisedRestartRequested: () {},
     );
   }
 
