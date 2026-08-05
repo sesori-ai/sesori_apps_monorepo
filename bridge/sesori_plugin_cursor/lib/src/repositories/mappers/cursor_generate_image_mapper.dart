@@ -5,7 +5,8 @@ import "dart:typed_data";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show maxInlineMessageAttachmentBytes;
+import "package:sesori_shared/sesori_shared.dart"
+    show isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
 /// Reads Cursor `cursor/generate_image` host paths and maps them into the same
 /// bounded inline-image content blocks used for standard ACP assistant images.
@@ -27,34 +28,52 @@ final class CursorGenerateImageMapper {
     );
 
     try {
-      final file = File(normalizedPath);
-      if (!file.existsSync()) {
+      // Bounded read from a single opened descriptor: a file that grows after
+      // any size check (cursor-agent may still be writing it) can never pull
+      // more than the inline budget + 1 byte into memory.
+      final raf = File(normalizedPath).openSync();
+      final Uint8List bytes;
+      try {
+        bytes = raf.readSync(maxInlineMessageAttachmentBytes + 1);
+      } finally {
+        raf.closeSync();
+      }
+      if (bytes.isEmpty) {
         _logUnavailable();
         return const [];
       }
-      final length = file.lengthSync();
-      if (length <= 0) {
-        _logUnavailable();
-        return const [];
-      }
-      if (length > maxInlineMessageAttachmentBytes) {
+
+      final mime = _mimeFromBytes(bytes: bytes);
+      if (bytes.length > maxInlineMessageAttachmentBytes) {
         return [
           _metadata(
-            mime: _mimeHintFromBasename(basename: basename),
+            mime: mime ?? _mimeHintFromBasename(basename: basename),
             filename: basename,
             reason: AcpImageDegradationReason.oversized,
           ),
         ];
       }
+      if (mime == null) {
+        // No image signature: never promote arbitrary bytes to an image on the
+        // strength of a filename extension — degrade to metadata.
+        return [
+          _metadata(
+            mime: _mimeHintFromBasename(basename: basename),
+            filename: basename,
+            reason: AcpImageDegradationReason.invalid,
+          ),
+        ];
+      }
 
-      final bytes = file.readAsBytesSync();
-      final mime = _mimeFromBytes(bytes: bytes) ?? _mimeHintFromBasename(basename: basename);
-      if (mime == _unsupportedMime) {
+      final base64 = base64Encode(bytes);
+      // The transport bound applies to the encoded payload, not the raw bytes
+      // (same policy as the standard ACP image path).
+      if (!isInlineMessageAttachmentWithinSizeLimit(base64Length: base64.length)) {
         return [
           _metadata(
             mime: mime,
             filename: basename,
-            reason: AcpImageDegradationReason.unsupported,
+            reason: AcpImageDegradationReason.oversized,
           ),
         ];
       }
@@ -63,15 +82,15 @@ final class CursorGenerateImageMapper {
           attachment:
               PluginMessageAttachment.inlineImage(
                     mime: mime,
-                    base64: base64Encode(bytes),
+                    base64: base64,
                     filename: basename,
                   )
                   as PluginMessageAttachmentInlineImage,
           decodedBytes: bytes.length,
         ),
       ];
-    } on Object {
-      _logUnavailable();
+    } on Object catch (error, stack) {
+      Log.w("[cursor] generate_image source unavailable", error, stack);
       return const [];
     }
   }

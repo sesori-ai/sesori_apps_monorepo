@@ -10,8 +10,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// `cursor/update_todos` — sent via `extMethod` even though cursor-agent
 /// treats them as fire-and-forget) are only declared in
 /// [fireAndForgetExtensionMethods]; the base registry acks and re-injects them
-/// into the notification pipeline, where [CursorEventMapper] handles both wire
-/// shapes.
+/// into the notification pipeline, where the Cursor event mapper handles both
+/// wire shapes.
 ///
 /// NOTE: Cursor's exact reply payload shapes are not formally documented; the
 /// builders below are best-effort and should be confirmed against a real

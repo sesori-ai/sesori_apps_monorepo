@@ -46,8 +46,8 @@ void main() {
       expect(mapper.mapPath(path: "/tmp/does-not-exist-${DateTime.now().microsecondsSinceEpoch}.png"), isEmpty);
     });
 
-    test("returns metadata when the source is not a supported raster image", () {
-      final file = File("${Directory.systemTemp.path}/cursor-generate-image-${DateTime.now().microsecondsSinceEpoch}.bin");
+    test("returns metadata when the source has no image signature, even with an image extension", () {
+      final file = File("${Directory.systemTemp.path}/cursor-generate-image-${DateTime.now().microsecondsSinceEpoch}.png");
       addTearDown(() {
         if (file.existsSync()) file.deleteSync();
       });
@@ -57,7 +57,26 @@ void main() {
       expect(blocks.single, isA<AcpMappedMetadataImageContentBlock>());
       expect(
         (blocks.single as AcpMappedMetadataImageContentBlock).reason,
-        AcpImageDegradationReason.unsupported,
+        AcpImageDegradationReason.invalid,
+      );
+    });
+
+    test("returns metadata when base64 expansion of a limit-sized file exceeds the transport bound", () {
+      final file = File("${Directory.systemTemp.path}/cursor-generate-image-limit-${DateTime.now().microsecondsSinceEpoch}.png");
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+      // Raw bytes at the inline limit: valid PNG signature, but the base64
+      // payload is ~4/3 larger and crosses the encoded transport bound.
+      final bytes = Uint8List(maxInlineMessageAttachmentBytes);
+      bytes.setRange(0, 8, const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+      file.writeAsBytesSync(bytes);
+
+      final blocks = mapper.mapPath(path: file.path);
+      expect(blocks.single, isA<AcpMappedMetadataImageContentBlock>());
+      expect(
+        (blocks.single as AcpMappedMetadataImageContentBlock).reason,
+        AcpImageDegradationReason.oversized,
       );
     });
   });
