@@ -817,6 +817,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("scrolls the last option clear of the refresh at a large text scale", (tester) async {
+    // The refresh pill is padding around its label, not a fixed box, so it
+    // grows with the text scale. The band reserved beneath the options has to
+    // grow with it or the last row stays stranded underneath.
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.binding.setSurfaceSize(const Size(700, 400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+
+    final scrollRect = tester.getRect(optionsScroll);
+    await tester.dragFrom(Offset(scrollRect.center.dx, scrollRect.top + 8), const Offset(0, -2000));
+    await tester.pumpAndSettle();
+
+    // Scrolled to the end, the reserved band must still span everything the
+    // pill covers — measured, so it holds however tall the pill has grown.
+    final reserved = tester.widget<SingleChildScrollView>(optionsScroll).padding! as EdgeInsetsDirectional;
+    expect(reserved.bottom, greaterThanOrEqualTo(scrollRect.bottom - tester.getRect(refresh).top));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("keeps a multiline composer visible in a short viewport", (tester) async {
     tester.view.physicalSize = const Size(700, 300);
     tester.view.devicePixelRatio = 1;

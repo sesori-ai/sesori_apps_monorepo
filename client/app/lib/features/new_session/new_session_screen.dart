@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
@@ -72,14 +74,26 @@ const double _optionsHorizontalPadding = 10;
 
 /// Bottom padding of the options scroll view, so the last row can rest clear of
 /// the composer.
-const double _optionsBottomPadding = 8;
+const double _optionsBottomPadding = PregoSpacing.md;
 
-/// Height of the floating refresh action, and the gap it keeps above the
-/// composer (Figma node 4691:7507). Together they are the band it floats in —
-/// reserved as extra scroll padding so a long options block can still be
-/// scrolled out from under it.
-const double _refreshHeight = 36;
+/// The gap the floating refresh action keeps above the composer (Figma node
+/// 4691:7507).
 const double _refreshBottomGap = PregoSpacing.xl;
+
+/// The band the floating refresh action occupies above the composer, reserved
+/// as extra scroll padding so a long options block can still be scrolled out
+/// from under it.
+///
+/// [PregoButtonsSolidSize.sm] is padding around its content rather than a fixed
+/// box, so the pill grows with the reader's text scale. A constant would leave
+/// the last option row stranded underneath it at accessibility sizes.
+double _refreshBandHeight(BuildContext context) {
+  // The sm button's vertical padding around its tallest content: a 20px icon,
+  // or the text-sm line height — also 20 — once the text scale is applied.
+  const contentHeight = 20.0;
+  final scaledContent = MediaQuery.textScalerOf(context).scale(contentHeight);
+  return PregoSpacing.md * 2 + math.max(contentHeight, scaledContent) + _refreshBottomGap;
+}
 
 class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
@@ -300,6 +314,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final isSending = state is NewSessionSending;
     final composerData = state.agentModelData;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
+    final optionsBottomPadding = optionsStatus == null
+        ? _optionsBottomPadding
+        : _optionsBottomPadding + _refreshBandHeight(context);
     final isComposerEnabled = cubit.canCreateSession && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
@@ -368,6 +385,11 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                 children: [
                   Expanded(
                     child: Stack(
+                      // The scroll view owns the whole area, as it did before
+                      // the refresh action floated over it — a loose fit would
+                      // let it shrink to its content and strand the last rows
+                      // above a viewport that no longer reaches them.
+                      fit: StackFit.expand,
                       children: [
                         PregoTopBarInsetBuilder(
                           builder: (context, topInset, child) => SingleChildScrollView(
@@ -376,9 +398,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                               _optionsHorizontalPadding,
                               topInset + _optionRowSpacing,
                               _optionsHorizontalPadding,
-                              optionsStatus == null
-                                  ? _optionsBottomPadding
-                                  : _optionsBottomPadding + _refreshHeight + _refreshBottomGap,
+                              optionsBottomPadding,
                             ),
                             child: child,
                           ),
