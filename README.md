@@ -4,10 +4,10 @@
   </a>
 </p>
 
-<h1 align="center">Run your AI coding sessions from anywhere.</h1>
+<h1 align="center">Run OpenCode, Codex, and Cursor from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, and other AI coding assistants.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, and <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a> today, with <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a> coming soon.<br/>
   Leave your laptop. Take the session.
 </p>
 
