@@ -4,10 +4,10 @@
 
 - **Plan slug:** `session-history-store`
 - **Implementation base:** `origin/main` at `232974e1`
-- **Series state:** Step 1/9 in preparation
+- **Series state:** Step 1/9 plan PR open
 - **Current step:** 1/9
-- **Plan PR:** not yet opened
-- **Next action:** open the plan PR
+- **Plan PR:** [#764](https://github.com/sesori-ai/sesori_apps_monorepo/pull/764)
+- **Next action:** merge PR #764, then start step 2/9
 
 ## Plan Review
 
@@ -25,7 +25,7 @@
 
 | Done | Step | Exact PR title | Estimate | State |
 |---|---|---|---:|---|
-| [ ] | 1/9 | `🌱 [session-history-store] docs: plan the session history store [step 1/9]` | 500-700 | in preparation |
+| [ ] | 1/9 | `🌱 [session-history-store] docs: plan the session history store [step 1/9]` | 500-700 | [PR #764](https://github.com/sesori-ai/sesori_apps_monorepo/pull/764) open; 627 changed lines |
 | [ ] | 2/9 | `🚧 [session-history-store] feat(bridge): introduce the history database [step 2/9]` | 1,500-2,600 | pending |
 | [ ] | 3/9 | `🚧 [session-history-store] feat(bridge): capture live message events [step 3/9]` | 800-1,300 | pending |
 | [ ] | 4/9 | `⚙️ [session-history-store] feat(bridge): serve messages from the store [step 4/9]` | 700-1,100 | pending |
