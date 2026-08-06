@@ -11,14 +11,18 @@ void main() {
 
   test("window occlusion on desktop is inactive, not backgrounded", () {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-    final observer = AppLifecycleObserver()..didChangeAppLifecycleState(AppLifecycleState.hidden);
+    final observer = AppLifecycleObserver();
+    addTearDown(observer.onDispose);
+    observer.didChangeAppLifecycleState(AppLifecycleState.hidden);
 
     expect(observer.lifecycleState, LifecycleState.inactive);
   });
 
   test("hidden on mobile still reports backgrounding", () {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    final observer = AppLifecycleObserver()..didChangeAppLifecycleState(AppLifecycleState.hidden);
+    final observer = AppLifecycleObserver();
+    addTearDown(observer.onDispose);
+    observer.didChangeAppLifecycleState(AppLifecycleState.hidden);
 
     expect(observer.lifecycleState, LifecycleState.hidden);
   });

@@ -13,7 +13,9 @@ import "../repositories/session_view_repository.dart";
 /// session id and declares it to the bridge via [SessionViewRepository].
 ///
 /// On background it declares "viewing nothing" but retains the intended
-/// session. It deliberately does NOT auto-re-assert on resume or reconnect:
+/// session. Only a real background transition counts: a desktop window that
+/// loses focus or is occluded reports [LifecycleState.inactive] and keeps its
+/// declaration. It deliberately does NOT auto-re-assert on resume or reconnect:
 /// declaring "viewed" marks the session seen on the bridge (clearing its bold
 /// globally), so the owning `SessionDetailCubit` re-asserts only after its
 /// post-resume/reconnect refresh has rendered fresh content.

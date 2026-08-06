@@ -35,7 +35,8 @@ class ProjectViewPaneClaim {
 /// List and detail cubits contribute pending/ready claims. Route and adaptive
 /// pane visibility decide which ready claim is actually visible. The resulting
 /// declaration is serialized, cleared while the app is hidden, and reasserted
-/// after resume or relay reconnect. This is intentionally independent from
+/// after resume or relay reconnect. A desktop window that loses focus or is
+/// occluded reports [LifecycleState.inactive], so it keeps its declaration. This is intentionally independent from
 /// session-view declarations, whose mark-seen side effect has different rules.
 @lazySingleton
 class ProjectViewingService with Disposable {
