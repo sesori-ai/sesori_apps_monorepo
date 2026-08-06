@@ -1088,7 +1088,7 @@ void main() {
       expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
-    test("returns the latest PR-free branch when a waited refresh times out", () async {
+    test("keeps identity-gated PR data on the latest branch when a waited refresh times out", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1148,8 +1148,7 @@ void main() {
         final result = await response;
         expect(result.items, hasLength(1));
         expect(result.items.single.branchName, "feature/b");
-        expect(result.items.single.pullRequest, isNull);
-        expect(result.items.single.pullRequestHistory, isEmpty);
+        expect(result.items.single.pullRequest?.number, 98);
         expect(sessionRepository.getSessionsCallCount, equals(1));
       } finally {
         refreshBlocker.complete();
@@ -1158,7 +1157,7 @@ void main() {
       }
     });
 
-    test("returns the original snapshot when timeout fallback enrichment stalls", () async {
+    test("returns PR-free sessions when the identity-gated read itself stalls", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1170,24 +1169,33 @@ void main() {
         ),
       ];
       sessionDao.setSession(_storedSession(currentBranchName: "feature/a"));
-      final fallbackBlockingRepository = _FallbackBlockingSessionRepository(
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
+          prNumber: 96,
+          branchName: "feature/a",
+          url: "https://github.com/org/repo/pull/96",
+          title: "Unreadable PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      final stalledEnrichmentRepository = _StalledEnrichmentSessionRepository(
         plugin: plugin,
         sessionDao: sessionDao,
         pullRequestRepository: pullRequestRepository,
         persistenceDatabase: db,
-        initialBranchName: "feature/a",
       );
-      final branchPersisted = Completer<void>();
-      final stalledRefresh = Completer<void>();
       final timeoutHandler = GetSessionsHandler(
-        sessionRepository: fallbackBlockingRepository,
-        prSyncService: FakePrSyncService(
-          refreshAction: () async {
-            sessionDao.setSession(_storedSession(currentBranchName: "feature/b"));
-            branchPersisted.complete();
-            await stalledRefresh.future;
-          },
-        ),
+        sessionRepository: stalledEnrichmentRepository,
+        prSyncService: FakePrSyncService(),
         prRefreshTimeout: const Duration(milliseconds: 40),
       );
 
@@ -1201,14 +1209,12 @@ void main() {
           )
           .timeout(const Duration(milliseconds: 500));
 
-      expect(branchPersisted.isCompleted, isTrue);
-      expect(fallbackBlockingRepository.fallbackEnrichmentStarted.isCompleted, isTrue);
-      expect(result.items.single.branchName, "feature/a");
+      expect(stalledEnrichmentRepository.enrichmentStarted.isCompleted, isTrue);
       expect(result.items.single.pullRequest, isNull);
       expect(result.items.single.pullRequestHistory, isEmpty);
     });
 
-    test("returns the original PR-free snapshot when timeout fallback enrichment fails", () async {
+    test("keeps identity-gated PR data when the post-refresh re-read fails", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1219,50 +1225,49 @@ void main() {
           time: null,
         ),
       ];
-      final fallbackFailingRepository = _FallbackFailingSessionRepository(
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
+          prNumber: 95,
+          branchName: "feature/reread-failure",
+          url: "https://github.com/org/repo/pull/95",
+          title: "Preserved PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      final rereadFailingRepository = _RereadFailingSessionRepository(
         plugin: plugin,
         sessionDao: sessionDao,
         pullRequestRepository: pullRequestRepository,
         persistenceDatabase: db,
       );
-      final refreshStarted = Completer<void>();
-      final refreshBlocker = Completer<void>();
-      final refreshReleased = Completer<void>();
       final timeoutHandler = GetSessionsHandler(
-        sessionRepository: fallbackFailingRepository,
-        prSyncService: FakePrSyncService(
-          refreshAction: () async {
-            refreshStarted.complete();
-            await refreshBlocker.future;
-            refreshReleased.complete();
-          },
-        ),
-        prRefreshTimeout: const Duration(milliseconds: 20),
+        sessionRepository: rereadFailingRepository,
+        prSyncService: FakePrSyncService(),
       );
 
-      final response = timeoutHandler.handle(
+      final result = await timeoutHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
-      await refreshStarted.future;
 
-      try {
-        final result = await response;
-        expect(result.items.single.title, "session one");
-        expect(result.items.single.pullRequest, isNull);
-        expect(result.items.single.pullRequestHistory, isEmpty);
-        expect(fallbackFailingRepository.enrichmentAttempts, 2);
-      } finally {
-        refreshBlocker.complete();
-        await refreshReleased.future;
-        await Future<void>.delayed(Duration.zero);
-      }
+      expect(result.items.single.title, "session one");
+      expect(result.items.single.pullRequest?.number, 95);
+      expect(rereadFailingRepository.enrichmentAttempts, 2);
     });
 
-    test("returns the latest PR-free branch when a refresh fails near the main deadline", () async {
+    test("keeps identity-gated PR data on the latest branch when a refresh fails", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1283,7 +1288,7 @@ void main() {
           prNumber: 100,
           branchName: "feature/failed-refresh",
           url: "https://github.com/org/repo/pull/100",
-          title: "Stale PR",
+          title: "Retained PR",
           state: PrState.open,
           mergeableStatus: PrMergeableStatus.mergeable,
           reviewDecision: PrReviewDecision.approved,
@@ -1296,19 +1301,11 @@ void main() {
         refreshOutcome: PrRefreshOutcome.failed,
         refreshAction: () async {
           sessionDao.setSession(_storedSession(currentBranchName: "feature/new"));
-          await Future<void>.delayed(const Duration(milliseconds: 150));
         },
-      );
-      final delayedFallbackRepository = _DelayedPrFreeEnrichmentSessionRepository(
-        plugin: plugin,
-        sessionDao: sessionDao,
-        pullRequestRepository: pullRequestRepository,
-        persistenceDatabase: db,
-        delay: const Duration(milliseconds: 75),
       );
       const prRefreshTimeout = Duration(milliseconds: 300);
       final failingHandler = GetSessionsHandler(
-        sessionRepository: delayedFallbackRepository,
+        sessionRepository: sessionRepository,
         prSyncService: failedRefresh,
         prRefreshTimeout: prRefreshTimeout,
       );
@@ -1324,13 +1321,12 @@ void main() {
           .timeout(prRefreshTimeout);
 
       expect(result.items.single.branchName, "feature/new");
-      expect(result.items.single.pullRequest, isNull);
-      expect(result.items.single.pullRequestHistory, isEmpty);
-      expect(delayedFallbackRepository.getSessionsCallCount, 1);
-      expect(delayedFallbackRepository.enrichSessionsCallCount, 2);
+      expect(result.items.single.pullRequest?.number, 100);
+      expect(sessionRepository.getSessionsCallCount, 1);
+      expect(sessionRepository.enrichSessionsCallCount, 1);
       expect(failedRefresh.calls.single.refreshPolicy, PrRefreshPolicy.explicit);
     });
-    test("keeps final identity verification inside the waited deadline", () async {
+    test("keeps identity-gated PR data when final identity verification exceeds the deadline", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1379,12 +1375,11 @@ void main() {
         fragment: null,
       );
 
-      expect(result.items.single.pullRequest, isNull);
-      expect(result.items.single.pullRequestHistory, isEmpty);
+      expect(result.items.single.pullRequest?.number, 102);
       await Future<void>.delayed(const Duration(milliseconds: 110));
     });
 
-    test("converts asynchronous refresh errors to a PR-free response", () async {
+    test("keeps identity-gated PR data when the refresh throws asynchronously", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -1395,6 +1390,24 @@ void main() {
           time: null,
         ),
       ];
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          githubRepositoryIdentity: "org/repo",
+          githubLogin: "octocat",
+          prNumber: 103,
+          branchName: "feature/refresh-error",
+          url: "https://github.com/org/repo/pull/103",
+          title: "Retained across refresh error",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
       final failingHandler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: FakePrSyncService(refreshError: StateError("refresh failed")),
@@ -1408,8 +1421,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.items.single.pullRequest, isNull);
-      expect(result.items.single.pullRequestHistory, isEmpty);
+      expect(result.items.single.pullRequest?.number, 103);
     });
 
     test("enriches sessions when PR refresh succeeds within timeout", () async {
@@ -1506,10 +1518,11 @@ final class _IdentityBlockingPrSyncService extends FakePrSyncService {
   }
 }
 
-final class _FallbackFailingSessionRepository extends FakeSessionRepository {
+/// Fails only the post-refresh re-read, keeping the first identity-gated read.
+final class _RereadFailingSessionRepository extends FakeSessionRepository {
   int enrichmentAttempts = 0;
 
-  _FallbackFailingSessionRepository({
+  _RereadFailingSessionRepository({
     required super.plugin,
     required super.sessionDao,
     required super.pullRequestRepository,
@@ -1523,7 +1536,7 @@ final class _FallbackFailingSessionRepository extends FakeSessionRepository {
   }) {
     enrichmentAttempts++;
     if (enrichmentAttempts == 2) {
-      throw StateError("fallback enrichment failed");
+      throw StateError("post-refresh re-read failed");
     }
     return super.enrichSessions(
       sessions: sessions,
@@ -1532,75 +1545,25 @@ final class _FallbackFailingSessionRepository extends FakeSessionRepository {
   }
 }
 
-final class _DelayedPrFreeEnrichmentSessionRepository extends FakeSessionRepository {
-  final Duration delay;
+final class _StalledEnrichmentSessionRepository extends FakeSessionRepository {
+  final Completer<void> enrichmentStarted = Completer<void>();
+  final Completer<List<Session>> _stalled = Completer<List<Session>>();
 
-  _DelayedPrFreeEnrichmentSessionRepository({
+  _StalledEnrichmentSessionRepository({
     required super.plugin,
     required super.sessionDao,
     required super.pullRequestRepository,
     required super.persistenceDatabase,
-    required this.delay,
   });
-
-  @override
-  Future<List<Session>> enrichSessions({
-    required List<Session> sessions,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async {
-    if (verifiedGithubLogin == null) {
-      await Future<void>.delayed(delay);
-    }
-    return super.enrichSessions(
-      sessions: sessions,
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
-  }
-}
-
-final class _FallbackBlockingSessionRepository extends FakeSessionRepository {
-  final String initialBranchName;
-  final Completer<void> fallbackEnrichmentStarted = Completer<void>();
-  final Completer<List<Session>> _stalledFallback = Completer<List<Session>>();
-
-  _FallbackBlockingSessionRepository({
-    required super.plugin,
-    required super.sessionDao,
-    required super.pullRequestRepository,
-    required super.persistenceDatabase,
-    required this.initialBranchName,
-  });
-
-  @override
-  Future<List<Session>> getSessionsForProject({
-    required String projectId,
-    required int? start,
-    required int? limit,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async {
-    final sessions = await super.getSessionsForProject(
-      projectId: projectId,
-      start: start,
-      limit: limit,
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
-    return [
-      for (final session in sessions) session.copyWith(branchName: initialBranchName),
-    ];
-  }
 
   @override
   Future<List<Session>> enrichSessions({
     required List<Session> sessions,
     required VerifiedGithubLogin? verifiedGithubLogin,
   }) {
-    if (verifiedGithubLogin == null) {
-      fallbackEnrichmentStarted.complete();
-      return _stalledFallback.future;
+    if (!enrichmentStarted.isCompleted) {
+      enrichmentStarted.complete();
     }
-    return super.enrichSessions(
-      sessions: sessions,
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
+    return _stalled.future;
   }
 }

@@ -11,8 +11,6 @@ import "request_handler.dart";
 ///
 /// Reads the durable catalog and applies bridge-owned enrichment.
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
-  static const _maximumFallbackReserve = Duration(milliseconds: 100);
-
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
   final Duration _prRefreshTimeout;
@@ -57,117 +55,96 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       verifiedGithubLogin: null,
     );
     final timeoutStopwatch = Stopwatch()..start();
-    final halfRefreshTimeout = Duration(microseconds: _prRefreshTimeout.inMicroseconds ~/ 2);
-    final fallbackReserve = halfRefreshTimeout.compareTo(_maximumFallbackReserve) < 0
-        ? halfRefreshTimeout
-        : _maximumFallbackReserve;
-    final mainDeadline = _prRefreshTimeout - fallbackReserve;
+    final prRefreshFuture = _triggerPrRefresh(
+      projectId: projectId,
+      refreshPolicy: body.waitForPrData ? PrRefreshPolicy.explicit : PrRefreshPolicy.background,
+    );
 
+    final List<Session> identityGatedSessions;
     try {
-      return await _readIdentityGatedPullRequestData(
-        projectId: projectId,
+      identityGatedSessions = await _readIdentityGatedPullRequestData(
         sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
-        waitForPrData: body.waitForPrData,
-      ).timeout(mainDeadline);
-    } on _PrRefreshFailedException {
-      return _buildPrFreeFallbackResponse(
-        sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
-        timeoutStopwatch: timeoutStopwatch,
-      );
+      ).timeout(_prRefreshTimeout);
     } on Object catch (error, stackTrace) {
+      unawaited(prRefreshFuture);
       Log.w(
-        "PR identity-gated read or refresh work failed after waiting up to "
-        "${_prRefreshTimeout.inSeconds}s — returning sessions without cached PR data",
+        "PR identity-gated read did not finish within ${_prRefreshTimeout.inSeconds}s — "
+        "returning sessions without cached PR data",
         error,
         stackTrace,
       );
-      return _buildPrFreeFallbackResponse(
-        sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
-        timeoutStopwatch: timeoutStopwatch,
-      );
-    }
-  }
-
-  Future<SessionListResponse> _readIdentityGatedPullRequestData({
-    required String projectId,
-    required List<Session> sessionsWithoutPullRequestData,
-    required bool waitForPrData,
-  }) async {
-    final prRefreshFuture = _triggerPrRefresh(
-      projectId: projectId,
-      refreshPolicy: waitForPrData ? PrRefreshPolicy.explicit : PrRefreshPolicy.background,
-    );
-    var sessions = sessionsWithoutPullRequestData;
-    final verifiedGithubLogin = await _prSyncService.verifyGithubIdentity();
-    try {
-      sessions = await _sessionRepository.enrichSessions(
-        sessions: sessions,
-        verifiedGithubLogin: verifiedGithubLogin,
-      );
-    } on Object catch (error, stackTrace) {
-      Log.w("GetSessionsHandler: post-publication enrichment failed", error, stackTrace);
+      return SessionListResponse(items: sessionsWithoutPullRequestData);
     }
 
-    if (!waitForPrData) {
+    if (!body.waitForPrData) {
       // COMPATIBILITY 2026-08-01 (v1.6.1): Released clients rely on the
       // non-waiting request to trigger background PR refresh. Remove this path
       // only after those client versions are no longer supported.
       unawaited(prRefreshFuture);
-      return SessionListResponse(items: sessions);
+      return SessionListResponse(items: identityGatedSessions);
     }
 
-    final refreshOutcome = await prRefreshFuture;
-    if (refreshOutcome != PrRefreshOutcome.completed) {
-      throw const _PrRefreshFailedException();
-    }
-
-    // Refresh succeeded within the shared request deadline. Verify identity
-    // again before mapping updated PR/CI metadata from the database.
-    final refreshedGithubLogin = await _prSyncService.verifyGithubIdentity();
-    final enrichedSessions = await _sessionRepository.enrichSessions(
-      sessions: sessions,
-      verifiedGithubLogin: refreshedGithubLogin,
-    );
-    return SessionListResponse(items: enrichedSessions);
-  }
-
-  Future<SessionListResponse> _buildPrFreeFallbackResponse({
-    required List<Session> sessionsWithoutPullRequestData,
-    required Stopwatch timeoutStopwatch,
-  }) async {
-    final fallbackBudget = _remainingBudget(
-      timeoutStopwatch: timeoutStopwatch,
-      deadline: _prRefreshTimeout,
-    );
-    if (fallbackBudget == Duration.zero) {
-      return SessionListResponse(items: sessionsWithoutPullRequestData);
-    }
     return SessionListResponse(
-      items: await _reEnrichWithoutPullRequestData(
-        sessionsWithoutPullRequestData: sessionsWithoutPullRequestData,
-        timeout: fallbackBudget,
+      items: await _awaitRefreshedPullRequestData(
+        prRefreshFuture: prRefreshFuture,
+        identityGatedSessions: identityGatedSessions,
+        deadline: _remainingBudget(timeoutStopwatch: timeoutStopwatch, deadline: _prRefreshTimeout),
       ),
     );
   }
 
-  Future<List<Session>> _reEnrichWithoutPullRequestData({
+  Future<List<Session>> _readIdentityGatedPullRequestData({
     required List<Session> sessionsWithoutPullRequestData,
-    required Duration timeout,
   }) async {
+    final verifiedGithubLogin = await _prSyncService.verifyGithubIdentity();
     try {
+      return await _sessionRepository.enrichSessions(
+        sessions: sessionsWithoutPullRequestData,
+        verifiedGithubLogin: verifiedGithubLogin,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("GetSessionsHandler: post-publication enrichment failed", error, stackTrace);
+      return sessionsWithoutPullRequestData;
+    }
+  }
+
+  /// Waits for the explicit refresh and re-reads PR metadata within [deadline].
+  ///
+  /// A failed, slow, or unreadable refresh keeps [identityGatedSessions] — the
+  /// snapshot this request already read behind a fresh identity check — instead
+  /// of downgrading the response to PR-free data. Discarding it would clear the
+  /// rendered PR status of every session on an explicit pull-to-refresh.
+  Future<List<Session>> _awaitRefreshedPullRequestData({
+    required Future<PrRefreshOutcome> prRefreshFuture,
+    required List<Session> identityGatedSessions,
+    required Duration deadline,
+  }) async {
+    if (deadline == Duration.zero) {
+      unawaited(prRefreshFuture);
+      return identityGatedSessions;
+    }
+    final refreshStopwatch = Stopwatch()..start();
+    try {
+      if (await prRefreshFuture.timeout(deadline) != PrRefreshOutcome.completed) {
+        return identityGatedSessions;
+      }
+      // Refresh succeeded within the shared request deadline. Verify identity
+      // again before mapping updated PR/CI metadata from the database.
+      final refreshedGithubLogin = await _prSyncService.verifyGithubIdentity();
       return await _sessionRepository
           .enrichSessions(
-            sessions: sessionsWithoutPullRequestData,
-            verifiedGithubLogin: null,
+            sessions: identityGatedSessions,
+            verifiedGithubLogin: refreshedGithubLogin,
           )
-          .timeout(timeout);
+          .timeout(_remainingBudget(timeoutStopwatch: refreshStopwatch, deadline: deadline));
     } on Object catch (error, stackTrace) {
       Log.w(
-        "GetSessionsHandler: PR-free fallback enrichment failed; returning the original snapshot",
+        "PR refresh did not produce a readable snapshot within "
+        "${_prRefreshTimeout.inSeconds}s — keeping the identity-gated PR data already read",
         error,
         stackTrace,
       );
-      return sessionsWithoutPullRequestData;
+      return identityGatedSessions;
     }
   }
 
@@ -194,8 +171,4 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       return PrRefreshOutcome.failed;
     }
   }
-}
-
-final class _PrRefreshFailedException implements Exception {
-  const _PrRefreshFailedException();
 }
