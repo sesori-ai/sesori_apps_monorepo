@@ -144,7 +144,9 @@ Tables:
 - `history_sync_state` — PK `{session_id}`; columns `watermark` (ms),
   `backend_activity_at` (ms — the staleness comparison target, advanced only
   by observed backend activity, never by bridge-local metadata writes; see
-  Staleness), `synced_at`.
+  Staleness), `synced_at` (nullable — set only by a completed backfill; a row
+  with null `synced_at` was created by live capture and is not a complete
+  transcript).
 
 Rationale for JSON-in-TEXT over columnar parts: messages and parts are
 display payloads; the only queries are "by session, ordered, paged".
@@ -154,11 +156,15 @@ Persisting the shared wire model (which already has tolerant freezed
 ordering/identity columns are extracted. Precedent:
 `session_options_cache_table`, encode/decode owned by the repository layer.
 
-`seq` assignment: a backfill **atomically replaces** the session's rows and
-numbers messages in transcript order (the backend's authoritative ordering);
-live capture appends `max(seq) + 1` for a new message id and updates in place
-for a known one. Replace-not-merge makes backfill idempotent and keeps keyset
-order consistent regardless of interleaving with live capture.
+`seq` assignment: a backfill transaction **replaces** the session's rows,
+numbering messages in transcript order (the backend's authoritative
+ordering), and **re-appends any already-stored rows absent from the
+transcript** — live events newer than the fetch — above the imported maximum,
+preserving their relative order. Live capture appends `max(seq) + 1` for a
+new message id and updates in place for a known one. Both run through the
+same per-session write queue, so backfill and capture never interleave
+mid-transaction; the re-append rule means no captured message is lost and
+keyset order stays consistent regardless of interleaving.
 
 ### Attachment spill files
 
@@ -226,14 +232,19 @@ plugin fetch goes through the existing `SessionRepository.getSessionMessages`.
    (bridge/app/lib/src/bridge/repositories/mappers/session_event_mapper.dart:155).
    Persists on `message.updated`, `message.part.updated`,
    `message.part.removed`, `message.removed`; ignores deltas. Each applied
-   event advances the session's `watermark`. Writes are upserts keyed by id,
-   serialized per session through a simple sequential queue inside the
-   service; capture never starts a plugin and never blocks the event
-   pipeline. **Failure policy:** a failed capture write is logged with full
-   context and **drops the session's sync row**, so the next read falls back
-   to the plugin and re-backfills — self-healing, no retry queue.
-   Events for a session with no sync row are still applied; the first read
-   reconciles via the staleness check.
+   event advances the session's `watermark` via an upsert on
+   `history_sync_state`: capture **creates the sync row if absent** (with
+   `synced_at` null — rows exist but the session has never been backfilled)
+   and advances `watermark`/`backend_activity_at` on it either way. Only a
+   completed backfill sets `synced_at`; the store is served without a plugin
+   fetch only when `synced_at` is set and the watermark is current, so
+   capture-created rows never masquerade as a complete transcript. Writes
+   are upserts keyed by id, serialized per session through a simple
+   sequential queue inside the service; capture never starts a plugin and
+   never blocks the event pipeline. **Failure policy:** a failed capture
+   write is logged with full context and **clears `synced_at`**, so the next
+   read falls back to the plugin and re-backfills — self-healing, no retry
+   queue.
 2. **Lazy backfill.** On a read where the store is missing or stale (below),
    `ChatHistoryService` calls the existing
    `SessionRepository.getSessionMessages` (the only place that touches the
@@ -243,14 +254,14 @@ plugin fetch goes through the existing `SessionRepository.getSessionMessages`.
    Concurrent reads
    for the same session await the same in-flight backfill future. A backfill
    failure propagates as the same typed error the route returns today (a
-   cache miss must not masquerade as an empty thread) and leaves the sync row
-   absent for retry on next open. An empty transcript **is** a valid synced
+   cache miss must not masquerade as an empty thread) and leaves `synced_at`
+   unset for retry on next open. An empty transcript **is** a valid synced
    state, distinct from failure.
 
 ### Staleness (externally advanced sessions)
 
-Serving prefers the store only when a sync row exists and the `watermark` is
-at or ahead of the session's **backend-activity timestamp**. That timestamp
+Serving prefers the store only when the sync row has `synced_at` set and the
+`watermark` is at or ahead of the session's **backend-activity timestamp**. That timestamp
 is deliberately **not** the catalog `updated_at`: bridge-local metadata
 writes move `updated_at` (`setSessionTitleIfStored` writes `DateTime.now()`
 on rename, `archiveStoredSession` writes the archive time), and comparing
@@ -288,8 +299,11 @@ method (handlers do no file IO, no `fromJson`, no source decision):
 supersedes `SessionIdRequest` for this route; the JSON stays a superset, so
 older peers are unaffected. `MessageWithPartsResponse` gains an optional
 `nextCursor`. Omitted `limit` returns the full transcript (today's
-behavior). A page is the latest `limit` messages at or below the cursor,
-with all their parts, oldest-first within the page.
+behavior). The cursor is **exclusive**: a page is the latest `limit`
+messages with `seq` strictly below `before` (omitted `before` = start from
+the newest), with all their parts, oldest-first within the page.
+`nextCursor` is the oldest returned `seq`, passed back verbatim as the next
+`before` — no boundary duplication, unambiguous page merging.
 
 - Old app + new bridge: no `limit` sent → full transcript, unchanged.
 - New app + old bridge: unknown request fields ignored by generated
@@ -330,10 +344,18 @@ in `SessionLifecycleService`):
    cannot provide history — a failure or an unsupported backend — the export
    **proceeds with whatever the store holds** and the limitation is logged
    with context: archiving never modifies backend storage, so the backend's
-   own copy survives, and refusing to archive would trap the session. On
+   own copy survives, and refusing to archive would trap the session. The
+   envelope records this honestly in a non-null `completeness` enum field
+   (`complete` / `storeOnly` — the backend could not be consulted), so the
+   audit record never silently claims completeness it does not have; the
+   archived read path logs `storeOnly` on access. Surfacing the marker in
+   the client UI is deliberately deferred until evidence it matters. On
    success the repository (via `ArchivedSessionStorage`) writes
-   `archive/<sessionId>.json` atomically and moves the session's spill files
-   to `archive/attachments/<sessionId>/`. Persisted envelope: a freezed
+   `archive/<sessionId>.json` atomically and **copies** the session's spill
+   files to `archive/attachments/<sessionId>/` (idempotent, content-addressed
+   names; the live copies are deleted later by the post-flip purge, so a
+   crash before the flip leaves the active session's spill files intact and
+   attachments keep rendering). Persisted envelope: a freezed
    `ArchivedSessionFileDto` in `bridge/app/lib/src/api/models/` with
    `schemaVersion` (int, 1), `archivedAt` (ms), `session` (a freezed
    `ArchivedSessionSnapshotDto` capturing the main-DB session metadata: ids,
@@ -348,7 +370,8 @@ in `SessionLifecycleService`):
    repository archive flip (`archiveStoredSession`).
 3. **`ChatHistoryService.purgeSessionHistory(...)`** — after the flip; one
    `chat_history.db` transaction deletes the session's messages, parts, and
-   sync row, then the DAO runs `incremental_vacuum`. A purge failure is
+   sync row; the live spill directory is then removed (bytes already copied
+   to the archive) and the DAO runs `incremental_vacuum`. A purge failure is
    logged and left to the startup reconcile; the archive itself has already
    succeeded.
 
@@ -359,12 +382,15 @@ following the `CodexToolOutcomeStorage` pattern
 (bridge/sesori_plugin_codex/lib/src/api/codex_tool_outcome_storage.dart), and
 a v1 fixture round-trip test pins the format.
 
-Ordering guarantees: audit-file write → worktree cleanup → main-DB archive
-flip → DB purge. A crash (or cleanup rejection) after the file write but
-before the flip leaves an orphan audit file for an active session (harmless;
-overwritten on the next archive attempt). A crash after the flip but before
-the purge leaves duplicate data (file + rows), resolved at startup by the
-reconcile service. Bounded transient duplication is accepted.
+Ordering guarantees: audit-file write + spill copy → worktree cleanup →
+main-DB archive flip → DB purge (incl. live spill deletion). A crash (or
+cleanup rejection) after the export but before the flip leaves an orphan
+audit file and duplicated spill bytes for an active session (harmless — the
+live store and its spill files are untouched, attachments keep rendering;
+the next archive attempt overwrites idempotently). A crash after the flip
+but before the purge leaves duplicate data (file + rows + both spill
+copies), resolved at startup by the reconcile service. Bounded transient
+duplication is accepted.
 
 ### Deletion
 
@@ -416,8 +442,8 @@ Introduced in PR step 3 (rows/spills behavior) and extended in step 6
   advanced sessions correct; no per-message reconciliation or content
   hashing. The capture/catalog watermark race is accepted as bounded and
   self-healing (one redundant plugin fetch).
-- Capture-failure handling (drop sync row → re-backfill) replaces any retry
-  queue or export ledger.
+- Capture-failure handling (clear `synced_at` → re-backfill) replaces any
+  retry queue or export ledger.
 - Archive export failure handling is deliberately log-and-proceed because
   backend storage still holds the source; only storage write failures block.
 - Per-session write serialization addresses the ordinary flow of live events
@@ -447,8 +473,8 @@ expected and recorded here as unavoidable.
 | Step | Exact PR title | Estimate | Boundary |
 |---|---|---:|---|
 | 1/8 | `🌱 [internal-chat-history] Raise plan [step 1/8]` | 400–700 | This plan and tracker. |
-| 2/8 | `🚧 [internal-chat-history] Introduce the chat history database [step 2/8]` | 1,500–2,600 | `ChatHistoryDatabase`, tables, DAO, `AttachmentSpillStorage`, `ChatHistoryRepository`, orchestrator wiring and ordered close; production consumer: `SessionDeletionService` purges history/spills for deleted subtrees. |
-| 3/8 | `🚧 [internal-chat-history] Capture live message events and backfill lazily [step 3/8]` | 900–1,400 | `ChatHistoryService` write path + backfill + watermark, `ChatHistoryListener`, `ChatHistoryReconcileService` (rows/spills), failure policies, tests. |
+| 2/8 | `🚧 [internal-chat-history] Introduce the chat history database [step 2/8]` | 1,500–2,600 | `ChatHistoryDatabase`, tables, DAO, `AttachmentSpillStorage`, `ChatHistoryRepository`, the purge surface of `ChatHistoryService` (the single write owner exists from day one), orchestrator wiring and ordered close; production consumer: `SessionDeletionService` purges history/spills for deleted subtrees through `ChatHistoryService`. |
+| 3/8 | `🚧 [internal-chat-history] Capture live message events and backfill lazily [step 3/8]` | 900–1,400 | `ChatHistoryService` capture/backfill/watermark surfaces, `ChatHistoryListener`, `ChatHistoryReconcileService` (rows/spills), failure policies, tests. |
 | 4/8 | `⚙️ [internal-chat-history] Serve session messages from the store [step 4/8]` | 700–1,100 | Store-first serving with staleness fallback; attachment rehydration; wire shape unchanged; empty-vs-error semantics pinned. |
 | 5/8 | `⚙️ [internal-chat-history] Paginate session messages [step 5/8]` | 600–1,000 | `SessionMessagesRequest`/`nextCursor` shared fields, bridge paging over `seq`, compatibility tests both directions. |
 | 6/8 | `🚧 [internal-chat-history] Export archives and purge history on archive [step 6/8]` | 1,000–1,500 | `ArchivedSessionStorage`, export → cleanup → flip → purge sequencing, archived read path (`seq`-cursor from the audit file), incremental vacuum, reconcile audit-file behaviors, delete-path archive cleanup. |
@@ -485,7 +511,7 @@ serves both shapes.
 
 | Risk | Mitigation |
 |---|---|
-| Store silently diverges from backend truth. | Staleness watermark prefers the plugin fetch whenever observed backend activity is ahead; capture write failures drop the sync row forcing re-backfill; backfill replaces rows rather than merging. |
+| Store silently diverges from backend truth. | Staleness watermark prefers the plugin fetch whenever observed backend activity is ahead; capture write failures clear `synced_at` forcing re-backfill; backfill renumbers from the authoritative transcript, re-appending only live rows newer than the fetch. |
 | Archive purge loses the only copy of a transcript. | Export is atomic and committed before purge; archiving never touches backend storage; crash between flip and purge re-purges idempotently with the file already durable. |
 | Archive files unreadable after model evolution. | Payloads are wire-model JSON with the wire's tolerant-reader discipline; `schemaVersion` gates incompatible changes; corrupt files quarantined, not deleted; v1 fixtures pinned by test. |
 | New Drift DB codegen blows up review budget. | Isolated in step 2 with the overage recorded; only delete-purge behavior beyond schema in that PR. |
@@ -513,6 +539,16 @@ serves both shapes.
   reconcile service, the typed freezed archive envelope with quarantine, and
   the dated compatibility comment. Unarchive removal and the read-only gate
   moved to the prerequisite `read-only-archiving` plan per user direction.
+- 2026-08-06 — PR #763 bot review of the revision, six findings applied:
+  backfill re-append semantics restored (live rows absent from the
+  transcript survive above the imported maximum), sync-row lifecycle defined
+  (capture creates rows with null `synced_at`; only backfill sets it;
+  failures clear it), archive envelope gains an honest `completeness`
+  marker for store-only exports, spill files copied at export and deleted
+  at purge (no attachment loss in the pre-flip crash window), exclusive
+  pagination cursor (no boundary duplication), `ChatHistoryService` purge
+  surface moved into step 2 so the single write owner exists before its
+  first consumer.
 - 2026-08-06 — `architecture-plan-review` (sub-agent) of the revised plan
   rejected with five findings: reconcile bypassing the single write owner
   (now mutates through `ChatHistoryService`), staleness compared against a
