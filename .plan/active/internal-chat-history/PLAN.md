@@ -491,7 +491,8 @@ serves both shapes.
 - Per-PR: owning-package tests + analyzer; migration verifier fixtures for
   the new DB (as `bridge/app/test/drift/`); CI runs the matrix.
 - Step 3: capture tests — out-of-order part-before-message arrival, removal,
-  watermark movement, capture-failure sync-row drop; backfill idempotency —
+  watermark movement, capture failure clears `synced_at` while the row and
+  its activity timestamps survive; backfill idempotency —
   transcript via backfill then live events (and reversed) yields identical
   rows and consistent `seq` order; spill idempotence (same bytes → one file).
 - Step 4: golden comparison — store-served response equals plugin-served
