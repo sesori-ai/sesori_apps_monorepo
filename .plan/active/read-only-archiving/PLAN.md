@@ -95,12 +95,15 @@ session detail read-only in the app.
    `SessionService`, and `SessionListCubit`; remove the Unarchive tile-menu
    entry and swipe-pill state; remove the related l10n strings; update
    affected tests.
-2. **Undo machinery fate, explicitly:** `undoLastArchiveAction`,
-   `clearLastActionUndo`, and the `_undoSnapshot` field are deleted from
-   `SessionListCubit` (with archive one-way and unarchive gone, no undo
-   direction remains reachable). `_rollbackLastAction` **survives** — it is
-   still required for optimistic-archive failure rollback
-   (session_list_cubit.dart:408/419). `_showUndoSnackBar` in
+2. **Undo machinery fate, explicitly:** `undoLastArchiveAction` and
+   `clearLastActionUndo` are deleted from `SessionListCubit` (with archive
+   one-way and unarchive gone, no user-facing undo remains).
+   `_rollbackLastAction` **survives** — it is still required for
+   optimistic-archive failure rollback (session_list_cubit.dart:408/419) —
+   and therefore the snapshot it reads survives too: `_undoSnapshot` is
+   renamed to `_lastActionSnapshot` (still written by the archive path at
+   session_list_cubit.dart:383) since its remaining purpose is failure
+   rollback, not undo. `_showUndoSnackBar` in
    `client/app/lib/features/session_list/session_list_actions.dart:95-125`
    is deleted; the archive success path shows a plain confirmation snackbar
    without an undo action.
