@@ -4,18 +4,18 @@
 
 - **Plan slug:** `read-only-archiving`
 - **Implementation base:** `origin/main` at `232974e1`
-- **Series state:** Step 1/4 plan PR in preparation
+- **Series state:** Step 1/4 plan PR open
 - **Current step:** 1/4
-- **Plan PR:** (to be opened)
+- **Plan PR:** [#765](https://github.com/sesori-ai/sesori_apps_monorepo/pull/765)
 - **Relationship:** prerequisite of `internal-chat-history`; that series does
   not start until this one has fully merged.
-- **Next action:** open the step 1/4 plan PR.
+- **Next action:** merge PR #765, then start step 2/4.
 
 ## Delivery Steps
 
 | Done | Step | Exact PR title | State |
 |---|---|---|---|
-| [ ] | 1/4 | `🌱 [read-only-archiving] Raise plan [step 1/4]` | in preparation |
+| [ ] | 1/4 | `🌱 [read-only-archiving] Raise plan [step 1/4]` | [PR #765](https://github.com/sesori-ai/sesori_apps_monorepo/pull/765) open |
 | [ ] | 2/4 | `⚙️ [read-only-archiving] Reject unarchive and delete restore machinery [step 2/4]` | pending |
 | [ ] | 3/4 | `🌿 [read-only-archiving] Enforce read-only archived sessions [step 3/4]` | pending |
 | [ ] | 4/4 | `🌱 [read-only-archiving] Retire plan [step 4/4]` | pending |
