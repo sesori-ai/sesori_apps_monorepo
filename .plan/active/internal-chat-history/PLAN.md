@@ -238,21 +238,20 @@ Wired in `Orchestrator.create()` like existing pairs
 
 ### Archiving (one-way, purge + audit file)
 
-`SessionLifecycleService._doArchive` calls
-`ChatHistoryService.archiveSessionHistory(...)` **before** the repository
-archive flip: export must succeed before the session is marked archived, so an
-archived session always has a valid audit file (archived reads depend on it).
-If export fails, the archive operation fails with a typed error and the
-session stays active with its live-store history intact. The service method
-(no `dart:io` or JSON decoding in `SessionLifecycleService`):
+`ChatHistoryService` exposes two methods, and
+`SessionLifecycleService._doArchive` sequences export → flip → purge (no
+`dart:io` or JSON decoding in `SessionLifecycleService`):
 
-1. Ensures the transcript is complete in the store. If `imported_at` is null,
-   runs the lazy import first (may start the backend one last time). If that
-   import fails, the archive **fails** with a typed error — never write an
-   audit file known to be incomplete, and never purge without an audit file.
-2. Has `ChatHistoryRepository` (via `ArchivedSessionStorage`) write
-   `archived_sessions/<sessionId>.json` atomically. Persisted envelope: a
-   freezed `ArchivedSessionFileDto` in
+1. **`exportSessionHistory(...)`** — called **before** the repository archive
+   flip, so an archived session always has a valid audit file (archived reads
+   depend on it). It first ensures the transcript is complete in the store: if
+   `imported_at` is null, it runs the lazy import (may start the backend one
+   last time). If import or export fails, the archive operation fails with a
+   typed error and the session stays active with its live-store history
+   intact — never write an audit file known to be incomplete, and never purge
+   without an audit file. On success it has `ChatHistoryRepository` (via
+   `ArchivedSessionStorage`) write `archived_sessions/<sessionId>.json`
+   atomically. Persisted envelope: a freezed `ArchivedSessionFileDto` in
    `bridge/app/lib/src/api/models/` with `schemaVersion` (int, 1),
    `archivedAt` (ms), `session` (a freezed `ArchivedSessionSnapshotDto`
    capturing the main-DB session metadata: ids, project, directory, branches,
@@ -264,8 +263,11 @@ session stays active with its live-store history intact. The service method
    part of the audit record. Corrupt-file handling on later reads follows the
    `CodexToolOutcomeStorage` quarantine pattern
    (bridge/sesori_plugin_codex/lib/src/api/codex_tool_outcome_storage.dart).
-3. In one `chat_history.db` transaction deletes the session's messages, parts,
-   attachment rows, and sync row.
+2. The existing repository archive flip (`archiveStoredSession`).
+3. **`purgeSessionHistory(...)`** — called after the flip; in one
+   `chat_history.db` transaction deletes the session's messages, parts,
+   attachment rows, and sync row. A purge failure is logged and left to the
+   startup reconcile; the archive itself has already succeeded.
 
 Best-effort `plugin.archiveSession` stays as today in
 `SessionLifecycleService`.
