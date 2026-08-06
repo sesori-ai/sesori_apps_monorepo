@@ -130,7 +130,9 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       }
       // Refresh succeeded within the shared request deadline. Verify identity
       // again before mapping updated PR/CI metadata from the database.
-      final refreshedGithubLogin = await _prSyncService.verifyGithubIdentity();
+      final refreshedGithubLogin = await _prSyncService.verifyGithubIdentity().timeout(
+        _remainingBudget(timeoutStopwatch: refreshStopwatch, deadline: deadline),
+      );
       return await _sessionRepository
           .enrichSessions(
             sessions: identityGatedSessions,

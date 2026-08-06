@@ -1367,6 +1367,7 @@ void main() {
         prRefreshTimeout: const Duration(milliseconds: 10),
       );
 
+      final elapsed = Stopwatch()..start();
       final result = await boundedHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
@@ -1374,8 +1375,10 @@ void main() {
         queryParams: {},
         fragment: null,
       );
+      elapsed.stop();
 
       expect(result.items.single.pullRequest?.number, 102);
+      expect(elapsed.elapsed, lessThan(const Duration(milliseconds: 100)));
       await Future<void>.delayed(const Duration(milliseconds: 110));
     });
 
