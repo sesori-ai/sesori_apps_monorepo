@@ -173,9 +173,14 @@ re-imports), not content hashes — no dedup machinery.
    in-flight import future. An import failure propagates as the same typed
    error the route returns today (cache miss must not masquerade as an empty
    thread) and leaves `imported_at` null for retry on next open.
-   Sessions already active in the live stream before their import runs are
-   fine: upserts by id make import + live capture idempotent and
-   order-insensitive.
+   Sessions already active in the live stream before their import runs:
+   upserts by id keep rows unique, and the import transaction **reassigns
+   `seq` for the whole session in plugin-returned transcript order** —
+   the transcript is the backend's authoritative ordering and includes any
+   messages live capture already stored. Store rows absent from the
+   transcript (live events newer than the fetch) keep their relative order
+   above the imported maximum. This makes import + live capture idempotent
+   and yields a consistent keyset order regardless of interleaving.
 
 ### Ordering and pagination
 
@@ -234,9 +239,12 @@ Wired in `Orchestrator.create()` like existing pairs
 ### Archiving (one-way, purge + audit file)
 
 `SessionLifecycleService._doArchive` calls
-`ChatHistoryService.archiveSessionHistory(...)` after the existing repository
-archive flip. That service method (no `dart:io` or JSON decoding in
-`SessionLifecycleService`):
+`ChatHistoryService.archiveSessionHistory(...)` **before** the repository
+archive flip: export must succeed before the session is marked archived, so an
+archived session always has a valid audit file (archived reads depend on it).
+If export fails, the archive operation fails with a typed error and the
+session stays active with its live-store history intact. The service method
+(no `dart:io` or JSON decoding in `SessionLifecycleService`):
 
 1. Ensures the transcript is complete in the store. If `imported_at` is null,
    runs the lazy import first (may start the backend one last time). If that
@@ -262,9 +270,12 @@ archive flip. That service method (no `dart:io` or JSON decoding in
 Best-effort `plugin.archiveSession` stays as today in
 `SessionLifecycleService`.
 
-Ordering guarantees: file write happens **before** DB purge. A crash between
-the two leaves duplicate data (file + DB rows), resolved at startup by the
-reconcile service (below). Bounded transient duplication is accepted.
+Ordering guarantees: audit-file write → main-DB archive flip → DB purge. A
+crash after the file write but before the flip leaves an orphan audit file for
+an active session (harmless; overwritten on the next archive attempt). A crash
+after the flip but before the purge leaves duplicate data (file + rows),
+resolved at startup by the reconcile service (below). Bounded transient
+duplication is accepted.
 
 **Archived reads:** handlers call the same `ChatHistoryService` read method;
 it detects the archived state and has `ChatHistoryRepository` load and decode
@@ -289,8 +300,12 @@ cross-store consistency behaviors:
    failed).
 2. Re-purge chat rows for sessions marked archived in the main DB that already
    have a valid audit file (crash between file write and purge).
-3. Delete audit files and attachment directories for sessions with a deletion
-   tombstone (archived session deleted).
+3. Delete audit files and attachment directories whose bridge `sessionId` has
+   no session row in the main DB. Archived sessions keep their metadata row,
+   so a file without a row means the session was deleted (inline cleanup
+   failed or the bridge was down). Deletion tombstones are keyed by backend
+   session id and cannot address these files; existence of the session row is
+   the mapping.
 
 The live session-deletion path also deletes the audit file and attachment
 directory inline via `ChatHistoryRepository`; the reconcile service is the
