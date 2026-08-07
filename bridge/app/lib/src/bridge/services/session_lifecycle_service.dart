@@ -205,10 +205,7 @@ class SessionLifecycleService {
   /// routability requirement: an archived session must still be refused with
   /// the archived rejection when its plugin is stopped.
   Future<ArchiveStatusUpdate> _refuseUnarchive({required String sessionId}) async {
-    final storedSession = await _archivedSessionValidator.requireNotArchived(
-      sessionId: sessionId,
-      operation: SessionOperation.updateSessionArchiveStatus,
-    );
+    final storedSession = await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
     final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
     if (storedSession == null || session == null) {
       throw SessionNotFoundException();

@@ -34,7 +34,7 @@
 ## Verification Log
 
 - 2026-08-07 (step 3/4, after review fixes) — `bridge/app`: analyzer clean,
-  `dart test test/bridge` 1362 passing. `client/module_core`: analyzer clean,
+  `dart test test/bridge` 1363 passing. `client/module_core`: analyzer clean,
   `dart test` 1006 passing. `client/app`: analyzer clean, `flutter test` 915
   passing. Diff stayed under the 1,500-line soft cap, so the bridge/client split
   contingency was not needed.
@@ -45,11 +45,12 @@
 
 ## Findings And Plan Deltas
 
-- 2026-08-07 (step 3/4, review) — `requireNotArchived` also refuses a descendant
-  of an archived root, and takes `operation` back so it can reuse
-  `resolveSessionFamily`. This supersedes the step-2 delta below: archiving a
-  root makes its whole conversation audit-only, and a published client could
-  otherwise still answer a child-owned question on an archived root.
+- 2026-08-07 (step 3/4, review) — `requireNotArchived` refuses when the target
+  **or any ancestor** is archived, walking the parent chain itself rather than
+  checking only the family root. This supersedes the step-2 delta below:
+  archiving a session makes its whole conversation audit-only, and a published
+  client could otherwise still answer a child-owned question on an archived
+  root. The walk keeps the signature at `sessionId` alone.
 - 2026-08-07 (step 3/4, review) — the legacy sessionless question-rejection path
   consults the validator on its resolved owner session. The plan exempted it
   because it "has no session to check", but it does resolve one before acting.

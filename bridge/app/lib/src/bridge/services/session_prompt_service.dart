@@ -70,12 +70,7 @@ class SessionPromptService {
   }) async {
     // Inside the dispatched body, so this cannot race a concurrent archive on
     // the same family lane.
-    await _archivedSessionValidator.requireNotArchived(
-      sessionId: sessionId,
-      operation: normalizedCommand == null || normalizedCommand.isEmpty
-          ? SessionOperation.sendPrompt
-          : SessionOperation.sendCommand,
-    );
+    await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
       await _sessionRepository.sendPrompt(
         sessionId: sessionId,

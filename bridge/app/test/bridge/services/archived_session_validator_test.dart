@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -49,18 +48,18 @@ void main() {
     });
 
     test("allows a session that is not archived", () async {
-      await expectLater(validator.requireNotArchived(sessionId: "s1", operation: SessionOperation.sendPrompt), completes);
+      await expectLater(validator.requireNotArchived(sessionId: "s1"), completes);
     });
 
     test("allows an unknown session so the caller decides on 404", () async {
-      await expectLater(validator.requireNotArchived(sessionId: "missing", operation: SessionOperation.sendPrompt), completes);
+      await expectLater(validator.requireNotArchived(sessionId: "missing"), completes);
     });
 
     test("rejects an archived session with the archived read-only rejection", () async {
       await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
 
       await expectLater(
-        validator.requireNotArchived(sessionId: "s1", operation: SessionOperation.sendPrompt),
+        validator.requireNotArchived(sessionId: "s1"),
         throwsA(
           isA<SessionArchivedReadOnlyException>().having(
             (e) => e.rejection,
@@ -86,7 +85,7 @@ void main() {
       await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
 
       await expectLater(
-        validator.requireNotArchived(sessionId: "child-1", operation: SessionOperation.replyToQuestion),
+        validator.requireNotArchived(sessionId: "child-1"),
         throwsA(
           isA<SessionArchivedReadOnlyException>().having(
             (e) => e.rejection.sessionId,
@@ -108,8 +107,33 @@ void main() {
       );
 
       await expectLater(
-        validator.requireNotArchived(sessionId: "child-1", operation: SessionOperation.replyToQuestion),
+        validator.requireNotArchived(sessionId: "child-1"),
         completes,
+      );
+    });
+    test("rejects a grandchild of an archived intermediate session", () async {
+      await recordSessionBinding(
+        database: db,
+        sessionId: "child-1",
+        backendSessionId: "backend-child-1",
+        pluginId: "fake",
+        projectId: "/repo",
+        parentSessionId: "s1",
+      );
+      await recordSessionBinding(
+        database: db,
+        sessionId: "grandchild-1",
+        backendSessionId: "backend-grandchild-1",
+        pluginId: "fake",
+        projectId: "/repo",
+        parentSessionId: "child-1",
+      );
+      // The archived ancestor is the intermediate, not the root.
+      await db.sessionDao.setArchived(sessionId: "child-1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
+
+      await expectLater(
+        validator.requireNotArchived(sessionId: "grandchild-1"),
+        throwsA(isA<SessionArchivedReadOnlyException>()),
       );
     });
   });
