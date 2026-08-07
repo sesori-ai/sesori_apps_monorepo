@@ -157,6 +157,14 @@ class OpenCodeBridgePlugin implements BridgePlugin {
 
   @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) {
+    // A server this bridge does not own (attach mode, or a degraded start that
+    // never spawned one) outlives the bridge: cancelling its in-flight work
+    // would destroy runs the user expects to continue, and when the server is
+    // unreachable the interruption can only hang until the budget expires.
+    if ((_monitor.currentHandle?.record ?? _ownedRecord) == null) {
+      Log.d("[opencode] server is not bridge-owned; skipping active-work interruption");
+      return Future.value(const <String>{});
+    }
     return api.interruptActiveWork(budget: budget);
   }
 
