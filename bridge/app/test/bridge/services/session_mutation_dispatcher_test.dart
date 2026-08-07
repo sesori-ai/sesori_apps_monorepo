@@ -115,6 +115,7 @@ void main() {
       await dispatcher.deleteSession(
         sessionId: "s1",
         cleanup: () async => CleanupSuccess(),
+        onDeleted: (_) async {},
       );
       await dispatcher.dispose();
       await events;
@@ -122,6 +123,7 @@ void main() {
         () => dispatcher.deleteSession(
           sessionId: "after-dispose",
           cleanup: () async => CleanupSuccess(),
+          onDeleted: (_) async {},
         ),
         throwsStateError,
       );

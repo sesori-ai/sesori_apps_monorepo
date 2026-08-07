@@ -472,7 +472,6 @@ class Orchestrator {
     final sessionDeletionService = SessionDeletionService(
       sessionLifecycleService: sessionLifecycleService,
       sessionMutationDispatcher: sessionMutationDispatcher,
-      sessionRepository: sessionRepository,
       chatHistoryService: chatHistoryService,
     );
     final sessionAbortService = SessionAbortService(

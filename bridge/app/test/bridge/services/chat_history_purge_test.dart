@@ -101,6 +101,40 @@ void main() {
       expect(await database.select(database.historyMessagesTable).get(), isEmpty);
     });
 
+    test("a family is purged in one batch", () async {
+      await seedSession(sessionId: "ses_root");
+      await seedSession(sessionId: "ses_child");
+      await seedSession(sessionId: "ses_other");
+
+      await history.service.purgeSessionsHistory(sessionIds: ["ses_root", "ses_child"]);
+
+      final database = history.database;
+      expect(
+        (await database.select(database.historyMessagesTable).get()).map((row) => row.sessionId),
+        const ["ses_other"],
+      );
+      final spillRoot = Directory(
+        attachmentSpillDirectoryPath(dataDirectory: history.directory.path),
+      );
+      expect(spillRoot.listSync(), hasLength(1));
+    });
+
+    test("an empty batch is a no-op", () async {
+      await seedSession(sessionId: "ses_a");
+
+      await history.service.purgeSessionsHistory(sessionIds: const []);
+
+      final database = history.database;
+      expect(await database.select(database.historyMessagesTable).get(), hasLength(1));
+    });
+
+    test("reading a malformed digest is refused instead of escaping the directory", () async {
+      expect(
+        () => history.spillStorage.read(sessionId: "ses_a", digest: "../../../etc/passwd"),
+        throwsArgumentError,
+      );
+    });
+
     test("identical attachment bytes are stored once per session", () async {
       final bytes = Uint8List.fromList([9, 9, 9]);
       final first = await history.spillStorage.write(sessionId: "ses_a", bytes: bytes);
@@ -112,7 +146,7 @@ void main() {
       );
       expect(spillRoot.listSync().single, isA<Directory>());
       expect(await history.spillStorage.read(sessionId: "ses_a", digest: first), bytes);
-      expect(await history.spillStorage.read(sessionId: "ses_a", digest: "missing"), isNull);
+      expect(await history.spillStorage.read(sessionId: "ses_a", digest: "0" * 64), isNull);
     });
   });
 }

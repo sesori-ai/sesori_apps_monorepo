@@ -6,6 +6,7 @@ import "package:path/path.dart" as path;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../data_directory_hardening.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
@@ -288,28 +289,10 @@ class AppDatabase extends _$AppDatabase {
   );
 
   static AppDatabase create({required String dataDirectory}) {
-    final dbDir = Directory(dataDirectory);
-    if (!dbDir.existsSync()) {
-      dbDir.createSync(recursive: true);
-    }
-    if (!Platform.isWindows) {
-      _setUnixMode(targetPath: dbDir.path, mode: "700");
-    }
-    final dbFile = File(path.join(dbDir.path, "sesori.db"));
-    if (!Platform.isWindows) {
-      if (!dbFile.existsSync()) {
-        dbFile.createSync();
-      }
-      _setUnixMode(targetPath: dbFile.path, mode: "600");
-    }
-    return openFile(file: dbFile);
-  }
-
-  static void _setUnixMode({required String targetPath, required String mode}) {
-    final result = Process.runSync("chmod", [mode, targetPath]);
-    if (result.exitCode != 0) {
-      throw FileSystemException("Failed to set mode $mode", targetPath);
-    }
+    final directory = createHardenedDirectory(directoryPath: dataDirectory);
+    return openFile(
+      file: createHardenedFile(filePath: path.join(directory.path, "sesori.db")),
+    );
   }
 
   static AppDatabase openFile({required File file}) {

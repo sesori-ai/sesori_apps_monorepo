@@ -63,6 +63,9 @@ typedef SessionBindingsCommitted = ({
 
 typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 
+/// The deleted root as clients see it, plus every session id removed with it.
+typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
+
 class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
@@ -494,7 +497,11 @@ class SessionRepository {
 
   /// Deletes the backend root, then tombstones every persisted binding in its
   /// subtree and removes the stable root atomically.
-  Future<Session> deleteSession({required String sessionId}) async {
+  ///
+  /// Returns the deleted root snapshot plus the exact set of session ids the
+  /// deletion removed, so per-session cleanup outside this repository operates
+  /// on what was actually deleted rather than on an earlier snapshot.
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async {
     final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
@@ -531,7 +538,10 @@ class SessionRepository {
     for (final binding in subtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
     }
-    return deletionSnapshot;
+    return (
+      session: deletionSnapshot,
+      sessionIds: [for (final binding in subtree) binding.sessionId],
+    );
   }
 
   Future<List<SessionDto>> _getSessionSubtree({required SessionDto root}) async {

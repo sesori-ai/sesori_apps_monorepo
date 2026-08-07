@@ -813,7 +813,7 @@ class BridgeRuntimeRunner {
         directoryPath: attachmentSpillDirectoryPath(
           dataDirectory: options.dataDirectory,
         ),
-      );
+      )..ensureDirectory();
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
         config: BridgeConfig(

@@ -764,7 +764,10 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   }) async => const <String>{};
 }
 
-Session _deletedSession(String sessionId) => Session(
+DeletedSessionSubtree _deletedSession(String sessionId) =>
+    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
+
+Session _deletedSessionInfo(String sessionId) => Session(
   branchName: null,
   id: sessionId,
   pluginId: "fake",
@@ -838,7 +841,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
-  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
@@ -1120,7 +1123,7 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;

@@ -11,12 +11,13 @@ part "chat_history_dao.g.dart";
 class ChatHistoryDao extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHistoryDaoMixin {
   ChatHistoryDao(super.attachedDatabase);
 
-  /// Removes every stored row for [sessionId] in one transaction.
-  Future<void> deleteSessionRows({required String sessionId}) {
+  /// Removes every stored row for [sessionIds] in one transaction.
+  Future<void> deleteSessionRows({required List<String> sessionIds}) {
+    if (sessionIds.isEmpty) return Future<void>.value();
     return transaction(() async {
-      await (delete(historyPartsTable)..where((table) => table.sessionId.equals(sessionId))).go();
-      await (delete(historyMessagesTable)..where((table) => table.sessionId.equals(sessionId))).go();
-      await (delete(historySyncStateTable)..where((table) => table.sessionId.equals(sessionId))).go();
+      await (delete(historyPartsTable)..where((table) => table.sessionId.isIn(sessionIds))).go();
+      await (delete(historyMessagesTable)..where((table) => table.sessionId.isIn(sessionIds))).go();
+      await (delete(historySyncStateTable)..where((table) => table.sessionId.isIn(sessionIds))).go();
     });
   }
 

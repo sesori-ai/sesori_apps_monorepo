@@ -146,7 +146,8 @@ void main() {
 
       final deleted = await repository.deleteSession(sessionId: "sess-tomb");
 
-      expect(deleted.pluginId, equals(plugin.id));
+      expect(deleted.session.pluginId, equals(plugin.id));
+      expect(deleted.sessionIds, contains("sess-tomb"));
       expect(await repository.isSessionTombstoned(sessionId: "sess-tomb"), isTrue);
       expect(await db.sessionDao.getSession(sessionId: "sess-tomb"), isNull);
       expect(

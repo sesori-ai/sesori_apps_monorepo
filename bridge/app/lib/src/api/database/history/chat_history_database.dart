@@ -4,6 +4,7 @@ import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as path;
 
+import "../../data_directory_hardening.dart";
 import "chat_history_dao.dart";
 import "tables/history_messages_table.dart";
 import "tables/history_parts_table.dart";
@@ -38,31 +39,13 @@ class ChatHistoryDatabase extends _$ChatHistoryDatabase {
   );
 
   static ChatHistoryDatabase create({required String dataDirectory}) {
-    final dbDir = Directory(dataDirectory);
-    if (!dbDir.existsSync()) {
-      dbDir.createSync(recursive: true);
-    }
-    if (!Platform.isWindows) {
-      _setUnixMode(targetPath: dbDir.path, mode: "700");
-    }
-    final dbFile = File(path.join(dbDir.path, "chat_history.db"));
-    if (!Platform.isWindows) {
-      if (!dbFile.existsSync()) {
-        dbFile.createSync();
-      }
-      _setUnixMode(targetPath: dbFile.path, mode: "600");
-    }
-    return openFile(file: dbFile);
+    final directory = createHardenedDirectory(directoryPath: dataDirectory);
+    return _openFile(
+      file: createHardenedFile(filePath: path.join(directory.path, "chat_history.db")),
+    );
   }
 
-  static void _setUnixMode({required String targetPath, required String mode}) {
-    final result = Process.runSync("chmod", [mode, targetPath]);
-    if (result.exitCode != 0) {
-      throw FileSystemException("Failed to set mode $mode", targetPath);
-    }
-  }
-
-  static ChatHistoryDatabase openFile({required File file}) {
+  static ChatHistoryDatabase _openFile({required File file}) {
     return ChatHistoryDatabase(
       NativeDatabase.createInBackground(
         file,

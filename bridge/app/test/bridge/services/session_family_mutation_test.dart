@@ -234,7 +234,6 @@ class _Fixture {
     deletions = SessionDeletionService(
       sessionLifecycleService: lifecycle,
       sessionMutationDispatcher: mutations,
-      sessionRepository: repository,
       chatHistoryService: chatHistory.service,
     );
   }
@@ -337,7 +336,7 @@ class _FamilyRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> deleteSession({required String sessionId}) async {
+  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async {
     deleteCalls++;
     if (!deleteStarted.isCompleted) deleteStarted.complete();
     final snapshot = _sessions[sessionId];
@@ -347,8 +346,12 @@ class _FamilyRepository implements SessionRepository {
     if (!_sessions.containsKey(sessionId)) {
       throw _notFound(sessionId: sessionId, operation: SessionOperation.deleteSession);
     }
+    final removed = [
+      for (final record in _sessions.values)
+        if (record.rootId == sessionId || record.id == sessionId) record.id,
+    ];
     _sessions.removeWhere((_, record) => record.rootId == sessionId || record.id == sessionId);
-    return snapshot.session;
+    return (session: snapshot.session, sessionIds: removed);
   }
 
   @override

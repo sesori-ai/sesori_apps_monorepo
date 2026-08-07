@@ -15,22 +15,39 @@ class ChatHistoryService {
 
   /// Removes the session's stored transcript and attachment bytes.
   Future<void> purgeSessionHistory({required String sessionId}) {
-    return _enqueue(
-      sessionId: sessionId,
-      write: () => _chatHistoryRepository.purgeSession(sessionId: sessionId),
+    return purgeSessionsHistory(sessionIds: [sessionId]);
+  }
+
+  /// Removes stored history for a whole session family in one pass.
+  ///
+  /// The batch is serialized behind every listed session's write queue, so no
+  /// concurrent capture can re-create rows the purge is removing.
+  Future<void> purgeSessionsHistory({required List<String> sessionIds}) {
+    if (sessionIds.isEmpty) return Future<void>.value();
+    return _enqueueAll(
+      sessionIds: sessionIds,
+      write: () => _chatHistoryRepository.purgeSessions(sessionIds: sessionIds),
     );
   }
 
-  Future<void> _enqueue({required String sessionId, required Future<void> Function() write}) {
-    final pending = _writeQueues[sessionId] ?? Future<void>.value();
+  /// Runs [write] after every listed session's pending writes, and makes it
+  /// the new tail for all of them.
+  Future<void> _enqueueAll({required List<String> sessionIds, required Future<void> Function() write}) {
+    final pending = Future.wait([
+      for (final sessionId in sessionIds) _writeQueues[sessionId] ?? Future<void>.value(),
+    ]);
     final result = pending.then((_) => write());
     // The queue continues from a swallowed copy so one failed write does not
     // poison later writes for the session; the caller still sees the error.
     final tail = result.then<void>((_) {}, onError: (Object _) {});
-    _writeQueues[sessionId] = tail;
+    for (final sessionId in sessionIds) {
+      _writeQueues[sessionId] = tail;
+    }
     unawaited(
       tail.whenComplete(() {
-        if (identical(_writeQueues[sessionId], tail)) _writeQueues.remove(sessionId);
+        for (final sessionId in sessionIds) {
+          if (identical(_writeQueues[sessionId], tail)) _writeQueues.remove(sessionId);
+        }
       }),
     );
     return result;

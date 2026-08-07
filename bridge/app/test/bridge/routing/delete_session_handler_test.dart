@@ -66,7 +66,6 @@ void main() {
         sessionDeletionService: SessionDeletionService(
           sessionLifecycleService: sessionLifecycleService,
           sessionMutationDispatcher: sessionMutationDispatcher,
-          sessionRepository: sessionRepository,
           chatHistoryService: chatHistory.service,
         ),
       );
