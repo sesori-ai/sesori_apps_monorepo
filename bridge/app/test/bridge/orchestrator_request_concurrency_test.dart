@@ -17,6 +17,7 @@ import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
+import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
@@ -296,6 +297,7 @@ class _ConcurrencyHarness {
     );
     final restartService = _RecordingRestartService(relayClient: relayClient);
     final failureReporter = FakeFailureReporter();
+    final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -310,6 +312,8 @@ class _ConcurrencyHarness {
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
@@ -323,6 +327,7 @@ class _ConcurrencyHarness {
     ).create();
     final runtime = BridgeRuntime(
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
       failureReporter: failureReporter,
       composition: composition,
     );

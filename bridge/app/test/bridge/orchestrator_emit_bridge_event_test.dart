@@ -19,6 +19,7 @@ import "package:test/test.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/restart_test_support.dart";
+import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
@@ -850,6 +851,7 @@ class _OrchestratorHarness {
     final httpClient = http.Client();
     final failureReporter = FakeFailureReporter();
     final restartService = buildTestRestartService();
+    final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       config: BridgeConfig(
         relayURL: relayUrl,
@@ -868,6 +870,8 @@ class _OrchestratorHarness {
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
       clock: const ServerClock(),
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
+      attachmentSpillStorage: testChatHistory.spillStorage,
       httpClient: httpClient,
       processRunner: NoopProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
@@ -881,6 +885,7 @@ class _OrchestratorHarness {
     ).create();
     final runtime = BridgeRuntime(
       database: database,
+      chatHistoryDatabase: testChatHistory.database,
       failureReporter: failureReporter,
       composition: composition,
     );

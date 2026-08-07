@@ -911,6 +911,8 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async => [sessionId];
+  @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
       const <StoredSession>[];
   @override
@@ -1328,6 +1330,12 @@ class FakeSessionRepository implements SessionRepository {
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     final pluginSessions = await _plugin.getChildSessions(sessionId);
     return pluginSessions.map((s) => s.toSharedSession(pluginId: _plugin.id)).toList();
+  }
+
+  @override
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
+    final stored = await _sessionDao.getSession(sessionId: sessionId);
+    return stored == null ? const [] : [sessionId];
   }
 
   @override

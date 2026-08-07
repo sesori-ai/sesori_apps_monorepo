@@ -19,6 +19,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -31,6 +32,7 @@ void main() {
     late SessionMutationDispatcher sessionMutationDispatcher;
     late DeleteSessionHandler handler;
     late List<String> operationLog;
+    late TestChatHistory chatHistory;
 
     setUp(() {
       db = createTestDatabase();
@@ -59,10 +61,13 @@ void main() {
         sessionOperationDispatcher: sessionOperationDispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
       );
+      chatHistory = createTestChatHistory();
       handler = DeleteSessionHandler(
         sessionDeletionService: SessionDeletionService(
           sessionLifecycleService: sessionLifecycleService,
           sessionMutationDispatcher: sessionMutationDispatcher,
+          sessionRepository: sessionRepository,
+          chatHistoryService: chatHistory.service,
         ),
       );
     });

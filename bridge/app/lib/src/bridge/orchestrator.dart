@@ -11,8 +11,10 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/attachment_spill_storage.dart";
 import "../api/database/daos/session_options_cache_dao.dart";
 import "../api/database/database.dart";
+import "../api/database/history/chat_history_database.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
@@ -62,6 +64,7 @@ import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
+import "repositories/chat_history_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
@@ -122,6 +125,7 @@ import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
 import "services/archived_session_validator.dart";
+import "services/chat_history_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
@@ -170,6 +174,8 @@ class Orchestrator {
   final BridgeSettingsRepository _bridgeSettingsRepository;
   final ServerClock _clock;
   final AppDatabase _database;
+  final ChatHistoryDatabase _chatHistoryDatabase;
+  final AttachmentSpillStorage _attachmentSpillStorage;
   final http.Client _httpClient;
   final ProcessRunner _processRunner;
   final AccessTokenProvider _accessTokenProvider;
@@ -190,6 +196,8 @@ class Orchestrator {
     required BridgeSettingsRepository bridgeSettingsRepository,
     required ServerClock clock,
     required AppDatabase database,
+    required ChatHistoryDatabase chatHistoryDatabase,
+    required AttachmentSpillStorage attachmentSpillStorage,
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required AccessTokenProvider accessTokenProvider,
@@ -209,6 +217,8 @@ class Orchestrator {
        _bridgeSettingsRepository = bridgeSettingsRepository,
        _clock = clock,
        _database = database,
+       _chatHistoryDatabase = chatHistoryDatabase,
+       _attachmentSpillStorage = attachmentSpillStorage,
        _httpClient = httpClient,
        _processRunner = processRunner,
        _accessTokenProvider = accessTokenProvider,
@@ -453,9 +463,17 @@ class Orchestrator {
       sessionOperationDispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
     );
+    final chatHistoryService = ChatHistoryService(
+      chatHistoryRepository: ChatHistoryRepository(
+        chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
+        attachmentSpillStorage: _attachmentSpillStorage,
+      ),
+    );
     final sessionDeletionService = SessionDeletionService(
       sessionLifecycleService: sessionLifecycleService,
       sessionMutationDispatcher: sessionMutationDispatcher,
+      sessionRepository: sessionRepository,
+      chatHistoryService: chatHistoryService,
     );
     final sessionAbortService = SessionAbortService(
       sessionRepository: sessionRepository,

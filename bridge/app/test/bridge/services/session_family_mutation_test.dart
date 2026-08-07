@@ -15,6 +15,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_chat_history.dart";
+
 void main() {
   group("session family mutations", () {
     late _Fixture fixture;
@@ -211,6 +213,7 @@ class _Fixture {
   late final _FamilyWorktreeService worktree;
   late final SessionLifecycleService lifecycle;
   late final SessionDeletionService deletions;
+  late final TestChatHistory chatHistory;
 
   _Fixture() {
     repository = _FamilyRepository();
@@ -227,9 +230,12 @@ class _Fixture {
       sessionOperationDispatcher: operations,
       archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
     );
+    chatHistory = createTestChatHistory();
     deletions = SessionDeletionService(
       sessionLifecycleService: lifecycle,
       sessionMutationDispatcher: mutations,
+      sessionRepository: repository,
+      chatHistoryService: chatHistory.service,
     );
   }
 
@@ -354,6 +360,12 @@ class _FamilyRepository implements SessionRepository {
     if (record == null) throw _notFound(sessionId: sessionId, operation: operation);
     return record.stored;
   }
+
+  @override
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async => [
+    for (final record in _sessions.values)
+      if (record.id == sessionId || record.rootId == sessionId) record.id,
+  ];
 
   @override
   Future<bool> hasOtherActiveSessionsSharing({

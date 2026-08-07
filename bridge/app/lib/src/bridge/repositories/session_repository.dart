@@ -1086,6 +1086,17 @@ class SessionRepository {
     );
   }
 
+  /// The session and every descendant it would take with it on deletion.
+  ///
+  /// Empty when no such session is stored, so callers preparing per-session
+  /// cleanup do not have to distinguish "gone already" from "no children".
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
+    final root = await _sessionDao.getSession(sessionId: sessionId);
+    if (root == null) return const [];
+    final subtree = await _getSessionSubtree(root: root);
+    return [for (final binding in subtree) binding.sessionId];
+  }
+
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
     return sessions.map((session) => session.toStoredSession()).toList(growable: false);

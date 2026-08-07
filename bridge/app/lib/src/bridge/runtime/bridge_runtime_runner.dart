@@ -22,9 +22,11 @@ import "package:sesori_shared/sesori_shared.dart"
     show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo, legacyMissingPluginId;
 
 import "../../api/app_onboarding_state_storage.dart";
+import "../../api/attachment_spill_storage.dart";
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
 import "../../api/database/database.dart";
+import "../../api/database/history/chat_history_database.dart";
 import "../../api/sesori_server_api.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_id_migration_service.dart";
@@ -804,6 +806,14 @@ class BridgeRuntimeRunner {
       final database = AppDatabase.create(
         dataDirectory: options.dataDirectory,
       );
+      final chatHistoryDatabase = ChatHistoryDatabase.create(
+        dataDirectory: options.dataDirectory,
+      );
+      final attachmentSpillStorage = AttachmentSpillStorage(
+        directoryPath: attachmentSpillDirectoryPath(
+          dataDirectory: options.dataDirectory,
+        ),
+      );
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
         config: BridgeConfig(
@@ -819,6 +829,8 @@ class BridgeRuntimeRunner {
         bridgeSettingsRepository: bridgeSettingsRepository,
         clock: serverClock,
         database: database,
+        chatHistoryDatabase: chatHistoryDatabase,
+        attachmentSpillStorage: attachmentSpillStorage,
         httpClient: httpClient,
         processRunner: processRunner,
         accessTokenProvider: accessTokenProvider,
@@ -832,6 +844,7 @@ class BridgeRuntimeRunner {
       ).create();
       runtime = BridgeRuntime(
         database: database,
+        chatHistoryDatabase: chatHistoryDatabase,
         failureReporter: failureReporter,
         composition: composition,
       );

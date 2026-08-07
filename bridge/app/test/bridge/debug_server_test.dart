@@ -33,6 +33,7 @@ import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/restart_test_support.dart";
+import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 
@@ -48,6 +49,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
   final relayUrl = "ws://127.0.0.1:${relayServer.port}";
   final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
   final effectiveRestartService = restartService ?? buildTestRestartService();
+  final testChatHistory = createTestChatHistory();
   final composition = Orchestrator(
     config: BridgeConfig(
       relayURL: relayUrl,
@@ -66,6 +68,8 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
     clock: const ServerClock(),
     database: db,
+    chatHistoryDatabase: testChatHistory.database,
+    attachmentSpillStorage: testChatHistory.spillStorage,
     httpClient: httpClient,
     processRunner: ProcessRunner(),
     accessTokenProvider: FakeAccessTokenProvider(),
@@ -79,6 +83,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
   ).create();
   final runtime = BridgeRuntime(
     database: db,
+    chatHistoryDatabase: testChatHistory.database,
     failureReporter: failureReporter,
     composition: composition,
   );

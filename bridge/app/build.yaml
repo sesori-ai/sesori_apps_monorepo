@@ -14,4 +14,5 @@ targets:
         options:
           databases:
             default: lib/src/api/database/database.dart
+            chat_history: lib/src/api/database/history/chat_history_database.dart
           write_to_columns_mixins: true

@@ -3,20 +3,20 @@
 ## Current State
 
 - **Plan slug:** `internal-chat-history`
-- **Implementation base:** `origin/main` at `b710f0df`
-- **Series state:** Step 1/8 merged; implementation not started
+- **Implementation base:** `origin/main` at `5653be1b`
+- **Series state:** Step 2/8 in PR; step 3/8 implemented locally
 - **Current step:** 2/8
 - **Plan PR:** [#763](https://github.com/sesori-ai/sesori_apps_monorepo/pull/763) merged
 - **Prerequisite:** satisfied — the `read-only-archiving` series merged fully on
-  2026-08-07 (through [PR #770](https://github.com/sesori-ai/sesori_apps_monorepo/pull/770)).
-- **Next action:** start step 2/8.
+  2026-08-07 (through [PR #771](https://github.com/sesori-ai/sesori_apps_monorepo/pull/771)).
+- **Next action:** merge PR #768, then raise step 3/8.
 
 ## Delivery Steps
 
 | Done | Step | Exact PR title | Estimate | State |
 |---|---|---|---:|---|
 | [x] | 1/8 | `🌱 [internal-chat-history] Raise plan [step 1/8]` | 400–700 | [PR #763](https://github.com/sesori-ai/sesori_apps_monorepo/pull/763) merged |
-| [ ] | 2/8 | `🚧 [internal-chat-history] Introduce the chat history database [step 2/8]` | 1,500–2,600 | pending |
+| [ ] | 2/8 | `🚧 [internal-chat-history] Introduce the chat history database [step 2/8]` | 1,500–2,600 | [PR #768](https://github.com/sesori-ai/sesori_apps_monorepo/pull/768) open |
 | [ ] | 3/8 | `🚧 [internal-chat-history] Capture live message events and backfill lazily [step 3/8]` | 900–1,400 | pending |
 | [ ] | 4/8 | `⚙️ [internal-chat-history] Serve session messages from the store [step 4/8]` | 700–1,100 | pending |
 | [ ] | 5/8 | `⚙️ [internal-chat-history] Paginate session messages [step 5/8]` | 600–1,000 | pending |
@@ -28,7 +28,8 @@
 
 - Merge in numeric order; each PR must remain independently valid at its own
   base. A successor may target its open predecessor.
-- The `read-only-archiving` prerequisite has merged, so step 2/8 is unblocked.
+- The `read-only-archiving` prerequisite has merged fully, so no step in this
+  series is blocked on it.
 - Count additions plus deletions (including generated code and tests) against
   the 1,500-line soft cap; the step 2 overage from new-database codegen is
   pre-recorded in `PLAN.md`.
@@ -42,7 +43,9 @@
 
 ## Verification Log
 
-- (empty)
+- **2026-08-07 — step 2/8:** `dart analyze --fatal-infos` clean in `bridge/app`;
+  `dart test` in `bridge/app` green (2,440 tests), including the new
+  `chat_history_purge_test.dart`.
 
 ## Findings And Plan Deltas
 
@@ -54,3 +57,8 @@
 - **2026-08-06 — Unarchive removal split out** into the prerequisite
   `read-only-archiving` plan per user direction; this series no longer
   contains unarchive or read-only-gate work.
+- **2026-08-07 — Prerequisite narrowed.** The dependency is real only for
+  step 6/8 (archive export and purge), which re-sequences `_doArchive` and
+  relies on archive permanence. Steps 2/8–5/8 touch none of the archiving
+  code, so the two series run in parallel. Recorded after the user started
+  `read-only-archiving` separately.
