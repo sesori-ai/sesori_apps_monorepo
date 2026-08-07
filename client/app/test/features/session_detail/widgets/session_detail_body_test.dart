@@ -347,6 +347,24 @@ void main() {
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
   });
 
+  testWidgets("an archived session is read-only: no composer, no pending banners", (tester) async {
+    // Archiving is permanent, so an archived session is audit-only.
+    final state = _loadedState(
+      pendingQuestions: const [_question],
+      pendingPermissions: const [_permission],
+    ).copyWith(isArchived: true);
+    when(() => cubit.state).thenReturn(state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PromptInput), findsNothing);
+    expect(find.text("This session is archived and read-only."), findsOneWidget);
+    // Pending requests can never be answered on an archived session.
+    expect(find.text("1 pending question"), findsNothing);
+    expect(find.text("1 permission request pending"), findsNothing);
+  });
+
   testWidgets("closes an open question when it leaves pending state", (tester) async {
     final questions = StreamController<SesoriQuestionAsked>.broadcast();
     final states = StreamController<SessionDetailState>.broadcast();

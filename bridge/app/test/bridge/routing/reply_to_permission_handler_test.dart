@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/routing/reply_to_permission_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -33,6 +35,34 @@ void main() {
     tearDown(() async {
       await plugin.close();
       await db.close();
+    });
+
+    test("returns 409 with the archived rejection body for an archived session", () async {
+      await db.sessionDao.setArchived(sessionId: "ses-456", archivedAt: 7, updatedAt: 7, projectionUpdatedAt: 7);
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/permission/reply",
+          body: jsonEncode(
+            const ReplyToPermissionRequest(
+              requestId: "perm-123",
+              sessionId: "ses-456",
+              reply: PermissionReply.once,
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 409);
+      expect(
+        SessionArchivedRejection.fromJson(jsonDecodeMap(response.body ?? "")),
+        const SessionArchivedRejection(sessionId: "ses-456", reason: SessionArchivedReason.archivedReadOnly),
+      );
+      expect(plugin.lastReplyToPermissionRequestId, isNull);
     });
 
     test("canHandle POST /permission/reply", () {

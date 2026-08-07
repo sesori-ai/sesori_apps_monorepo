@@ -7,7 +7,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../l10n/app_localizations.dart";
@@ -47,15 +46,19 @@ class SessionListActionDispatcher {
         isSelected: false,
         onTap: () => handleSessionToggleUnread(context: context, session: session),
       ),
-      PregoMenuItem(
-        leadingIcon: isArchived ? TablerRegular.archive_off : TablerRegular.archive,
-        title: isArchived ? loc.sessionListUnarchive : loc.sessionListArchive,
-        subtitle: null,
-        isSelected: false,
-        onTap: () => handleSessionArchive(context: context, session: session),
-      ),
-      // Delete is the only entry here that destroys work the user cannot get
-      // back — archiving is reversible — so it is set apart and tinted.
+      // Archiving is permanent, so an already-archived row has no archive
+      // action left to offer.
+      if (!isArchived)
+        PregoMenuItem(
+          leadingIcon: TablerRegular.archive,
+          title: loc.sessionListArchive,
+          subtitle: null,
+          isSelected: false,
+          onTap: () => handleSessionArchive(context: context, session: session),
+        ),
+      // Delete is the only entry here that also destroys the work itself —
+      // archiving is permanent but keeps the session readable — so it is set
+      // apart and tinted.
       const PregoMenuDivider(),
       PregoMenuItem(
         leadingIcon: TablerRegular.trash,
@@ -68,15 +71,10 @@ class SessionListActionDispatcher {
     ];
   }
 
-  /// Archives — or unarchives — [session], from the row's trailing swipe pill
-  /// or its full-swipe commit.
+  /// Archives [session], from the row's trailing swipe pill or its full-swipe
+  /// commit.
   void handleSessionArchive({required BuildContext context, required Session session}) {
-    final cubit = context.read<SessionListCubit>();
-    if (session.time?.archived != null) {
-      _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
-    } else {
-      _showArchiveSheet(context: context, cubit: cubit, session: session);
-    }
+    _showArchiveSheet(context: context, cubit: context.read<SessionListCubit>(), session: session);
   }
 
   /// Deletes [session] behind the same confirmation flow as the menu entry,

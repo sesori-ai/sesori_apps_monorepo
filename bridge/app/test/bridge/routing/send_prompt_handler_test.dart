@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -617,6 +618,7 @@ SessionPromptService _buildPromptService(SessionRepository repository) {
   final service = SessionPromptService(
     sessionRepository: repository,
     dispatcher: dispatcher,
+    archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
   );
   addTearDown(dispatcher.dispose);
   addTearDown(service.dispose);

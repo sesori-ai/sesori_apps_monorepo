@@ -142,7 +142,11 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (state.isRefreshing) const LinearProgressIndicator(),
-              if (state.pendingQuestions.isNotEmpty)
+              // Archiving is permanent, so this session is audit-only: say so
+              // where the composer used to be, and drop the pending banners —
+              // an archived session's requests can never be answered.
+              if (state.isArchived) const SessionDetailArchivedNotice(),
+              if (!state.isArchived && state.pendingQuestions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.help_outline,
                   backgroundColor: context.prego.colors.bgBrandPrimary,
@@ -150,7 +154,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                   label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
                   onTap: widget.onShowPendingQuestions,
                 ),
-              if (state.pendingPermissions.isNotEmpty)
+              if (!state.isArchived && state.pendingPermissions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.shield_outlined,
                   backgroundColor: context.prego.colors.bgSuccessPrimary,

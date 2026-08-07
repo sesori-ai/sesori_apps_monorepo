@@ -162,7 +162,7 @@ Kept: `archived_at` column and `idx_sessions_archive` (archived listing);
 |---|---|---|
 | 1/4 | `🌱 [read-only-archiving] Raise plan [step 1/4]` | This plan and tracker. |
 | 2/4 | `⚙️ [read-only-archiving] Reject unarchive and delete restore machinery [step 2/4]` | `ArchivedSessionValidator` + `SessionArchivedRejection` shared model, lifecycle-service consultation, handler mapping, full unarchive-vertical deletion, mis-parse pin test. |
-| 3/4 | `🌿 [read-only-archiving] Enforce read-only archived sessions [step 3/4]` | Prompt/question/permission enforcement via the validator (bridge), client unarchive-UI and undo removal, permanent-archive copy, read-only archived detail (cubit refusal + widget presentation), l10n, tests. |
+| 3/4 | `⚙️ [read-only-archiving] Enforce read-only archived sessions [step 3/4]` | Prompt/question/permission enforcement via the validator (bridge), client unarchive-UI and undo removal, permanent-archive copy, read-only archived detail (cubit refusal + widget presentation), l10n, tests. |
 | 4/4 | `🌱 [read-only-archiving] Retire plan [step 4/4]` | Move plan to `.plan/completed/`. |
 
 Step 3 spans bridge and client; if it trends past the 1,500-line soft cap it

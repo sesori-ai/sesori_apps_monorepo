@@ -28,10 +28,6 @@ class SessionRepository {
     );
   }
 
-  Future<ApiResponse<Session>> unarchiveSession({required String sessionId}) {
-    return _api.unarchiveSession(sessionId: sessionId);
-  }
-
   Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {
     return _api.renameSession(sessionId: sessionId, title: title);
   }

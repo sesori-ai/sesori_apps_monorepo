@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
@@ -34,6 +35,7 @@ void main() {
       service = SessionPromptService(
         sessionRepository: sessionRepository,
         dispatcher: dispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
       );
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
@@ -76,6 +78,36 @@ void main() {
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("extra args"));
       expect(plugin.lastSendCommandUserVisibleArguments, equals("extra args"));
+    });
+
+    test("refuses a prompt to an archived session without reaching the plugin", () async {
+      await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
+
+      await expectLater(
+        service.sendPrompt(
+          sessionId: "s1",
+          parts: const [PromptPart.text(text: "hello")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        throwsA(
+          isA<SessionArchivedReadOnlyException>().having(
+            (e) => e.rejection,
+            "rejection",
+            const SessionArchivedRejection(sessionId: "s1", reason: SessionArchivedReason.archivedReadOnly),
+          ),
+        ),
+      );
+      expect(plugin.lastSendPromptSessionId, isNull);
+    });
+
+    test("refuses a command to an archived session without reaching the plugin", () async {
+      await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
+
+      await expectLater(sendCommand(), throwsA(isA<SessionArchivedReadOnlyException>()));
+      expect(plugin.lastSendCommandSessionId, isNull);
     });
 
     test("propagates a command dispatch failure", () async {

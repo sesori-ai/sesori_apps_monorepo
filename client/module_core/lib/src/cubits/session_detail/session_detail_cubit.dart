@@ -1257,6 +1257,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final normalizedCommand = command?.normalize();
     if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
 
+    if (_refuseWhenArchived(action: "send a prompt")) return;
+
     // The bridge's command paths carry only the text part, so sending this
     // combination would drop the images without telling anyone. Refuse it at
     // the seam that formats the wire payload, not only in the composer.
@@ -1333,6 +1335,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
+    if (_refuseWhenArchived(action: "drain the prompt queue")) return;
 
     final pendingSubmission = _promptQueue.items.firstOrNull;
     if (pendingSubmission == null) return;
@@ -1523,11 +1526,23 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(pendingPermissions: pending));
   }
 
+  /// Archiving is permanent, so an archived session is audit-only: every
+  /// mutation refuses here rather than in the widgets. Returns `true` when the
+  /// caller must stop.
+  bool _refuseWhenArchived({required String action}) {
+    final current = state;
+    if (current is! SessionDetailLoaded || !current.isArchived) return false;
+    logw("Refused to $action for archived session $_sessionId");
+    return true;
+  }
+
   Future<bool> replyToQuestion({
     required String requestId,
     required String sessionId,
     required List<ReplyAnswer> answers,
   }) async {
+    if (_refuseWhenArchived(action: "reply to a question")) return false;
+
     // Optimistically remove before the API call so the screen sees the
     // updated state synchronously (prevents auto-chain re-opening the
     // same question).
@@ -1552,6 +1567,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   Future<bool> rejectQuestion(String requestId) async {
+    if (_refuseWhenArchived(action: "reject a question")) return false;
+
     // Reject against the question's owning session (which may be a child/
     // sub-agent surfaced on this root), mirroring the reply path, so the bridge
     // clears its tracker under the correct session instead of the open root.
@@ -1580,6 +1597,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String sessionId,
     required PermissionReply reply,
   }) async {
+    if (_refuseWhenArchived(action: "reply to a permission")) return false;
+
     _onPermissionResolved(requestId);
     _notificationCanceller.cancelForSession(sessionId: sessionId);
     try {

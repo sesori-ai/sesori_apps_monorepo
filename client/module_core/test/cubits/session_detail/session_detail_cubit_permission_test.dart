@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
@@ -635,6 +636,74 @@ void main() {
       expect(ok, isTrue);
       // Reject targets the owning child session, not the open root.
       verify(() => mockSessionService.rejectQuestion(requestId: "q-child", sessionId: "child-1")).called(1);
+    });
+
+    test("archived sessions refuse prompts, permission replies, and question replies", () async {
+      // Archiving is permanent, so the session is audit-only: the refusal lives
+      // in the cubit, not in the widgets.
+      stubSessionRepositoryGetSession(
+        repository: mockSessionRepository,
+        sessionId: sessionId,
+        session: testSession(id: sessionId, archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000)),
+      );
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      expect((cubit.state as SessionDetailLoaded).isArchived, isTrue);
+
+      await cubit.sendMessage(
+        text: "hello",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      expect(
+        await cubit.replyToPermission(requestId: "perm-1", sessionId: sessionId, reply: PermissionReply.once),
+        isFalse,
+      );
+      expect(
+        await cubit.replyToQuestion(requestId: "q-1", sessionId: sessionId, answers: const []),
+        isFalse,
+      );
+      expect(await cubit.rejectQuestion("q-1"), isFalse);
+
+      // Nothing reached the wire, and the refused prompt was not queued either.
+      verifyNever(
+        () => mockSessionRepository.sendMessage(
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      );
+      verifyNever(
+        () => mockPermissionRepository.replyToPermission(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+          reply: any(named: "reply"),
+        ),
+      );
+      verifyNever(
+        () => mockSessionService.replyToQuestion(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+          answers: any(named: "answers"),
+        ),
+      );
+      verifyNever(() => mockSessionService.rejectQuestion(requestId: any(named: "requestId"), sessionId: any(named: "sessionId")));
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
   });
 }

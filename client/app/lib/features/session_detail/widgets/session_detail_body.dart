@@ -156,7 +156,10 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
           // it; the inline title is used instead, as on the new-session screen.
           final SessionDetailLoaded loaded => SliverFillRemaining(
             hasScrollBody: true,
-            child: widget.readOnly
+            // Archiving is permanent, so an archived session is audit-only:
+            // it renders through the same read-only variant as a background
+            // task, with no composer or mutating controls.
+            child: widget.readOnly || loaded.isArchived
                 ? SessionDetailLoadedView.readOnly(
                     projectId: widget.projectId,
                     state: loaded,
@@ -183,6 +186,13 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     );
   }
 
+  /// An archived session can never be answered, so its pending requests never
+  /// raise an interaction modal.
+  bool get _isArchived {
+    final state = context.read<SessionDetailCubit>().state;
+    return state is SessionDetailLoaded && state.isArchived;
+  }
+
   void _showPendingQuestions() {
     final state = context.read<SessionDetailCubit>().state;
     if (state case SessionDetailLoaded(:final pendingQuestions) when pendingQuestions.isNotEmpty) {
@@ -198,7 +208,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   }
 
   void _showQuestionModal(SesoriQuestionAsked question) {
-    if (!_isCurrentPage) return;
+    if (!_isCurrentPage || _isArchived) return;
     final cubit = context.read<SessionDetailCubit>();
     bool isPending() {
       final state = cubit.state;
@@ -232,7 +242,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   }
 
   void _showPermissionModal(SesoriPermissionAsked permission) {
-    if (!_isCurrentPage) return;
+    if (!_isCurrentPage || _isArchived) return;
     final cubit = context.read<SessionDetailCubit>();
     bool isPending() {
       final state = cubit.state;

@@ -36,10 +36,11 @@ typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext c
 /// acted on stays in view.
 ///
 /// The frequent actions are also behind swipes ([PregoSwipeActions]): toward
-/// the start edge the row opens on a delete pill and an archive pill, with a
-/// full swipe committing the archive — reversible, so it can afford the quick
-/// path, where delete stays behind a deliberate tap. Toward the end edge the
-/// row opens on the mail-style read toggle, committed by a full swipe
+/// the start edge an unarchived row opens on a delete pill and an archive
+/// pill, with a full swipe committing the archive — which is confirmed by a
+/// sheet, so the quick path never finalizes anything on its own. An archived
+/// row has no archive action left and opens on delete alone. Toward the end
+/// edge the row opens on the mail-style read toggle, committed by a full swipe
 /// likewise. The swipes are the quick paths; the menu stays the discoverable
 /// and assistive one.
 class SessionTile extends StatelessWidget {
@@ -58,8 +59,8 @@ class SessionTile extends StatelessWidget {
   /// like [onTap] and the swipe callbacks (see [SessionMenuEntriesBuilder]).
   final List<PregoMenuEntry> Function() menuEntries;
 
-  /// Archives — or unarchives, per [isArchived] — this session: the trailing
-  /// swipe's primary pill, which is also what a full swipe commits.
+  /// Archives this session: the trailing swipe's primary pill on an
+  /// unarchived row, which is also what a full swipe commits there.
   final VoidCallback onArchive;
 
   /// Deletes this session, from the trailing swipe's destructive pill.
@@ -107,11 +108,16 @@ class SessionTile extends StatelessWidget {
 
     return PregoSwipeActions(
       showBottomHairline: true,
+      // Archiving is permanent, so an archived row has no archive action left:
+      // delete moves up into the primary slot and its full swipe still opens
+      // the same confirmation sheet, never destroying anything unconfirmed.
       actionsBuilder: (context, close) => [
-        _deleteAction(context: context, close: close),
+        if (!isArchived) _deleteAction(context: context, close: close),
       ],
-      primaryActionBuilder: (context, close) => _archiveAction(context: context, close: close),
-      onFullSwipe: onArchive,
+      primaryActionBuilder: (context, close) => isArchived
+          ? _deleteAction(context: context, close: close)
+          : _archiveAction(context: context, close: close),
+      onFullSwipe: isArchived ? onDelete : onArchive,
       leadingPrimaryActionBuilder: (context, close) => _markUnreadAction(context: context, close: close),
       onLeadingFullSwipe: onToggleUnread,
       // Right-click is the mouse counterpart of long-press. The row announces
@@ -151,9 +157,8 @@ class SessionTile extends StatelessWidget {
     );
   }
 
-  /// The swipe strip's delete pill. Destructive, so it is deliberately not
-  /// the full-swipe commit — it opens the same confirmation flow as the menu
-  /// entry.
+  /// The swipe strip's delete pill. It opens the same confirmation flow as the
+  /// menu entry, so it is safe even as an archived row's full-swipe commit.
   Widget _deleteAction({required BuildContext context, required VoidCallback close}) => _actionPill(
     label: context.loc.sessionListDelete,
     icon: TablerRegular.trash,
@@ -162,15 +167,14 @@ class SessionTile extends StatelessWidget {
     onPressed: onDelete,
   );
 
-  /// The swipe strip's archive pill — the primary action, which is also what
-  /// a full swipe commits. Flips to unarchive on archived rows. Sized by its
-  /// own content at rest; when [PregoSwipeActions] widens its box during an
-  /// overdrag, the button's centered content rides the stretch.
+  /// The swipe strip's archive pill — the primary action on an unarchived
+  /// row, which is also what a full swipe commits. Sized by its own content at
+  /// rest; when [PregoSwipeActions] widens its box during an overdrag, the
+  /// button's centered content rides the stretch.
   Widget _archiveAction({required BuildContext context, required VoidCallback close}) {
-    final loc = context.loc;
     return _actionPill(
-      label: isArchived ? loc.sessionListUnarchive : loc.sessionListArchive,
-      icon: isArchived ? TablerRegular.archive_off : TablerRegular.archive,
+      label: context.loc.sessionListArchive,
+      icon: TablerRegular.archive,
       type: PregoButtonsSolidType.warning,
       close: close,
       onPressed: onArchive,

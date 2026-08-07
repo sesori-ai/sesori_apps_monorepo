@@ -4,12 +4,14 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/question_repository.dart";
+import "archived_session_validator.dart";
 import "session_operation_dispatcher.dart";
 
 class PendingInteractionService {
   final PermissionRepository _permissionRepository;
   final QuestionRepository _questionRepository;
   final SessionOperationDispatcher _dispatcher;
+  final ArchivedSessionValidator _archivedSessionValidator;
   final String _legacyMissingPluginId;
   var _disposed = false;
 
@@ -17,10 +19,12 @@ class PendingInteractionService {
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionOperationDispatcher dispatcher,
+    required ArchivedSessionValidator archivedSessionValidator,
     required String legacyMissingPluginId,
   }) : _permissionRepository = permissionRepository,
        _questionRepository = questionRepository,
        _dispatcher = dispatcher,
+       _archivedSessionValidator = archivedSessionValidator,
        _legacyMissingPluginId = legacyMissingPluginId;
 
   Future<void> replyToPermission({
@@ -32,11 +36,14 @@ class PendingInteractionService {
     return _dispatcher.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.replyToPermission,
-      body: () => _permissionRepository.replyToPermission(
-        requestId: requestId,
-        sessionId: sessionId,
-        reply: reply,
-      ),
+      body: () async {
+        await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+        await _permissionRepository.replyToPermission(
+          requestId: requestId,
+          sessionId: sessionId,
+          reply: reply,
+        );
+      },
     );
   }
 
@@ -49,11 +56,14 @@ class PendingInteractionService {
     return _dispatcher.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.replyToQuestion,
-      body: () => _questionRepository.replyToQuestion(
-        questionId: questionId,
-        sessionId: sessionId,
-        answers: answers,
-      ),
+      body: () async {
+        await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+        await _questionRepository.replyToQuestion(
+          questionId: questionId,
+          sessionId: sessionId,
+          answers: answers,
+        );
+      },
     );
   }
 
@@ -66,10 +76,13 @@ class PendingInteractionService {
       return _dispatcher.dispatch(
         sessionId: sessionId,
         operation: SessionOperation.rejectQuestion,
-        body: () => _questionRepository.rejectQuestion(
-          questionId: questionId,
-          sessionId: sessionId,
-        ),
+        body: () async {
+          await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+          await _questionRepository.rejectQuestion(
+            questionId: questionId,
+            sessionId: sessionId,
+          );
+        },
       );
     }
 

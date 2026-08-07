@@ -338,32 +338,29 @@ void main() {
         baseCommit: null,
       );
 
-      await expectLater(
-        () => handler.handle(
-          makeRequest("PATCH", "/session/update/archive"),
-          body: _archiveRequest(
-            sessionId: "s1",
-            archived: false,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
+      final response = await handler.handleInternal(
+        makeRequest(
+          "PATCH",
+          "/session/update/archive",
+          body: jsonEncode(
+            _archiveRequest(
+              sessionId: "s1",
+              archived: false,
+              deleteWorktree: false,
+              deleteBranch: false,
+              force: false,
+            ).toJson(),
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
-        throwsA(
-          isA<RelayResponse>()
-              .having((r) => r.status, "status", equals(409))
-              .having(
-                (r) => SessionArchivedRejection.fromJson(jsonDecodeMap(r.body ?? "")),
-                "body",
-                const SessionArchivedRejection(
-                  sessionId: "s1",
-                  reason: SessionArchivedReason.archivedReadOnly,
-                ),
-              ),
-        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 409);
+      expect(
+        SessionArchivedRejection.fromJson(jsonDecodeMap(response.body ?? "")),
+        const SessionArchivedRejection(sessionId: "s1", reason: SessionArchivedReason.archivedReadOnly),
       );
 
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.archivedAt, 123);

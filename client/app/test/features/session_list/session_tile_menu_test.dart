@@ -5,6 +5,7 @@ import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_action_dispatcher.dart";
@@ -134,7 +135,7 @@ void main() {
     expect(find.text("Mark as unread").hitTestable(), findsNothing);
   });
 
-  testWidgets("an archived session offers Unarchive instead of Archive", (tester) async {
+  testWidgets("an archived session offers no archive action — archiving is permanent", (tester) async {
     final session = testSession(title: "Old Session").copyWith(
       time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: 1700000001000),
     );
@@ -142,15 +143,15 @@ void main() {
     await pumpPanel(tester, session: session);
     await longPressTile(tester, title: "Old Session");
 
-    expect(find.widgetWithText(InkWell, "Unarchive"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Unarchive"), findsNothing);
     expect(find.widgetWithText(InkWell, "Archive"), findsNothing);
+    expect(find.widgetWithText(InkWell, "Delete"), findsOneWidget);
   });
 
-  testWidgets("archiving closes the row before confirming with the undo snackbar", (tester) async {
-    // testSession has no worktree, so Archive skips the confirm sheet and runs
-    // directly. The cubit hides the row optimistically, so the row's own
-    // context is unmounted long before the bridge call resolves — the entries
-    // must act through a context that outlives the row.
+  testWidgets("archiving closes the row before confirming", (tester) async {
+    // The cubit hides the row optimistically, so the row's own context is
+    // unmounted long before the bridge call resolves — the entries must act
+    // through a context that outlives the row.
     final session = testSession(title: "My Session");
     final states = StreamController<SessionListState>();
     addTearDown(states.close);
@@ -175,14 +176,13 @@ void main() {
     });
 
     const dispatcher = SessionListActionDispatcher();
-    await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>(
-        create: (_) => StubConnectionOverlayCubit(),
-        child: MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
+    // A router, not a plain MaterialApp: the archive confirmation sheet closes
+    // itself through GoRouter, which the lint requires over direct Navigator.
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: "/",
+          builder: (context, state) => Scaffold(
             body: BlocProvider<SessionListCubit>.value(
               value: cubit,
               child: SessionListPanel(
@@ -195,12 +195,27 @@ void main() {
             ),
           ),
         ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      BlocProvider<ConnectionOverlayCubit>(
+        create: (_) => StubConnectionOverlayCubit(),
+        child: MaterialApp.router(
+          routerConfig: router,
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
       ),
     );
     await tester.pumpAndSettle();
     await longPressTile(tester, title: "My Session");
 
     await tester.tap(find.widgetWithText(InkWell, "Archive"));
+    await tester.pumpAndSettle();
+    // Archiving is permanent, so it confirms before it commits.
+    await tester.tap(find.widgetWithText(FilledButton, "Archive"));
     await tester.pump();
 
     // The optimistic archive has removed the session from cubit state, but the
@@ -219,9 +234,10 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
-    // …and the confirmation and its undo affordance still appear.
+    // …and the confirmation still appears. Archiving is one-way, so there is
+    // no undo affordance to offer.
     expect(find.text("Session archived"), findsOneWidget);
-    expect(find.text("Undo"), findsOneWidget);
+    expect(find.text("Undo"), findsNothing);
   });
 
   testWidgets("tapping outside dismisses the menu without acting on the session", (tester) async {

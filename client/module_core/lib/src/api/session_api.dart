@@ -146,20 +146,6 @@ class SessionApi {
     return response;
   }
 
-  Future<ApiResponse<Session>> unarchiveSession({required String sessionId}) {
-    return _client.patch(
-      "/session/update/archive",
-      fromJson: Session.fromJson,
-      body: UpdateSessionArchiveRequest(
-        sessionId: sessionId,
-        archived: false,
-        deleteWorktree: false,
-        deleteBranch: false,
-        force: false,
-      ),
-    );
-  }
-
   Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {
     return _client.patch(
       "/session/title",

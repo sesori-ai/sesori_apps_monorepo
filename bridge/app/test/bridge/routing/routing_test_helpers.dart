@@ -23,6 +23,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/pending_interaction_service.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
@@ -60,15 +61,14 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
   required AppDatabase database,
   required BridgePluginApi plugin,
 }) {
-  final dispatcher = SessionOperationDispatcher(
-    sessionRepository: singlePluginSessionRepository(
-      plugin: plugin,
-      sessionDao: database.sessionDao,
-      projectsDao: database.projectsDao,
-      pullRequestDao: database.pullRequestDao,
-      unseenCalculator: const SessionUnseenCalculator(),
-    ),
+  final sessionRepository = singlePluginSessionRepository(
+    plugin: plugin,
+    sessionDao: database.sessionDao,
+    projectsDao: database.projectsDao,
+    pullRequestDao: database.pullRequestDao,
+    unseenCalculator: const SessionUnseenCalculator(),
   );
+  final dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
   return (
     dispatcher: dispatcher,
     service: PendingInteractionService(
@@ -82,6 +82,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
         projectsDao: database.projectsDao,
       ),
       dispatcher: dispatcher,
+      archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
       legacyMissingPluginId: plugin.id,
     ),
   );

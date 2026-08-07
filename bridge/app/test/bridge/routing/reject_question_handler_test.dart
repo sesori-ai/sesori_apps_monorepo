@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/routing/reject_question_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -32,6 +34,24 @@ void main() {
     });
 
     tearDown(() => plugin.close());
+
+    test("returns 409 for an archived session", () async {
+      await db.sessionDao.setArchived(sessionId: "ses-1", archivedAt: 7, updatedAt: 7, projectionUpdatedAt: 7);
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/question/reject",
+          body: jsonEncode(const RejectQuestionRequest(requestId: "q-1", sessionId: "ses-1").toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 409);
+      expect(plugin.lastRejectQuestionId, isNull);
+    });
 
     test("canHandle POST /question/reject", () {
       expect(handler.canHandle(makeRequest("POST", "/question/reject")), isTrue);

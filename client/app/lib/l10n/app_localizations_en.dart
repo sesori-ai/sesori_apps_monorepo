@@ -943,9 +943,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListArchive => 'Archive';
 
   @override
-  String get sessionListUnarchive => 'Unarchive';
-
-  @override
   String get sessionListMarkRead => 'Mark as read';
 
   @override
@@ -958,13 +955,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListArchived => 'Session archived';
 
   @override
-  String get sessionListUnarchived => 'Session unarchived';
-
-  @override
   String get sessionListDeleted => 'Session deleted';
-
-  @override
-  String get sessionListUndo => 'Undo';
 
   @override
   String get sessionListDeleteConfirmTitle => 'Delete session?';
@@ -1359,10 +1350,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteBranchCheckbox => 'Delete branch';
 
   @override
+  String get sessionDetailArchivedNotice => 'This session is archived and read-only.';
+
+  @override
   String get sessionListArchiveConfirmTitle => 'Archive session?';
 
   @override
-  String get sessionListArchiveConfirmMessage => 'This session will be archived and hidden from the active list.';
+  String get sessionListArchiveConfirmMessage =>
+      'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.';
 
   @override
   String get sessionListArchiveConfirmAction => 'Archive';

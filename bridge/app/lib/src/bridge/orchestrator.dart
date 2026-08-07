@@ -287,6 +287,7 @@ class Orchestrator {
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
+    final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
     final sessionMutationDispatcher = SessionMutationDispatcher(
       sessionRepository: sessionRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
@@ -385,6 +386,7 @@ class Orchestrator {
       permissionRepository: permissionRepository,
       questionRepository: questionRepository,
       dispatcher: sessionOperationDispatcher,
+      archivedSessionValidator: archivedSessionValidator,
       legacyMissingPluginId: _legacyMissingPluginId,
     );
     final sessionCreationService = SessionCreationService(
@@ -442,13 +444,14 @@ class Orchestrator {
     final sessionPromptService = SessionPromptService(
       sessionRepository: sessionRepository,
       dispatcher: sessionOperationDispatcher,
+      archivedSessionValidator: archivedSessionValidator,
     );
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       filesystemRepository: filesystemRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
-      archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+      archivedSessionValidator: archivedSessionValidator,
     );
     final sessionDeletionService = SessionDeletionService(
       sessionLifecycleService: sessionLifecycleService,
