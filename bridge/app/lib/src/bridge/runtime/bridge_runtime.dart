@@ -45,6 +45,10 @@ class BridgeRuntime {
     return _composition.deletedSessionStorageCleanupService.reconcile();
   }
 
+  Future<void> reconcileChatHistory() {
+    return _composition.chatHistoryReconcileService.reconcile();
+  }
+
   BandwidthTracker createBandwidthTracker() {
     return BandwidthTracker(bytesSent: session.bytesSent);
   }

@@ -853,6 +853,9 @@ class BridgeRuntimeRunner {
       // Run before imports, debug routes, or relay traffic can load a session
       // into a backend process and retain handles to its persisted storage.
       await activeRuntime.reconcileDeletedSessionStorage();
+      // Drops history whose session disappeared from the catalog while the
+      // bridge was down, before any route can read or extend it.
+      await activeRuntime.reconcileChatHistory();
 
       if (!options.isSupervised) {
         catalogImportConsoleListener = CatalogImportConsoleListener(

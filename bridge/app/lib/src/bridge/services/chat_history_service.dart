@@ -1,17 +1,127 @@
 import "dart:async";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_shared/sesori_shared.dart";
+
 import "../repositories/chat_history_repository.dart";
+import "../repositories/session_repository.dart";
 
 /// The single writer of the chat history store.
 ///
 /// Every mutation runs through a per-session queue so writes for one session
 /// never interleave, while unrelated sessions stay independent.
 class ChatHistoryService {
-  ChatHistoryService({required ChatHistoryRepository chatHistoryRepository})
-    : _chatHistoryRepository = chatHistoryRepository;
+  ChatHistoryService({
+    required ChatHistoryRepository chatHistoryRepository,
+    required SessionRepository sessionRepository,
+  }) : _chatHistoryRepository = chatHistoryRepository,
+       _sessionRepository = sessionRepository;
 
   final ChatHistoryRepository _chatHistoryRepository;
+  final SessionRepository _sessionRepository;
   final Map<String, Future<void>> _writeQueues = {};
+  final Map<String, Future<void>> _inFlightBackfills = {};
+
+  /// Records a finalized message from the live event stream.
+  Future<void> captureMessage({required String sessionId, required Message message}) {
+    return _capture(
+      sessionId: sessionId,
+      description: "message ${message.id}",
+      write: (observedAt) => _chatHistoryRepository.upsertMessage(
+        sessionId: sessionId,
+        message: message,
+        updatedAt: observedAt,
+      ),
+    );
+  }
+
+  /// Records a finalized part snapshot. Streaming deltas are never stored.
+  Future<void> capturePart({required String sessionId, required MessagePart part}) {
+    return _capture(
+      sessionId: sessionId,
+      description: "part ${part.id}",
+      write: (observedAt) => _chatHistoryRepository.upsertPart(
+        sessionId: sessionId,
+        part: part,
+        updatedAt: observedAt,
+      ),
+    );
+  }
+
+  Future<void> captureMessageRemoved({required String sessionId, required String messageId}) {
+    return _capture(
+      sessionId: sessionId,
+      description: "removal of message $messageId",
+      write: (_) => _chatHistoryRepository.deleteMessage(sessionId: sessionId, messageId: messageId),
+    );
+  }
+
+  Future<void> capturePartRemoved({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) {
+    return _capture(
+      sessionId: sessionId,
+      description: "removal of part $partId",
+      write: (_) => _chatHistoryRepository.deletePart(
+        sessionId: sessionId,
+        messageId: messageId,
+        partId: partId,
+      ),
+    );
+  }
+
+  /// Records backend activity observed outside the live event stream, so a
+  /// session advanced through the backend's own CLI is detected as stale.
+  Future<void> observeBackendActivity({required String sessionId, required int activityAt}) {
+    return _enqueue(
+      sessionId: sessionId,
+      write: () async {
+        final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+        // Only sessions the store already knows about are tracked; an unknown
+        // session has nothing to be stale against.
+        if (state == null) return;
+        await _chatHistoryRepository.advanceSyncState(
+          sessionId: sessionId,
+          watermark: state.watermark,
+          backendActivityAt: activityAt,
+        );
+      },
+    );
+  }
+
+  /// Fills the store from the backend's own transcript.
+  ///
+  /// Concurrent callers for the same session await one fetch. Failures
+  /// propagate so a cache miss never looks like an empty thread.
+  Future<void> backfillSession({required String sessionId}) {
+    final inFlight = _inFlightBackfills[sessionId];
+    if (inFlight != null) return inFlight;
+
+    final backfill = _backfillSession(sessionId: sessionId);
+    _inFlightBackfills[sessionId] = backfill;
+    return backfill.whenComplete(() => _inFlightBackfills.remove(sessionId));
+  }
+
+  Future<void> _backfillSession({required String sessionId}) async {
+    // Captured before the fetch: activity observed while it runs must not be
+    // masked by a watermark taken afterwards.
+    final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+    final backendActivityAt = observedBefore?.backendActivityAt ?? 0;
+    final messages = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+    final syncedAt = DateTime.now().millisecondsSinceEpoch;
+    await _enqueue(
+      sessionId: sessionId,
+      write: () => _chatHistoryRepository.replaceSessionMessages(
+        sessionId: sessionId,
+        messages: messages,
+        watermark: backendActivityAt,
+        backendActivityAt: backendActivityAt,
+        syncedAt: syncedAt,
+      ),
+    );
+  }
 
   /// Removes the session's stored transcript and attachment bytes.
   Future<void> purgeSessionHistory({required String sessionId}) {
@@ -31,6 +141,59 @@ class ChatHistoryService {
       sessionIds: owned,
       write: () => _chatHistoryRepository.purgeSessions(sessionIds: owned),
     );
+  }
+
+  Future<Set<String>> getStoredSessionIds() => _chatHistoryRepository.getStoredSessionIds();
+
+  /// Applies one captured event and advances the session's freshness marks.
+  ///
+  /// A failed capture clears `syncedAt`, so the next read falls back to the
+  /// plugin and re-backfills. That self-heals without a retry queue, and it is
+  /// why capture never rethrows into the event pipeline.
+  Future<void> _capture({
+    required String sessionId,
+    required String description,
+    required Future<void> Function(int observedAt) write,
+  }) {
+    final observedAt = DateTime.now().millisecondsSinceEpoch;
+    return _enqueue(
+      sessionId: sessionId,
+      write: () async {
+        try {
+          await write(observedAt);
+          await _chatHistoryRepository.advanceSyncState(
+            sessionId: sessionId,
+            watermark: observedAt,
+            backendActivityAt: observedAt,
+          );
+        } on Object catch (error, stackTrace) {
+          Log.w(
+            "Failed to capture $description for session $sessionId; "
+            "dropping the synced marker so the next read re-backfills",
+            error,
+            stackTrace,
+          );
+          await _clearSyncedAtQuietly(sessionId: sessionId);
+        }
+      },
+    );
+  }
+
+  Future<void> _clearSyncedAtQuietly({required String sessionId}) async {
+    try {
+      await _chatHistoryRepository.clearSyncedAt(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Failed to drop the synced marker for session $sessionId; the store "
+        "may serve a stale transcript until the next backend activity",
+        error,
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> _enqueue({required String sessionId, required Future<void> Function() write}) {
+    return _enqueueAll(sessionIds: [sessionId], write: write);
   }
 
   /// Runs [write] after every listed session's pending writes, and makes it

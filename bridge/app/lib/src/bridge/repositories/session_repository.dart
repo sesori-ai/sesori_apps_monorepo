@@ -1107,6 +1107,14 @@ class SessionRepository {
     return [for (final binding in subtree) binding.sessionId];
   }
 
+  /// The subset of [sessionIds] that still has a stored session row. Archived
+  /// sessions keep their row, so absence means the session is really gone.
+  Future<Set<String>> getExistingSessionIds({required Set<String> sessionIds}) async {
+    if (sessionIds.isEmpty) return const {};
+    final rows = await _sessionDao.getSessionsByIds(sessionIds: sessionIds.toList(growable: false));
+    return rows.keys.toSet();
+  }
+
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
     return sessions.map((session) => session.toStoredSession()).toList(growable: false);
