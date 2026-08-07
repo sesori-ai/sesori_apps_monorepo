@@ -24,9 +24,12 @@ class ChatHistoryService {
   /// concurrent capture can re-create rows the purge is removing.
   Future<void> purgeSessionsHistory({required List<String> sessionIds}) {
     if (sessionIds.isEmpty) return Future<void>.value();
+    // The write runs later, so own the ids rather than trusting the caller's
+    // list to stay unchanged until then.
+    final owned = List<String>.unmodifiable(sessionIds);
     return _enqueueAll(
-      sessionIds: sessionIds,
-      write: () => _chatHistoryRepository.purgeSessions(sessionIds: sessionIds),
+      sessionIds: owned,
+      write: () => _chatHistoryRepository.purgeSessions(sessionIds: owned),
     );
   }
 

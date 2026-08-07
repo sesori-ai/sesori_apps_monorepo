@@ -46,8 +46,9 @@ class AttachmentSpillStorage {
     } on FileSystemException {
       // Windows refuses to rename onto an existing file. Content addressing
       // makes the winner of that race byte-identical, so an existing target is
-      // success, not a failure.
-      if (!file.existsSync()) rethrow;
+      // success — but only a target that really holds these bytes. Anything
+      // else is a genuine write failure and must surface.
+      if (!await _holdsDigest(file: file, digest: digest)) rethrow;
     } finally {
       if (temporary.existsSync()) {
         temporary.deleteSync();
@@ -64,6 +65,15 @@ class AttachmentSpillStorage {
     final file = File(_filePath(sessionId: sessionId, digest: digest));
     if (!file.existsSync()) return null;
     return file.readAsBytes();
+  }
+
+  static Future<bool> _holdsDigest({required File file, required String digest}) async {
+    if (!file.existsSync()) return false;
+    try {
+      return sha256.convert(await file.readAsBytes()).toString() == digest;
+    } on FileSystemException {
+      return false;
+    }
   }
 
   /// Guards the file boundary: only names this class generates may address a

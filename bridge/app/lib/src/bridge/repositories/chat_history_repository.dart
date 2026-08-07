@@ -22,9 +22,20 @@ class ChatHistoryRepository {
   Future<void> purgeSessions({required List<String> sessionIds}) async {
     if (sessionIds.isEmpty) return;
     await _chatHistoryDao.deleteSessionRows(sessionIds: sessionIds);
+    // Every session is attempted even if one directory refuses to go, so a
+    // single failure cannot strand the rest of the family's bytes on disk.
+    // The first failure is reported once the rest of the work is done.
+    Object? firstError;
+    StackTrace? firstStackTrace;
     for (final sessionId in sessionIds) {
-      await _attachmentSpillStorage.deleteSession(sessionId: sessionId);
+      try {
+        await _attachmentSpillStorage.deleteSession(sessionId: sessionId);
+      } on Object catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
+      }
     }
     await _chatHistoryDao.reclaimFreedPages();
+    if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
   }
 }

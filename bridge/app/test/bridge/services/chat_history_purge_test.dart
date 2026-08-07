@@ -119,6 +119,22 @@ void main() {
       expect(spillRoot.listSync(), hasLength(1));
     });
 
+    test("a family larger than SQLite's bind-variable limit still purges", () async {
+      final sessionIds = [for (var index = 0; index < 1200; index++) "ses_$index"];
+      for (final sessionId in sessionIds) {
+        await seedSession(sessionId: sessionId);
+      }
+      await seedSession(sessionId: "ses_survivor");
+
+      await history.service.purgeSessionsHistory(sessionIds: sessionIds);
+
+      final database = history.database;
+      expect(
+        (await database.select(database.historyMessagesTable).get()).map((row) => row.sessionId),
+        const ["ses_survivor"],
+      );
+    });
+
     test("an empty batch is a no-op", () async {
       await seedSession(sessionId: "ses_a");
 
