@@ -178,36 +178,43 @@ class SessionLifecycleService {
     required bool deleteBranch,
     required bool force,
   }) async {
-    final storedSession = await _getStoredSession(sessionId: sessionId);
-    final wasArchived = storedSession.archivedAt != null;
     // COMPATIBILITY 2026-08-07 (v1.7.0): published apps render Unarchive from
     // time.archived alone, so the request shape still accepts `archived: false`
     // and answers with an explicit rejection; remove tolerance when out of
     // support.
-    final session = archived
-        ? await _doArchive(
-            storedSession: storedSession,
-            deleteWorktree: deleteWorktree,
-            deleteBranch: deleteBranch,
-            force: force,
-          )
-        : await _refuseUnarchive(storedSession: storedSession);
+    if (!archived) {
+      return _refuseUnarchive(sessionId: sessionId);
+    }
+    final storedSession = await _getStoredSession(sessionId: sessionId);
     return ArchiveStatusUpdate(
-      session: session,
-      changed: wasArchived != archived,
+      session: await _doArchive(
+        storedSession: storedSession,
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+        force: force,
+      ),
+      changed: storedSession.archivedAt == null,
       projectId: storedSession.projectId,
     );
   }
 
-  /// Archiving is permanent. `archived: false` stays a no-op for a session that
-  /// is not archived and is refused for one that is.
-  Future<Session> _refuseUnarchive({required StoredSession storedSession}) async {
-    await _archivedSessionValidator.requireNotArchived(sessionId: storedSession.id);
-    final session = await _sessionRepository.getCatalogSession(sessionId: storedSession.id);
-    if (session == null) {
+  /// Archiving is permanent. `archived: false` is refused for an archived
+  /// session and stays an unchanged no-op for one that is not.
+  ///
+  /// Neither answer needs the backend, so this path deliberately skips the
+  /// routability requirement: an archived session must still be refused with
+  /// the archived rejection when its plugin is stopped.
+  Future<ArchiveStatusUpdate> _refuseUnarchive({required String sessionId}) async {
+    final storedSession = await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+    final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+    if (storedSession == null || session == null) {
       throw SessionNotFoundException();
     }
-    return session;
+    return ArchiveStatusUpdate(
+      session: session,
+      changed: false,
+      projectId: storedSession.projectId,
+    );
   }
 
   Future<StoredSession> _getStoredSession({required String sessionId}) async {

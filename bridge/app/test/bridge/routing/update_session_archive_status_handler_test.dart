@@ -369,6 +369,49 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.archivedAt, 123);
     });
 
+    test("archived: false still returns 409 when the session's plugin is stopped", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "stale-plugin-session",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: 123,
+        baseCommit: null,
+        pluginId: "stopped-plugin",
+      );
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "PATCH",
+          "/session/update/archive",
+          body: jsonEncode(
+            _archiveRequest(
+              sessionId: "stale-plugin-session",
+              archived: false,
+              deleteWorktree: false,
+              deleteBranch: false,
+              force: false,
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 409);
+      expect(
+        SessionArchivedRejection.fromJson(jsonDecodeMap(response.body ?? "")),
+        const SessionArchivedRejection(
+          sessionId: "stale-plugin-session",
+          reason: SessionArchivedReason.archivedReadOnly,
+        ),
+      );
+    });
+
     test("archive with force skips safety check", () async {
       await _insertSession(
         db: db,
