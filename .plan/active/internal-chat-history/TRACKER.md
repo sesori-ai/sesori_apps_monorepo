@@ -7,10 +7,9 @@
 - **Series state:** Step 1/8 plan PR open
 - **Current step:** 1/8
 - **Plan PR:** [#763](https://github.com/sesori-ai/sesori_apps_monorepo/pull/763)
-- **Prerequisite:** the `read-only-archiving` series must merge fully before
-  step 2/8 starts.
-- **Next action:** merge PR #763; implement the `read-only-archiving` series;
-  then start step 2/8.
+- **Prerequisite:** satisfied — the `read-only-archiving` series merged fully on
+  2026-08-07 (through [PR #770](https://github.com/sesori-ai/sesori_apps_monorepo/pull/770)).
+- **Next action:** merge PR #763, then start step 2/8.
 
 ## Delivery Steps
 
@@ -29,8 +28,7 @@
 
 - Merge in numeric order; each PR must remain independently valid at its own
   base. A successor may target its open predecessor.
-- Do not start step 2/8 until the `read-only-archiving` series has fully
-  merged.
+- The `read-only-archiving` prerequisite has merged, so step 2/8 is unblocked.
 - Count additions plus deletions (including generated code and tests) against
   the 1,500-line soft cap; the step 2 overage from new-database codegen is
   pre-recorded in `PLAN.md`.

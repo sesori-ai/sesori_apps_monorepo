@@ -3,13 +3,16 @@
 ## Status
 
 - **Plan slug:** `read-only-archiving`
-- **Status:** Active — plan raised, implementation not started
+- **Status:** Completed — all delivery steps merged; retired 2026-08-07
 - **Plan date:** 2026-08-06
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Base:** `main` at `232974e1`
-- **Relationship:** prerequisite of `internal-chat-history`. This series lands
-  and merges fully before the chat-history series starts; the chat-history
-  archive export/purge builds on the permanence guarantee established here.
+- **Relationship:** prerequisite of `internal-chat-history`, now satisfied. The
+  chat-history archive export/purge builds on the permanence guarantee
+  established here.
+- **As-built deltas:** see `TRACKER.md`. Notably, `ArchivedSessionValidator`
+  checks only the session the caller named — the family/ancestor checks two
+  review rounds asked for were tried and deliberately reverted.
 
 ## Goal
 

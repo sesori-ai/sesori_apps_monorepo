@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan slug:** `read-only-archiving`
-- **Implementation base:** `origin/main` at `354c61c1`
-- **Series state:** Step 3/4 in PR
-- **Current step:** 3/4
+- **Status:** Completed — all delivery steps merged
+- **Implementation base:** `origin/main` at `b710f0df`
+- **Series state:** Steps 1–3 merged; step 4 is this retirement
 - **Plan PR:** [#765](https://github.com/sesori-ai/sesori_apps_monorepo/pull/765) merged
-- **Relationship:** prerequisite of `internal-chat-history`; that series does
-  not start until this one has fully merged.
-- **Next action:** merge step 3/4, then start step 4/4.
+- **Relationship:** prerequisite of `internal-chat-history`, which is now
+  unblocked — unarchive is gone end to end and archived sessions are read-only.
+- **Next action:** none; the plan is retired.
 
 ## Delivery Steps
 
@@ -17,19 +17,20 @@
 |---|---|---|---|
 | [x] | 1/4 | `🌱 [read-only-archiving] Raise plan [step 1/4]` | [PR #765](https://github.com/sesori-ai/sesori_apps_monorepo/pull/765) merged |
 | [x] | 2/4 | `⚙️ [read-only-archiving] Reject unarchive and delete restore machinery [step 2/4]` | [PR #767](https://github.com/sesori-ai/sesori_apps_monorepo/pull/767) merged |
-| [ ] | 3/4 | `⚙️ [read-only-archiving] Enforce read-only archived sessions [step 3/4]` | in PR |
-| [ ] | 4/4 | `🌱 [read-only-archiving] Retire plan [step 4/4]` | pending |
+| [x] | 3/4 | `⚙️ [read-only-archiving] Enforce read-only archived sessions [step 3/4]` | [PR #770](https://github.com/sesori-ai/sesori_apps_monorepo/pull/770) merged |
+| [x] | 4/4 | `🌱 [read-only-archiving] Retire plan [step 4/4]` | this PR |
 
-## Execution Rules
+## Outcome
 
-- Merge in numeric order; each PR must remain independently valid at its own
-  base.
-- If step 3 trends past the 1,500-line soft cap it splits at the
-  bridge/client boundary and the series total is restated before the first
-  affected PR opens.
-- Run focused tests, the owning package's tests, and the analyzer for each
-  implementation step; run `architecture-implementation-review` (sub-agent)
-  for steps 2 and 3.
+Archiving is a final, permanent action. The unarchive vertical is gone from the
+bridge (service, repository, DAO, worktree restore, git API) and from the client
+(API, repository, service, list cubit, UI, undo). `ArchivedSessionValidator` is
+the single archive-permanence rule; prompts, permission replies, and question
+replies/rejections consult it inside their dispatched operation, and
+`RequestHandlerBase` maps its exception to the shared 409
+`SessionArchivedRejection` body once for every route. Archived session detail is
+read-only in the app, with the refusal in `SessionDetailCubit` and presentation
+only in the shell. Archiving and deleting both always confirm.
 
 ## Verification Log
 
