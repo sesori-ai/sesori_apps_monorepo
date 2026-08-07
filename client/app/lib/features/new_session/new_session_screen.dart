@@ -280,6 +280,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   Widget _buildOptions({
     required AgentModelData? data,
     required ({String message, bool isFailure})? status,
+    required bool needsHarnessDiscovery,
     required bool hasNoHarnesses,
   }) {
     if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
@@ -289,15 +290,19 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       );
     }
 
-    // Nothing on the bridge can run a session, so the chooser has nothing to
-    // offer and the composer below is inert. Say why in the chooser's place
-    // rather than leaving the page blank.
-    if (hasNoHarnesses) {
-      return NewSessionNoHarnessNotice(
-        onSettingsPressed: () => context.pushRoute(
-          const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
-        ),
-      );
+    // With no harness there is nothing to choose between, and nothing for the
+    // workspace option to shape — no session can start. Say why in the
+    // chooser's place when the bridge answered that itself; when discovery
+    // failed instead, the error banner already explains it and only the retry
+    // above the composer is left standing.
+    if (needsHarnessDiscovery) {
+      return hasNoHarnesses
+          ? NewSessionNoHarnessNotice(
+              onSettingsPressed: () => context.pushRoute(
+                const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
+              ),
+            )
+          : const SizedBox.shrink();
     }
 
     final hasPlugins = data.plugins.isNotEmpty;
@@ -431,6 +436,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                           child: _buildOptions(
                             data: composerData,
                             status: optionsStatus,
+                            needsHarnessDiscovery: needsHarnessDiscovery,
                             hasNoHarnesses: hasNoHarnesses,
                           ),
                         ),

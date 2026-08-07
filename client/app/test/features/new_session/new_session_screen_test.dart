@@ -1251,6 +1251,9 @@ void main() {
     // The bridge never said it runs no harness this time, so the screen does
     // not claim it did; the error banner is the honest explanation.
     expect(find.byKey(const Key("new_session_no_harness_notice")), findsNothing);
+    // No harness means no session, so the option that only shapes a session
+    // that can start has nothing to shape.
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
 
     await tester.tap(refresh);
     await tester.pumpAndSettle();
