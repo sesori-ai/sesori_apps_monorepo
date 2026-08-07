@@ -54,33 +54,6 @@ class AttachmentSpillStorage {
     return file.readAsBytes();
   }
 
-  /// Copies every spill file of [sessionId] into [destinationDirectoryPath].
-  ///
-  /// Idempotent: content-addressed names mean an already-copied file is left
-  /// as it is.
-  Future<void> copySession({
-    required String sessionId,
-    required String destinationDirectoryPath,
-  }) async {
-    final source = Directory(_sessionDirectoryPath(sessionId: sessionId));
-    if (!source.existsSync()) return;
-
-    final destination = Directory(destinationDirectoryPath);
-    await destination.create(recursive: true);
-    if (!Platform.isWindows) {
-      await _setUnixMode(targetPath: destination.path, mode: "700");
-    }
-    await for (final entity in source.list(followLinks: false)) {
-      if (entity is! File) continue;
-      final target = File(path.join(destination.path, path.basename(entity.path)));
-      if (target.existsSync()) continue;
-      await entity.copy(target.path);
-      if (!Platform.isWindows) {
-        await _setUnixMode(targetPath: target.path, mode: "600");
-      }
-    }
-  }
-
   Future<void> deleteSession({required String sessionId}) async {
     final directory = Directory(_sessionDirectoryPath(sessionId: sessionId));
     if (!directory.existsSync()) return;
