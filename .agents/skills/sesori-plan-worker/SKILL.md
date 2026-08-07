@@ -167,5 +167,19 @@ abstractions, keep recovered failures observable, never hand-edit generated
 files, and finish the requested work end to end whenever feasible. Add tests
 only when they provide meaningful confidence.
 
+Edge cases are infinite and completeness is not the goal. Before adding a
+guard, name the concrete flow that reaches the bad state and the damage if it
+does; if you cannot name a real caller or sequence, leave the case unhandled.
+"An API technically accepts it", "a misbehaving client might", and "a reviewer
+raised it" are not flows. Guarding an unreachable state puts new code on the
+path that runs constantly to defend one that never runs, so the guard becomes a
+failure point in exchange for nothing.
+
+Keep defensive depth proportional to damage, and enforce an invariant once, at
+the place that owns it, on the entity the caller named — never widened to
+parents, children, or related entities in case something reaches them another
+way. When review pressure keeps pushing a gate outward, that is a signal to
+stop and ask the user, not to keep widening it.
+
 Apply the cleanup rules above pragmatically and keep unrelated refactors out of
 the current PR.
