@@ -2533,6 +2533,24 @@ abstract class AppLocalizations {
   /// **'Harness settings'**
   String get newSessionHarnessSettings;
 
+  /// No description provided for @newSessionNoHarnessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No coding harness installed'**
+  String get newSessionNoHarnessTitle;
+
+  /// No description provided for @newSessionNoHarnessDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The connected bridge has no coding harness it can run. Install one on that computer, then check again.'**
+  String get newSessionNoHarnessDescription;
+
+  /// No description provided for @newSessionHarnessesRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for harnesses'**
+  String get newSessionHarnessesRefresh;
+
   /// No description provided for @newSessionOptionsLoadingSemantics.
   ///
   /// In en, this message translates to:

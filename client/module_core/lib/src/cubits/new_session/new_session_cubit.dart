@@ -277,6 +277,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }
 
   Future<void> refreshOptions() async {
+    // A bridge that offered no harness has nothing to load options for. The
+    // user's way forward is to install one on that machine, so the same action
+    // goes back to discovery instead — that is where a newly installed harness
+    // shows up.
+    if (_canRediscoverHarnesses) {
+      await _discoverPlugins();
+      return;
+    }
+
     final current = state;
     final data = current.agentModelData;
     final plugin = data?.plugin;
@@ -391,7 +400,20 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
   }
 
-  bool get canRefreshOptions => (state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer;
+  /// Whether the bridge answered with no harness at all, leaving the screen
+  /// nothing to choose between and nothing to send to. Discovery is then the
+  /// only load worth repeating.
+  bool get hasNoHarnesses {
+    if (state is NewSessionSending || state is NewSessionCreated) return false;
+    final data = state.agentModelData;
+    return data != null && data.backendScope.isVerified && data.plugins.isEmpty;
+  }
+
+  bool get _canRediscoverHarnesses =>
+      hasNoHarnesses && !(state.agentModelData?.isPluginDiscoveryInFlight ?? true);
+
+  bool get canRefreshOptions =>
+      _canRediscoverHarnesses || ((state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer);
 
   bool get canCreateSession => (state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer;
 
