@@ -120,15 +120,26 @@ void main() {
     });
 
     test("a family larger than SQLite's bind-variable limit still purges", () async {
+      // Rows only: the chunking under test is a SQL-statement concern, and
+      // seeding spill files for every id would make this a filesystem
+      // benchmark instead.
       final sessionIds = [for (var index = 0; index < 1200; index++) "ses_$index"];
-      for (final sessionId in sessionIds) {
-        await seedSession(sessionId: sessionId);
-      }
-      await seedSession(sessionId: "ses_survivor");
+      final database = history.database;
+      await database.batch((batch) {
+        batch.insertAll(database.historyMessagesTable, [
+          for (final sessionId in [...sessionIds, "ses_survivor"])
+            HistoryMessagesTableCompanion.insert(
+              sessionId: sessionId,
+              messageId: "msg-1",
+              seq: 1,
+              infoJson: "{}",
+              updatedAt: 10,
+            ),
+        ]);
+      });
 
       await history.service.purgeSessionsHistory(sessionIds: sessionIds);
 
-      final database = history.database;
       expect(
         (await database.select(database.historyMessagesTable).get()).map((row) => row.sessionId),
         const ["ses_survivor"],
