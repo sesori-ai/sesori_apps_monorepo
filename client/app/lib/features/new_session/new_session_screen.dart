@@ -251,7 +251,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   /// With no harness to load options for it reloads the harness list instead,
   /// and says so: the user's next step is installing one on the bridge's
   /// machine, not reloading a model list that cannot exist yet.
-  Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool hasNoHarnesses}) {
+  Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isHarnessDiscovery}) {
     return Positioned(
       bottom: _refreshBottomGap,
       left: 0,
@@ -259,7 +259,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       child: Center(
         child: PregoButtonsSolid(
           key: const Key("new_session_options_refresh"),
-          label: hasNoHarnesses ? context.loc.newSessionHarnessesRefresh : context.loc.newSessionOptionsRefresh,
+          label: isHarnessDiscovery ? context.loc.newSessionHarnessesRefresh : context.loc.newSessionOptionsRefresh,
           hierarchy: PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.sm,
           leadingIcon: TablerRegular.refresh,
@@ -332,11 +332,14 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final isSending = state is NewSessionSending;
     final composerData = state.agentModelData;
+    final needsHarnessDiscovery = cubit.needsHarnessDiscovery;
     final hasNoHarnesses = cubit.hasNoHarnesses;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
-    // The notice carries its own explanation, so the status line stays away and
-    // only the refresh action joins it above the composer.
-    final showsRefresh = hasNoHarnesses || optionsStatus != null;
+    // With no harness known the refresh action stands on its own: the notice
+    // above it, or the error banner, already carries the explanation the status
+    // line would have given. It must outlive a failed retry — hiding the action
+    // the user just pressed would strand them.
+    final showsRefresh = needsHarnessDiscovery || optionsStatus != null;
     final optionsBottomPadding = showsRefresh
         ? _optionsBottomPadding + _refreshBandHeight(context)
         : _optionsBottomPadding;
@@ -431,7 +434,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                             hasNoHarnesses: hasNoHarnesses,
                           ),
                         ),
-                        if (showsRefresh) _buildOptionsRefresh(cubit: cubit, hasNoHarnesses: hasNoHarnesses),
+                        if (showsRefresh)
+                          _buildOptionsRefresh(cubit: cubit, isHarnessDiscovery: needsHarnessDiscovery),
                       ],
                     ),
                   ),

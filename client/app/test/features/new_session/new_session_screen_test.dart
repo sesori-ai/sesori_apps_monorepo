@@ -1223,6 +1223,42 @@ void main() {
     expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionOptionsRefresh);
   });
 
+  testWidgets("keeps the harness retry usable when re-discovery fails", (tester) async {
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) async {
+      discoveryCalls++;
+      return discoveryCalls == 2
+          ? ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null))
+          : ApiResponse.success(
+              PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+            );
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    await tester.tap(refresh);
+    await tester.pumpAndSettle();
+
+    // A transient failure must not take the retry away with it — hiding the
+    // action the user just pressed would recreate the dead end this screen
+    // exists to avoid.
+    expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
+    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionHarnessesRefresh);
+    expect(tester.widget<PregoButtonsSolid>(refresh).onPressed, isNotNull);
+    // The bridge never said it runs no harness this time, so the screen does
+    // not claim it did; the error banner is the honest explanation.
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsNothing);
+
+    await tester.tap(refresh);
+    await tester.pumpAndSettle();
+
+    expect(discoveryCalls, 3);
+    expect(find.byKey(const Key("new_session_no_harness_notice")), findsOneWidget);
+  });
+
   testWidgets("opens harness settings from the empty harness notice", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
