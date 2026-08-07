@@ -9,10 +9,10 @@
   were merged into this plan and that draft is superseded)
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Base:** `main` at `232974e1`
-- **Prerequisite (satisfied 2026-08-07):** the `read-only-archiving` plan lands and merges fully
-  first. It removes unarchive end to end and makes archived sessions
-  read-only; this plan builds its archive export/purge on that permanence
-  guarantee and contains no unarchive-removal work itself.
+- **Prerequisite (satisfied 2026-08-07):** the `read-only-archiving` plan has
+  landed and merged fully. It removed unarchive end to end and made archived
+  sessions read-only; this plan builds its archive export/purge on that
+  permanence guarantee and contains no unarchive-removal work itself.
 
 ## Goal
 

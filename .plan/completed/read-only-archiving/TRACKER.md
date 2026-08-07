@@ -3,9 +3,10 @@
 ## Current State
 
 - **Plan slug:** `read-only-archiving`
-- **Status:** Completed — all delivery steps merged
-- **Implementation base:** `origin/main` at `b710f0df`
-- **Series state:** Steps 1–3 merged; step 4 is this retirement
+- **Completion base:** `origin/main` at `b710f0df`, the merge commit for the
+  final implementation PR #770
+- **Series state:** Steps 1–3 merged; step 4 records completion and retires the
+  plan
 - **Plan PR:** [#765](https://github.com/sesori-ai/sesori_apps_monorepo/pull/765) merged
 - **Relationship:** prerequisite of `internal-chat-history`, which is now
   unblocked — unarchive is gone end to end and archived sessions are read-only.
@@ -18,7 +19,7 @@
 | [x] | 1/4 | `🌱 [read-only-archiving] Raise plan [step 1/4]` | [PR #765](https://github.com/sesori-ai/sesori_apps_monorepo/pull/765) merged |
 | [x] | 2/4 | `⚙️ [read-only-archiving] Reject unarchive and delete restore machinery [step 2/4]` | [PR #767](https://github.com/sesori-ai/sesori_apps_monorepo/pull/767) merged |
 | [x] | 3/4 | `⚙️ [read-only-archiving] Enforce read-only archived sessions [step 3/4]` | [PR #770](https://github.com/sesori-ai/sesori_apps_monorepo/pull/770) merged |
-| [x] | 4/4 | `🌱 [read-only-archiving] Retire plan [step 4/4]` | this PR |
+| [x] | 4/4 | `🌱 [read-only-archiving] Retire plan [step 4/4]` | [PR #771](https://github.com/sesori-ai/sesori_apps_monorepo/pull/771) |
 
 ## Outcome
 

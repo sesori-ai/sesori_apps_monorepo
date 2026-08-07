@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `read-only-archiving`
-- **Status:** Completed — all delivery steps merged; retired 2026-08-07
+- **Status:** Completed — all implementation steps merged; retired 2026-08-07
 - **Plan date:** 2026-08-06
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Base:** `main` at `232974e1`
