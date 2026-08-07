@@ -50,16 +50,22 @@ List<String> codexDesktopAppCliCandidates({
 
 /// Subdirectory paths of [directoryPath], newest-modified first so the app's
 /// most recently relocated CLI copy is probed before stale hash directories.
-/// A listing failure degrades to no subdirectory candidates.
+/// Each entry is stat-ed once; an entry removed mid-enumeration (`notFound`)
+/// is skipped, and a listing failure degrades to no subdirectory candidates.
 List<String> _subdirectoriesNewestFirst({required String directoryPath}) {
   try {
     final directory = io.Directory(directoryPath);
     if (!directory.existsSync()) return const [];
-    final subdirectories = directory.listSync().whereType<io.Directory>().toList()
-      ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-    return [for (final subdirectory in subdirectories) subdirectory.path];
-  } on Object catch (error) {
-    Log.d("[codex] could not list desktop-app CLI directory '$directoryPath': $error");
+    final entries = [
+      for (final subdirectory in directory.listSync().whereType<io.Directory>())
+        (path: subdirectory.path, stat: subdirectory.statSync()),
+    ]..sort((a, b) => b.stat.modified.compareTo(a.stat.modified));
+    return [
+      for (final entry in entries)
+        if (entry.stat.type != io.FileSystemEntityType.notFound) entry.path,
+    ];
+  } on Object catch (error, stackTrace) {
+    Log.w("[codex] could not list desktop-app CLI directory '$directoryPath'", error, stackTrace);
     return const [];
   }
 }
