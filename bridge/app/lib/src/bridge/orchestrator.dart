@@ -121,6 +121,7 @@ import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
+import "services/archived_session_validator.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
@@ -447,6 +448,7 @@ class Orchestrator {
       sessionRepository: sessionRepository,
       filesystemRepository: filesystemRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
+      archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
     );
     final sessionDeletionService = SessionDeletionService(
       sessionLifecycleService: sessionLifecycleService,

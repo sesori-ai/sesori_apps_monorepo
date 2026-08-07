@@ -550,17 +550,6 @@ class FakeSessionDao {
     }
   }
 
-  Future<void> clearArchived({
-    required String sessionId,
-    required int updatedAt,
-    required int projectionUpdatedAt,
-  }) async {
-    if (_sessions.containsKey(sessionId)) {
-      final session = _sessions[sessionId]!;
-      _sessions[sessionId] = session.copyWith(archivedAt: null);
-    }
-  }
-
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return _sessions.values.where((s) => s.projectId == projectId).toList();
   }
@@ -990,9 +979,6 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required int archivedAt,
   }) async {}
-
-  @override
-  Future<void> unarchiveStoredSession({required String sessionId}) async {}
 
   @override
   Future<void> insertStoredSession({
@@ -1441,9 +1427,6 @@ class FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required int archivedAt,
   }) async {}
-
-  @override
-  Future<void> unarchiveStoredSession({required String sessionId}) async {}
 
   @override
   Future<void> insertStoredSession({

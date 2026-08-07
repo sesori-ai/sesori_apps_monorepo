@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
@@ -53,6 +54,7 @@ void main() {
           sessionRepository: sessionRepository,
           filesystemRepository: filesystemRepository,
           sessionOperationDispatcher: operationDispatcher,
+          archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
       );
@@ -323,6 +325,50 @@ void main() {
       expect(persisted?.archivedAt, isNull);
     });
 
+    test("archived: false on an archived session throws 409 with the archived rejection body", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: 123,
+        baseCommit: null,
+      );
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("PATCH", "/session/update/archive"),
+          body: _archiveRequest(
+            sessionId: "s1",
+            archived: false,
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(
+          isA<RelayResponse>()
+              .having((r) => r.status, "status", equals(409))
+              .having(
+                (r) => SessionArchivedRejection.fromJson(jsonDecodeMap(r.body ?? "")),
+                "body",
+                const SessionArchivedRejection(
+                  sessionId: "s1",
+                  reason: SessionArchivedReason.archivedReadOnly,
+                ),
+              ),
+        ),
+      );
+
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.archivedAt, 123);
+    });
+
     test("archive with force skips safety check", () async {
       await _insertSession(
         db: db,
@@ -363,133 +409,6 @@ void main() {
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
-    });
-
-    test("unarchive with existing worktree clears archivedAt", () async {
-      final existingDir = Directory.systemTemp.createTempSync("archive-handler-");
-      addTearDown(() {
-        if (existingDir.existsSync()) {
-          existingDir.deleteSync(recursive: true);
-        }
-      });
-
-      await _insertSession(
-        db: db,
-        sessionId: "s1",
-        projectId: "/repo",
-        isDedicated: true,
-        worktreePath: existingDir.path,
-        branchName: "session-001",
-        baseBranch: null,
-        archivedAt: 123,
-        baseCommit: null,
-      );
-      plugin.sessionsResult = [
-        PluginSession(
-          id: "s1",
-          projectID: "/repo",
-          directory: existingDir.path,
-          parentID: null,
-          title: "Session 1",
-          time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
-        ),
-      ];
-      await _setPullRequestScope(db: db, sessionId: "s1");
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "/repo",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "session-001",
-          prNumber: 22,
-          url: "https://github.com/org/repo/pull/22",
-          title: "Unarchive PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.unknown,
-          reviewDecision: PrReviewDecision.unknown,
-          checkStatus: PrCheckStatus.unknown,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
-
-      final result = await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s1",
-          archived: false,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(worktreeService.restoreCallCount, equals(0));
-      final persisted = await db.sessionDao.getSession(sessionId: "s1");
-      expect(persisted?.archivedAt, isNull);
-      expect(result.time?.archived, isNull);
-      expect(result.pullRequest, isNull);
-    });
-
-    test("unarchive with deleted worktree restores worktree", () async {
-      final deletedWorktreePath = "${Directory.systemTemp.path}/missing-worktree-s1";
-      final deletedWorktree = Directory(deletedWorktreePath);
-      if (deletedWorktree.existsSync()) {
-        deletedWorktree.deleteSync(recursive: true);
-      }
-
-      await _insertSession(
-        db: db,
-        sessionId: "s1",
-        projectId: "/repo",
-        isDedicated: true,
-        worktreePath: deletedWorktreePath,
-        branchName: "session-001",
-        baseBranch: null,
-        archivedAt: 123,
-        baseCommit: null,
-      );
-      plugin.sessionsResult = [
-        PluginSession(
-          id: "s1",
-          projectID: "/repo",
-          directory: deletedWorktreePath,
-          parentID: null,
-          title: "Session 1",
-          time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
-        ),
-      ];
-      worktreeService.resolveBaseBranchAndCommitResult = (
-        baseBranch: "develop",
-        baseCommit: "abc123",
-        startPoint: "develop",
-      );
-
-      await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s1",
-          archived: false,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(worktreeService.restoreCallCount, equals(1));
-      expect(worktreeService.lastRestoreProjectId, equals("/repo"));
-      expect(worktreeService.lastRestoreWorktreePath, equals(deletedWorktreePath));
-      expect(worktreeService.lastRestoreBranchName, equals("session-001"));
-      expect(worktreeService.lastRestoreBaseBranch, equals("develop"));
-      expect(worktreeService.lastRestoreBaseCommit, isNull);
-      final persisted = await db.sessionDao.getSession(sessionId: "s1");
-      expect(persisted?.archivedAt, isNull);
     });
 
     test("missing binding returns 404 before plugin or cleanup calls", () async {
@@ -560,50 +479,6 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "stale-plugin-session"))?.archivedAt, isNull);
     });
 
-    test("unarchive simple session clears archivedAt without worktree ops", () async {
-      await _insertSession(
-        db: db,
-        sessionId: "s1",
-        projectId: "/repo",
-        isDedicated: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        archivedAt: 123,
-        baseCommit: null,
-      );
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s1",
-          projectID: "/repo",
-          directory: "/repo",
-          parentID: null,
-          title: "Simple Session",
-          time: PluginSessionTime(created: 10, updated: 20, archived: 123),
-        ),
-      ];
-
-      await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s1",
-          archived: false,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(worktreeService.restoreCallCount, equals(0));
-      expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
-      final persisted = await db.sessionDao.getSession(sessionId: "s1");
-      expect(persisted?.archivedAt, isNull);
-    });
-
     test("archive fires plugin archiveSession", () async {
       await _insertSession(
         db: db,
@@ -644,54 +519,6 @@ void main() {
       // Fire-and-forget — give the microtask a chance to run.
       await Future<void>.delayed(Duration.zero);
       expect(plugin.lastArchiveSessionId, equals("s1"));
-    });
-
-    test("unarchive does not fire plugin archiveSession", () async {
-      final existingDir = Directory.systemTemp.createTempSync("archive-handler-");
-      addTearDown(() {
-        if (existingDir.existsSync()) {
-          existingDir.deleteSync(recursive: true);
-        }
-      });
-
-      await _insertSession(
-        db: db,
-        sessionId: "s1",
-        projectId: "/repo",
-        isDedicated: true,
-        worktreePath: existingDir.path,
-        branchName: "session-001",
-        baseBranch: null,
-        archivedAt: 123,
-        baseCommit: null,
-      );
-      plugin.sessionsResult = [
-        PluginSession(
-          id: "s1",
-          projectID: "/repo",
-          directory: existingDir.path,
-          parentID: null,
-          title: "Session 1",
-          time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
-        ),
-      ];
-
-      await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s1",
-          archived: false,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      await Future<void>.delayed(Duration.zero);
-      expect(plugin.lastArchiveSessionId, isNull);
     });
 
     test("archive succeeds even when plugin archiveSession throws", () async {
@@ -913,133 +740,6 @@ void main() {
       expect(result.hasWorktree, isFalse);
     });
 
-    test("unarchive response has hasWorktree true when session has worktreePath", () async {
-      final existingDir = Directory.systemTemp.createTempSync("archive-handler-worktree-");
-      addTearDown(() {
-        if (existingDir.existsSync()) {
-          existingDir.deleteSync(recursive: true);
-        }
-      });
-
-      await _insertSession(
-        db: db,
-        sessionId: "s1",
-        projectId: "/repo",
-        isDedicated: true,
-        worktreePath: existingDir.path,
-        branchName: "session-001",
-        baseBranch: null,
-        archivedAt: 123,
-        baseCommit: null,
-      );
-      plugin.sessionsResult = [
-        PluginSession(
-          id: "s1",
-          projectID: "/repo",
-          directory: existingDir.path,
-          parentID: null,
-          title: "Session 1",
-          time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
-        ),
-      ];
-
-      final result = await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s1",
-          archived: false,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(result.hasWorktree, isTrue);
-    });
-
-    test("unarchive response has hasWorktree false when session has no worktreePath", () async {
-      await _insertSession(
-        db: db,
-        sessionId: "s1",
-        projectId: "/repo",
-        isDedicated: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        archivedAt: 123,
-        baseCommit: null,
-      );
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s1",
-          projectID: "/repo",
-          directory: "/repo",
-          parentID: null,
-          title: "Session 1",
-          time: PluginSessionTime(created: 10, updated: 20, archived: 123),
-        ),
-      ];
-
-      final result = await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s1",
-          archived: false,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(result.hasWorktree, isFalse);
-    });
-
-    test("session id is preserved on unarchive response", () async {
-      await _insertSession(
-        db: db,
-        sessionId: "s-preserve",
-        projectId: "/repo",
-        isDedicated: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        archivedAt: 123,
-        baseCommit: null,
-      );
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s-preserve",
-          projectID: "/repo",
-          directory: "/repo",
-          parentID: null,
-          title: "Preserved",
-          time: PluginSessionTime(created: 10, updated: 20, archived: 123),
-        ),
-      ];
-
-      final result = await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s-preserve",
-          archived: false,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
-        ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(result.id, equals("s-preserve"));
-      expect(result.time?.archived, isNull);
-    });
   });
 }
 
@@ -1118,13 +818,10 @@ class _FakeWorktreeService extends WorktreeService {
   bool removeResult = true;
   bool deleteBranchResult = true;
   bool branchExistsResult = true;
-  bool restoreResult = true;
-  ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
   int deleteBranchCallCount = 0;
-  int restoreCallCount = 0;
 
   String? lastCheckWorktreePath;
   String? lastCheckExpectedBranch;
@@ -1134,11 +831,6 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastDeleteBranchProjectId;
   String? lastDeleteBranchName;
   bool? lastDeleteBranchForce;
-  String? lastRestoreProjectId;
-  String? lastRestoreWorktreePath;
-  String? lastRestoreBranchName;
-  String? lastRestoreBaseBranch;
-  String? lastRestoreBaseCommit;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -1197,30 +889,6 @@ class _FakeWorktreeService extends WorktreeService {
     required String branchName,
   }) async {
     return branchExistsResult;
-  }
-
-  @override
-  Future<bool> restoreWorktree({
-    required String projectId,
-    required String worktreePath,
-    required String branchName,
-    required String baseBranch,
-    required String? baseCommit,
-  }) async {
-    restoreCallCount++;
-    lastRestoreProjectId = projectId;
-    lastRestoreWorktreePath = worktreePath;
-    lastRestoreBranchName = branchName;
-    lastRestoreBaseBranch = baseBranch;
-    lastRestoreBaseCommit = baseCommit;
-    return restoreResult;
-  }
-
-  @override
-  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
-    required String projectId,
-  }) async {
-    return resolveBaseBranchAndCommitResult;
   }
 }
 

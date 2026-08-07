@@ -881,7 +881,7 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // pruneWorktrees / removeWorktree / deleteBranch / restoreWorktree
+  // pruneWorktrees / removeWorktree / deleteBranch
   // -------------------------------------------------------------------------
 
   group("WorktreeService lifecycle methods", () {
@@ -1047,59 +1047,6 @@ void main() {
       expect(inv.arguments, equals(["branch", "-D", "--", "session-001"]));
     });
 
-    // restoreWorktree — branch exists
-
-    test("restoreWorktree: branch exists → calls rev-parse then worktree add without -b", () async {
-      // git rev-parse --verify refs/heads/session-001 → exit 0 (branch exists)
-      processRunner.enqueue(result: _ok(stdout: "abc123\n"));
-      // git worktree add <path> <branch>
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.restoreWorktree(
-        projectId: _projectId,
-        worktreePath: "$_projectId/.worktrees/session-001",
-        branchName: "session-001",
-        baseBranch: "main",
-        baseCommit: null,
-      );
-
-      expect(result, isTrue);
-      expect(processRunner.invocations, hasLength(2));
-
-      final verifyInv = processRunner.invocations[0];
-      expect(verifyInv.arguments, equals(["rev-parse", "--verify", "--", "refs/heads/session-001"]));
-
-      final addInv = processRunner.invocations[1];
-      expect(addInv.arguments, equals(["worktree", "add", "--", "$_projectId/.worktrees/session-001", "session-001"]));
-      expect(addInv.arguments, isNot(contains("-b")));
-      expect(addInv.workingDirectory, equals(_projectId));
-    });
-
-    // restoreWorktree — branch does not exist
-
-    test("restoreWorktree: branch missing → calls rev-parse then worktree add with -b and baseBranch", () async {
-      // git rev-parse --verify refs/heads/session-001 → exit 128 (branch missing)
-      processRunner.enqueue(result: _fail(exitCode: 128, stderr: "fatal: Needed a single revision"));
-      // git worktree add <path> -b <branch> <baseBranch>
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.restoreWorktree(
-        projectId: _projectId,
-        worktreePath: "$_projectId/.worktrees/session-001",
-        branchName: "session-001",
-        baseBranch: "main",
-        baseCommit: "abc123def",
-      );
-
-      expect(result, isTrue);
-      expect(processRunner.invocations, hasLength(2));
-
-      final addInv = processRunner.invocations[1];
-      expect(
-        addInv.arguments,
-        equals(["worktree", "add", "-b", "session-001", "--", "$_projectId/.worktrees/session-001", "abc123def"]),
-      );
-    });
   });
 }
 

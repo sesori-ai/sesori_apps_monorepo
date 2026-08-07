@@ -3,6 +3,7 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../services/archived_session_validator.dart";
 import "../services/session_lifecycle_service.dart";
 import "../services/session_unseen_service.dart";
 import "request_handler.dart";
@@ -66,10 +67,15 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
         headers: {"content-type": "application/json"},
         body: jsonEncode(e.rejection.toJson()),
       );
+    } on SessionArchivedReadOnlyException catch (e) {
+      throw RelayResponse(
+        id: request.id,
+        status: 409,
+        headers: {"content-type": "application/json"},
+        body: jsonEncode(e.rejection.toJson()),
+      );
     } on SessionNotFoundException {
       throw buildErrorResponse(request, 404, "session not found");
-    } on SessionInitializationException {
-      throw buildErrorResponse(request, 500, "failed to initialize session");
     }
   }
 }

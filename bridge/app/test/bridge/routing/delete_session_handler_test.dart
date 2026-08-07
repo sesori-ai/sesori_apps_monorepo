@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/bridge/services/session_deletion_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
@@ -56,6 +57,7 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
         sessionOperationDispatcher: sessionOperationDispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
       );
       handler = DeleteSessionHandler(
         sessionDeletionService: SessionDeletionService(

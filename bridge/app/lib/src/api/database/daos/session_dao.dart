@@ -426,20 +426,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     );
   }
 
-  Future<void> clearArchived({
-    required String sessionId,
-    required int updatedAt,
-    required int projectionUpdatedAt,
-  }) async {
-    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
-      SessionTableCompanion(
-        archivedAt: const Value(null),
-        updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(projectionUpdatedAt),
-      ),
-    );
-  }
-
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }

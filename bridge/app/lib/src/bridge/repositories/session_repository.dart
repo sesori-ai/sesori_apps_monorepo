@@ -1323,14 +1323,6 @@ class SessionRepository {
     );
   }
 
-  Future<void> unarchiveStoredSession({required String sessionId}) {
-    return _sessionDao.clearArchived(
-      sessionId: sessionId,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-      projectionUpdatedAt: captureProjectionTimestamp(),
-    );
-  }
-
   Future<void> insertStoredSession({
     required String sessionId,
     required String backendSessionId,
