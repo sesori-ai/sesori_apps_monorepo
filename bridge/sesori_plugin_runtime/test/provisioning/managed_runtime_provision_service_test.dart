@@ -51,11 +51,13 @@ class _FakeValidator implements RuntimeVersionValidator {
   _FakeValidator({
     required this.pathVersion,
     required this.managedVersion,
+    this.candidateVersions = const {},
     this.onDetect,
   });
 
   final SemanticVersion? pathVersion;
   final SemanticVersion? managedVersion;
+  final Map<String, SemanticVersion?> candidateVersions;
   final void Function(String executable)? onDetect;
   final List<String> detectedExecutables = [];
 
@@ -66,7 +68,9 @@ class _FakeValidator implements RuntimeVersionValidator {
   }) async {
     detectedExecutables.add(executable);
     onDetect?.call(executable);
-    return executable == "opencode" ? pathVersion : managedVersion;
+    if (executable == "opencode") return pathVersion;
+    if (candidateVersions.containsKey(executable)) return candidateVersions[executable];
+    return managedVersion;
   }
 
   @override
@@ -103,10 +107,17 @@ void main() {
   Future<List<RuntimeProvisionProgress>> resolve({
     required SemanticVersion? pathVersion,
     required SemanticVersion? managedVersion,
+    List<String> fallbackCandidates = const [],
+    Map<String, SemanticVersion?> candidateVersions = const {},
   }) {
     return ManagedRuntimeProvisionService(
           manifest: const _StubManifest(),
-          versionValidator: _FakeValidator(pathVersion: pathVersion, managedVersion: managedVersion),
+          versionValidator: _FakeValidator(
+            pathVersion: pathVersion,
+            managedVersion: managedVersion,
+            candidateVersions: candidateVersions,
+          ),
+          fallbackExecutableCandidates: fallbackCandidates,
         )
         .provision(
           host: _FakeHost(
@@ -148,6 +159,34 @@ void main() {
     expect((events.last as ProvisionReady).binaryPath, managedBinaryPath);
   });
 
+  test("uses a sufficiently recent fallback candidate when PATH is absent", () async {
+    final events = await resolve(
+      pathVersion: null,
+      managedVersion: SemanticVersion.parse(value: "1.17.9"),
+      fallbackCandidates: const ["/apps/bundle/opencode", "/apps/old/opencode"],
+      candidateVersions: {
+        "/apps/bundle/opencode": SemanticVersion.parse(value: "1.5.0"),
+        "/apps/old/opencode": SemanticVersion.parse(value: "1.6.0"),
+      },
+    );
+
+    expect((events.last as ProvisionReady).binaryPath, "/apps/bundle/opencode");
+  });
+
+  test("skips outdated and missing fallback candidates before the managed runtime", () async {
+    final events = await resolve(
+      pathVersion: null,
+      managedVersion: SemanticVersion.parse(value: "1.17.9"),
+      fallbackCandidates: const ["/apps/missing/opencode", "/apps/old/opencode"],
+      candidateVersions: {
+        "/apps/missing/opencode": null,
+        "/apps/old/opencode": SemanticVersion.parse(value: "0.9.0"),
+      },
+    );
+
+    expect((events.last as ProvisionReady).binaryPath, managedBinaryPath);
+  });
+
   test("does not accept a managed runtime with a different version", () async {
     final events = await resolve(
       pathVersion: null,
@@ -173,6 +212,7 @@ void main() {
         ManagedRuntimeProvisionService(
           manifest: const _StubManifest(),
           versionValidator: validator,
+          fallbackExecutableCandidates: const [],
         ).provision(
           host: _FakeHost(stateDirectory: stateDirectory, abortSignal: abort.signal),
         );
@@ -194,6 +234,7 @@ void main() {
         ManagedRuntimeProvisionService(
           manifest: const _StubManifest(),
           versionValidator: validator,
+          fallbackExecutableCandidates: const [],
         ).provision(
           host: _FakeHost(stateDirectory: stateDirectory, abortSignal: abort.signal),
         );

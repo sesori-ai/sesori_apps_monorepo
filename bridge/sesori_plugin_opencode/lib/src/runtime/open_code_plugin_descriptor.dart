@@ -428,6 +428,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
         runtimeId: manifest.runtimeId,
         probeTimeout: _versionProbeTimeout,
       ),
+      // OpenCode has no desktop app bundling a CLI.
+      fallbackExecutableCandidates: const [],
     );
   }
 
