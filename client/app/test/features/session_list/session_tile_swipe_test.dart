@@ -162,8 +162,8 @@ void main() {
     verify(
       () => cubit.archiveSession(
         sessionId: session.id,
-        deleteWorktree: true,
-        deleteBranch: true,
+        deleteWorktree: false,
+        deleteBranch: false,
         force: false,
       ),
     ).called(1);
@@ -194,8 +194,8 @@ void main() {
     verify(
       () => cubit.archiveSession(
         sessionId: session.id,
-        deleteWorktree: true,
-        deleteBranch: true,
+        deleteWorktree: false,
+        deleteBranch: false,
         force: false,
       ),
     ).called(1);
@@ -213,6 +213,28 @@ void main() {
     expect(find.text("Archive"), findsNothing);
     expect(find.text("Unarchive"), findsNothing);
     expect(find.text("Delete"), findsOneWidget);
+  });
+
+  testWidgets("an archived row's full swipe confirms before deleting", (tester) async {
+    // Delete is the archived row's full-swipe commit, and archiving is now
+    // one-way — an accidental swipe must never destroy the session outright.
+    final session = testSession(title: "Old Session").copyWith(
+      time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: 1700000001000),
+    );
+
+    await pumpPanel(tester, session: session);
+    await tester.drag(tile("Old Session"), const Offset(-520, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Delete session?"), findsOneWidget);
+    verifyNever(
+      () => cubit.deleteSession(
+        sessionId: any(named: "sessionId"),
+        deleteWorktree: any(named: "deleteWorktree"),
+        deleteBranch: any(named: "deleteBranch"),
+        force: any(named: "force"),
+      ),
+    );
   });
 
   testWidgets("the Delete pill opens the confirmation sheet for a worktree session without acting", (tester) async {

@@ -77,24 +77,15 @@ Future<void> _archiveSession({
 // Delete
 // ---------------------------------------------------------------------------
 
+/// Deleting destroys the session outright, so every session confirms it —
+/// including one without a dedicated worktree, where the sheet simply has no
+/// cleanup checkboxes to offer. An archived row's full swipe commits delete,
+/// so this path must never destroy anything unconfirmed.
 void _showDeleteSheet({
   required BuildContext context,
   required SessionListCubit cubit,
   required Session session,
 }) {
-  // Sessions without a dedicated worktree have nothing to clean up — bypass
-  // the "delete worktree and branch" sheet and delete directly.
-  if (!session.hasWorktree) {
-    _deleteSession(
-      context: context,
-      cubit: cubit,
-      sessionId: session.id,
-      deleteWorktree: false,
-      deleteBranch: false,
-    );
-    return;
-  }
-
   showPregoBottomSheet<void>(
     context: context,
     title: context.loc.sessionListDeleteConfirmTitle,

@@ -37,7 +37,10 @@ class PendingInteractionService {
       sessionId: sessionId,
       operation: SessionOperation.replyToPermission,
       body: () async {
-        await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+        await _archivedSessionValidator.requireNotArchived(
+          sessionId: sessionId,
+          operation: SessionOperation.replyToPermission,
+        );
         await _permissionRepository.replyToPermission(
           requestId: requestId,
           sessionId: sessionId,
@@ -57,7 +60,10 @@ class PendingInteractionService {
       sessionId: sessionId,
       operation: SessionOperation.replyToQuestion,
       body: () async {
-        await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+        await _archivedSessionValidator.requireNotArchived(
+          sessionId: sessionId,
+          operation: SessionOperation.replyToQuestion,
+        );
         await _questionRepository.replyToQuestion(
           questionId: questionId,
           sessionId: sessionId,
@@ -77,7 +83,10 @@ class PendingInteractionService {
         sessionId: sessionId,
         operation: SessionOperation.rejectQuestion,
         body: () async {
-          await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+          await _archivedSessionValidator.requireNotArchived(
+            sessionId: sessionId,
+            operation: SessionOperation.rejectQuestion,
+          );
           await _questionRepository.rejectQuestion(
             questionId: questionId,
             sessionId: sessionId,
@@ -111,10 +120,18 @@ class PendingInteractionService {
         }
         return owners.single;
       },
-      body: ({required ownerSessionId}) => _questionRepository.rejectQuestion(
-        questionId: questionId,
-        sessionId: ownerSessionId,
-      ),
+      body: ({required ownerSessionId}) async {
+        // The archive rule is uniform: a resolved legacy owner is checked the
+        // same way an explicit session id is.
+        await _archivedSessionValidator.requireNotArchived(
+          sessionId: ownerSessionId,
+          operation: SessionOperation.rejectQuestion,
+        );
+        await _questionRepository.rejectQuestion(
+          questionId: questionId,
+          sessionId: ownerSessionId,
+        );
+      },
     );
   }
 

@@ -39,10 +39,6 @@ class SessionListCubit extends Cubit<SessionListState> {
   final bool? initialSupportsDedicatedWorktrees;
   final FailureReporter _failureReporter;
 
-  /// Tracks the session state before the last archive action so an optimistic
-  /// archive that fails can be rolled back.
-  Session? _lastActionSnapshot;
-
   SessionCleanupRejection? _lastCleanupRejection;
 
   /// Cached git context (base branch + remote repository identity), fetched
@@ -379,8 +375,9 @@ class SessionListCubit extends Cubit<SessionListState> {
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
     if (index < 0) return false;
 
-    // Snapshot for rollback if the optimistic archive fails.
-    _lastActionSnapshot = _allSessions[index];
+    // Per-invocation, so two overlapping archives can never roll each other's
+    // session back.
+    final snapshot = _allSessions[index];
 
     // Optimistically mark as archived in the backing list so _emitFiltered
     // hides it when showArchived is off.
@@ -405,7 +402,7 @@ class SessionListCubit extends Cubit<SessionListState> {
       );
     } on SessionCleanupRejectedException catch (error) {
       _lastCleanupRejection = error.rejection;
-      _rollbackLastAction();
+      _reinsertSession(snapshot);
       return false;
     }
 
@@ -416,7 +413,7 @@ class SessionListCubit extends Cubit<SessionListState> {
       ErrorResponse(:final error) => () {
         loge("Failed to archive session: ${error.toString()}");
         // Rollback — re-insert the original session.
-        _rollbackLastAction();
+        _reinsertSession(snapshot);
         return false;
       }(),
     };
@@ -485,13 +482,6 @@ class SessionListCubit extends Cubit<SessionListState> {
         return false;
       }(),
     };
-  }
-
-  void _rollbackLastAction() {
-    final session = _lastActionSnapshot;
-    if (session == null) return;
-    _lastActionSnapshot = null;
-    _reinsertSession(session);
   }
 
   void _reinsertSession(Session session) {

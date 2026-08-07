@@ -186,13 +186,6 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     );
   }
 
-  /// An archived session can never be answered, so its pending requests never
-  /// raise an interaction modal.
-  bool get _isArchived {
-    final state = context.read<SessionDetailCubit>().state;
-    return state is SessionDetailLoaded && state.isArchived;
-  }
-
   void _showPendingQuestions() {
     final state = context.read<SessionDetailCubit>().state;
     if (state case SessionDetailLoaded(:final pendingQuestions) when pendingQuestions.isNotEmpty) {
@@ -208,11 +201,16 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   }
 
   void _showQuestionModal(SesoriQuestionAsked question) {
-    if (!_isCurrentPage || _isArchived) return;
+    if (!_isCurrentPage) return;
     final cubit = context.read<SessionDetailCubit>();
+    // An archived session is audit-only, so its requests are not answerable —
+    // treating them as no longer pending both keeps the modal from opening and
+    // dismisses one that was already open when the archive landed.
     bool isPending() {
       final state = cubit.state;
-      return state is SessionDetailLoaded && state.pendingQuestions.any((q) => q.id == question.id);
+      return state is SessionDetailLoaded &&
+          !state.isArchived &&
+          state.pendingQuestions.any((q) => q.id == question.id);
     }
 
     if (!isPending()) return;
@@ -242,11 +240,13 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   }
 
   void _showPermissionModal(SesoriPermissionAsked permission) {
-    if (!_isCurrentPage || _isArchived) return;
+    if (!_isCurrentPage) return;
     final cubit = context.read<SessionDetailCubit>();
     bool isPending() {
       final state = cubit.state;
-      return state is SessionDetailLoaded && state.pendingPermissions.any((p) => p.requestID == permission.requestID);
+      return state is SessionDetailLoaded &&
+          !state.isArchived &&
+          state.pendingPermissions.any((p) => p.requestID == permission.requestID);
     }
 
     if (!isPending()) return;

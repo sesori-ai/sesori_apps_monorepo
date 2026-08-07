@@ -33,16 +33,38 @@
 
 ## Verification Log
 
-- 2026-08-07 (step 3/4) — `bridge/app`: analyzer clean, `dart test test/bridge`
-  1360 passing. `client/module_core`: analyzer clean, `dart test` 1005 passing.
-  `client/app`: analyzer clean, `flutter test` 914 passing. Diff ~1.2k lines, so
-  the bridge/client split contingency was not needed.
+- 2026-08-07 (step 3/4, after review fixes) — `bridge/app`: analyzer clean,
+  `dart test test/bridge` 1362 passing. `client/module_core`: analyzer clean,
+  `dart test` 1006 passing. `client/app`: analyzer clean, `flutter test` 915
+  passing. Diff stayed under the 1,500-line soft cap, so the bridge/client split
+  contingency was not needed.
 
 - 2026-08-07 (step 2/4) — `bridge/app`: `dart analyze --fatal-infos .` clean,
   `dart test` 2430 passing. `shared/sesori_shared`: `dart analyze
   --fatal-infos .` clean, `dart test` 364 passing.
 
 ## Findings And Plan Deltas
+
+- 2026-08-07 (step 3/4, review) — `requireNotArchived` also refuses a descendant
+  of an archived root, and takes `operation` back so it can reuse
+  `resolveSessionFamily`. This supersedes the step-2 delta below: archiving a
+  root makes its whole conversation audit-only, and a published client could
+  otherwise still answer a child-owned question on an archived root.
+- 2026-08-07 (step 3/4, review) — the legacy sessionless question-rejection path
+  consults the validator on its resolved owner session. The plan exempted it
+  because it "has no session to check", but it does resolve one before acting.
+- 2026-08-07 (step 3/4, review) — deletion now always confirms too. An archived
+  row's full swipe commits delete, and the old worktree-less bypass would have
+  destroyed such a session outright with no confirmation and no undo.
+- 2026-08-07 (step 3/4, review) — the archive/delete sheets omit their cleanup
+  checkboxes when the session has no worktree, instead of offering choices that
+  do not apply.
+- 2026-08-07 (step 3/4, review) — an archived session's requests report as no
+  longer pending, so `PendingRequestAutoDismiss` closes a modal that was already
+  open when the archive landed.
+- 2026-08-07 (step 3/4, review) — `SessionListCubit`'s archive snapshot is now a
+  local, so two overlapping archives cannot roll each other's session back. The
+  `_lastActionSnapshot` field and `_rollbackLastAction` are gone.
 
 - 2026-08-07 (step 3/4) — the archived-rejection 409 is mapped once in
   `RequestHandlerBase.handleInternal`, not per handler, so every current and
