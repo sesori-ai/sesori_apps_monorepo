@@ -204,6 +204,26 @@ single binary), darwin/linux × x64/arm64 only, and **no published checksums**.
   deferred without blocking the rest (user-approved fallback: "include, as
   final step").
 
+### Superseded managed runtime (step 5)
+
+When a bridge update pins a newer runtime, the managed path is version-scoped
+(`<state>/<runtime>/<version>/<binary>`) and the provision service requires an
+exact `bundledVersion` match, so the previously installed copy is simply not
+found: setup reports `runtimeMissing` and the harness becomes setup-blocked
+until someone installs the new pin. The install capability does not depend on
+setup state, so from step 4 onward the phone already offers Install in exactly
+that state — the upgrade is one tap.
+
+The remaining gap is honesty of the copy: those descriptors currently say
+"Install OpenCode locally, then retry setup detection", pointing at a manual
+install when an in-app button now fixes it. Step 5 distinguishes the two cases
+in the descriptors' action hints — nothing found at all vs. a superseded
+managed runtime — so the phone can say the runtime needs updating and that
+Install will do it. Text and a probe of the existing managed directory only; no
+new machinery, no change to the resolve-only `ensureRuntime` contract.
+
+`login-note:` the same hint seam will carry the "needs login" case later.
+
 ## Delivery Sequence
 
 One open PR at a time; every title exactly as listed.
@@ -214,7 +234,7 @@ One open PR at a time; every title exactly as listed.
 | 2/6 | `⚙️ [phone-harness-install] Install capability, wire contracts, and descriptor install seams [step 2/6]` | Shared: `PluginManagementCapability.install`, `install()` command variant, `plugin.install.progress` SSE event + contract tests; client exhaustive-switch tolerance (same four files as the P03 precedent). Interface: `PluginControlCapability.install`, `installRuntime` descriptor seam. Plugins: OpenCode + Codex `installRuntime` implementations + capability declarations, wired to `RuntimeInstallService`/`ManagedRuntimeCleaner`, with descriptor tests. Inert until step 3 wires the command path (same additive-contract precedent as Stage 12-P02). |
 | 3/6 | `🚧 [phone-harness-install] Bridge install command end to end [step 3/6]` | `PluginRuntime` install entry + fencing, repository mirror, `PluginLifecycleService` install command (accepted-immediately, existing serialization — no lock, enable/re-inspect/start on success, sanitized failure), `RuntimeInstallService` doc-contract update, handler mapping for the new variant, Orchestrator SSE emission with throttling. Focused service/runtime/handler/orchestrator tests. |
 | 4/6 | `⚙️ [phone-harness-install] Phone install button and progress [step 4/6]` | `PluginManagementService` progress consumption, cubit state, harness-card Install button + progress + failure banner, l10n, bounded analytics event, widget/service tests. |
-| 5/6 | `🚧 [phone-harness-install] Cursor managed runtime and install [step 5/6]` | Generalize the `RuntimeManifest` version pin (OpenCode/Codex updated in lockstep), Cursor manifest, package-directory install layout, `ensureRuntime`-based managed resolution + capability, `sesori_plugin_cursor → sesori_plugin_runtime` dependency, `update-backend-runtimes` skill extension, tests. |
+| 5/6 | `🚧 [phone-harness-install] Cursor managed runtime and install [step 5/6]` | Cursor manifest (pinned build + self-computed checksums), package-directory install layout, `ensureRuntime`-based managed resolution + capability, `sesori_plugin_cursor → sesori_plugin_runtime` dependency, superseded-managed-runtime action hints (below), `update-backend-runtimes` skill extension, tests. |
 | 6/6 | `🌱 [phone-harness-install] Retire the plan [step 6/6]` | Move plan to `.plan/completed/`. |
 
 Line-count note: step 2 may exceed the 1,500-line soft cap because Freezed/JSON
@@ -253,6 +273,35 @@ moderate. Recorded here per policy.
 - No guard is added for flows no caller produces (e.g. install on a plugin
   without the capability is a plain 409 conflict via the existing capability
   check pattern).
+
+## Follow-Up: Automatic Managed Runtime Updates
+
+**Discuss after step 6 merges and this plan is retired — deliberately out of
+scope here.**
+
+There is no automatic upgrade of a managed runtime when a bridge update pins a
+newer one. `ManagedRuntimeProvisionService` used to download at startup; that
+was removed in `4ef55675` (#507), which made `ensureRuntime` strictly
+resolve-only ("must never download, install, sweep, or otherwise mutate a
+runtime"). The commit body is empty, so the recorded rationale is lost; the
+constraint is consistent with startup holding the cross-instance mutex, where a
+multi-minute download would stall a healthy bridge. Nothing under
+`bridge/app/lib/src/updater/` correlates an installed managed version with a
+newly pinned one (the similarly named `managed_runtime_path_service.dart` and
+`managed_runtime_manifest_api.dart` concern the bridge's own binary).
+
+After this plan the upgrade costs one deliberate tap per bridge update, per
+harness, with honest copy telling the user why. Making it automatic reverses
+`4ef55675` and needs, at minimum:
+
+- an explicit owner outside the startup mutex (update-time or post-start
+  trigger), since the resolve-only contract must not be weakened;
+- a product decision on downloading tens of MB unprompted, including metered
+  connections; and
+- behavior for a bridge running headless where nobody ever opens the app.
+
+That is a product call plus its own architecture, not an implementation detail
+of this plan.
 
 ## Review Record
 
