@@ -1393,7 +1393,7 @@ void main() {
     );
     expect(accepted.plugins.single.setup.state, PluginSetupState.notInspected);
 
-    await installSettled(progress);
+    await installSettled(progress: progress);
 
     expect(repository.installCalls, 1);
     expect(repository.inspectCalls, 1);
@@ -1440,13 +1440,46 @@ void main() {
     addTearDown(progressSubscription.cancel);
 
     await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
-    await installSettled(progress);
+    await installSettled(progress: progress);
 
     expect(progress.last.phase, PluginInstallPhase.failed);
-    expect(progress.last.message, "checksum verification failed");
+    // The descriptor's failure text never reaches the wire.
+    expect(progress.last.message, isNot(contains("checksum")));
     expect(repository.inspectCalls, isZero);
     expect(repository.startCalls, isZero);
     expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
+  });
+
+  test("an installed runtime that is still setup-blocked does not report completed", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Log in"),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..installEvents = const [ProvisionReady(binaryPath: "/managed/one")];
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+            repository: repository,
+            settingsRepository: null,
+            managementCapabilities: installCapableManagementCapabilities,
+          )
+          ..initialize(
+            disabledPluginIds: const {"one"},
+            setupById: const {"one": PluginSetupNotInspected()},
+          );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await installSettled(progress: progress);
+
+    expect(progress.map((update) => update.phase).toList(), const [
+      PluginInstallPhase.finalizing,
+      PluginInstallPhase.failed,
+    ]);
+    expect(repository.startCalls, isZero);
   });
 
   test("a duplicate install joins and a different command conflicts while installing", () async {
@@ -1489,7 +1522,7 @@ void main() {
     );
 
     installGate.complete();
-    await installSettled(progress);
+    await installSettled(progress: progress);
     expect(repository.startCalls, 1);
   });
 
@@ -1854,7 +1887,7 @@ const installCapableManagementCapabilities = <PluginControlCapability>{
 /// Completes when [progress] contains a terminal install event, then yields
 /// once more so the service's finally-block cleanup runs. The caller must
 /// subscribe its collector before issuing the install command.
-Future<void> installSettled(List<PluginInstallProgressUpdate> progress) async {
+Future<void> installSettled({required List<PluginInstallProgressUpdate> progress}) async {
   while (!progress.any(
     (update) => update.phase == PluginInstallPhase.completed || update.phase == PluginInstallPhase.failed,
   )) {

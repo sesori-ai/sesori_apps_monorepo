@@ -329,6 +329,9 @@ class PluginLifecycleService {
   }) async {
     try {
       RuntimeProvisionProgress? terminal;
+      // Stop at the terminal event instead of draining the stream: the install
+      // service still sweeps superseded versions after yielding ProvisionReady,
+      // and the phone should not wait on that housekeeping.
       await for (final event in _lifecycleRepository.installRuntime(pluginId: pluginId)) {
         switch (event) {
           case ProvisionDownloading(:final receivedBytes, :final totalBytes):
@@ -354,14 +357,37 @@ class PluginLifecycleService {
           case ProvisionReady() || ProvisionFailed():
             terminal = event;
         }
+        // The install service still sweeps superseded versions after yielding
+        // its terminal event; the phone must not wait on that housekeeping.
+        if (terminal != null) break;
       }
       switch (terminal) {
         case ProvisionReady():
           _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.finalizing, percent: null, message: null);
           await _enable(pluginId: pluginId, command: command);
-          _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.completed, percent: null, message: null);
-        case ProvisionFailed(:final message):
-          _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.failed, percent: null, message: message);
+          // The binary is installed, but setup can still be blocked (most
+          // often authentication). Report completed only when the harness
+          // actually became usable; otherwise the phone would show success
+          // while the card stays blocked.
+          final setup = _requireSetupById()[pluginId];
+          _emitInstallProgress(
+            pluginId: pluginId,
+            phase: setup is PluginSetupReady ? PluginInstallPhase.completed : PluginInstallPhase.failed,
+            percent: null,
+            message: setup is PluginSetupReady
+                ? null
+                : "The runtime installed, but the harness still needs setup. Check its status.",
+          );
+        case ProvisionFailed():
+          // Descriptor failure text is not a trusted wire payload; the phone
+          // gets a fixed message and the detail stays in the bridge log.
+          Log.w('Plugin "$pluginId" managed runtime install failed: ${terminal.message}');
+          _emitInstallProgress(
+            pluginId: pluginId,
+            phase: PluginInstallPhase.failed,
+            percent: null,
+            message: "The runtime could not be installed. Check the bridge logs for details.",
+          );
         case _:
           _emitInstallProgress(
             pluginId: pluginId,
