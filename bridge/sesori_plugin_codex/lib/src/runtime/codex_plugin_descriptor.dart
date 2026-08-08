@@ -293,6 +293,16 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       probeTimeout: _versionProbeTimeout,
     );
 
+    /// What to tell the user when no usable runtime was found and Sesori can
+    /// install one: a superseded managed install needs updating, anything else
+    /// needs a first install.
+    String missingRuntimeHint() {
+      const inventory = ManagedRuntimeInventory(manifest: manifest);
+      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+          ? "This bridge needs a newer Codex. Install it from Sesori to update the managed runtime."
+          : "Install Codex from Sesori, or install it locally and retry setup detection.";
+    }
+
     // Fallback resolution mirroring ensureRuntime's precedence when the primary
     // probe fails: a recent-enough desktop-app-bundled CLI, then the pinned
     // managed runtime.
@@ -335,7 +345,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
         return PluginSetupRuntimeMissing(
           actionHint: hasExplicitBin
               ? "Fix the configured Codex binary path, then restart the bridge."
-              : "Install Codex locally, then retry setup detection.",
+              : missingRuntimeHint(),
         );
       }
     } on TimeoutException {
@@ -372,9 +382,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
         } else if (version.compareTo(manifest.minPathVersion) < 0) {
           if (!await resolveManagedRuntime()) {
             if (!hasExplicitBin) {
-              return const PluginSetupRuntimeMissing(
-                actionHint: "Update Codex locally, then retry setup detection.",
-              );
+              return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
             }
             return const PluginSetupUnavailable(
               actionHint: "The configured Codex binary is too old. Update it and restart the bridge.",

@@ -130,7 +130,20 @@ class RuntimeInstallService {
         throw RuntimeInstallException("archive ${asset.assetName} did not contain ${asset.archiveBinaryName}");
       }
 
-      _placeBinary(binaryInStaging: binaryInStaging, versionDir: versionDir, binaryFileName: binaryFileName);
+      switch (asset.layout) {
+        case RuntimeAssetLayout.singleBinary:
+          _placeBinary(binaryInStaging: binaryInStaging, versionDir: versionDir, binaryFileName: binaryFileName);
+        case RuntimeAssetLayout.packageDirectory:
+          // The entry binary loads siblings from its own directory, so the
+          // whole tree is placed and the canonical name is a symlink-free
+          // rename of the entry file within it.
+          _placePackage(
+            packageInStaging: binaryInStaging.parent,
+            versionDir: versionDir,
+            binaryFileName: binaryFileName,
+            archiveBinaryName: asset.archiveBinaryName,
+          );
+      }
       await _makeExecutable(binaryPath: p.join(versionDir, binaryFileName), assetName: asset.assetName);
 
       // Sentinel written last: its presence (with a matching hash) is the only
@@ -184,6 +197,28 @@ class RuntimeInstallService {
     // canonical [binaryFileName] may differ from the archive member name, which
     // normalizes a target-triple-named member to a plain binary.
     binaryInStaging.renameSync(p.join(versionDir, binaryFileName));
+  }
+
+  /// Places an entire extracted package tree at [versionDir], keeping the entry
+  /// binary next to the siblings it loads at runtime. When the publisher's
+  /// entry name differs from the canonical [binaryFileName], the entry file is
+  /// renamed inside the placed tree rather than moved out of it.
+  void _placePackage({
+    required Directory packageInStaging,
+    required String versionDir,
+    required String binaryFileName,
+    required String archiveBinaryName,
+  }) {
+    final Directory dir = Directory(versionDir);
+    if (dir.existsSync()) {
+      dir.deleteSync(recursive: true);
+    }
+    dir.parent.createSync(recursive: true);
+    // Same filesystem (both under managedDir), so this rename is atomic.
+    packageInStaging.renameSync(versionDir);
+    if (archiveBinaryName != binaryFileName) {
+      File(p.join(versionDir, archiveBinaryName)).renameSync(p.join(versionDir, binaryFileName));
+    }
   }
 
   Future<void> _makeExecutable({required String binaryPath, required String assetName}) async {

@@ -11,18 +11,32 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 /// that must be normalized to a plain `codex`. For publishers whose archive
 /// member already matches the canonical name (e.g. OpenCode's `opencode`), the
 /// two are equal.
+/// How a publisher's extracted archive is placed into the version directory.
+///
+/// Most runtimes ship a single self-contained executable ([singleBinary]).
+/// Cursor ships a `dist-package/` tree whose entry binary loads sibling files,
+/// so the whole directory must be kept together ([packageDirectory]).
+enum RuntimeAssetLayout { singleBinary, packageDirectory }
+
 final class RuntimeAsset {
   const RuntimeAsset({
     required this.assetName,
     required this.format,
     required this.sha256,
     required this.archiveBinaryName,
+    this.layout = RuntimeAssetLayout.singleBinary,
   });
 
   final String assetName;
   final ArchiveFormat format;
   final String sha256;
+
+  /// The entry executable's name inside the extracted archive. For
+  /// [RuntimeAssetLayout.packageDirectory] it names the binary within the
+  /// placed tree; its siblings travel with it.
   final String archiveBinaryName;
+
+  final RuntimeAssetLayout layout;
 }
 
 /// The harness-specific seam of the shared runtime-provisioning system: the

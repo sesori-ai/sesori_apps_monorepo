@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:opencode_plugin/src/runtime/open_code_plugin_descriptor.dart";
 import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -192,6 +193,52 @@ void main() {
         descriptor.managementCapabilities(config: explicitConfig),
         isNot(contains(PluginControlCapability.install)),
       );
+    });
+
+    test("a superseded managed runtime is reported as needing an update, not a first install", () async {
+      // A bridge update that pins a newer runtime leaves the previous version
+      // directory behind; the managed path is version-scoped, so setup sees
+      // nothing runnable and must say "update" rather than "install locally".
+      final tempState = await Directory.systemTemp.createTemp("opencode-superseded");
+      addTearDown(() async {
+        if (tempState.existsSync()) await tempState.delete(recursive: true);
+      });
+      Directory(p.join(tempState.path, "opencode", "0.0.1")).createSync(recursive: true);
+      final processes = _ProbeProcessService(
+        spawnError: const ProcessException("opencode", ["--version"], "missing", 2),
+      );
+
+      final result = await const OpenCodePluginDescriptor().inspectSetup(
+        config: automaticConfig,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: tempState.path,
+      );
+
+      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result.actionHint, contains("newer OpenCode"));
+      expect(result.actionHint, contains("Sesori"));
+    });
+
+    test("no managed runtime at all is reported as a first install", () async {
+      final tempState = await Directory.systemTemp.createTemp("opencode-absent");
+      addTearDown(() async {
+        if (tempState.existsSync()) await tempState.delete(recursive: true);
+      });
+      final processes = _ProbeProcessService(
+        spawnError: const ProcessException("opencode", ["--version"], "missing", 2),
+      );
+
+      final result = await const OpenCodePluginDescriptor().inspectSetup(
+        config: automaticConfig,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: tempState.path,
+      );
+
+      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result.actionHint, contains("Install OpenCode from Sesori"));
+      expect(result.actionHint, isNot(contains("newer OpenCode")));
     });
 
     test("reports unknown without exposing unrecognized command output", () async {

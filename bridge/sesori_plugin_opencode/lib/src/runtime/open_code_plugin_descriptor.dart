@@ -375,6 +375,16 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       return managedVersion != null && managedVersion.compareTo(manifest.bundledVersion) == 0;
     }
 
+    /// What to tell the user when no usable runtime was found and Sesori can
+    /// install one: a superseded managed install needs updating, anything else
+    /// needs a first install.
+    String missingRuntimeHint() {
+      const inventory = ManagedRuntimeInventory(manifest: manifest);
+      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+          ? "This bridge needs a newer OpenCode. Install it from Sesori to update the managed runtime."
+          : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
+    }
+
     CommandResult? result;
     var runtimeResolved = false;
     try {
@@ -390,7 +400,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
         return PluginSetupRuntimeMissing(
           actionHint: hasExplicitBin
               ? "Fix the configured OpenCode binary path, then restart the bridge."
-              : "Install OpenCode locally, then retry setup detection.",
+              : missingRuntimeHint(),
         );
       }
     } on TimeoutException {
@@ -413,9 +423,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       if (result!.exitCode != 0) {
         if (!await managedRuntimeIsReady()) {
           if (!hasExplicitBin) {
-            return const PluginSetupRuntimeMissing(
-              actionHint: "Install OpenCode locally, then retry setup detection.",
-            );
+            return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
           }
           return const PluginSetupUnknown(
             actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
@@ -432,9 +440,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
         } else if (version.compareTo(manifest.minPathVersion) < 0) {
           if (!await managedRuntimeIsReady()) {
             if (!hasExplicitBin) {
-              return const PluginSetupRuntimeMissing(
-                actionHint: "Update OpenCode locally, then retry setup detection.",
-              );
+              return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
             }
             return const PluginSetupUnavailable(
               actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
