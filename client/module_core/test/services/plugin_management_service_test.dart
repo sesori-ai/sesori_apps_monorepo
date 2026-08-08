@@ -917,6 +917,40 @@ void main() {
       expect(reportedEvents, isEmpty);
     });
 
+    test("an uncertain install keeps the busy row and still reports its outcome", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(const PluginManagementMutationResult.uncertain())
+        ..queueLoad(_supported(_response(token: "two")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
+      await _pump();
+
+      // The command may still have reached the bridge, so Install must not
+      // become tappable and start a second download.
+      expect(service.installProgress.value.containsKey("codex"), isTrue);
+
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      await _pump();
+
+      expect(service.installProgress.value, isEmpty);
+      expect(reportedEvents.single.parameters, {"outcome": "completed"});
+    });
+
     test("a rejected install command never claims a later install", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "one")))

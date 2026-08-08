@@ -148,10 +148,16 @@ class PluginManagementService with Disposable {
       }
       return result;
     }
-    // The bridge never accepted it: withdraw authorship so a later install of
-    // the same harness, started elsewhere, is not misattributed to this app,
-    // and drop the synthetic busy entry written at tap time so the row is
-    // tappable again.
+    // An uncertain outcome may still have reached the bridge (the relay
+    // documents a lost response as possibly-dispatched), so authorship and the
+    // busy row are kept: the terminal event settles them if the install is
+    // running, and a reconnect clears them otherwise. Re-enabling Install here
+    // could start a second multi-minute download instead.
+    if (result is PluginManagementMutationResultUncertain) return result;
+
+    // A definite rejection: withdraw authorship so a later install of the same
+    // harness, started elsewhere, is not misattributed to this app, and drop
+    // the synthetic busy entry written at tap time so the row is tappable.
     _selfStartedInstalls.remove(pluginId);
     _pendingInstallOutcomes.remove(pluginId);
     _publishInstallProgress(
