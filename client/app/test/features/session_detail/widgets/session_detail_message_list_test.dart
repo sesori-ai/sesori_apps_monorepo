@@ -40,7 +40,7 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
     _retryErrorMessage = widget.initialRetryErrorMessage;
   }
 
-  void prependOlderMessages(List<MessageWithParts> older) {
+  void prependOlderMessages({required List<MessageWithParts> older}) {
     setState(() => _messages = [...older, ..._messages]);
   }
 
@@ -199,7 +199,7 @@ void main() {
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
     await tester.pumpAndSettle();
 
-    key.currentState!.prependOlderMessages([
+    key.currentState!.prependOlderMessages(older: [
       for (var index = 0; index < 10; index++)
         _message(messageId: "m$index", role: "user", text: "message $index"),
     ]);

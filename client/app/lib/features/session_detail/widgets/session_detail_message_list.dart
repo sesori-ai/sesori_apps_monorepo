@@ -233,21 +233,51 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     // the viewport, so rendering them cannot shift what is being read.
     // Freezing them would leave the page loaded but invisible until the
     // user returned to the newest message.
-    if (_follow.following || _hasOlderMessages(oldWidget: oldWidget)) {
+    if (_follow.following) {
       _syncChatController();
-      if (!_follow.following) {
-        _snapshot = null;
-      }
+      return;
     }
+    final frozen = _snapshot;
+    if (frozen == null) return;
+    final prepended = _prependedOlderMessages(frozen: frozen);
+    if (prepended.isEmpty) return;
+
+    // Take *only* the newly prepended prefix. Taking the whole live list would
+    // also pull in messages appended at the newest edge while detached, which
+    // is exactly the reflow the freeze exists to prevent. Everything else the
+    // snapshot holds — streaming text, children, statuses, retry state — stays
+    // frozen.
+    final merged = [...prepended, ...frozen.messages];
+    setState(() {
+      _snapshot = (
+        messages: List<MessageWithParts>.unmodifiable(merged),
+        streamingText: frozen.streamingText,
+        children: frozen.children,
+        childStatuses: frozen.childStatuses,
+        retryErrorMessage: frozen.retryErrorMessage,
+      );
+    });
+    // The prepended rows render against the frozen `streamingText` and
+    // `childStatuses`, which have no entries for them. That is correct rather
+    // than a gap: those maps describe live activity at the newest edge, and
+    // history old enough to be paged back to has finished streaming and has
+    // no running child work.
+    //
+    // Sync to the frozen list, not the live one, so the controller and the
+    // render agree on both the rows and the retry state.
+    _syncChatControllerTo(
+      messages: merged,
+      hasRetryError: frozen.retryErrorMessage != null,
+    );
   }
 
-  /// Whether this update prepended history above what was already shown.
-  bool _hasOlderMessages({required SessionDetailMessageList oldWidget}) {
-    if (widget.messages.length <= oldWidget.messages.length) return false;
-    final previousOldestId = oldWidget.messages.firstOrNull?.info.id;
-    if (previousOldestId == null) return false;
-    final oldestIndex = widget.messages.indexWhere((message) => message.info.id == previousOldestId);
-    return oldestIndex > 0;
+  /// History prepended above the frozen transcript, in order. Empty when this
+  /// update only touched the newest edge.
+  List<MessageWithParts> _prependedOlderMessages({required _DetachedSnapshot frozen}) {
+    final frozenOldestId = frozen.messages.firstOrNull?.info.id;
+    if (frozenOldestId == null) return const [];
+    final boundary = widget.messages.indexWhere((message) => message.info.id == frozenOldestId);
+    return boundary <= 0 ? const [] : widget.messages.sublist(0, boundary);
   }
 
   void _onFollowChanged() {
@@ -274,10 +304,17 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   /// genuine set changes — streaming emits are filtered out by the
   /// cheap id comparison below and never touch the animated list.
   void _syncChatController() {
-    final target = _chatEntriesFor(
+    _syncChatControllerTo(
       messages: widget.messages,
       hasRetryError: widget.retryErrorMessage != null,
     );
+  }
+
+  void _syncChatControllerTo({
+    required List<MessageWithParts> messages,
+    required bool hasRetryError,
+  }) {
+    final target = _chatEntriesFor(messages: messages, hasRetryError: hasRetryError);
     final current = _chatController.messages;
     if (_entriesMatch(current: current, target: target)) return;
     unawaited(
