@@ -48,7 +48,7 @@ class ManagedRuntimeInstallService {
     required String stateDirectory,
     required StartAbortSignal startAborted,
   }) async* {
-    _throwIfAborted(startAborted);
+    _throwIfAborted(startAborted: startAborted);
     yield const ProvisionResolving();
 
     final String id = _manifest.runtimeId;
@@ -88,7 +88,7 @@ class ManagedRuntimeInstallService {
         executable: binaryPath,
         environment: environment,
       );
-      _throwIfAborted(startAborted);
+      _throwIfAborted(startAborted: startAborted);
       if (cachedVersion != null && cachedVersion.compareTo(bundled) == 0) {
         Log.i("[$id] managed $name $bundled already installed");
         yield ProvisionReady(binaryPath: binaryPath);
@@ -116,12 +116,13 @@ class ManagedRuntimeInstallService {
       }
     } on PluginStartAbortedException {
       rethrow;
-    } on RuntimeInstallException catch (error) {
-      // Surfaced (and rendered) via ProvisionFailed — no separate upfront log.
-      yield ProvisionFailed(message: "Could not install the $name runtime: ${error.message}");
-      return;
-    } on Object catch (error) {
-      yield ProvisionFailed(message: "Could not install the $name runtime: $error");
+    } on Object catch (error, stackTrace) {
+      // The wire message must stay sanitized (install errors can carry local
+      // paths and raw command output), so only the local log keeps the detail.
+      Log.w("[$id] managed $name runtime install failed", error, stackTrace);
+      yield ProvisionFailed(
+        message: "Could not install the $name runtime. Check the bridge logs for details.",
+      );
       return;
     }
 
@@ -132,6 +133,7 @@ class ManagedRuntimeInstallService {
       executable: binaryPath,
       environment: environment,
     );
+    _throwIfAborted(startAborted: startAborted);
     if (installedVersion == null || installedVersion.compareTo(bundled) != 0) {
       yield ProvisionFailed(
         message:
@@ -146,7 +148,7 @@ class ManagedRuntimeInstallService {
     await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.toString());
   }
 
-  void _throwIfAborted(StartAbortSignal startAborted) {
+  void _throwIfAborted({required StartAbortSignal startAborted}) {
     if (startAborted.isAborted) {
       throw const PluginStartAbortedException();
     }
