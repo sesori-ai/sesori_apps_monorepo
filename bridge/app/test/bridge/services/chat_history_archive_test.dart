@@ -263,6 +263,45 @@ void main() {
       expect(await history.archivedStorage.read(sessionId: "ses_a"), original);
     });
 
+    test("malformed audit bytes are quarantined instead of failing the read", () async {
+      await export();
+      await history.service.purgeSessionHistory(sessionId: "ses_a");
+      // Invalid UTF-8, not merely invalid JSON.
+      File(
+        "${archiveDirectoryPath(dataDirectory: history.directory.path)}/"
+        "${base64Url.encode(utf8.encode("ses_a"))}.json",
+      ).writeAsBytesSync([0xC3, 0x28, 0xA0, 0xA1]);
+
+      expect(await history.service.getArchivedSessionMessages(sessionId: "ses_a"), isNull);
+
+      final quarantined = Directory(archiveDirectoryPath(dataDirectory: history.directory.path))
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.contains(".corrupt-"));
+      expect(quarantined, hasLength(1));
+    });
+
+    test("a transcript displaced by an interrupted replacement is recovered", () async {
+      await export();
+      final original = await history.archivedStorage.read(sessionId: "ses_a");
+      final canonical = File(
+        "${archiveDirectoryPath(dataDirectory: history.directory.path)}/"
+        "${base64Url.encode(utf8.encode("ses_a"))}.json",
+      );
+      // Simulate a crash between the two renames: only the displaced copy is
+      // on disk, and the canonical path is missing.
+      canonical.renameSync("${canonical.path}.previous");
+      expect(canonical.existsSync(), isFalse);
+
+      expect(await history.archivedStorage.read(sessionId: "ses_a"), original);
+      expect(await history.archivedStorage.exists(sessionId: "ses_a"), isTrue);
+      expect(
+        await history.archivedStorage.listArchivedSessionIds(),
+        contains("ses_a"),
+        reason: "reconcile must still see the session as archived",
+      );
+    });
+
     test("deleting a session removes its archive too", () async {
       await export();
 

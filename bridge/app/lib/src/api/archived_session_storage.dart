@@ -38,10 +38,15 @@ class ArchivedSessionStorage {
       } on FileSystemException {
         // Windows refuses to rename onto an existing file. Move the current
         // file aside rather than deleting it: if the replacement then fails,
-        // the previous transcript is still on disk and can be restored, so no
-        // window exists in which the session has no audit file at all.
+        // the previous transcript is restored below.
+        //
+        // A crash between the two renames leaves the canonical path missing
+        // and a `.previous` file beside it; `read` recovers from that on the
+        // next access, so the transcript is never actually lost. Only Windows
+        // reaches this path at all — elsewhere the first rename replaces
+        // atomically.
         if (!file.existsSync()) rethrow;
-        final displaced = File("${file.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.previous");
+        final displaced = File("${file.path}$_displacedSuffix");
         await file.rename(displaced.path);
         try {
           await temporary.rename(file.path);
@@ -59,6 +64,7 @@ class ArchivedSessionStorage {
   /// The stored audit file, or null when this session was never archived.
   Future<String?> read({required String sessionId}) async {
     final file = File(_filePath(sessionId: sessionId));
+    if (!file.existsSync()) await _restoreDisplaced(sessionId: sessionId);
     if (!file.existsSync()) return null;
     try {
       return await file.readAsString();
@@ -71,8 +77,27 @@ class ArchivedSessionStorage {
     }
   }
 
-  Future<bool> exists({required String sessionId}) async =>
-      File(_filePath(sessionId: sessionId)).existsSync();
+  Future<bool> exists({required String sessionId}) async {
+    final file = File(_filePath(sessionId: sessionId));
+    if (!file.existsSync()) await _restoreDisplaced(sessionId: sessionId);
+    return file.existsSync();
+  }
+
+  /// Restores a transcript left aside by a crash mid-replacement.
+  ///
+  /// The replacement renames the live file aside before moving the new one
+  /// into place; a crash between those two steps leaves only the displaced
+  /// copy, which is still a complete transcript.
+  Future<void> _restoreDisplaced({required String sessionId}) async {
+    final displaced = File("${_filePath(sessionId: sessionId)}$_displacedSuffix");
+    if (!displaced.existsSync()) return;
+    try {
+      await displaced.rename(_filePath(sessionId: sessionId));
+      Log.w("[archive] restored the audit file for session $sessionId after an interrupted replacement");
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("[archive] failed to restore the displaced audit file for session $sessionId", error, stackTrace);
+    }
+  }
 
   /// Moves an unreadable file aside instead of deleting it: it is the only
   /// remaining copy of that transcript, and a human may still salvage it.
@@ -101,6 +126,11 @@ class ArchivedSessionStorage {
     await for (final entity in directory.list(followLinks: false)) {
       if (entity is! File) continue;
       final name = path.basename(entity.path);
+      if (name.endsWith(_displacedSuffix)) {
+        // An interrupted replacement still represents an archived session.
+        ids.add(_decodeSegment(segment: name.substring(0, name.length - _extension.length - _displacedSuffix.length)));
+        continue;
+      }
       if (!name.endsWith(_extension)) continue;
       ids.add(_decodeSegment(segment: name.substring(0, name.length - _extension.length)));
     }
@@ -108,6 +138,7 @@ class ArchivedSessionStorage {
   }
 
   static const _extension = ".json";
+  static const _displacedSuffix = ".previous";
 
   String _filePath({required String sessionId}) =>
       path.join(_directoryPath, "${_encodeSegment(id: sessionId)}$_extension");
