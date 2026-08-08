@@ -17,6 +17,7 @@ class ChatHistoryListener {
   final ChatHistoryService _chatHistoryService;
   StreamSubscription<NormalizedSourcedBridgeEvent>? _subscription;
   final Set<Future<void>> _pendingCaptures = {};
+  Future<void>? _disposeFuture;
   bool _disposed = false;
 
   ChatHistoryListener({
@@ -70,8 +71,11 @@ class ChatHistoryListener {
     await _chatHistoryService.captureMessage(sessionId: message.sessionID, message: message);
   }
 
-  Future<void> dispose() async {
-    if (_disposed) return;
+  /// Memoized so a second caller joins the same drain instead of returning
+  /// while finalized writes are still running.
+  Future<void> dispose() => _disposeFuture ??= _dispose();
+
+  Future<void> _dispose() async {
     _disposed = true;
     await _subscription?.cancel();
     // Capture never throws (failures are logged and drop the synced marker),

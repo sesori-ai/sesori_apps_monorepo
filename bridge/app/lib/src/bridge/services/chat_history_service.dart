@@ -21,8 +21,6 @@ class ChatHistoryService {
   final SessionRepository _sessionRepository;
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
-  /// Message ids removed while that session's backfill fetch is in flight.
-  final Map<String, Set<String>> _removalsDuringBackfill = {};
 
   /// Records a finalized message from the live event stream.
   Future<void> captureMessage({required String sessionId, required Message message}) {
@@ -51,7 +49,6 @@ class ChatHistoryService {
   }
 
   Future<void> captureMessageRemoved({required String sessionId, required String messageId}) {
-    _removalsDuringBackfill[sessionId]?.add(messageId);
     return _capture(
       sessionId: sessionId,
       description: "removal of message $messageId",
@@ -88,33 +85,36 @@ class ChatHistoryService {
     return backfill.whenComplete(() => _inFlightBackfills.remove(sessionId));
   }
 
-  Future<void> _backfillSession({required String sessionId}) async {
-    // Captured before the fetch: activity observed while it runs must not be
-    // masked by a watermark taken afterwards.
-    final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
-    final backendActivityAt = observedBefore?.backendActivityAt ?? 0;
-    // A removal that lands while the fetch is in flight is newer than the
-    // transcript being fetched, so the transcript must not resurrect it.
-    final removedDuringFetch = _removalsDuringBackfill[sessionId] = <String>{};
-    final List<MessageWithParts> messages;
-    try {
-      messages = await _sessionRepository.getSessionMessages(sessionId: sessionId);
-    } finally {
-      _removalsDuringBackfill.remove(sessionId);
-    }
-    final syncedAt = DateTime.now().millisecondsSinceEpoch;
-    await _enqueue(
+  /// Fetches and applies the transcript as one queued unit.
+  ///
+  /// The fetch is deliberately inside the session's write queue. A transcript
+  /// is a snapshot of the backend at fetch time, so any capture that races it
+  /// is strictly newer; queueing those captures behind the whole backfill
+  /// applies them *after* the snapshot lands, which is the order they actually
+  /// happened. Fetching outside the queue instead would let a stale snapshot
+  /// overwrite newer updates and resurrect removed messages and parts —
+  /// reconciling that afterwards needs per-row tombstones for every
+  /// granularity, whereas ordering the two correctly needs none.
+  ///
+  /// Captures for this session wait for the fetch, but they never block the
+  /// event pipeline: the listener dispatches them without awaiting.
+  Future<void> _backfillSession({required String sessionId}) {
+    return _enqueue(
       sessionId: sessionId,
-      write: () => _chatHistoryRepository.replaceSessionMessages(
-        sessionId: sessionId,
-        messages: [
-          for (final message in messages)
-            if (!removedDuringFetch.contains(message.info.id)) message,
-        ],
-        watermark: backendActivityAt,
-        backendActivityAt: backendActivityAt,
-        syncedAt: syncedAt,
-      ),
+      write: () async {
+        // Read inside the queue too, so it cannot miss a capture that landed
+        // between the read and the write.
+        final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+        final backendActivityAt = observedBefore?.backendActivityAt ?? 0;
+        final messages = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        await _chatHistoryRepository.replaceSessionMessages(
+          sessionId: sessionId,
+          messages: messages,
+          watermark: backendActivityAt,
+          backendActivityAt: backendActivityAt,
+          syncedAt: DateTime.now().millisecondsSinceEpoch,
+        );
+      },
     );
   }
 

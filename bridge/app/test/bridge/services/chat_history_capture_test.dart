@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:typed_data";
 
@@ -188,20 +189,61 @@ void main() {
       expect(state.syncedAt, isNotNull);
     });
 
-    test("a removal during the fetch is not resurrected by the transcript", () async {
+    test("a removal captured before the backfill defers to the fetched transcript", () async {
       final repository = _FakeSessionRepository(
         transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
       );
       final history = createTestChatHistory(sessionRepository: repository);
-      repository.onFetch = () => history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2");
+      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m2"));
+
+      await history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2");
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      // The fetch happens after the removal, so its transcript is the newer
+      // observation. A message the backend still reports is not deleted yet,
+      // and mirroring the backend is the point of a backfill.
+      expect(
+        (await history.repository.getSessionMessages(sessionId: "ses_a")).map((message) => message.info.id),
+        const ["m1", "m2"],
+      );
+    });
+
+    test("a removal captured during the fetch is not resurrected", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      Future<void>? removal;
+      repository.onFetch = () async {
+        removal = history.service.captureMessageRemoved(sessionId: "ses_a", messageId: "m2");
+      };
 
       await history.service.backfillSession(sessionId: "ses_a");
+      await removal;
 
       expect(
         (await history.repository.getSessionMessages(sessionId: "ses_a")).map((message) => message.info.id),
         const ["m1"],
-        reason: "the removal is newer than the transcript being imported",
       );
+    });
+
+    test("a part removal racing the backfill is not resurrected", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      Future<void>? removal;
+      repository.onFetch = () async {
+        removal = history.service.capturePartRemoved(
+          sessionId: "ses_a",
+          messageId: "m1",
+          partId: "m1-p1",
+        );
+      };
+
+      await history.service.backfillSession(sessionId: "ses_a");
+      await removal;
+
+      final stored = await history.repository.getSessionMessages(sessionId: "ses_a");
+      expect(stored.single.parts, isEmpty, reason: "the removal is newer than the fetched transcript");
     });
 
     test("concurrent reads share one fetch", () async {
@@ -305,7 +347,11 @@ class _FakeSessionRepository implements SessionRepository {
     fetchCount++;
     // Yield so a second caller can observe the in-flight fetch.
     await Future<void>.delayed(Duration.zero);
-    await onFetch?.call();
+    // Deliberately not awaited: production dispatches captures without
+    // awaiting them, and awaiting one here would wait on the very queue this
+    // fetch is holding.
+    unawaited(Future<void>.sync(() => onFetch?.call() ?? Future<void>.value()));
+    await Future<void>.delayed(Duration.zero);
     final failure = error;
     if (failure != null) throw failure;
     return transcript;
