@@ -233,11 +233,27 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     // the viewport, so rendering them cannot shift what is being read.
     // Freezing them would leave the page loaded but invisible until the
     // user returned to the newest message.
-    if (_follow.following || _hasOlderMessages(oldWidget: oldWidget)) {
+    if (_follow.following) {
       _syncChatController();
-      if (!_follow.following) {
-        _snapshot = null;
-      }
+      return;
+    }
+    if (!_hasOlderMessages(oldWidget: oldWidget)) return;
+
+    // Extend the frozen snapshot with the older messages rather than dropping
+    // it: everything else it holds — streaming text, children, statuses — must
+    // stay frozen, or a live update could reflow the rows being read.
+    _syncChatController();
+    final frozen = _snapshot;
+    if (frozen != null) {
+      setState(() {
+        _snapshot = (
+          messages: List<MessageWithParts>.unmodifiable(widget.messages),
+          streamingText: frozen.streamingText,
+          children: frozen.children,
+          childStatuses: frozen.childStatuses,
+          retryErrorMessage: frozen.retryErrorMessage,
+        );
+      });
     }
   }
 
