@@ -87,22 +87,15 @@ class PluginManagementService with Disposable {
   bool _activeBridgeIdentityKnown = false;
   String? _activeBridgeId;
 
+  /// Plugin ids whose install this app started, so its analytics report counts
+  /// installs rather than surfaces watching one.
+  final Set<String> _selfStartedInstalls = {};
+
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
 
   /// In-flight managed runtime installs, keyed by plugin id. An entry appears
   /// when the bridge reports progress and disappears when the install settles.
   ValueStream<Map<String, PluginInstallProgress>> get installProgress => _installProgress.stream;
-
-  /// Starts a managed runtime install. The bridge accepts immediately and
-  /// streams progress; the terminal outcome also invalidates the snapshot.
-  Future<PluginManagementMutationResult> install({required String pluginId}) {
-    return _runMutation(
-      request: () => _pluginRepository.command(
-        pluginId: pluginId,
-        request: const PluginLifecycleCommandRequest.install(),
-      ),
-    );
-  }
 
   Future<void> refresh() {
     _markStale();
@@ -113,6 +106,10 @@ class PluginManagementService with Disposable {
     required String pluginId,
     required PluginLifecycleCommandRequest request,
   }) {
+    // Install progress is broadcast to every connected surface, so remember
+    // which installs this app actually started: only those are its outcome to
+    // report.
+    if (request is PluginLifecycleInstallRequest) _selfStartedInstalls.add(pluginId);
     return _runMutation(
       request: () => _pluginRepository.command(pluginId: pluginId, request: request),
     );
@@ -225,8 +222,9 @@ class PluginManagementService with Disposable {
         // progress entry is dropped here.
         final wasTracked = next.remove(pluginId) != null;
         // The bridge's terminal event is the authoritative outcome, so report
-        // it here rather than at the tap. Only for installs this app started.
-        if (wasTracked) _reportInstallOutcome(phase: phase);
+        // it here rather than at the tap — but only for an install this app
+        // started, since every connected surface sees the same event.
+        if (_selfStartedInstalls.remove(pluginId)) _reportInstallOutcome(phase: phase);
         if (!wasTracked) return;
       case PluginInstallPhase.downloading ||
           PluginInstallPhase.verifying ||
@@ -266,6 +264,9 @@ class PluginManagementService with Disposable {
   }
 
   void _clearInstallProgress() {
+    // A new connection or bridge identity makes any pending outcome
+    // unattributable, so authorship is forgotten with the progress itself.
+    _selfStartedInstalls.clear();
     if (_disposed || _installProgress.isClosed || _installProgress.value.isEmpty) return;
     _installProgress.add(const {});
   }

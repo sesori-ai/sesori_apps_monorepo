@@ -760,17 +760,15 @@ void main() {
       // The terminal outcome does not itself refresh; the bridge's snapshot
       // invalidation does, exactly as for any other management change.
       expect(repository.loadCalls, 1);
-      // The authoritative outcome is reported once, with no harness identity.
-      expect(reportedEvents, [
-        const ProductAnalyticsEvent.harnessInstallFinished(
-          outcome: AnalyticsHarnessInstallOutcome.completed,
-        ),
-      ]);
-      expect(reportedEvents.single.parameters, {"outcome": "completed"});
+      // This surface only watched the install, so it is not its outcome to
+      // report — otherwise the metric would count surfaces, not installs.
+      expect(reportedEvents, isEmpty);
     });
 
-    test("reports a failed outcome and never reports an untracked terminal event", () async {
-      final repository = _FakePluginRepository()..queueLoad(_supported(_response(token: "one")));
+    test("reports the outcome only for an install this app started", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(_success(_response(token: "one")));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = PluginManagementService(
         pluginRepository: repository,
@@ -783,18 +781,26 @@ void main() {
       });
       await _waitFor(() => service.snapshots.hasValue);
 
-      // A terminal event for an install this app never saw start (e.g. another
-      // surface triggered it) is not this installation's outcome to report.
-      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.failed);
+      // An install another surface started is watched but never reported.
+      connection.emitInstallProgress(pluginId: "opencode", phase: PluginInstallPhase.downloading, percent: 5);
+      await _pump();
+      connection.emitInstallProgress(pluginId: "opencode", phase: PluginInstallPhase.failed);
       await _pump();
       expect(reportedEvents, isEmpty);
 
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.install(),
+      );
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 5);
       await _pump();
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.failed);
       await _pump();
 
+      // Bounded and identity-free: only the outcome crosses the wire.
+      expect(reportedEvents.single, isA<HarnessInstallFinishedEvent>());
       expect(reportedEvents.single.parameters, {"outcome": "failed"});
+      expect(reportedEvents.single.wireName, "harness_install_finished");
     });
 
     test("a reconnect clears progress that belonged to the previous connection", () async {
