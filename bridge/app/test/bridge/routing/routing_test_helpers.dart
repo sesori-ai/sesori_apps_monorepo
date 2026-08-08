@@ -826,6 +826,9 @@ class _NoopSessionRepository implements SessionRepository {
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
   @override
+  Stream<List<SessionBackendActivity>> get backendActivity => const Stream.empty();
+
+  @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
 
   @override
@@ -1075,6 +1078,9 @@ class _NoopSessionRepository implements SessionRepository {
 class FakeSessionRepository implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
+
+  @override
+  Stream<List<SessionBackendActivity>> get backendActivity => const Stream.empty();
 
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;

@@ -19,6 +19,7 @@ import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../control/control_status_notifier.dart";
+import "../listeners/chat_history_activity_listener.dart";
 import "../listeners/chat_history_listener.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
 import "../listeners/plugin_event_listener.dart";
@@ -530,6 +531,10 @@ class Orchestrator {
       source: sessionEventDispatcher.events,
       chatHistoryService: chatHistoryService,
     );
+    final chatHistoryActivityListener = ChatHistoryActivityListener(
+      source: sessionRepository.backendActivity,
+      chatHistoryService: chatHistoryService,
+    )..start();
     final normalizedPluginEvents = sessionEventDispatcher.events.doOnListen(() {
       for (final listener in pluginEventListeners) {
         listener.start();
@@ -565,7 +570,7 @@ class Orchestrator {
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
         ),
-        GetSessionMessagesHandler(sessionRepository: sessionRepository),
+        GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
@@ -618,6 +623,7 @@ class Orchestrator {
       sessionBindingCommitListener: sessionBindingCommitListener,
       sessionDeletionListener: sessionDeletionListener,
       chatHistoryListener: chatHistoryListener,
+      chatHistoryActivityListener: chatHistoryActivityListener,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
       sessionEventDispatcher: sessionEventDispatcher,
@@ -698,6 +704,7 @@ class OrchestratorSession {
   final SessionBindingCommitListener _sessionBindingCommitListener;
   final SessionDeletionListener _sessionDeletionListener;
   final ChatHistoryListener _chatHistoryListener;
+  final ChatHistoryActivityListener _chatHistoryActivityListener;
   final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener;
   final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener;
   final SessionEventDispatcher _sessionEventDispatcher;
@@ -764,6 +771,7 @@ class OrchestratorSession {
     required SessionBindingCommitListener sessionBindingCommitListener,
     required SessionDeletionListener sessionDeletionListener,
     required ChatHistoryListener chatHistoryListener,
+    required ChatHistoryActivityListener chatHistoryActivityListener,
     required SessionOptionsCreationRefreshListener sessionOptionsCreationRefreshListener,
     required SessionOptionsChangedRefreshListener sessionOptionsChangedRefreshListener,
     required SessionEventDispatcher sessionEventDispatcher,
@@ -805,6 +813,7 @@ class OrchestratorSession {
        _sessionBindingCommitListener = sessionBindingCommitListener,
        _sessionDeletionListener = sessionDeletionListener,
        _chatHistoryListener = chatHistoryListener,
+       _chatHistoryActivityListener = chatHistoryActivityListener,
        _sessionOptionsCreationRefreshListener = sessionOptionsCreationRefreshListener,
        _sessionOptionsChangedRefreshListener = sessionOptionsChangedRefreshListener,
        _sessionEventDispatcher = sessionEventDispatcher,
@@ -1112,6 +1121,7 @@ class OrchestratorSession {
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_sessionDeletionListener.dispose),
       attempt(_chatHistoryListener.dispose),
+      attempt(_chatHistoryActivityListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([

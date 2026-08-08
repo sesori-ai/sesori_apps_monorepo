@@ -22,6 +22,40 @@ class ChatHistoryService {
   final Map<String, Future<void>> _writeQueues = {};
   final Map<String, Future<void>> _inFlightBackfills = {};
 
+  /// The session's messages, served from the store whenever it is known to be
+  /// current and falling back to the backend otherwise.
+  ///
+  /// The store is preferred only when a backfill has completed *and* no
+  /// backend activity has been observed past the captured watermark, so a
+  /// session advanced outside Sesori still reads correctly.
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+    final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+    if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
+      await backfillSession(sessionId: sessionId);
+    }
+    return _chatHistoryRepository.getSessionMessages(sessionId: sessionId);
+  }
+
+  /// Records backend activity observed outside the live event stream, so a
+  /// session advanced through the backend's own CLI is detected as stale.
+  ///
+  /// Only sessions the store already knows about are tracked; an unknown
+  /// session has nothing to be stale against.
+  Future<void> observeBackendActivity({required String sessionId, required int activityAt}) {
+    return _enqueue(
+      sessionId: sessionId,
+      write: () async {
+        final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+        if (state == null) return;
+        await _chatHistoryRepository.advanceSyncState(
+          sessionId: sessionId,
+          watermark: state.watermark,
+          backendActivityAt: activityAt,
+        );
+      },
+    );
+  }
+
   /// Records a finalized message from the live event stream.
   Future<void> captureMessage({required String sessionId, required Message message}) {
     return _capture(

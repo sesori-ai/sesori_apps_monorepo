@@ -5,6 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_chat_history.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -15,7 +16,9 @@ void main() {
     setUp(() {
       plugin = FakeBridgePlugin();
       handler = GetSessionMessagesHandler(
-        sessionRepository: FakeSessionRepository(plugin: plugin),
+        chatHistoryService: createTestChatHistory(
+          sessionRepository: FakeSessionRepository(plugin: plugin),
+        ).service,
       );
     });
 

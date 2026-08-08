@@ -65,6 +65,10 @@
   relies on archive permanence. Steps 2/8–5/8 touch none of the archiving
   code, so the two series run in parallel. Recorded after the user started
   `read-only-archiving` separately.
+- **2026-08-07 — Second watermark source wired in step 4/8** as deferred below:
+  `SessionRepository` now publishes a `backendActivity` stream from catalog
+  import, and `ChatHistoryActivityListener` feeds it into the store's
+  staleness marks. Success Criterion 3 is verified here.
 - **2026-08-07 — Second watermark source deferred to step 4/8.** The plan lists
   two inputs for `backend_activity_at`: live capture and catalog import
   observing newer backend activity. Only capture has a caller until serving

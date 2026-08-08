@@ -63,6 +63,12 @@ typedef SessionBindingsCommitted = ({
 
 typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 
+/// Backend-owned activity for one session, as reported by the backend itself.
+///
+/// Deliberately separate from the catalog `updatedAt`, which bridge-local
+/// writes such as a rename also move.
+typedef SessionBackendActivity = ({String sessionId, int activityAt});
+
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
 
@@ -81,6 +87,8 @@ class SessionRepository {
   final Set<String> _deletedSessionIds = <String>{};
   final StreamController<SessionBindingsCommitted> _bindingCommitsController =
       StreamController<SessionBindingsCommitted>.broadcast(sync: true);
+  final StreamController<List<SessionBackendActivity>> _backendActivityController =
+      StreamController<List<SessionBackendActivity>>.broadcast(sync: true);
   final Map<String, Future<void>> _tombstoneLoads = <String, Future<void>>{};
   final Set<String> _tombstonesLoaded = <String>{};
   int _lastProjectionTimestamp = 0;
@@ -104,6 +112,10 @@ class SessionRepository {
        _aggregateSourceDeadline = aggregateSourceDeadline;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
+
+  /// Backend activity observed while importing the catalog. Consumers use it
+  /// to notice sessions advanced outside Sesori.
+  Stream<List<SessionBackendActivity>> get backendActivity => _backendActivityController.stream;
 
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
@@ -872,7 +884,11 @@ class SessionRepository {
         pluginId: pluginId,
         sessions: observedRoots,
       );
-      return (project: hydratedProject, committedByBackendId: committedByBackendId);
+      return (
+        project: hydratedProject,
+        committedByBackendId: committedByBackendId,
+        observedRoots: observedRoots,
+      );
     });
     _publishBindingsCommitted(
       pluginId: pluginId,
@@ -880,6 +896,13 @@ class SessionRepository {
       generation: generation,
       kind: SessionBindingCommitKind.catalogSync,
       backendSessionIds: result.committedByBackendId.keys.toList(growable: false),
+    );
+    _publishBackendActivity(
+      activity: [
+        for (final root in result.observedRoots)
+          if (result.committedByBackendId[root.backendSessionId] case final binding?)
+            (sessionId: binding.sessionId, activityAt: root.updatedAt),
+      ],
     );
     return result.project;
   }
@@ -1469,7 +1492,10 @@ class SessionRepository {
     return timestamp;
   }
 
-  Future<void> dispose() => _bindingCommitsController.close();
+  Future<void> dispose() async {
+    await _bindingCommitsController.close();
+    await _backendActivityController.close();
+  }
 
   void _publishBindingsCommitted({
     required String pluginId,
@@ -1486,6 +1512,11 @@ class SessionRepository {
       kind: kind,
       backendSessionIds: List<String>.unmodifiable(backendSessionIds),
     ));
+  }
+
+  void _publishBackendActivity({required List<SessionBackendActivity> activity}) {
+    if (activity.isEmpty || _backendActivityController.isClosed) return;
+    _backendActivityController.add(List<SessionBackendActivity>.unmodifiable(activity));
   }
 
   Set<String> _tombstonesFor(String pluginId) {

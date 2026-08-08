@@ -1,14 +1,14 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/session_repository.dart";
+import "../services/chat_history_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/messages` — returns all messages for a session.
 class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, MessageWithPartsResponse> {
-  final SessionRepository _sessionRepository;
+  final ChatHistoryService _chatHistoryService;
 
-  GetSessionMessagesHandler({required SessionRepository sessionRepository})
-    : _sessionRepository = sessionRepository,
+  GetSessionMessagesHandler({required ChatHistoryService chatHistoryService})
+    : _chatHistoryService = chatHistoryService,
       super(
         HttpMethod.post,
         "/session/messages",
@@ -29,7 +29,7 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, Mes
     }
 
     return MessageWithPartsResponse(
-      messages: await _sessionRepository.getSessionMessages(sessionId: sessionId),
+      messages: await _chatHistoryService.getSessionMessages(sessionId: sessionId),
     );
   }
 }
