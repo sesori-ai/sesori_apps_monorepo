@@ -1,7 +1,19 @@
 # User Analytics
 
-**Status:** Latest considerable revision rejected by architecture review; valid
-findings and current PR feedback applied directly, not re-reviewed
+**Status:** Step 5 cloud rollout is substantially deployed and autonomous.
+The daily pipeline is live: 03:00 UTC scheduled auth export, 04:00-05:00 UTC
+transform chain, reporting views, all guarded and verified. Remaining
+acceptance work is the privacy runtime + deletion drill, the Looker report,
+the per-user quota restoration, and three-complete-day reconciliation before
+the deployment record flips to configured and the plan archives. Earlier
+architecture-review findings were applied directly without a prohibited third
+review, so do not describe the corrected plan as reviewer-approved. Current
+operational truth and the exact remaining procedures live in `TRACKER.md`
+under "Exact resume sequence" (steps 7-9).
+
+**Last operational checkpoint:** `2026-08-08` — scheduler-triggered export
+`analytics-auth-export-nszrn` published cleanly and all five transforms
+succeeded with aligned watermarks.
 
 **Plan slug:** `user-analytics`
 
